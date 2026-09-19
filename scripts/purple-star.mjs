@@ -243,10 +243,15 @@ function equationOfTime(year, month, day) {
  * 足以把结果推过时辰边界（实测北京全年约 5% 的出生时间会因此换一个时辰，而时辰一换整张盘全变）。
  * 故默认保持传统口径，要严格口径须显式开 --eot，**不做静默切换**。
  *
- * 返回 { branch, isLateZi, offsetMinutes, longitudeMinutes, eotMinutes, solarMinutes }：
+ * 返回 { branch, isLateZi, dayOffset, offsetMinutes, longitudeMinutes, eotMinutes, solarMinutes }：
  *   branch           时辰支 0-11（0=子 … 11=亥）
  *   isLateZi         是否落在 23:00–23:59（晚子时）——**这个区分很重要**：
  *                    子时横跨两日，23:00 后出生按传统三合派应「算次日」，排出的盘与当日早子时完全不同。
+ *   dayOffset        校正后跨了几天的**日界**：0 = 未跨天，+1 = 落到次日，-1 = 落到前一日。
+ *                    **调用方必须据此调整日期**：真太阳时是一条连续的时间轴，日期与时辰都得
+ *                    取自它。只取时辰而把日期留在钟表轴上，"日 + 时"这个组合指向的就不是出生时刻。
+ *                    例：喀什 00:30 的真太阳时是前一日 21:38，日期不回退则「亥时」偏了约 9 小时，
+ *                    农历日跟着错一天 → 紫微星定位错 → 整盘十二宫全变。
  *   offsetMinutes    总校正（经度 + 均时差）。**分项各自取整后相加**，好让提示里的
  *                    「经度 A + 均时差 B = C」自洽（若先相加再取整，-14.4 与 +3.8 会
  *                    显示成 -14 + 4 = -11，看着像算错了）
@@ -261,7 +266,10 @@ function calcTrueSolar(clockHour, clockMinute, longitude, opts = {}) {
 	const eotRaw = opts.eot ? equationOfTime(opts.year, opts.month, opts.day) : 0;
 	// 判定一律用未取整的 offsetRaw —— 未开 --eot 时 eotRaw 恒为 0，
 	// 故默认口径与旧实现逐位相同，不存在行为漂移。
-	const solar = (((clockMins + longitudeRaw + eotRaw) % 1440) + 1440) % 1440;
+	const totalRaw = clockMins + longitudeRaw + eotRaw;
+	// dayOffset 也取未取整值：跨没跨过午夜由精确时刻决定，先取整再判断会在边界处翻车
+	const dayOffset = Math.floor(totalRaw / 1440);
+	const solar = ((totalRaw % 1440) + 1440) % 1440;
 	const isLateZi = solar >= 1380; // 23:00–23:59
 	const branch = solar >= 1380 || solar < 60 ? 0 : Math.floor((solar - 60) / 120) + 1;
 	const longitudeMinutes = Math.round(longitudeRaw);
@@ -269,11 +277,23 @@ function calcTrueSolar(clockHour, clockMinute, longitude, opts = {}) {
 	return {
 		branch,
 		isLateZi,
+		dayOffset,
 		offsetMinutes: longitudeMinutes + eotMinutes,
 		longitudeMinutes,
 		eotMinutes,
 		solarMinutes: Math.round(solar),
 	};
+}
+
+/**
+ * 按天数偏移公历日期，返回 { year, month, day }。
+ *
+ * 用 Date.UTC 做日历运算，而不是 `day ± 86400000` —— 后者跨月、跨年、闰年都要自己判，
+ * 且一旦掺进本地时区就会在夏令时切换日出错。UTC 没有夏令时，日期进退交给它算最稳。
+ */
+function shiftDate(year, month, day, days) {
+	const d = new Date(Date.UTC(year, month - 1, day + days));
+	return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
 
 // 行政区划后缀：用户常写「石家庄市」「石家庄地区」「XX自治州」，而城市表里存的是简称
@@ -466,6 +486,20 @@ function buildBirthInfo(args, p = "") {
 		const t = calcTrueSolar(ch, cm, longitude, { eot: useEot, year, month, day });
 		lateZiCandidate = t.isLateZi;
 
+		// 校正把时刻推出当天时，日期必须跟着走 —— 否则 (日, 时) 这个组合指向的不是出生时刻。
+		// 真太阳时是一条连续时间轴，日期与时辰都得取自它（缘由见 calcTrueSolar 的 dayOffset）。
+		// 日期是单点流入 info 的，改这里，下游（农历、排盘、合盘、流年）自动跟随。
+		let dayShiftText = "";
+		if (t.dayOffset !== 0) {
+			const shifted = shiftDate(year, month, day, t.dayOffset);
+			dayShiftText = `（真太阳时已跨过午夜，出生日期${
+				t.dayOffset > 0 ? "顺延至次日" : "回退至前一日"
+			} ${fmtDate(shifted)}）`;
+			year = shifted.year;
+			month = shifted.month;
+			day = shifted.day;
+		}
+
 		// 校正量的构成：默认只有经度项；开了 --eot 则多一项均时差（与经度无关，可能反号）
 		const corrText = useEot
 			? `经度 ${signed(t.longitudeMinutes)} 分 + 均时差 ${signed(t.eotMinutes)} 分 = ${signed(t.offsetMinutes)} 分`
@@ -480,6 +514,7 @@ function buildBirthInfo(args, p = "") {
 			hourNote = `${clockText} → 真太阳时校正 ${corrText} → ${shichenLabel(hour)}`;
 			if (t.isLateZi) hourNote += "（晚子时，按当日早子时口径）";
 		}
+		hourNote += dayShiftText;
 	} else {
 		throw new Error("缺少出生时辰：需 --time HH:MM 或 --branch 0-12");
 	}
@@ -657,7 +692,9 @@ function lateZiSection(chart, info, isLateZi, lateZiCandidate) {
 	if (!lateZiCandidate) return out;
 	const alt = generateChart({ ...info, hour: 12 });
 	out.push("【⚠️ 晚子时口径提醒】");
-	out.push("  你给的钟表时间落在 23:00–23:59。子时横跨两日，两种口径排出的是**两张不同的盘**。");
+	// 措辞锚在「校正后」而非「你给的钟表时间」：开 --eot 或西部城市时，落在 23:00–23:59 的
+	// 往往是校正后的真太阳时，钟表时间可能在别处（如喀什 02:30 校正后是前一日 23:37）。
+	out.push("  校正后的真太阳时落在 23:00–23:59。子时横跨两日，两种口径排出的是**两张不同的盘**。");
 	out.push(
 		`  本次按【当日早子时】排盘：紫微落 ${ziweiBranchOf(chart)} · 命宫主星 ${mingMajorBrief(chart)}`
 	);
@@ -1289,6 +1326,53 @@ function cmdSelftest() {
 		if (lo < -15 || lo > -14) throw new Error(`均时差下界异常：${lo.toFixed(1)} 分`);
 		if (hi < 16 || hi > 17) throw new Error(`均时差上界异常：${hi.toFixed(1)} 分`);
 	});
+	ok("真太阳时：西部凌晨校正后跨天回退（喀什 00:30 → 前一日 21:38 亥时）", () => {
+		// 喀什 75.99°E：经度项 (75.99-120)*4 = -176.04 分 + 均时差 +3.749 → 30-176.04+3.749 = -142.291
+		// 未取整判定 dayOffset = floor(-142.291/1440) = -1；加回一天得 1297.709 → 显示 21:38
+		const t = calcTrueSolar(0, 30, 75.99, { eot: true, year: 1990, month: 5, day: 15 });
+		eq(t.dayOffset, -1, "跨天方向");
+		eq(t.branch, 11, "亥时");
+		eq(t.isLateZi, false, "21:38 不是晚子时");
+		eq(t.solarMinutes, 1298, "前一日 21:38");
+	});
+	ok("真太阳时：东部深夜校正后跨天前进（哈尔滨 23:30 → 次日 00:00 子时）", () => {
+		// 哈尔滨 126.6°E：经度项 +26.4 分 + 均时差约 +3.75 → 23:30 推到次日 00:00.1
+		const t = calcTrueSolar(23, 30, 126.6, { eot: true, year: 1990, month: 5, day: 15 });
+		eq(t.dayOffset, 1, "跨天方向");
+		eq(t.branch, 0, "子时");
+		eq(t.isLateZi, false, "校正后已过午夜，不再是晚子时");
+	});
+	ok("真太阳时：不跨天时 dayOffset 恒为 0（含东经 120° 与夏时制无关的边界）", () => {
+		eq(calcTrueSolar(12, 0, 120).dayOffset, 0, "标准经线正午");
+		eq(calcTrueSolar(0, 30, 120).dayOffset, 0, "标准经线凌晨");
+		eq(calcTrueSolar(23, 30, 120).dayOffset, 0, "标准经线深夜");
+		// 北京 116.4°E 经度项仅 -14.4 分：只有 00:00–00:29 的窗口会回退，正午不会
+		eq(calcTrueSolar(12, 0, 116.4, { eot: true, year: 1990, month: 5, day: 15 }).dayOffset, 0, "北京正午");
+	});
+	ok("真太阳时：dayOffset 与 shiftDate 合起来指回出生时刻（自洽性）", () => {
+		// 不变量：校正后时刻 = 钟表时刻 + 校正量，跨天成日只改变日期标签，不改变连续时间轴上的位置
+		for (const [h, m, lng] of [
+			[0, 30, 75.99],
+			[23, 30, 126.6],
+			[2, 30, 75.99],
+			[12, 0, 120],
+		]) {
+			const t = calcTrueSolar(h, m, lng, { eot: true, year: 1990, month: 5, day: 15 });
+			const shifted = shiftDate(1990, 5, 15, t.dayOffset);
+			// 用未取整的校正量还原：shifted 日期的 t.solarMinutes 应等于钟表时刻 + 校正
+			const clockMins = h * 60 + m;
+			const corridor = t.longitudeMinutes + t.eotMinutes;
+			const total = clockMins + corridor;
+			const back = t.dayOffset * 1440 + t.solarMinutes;
+			if (Math.abs(back - total) > 1.5)
+				throw new Error(
+					`${h}:${m} @${lng} → dayOffset=${t.dayOffset} solar=${t.solarMinutes}，还原得 ${back}，应为 ${total}`,
+				);
+			// 日期确实跟着动了
+			const expectDay = t.dayOffset === 0 ? 15 : t.dayOffset > 0 ? 16 : 14;
+			eq(shifted.day, expectDay, `${h}:${m} @${lng} 的日期`);
+		}
+	});
 
 	// ── 3. 晚子时等价性（本技能最易错处）──
 	ok("晚子时：timeIndex 12 ≡ 次日 timeIndex 0（命盘完全一致）", () => {
@@ -1620,6 +1704,8 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
   --branch 0-12        直接指定时辰支（0=子 … 11=亥；12=晚子时），与 --time 二选一
   --late-zi            配合 --time：23:00–23:59 出生改按「晚子时算次日」排
   --eot                配合 --time：真太阳时额外计入均时差（±16 分），默认不计
+                       ※ 真太阳时跨过午夜时，出生日期会自动回退/顺延一天，
+                         输出里会写明「已跨过午夜，出生日期…」。这是正确行为。
 
 其他出生信息：
   --gender male|female

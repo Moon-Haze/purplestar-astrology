@@ -78,6 +78,58 @@ describe("CLI 端到端", () => {
 				"两种口径排出的是不同的盘，不能只当它是小数级差异"
 			);
 		});
+
+		describe("真太阳时跨午夜：日期必须跟着走", () => {
+			// 真太阳时是一条连续时间轴，日期与时辰都得取自它。只换时辰、把日期留在钟表轴上，
+			// 排出的 (日, 时) 组合指向的就不是出生时刻：农历日错一天 → 紫微星定位错 → 十二宫全变。
+			//
+			// 等价性基准：真太阳时校正后的日期，用户本可以自己算出来手输。所以
+			//   「跨天自动调整」的结果 必须等于「手工输入校正后的日期」的结果。
+			// 这条基准不依赖任何写死的星曜值，且与实现走的是两条不同的输入路径。
+
+			it("西部凌晨：校正后退回前一日（喀什 00:30 → 前一日 21:38 亥时）", async () => {
+				const rolled = await cliJson([
+					"--date", "1990-05-15", "--time", "00:30", "--lng", "75.99", "--gender", "male", "--eot",
+				]);
+				assert.equal(rolled.chart.birthInfo.day, 14, "真太阳时落到前一日，日期须回退");
+				assert.equal(rolled.chart.birthInfo.hour, 11, "21:38 属亥时");
+
+				// 手工输入校正后的日期与时辰，应得到同一张盘
+				const manual = await cliJson([
+					"--date", "1990-05-14", "--branch", "11", "--gender", "male",
+				]);
+				assert.equal(
+					chartSignature(rolled.chart),
+					chartSignature(manual.chart),
+					"自动跨天与手工输入校正后日期，必须排出同一张盘"
+				);
+			});
+
+			it("东部深夜：校正后前进到次日（哈尔滨 23:30 → 次日 00:00 子时）", async () => {
+				const rolled = await cliJson([
+					"--date", "1990-05-15", "--time", "23:30", "--lng", "126.6", "--gender", "male", "--eot",
+				]);
+				assert.equal(rolled.chart.birthInfo.day, 16, "真太阳时落到次日，日期须顺延");
+				assert.equal(rolled.chart.birthInfo.hour, 0, "00:00 属子时");
+
+				const manual = await cliJson([
+					"--date", "1990-05-16", "--branch", "0", "--gender", "male",
+				]);
+				assert.equal(
+					chartSignature(rolled.chart),
+					chartSignature(manual.chart),
+					"自动跨天与手工输入校正后日期，必须排出同一张盘"
+				);
+			});
+
+			it("跨天才调日期：不跨天时日期一位不动", async () => {
+				// 同样是西部城市，正午不会跨天；日期若被无条件改动，这条会红
+				const o = await cliJson([
+					"--date", "1990-05-15", "--time", "12:00", "--lng", "75.99", "--gender", "male", "--eot",
+				]);
+				assert.equal(o.chart.birthInfo.day, 15);
+			});
+		});
 	});
 
 	describe("城市名解析", () => {

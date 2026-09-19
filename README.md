@@ -43,7 +43,7 @@ node scripts/purple-star.mjs heming --a-date 1990-05-15 --a-time 09:30 --a-gende
 node scripts/purple-star.mjs classics --search 机月同梁
 node scripts/purple-star.mjs nihai --category tianji
 node scripts/purple-star.mjs help        # 全部命令与参数
-node scripts/purple-star.mjs selftest    # 回归自检（40 项断言）
+node scripts/purple-star.mjs selftest    # 回归自检（44 项断言）
 
 npm test                                 # 排盘基准回归（300 条样本，约 8 秒）
 ```
@@ -99,7 +99,7 @@ npm test                                 # 排盘基准回归（300 条样本，
 改完内核或升级依赖后，两层测试都要跑：
 
 ```bash
-node scripts/purple-star.mjs selftest    # 第一层：代码逻辑自洽（40 项断言）
+node scripts/purple-star.mjs selftest    # 第一层：代码逻辑自洽（44 项断言）
 npm test                                 # 第二层：与 toolkit 样本的基准比对（约 8 秒）
 
 npm run test:corpus -- --year 1960       # 可选：全量核验（8,640 条，约 2 分钟）
