@@ -173,7 +173,16 @@ describe("CLI 端到端", () => {
 			assert.equal(new Set(males).size, 1, "三种 male 写法应给同一张大限表");
 
 			const a = await cliJson(["--date", "1990-05-15", "--branch", "5", "--gender", "female"]);
-			assert.notEqual(a.chart.gender ?? a.chart.birthInfo.gender, "male");
+			// 字段名写死为 birthInfo.gender 并断言**确切值**，不用 `??` 兜底 ——
+			// 兜底写法（`a.chart.gender ?? a.chart.birthInfo.gender` 不等于 "male"）在字段
+			// 改名时会假通过：两边都取不到即 undefined，而 undefined !== "male" 恒成立。
+			// 这里正是最需要盯住的地方 —— 性别决定大限顺逆，取错会排出整张错盘。
+			assert.equal(a.chart.birthInfo.gender, "female", "性别应回填为 female");
+			assert.notEqual(
+				JSON.stringify(a.chart.daXians),
+				males[0],
+				"性别决定大限顺逆，female 与 male 的大限表不应相同"
+			);
 		});
 	});
 

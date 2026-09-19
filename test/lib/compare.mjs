@@ -56,16 +56,6 @@ function isWhitelisted(starName, branch, baseline, current) {
 // 空值（'' / undefined / null）一律归一为「无」
 const val = v => (v === "" || v === null ? undefined : v);
 
-/** 归一化单颗星：只保留有值的属性，消除「键存在但值为空」的形态差异。 */
-export function normalizeStar(s) {
-	const o = { name: s.name, type: s.type };
-	const b = val(s.brightness);
-	if (b !== undefined) o.brightness = b;
-	const h = val(s.siHua);
-	if (h !== undefined) o.siHua = h;
-	return o;
-}
-
 /** 本项目 `Palace` 中样本也有的字段 —— 比对只覆盖这些。 */
 export const SHARED_PALACE_FIELDS = [
 	"branch",
@@ -177,11 +167,42 @@ export function compareChart(actual, baseline, opts = {}) {
 	// ── 随年份漂移的三个字段：重算期望值，而非直接抄样本的陈旧快照 ──
 	// algorithm.ts 的 currentAge 是虚岁（农历年差 +1）。样本生成于 2026 年，
 	// 直接比对会在跨过下一个农历年（正月初一）后全线失败。
+	// 受影响的共三处：currentAge、currentDaXianIndex、palace.isCurrentDaXian —— 都在下面重算。
 	const age = expectedAge(actual.birthInfo, now);
 	if (actual.currentAge !== age) push("currentAge", age, actual.currentAge, "按当前年份重算");
 	const expIdx = bD.findIndex(d => age >= d.startAge && age <= d.endAge);
 	if (actual.currentDaXianIndex !== expIdx) {
 		push("currentDaXianIndex", expIdx, actual.currentDaXianIndex, "按当前年份重算");
+	}
+
+	// ── palace.isCurrentDaXian ──
+	// 样本 palace 里**有**这个字段，但同样是 2026 年的快照，故不能直接比（理由同上）。
+	// 改为按「重算的虚岁是否落在该宫大限区间内」重新推导应有的标记，用的是
+	// **基准样本的 daXianAge**（外部数据）+ **重算的 age**，去核对内核的标记逻辑。
+	//
+	// 为什么不复用上面的 expIdx：expIdx 只回答「当前走到第几步」，不回答「标在了哪个宫」。
+	// 内核分两处独立完成这件事（algorithm.ts 里由 daXianAge 循环标记、由 daXians 求 index），
+	// 两者理论上可以对不上。
+	//
+	// ⚠️ 效力边界（实测，非推测）：本检查**依赖 expectedAge()**，而它正是历史事故里与内核
+	//    一起写错的那条路径。实测把内核与比对器**同时**退回周岁，300 条盘的 currentAge /
+	//    currentDaXianIndex / isCurrentDaXian 三者本检查**全部保持全绿**，唯一变红的是层 3 的
+	//    horoscope() 预言机。即：本检查能抓「只有内核改了」的回归（已用注入 bug 验证过会红），
+	//    **抓不到「内核与比对器同源同错」**——那始终是层 3 外部预言机的职责，不可互相替代。
+	for (let b = 0; b < 12; b++) {
+		const aP = aByBranch.get(b);
+		const bP = bByBranch.get(b);
+		if (!aP || !bP) continue; // 宫位缺失已在上面报过，不重复计入
+		const range = bP.daXianAge;
+		const should = Array.isArray(range) && age >= range[0] && age <= range[1];
+		if (!!aP.isCurrentDaXian !== should) {
+			push(
+				`palaces[${BRANCHES[b]}宫(branch=${b})].isCurrentDaXian`,
+				should,
+				!!aP.isCurrentDaXian,
+				`按重算虚岁 ${age} 落在区间 ${JSON.stringify(range)} 推导`
+			);
+		}
 	}
 
 	return diffs;
@@ -236,7 +257,13 @@ export function formatDiffs(diffs, limit = 25) {
 	return `共 ${diffs.length} 处差异：\n${head.join("\n")}`;
 }
 
-/** 盘指纹：快速判定两张盘是否逐宫一致（用于 CLI 的 --branch 12 ≡ 次日 --branch 0 之类断言）。 */
+/**
+ * 盘指纹：快速判定两张盘是否逐宫一致（用于 CLI 的 --branch 12 ≡ 次日 --branch 0 之类断言）。
+ *
+ * ⚠️ 与 scripts/purple-star.mjs 里的 chartSignature 是**两份必须行为一致的实现** ——
+ *    test/ 与 CLI 刻意不共享模块（同 lib/loader.mjs 的理由），故改动其一时必须同步另一个。
+ *    先按 branch 排序再拼接，使指纹与 `palaces` 的数组顺序无关（实测为寅起 2,3,…,11,0,1）。
+ */
 export function chartSignature(chart) {
 	return [...chart.palaces]
 		.sort((x, y) => x.branch - y.branch)

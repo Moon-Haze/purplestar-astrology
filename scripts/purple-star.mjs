@@ -646,9 +646,14 @@ function palaceBrief(p) {
 	return "  " + cols.join(" │ ") + (tags ? "  " + tags : "");
 }
 
-/** 命盘指纹：用于比对两盘是否完全一致（地支 + 全星曜集合） */
+// 命盘指纹：用于比对两盘是否完全一致（宫名 + 地支 + 全星曜集合）。
+// ⚠️ 本函数与 test/lib/compare.mjs 的 chartSignature 是**两份必须行为一致的实现** ——
+//    CLI 不能反向依赖 test/，故刻意不抽共享模块（与 lib/loader.mjs 同一处境）。
+//    两侧都先按 branch 排序再拼接，使指纹与 `palaces` 的数组顺序无关（该顺序实测为
+//    寅起的 2,3,…,11,0,1，不是 0-11）；只在一侧加排序，两边就会静默分叉。
 const chartSignature = c =>
-	c.palaces
+	[...c.palaces]
+		.sort((x, y) => x.branch - y.branch)
 		.map(
 			p =>
 				`${p.name}:${p.branch}:${p.stars

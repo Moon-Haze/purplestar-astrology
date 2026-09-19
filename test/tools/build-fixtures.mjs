@@ -141,7 +141,7 @@ async function main() {
 
 	// ── 写出：只保留 birthInfo + chart ──
 	// 样本的 `topics`（13 主题解读文本）占单条体积 90%，且由 toolkit 私有的 db-analysis.ts
-	// 生成 —— 本项目刻意不含该文件，无法复现，故一律剔除。单条 62.5KB → 6.1KB。
+	// 生成 —— 本项目刻意不含该文件，无法复现，故一律剔除。单条 62.5KB → 5.4KB（实测 5497 字节）。
 	mkdirSync(OUT_DIR, { recursive: true });
 	const jsonl = samples
 		.map(s => JSON.stringify({ birthInfo: s.birthInfo, chart: s.chart }))
