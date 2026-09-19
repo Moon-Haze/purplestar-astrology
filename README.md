@@ -45,7 +45,7 @@ node scripts/purple-star.mjs nihai --category tianji
 node scripts/purple-star.mjs help        # 全部命令与参数
 node scripts/purple-star.mjs selftest    # 回归自检（37 项断言）
 
-npm test                                 # 排盘基准回归（300 条样本，约 5 秒）
+npm test                                 # 排盘基准回归（300 条样本，约 8 秒）
 ```
 
 ## 目录结构
@@ -100,7 +100,7 @@ npm test                                 # 排盘基准回归（300 条样本，
 
 ```bash
 node scripts/purple-star.mjs selftest    # 第一层：代码逻辑自洽（37 项断言）
-npm test                                 # 第二层：与 toolkit 样本的基准比对（约 5 秒）
+npm test                                 # 第二层：与 toolkit 样本的基准比对（约 8 秒）
 
 npm run test:corpus -- --year 1960       # 可选：全量核验（8,640 条，约 2 分钟）
 ```

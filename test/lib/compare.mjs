@@ -11,6 +11,9 @@
 //      这些是本项目新增的借宫结构化字段，样本没有，故只比共有字段。
 //   3. 顺序：两边 `palaces` 数组顺序实测一致（都是寅起），但**按 branch 建索引**比对，
 //      不依赖数组下标 —— 将来顺序若有变化也不会误判。
+// 农历换算。刻意在此**独立**调用，不复用内核的 getLunarInfo —— 见 expectedAge 的注释。
+import { Solar } from "lunar-javascript";
+
 // 十二地支。刻意在此独立定义而不从内核 constants.ts 取：比对器是同步函数，
 // 而内核模块是异步加载的；且这份表是常量，不随内核演进而变。
 export const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
@@ -76,9 +79,28 @@ export const SHARED_PALACE_FIELDS = [
 /** 大限的可比字段（飞星派的 stemIndex / stemName / siHua 两边都不该有）。 */
 export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"];
 
-/** 依当前年份重算随年份漂移的期望值（见下）。 */
-export function expectedAge(birthYear, now = new Date()) {
-	return now.getFullYear() - birthYear;
+/**
+ * 依「注入的当前时间」独立重算虚岁期望值。
+ *
+ * 口径：**虚岁**，以农历年（正月初一）为界 —— 不是生日、也不是立春。对应 iztro 的默认
+ * `ageDivide: 'normal'`（见 `iztro/lib/astro/FunctionalAstrolabe.js`）：
+ *     nominalAge = 目标日农历年 − 出生农历年 + 1
+ * 这正是 `daXians[].startAge/endAge` 所在的域，故 currentAge 必须用同一口径才能比。
+ *
+ * ⚠️ 这里**独立换算**，刻意不引用内核的 currentAge。
+ *    2026-09 之前两边都写 `getFullYear() - year`（周岁），域不同却公式同形，
+ *    于是内核算错、比对器跟着错，测试恒绿 —— 大限错位因此潜伏了很久。
+ *    比对器的期望值必须来自另一条计算路径，否则它就只是内核的复读机。
+ *    （更独立的预言机：iztro 自身的 horoscope().age.nominalAge，见 invariants.test.mjs。）
+ *
+ * @param {{year:number, month:number, day:number}} birthInfo 出生公历
+ * @param {Date} [now] 注入「当前时间」以便测试漂移逻辑，默认取真实时间
+ */
+export function expectedAge(birthInfo, now = new Date()) {
+	const lunarYearAt = d =>
+		Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate()).getLunar().getYear();
+	const birth = new Date(birthInfo.year, birthInfo.month - 1, birthInfo.day);
+	return lunarYearAt(now) - lunarYearAt(birth) + 1;
 }
 
 /**
@@ -153,9 +175,9 @@ export function compareChart(actual, baseline, opts = {}) {
 	}
 
 	// ── 随年份漂移的三个字段：重算期望值，而非直接抄样本的陈旧快照 ──
-	// algorithm.ts: `currentAge = new Date().getFullYear() - year`（无 +1）。
-	// 样本生成于 2026 年，直接比对会在 2027 年全线失败。
-	const age = expectedAge(actual.birthInfo.year, now);
+	// algorithm.ts 的 currentAge 是虚岁（农历年差 +1）。样本生成于 2026 年，
+	// 直接比对会在跨过下一个农历年（正月初一）后全线失败。
+	const age = expectedAge(actual.birthInfo, now);
 	if (actual.currentAge !== age) push("currentAge", age, actual.currentAge, "按当前年份重算");
 	const expIdx = bD.findIndex(d => age >= d.startAge && age <= d.endAge);
 	if (actual.currentDaXianIndex !== expIdx) {

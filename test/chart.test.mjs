@@ -67,10 +67,10 @@ describe("排盘对标（基准：iztro 2.5.8 样本）", () => {
 });
 
 // ── 随运行年份漂移的字段 ──
-// algorithm.ts: `currentAge = new Date().getFullYear() - year`（无 +1），连带
+// algorithm.ts 的 currentAge 是**虚岁**（农历年差 +1，以正月初一为界），连带
 // currentDaXianIndex / palace.isCurrentDaXian。样本是 2026 年拍的快照，
-// **若测试照抄样本的 currentAge，2027 年 1 月 1 日本套测试会全线变红**。
-// 故比对器按「注入的当前时间」重算期望值。下面这条断言证明重算确实在生效。
+// **若测试照抄样本的 currentAge，跨过下一个正月初一本套测试就会全线变红**。
+// 故比对器按「注入的当前时间」独立重算期望值。下面这条断言证明重算确实在生效。
 describe("随年份漂移的字段", () => {
 	it("currentAge 期望值按注入时间重算，而非照抄样本快照", () => {
 		const s = samples[0];
@@ -80,10 +80,12 @@ describe("随年份漂移的字段", () => {
 		const sameYear = compareChart(actual, s.chart).filter(d => d.path === "currentAge");
 		assert.equal(sameYear.length, 0, "真实时间下 currentAge 不应有差异");
 
-		// 把「当前时间」推到明年：期望值随之 +1，而 actual 是用真实时间排的，故必然报出差异。
+		// 把「当前时间」推到明年 6 月 1 日（必已过正月初一）：期望值随之 +1，
+		// 而 actual 是用真实时间排的，故必然报出差异。
 		// 这证明比对器没有照抄样本 —— 否则这套测试活不过一个跨年。
+		// 用 (年, 月, 日) 构造而非日期字符串：后者按 UTC 解析，与比对器的本地时区口径不一致。
 		const nextYear = new Date().getFullYear() + 1;
-		const drift = compareChart(actual, s.chart, { now: new Date(`${nextYear}-06-01`) });
+		const drift = compareChart(actual, s.chart, { now: new Date(nextYear, 5, 1) });
 		assert.ok(
 			drift.some(d => d.path === "currentAge"),
 			`注入 ${nextYear} 年时间后应报出 currentAge 漂移；未报出说明期望值是照抄样本的`

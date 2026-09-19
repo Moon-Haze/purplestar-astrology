@@ -26,7 +26,7 @@ node scripts/purple-star.mjs help                                   # 全部命�
 # 第一层：CLI 自带自检，37 项断言，整体执行，不支持筛选单项
 node scripts/purple-star.mjs selftest
 
-# 第二层：基准回归，用 toolkit 的 518,400 条样本对标排盘结果（默认跑 300 条抽样，约 5 秒）
+# 第二层：基准回归，用 toolkit 的 518,400 条样本对标排盘结果（默认跑 300 条抽样，约 8 秒）
 npm test
 npm run test:corpus -- --year 1960    # 全量核验（需 reference/ 存在，不入日常回归）
 ```
@@ -68,7 +68,7 @@ npm run test:corpus -- --year 1960    # 全量核验（需 reference/ 存在，�
 
 1. **`REQUIRED_EXPORTS` 自检**：模块加载后立刻校验 14 个关键导出，缺任何一个直接退出。设计意图是**宁可启动失败，也不静默产出错盘**——所以在内核里重命名或删除导出会让 CLI 立刻报错，这是有意的，不是脆弱。
 2. **`selftest`**：CLI 自带的 37 项断言，整体执行。
-3. **`npm test`**：`test/` 下的基准回归，用 toolkit 样本对标排盘结果（默认 300 条抽样，约 5 秒）。失效的基准是负债而非保障 —— 见 [test/README.md](../test/README.md) 的「升级 iztro 的流程」。
+3. **`npm test`**：`test/` 下的基准回归，用 toolkit 样本对标排盘结果（默认 300 条抽样，约 8 秒）。失效的基准是负债而非保障 —— 见 [test/README.md](../test/README.md) 的「升级 iztro 的流程」。
 
 ## 体系硬约束：三合派，不是飞星派
 

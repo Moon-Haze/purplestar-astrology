@@ -12,7 +12,10 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { astro } from "iztro";
+
 import { loadAlgorithm } from "./lib/loader.mjs";
+import { BRANCHES } from "./lib/compare.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
@@ -204,6 +207,94 @@ describe("排盘结构不变量", () => {
 					);
 				}
 			}
+		});
+
+		// ── 唯一一条用**外部预言机**核对「当前走哪一步大限」的断言 ──
+		//
+		// 上面三条只证明大限表**结构**自洽（12 步、首尾相接、宫位对得上），
+		// 完全没有回答「此刻该走哪一步」—— 这正是曾经出错的地方：
+		//
+		//   algorithm.ts 曾写 `currentAge = new Date().getFullYear() - year`（**周岁**），
+		//   而 daXianAge / daXians[].startAge 是**虚岁**（iztro 的 decadal.range，
+		//   以正月初一为界）。两者域不同、公式却同形，于是 currentAge 恒偏 1~2 岁。
+		//   更糟的是当时的比对器（lib/compare.mjs 的 expectedAge）照抄了同一个公式，
+		//   内核算错、测试跟着错，341 项全绿 —— 同源同错，bug 因此长期潜伏。
+		//
+		// 所以这条断言刻意**不复用内核与比对器的任何公式**，改用 iztro 自己的
+		// `horoscope()`：用第三方实现的 `age.nominalAge` 与各宫 `decadal.range` 作真值。
+		// 内核若再退回周岁、或换了别的口径，这里立刻变红。
+		it("currentAge 与大限宫位对齐 iztro 的 horoscope()（外部预言机）", () => {
+			const now = new Date();
+			const pad2 = n => String(n).padStart(2, "0");
+			let decadal = 0;
+			let childhood = 0;
+
+			/** 用 iztro 独立核对一张盘，返回它落在「已起运」还是「童限」。 */
+			const check = birth => {
+				const chart = generateChart({ ...birth });
+				const tag = label(birth);
+				const astrolabe = astro.bySolar(
+					`${birth.year}-${pad2(birth.month)}-${pad2(birth.day)}`,
+					birth.hour,
+					birth.gender === "male" ? "男" : "女",
+					true,
+					"zh-CN"
+				);
+				const h = astrolabe.horoscope(now);
+
+				// 真值 1：虚岁
+				assert.equal(chart.currentAge, h.age.nominalAge, `${tag}：currentAge 应为 iztro 的虚岁`);
+
+				// 真值 2：哪个宫的大限区间含此虚岁（一个都找不到 = 尚未起运）
+				const truth = astrolabe.palaces.find(
+					p =>
+						p.decadal &&
+						h.age.nominalAge >= p.decadal.range[0] &&
+						h.age.nominalAge <= p.decadal.range[1]
+				);
+				const marked = chart.palaces.filter(p => p.isCurrentDaXian);
+
+				if (!truth) {
+					assert.equal(chart.currentDaXianIndex, -1, `${tag}：未起运时 currentDaXianIndex 应为 -1`);
+					assert.equal(marked.length, 0, `${tag}：未起运时不应标记 isCurrentDaXian`);
+					return "childhood";
+				}
+
+				const dx = chart.daXians[chart.currentDaXianIndex];
+				assert.ok(dx, `${tag}：currentDaXianIndex=${chart.currentDaXianIndex} 越界或为 -1`);
+				assert.deepEqual([dx.startAge, dx.endAge], truth.decadal.range, `${tag}：当前大限的年龄区间`);
+				assert.equal(BRANCHES[dx.palaceBranch], truth.earthlyBranch, `${tag}：当前大限所在宫支`);
+				assert.equal(marked.length, 1, `${tag}：应恰好标记 1 个 isCurrentDaXian`);
+				assert.equal(marked[0].branch, dx.palaceBranch, `${tag}：isCurrentDaXian 标在了别的宫`);
+				return "decadal";
+			};
+
+			// 基准样本：出生年 1924-1983，全部早已起运。horoscope() 较重，
+			// 故每 5 条抽 1（60 条）以控制日常回归耗时。
+			for (const { birth } of charts.filter((_, i) => i % 5 === 0)) {
+				if (check(birth) === "childhood") childhood++;
+				else decadal++;
+			}
+
+			// 童限分支：样本里永远走不到（最小的样本也已 43 岁），故另行构造近年出生的盘。
+			// 「今天出生」必然虚岁 1，而五行局起运最早也要 2 岁（水二局），故必定落在童限 ——
+			// 这样无论测试在哪一天跑，童限分支都保证被覆盖。
+			const today = { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
+			const recent = [
+				today,
+				{ year: now.getFullYear() - 1, month: 1, day: 1 },
+				{ year: now.getFullYear() - 1, month: 6, day: 15 },
+				{ year: now.getFullYear() - 3, month: 3, day: 15 },
+			];
+			for (const base of recent) {
+				for (const hour of [0, 6, 9]) {
+					if (check({ ...base, hour, gender: "male" }) === "childhood") childhood++;
+					else decadal++;
+				}
+			}
+
+			assert.ok(decadal > 0, "应覆盖到已起运的盘（否则大限断言从未生效）");
+			assert.ok(childhood > 0, "应覆盖到未起运的童限盘（否则童限分支从未生效）");
 		});
 	});
 

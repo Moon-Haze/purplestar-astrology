@@ -143,9 +143,20 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 		};
 	});
 
+	// ── 农历信息 ──
+	const lunarInfo = getLunarInfo(year, month, day);
+
 	// ── 当前年龄 & 大限 ──
-	const currentYear = new Date().getFullYear();
-	const currentAge = currentYear - year;
+	// currentAge 是**虚岁**，与 daXianAge / daXians[].startAge 同域（倪师《天纪》亦用虚岁）。
+	// 以农历年（正月初一）为界，不是生日、也不是立春 —— 与 iztro 的默认口径
+	// `ageDivide: 'normal'` 逐字对应（见 iztro/lib/astro/FunctionalAstrolabe.js）：
+	//     nominalAge = 目标日农历年 − 出生农历年 + 1
+	// ⚠️ 不可写成 `new Date().getFullYear() - year`（那是周岁）。两者域不同会让
+	//    currentAge 偏 1~2 岁，并连带 currentDaXianIndex / palace.isCurrentDaXian 错位，
+	//    最坏情况是把**上一个大限的宫**当成当前大限整宫详批。
+	const now = new Date();
+	const todayLunarYear = getLunarInfo(now.getFullYear(), now.getMonth() + 1, now.getDate()).lunarYear;
+	const currentAge = todayLunarYear - lunarInfo.lunarYear + 1;
 
 	palaces.forEach(p => {
 		if (p.daXianAge && currentAge >= p.daXianAge[0] && currentAge <= p.daXianAge[1]) {
@@ -197,9 +208,6 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const currentDaXianIndex = daXians.findIndex(
 		dx => currentAge >= dx.startAge && currentAge <= dx.endAge
 	);
-
-	// ── 农历信息 ──
-	const lunarInfo = getLunarInfo(year, month, day);
 
 	return {
 		birthInfo,

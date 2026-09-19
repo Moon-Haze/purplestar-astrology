@@ -85,6 +85,6 @@ export interface ZiweiChart {
 	ziweiPos: number; // 紫微星位置
 	palaces: Palace[]; // 12宫，按地支0-11排序
 	daXians: DaXian[];
-	currentAge: number;
-	currentDaXianIndex: number;
+	currentAge: number; // 虚岁，以农历年（正月初一）为界，与 daXianAge 同域
+	currentDaXianIndex: number; // 当前大限在 daXians 中的下标；-1 表示尚未起运（童限）
 }

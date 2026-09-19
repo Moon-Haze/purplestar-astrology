@@ -144,7 +144,8 @@ node scripts/purple-star.mjs cities --search 成都
 
 - **本 skill 的 `scripts/` 不含线上站点的论断库**：完整的 14 主星 × 13 主题论断库（`STAR_DB`，上游 `lib/ziwei/db-analysis.ts`）与 `lib/seo/knowledge.ts` **未随 skill 分发**，它们只存在于线上站点源码。**不要去找这两个文件、也不要依赖它们**，解读全部靠 `patterns.ts` + `heming-knowledge.ts` + `classics` + `nihai`。
 - **庙旺利陷口径**：`bright` = 庙/旺，`normal` = 平，`dim` = 陷/不。
-- **大限年龄**是虚岁口径，由 iztro 的 `decadal.range` 给出。
+- **年龄一律是虚岁**：`currentAge`（当前年龄）、`daXians[].startAge/endAge`、`palace.daXianAge` 三者**同为虚岁**，以**农历年（正月初一）为界** —— 不是生日，也不是立春。数据来自 iztro 的 `decadal.range`。解读时报给用户的年龄就用这个虚岁，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
+- **童限**：`currentDaXianIndex === -1` 表示此人**尚未起运**（虚岁小于五行局数，如土五局要 5 岁才起运），此时 CLI 的「当前大限」显示 `—`。这是正常的，不是数据缺失——此时按命宫论，不要硬套一个大限。
 - **十二宫顺序**：`chart.palaces` 按地支 0-11（子…亥）排序，**不是**按宫位顺序。CLI 的「十二宫一览」也是这个序。
 - **流年 / 流月的月份**：`--liuyue` 取**农历月** 1-12，月干由流年干按五虎遁推。
 

@@ -4,7 +4,7 @@
 作为 golden 基准，锁定 `scripts/ziwei/` 排盘内核的行为。
 
 ```bash
-npm test                                  # 日常回归：300 条抽样基准，约 5 秒
+npm test                                  # 日常回归：300 条抽样基准 + 预言机对账，约 8 秒
 npm run test:corpus -- --year 1960        # 全量核验：只跑 1960 年（8,640 条，约 2 分钟）
 npm run test:corpus                       # 全量核验：518,400 条，约 2.3 小时
 
@@ -23,7 +23,7 @@ node scripts/purple-star.mjs selftest     # CLI 自带的 37 项自检（与本�
 | --- | --- | --- | --- |
 | [chart.test.mjs](chart.test.mjs) | 1（主力） | ✅ | 300 条样本逐字段全等比对 |
 | [cli.test.mjs](cli.test.mjs) | 2 | ❌ | CLI 端到端：真太阳时、农历入参、晚子时、性别护栏、城市容错 |
-| [invariants.test.mjs](invariants.test.mjs) | 3 | ❌ | 排盘结构不变量：12 宫必齐、十四主星各一、大限区间连续…… |
+| [invariants.test.mjs](invariants.test.mjs) | 3 | ❌ | 排盘结构不变量：12 宫必齐、十四主星各一、大限区间连续……；另用 iztro 的 `horoscope()` 作外部预言机核对虚岁与大限 |
 | [school.test.mjs](school.test.mjs) | 4 | ✅ | 三合派体系约束：飞星派字段不得被回填 |
 
 层 2、3 刻意**不依赖基准样本**，因此不受 iztro 升级影响 —— 层 1 变红时，它们能帮你区分
@@ -76,11 +76,27 @@ node scripts/purple-star.mjs selftest     # CLI 自带的 37 项自检（与本�
 
 ### 5. 随运行年份漂移的字段，测试自己重算
 
-`scripts/ziwei/algorithm.ts` 里 `currentAge = new Date().getFullYear() - year`（**无 +1**），
+`scripts/ziwei/algorithm.ts` 的 `currentAge` 是**虚岁**（农历年差 +1，以正月初一为界），
 影响 `chart.currentAge`、`chart.currentDaXianIndex`、`palace.isCurrentDaXian` 三处。
 
-样本生成于 2026 年，直接比对会在 **2027 年全线失败**。故比对器**按当前年份重算期望值**
-（公式极简，且 `daXians` 本身不漂移，可精确重算），而非抄样本的陈旧快照。
+样本生成于 2026 年，直接比对会在**跨过下一个正月初一后全线失败**。故比对器
+**按注入的当前时间独立重算期望值**（[lib/compare.mjs](lib/compare.mjs) 的 `expectedAge()`），
+而非抄样本的陈旧快照。
+
+> ⚠️ **「独立」二字是重点，这里曾是一起真实的长期事故。**
+>
+> 内核原先写的是 `currentAge = new Date().getFullYear() - year`（**周岁**），
+> 而 `daXianAge` / `daXians[].startAge` 是**虚岁**。两者域不同、公式却同形，
+> 更糟的是比对器**照抄了同一个公式**——内核算错、比对器跟着错，300 条基准逐条"全等"，
+> 341 项测试全绿。实测当时的 `currentAge` **100% 是错的**（虚岁恒比它大 1~2 岁），
+> 大限宫位也有约 9.5% 的概率错位，最坏情况会把上一个大限的宫整宫详批。
+>
+> 现在比对器改用 `lunar-javascript` 独立换算，并由层 3 用 iztro 自身的 `horoscope()`
+> 作**外部预言机**二次把关（不碰本项目任何公式）。
+> 实测：把内核与比对器**一起**改回周岁，342 项里
+> **只有那条预言机断言会红**，其余 341 项照旧全绿 —— 这正是它当初没被发现的原因。
+>
+> 教训：**比对器的期望值必须来自另一条计算路径**，否则它就只是内核的复读机。
 
 ---
 
