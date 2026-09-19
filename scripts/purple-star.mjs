@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ziwei.mjs — 紫微斗数排盘 / 合盘 / 知识检索 CLI
+ * purple-star.mjs — 紫微斗数排盘 / 合盘 / 知识检索 CLI
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
  *   scripts/ziwei/algorithm.ts        排盘主流程
@@ -13,9 +13,9 @@
  *   scripts/nihai/                    倪海厦天纪/地纪/人纪知识
  *
  * 依赖 Node ≥ 22.15（module.registerHooks + 原生 TS 类型擦除）。
- * 用法：node scripts/ziwei.mjs <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
- * 帮助：node scripts/ziwei.mjs help
- * 自检：node scripts/ziwei.mjs selftest
+ * 用法：node scripts/purple-star.mjs <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
+ * 帮助：node scripts/purple-star.mjs help
+ * 自检：node scripts/purple-star.mjs selftest
  */
 
 import { registerHooks } from "node:module";
@@ -41,7 +41,7 @@ const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/scripts
 //   1. ZIWEI_ROOT 环境变量 —— 显式指定（想把内核指到别处时用）
 //   2. 技能自带内核        —— 就是本脚本所在目录 <skill 根>/scripts/
 //
-// 内核根 = scripts/ 本身：CLI（ziwei.mjs）与三个内核目录（ziwei/、classics/、nihai/）同处一层。
+// 内核根 = scripts/ 本身：CLI（purple-star.mjs）与三个内核目录（ziwei/、classics/、nihai/）同处一层。
 // 因此下方 `@/` 别名指向的是 scripts/，而**不是** skill 根。
 // 这里刻意**没有**「宿主项目」候选：仓库内只有这一份内核，不存在副本漂移问题。
 function pickRoot() {
@@ -67,7 +67,7 @@ if (!ROOT) {
 			ROOT_TRIED.map(t => `    - ${t}`).join("\n") +
 			"\n" +
 			`  处理：\n` +
-			`    ① 确认 skill 目录完整 —— scripts/ 下应同时有 ziwei.mjs 与 ziwei/、classics/、nihai/ 三个内核目录（拷贝时漏带内核会走到这里）；或\n` +
+			`    ① 确认 skill 目录完整 —— scripts/ 下应同时有 purple-star.mjs 与 ziwei/、classics/、nihai/ 三个内核目录（拷贝时漏带内核会走到这里）；或\n` +
 			`    ② 用 ZIWEI_ROOT=<含 ziwei/ 的目录> 显式指定内核位置。`
 	);
 	process.exit(1);
@@ -1435,7 +1435,7 @@ function cmdSelftest() {
 	if (failed) {
 		out.push(
 			"",
-			`❌ ${failed} 项未通过。若为内核或 iztro 升级所致，请核对 ziwei.mjs 顶部的 import 列表与换算公式。`
+			`❌ ${failed} 项未通过。若为内核或 iztro 升级所致，请核对 purple-star.mjs 顶部的 import 列表与换算公式。`
 		);
 	} else {
 		out.push("", "✅ 全部通过。");
@@ -1452,7 +1452,7 @@ function cmdSelftest() {
 
 const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知识库
 
-用法：node scripts/ziwei.mjs <command> [options]
+用法：node scripts/purple-star.mjs <command> [options]
 
 命令：
   analyze    解读用完整输入包（命盘 + 十二宫一览 + 格局 + 四化 + 大限）★ 最常用
@@ -1494,25 +1494,25 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
 
 示例：
   # 单人解读（公历）
-  node scripts/ziwei.mjs analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male
+  node scripts/purple-star.mjs analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
   # 用户只给农历生日
-  node scripts/ziwei.mjs analyze --lunar 1988-06-26 --time 10:30 --city 杭州 --gender male
+  node scripts/purple-star.mjs analyze --lunar 1988-06-26 --time 10:30 --city 杭州 --gender male
 
   # 时辰直接指定 + 指定流年 + 聚焦官禄宫
-  node scripts/ziwei.mjs analyze --date 1985-11-03 --branch 6 --gender female --liunian 2027 --focus 官禄
+  node scripts/purple-star.mjs analyze --date 1985-11-03 --branch 6 --gender female --liunian 2027 --focus 官禄
 
   # 23:00 后出生，复核晚子时口径
-  node scripts/ziwei.mjs analyze --date 1988-02-14 --time 23:40 --late-zi --city 北京 --gender male
+  node scripts/purple-star.mjs analyze --date 1988-02-14 --time 23:40 --late-zi --city 北京 --gender male
 
   # 合盘
-  node scripts/ziwei.mjs heming \\
+  node scripts/purple-star.mjs heming \\
     --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \\
     --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海
 
   # 古籍检索 / 回归自检
-  node scripts/ziwei.mjs classics --search 机月同梁
-  node scripts/ziwei.mjs selftest
+  node scripts/purple-star.mjs classics --search 机月同梁
+  node scripts/purple-star.mjs selftest
 `;
 
 const COMMANDS = {

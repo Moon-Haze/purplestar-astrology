@@ -11,10 +11,10 @@ description: 紫微斗数排盘与命理解读（倪海夏《天纪》三合派�
 
 本 skill 的根目录就是 **SKILL.md 所在目录**，其下是 `scripts/`（CLI + 内核）、`package.json`（依赖）。
 
-下文所有命令中的 `node scripts/ziwei.mjs` 都**相对于 skill 根目录**。执行前 `cd` 到该目录即可：
+下文所有命令中的 `node scripts/purple-star.mjs` 都**相对于 skill 根目录**。执行前 `cd` 到该目录即可：
 
 ```bash
-cd <SKILL.md 所在目录> && node scripts/ziwei.mjs analyze --date 1990-05-15 --time 09:30 --gender male
+cd <SKILL.md 所在目录> && node scripts/purple-star.mjs analyze --date 1990-05-15 --time 09:30 --gender male
 ```
 
 脚本本身可从**任意 cwd** 运行（内核按脚本自身位置定位，不依赖 cwd），所以 `cd` 只是为省去拼长路径。
@@ -57,7 +57,7 @@ cd <SKILL.md 所在目录> && node scripts/ziwei.mjs analyze --date 1990-05-15 -
 ### 第 1 步：排盘取数
 
 ```bash
-node scripts/ziwei.mjs analyze \
+node scripts/purple-star.mjs analyze \
   --date 1990-05-15 --time 09:30 --city 北京 --gender male
 ```
 
@@ -75,14 +75,14 @@ node scripts/ziwei.mjs analyze \
 
 ```bash
 # 农历 2000 年三月初二（闰月加 --leap）
-node scripts/ziwei.mjs analyze \
+node scripts/purple-star.mjs analyze \
   --lunar 1988-06-26 --time 10:30 --city 杭州 --gender male
 ```
 
 只知时辰名时：
 
 ```bash
-node scripts/ziwei.mjs analyze \
+node scripts/purple-star.mjs analyze \
   --date 1990-05-15 --branch 5 --gender male --lng 116.4
 ```
 
@@ -105,11 +105,11 @@ CLI 已给出命盘数据与格局结论。需要展开论证时，**直接读�
 
 ```bash
 # 古籍检索（解读要引经据典时用，比凭记忆引用可靠）
-node scripts/ziwei.mjs classics --search 机月同梁
+node scripts/purple-star.mjs classics --search 机月同梁
 # 倪海夏天纪知识（紫微斗数模块的要点与讲义原话）
-node scripts/ziwei.mjs nihai --category tianji
+node scripts/purple-star.mjs nihai --category tianji
 # 城市经度（用户只给城市名时）
-node scripts/ziwei.mjs cities --search 成都
+node scripts/purple-star.mjs cities --search 成都
 ```
 
 ### 第 3 步：解读
@@ -151,7 +151,7 @@ node scripts/ziwei.mjs cities --search 成都
 ## 合盘
 
 ```bash
-node scripts/ziwei.mjs heming \
+node scripts/purple-star.mjs heming \
   --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \
   --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海
 ```
@@ -185,18 +185,18 @@ node scripts/ziwei.mjs heming \
 
 > `--liunian` 勿写成 `--year` —— 后者是出生年的回退参数，同时使用会撞车。
 
-完整帮助：`node scripts/ziwei.mjs help`
+完整帮助：`node scripts/purple-star.mjs help`
 
 ## 分发与安装
 
 本 skill 是**自包含**的：`scripts/`（CLI + 内核）+ `package.json`（依赖）都在 skill 目录内，拷到任何地方都能直接跑，不需要宿主项目配合。
 
-`ziwei.mjs` 按**两级优先级**定位内核，取第一个命中者：
+`purple-star.mjs` 按**两级优先级**定位内核，取第一个命中者：
 
 | 优先级 | 来源                        | 何时命中                             |
 | ------ | --------------------------- | ------------------------------------ |
 | 1      | `ZIWEI_ROOT` 环境变量       | 显式把内核指到别处（多项目共享一份） |
-| 2      | 技能自带 `<skill>/scripts/` | 默认。与 ziwei.mjs 同级              |
+| 2      | 技能自带 `<skill>/scripts/` | 默认。与 purple-star.mjs 同级              |
 
 `selftest` 首行会打印当前生效的内核根，交付解读前可据此确认跑的是哪一份内核。
 
@@ -210,7 +210,7 @@ node scripts/ziwei.mjs heming \
 ├── package.json            ← 声明 iztro / lunar-javascript
 ├── package-lock.json       ← 锁定精确版本（iztro 2.6.1 / lunar-javascript 1.7.7）
 ├── scripts/                ← CLI 与排盘内核同处一层（内核根）
-│   ├── ziwei.mjs           ← CLI（排盘 / 合盘 / 知识检索 / 自检）
+│   ├── purple-star.mjs     ← CLI（排盘 / 合盘 / 知识检索 / 自检）
 │   ├── ziwei/              ← 排盘算法、格局库、四化、合盘、城市经纬度
 │   ├── classics/           ← 三部古籍原文
 │   └── nihai/              ← 倪海夏天纪 / 地纪 / 人纪
@@ -254,6 +254,6 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 - `[ziwei 启动失败] 找不到排盘内核` → skill 目录不完整，`<skill>/scripts/` 下的内核缺失（拷贝时漏带）。从本仓库补回 `ziwei/`、`classics/`、`nihai/` 三个内核目录，或用 `ZIWEI_ROOT=<含 ziwei/ 的目录>` 指定内核位置。
 - `Cannot find module 'iztro'` / `'lunar-javascript'` → 依赖未装。**看报错里的「当前内核根」**，在该目录下 `npm install`。
 - `registerHooks is not a function` 或 TS 语法报错 → Node 版本过低，需 ≥ 22.15（本项目开发环境为 v26）。
-- `[ziwei 启动自检失败]` → 内核被重构、关键导出改名或删除。核对 `scripts/ziwei.mjs` 顶部的 import 列表与 `scripts/` 下内核的实际导出是否对得上。
+- `[ziwei 启动自检失败]` → 内核被重构、关键导出改名或删除。核对 `scripts/purple-star.mjs` 顶部的 import 列表与 `scripts/` 下内核的实际导出是否对得上。
 - `未收录城市` → 改用 `--lng` 直接给经度。
 - **改完本技能或升级依赖后，先跑 `selftest`**：它覆盖农历换算、真太阳时、晚子时等价性、城市容错、排盘不变量、三合派约束、知识源可用性。全绿再交付解读。

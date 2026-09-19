@@ -36,14 +36,14 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 cd <本仓库>
 
 # 排盘 + 格局 + 四化 + 大限，解读所需数据一次给全
-node scripts/ziwei.mjs analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male
+node scripts/purple-star.mjs analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
-node scripts/ziwei.mjs heming --a-date 1990-05-15 --a-time 09:30 --a-gender male \
+node scripts/purple-star.mjs heming --a-date 1990-05-15 --a-time 09:30 --a-gender male \
                              --b-date 1993-08-22 --b-time 14:00 --b-gender female
-node scripts/ziwei.mjs classics --search 机月同梁
-node scripts/ziwei.mjs nihai --category tianji
-node scripts/ziwei.mjs help        # 全部命令与参数
-node scripts/ziwei.mjs selftest    # 回归自检（33 项断言）
+node scripts/purple-star.mjs classics --search 机月同梁
+node scripts/purple-star.mjs nihai --category tianji
+node scripts/purple-star.mjs help        # 全部命令与参数
+node scripts/purple-star.mjs selftest    # 回归自检（33 项断言）
 ```
 
 ## 目录结构
@@ -56,7 +56,7 @@ node scripts/ziwei.mjs selftest    # 回归自检（33 项断言）
 ├── package.json          # 声明 iztro / lunar-javascript
 ├── package-lock.json     # 锁定精确版本
 ├── scripts/              # CLI 与排盘内核同处一层（内核根）
-│   ├── ziwei.mjs         # CLI（排盘 / 合盘 / 知识检索 / 自检）
+│   ├── purple-star.mjs   # CLI（排盘 / 合盘 / 知识检索 / 自检）
 │   ├── ziwei/            # 排盘算法、格局库、四化、合盘、城市经纬度
 │   ├── classics/         # 骨髓赋 / 紫微斗数全集 / 全书
 │   └── nihai/            # 倪海夏天纪 / 地纪 / 人纪
@@ -96,11 +96,11 @@ node scripts/ziwei.mjs selftest    # 回归自检（33 项断言）
 改完内核或升级依赖后，务必跑一次自检再交付解读：
 
 ```bash
-node scripts/ziwei.mjs selftest
+node scripts/purple-star.mjs selftest
 ```
 
 它覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、排盘不变量、三合派体系约束与知识源可用性。
 
 ## 许可证
 
-MIT，见 [LICENSE](LICENSE)。Copyright (c) 2026 紫微研究。
+MIT，见 [LICENSE](LICENSE)。Copyright (c) 2026 姚佚启态。
