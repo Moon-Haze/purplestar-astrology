@@ -27,7 +27,7 @@ cd <SKILL.md 所在目录> && node scripts/purple-star.mjs analyze --date 1990-0
 | ------------------------------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | **出生日期**                   | 定命宫、五行局、紫微位                    | 公历用 `--date`；**农历直接用 `--lunar`**（脚本自动换算，闰月加 `--leap`）。不要把农历当公历传           |
 | **出生时间**                   | 差一个时辰（2 小时），命宫与十四主星全变  | 只知时辰名（如"巳时"）→ 用 `--branch 5`；完全不知 → 告知用户需提供，或明确标注"时辰不详，以下按子时试排" |
-| **性别**                       | 决定大限顺逆、部分星曜                    | 必问                                                                                                     |
+| **性别**                       | 决定大限顺逆（男女大限可差 80 年）        | 必问。CLI 已强制：缺失或非法取值直接报错，不会替你猜                                                     |
 | **23:00–23:59 出生的具体钟点** | 子时横跨两日，早/晚子时是**两张不同的盘** | 见下方「晚子时」专节。用户给了 `23:xx`，必须读脚本给出的差异提醒                                         |
 
 **出生地**强烈建议一并问：本项目按**真太阳时**排盘（倪海夏批命即用真太阳时）。给了 `--city` 或 `--lng`，脚本自动做经度校正；不给则默认东经 120°（不校正），此时脚本会主动提示"结果可能有偏差"，你要把这句话转达给用户。
@@ -74,7 +74,7 @@ node scripts/purple-star.mjs analyze \
 用户只给农历时：
 
 ```bash
-# 农历 2000 年三月初二（闰月加 --leap）
+# 农历 1988 年六月廿六（闰月加 --leap）
 node scripts/purple-star.mjs analyze \
   --lunar 1988-06-26 --time 10:30 --city 杭州 --gender male
 ```
@@ -177,13 +177,14 @@ node scripts/purple-star.mjs heming \
 | `nihai [--category tianji\|diji\|renji]` | 倪海夏三纪知识                                                           |
 | `stars [--search <星名>]`                | 星曜释义                                                                 |
 | `cities --search <城市>`                 | 城市经度                                                                 |
-| `selftest`                               | 回归自检（33 项断言）。改动本技能或升级 `iztro` 后跑一次                 |
+| `selftest`                               | 回归自检（37 项断言）。改动本技能或升级 `iztro` 后跑一次                 |
 
-**出生信息参数**：`--date` / `--lunar`（+`--leap`）/ `--year·--month·--day`；`--time` 或 `--branch 0-12`、`--late-zi`；`--gender`；`--lng` / `--city` / `--province`；`--name`。
+**出生信息参数**：`--date` / `--lunar`（+`--leap`）/ `--year·--month·--day`；`--time` 或 `--branch 0-12`、`--late-zi`；`--gender`（**必填**）；`--lng` / `--city` / `--province`；`--name`。
 
 **输出选项**：`--json`、`--liunian <年>`、`--liuyue <农历月>`、`--focus <宫名>`。
 
-> `--liunian` 勿写成 `--year` —— 后者是出生年的回退参数，同时使用会撞车。
+> `--liunian` 勿写成 `--year` —— 后者是出生年的回退参数。两者同时给出**不会报错**：
+> 流年取 `--liunian`；而一旦给了 `--date` / `--lunar`，`--year` 就被静默忽略，不会有任何提示。
 
 完整帮助：`node scripts/purple-star.mjs help`
 
@@ -237,7 +238,7 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 
 `package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-javascript 1.7.7），排盘结果不会因环境不同而分叉。
 
-**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 6544 行自定义内核代码——格局库（`patterns.ts`，1183 行）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
+**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 6613 行自定义内核代码（`scripts/` 下 `.ts` 计，不含 `lunar-javascript.d.ts` 类型声明）——格局库（`patterns.ts`，1190 行）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
 
 ### 内核来源
 
@@ -256,4 +257,6 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 - `registerHooks is not a function` 或 TS 语法报错 → Node 版本过低，需 ≥ 22.15（本项目开发环境为 v26）。
 - `[ziwei 启动自检失败]` → 内核被重构、关键导出改名或删除。核对 `scripts/purple-star.mjs` 顶部的 import 列表与 `scripts/` 下内核的实际导出是否对得上。
 - `未收录城市` → 改用 `--lng` 直接给经度。
-- **改完本技能或升级依赖后，先跑 `selftest`**：它覆盖农历换算、真太阳时、晚子时等价性、城市容错、排盘不变量、三合派约束、知识源可用性。全绿再交付解读。
+- `缺少性别：需 --gender male|female` → 没给性别。性别决定大限顺逆，**不要替用户猜**，直接追问；`heming` 对应 `--a-gender` / `--b-gender`。取值非法（如 `--gender xyz`）同样报错。
+- **改完本技能或升级依赖后，先跑 `selftest`**：它覆盖农历换算、真太阳时、晚子时等价性、城市容错、性别护栏、排盘不变量、三合派约束、知识源可用性。全绿再交付解读。
+- **要更彻底的回归，再跑 `npm test`**：拿 300 条真实盘逐字段对标排盘结果（约 5 秒），测的是 `selftest` 那几条固定样例覆盖不到的行为漂移。两者分工不同，都要跑。测试的性质、效力边界与「升级 `iztro` 后怎么办」见 `test/README.md`。

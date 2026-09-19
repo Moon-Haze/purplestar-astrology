@@ -43,7 +43,9 @@ node scripts/purple-star.mjs heming --a-date 1990-05-15 --a-time 09:30 --a-gende
 node scripts/purple-star.mjs classics --search 机月同梁
 node scripts/purple-star.mjs nihai --category tianji
 node scripts/purple-star.mjs help        # 全部命令与参数
-node scripts/purple-star.mjs selftest    # 回归自检（33 项断言）
+node scripts/purple-star.mjs selftest    # 回归自检（37 项断言）
+
+npm test                                 # 排盘基准回归（300 条样本，约 5 秒）
 ```
 
 ## 目录结构
@@ -60,6 +62,7 @@ node scripts/purple-star.mjs selftest    # 回归自检（33 项断言）
 │   ├── ziwei/            # 排盘算法、格局库、四化、合盘、城市经纬度
 │   ├── classics/         # 骨髓赋 / 紫微斗数全集 / 全书
 │   └── nihai/            # 倪海夏天纪 / 地纪 / 人纪
+├── test/                 # 排盘基准测试（见 test/README.md）
 └── node_modules/         # npm install 生成（已 gitignore）
 ```
 
@@ -93,13 +96,18 @@ node scripts/purple-star.mjs selftest    # 回归自检（33 项断言）
 
 ## 开发
 
-改完内核或升级依赖后，务必跑一次自检再交付解读：
+改完内核或升级依赖后，两层测试都要跑：
 
 ```bash
-node scripts/purple-star.mjs selftest
+node scripts/purple-star.mjs selftest    # 第一层：代码逻辑自洽（37 项断言）
+npm test                                 # 第二层：与 toolkit 样本的基准比对（约 5 秒）
+
+npm run test:corpus -- --year 1960       # 可选：全量核验（8,640 条，约 2 分钟）
 ```
 
-它覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、排盘不变量、三合派体系约束与知识源可用性。
+`selftest` 覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、排盘不变量、三合派体系约束与知识源可用性。`npm test` 则从 518,400 条 toolkit 样本中抽出 300 条，逐字段对标排盘结果——它与 `selftest` 分工不同：前者测「代码逻辑自洽」，后者是**外部基准比对**，能抓住固定样例漏掉的行为漂移。
+
+测试的性质、效力边界，以及**升级 iztro 后该怎么办**，见 [test/README.md](test/README.md)。
 
 ## 许可证
 
