@@ -354,8 +354,18 @@ function buildBirthInfo(args, p = "") {
 			"缺少出生日期：需 --date YYYY-MM-DD、--lunar YYYY-MM-DD 或 --year/--month/--day"
 		);
 
-	const genderRaw = String(g("gender") ?? "male").toLowerCase();
-	const gender = ["female", "f", "女"].includes(genderRaw) ? "female" : "male";
+	// 性别决定大限顺逆：同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁）。
+	// 缺失或非法若被静默兜底成 male，用户拿到的是一张没有任何异常信号的错盘，
+	// 故按「宁可启动失败，也不静默产出错盘」处理：一律报错。
+	const genderRaw = g("gender");
+	if (genderRaw === undefined)
+		throw new Error(
+			`缺少性别：需 --${p}gender male|female（性别决定大限顺逆，缺失会排出错盘）`
+		);
+	const genderValue = String(genderRaw).toLowerCase();
+	if (!["male", "m", "男", "female", "f", "女"].includes(genderValue))
+		throw new Error(`--${p}gender 应为 male 或 female，收到：${genderRaw}`);
+	const gender = ["female", "f", "女"].includes(genderValue) ? "female" : "male";
 
 	// ── 经度：--lng 优先，其次 --city / --province，默认 120（东八区标准经线，即不做校正）──
 	let longitude,
@@ -648,7 +658,9 @@ function cmdAnalyze(args) {
 
 	const yearStem = getYearStemIndex(info.year);
 	const native = getSiHuaByStem(yearStem);
-	// 注意：流年用 --liunian，不可复用 --year —— 后者是出生年的回退参数，同时使用会撞车
+	// 注意：流年用 --liunian，不可复用 --year —— 后者是出生年的回退参数。
+	// 二者同时给出不会报错：流年取 --liunian；而出生日期一旦给了 --date/--lunar，
+	// --year 就被静默忽略（buildBirthInfo 里 --date/--lunar 优先），不会有任何提示。
 	const liuNianYear = args.liunian ? Number(args.liunian) : new Date().getFullYear();
 	const liuNian = getLiuNianSiHua(liuNianYear);
 	// 流月：农历月 1-12，取流年干推五虎遁（可选）
@@ -1059,18 +1071,22 @@ function cmdCities(args) {
 		}
 	}
 	const uniq = [...new Set(hits)];
-	const out = uniq.length
-		? `匹配 ${uniq.length} 条：\n` + uniq.map(h => "  " + h).join("\n")
-		: `未收录「${q}」，可用 --lng 直接指定经度。`;
-	// 顺带告知排盘时的容错解析结果，避免「查询有结果但 --city 传不进去」
 	const resolved = findLongitude(q);
-	return resolved
-		? out +
-				`\n\n排盘容错解析：「${q}」→ ${resolved.matched}（东经 ${resolved.longitude}°）` +
-				(resolved.ambiguous
-					? `\n⚠️ 存在同名候选：${resolved.ambiguous.join("、")}，已取最短名，如有误请直接 --lng`
-					: "")
-		: out;
+	// 结论文案与容错解析必须互斥：resolved 存在时不能报「未收录」，
+	// 否则同一段输出会先否定、再自证能解析，自相矛盾。
+	let head;
+	if (uniq.length) head = `匹配 ${uniq.length} 条：\n` + uniq.map(h => "  " + h).join("\n");
+	else if (resolved) head = `未直接命中「${q}」，但排盘时可按容错解析识别。`;
+	else head = `未收录「${q}」，可用 --lng 直接指定经度。`;
+	// 顺带告知排盘时的容错解析结果，避免「查询有结果但 --city 传不进去」
+	if (!resolved) return head;
+	return (
+		head +
+		`\n\n排盘容错解析：「${q}」→ ${resolved.matched}（东经 ${resolved.longitude}°）` +
+		(resolved.ambiguous
+			? `\n⚠️ 存在同名候选：${resolved.ambiguous.join("、")}，已取最短名，如有误请直接 --lng`
+			: "")
+	);
 }
 
 function cmdStars(args) {
@@ -1296,21 +1312,70 @@ function cmdSelftest() {
 		eq(findLongitude("石家庄").exact, true, "原名 "); // 表里就是「石家庄」，无需提示
 		eq(findLongitude("石家庄市").exact, false, "带后缀 "); // 做了容错，需提示
 		const exact = buildBirthInfo(
-			parseArgs(["--date", "1990-05-15", "--branch", "0", "--city", "石家庄"])
+			parseArgs(["--date", "1990-05-15", "--branch", "0", "--city", "石家庄", "--gender", "male"])
 		);
 		const fuzzy = buildBirthInfo(
-			parseArgs(["--date", "1990-05-15", "--branch", "0", "--city", "石家庄市"])
+			parseArgs(["--date", "1990-05-15", "--branch", "0", "--city", "石家庄市", "--gender", "male"])
 		);
 		eq(exact.lngNote, "", "精确命中的 lngNote ");
 		if (!fuzzy.lngNote) throw new Error("容错命中应给出 lngNote");
 		return fuzzy.lngNote;
 	});
 	ok("出生地：未给地点时必须提示「按 120° 处理、未做校正」", () => {
-		const b = buildBirthInfo(parseArgs(["--date", "1990-05-15", "--branch", "0"]));
+		const b = buildBirthInfo(
+			parseArgs(["--date", "1990-05-15", "--branch", "0", "--gender", "male"])
+		);
 		eq(b.info.longitude, 120);
 		if (!b.lngNote || !b.lngNote.includes("120"))
 			throw new Error(`未给地点时 lngNote 应提醒，实得：${JSON.stringify(b.lngNote)}`);
 		return b.lngNote;
+	});
+
+	// ── 4.5 性别护栏 ──
+	// 性别决定大限顺逆：同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁）。
+	// 缺失或非法若被静默兜底成 male，用户拿到的是一张没有任何异常信号的错盘，
+	// 故按「宁可启动失败，也不静默产出错盘」处理：一律报错。
+	ok("性别：缺少 --gender 必须报错（不得静默默认 male）", () => {
+		let msg = null;
+		try {
+			buildBirthInfo(parseArgs(["--date", "1990-05-15", "--branch", "0"]));
+		} catch (e) {
+			msg = e.message;
+		}
+		if (!msg) throw new Error("缺 --gender 时未报错");
+		if (!msg.includes("--gender")) throw new Error(`报错文案应含 --gender，实得：${msg}`);
+		return msg;
+	});
+	ok("性别：非法取值必须报错（不得静默落到 male）", () => {
+		let threw = false;
+		try {
+			buildBirthInfo(parseArgs(["--date", "1990-05-15", "--branch", "0", "--gender", "xyz"]));
+		} catch {
+			threw = true;
+		}
+		eq(threw, true, "非法 --gender ");
+	});
+	ok("性别：别名等价（女 ≡ female，男 ≡ male）", () => {
+		const g = v =>
+			buildBirthInfo(parseArgs(["--date", "1990-05-15", "--branch", "0", "--gender", v])).info
+				.gender;
+		eq(g("女"), "female", "女 ");
+		eq(g("female"), "female", "female ");
+		eq(g("f"), "female", "f ");
+		eq(g("男"), "male", "男 ");
+		eq(g("male"), "male", "male ");
+		eq(g("m"), "male", "m ");
+	});
+	ok("性别：heming 缺 --a-gender 时，文案应指向 --a-gender", () => {
+		let msg = null;
+		try {
+			buildBirthInfo(parseArgs(["--a-date", "1990-05-15", "--a-branch", "0"]), "a-");
+		} catch (e) {
+			msg = e.message;
+		}
+		if (!msg) throw new Error("缺 --a-gender 时未报错");
+		if (!msg.includes("--a-gender")) throw new Error(`文案应含 --a-gender，实得：${msg}`);
+		return msg;
 	});
 
 	// ── 5. 排盘不变量 ──
