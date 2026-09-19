@@ -1,5 +1,5 @@
 ---
-name: ziwei-doushu
+name: purplestar-astrology
 description: 紫微斗数排盘与命理解读（倪海夏《天纪》三合派体系）。当用户给出出生年月日时与性别、要求排紫微斗数命盘、解读命盘/十二宫/格局/四化/大限流年、分析两人合盘与婚姻、检索紫微斗数古籍原文（骨髓赋 / 紫微斗数全集 / 全书）、或查询倪海夏天纪·地纪·人纪知识时使用。触发词：紫微斗数、排盘、命盘、紫微、斗数、命宫、格局、四化、大限、流年、流月、合盘、合婚、农历生日排盘、晚子时、倪海夏、倪海厦、天纪、骨髓赋、紫微斗数全书。不要用于八字/四柱/子平（本技能不排八字）、塔罗、占星。
 ---
 
@@ -221,18 +221,18 @@ node scripts/ziwei.mjs heming \
 
 ```bash
 # 项目级：只在该项目内可用
-cp -r <本仓库> <项目>/.claude/skills/ziwei-doushu
+cp -r <本仓库> <项目>/.claude/skills/purplestar-astrology
 
 # 个人级：所有项目可用
-cp -r <本仓库> ~/.claude/skills/ziwei-doushu
+cp -r <本仓库> ~/.claude/skills/purplestar-astrology
 ```
 
-目标目录名必须是 `ziwei-doushu`（与 frontmatter 的 `name` 一致），Claude Code 据此发现技能。
+目标目录名必须是 `purplestar-astrology`（与 frontmatter 的 `name` 一致），Claude Code 据此发现技能。
 
 `node_modules/` 不必拷（已被 gitignore），落位后补一次依赖即可，实测约 0.7 秒：
 
 ```bash
-cd ~/.claude/skills/ziwei-doushu && npm install
+cd ~/.claude/skills/purplestar-astrology && npm install
 ```
 
 `package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-javascript 1.7.7），排盘结果不会因环境不同而分叉。

@@ -1,4 +1,4 @@
-# 紫微斗数（ziwei-doushu）
+# 紫微斗数（purplestar-astrology）
 
 倪海夏《天纪》**三合派**体系的紫微斗数排盘与解读 skill，供 Claude Code 使用。
 
@@ -16,18 +16,18 @@
 
 ```bash
 # 项目级：只在该项目内可用
-cp -r <本仓库> <项目>/.claude/skills/ziwei-doushu
+cp -r <本仓库> <项目>/.claude/skills/purplestar-astrology
 
 # 个人级：所有项目可用
-cp -r <本仓库> ~/.claude/skills/ziwei-doushu
+cp -r <本仓库> ~/.claude/skills/purplestar-astrology
 ```
 
-目录名必须是 `ziwei-doushu`（与 SKILL.md frontmatter 的 `name` 一致），Claude Code 据此发现技能。
+目录名必须是 `purplestar-astrology`（与 SKILL.md frontmatter 的 `name` 一致），Claude Code 据此发现技能。
 
 `node_modules/` 不必拷（已在 `.gitignore` 中），落位后补一次依赖：
 
 ```bash
-cd ~/.claude/skills/ziwei-doushu && npm install
+cd ~/.claude/skills/purplestar-astrology && npm install
 ```
 
 ## 直接用 CLI

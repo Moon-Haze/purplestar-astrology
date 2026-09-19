@@ -1,5 +1,5 @@
 # ── 依赖 ──────────────────────────────────────────────────
-# 注意：不能用 "skills/ziwei-doushu/node_modules/" 这类带前缀的写法，
+# 注意：不能用 "skills/purplestar-astrology/node_modules/" 这类带前缀的写法，
 # 依赖目录就在仓库根下的 node_modules/，带前缀会漏掉它。
 node_modules/
 
