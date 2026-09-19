@@ -59,6 +59,25 @@ describe("CLI 端到端", () => {
 			assert.equal(o.chart.birthInfo.longitude, 116.4);
 			assert.equal(o.chart.birthInfo.hour, 4, "校正后应为辰时（branch 4），与不校正时差一位");
 		});
+
+		it("--eot 计入均时差，可把结果推过时辰边界；默认不计", async () => {
+			// 1990-01-07 的均时差约 -6 分。北京经度校正 -14.4 分，09:20 只做经度校正时为 09:05.6，
+			// 仍是巳时(5)；再减 6 分掉到 08:59.3，跨过 09:00 边界退回辰时(4)。
+			// 这条同时钉住两件事：默认口径不变（第一段），以及两种口径的差别不是小数点级的（末段）。
+			const base = ["--date", "1990-01-07", "--time", "09:20", "--city", "北京", "--gender", "male"];
+			const mean = await cliJson(base);
+			assert.equal(mean.chart.birthInfo.hour, 5, "默认口径（不计均时差）应为巳时");
+
+			const apparent = await cliJson([...base, "--eot"]);
+			assert.equal(apparent.chart.birthInfo.hour, 4, "计入均时差后应退回辰时");
+
+			// 时辰一换，整张盘都换 —— 不是微调
+			assert.notEqual(
+				chartSignature(mean.chart),
+				chartSignature(apparent.chart),
+				"两种口径排出的是不同的盘，不能只当它是小数级差异"
+			);
+		});
 	});
 
 	describe("城市名解析", () => {

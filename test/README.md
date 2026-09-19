@@ -8,7 +8,7 @@ npm test                                  # 日常回归：300 条抽样基准 +
 npm run test:corpus -- --year 1960        # 全量核验：只跑 1960 年（8,640 条，约 2 分钟）
 npm run test:corpus                       # 全量核验：518,400 条，约 2.3 小时
 
-node scripts/purple-star.mjs selftest     # CLI 自带的 37 项自检（与本套测试分工不同，见下）
+node scripts/purple-star.mjs selftest     # CLI 自带的 40 项自检（与本套测试分工不同，见下）
 ```
 
 与 CLI 自带 `selftest` 的关系：`selftest` 固定在 CLI 里，测的是**代码逻辑自洽**（农历换算、
@@ -106,7 +106,7 @@ node scripts/purple-star.mjs selftest     # CLI 自带的 37 项自检（与本�
 
 | 盲区 | 为什么样本覆盖不到 |
 | --- | --- |
-| **真太阳时校正** | 样本 `longitude` 恒为 `120`，校正量恒为 0 |
+| **真太阳时校正** | 样本 `longitude` 恒为 `120`，校正量恒为 0；`--eot`（均时差）更是纯 CLI 层概念，样本里不存在 |
 | **晚子时口径** | 样本 `hour` 只有 0–11，没有 `12`（晚子时是 CLI 层概念，由 `--branch 12` / `--late-zi` 表达） |
 | **23:00–23:59 分支** | 同上 |
 | **农历入参路径** | 样本 `birthInfo` 恒为公历 |

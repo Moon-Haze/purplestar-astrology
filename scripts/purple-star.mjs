@@ -215,25 +215,63 @@ function parseArgs(argv) {
 	return args;
 }
 
+/** 带符号的分钟数，用于拼「+4 分 / -14 分」这类交代文案。 */
+const signed = n => `${n >= 0 ? "+" : ""}${n}`;
+
+/**
+ * 均时差（equation of time），单位：分钟。真太阳时 = 平太阳时 + 均时差。
+ *
+ * 用常见的工程近似式（9.87·sin2B − 7.53·cosB − 1.5·sinB），全年幅度实测 −14.6 ~ +16.5 分钟。
+ *
+ * ⚠️ 该项**与经度无关**：即使 --lng 120（标准经线）也不为 0。所以「--lng 120 = 不做校正」
+ * 这个直觉只在默认口径下成立；开了 --eot 之后，120° 出生的盘照样会被均时差推动。
+ */
+function equationOfTime(year, month, day) {
+	const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+	const doy =
+		Math.floor((Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86400000) + 1;
+	const b = (2 * Math.PI * (doy - 81)) / (isLeap ? 366 : 365);
+	return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
+}
+
 /**
  * 北京时间 + 经度 → 真太阳时。
  * 与 components/BirthForm.tsx 的 calcTrueSolarBranch 保持同一换算公式。
  *
- * 返回 { branch, isLateZi, offsetMinutes, solarMinutes }：
- *   branch     时辰支 0-11（0=子 … 11=亥）
- *   isLateZi   是否落在 23:00–23:59（晚子时）——**这个区分很重要**：
- *              子时横跨两日，23:00 后出生按传统三合派应「算次日」，排出的盘与当日早子时完全不同。
+ * 校正量默认**只含经度项** `(经度 − 120) × 4`；传 `opts.eot` 时再加均时差，
+ * 得到天文学严格意义上的真太阳时。两种口径的差别不是小数点级的——均时差可达 ±16 分钟，
+ * 足以把结果推过时辰边界（实测北京全年约 5% 的出生时间会因此换一个时辰，而时辰一换整张盘全变）。
+ * 故默认保持传统口径，要严格口径须显式开 --eot，**不做静默切换**。
+ *
+ * 返回 { branch, isLateZi, offsetMinutes, longitudeMinutes, eotMinutes, solarMinutes }：
+ *   branch           时辰支 0-11（0=子 … 11=亥）
+ *   isLateZi         是否落在 23:00–23:59（晚子时）——**这个区分很重要**：
+ *                    子时横跨两日，23:00 后出生按传统三合派应「算次日」，排出的盘与当日早子时完全不同。
+ *   offsetMinutes    总校正（经度 + 均时差）。**分项各自取整后相加**，好让提示里的
+ *                    「经度 A + 均时差 B = C」自洽（若先相加再取整，-14.4 与 +3.8 会
+ *                    显示成 -14 + 4 = -11，看着像算错了）
+ *   longitudeMinutes / eotMinutes   两项各自的贡献
  */
-function calcTrueSolar(clockHour, clockMinute, longitude) {
+function calcTrueSolar(clockHour, clockMinute, longitude, opts = {}) {
 	const clockMins = clockHour * 60 + clockMinute;
-	const offset = (longitude - 120) * 4;
-	const solar = (((clockMins + offset) % 1440) + 1440) % 1440;
+	// 均时差依赖具体日期，缺了会静默算出 NaN —— 宁可当场失败，也不产出错时辰
+	if (opts.eot && !Number.isInteger(opts.year))
+		throw new Error("calcTrueSolar：开启 eot 时必须提供 year/month/day");
+	const longitudeRaw = (longitude - 120) * 4;
+	const eotRaw = opts.eot ? equationOfTime(opts.year, opts.month, opts.day) : 0;
+	// 判定一律用未取整的 offsetRaw —— 未开 --eot 时 eotRaw 恒为 0，
+	// 故默认口径与旧实现逐位相同，不存在行为漂移。
+	const solar = (((clockMins + longitudeRaw + eotRaw) % 1440) + 1440) % 1440;
 	const isLateZi = solar >= 1380; // 23:00–23:59
 	const branch = solar >= 1380 || solar < 60 ? 0 : Math.floor((solar - 60) / 120) + 1;
+	const longitudeMinutes = Math.round(longitudeRaw);
+	const eotMinutes = Math.round(eotRaw);
 	return {
 		branch,
 		isLateZi,
-		offsetMinutes: Math.round(offset),
+		offsetMinutes: longitudeMinutes + eotMinutes,
+		longitudeMinutes,
+		eotMinutes,
 		solarMinutes: Math.round(solar),
 	};
 }
@@ -290,6 +328,7 @@ function findLongitude(cityName) {
  *   --time   HH:MM + --lng/--city  → 真太阳时自动换算
  *   --branch 0-12                  → 直接指定时辰支（0=子 … 11=亥；12=晚子时）
  *   --late-zi                      → 配合 --time，把 23:00–23:59 改按「晚子时算次日」排
+ *   --eot                          → 配合 --time，真太阳时额外计入均时差（见 calcTrueSolar）
  */
 function buildBirthInfo(args, p = "") {
 	const g = k => args[p + k];
@@ -367,6 +406,10 @@ function buildBirthInfo(args, p = "") {
 		throw new Error(`--${p}gender 应为 male 或 female，收到：${genderRaw}`);
 	const gender = ["female", "f", "女"].includes(genderValue) ? "female" : "male";
 
+	// ── 真太阳时口径：默认只做经度校正；--eot 额外计入均时差 ──
+	// 均时差与经度无关（--lng 120 时也不为 0），故这个开关独立于「出生地是否给出」。
+	const useEot = g("eot") === true || g("eot") === "true";
+
 	// ── 经度：--lng 优先，其次 --city / --province，默认 120（东八区标准经线，即不做校正）──
 	let longitude,
 		lngNote = "",
@@ -396,7 +439,9 @@ function buildBirthInfo(args, p = "") {
 			: "省份未收录，按 120° 处理";
 	} else {
 		longitude = 120;
-		lngNote = "未给出生地，按东经 120° 处理（不做真太阳时校正，结果可能有偏差）";
+		lngNote = useEot
+			? "未给出生地，按东经 120° 处理（不做经度校正，仅计入均时差）"
+			: "未给出生地，按东经 120° 处理（不做真太阳时校正，结果可能有偏差）";
 	}
 
 	// ── 时辰 ──
@@ -418,15 +463,21 @@ function buildBirthInfo(args, p = "") {
 		const ch = Number(m[1]),
 			cm = Number(m[2]);
 		if (ch > 23 || cm > 59) throw new Error(`时间超出范围：${g("time")}`);
-		const t = calcTrueSolar(ch, cm, longitude);
+		const t = calcTrueSolar(ch, cm, longitude, { eot: useEot, year, month, day });
 		lateZiCandidate = t.isLateZi;
+
+		// 校正量的构成：默认只有经度项；开了 --eot 则多一项均时差（与经度无关，可能反号）
+		const corrText = useEot
+			? `经度 ${signed(t.longitudeMinutes)} 分 + 均时差 ${signed(t.eotMinutes)} 分 = ${signed(t.offsetMinutes)} 分`
+			: `${signed(t.offsetMinutes)} 分`;
+		const clockText = `钟表 ${String(ch).padStart(2, "0")}:${m[2]}`;
 
 		if (t.isLateZi && wantLateZi) {
 			hour = 12;
-			hourNote = `钟表 ${String(ch).padStart(2, "0")}:${m[2]} → 真太阳时校正 ${t.offsetMinutes >= 0 ? "+" : ""}${t.offsetMinutes} 分 → 晚子时（安星按次日）`;
+			hourNote = `${clockText} → 真太阳时校正 ${corrText} → 晚子时（安星按次日）`;
 		} else {
 			hour = t.branch;
-			hourNote = `钟表 ${String(ch).padStart(2, "0")}:${m[2]} → 真太阳时校正 ${t.offsetMinutes >= 0 ? "+" : ""}${t.offsetMinutes} 分 → ${shichenLabel(hour)}`;
+			hourNote = `${clockText} → 真太阳时校正 ${corrText} → ${shichenLabel(hour)}`;
 			if (t.isLateZi) hourNote += "（晚子时，按当日早子时口径）";
 		}
 	} else {
@@ -1208,6 +1259,36 @@ function cmdSelftest() {
 		if (t.offsetMinutes >= 0)
 			throw new Error(`石家庄经度应小于 120，实得 offset=${t.offsetMinutes}`);
 	});
+	ok("真太阳时：默认口径只含经度项，不计均时差（--eot 关闭）", () => {
+		// 若默认误开均时差，这里就会多出几十分钟的偏差。锁住「默认 = 传统口径」这一承诺。
+		const t = calcTrueSolar(12, 0, 116.4);
+		eq(t.eotMinutes, 0);
+		eq(t.offsetMinutes, t.longitudeMinutes);
+		eq(t.offsetMinutes, Math.round((116.4 - 120) * 4));
+	});
+	ok("真太阳时：--eot 开启时总校正 = 经度项 + 均时差", () => {
+		const t = calcTrueSolar(12, 0, 116.4, { eot: true, year: 1990, month: 5, day: 15 });
+		eq(t.longitudeMinutes, Math.round((116.4 - 120) * 4));
+		eq(t.offsetMinutes, t.longitudeMinutes + t.eotMinutes);
+		if (t.eotMinutes === 0) throw new Error("1990-05-15 的均时差不应为 0");
+		// 均时差与经度无关：标准经线上经度项为 0，开了 --eot 照样有校正
+		const onMeridian = calcTrueSolar(12, 0, 120, { eot: true, year: 1990, month: 5, day: 15 });
+		eq(onMeridian.longitudeMinutes, 0);
+		eq(onMeridian.offsetMinutes, onMeridian.eotMinutes);
+	});
+	ok("真太阳时：均时差全年幅度落在 -15 ~ +17 分（实测 -14.6 ~ +16.5）", () => {
+		// 区间同时卡住上下界：公式被改坏（符号反了、系数错了）都会掉出这个窗口
+		let lo = Infinity,
+			hi = -Infinity;
+		for (let d = 0; d < 365; d++) {
+			const dt = new Date(Date.UTC(1990, 0, 1) + d * 86400000);
+			const v = equationOfTime(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+			if (v < lo) lo = v;
+			if (v > hi) hi = v;
+		}
+		if (lo < -15 || lo > -14) throw new Error(`均时差下界异常：${lo.toFixed(1)} 分`);
+		if (hi < 16 || hi > 17) throw new Error(`均时差上界异常：${hi.toFixed(1)} 分`);
+	});
 
 	// ── 3. 晚子时等价性（本技能最易错处）──
 	ok("晚子时：timeIndex 12 ≡ 次日 timeIndex 0（命盘完全一致）", () => {
@@ -1538,10 +1619,11 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
   --time HH:MM         钟表时间（配合 --lng / --city 自动换算真太阳时）
   --branch 0-12        直接指定时辰支（0=子 … 11=亥；12=晚子时），与 --time 二选一
   --late-zi            配合 --time：23:00–23:59 出生改按「晚子时算次日」排
+  --eot                配合 --time：真太阳时额外计入均时差（±16 分），默认不计
 
 其他出生信息：
   --gender male|female
-  --lng 116.4          出生地经度（默认 120，即不校正）
+  --lng 116.4          出生地经度（默认 120，即不做经度校正）
   --city 北京          用城市名代替 --lng（容错「石家庄市」「石家庄地区」等写法）
   --province 山东      用省份代替 --lng（按省会计）
   --name 张三          可选
