@@ -577,7 +577,6 @@ function mingMajorBrief(c) {
 /**
  * 晚子时口径提醒。
  * 23:00–23:59 出生时，子时横跨两日：「当日早子时」与「晚子时算次日」排出的是两张不同的盘。
- * 本 CLI 默认沿用线上 metisziwei.com 口径（当日早子时），此处把差异摆明，供复核。
  */
 function lateZiSection(chart, info, isLateZi, lateZiCandidate) {
 	const out = [];
@@ -599,7 +598,7 @@ function lateZiSection(chart, info, isLateZi, lateZiCandidate) {
 	out.push("【⚠️ 晚子时口径提醒】");
 	out.push("  你给的钟表时间落在 23:00–23:59。子时横跨两日，两种口径排出的是**两张不同的盘**。");
 	out.push(
-		`  本次按【当日早子时】排盘（与线上 metisziwei.com 口径一致）：紫微落 ${ziweiBranchOf(chart)} · 命宫主星 ${mingMajorBrief(chart)}`
+		`  本次按【当日早子时】排盘：紫微落 ${ziweiBranchOf(chart)} · 命宫主星 ${mingMajorBrief(chart)}`
 	);
 	out.push(
 		`  传统三合派另有【晚子时·算次日】之说：紫微落 ${ziweiBranchOf(alt)} · 命宫主星 ${mingMajorBrief(alt)}`
@@ -1489,8 +1488,7 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
   --focus 财帛        analyze 时额外展开指定宫位
 
 ⚠️ 晚子时：23:00–23:59 出生时，子时横跨两日，【当日早子时】与【晚子时算次日】
-   排出的是两张不同的盘。本 CLI 默认沿用线上 metisziwei.com 口径（当日早子时），
-   并在命中时自动给出两盘差异提醒。复核请加 --late-zi 或 --branch 12。
+   排出的是两张不同的盘。复核请加 --late-zi 或 --branch 12。
 
 示例：
   # 单人解读（公历）
