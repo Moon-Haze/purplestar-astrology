@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "紫微斗数排盘与解读 skill 的运行时依赖。排盘内核是 ziwei-master 项目的私有源码（未发布到 npm），已直接置于 lib/；本文件只声明内核所需的 npm 包。",
+  "description": "紫微斗数排盘与解读 skill 的运行时依赖。排盘内核是 ziwei-master 项目的私有源码（未发布到 npm），已直接置于 scripts/；本文件只声明内核所需的 npm 包。",
   "dependencies": {
     "iztro": "^2.5.8",
     "lunar-javascript": "^1.7.3"

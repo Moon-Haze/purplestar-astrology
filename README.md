@@ -8,7 +8,7 @@
 
 一个 Claude Code skill：用户给出出生年月日时与性别，Claude 调用本 skill 完成排盘、格局识别、四化推演、大限流年与合盘解读，并可检索三部古籍原文与倪海夏三纪讲义。
 
-排盘由 `iztro` + 本项目 `lib/` 的确定性算法产出，**不靠模型推算**——CLI 负责算，模型只负责解读。
+排盘由 `iztro` + 本项目 `scripts/` 下内核的确定性算法产出，**不靠模型推算**——CLI 负责算，模型只负责解读。
 
 体系立场：严格三合派，不使用飞星派的宫干自化、大限四化取宫干、来因宫。详见 [SKILL.md](SKILL.md)。
 
@@ -40,7 +40,7 @@ node scripts/ziwei.mjs analyze --date 1990-05-15 --time 09:30 --city 北京 --ge
 
 node scripts/ziwei.mjs heming --a-date 1990-05-15 --a-time 09:30 --a-gender male \
                              --b-date 1993-08-22 --b-time 14:00 --b-gender female
-node scripts/ziwei.mjs classics --search 紫微居午
+node scripts/ziwei.mjs classics --search 机月同梁
 node scripts/ziwei.mjs nihai --category tianji
 node scripts/ziwei.mjs help        # 全部命令与参数
 node scripts/ziwei.mjs selftest    # 回归自检（33 项断言）
@@ -55,8 +55,8 @@ node scripts/ziwei.mjs selftest    # 回归自检（33 项断言）
 ├── LICENSE               # MIT
 ├── package.json          # 声明 iztro / lunar-javascript
 ├── package-lock.json     # 锁定精确版本
-├── scripts/ziwei.mjs     # CLI（排盘 / 合盘 / 知识检索 / 自检）
-├── lib/                  # 排盘内核（17 个文件），唯一数据源
+├── scripts/              # CLI 与排盘内核同处一层（内核根）
+│   ├── ziwei.mjs         # CLI（排盘 / 合盘 / 知识检索 / 自检）
 │   ├── ziwei/            # 排盘算法、格局库、四化、合盘、城市经纬度
 │   ├── classics/         # 骨髓赋 / 紫微斗数全集 / 全书
 │   └── nihai/            # 倪海夏天纪 / 地纪 / 人纪
@@ -70,24 +70,26 @@ node scripts/ziwei.mjs selftest    # 回归自检（33 项断言）
 
 ## 数据来源
 
-| 内容 | 位置 |
-| --- | --- |
-| 排盘算法、40+ 格局库（含古籍出处与破格条件） | `lib/ziwei/patterns.ts` |
-| 四化体系、流年流月推法 | `lib/ziwei/sihua.ts` |
-| 合盘方法论、十四主星在夫妻宫断语 | `lib/ziwei/heming-knowledge.ts` |
-| 中国城市经纬度（真太阳时校正） | `lib/ziwei/cities.ts` |
-| 三部古籍原文 | `lib/classics/data/` |
-| 倪海夏三纪知识 | `lib/nihai/` |
+| 内容                                         | 位置                                |
+| -------------------------------------------- | ----------------------------------- |
+| 排盘算法、40+ 格局库（含古籍出处与破格条件） | `scripts/ziwei/patterns.ts`         |
+| 四化体系、流年流月推法                       | `scripts/ziwei/sihua.ts`            |
+| 合盘方法论、十四主星在夫妻宫断语             | `scripts/ziwei/heming-knowledge.ts` |
+| 中国城市经纬度（真太阳时校正）               | `scripts/ziwei/cities.ts`           |
+| 三部古籍原文                                 | `scripts/classics/data/`            |
+| 倪海夏三纪知识                               | `scripts/nihai/`                    |
 
 **不含**线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/`——它们未随 skill 分发，解读请依赖上表知识源。
 
 ## 来源
 
-本项目的排盘内核（`lib/`）提取自所参考的上游开源项目 [Renhuai123/ziwei-doushu](https://github.com/Renhuai123/ziwei-doushu)（其 `package.json` 的 `name` 为 `ziwei-master`，是一个 Next.js 站点 + 完整 `lib/`）。
+本项目的排盘内核（`scripts/`）提取自所参考的上游开源项目 [Renhuai123/ziwei-doushu](https://github.com/Renhuai123/ziwei-doushu)（其 `package.json` 的 `name` 为 `ziwei-master`，是一个 Next.js 站点 + 完整 `lib/`）。
 
-抽取时只保留了排盘与解读必需的部分——未含 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts`、`lunar-javascript.d.ts` 以及整个 `lib/seo/`，那些是站点侧功能。
+抽取时只保留了排盘与解读必需的部分——未含 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts` 以及整个 `lib/seo/`，那些是站点侧功能。
 
-`lib/` 在本项目内独立演化，日常改动直接改 `lib/`，不存在需要同步的副本。
+上游的 `lunar-javascript.d.ts` 类型声明则一并保留了下来（在 `scripts/ziwei/`）：`lunar-javascript` 这个包自身不带类型，缺了它 `tsc` 会报 TS7016。纯类型文件，运行时被忽略，不影响排盘。
+
+内核在本项目内独立演化，日常改动直接改 `scripts/` 下的对应文件，不存在需要同步的副本。
 
 ## 开发
 

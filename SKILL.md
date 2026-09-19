@@ -5,11 +5,11 @@ description: 紫微斗数排盘与命理解读（倪海夏《天纪》三合派�
 
 # 紫微斗数排盘与解读
 
-本技能的排盘内核与知识库全部在本 skill 目录下的 `lib/`，**不重复实现任何命理逻辑**——CLI 只是这些模块的访问层。排盘结果由 `iztro` + 项目既有算法确定性产出，你只负责**解读**。
+本技能的排盘内核与知识库全部在 `scripts/` 下（与 CLI 同处一层），**不重复实现任何命理逻辑**——CLI 只是这些模块的访问层。排盘结果由 `iztro` + 项目既有算法确定性产出，你只负责**解读**。
 
 ## 路径约定
 
-本 skill 的根目录就是 **SKILL.md 所在目录**，其下是 `lib/`（内核）、`scripts/`（CLI）、`package.json`（依赖）。
+本 skill 的根目录就是 **SKILL.md 所在目录**，其下是 `scripts/`（CLI + 内核）、`package.json`（依赖）。
 
 下文所有命令中的 `node scripts/ziwei.mjs` 都**相对于 skill 根目录**。执行前 `cd` 到该目录即可：
 
@@ -94,18 +94,18 @@ node scripts/ziwei.mjs analyze \
 
 CLI 已给出命盘数据与格局结论。需要展开论证时，**直接读这些文件**（它们是本技能的权威依据，不要凭记忆编造）：
 
-| 需要什么                                             | 读哪里                                                           |
-| ---------------------------------------------------- | ---------------------------------------------------------------- |
-| 格局判定规则全文（40+ 格局的必须/加分/破格三层条件） | `lib/ziwei/patterns.ts`                                          |
-| 四化体系、流年流月推法                               | `lib/ziwei/sihua.ts`                                             |
-| 合盘方法论、十四主星在夫妻宫断语、四化入夫妻宫       | `lib/ziwei/heming-knowledge.ts`                                  |
-| 星曜释义（关键词/星性/五行）                         | `lib/ziwei/constants.ts` 的 `STAR_DESCRIPTIONS`；或 `stars` 命令 |
-| 古籍原文引证                                         | `classics` 命令；数据在 `lib/classics/data/`                     |
-| 倪海夏体系论述、讲义原文                             | `nihai` 命令；数据在 `lib/nihai/`                                |
+| 需要什么                                             | 读哪里                                                               |
+| ---------------------------------------------------- | -------------------------------------------------------------------- |
+| 格局判定规则全文（40+ 格局的必须/加分/破格三层条件） | `scripts/ziwei/patterns.ts`                                          |
+| 四化体系、流年流月推法                               | `scripts/ziwei/sihua.ts`                                             |
+| 合盘方法论、十四主星在夫妻宫断语、四化入夫妻宫       | `scripts/ziwei/heming-knowledge.ts`                                  |
+| 星曜释义（关键词/星性/五行）                         | `scripts/ziwei/constants.ts` 的 `STAR_DESCRIPTIONS`；或 `stars` 命令 |
+| 古籍原文引证                                         | `classics` 命令；数据在 `scripts/classics/data/`                     |
+| 倪海夏体系论述、讲义原文                             | `nihai` 命令；数据在 `scripts/nihai/`                                |
 
 ```bash
 # 古籍检索（解读要引经据典时用，比凭记忆引用可靠）
-node scripts/ziwei.mjs classics --search 紫微居午
+node scripts/ziwei.mjs classics --search 机月同梁
 # 倪海夏天纪知识（紫微斗数模块的要点与讲义原话）
 node scripts/ziwei.mjs nihai --category tianji
 # 城市经度（用户只给城市名时）
@@ -130,11 +130,11 @@ node scripts/ziwei.mjs cities --search 成都
 - ❌ **大限四化取宫干** —— `algorithm.ts` 已停止生成 `daXians[].siHua` / `stemIndex`
 - ❌ **来因宫** —— 飞星派追溯法，不使用
 
-⚠️ **陷阱**：`lib/ziwei/sihua.ts` 里**仍然导出** `detectSelfSihua` / `findIncomingPalaces` / `getDaXianSiHua` 等函数——它们是历史遗留与前端展示兼容代码，**存在不等于该用**。用它解读就是背叛本项目的体系立场。（`selftest` 里有两条断言专门盯着这个，防止上游把这些字段又填回来。）
+⚠️ **陷阱**：`scripts/ziwei/sihua.ts` 里**仍然导出** `detectSelfSihua` / `findIncomingPalaces` / `getDaXianSiHua` 等函数——它们是历史遗留与前端展示兼容代码，**存在不等于该用**。用它解读就是背叛本项目的体系立场。（`selftest` 里有两条断言专门盯着这个，防止上游把这些字段又填回来。）
 
 可用的是：**生年四化**（出生年干）、**流年四化**（当年年干）、**流月四化**（`--liuyue 6`）。CLI 的 `analyze` 已按此口径输出。
 
-倪师核心立场（摘自 `lib/nihai/`）：
+倪师核心立场（摘自 `scripts/nihai/`）：
 
 > 大道至简——飞星飞来飞去太复杂，不搞这个。
 > 命宫为本，三方为用。
@@ -142,7 +142,7 @@ node scripts/ziwei.mjs cities --search 成都
 
 ## 其他已知事实
 
-- **本 skill 的 `lib/` 不含线上站点的论断库**：完整的 14 主星 × 13 主题论断库（`STAR_DB`，上游 `lib/ziwei/db-analysis.ts`）与 `lib/seo/knowledge.ts` **未随 skill 分发**，它们只存在于线上站点源码。**不要去找这两个文件、也不要依赖它们**，解读全部靠 `patterns.ts` + `heming-knowledge.ts` + `classics` + `nihai`。
+- **本 skill 的 `scripts/` 不含线上站点的论断库**：完整的 14 主星 × 13 主题论断库（`STAR_DB`，上游 `lib/ziwei/db-analysis.ts`）与 `lib/seo/knowledge.ts` **未随 skill 分发**，它们只存在于线上站点源码。**不要去找这两个文件、也不要依赖它们**，解读全部靠 `patterns.ts` + `heming-knowledge.ts` + `classics` + `nihai`。
 - **庙旺利陷口径**：`bright` = 庙/旺，`normal` = 平，`dim` = 陷/不。
 - **大限年龄**是虚岁口径，由 iztro 的 `decadal.range` 给出。
 - **十二宫顺序**：`chart.palaces` 按地支 0-11（子…亥）排序，**不是**按宫位顺序。CLI 的「十二宫一览」也是这个序。
@@ -189,16 +189,16 @@ node scripts/ziwei.mjs heming \
 
 ## 分发与安装
 
-本 skill 是**自包含**的：`lib/`（内核）+ `scripts/`（CLI）+ `package.json`（依赖）都在 skill 目录内，拷到任何地方都能直接跑，不需要宿主项目配合。
+本 skill 是**自包含**的：`scripts/`（CLI + 内核）+ `package.json`（依赖）都在 skill 目录内，拷到任何地方都能直接跑，不需要宿主项目配合。
 
 `ziwei.mjs` 按**两级优先级**定位内核，取第一个命中者：
 
-| 优先级 | 来源                    | 何时命中                             |
-| ------ | ----------------------- | ------------------------------------ |
-| 1      | `ZIWEI_ROOT` 环境变量   | 显式把内核指到别处（多项目共享一份） |
-| 2      | 技能自带 `<skill>/lib/` | 默认。与 SKILL.md 同级               |
+| 优先级 | 来源                        | 何时命中                             |
+| ------ | --------------------------- | ------------------------------------ |
+| 1      | `ZIWEI_ROOT` 环境变量       | 显式把内核指到别处（多项目共享一份） |
+| 2      | 技能自带 `<skill>/scripts/` | 默认。与 ziwei.mjs 同级              |
 
-`selftest` 首行会打印当前生效的内核根，交付解读前可据此确认跑的是哪一份 `lib/`。
+`selftest` 首行会打印当前生效的内核根，交付解读前可据此确认跑的是哪一份内核。
 
 ### 目录结构
 
@@ -209,8 +209,8 @@ node scripts/ziwei.mjs heming \
 ├── LICENSE                 ← MIT
 ├── package.json            ← 声明 iztro / lunar-javascript
 ├── package-lock.json       ← 锁定精确版本（iztro 2.6.1 / lunar-javascript 1.7.7）
-├── scripts/ziwei.mjs       ← CLI（排盘 / 合盘 / 知识检索 / 自检）
-├── lib/                    ← 排盘内核（17 个文件 / 276K），唯一数据源
+├── scripts/                ← CLI 与排盘内核同处一层（内核根）
+│   ├── ziwei.mjs           ← CLI（排盘 / 合盘 / 知识检索 / 自检）
 │   ├── ziwei/              ← 排盘算法、格局库、四化、合盘、城市经纬度
 │   ├── classics/           ← 三部古籍原文
 │   └── nihai/              ← 倪海夏天纪 / 地纪 / 人纪
@@ -237,21 +237,23 @@ cd ~/.claude/skills/ziwei-doushu && npm install
 
 `package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-javascript 1.7.7），排盘结果不会因环境不同而分叉。
 
-**内核为什么是拷贝而不是装包**：排盘内核（`lib/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 4395 行自定义规则——格局库（`patterns.ts`，1118 行）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
+**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 6544 行自定义内核代码——格局库（`patterns.ts`，1183 行）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
 
 ### 内核来源
 
-本 skill 的 `lib/` 提取自所参考的上游开源项目 `ziwei-master`（Next.js 站点 + 完整 `lib/`）。
+本 skill 的 `scripts/` 提取自所参考的上游开源项目 `ziwei-master`（Next.js 站点 + 完整 `lib/`）。
 
-抽取时只保留了排盘与解读必需的部分——未含站点侧的 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts`、`lunar-javascript.d.ts` 与 `lib/seo/`。
+抽取时只保留了排盘与解读必需的部分——未含站点侧的 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts` 与 `lib/seo/`。
 
-`lib/` 在本 skill 内独立演化，改内核直接改 `lib/`，不存在需要同步的副本。
+上游的 `lunar-javascript.d.ts` 类型声明则一并保留了下来（`scripts/ziwei/`）：`lunar-javascript` 包自身不带类型，缺了它 `tsc` 会报 TS7016。纯类型文件，运行时被类型擦除忽略，不影响排盘。
+
+内核在本 skill 内独立演化，改内核直接改 `scripts/` 下的对应文件，不存在需要同步的副本。
 
 ## 若脚本报错
 
-- `[ziwei 启动失败] 找不到排盘内核` → skill 目录不完整，`<skill>/lib/` 缺失（拷贝时漏带）。从本仓库补回 `lib/`，或用 `ZIWEI_ROOT=<含 lib/ 的目录>` 指定内核位置。
+- `[ziwei 启动失败] 找不到排盘内核` → skill 目录不完整，`<skill>/scripts/` 下的内核缺失（拷贝时漏带）。从本仓库补回 `ziwei/`、`classics/`、`nihai/` 三个内核目录，或用 `ZIWEI_ROOT=<含 ziwei/ 的目录>` 指定内核位置。
 - `Cannot find module 'iztro'` / `'lunar-javascript'` → 依赖未装。**看报错里的「当前内核根」**，在该目录下 `npm install`。
 - `registerHooks is not a function` 或 TS 语法报错 → Node 版本过低，需 ≥ 22.15（本项目开发环境为 v26）。
-- `[ziwei 启动自检失败]` → 内核被重构、关键导出改名或删除。核对 `scripts/ziwei.mjs` 顶部的 import 列表与 `lib/` 的实际导出是否对得上。
+- `[ziwei 启动自检失败]` → 内核被重构、关键导出改名或删除。核对 `scripts/ziwei.mjs` 顶部的 import 列表与 `scripts/` 下内核的实际导出是否对得上。
 - `未收录城市` → 改用 `--lng` 直接给经度。
 - **改完本技能或升级依赖后，先跑 `selftest`**：它覆盖农历换算、真太阳时、晚子时等价性、城市容错、排盘不变量、三合派约束、知识源可用性。全绿再交付解读。
