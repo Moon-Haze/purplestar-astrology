@@ -239,11 +239,13 @@ cd ~/.claude/skills/ziwei-doushu && npm install
 
 **内核为什么是拷贝而不是装包**：排盘内核（`lib/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 4395 行自定义规则——格局库（`patterns.ts`，1118 行）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
 
-### 关于 reference/ 目录
+### 内核来源
 
-仓库里的 `reference/ziwei-doushu/` 是**本项目所参考的上游开源项目**（`name` 为 `ziwei-master`，Next.js 站点 + 完整 `lib/`）的只读快照，**已被 gitignore、不参与运行、不参与分发**。
+本 skill 的 `lib/` 提取自所参考的上游开源项目 `ziwei-master`（Next.js 站点 + 完整 `lib/`）。
 
-本 skill 的 `lib/` 是从中提取的内核，就是唯一数据源——改内核直接改 `lib/`，日常不需要任何同步动作。只有想跟进上游更新时，才需要手工比对 `reference/ziwei-doushu/lib/`。
+抽取时只保留了排盘与解读必需的部分——未含站点侧的 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts`、`lunar-javascript.d.ts` 与 `lib/seo/`。
+
+`lib/` 在本 skill 内独立演化，改内核直接改 `lib/`，不存在需要同步的副本。
 
 ## 若脚本报错
 

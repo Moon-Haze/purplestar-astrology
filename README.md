@@ -60,7 +60,6 @@ node scripts/ziwei.mjs selftest    # 回归自检（33 项断言）
 │   ├── ziwei/            # 排盘算法、格局库、四化、合盘、城市经纬度
 │   ├── classics/         # 骨髓赋 / 紫微斗数全集 / 全书
 │   └── nihai/            # 倪海夏天纪 / 地纪 / 人纪
-├── reference/            # 所参考的上游开源项目（已 gitignore，见下）
 └── node_modules/         # npm install 生成（已 gitignore）
 ```
 
@@ -82,18 +81,13 @@ node scripts/ziwei.mjs selftest    # 回归自检（33 项断言）
 
 **不含**线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/`——它们未随 skill 分发，解读请依赖上表知识源。
 
-## reference/ —— 所参考的上游开源项目
+## 来源
 
-`reference/ziwei-doushu/` 是**本项目所参考的上游开源项目** [Renhuai123/ziwei-doushu](https://github.com/Renhuai123/ziwei-doushu)（其 `package.json` 的 `name` 为 `ziwei-master`，是一个 Next.js 站点 + 完整 `lib/`）的只读快照。
+本项目的排盘内核（`lib/`）提取自所参考的上游开源项目 [Renhuai123/ziwei-doushu](https://github.com/Renhuai123/ziwei-doushu)（其 `package.json` 的 `name` 为 `ziwei-master`，是一个 Next.js 站点 + 完整 `lib/`）。
 
-它**已被 gitignore、不参与运行、不参与分发**，用途是：
+抽取时只保留了排盘与解读必需的部分——未含 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts`、`lunar-javascript.d.ts` 以及整个 `lib/seo/`，那些是站点侧功能。
 
-- 对照上游实现，排查本 skill 的排盘差异；
-- 上游更新时，比对 `reference/ziwei-doushu/lib/` 与本项目 `lib/`，决定是否跟进。
-
-本项目的 `lib/` 是从上游提取的内核，抽出时只保留了排盘与解读必需的部分——未含 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts`、`lunar-javascript.d.ts` 以及整个 `lib/seo/`，那些是站点侧功能。
-
-日常改内核直接改 `lib/`，**不需要任何同步动作**；只有想跟进上游时，才需要手工比对这两处。
+`lib/` 在本项目内独立演化，日常改动直接改 `lib/`，不存在需要同步的副本。
 
 ## 开发
 
