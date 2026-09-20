@@ -147,7 +147,7 @@ node scripts/purple-star.mjs cities --search 成都
 ## 其他已知事实
 
 - **本 skill 的 `scripts/` 不含线上站点的论断库**：完整的 14 主星 × 13 主题论断库（`STAR_DB`，上游 `lib/ziwei/db-analysis.ts`）与 `lib/seo/knowledge.ts` **未随 skill 分发**，它们只存在于线上站点源码。**不要去找这两个文件、也不要依赖它们**，解读全部靠 `patterns.ts` + `heming-knowledge.ts` + `classics` + `nihai`。
-- **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**，`minorStars` / `adjectiveStars` 不带该字段（信息比 iztro 原始输出少，是口径选择不是缺漏）。
+- **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `sha` / `lucky`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键），只有 `type === "major"` 的那 14 颗带 `brightness`，其余三类不带（信息比 iztro 原始输出少，是口径选择不是缺漏）。
 - **年龄一律是虚岁**：`currentAge`（当前年龄）、`daXians[].startAge/endAge`、`palace.daXianAge` 三者**同为虚岁**，以**农历年（正月初一）为界** —— 不是生日，也不是立春。数据来自 iztro 的 `decadal.range`。解读时报给用户的年龄就用这个虚岁，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
 - **童限**：`currentDaXianIndex === -1` 表示此人**尚未起运**（虚岁小于五行局数，如土五局要 5 岁才起运），此时 CLI 的「当前大限」显示 `—`。这是正常的，不是数据缺失——此时按命宫论，不要硬套一个大限。
 - **十二宫顺序**：`chart.palaces` 按**地支数组序**排，实测为 `2,3,…,11,0,1`（**寅起**）——既不是 0-11（子起），也不是宫位顺序（命宫起）。定位某宫请按 `branch` 建索引，**不要依赖数组下标**。CLI 的「十二宫一览」也是这个序。
@@ -188,6 +188,15 @@ node scripts/purple-star.mjs heming \
 
 **输出选项**：`--json`、`--liunian <年>`、`--liuyue <农历月>`、`--focus <宫名>`。
 
+> **`--focus` 的宫名**用本项目口径（倪师《天纪》），十二宫统一带「宫」字：
+> 命宫、兄弟宫、夫妻宫、子女宫、财帛宫、疾厄宫、迁移宫、**交友宫**、官禄宫、田宅宫、福德宫、父母宫。
+> 第 8 宫是「**交友宫**」（排盘引擎 iztro 内部叫「仆役」，那是上游口径，**不要照抄**）。
+> `--focus` 会对输入先做一次归一化，下列写法都命中同一宫，可任选：
+> **全名**（`--focus 交友宫`）、**去「宫」字的简称**（`--focus 交友`）、
+> **iztro 旧写法**（`--focus 仆役` / `--focus 仆役宫`）。
+> 另外也接受**地支名**（`--focus 巳`）—— 注意它匹配的是「地支为该字的那一宫」，**不一定是命宫**。
+> 都匹配不上才会报错，报错信息里会列出该盘实际的十二宫名。
+
 > `--liunian` 勿写成 `--year` —— 后者是出生年的回退参数。两者同时给出**不会报错**：
 > 流年取 `--liunian`；而一旦给了 `--date` / `--lunar`，`--year` 就被静默忽略，不会有任何提示。
 
@@ -204,7 +213,8 @@ node scripts/purple-star.mjs heming \
 | 1      | `ZIWEI_ROOT` 环境变量       | 显式把内核指到别处（多项目共享一份） |
 | 2      | 技能自带 `<skill>/scripts/` | 默认。与 purple-star.mjs 同级        |
 
-`selftest` 首行会打印当前生效的内核根，交付解读前可据此确认跑的是哪一份内核。
+`selftest` 会打印当前生效的内核根（标题行 `紫微斗数 skill 回归自检 —— 通过 N/N` 之下的**第二行**，
+形如 `内核根：<路径>`），交付解读前可据此确认跑的是哪一份内核。
 
 ### 目录结构
 
@@ -215,13 +225,22 @@ node scripts/purple-star.mjs heming \
 ├── LICENSE                 ← MIT
 ├── package.json            ← 声明 iztro / lunar-javascript
 ├── package-lock.json       ← 锁定精确版本（iztro 2.6.1 / lunar-javascript 1.7.7）
-├── scripts/                ← CLI 与排盘内核同处一层（内核根）
+├── tsconfig.json           ← 仅供 IDE / tsc 用（含 @/* → scripts/* 映射），运行时不依赖
+├── scripts/                ← CLI 与排盘内核同处一层（内核根）★ 排盘只需这一层
 │   ├── purple-star.mjs     ← CLI（排盘 / 合盘 / 知识检索 / 自检）
 │   ├── ziwei/              ← 排盘算法、格局库、四化、合盘、城市经纬度
 │   ├── classics/           ← 三部古籍原文
 │   └── nihai/              ← 倪海夏天纪 / 地纪 / 人纪
+├── test/                   ← 回归测试（npm test）。怎么跑与效力边界见 test/README.md
+│   ├── fixtures/           ← 300 条基准样本（已入库，跑 npm test 不需要 reference/）
+│   └── tools/              ← 手动脚本：重建基准、全量语料核验（需 reference/）
+├── docs/test/              ← 历次测试报告存档
+├── reference/              ← 外部数据集，未入版本控制（缺了不影响排盘与 npm test）
 └── node_modules/           ← npm install 生成，已被 gitignore
 ```
+
+> 交付解读只需 `SKILL.md` + `scripts/` + `package.json` + `package-lock.json`；
+> `test/`、`docs/`、`reference/` 是开发期资产，安装到 Claude Code 时不必带走。
 
 ### 安装到 Claude Code
 
@@ -243,7 +262,10 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 
 `package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-javascript 1.7.7），排盘结果不会因环境不同而分叉。
 
-**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 6613 行自定义内核代码（`scripts/` 下 `.ts` 计，不含 `lunar-javascript.d.ts` 类型声明）——格局库（`patterns.ts`，1190 行）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
+**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中约 6,600 行自定义内核代码（`scripts/` 下 `.ts` 计，不含 `lunar-javascript.d.ts` 类型声明）——格局库（`patterns.ts`，约 1,200 行）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
+
+> 行数只给量级、不给精确值：内核在本仓库持续演化，精确数字必然漂移。要当前值就现场数：
+> `find scripts -name '*.ts' ! -name 'lunar-javascript.d.ts' | xargs wc -l | tail -1`
 
 ### 内核来源
 
@@ -264,4 +286,4 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 - `未收录城市` → 改用 `--lng` 直接给经度。
 - `缺少性别：需 --gender male|female` → 没给性别。性别决定大限顺逆，**不要替用户猜**，直接追问；`heming` 对应 `--a-gender` / `--b-gender`。取值非法（如 `--gender xyz`）同样报错。
 - **改完本技能或升级依赖后，先跑 `selftest`**：它覆盖农历换算、真太阳时、晚子时等价性、城市容错、性别护栏、排盘不变量、三合派约束、知识源可用性。全绿再交付解读。
-- **要更彻底的回归，再跑 `npm test`**：拿 300 条真实盘逐字段对标排盘结果（约 5 秒），测的是 `selftest` 那几条固定样例覆盖不到的行为漂移。两者分工不同，都要跑。测试的性质、效力边界与「升级 `iztro` 后怎么办」见 `test/README.md`。
+- **要更彻底的回归，再跑 `npm test`**：拿 300 条真实盘逐字段对标排盘结果（数秒量级，视机器负载而定；后台有重任务时会明显变慢），测的是 `selftest` 那几条固定样例覆盖不到的行为漂移。两者分工不同，都要跑。测试的性质、效力边界与「升级 `iztro` 后怎么办」见 `test/README.md`。
