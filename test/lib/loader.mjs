@@ -1,6 +1,7 @@
 // ── 测试用的排盘内核加载器 ──
 //
-// ⚠️ 本文件是 scripts/purple-star.mjs 第 38–153 行加载机制的**副本**，两者必须保持行为一致。
+// ⚠️ 本文件是 scripts/purple-star.ts 里 pickRoot / registerHooks / load 三者的**副本**，两者必须保持行为一致。
+//    这里刻意用函数名而非行号定位：CLI 已按职责拆进 scripts/cli/，行号是漂移最快的东西。
 //    刻意不抽成共享模块：CLI 的加载器带 CLI 特有的错误处理（console.error + process.exit(1)），
 //    而测试场景需要**抛错**而非退出进程 —— 抽共享模块会让两边都被对方的错误处理污染。
 //    若 CLI 的 registerHooks 或 pickRoot 有改动，请同步本文件；test/cli.test.mjs 里有一条
@@ -35,7 +36,7 @@ if (!ROOT) {
 		`找不到排盘内核（ziwei/algorithm.ts）\n` +
 			`  已尝试：\n` +
 			ROOT_TRIED.map(t => `    - ${t}`).join("\n") +
-			`\n  处理：确认 <skill 根>/scripts/ 下同时有 purple-star.mjs 与 ziwei/、classics/、nihai/，` +
+			`\n  处理：确认 <skill 根>/scripts/ 下同时有 purple-star.ts 与 ziwei/、classics/、nihai/，` +
 			`或用 ZIWEI_ROOT=<含 ziwei/ 的目录> 指定内核位置。`
 	);
 }

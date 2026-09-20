@@ -19,7 +19,7 @@ import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "./constants";
  *
  * ⚠️ 未命中时**抛错，不回退到原名**。回退看着更「稳」，其实是让一个未知宫名静默
  *    流进输出 —— 而宫名是十二宫一览、`--focus`、三方四正、大限、格局判定的公共索引，
- *    错一个名字就是错一片下游。这与 `purple-star.mjs` 顶部 REQUIRED_EXPORTS 自检
+ *    错一个名字就是错一片下游。这与 `purple-star.ts` 顶部 REQUIRED_EXPORTS 自检
  *    是同一个理念：**宁可启动失败，也不静默产出错盘**。
  */
 function projectPalaceName(iztroName: string): string {

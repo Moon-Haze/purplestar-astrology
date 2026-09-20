@@ -5,7 +5,7 @@
 // 故无 golden 基准可依，用手工基准 + 独立换算（lunar-javascript）互证。
 //
 // 本文件另有一条**防漂移断言**：内核直调结果必须等于 CLI --json 的输出。
-// test/lib/loader.mjs 是 scripts/purple-star.mjs 加载机制的副本，这条断言盯着两者不分叉。
+// test/lib/loader.mjs 是 scripts/purple-star.ts 加载机制的副本，这条断言盯着两者不分叉。
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
@@ -18,7 +18,7 @@ import { chartSignature } from "./lib/compare.mjs";
 
 const execFileAsync = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CLI = resolve(HERE, "../scripts/purple-star.mjs");
+const CLI = resolve(HERE, "../scripts/purple-star.ts");
 const SKILL_ROOT = resolve(HERE, "..");
 
 /** 跑一次 CLI 的任意子命令，返回 stdout。失败时抛出带 stderr 的错误。 */
@@ -44,7 +44,7 @@ async function cliFails(args) {
 	} catch (err) {
 		return err.stderr ?? "";
 	}
-	assert.fail(`命令本应失败却成功了：purple-star.mjs ${args.join(" ")}`);
+	assert.fail(`命令本应失败却成功了：purple-star.ts ${args.join(" ")}`);
 }
 
 const { generateChart } = await loadAlgorithm();
@@ -339,7 +339,7 @@ describe("CLI 端到端", () => {
 	});
 
 	describe("内核加载防漂移", () => {
-		// test/lib/loader.mjs 是 scripts/purple-star.mjs 加载机制的副本。
+		// test/lib/loader.mjs 是 scripts/purple-star.ts 加载机制的副本。
 		// 若两侧的 registerHooks / pickRoot 分叉（例如 CLI 改了别名解析而测试没跟上），
 		// 这条断言会把差异暴露出来 —— 否则测试可能一直在验证一个与线上不同的内核。
 		it("内核直调结果 ≡ CLI --json 输出", async () => {
