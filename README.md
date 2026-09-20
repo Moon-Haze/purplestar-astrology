@@ -36,16 +36,17 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 cd <本仓库>
 
 # 排盘 + 格局 + 四化 + 大限，解读所需数据一次给全
-node scripts/purple-star.mjs analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male
+node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
-node scripts/purple-star.mjs heming --a-date 1990-05-15 --a-time 09:30 --a-gender male \
-                             --b-date 1993-08-22 --b-time 14:00 --b-gender female
-node scripts/purple-star.mjs classics --search 机月同梁
-node scripts/purple-star.mjs nihai --category tianji
-node scripts/purple-star.mjs help        # 全部命令与参数
-node scripts/purple-star.mjs selftest    # 回归自检（44 项断言）
+node scripts/purple-star.ts heming --a-date 1990-05-15 --a-time 09:30 --a-gender male \
+                            --b-date 1993-08-22 --b-time 14:00 --b-gender female
+node scripts/purple-star.ts classics --search 机月同梁
+node scripts/purple-star.ts nihai --category tianji
+node scripts/purple-star.ts help        # 全部命令与参数
+node scripts/purple-star.ts selftest    # 回归自检（44 项断言）
 
 npm test                                 # 排盘基准回归（300 条样本，约 8 秒）
+npm run typecheck                        # 类型检查（必须 0 错误）
 ```
 
 ## 目录结构
@@ -57,8 +58,10 @@ npm test                                 # 排盘基准回归（300 条样本，
 ├── LICENSE               # MIT
 ├── package.json          # 声明 iztro / lunar-javascript
 ├── package-lock.json     # 锁定精确版本
+├── tsconfig.json         # 仅供 npm run typecheck，不参与运行
 ├── scripts/              # CLI 与排盘内核同处一层（内核根）
-│   ├── purple-star.mjs   # CLI（排盘 / 合盘 / 知识检索 / 自检）
+│   ├── purple-star.ts    # CLI 入口（引导层：定位内核根 → 注册 TS 钩子 → 分发命令）
+│   ├── cli/              # CLI 实现：参数解析 / 渲染 / 出生信息 / 命令 / 自检
 │   ├── ziwei/            # 排盘算法、格局库、四化、合盘、城市经纬度
 │   ├── classics/         # 骨髓赋 / 紫微斗数全集 / 全书
 │   └── nihai/            # 倪海夏天纪 / 地纪 / 人纪
@@ -68,8 +71,9 @@ npm test                                 # 排盘基准回归（300 条样本，
 
 ## 环境要求
 
-- **Node ≥ 22.15** —— 依赖 `module.registerHooks` 与原生 TypeScript 类型擦除（开发环境为 v26）。
+- **Node ≥ 22.15** —— 依赖 `module.registerHooks` 与原生 TypeScript 类型擦除（开发环境为 v26）。**直接运行不需要编译**，`.ts` 由 Node 自己擦类型。
 - 依赖 `iztro` 2.6.1、`lunar-javascript` 1.7.7，由 `package-lock.json` 锁定，保证排盘结果不因环境分叉。
+- 开发依赖 `typescript` / `@types/node`，只服务 `npm run typecheck`；不装也照样排盘。
 
 ## 数据来源
 
@@ -99,13 +103,16 @@ npm test                                 # 排盘基准回归（300 条样本，
 改完内核或升级依赖后，两层测试都要跑：
 
 ```bash
-node scripts/purple-star.mjs selftest    # 第一层：代码逻辑自洽（44 项断言）
+node scripts/purple-star.ts selftest    # 第一层：代码逻辑自洽（44 项断言）
 npm test                                 # 第二层：与 toolkit 样本的基准比对（约 8 秒）
 
 npm run test:corpus -- --year 1960       # 可选：全量核验（8,640 条，约 2 分钟）
+npm run typecheck                        # 改过类型标注就该跑（必须 0 错误）
 ```
 
 `selftest` 覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、排盘不变量、三合派体系约束与知识源可用性。`npm test` 则从 518,400 条 toolkit 样本中抽出 300 条，逐字段对标排盘结果——它与 `selftest` 分工不同：前者测「代码逻辑自洽」，后者是**外部基准比对**，能抓住固定样例漏掉的行为漂移。
+
+`typecheck` 是第三类：只保证类型**自洽**，不保证类型**标得对**——用 `any` 绕过报错它一样全绿。所以内核里不使用 `any`。
 
 测试的性质、效力边界，以及**升级 iztro 后该怎么办**，见 [test/README.md](test/README.md)。
 

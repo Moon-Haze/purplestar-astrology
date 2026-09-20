@@ -8,12 +8,17 @@ npm test                                  # 日常回归：300 条抽样基准 +
 npm run test:corpus -- --year 1960        # 全量核验：只跑 1960 年（8,640 条，约 2 分钟）
 npm run test:corpus                       # 全量核验：518,400 条，约 2.3 小时
 
-node scripts/purple-star.mjs selftest     # CLI 自带的 44 项自检（与本套测试分工不同，见下）
+node scripts/purple-star.ts selftest     # CLI 自带的 44 项自检（与本套测试分工不同，见下）
+npm run typecheck                        # 类型检查：必须 0 错误（与本套测试也分工不同）
 ```
 
 与 CLI 自带 `selftest` 的关系：`selftest` 固定在 CLI 里，测的是**代码逻辑自洽**（农历换算、
 真太阳时、晚子时等价性、三合派字段不被回填），用几条固定样例。本套测试是**外部基准比对**，
 用 300 条真实盘逐字段对标，覆盖面大得多。**两者都要跑**，没有替代关系。
+
+`npm run typecheck`（`tsc --noEmit`）是第三类，且**最弱**：它只保证类型之间自洽，不保证类型
+**标得对**——把 `Star` 写成 `any` 它一样全绿。它能抓的是「改了内核签名、忘了改调用点」这类
+结构性失配，抓不到任何行为漂移。所以它不替代上面两者，只作为前置闸门。
 
 > 本目录是**活文档**——描述测试**现在**怎么跑、效力边界在哪。历次测试的**报告存档**（某次测试
 > 做了什么、发现了什么 bug、怎么修的）在 [docs/test/](../docs/test/)。想知道「这个 bug 当初是
@@ -211,8 +216,9 @@ node test/tools/build-fixtures.mjs
 
 ```bash
 npm install iztro@<新版本>
-node scripts/purple-star.mjs selftest       # 1. 先过 CLI 自检
+node scripts/purple-star.ts selftest       # 1. 先过 CLI 自检
 npm test                                   # 2. 跑基准回归
+npm run typecheck                          # 3. 类型检查（升级 iztro 可能改到类型面）
 ```
 
 - **全绿** → 行为未变，直接提交 `package.json` + `package-lock.json`
@@ -237,7 +243,7 @@ test/
 ├── invariants.test.mjs        层 3：排盘结构不变量
 ├── school.test.mjs            层 4：三合派体系约束
 ├── lib/
-│   ├── loader.mjs             加载 TS 内核（scripts/purple-star.mjs 加载机制的副本）
+│   ├── loader.mjs             加载 TS 内核（scripts/purple-star.ts 加载机制的副本）
 │   └── compare.mjs            比对器 + 归一化 + 已知差异白名单
 ├── fixtures/
 │   ├── charts.jsonl           300 条基准（每行 {"birthInfo":…,"chart":…}）
@@ -249,7 +255,7 @@ test/
 
 ### 两处需要留意的维护点
 
-1. **`lib/loader.mjs` 是 `scripts/purple-star.mjs` 加载机制的副本**，两者必须行为一致。
+1. **`lib/loader.mjs` 是 `scripts/purple-star.ts` 加载机制的副本**，两者必须行为一致。
    刻意不抽成共享模块：CLI 的加载器带 CLI 特有的错误处理（`console.error` + `process.exit(1)`），
    测试需要**抛错**而非退进程。改任意一侧的 `registerHooks` 或 `pickRoot` 时请同步另一侧 ——
    `cli.test.mjs` 里有一条断言（内核直调结果 ≡ CLI `--json` 子进程输出）专门盯着两侧不漂移。
