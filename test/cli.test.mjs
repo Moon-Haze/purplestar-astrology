@@ -21,10 +21,15 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CLI = resolve(HERE, "../scripts/purple-star.mjs");
 const SKILL_ROOT = resolve(HERE, "..");
 
-/** 跑一次 CLI（analyze 子命令），返回 stdout。失败时抛出带 stderr 的错误。 */
-async function cli(args) {
-	const { stdout } = await execFileAsync("node", [CLI, "analyze", ...args], { cwd: SKILL_ROOT });
+/** 跑一次 CLI 的任意子命令，返回 stdout。失败时抛出带 stderr 的错误。 */
+async function cliCmd(sub, args) {
+	const { stdout } = await execFileAsync("node", [CLI, sub, ...args], { cwd: SKILL_ROOT });
 	return stdout;
+}
+
+/** 跑一次 CLI（analyze 子命令），返回 stdout。 */
+async function cli(args) {
+	return cliCmd("analyze", args);
 }
 
 /** 跑一次 CLI 并解析 --json 输出。 */
@@ -244,6 +249,92 @@ describe("CLI 端到端", () => {
 				chartSignature(late.chart),
 				"同日早子时与晚子时不应排出同一张盘（这是本项目反复强调的陷阱）"
 			);
+		});
+	});
+
+	// ── 宫名口径在 CLI 层的行为 ──
+	//
+	// 这两组是本仓**唯一**覆盖 `--focus` 与 `heming` 的断言（此前零覆盖），
+	// 而它们恰是宫名从 iztro 口径切到项目口径时最容易静默失效的两个点：
+	// `--focus` 靠宫名字符串查找，`heming` 靠宫名字符串取宫后立刻读 `.branch`
+	// （旧名会返回 undefined → TypeError，且 `--json` 分支更早 return，会**静默输出空数组**）。
+	describe("--focus 的宫名写法", () => {
+		const BIRTH = ["--date", "1990-05-15", "--time", "09:30", "--gender", "male"];
+
+		/**
+		 * 从 analyze 文本输出里取出聚焦到的宫名与地支 —— 取的是**渲染值**，不是查找键。
+		 * 断言「不同写法解析到同一宫」只能靠比对渲染结果，输入字符串本身没有可比性。
+		 */
+		function focusOf(stdout) {
+			const m = stdout.match(/【聚焦：(.+?)】\n\s*(.+?)【(.)/);
+			assert.ok(m, `输出里找不到聚焦段落：\n${stdout.slice(0, 300)}`);
+			return { name: m[1], branch: m[3] };
+		}
+
+		it("「交友宫 / 交友 / 仆役 / 仆役宫」四种写法聚焦到同一宫", async () => {
+			const got = [];
+			for (const w of ["交友宫", "交友", "仆役", "仆役宫"]) {
+				got.push({ w, ...focusOf(await cli([...BIRTH, "--focus", w])) });
+			}
+			for (const g of got.slice(1)) {
+				assert.equal(g.name, got[0].name, `--focus ${g.w} 与 --focus 交友宫 落在不同的宫`);
+				assert.equal(g.branch, got[0].branch, `--focus ${g.w} 与 --focus 交友宫 地支不同`);
+			}
+			// 再钉住实际值：这张盘（1990-05-15 巳时，命宫在子）的交友宫在巳。
+			// 安星法若变了这里会红 —— 那是要人看一眼的信号，与上面「四种写法一致」是两回事。
+			assert.equal(got[0].name, "交友宫");
+			assert.equal(got[0].branch, "巳");
+		});
+
+		it("普通宫的「全名」与「去宫字简称」等价", async () => {
+			const full = focusOf(await cli([...BIRTH, "--focus", "夫妻宫"]));
+			const short = focusOf(await cli([...BIRTH, "--focus", "夫妻"]));
+			assert.equal(short.name, full.name);
+			assert.equal(short.branch, full.branch);
+			assert.equal(full.name, "夫妻宫");
+		});
+
+		it("地支名仍走分支匹配", async () => {
+			// 地支匹配的是「地支为该字的那一宫」，**不一定是命宫**。这里刻意取一个非命宫的
+			// 地支，把「地支被当成宫名简称」这种误读挡在门外。
+			const p = focusOf(await cli([...BIRTH, "--focus", "巳"]));
+			assert.equal(p.branch, "巳");
+			assert.equal(p.name, "交友宫", "巳宫在这张盘上应是交友宫");
+		});
+	});
+
+	describe("heming 合盘", () => {
+		const PAIR = [
+			"--a-date", "1990-05-15", "--a-time", "09:30", "--a-gender", "male",
+			"--b-date", "1992-08-20", "--b-time", "14:00", "--b-gender", "female",
+		];
+
+		it("--json 的夫妻宫/福德宫派生字段与 chart 自洽", async () => {
+			const o = JSON.parse(await cliCmd("heming", [...PAIR, "--json"]));
+			for (const side of ["a", "b"]) {
+				const chart = o[side].chart;
+				for (const [field, palaceName] of [
+					["fuQiGong", "夫妻宫"],
+					["fuDeGong", "福德宫"],
+				]) {
+					// mustPalace 取不到宫会抛错、走不到这里；但**取错了宫**（例如内部退回 iztro
+					// 旧名却恰好命中了别的宫）不抛错，故把派生字段与 chart 里同名宫的主星对一遍。
+					const p = chart.palaces.find(x => x.name === palaceName);
+					assert.ok(p, `${side}.chart 里没有「${palaceName}」—— 宫名口径已漂移`);
+					assert.deepEqual(
+						o[side][field],
+						p.stars.filter(s => s.type === "major").map(s => s.name),
+						`${side}.${field} 与 chart 里「${palaceName}」的主星不符`
+					);
+				}
+			}
+		});
+
+		it("文本路径同样跑通（宫名查找失败在此路径表现为崩溃）", async () => {
+			const text = await cliCmd("heming", PAIR);
+			assert.match(text, /【合盘/);
+			assert.match(text, /夫妻宫/);
+			assert.match(text, /福德宫/);
 		});
 	});
 

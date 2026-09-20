@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 import { astro } from "iztro";
 
-import { loadAlgorithm } from "./lib/loader.mjs";
+import { load, loadAlgorithm, loadConstants } from "./lib/loader.mjs";
 import { BRANCHES } from "./lib/compare.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -24,6 +24,8 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 	.map(JSON.parse);
 
 const { generateChart } = await loadAlgorithm();
+const { PALACE_NAMES_ORDER, IZTRO_TO_PROJECT_PALACE } = await loadConstants();
+const { detectPatterns } = await load("@/ziwei/patterns");
 
 const MAJOR_STARS = [
 	"紫微", "天机", "太阳", "武曲", "天同", "廉贞",
@@ -69,6 +71,77 @@ describe("排盘结构不变量", () => {
 				assert.equal(shen[0].branch, chart.shenGongBranch, label(birth));
 				assert.equal(ming[0].name, "命宫", label(birth));
 			}
+		});
+
+		// ── 宫名口径：两条**不读映射表**的独立预言机 ──
+		//
+		// 背景：algorithm.ts 把 iztro 的宫名翻成项目口径（倪师《天纪》体系，见
+		// constants.ts 的 IZTRO_TO_PROJECT_PALACE）。同一张表也被 test/lib/compare.mjs
+		// 用来翻译基准样本 —— 于是「表被写错」会让两边**一起**错、层 1 照旧全绿。
+		// 这与 test/README.md 记录的 02 号历史事故（比对器与内核同源同错、341 项全绿）
+		// 是同一个形状，必须用另一条计算路径堵上。
+		//
+		// 下面两条各走一条路径，且都不读那张映射表：一条连 iztro（外部词源），
+		// 一条只做位置算术（不依赖 iztro，换代后仍有效）。
+		describe("宫名口径（独立预言机）", () => {
+			it("映射表的值集合与 PALACE_NAMES_ORDER 同集合", () => {
+				const values = Object.values(IZTRO_TO_PROJECT_PALACE);
+				assert.equal(new Set(values).size, 12, "映射表的值有重复（两宫会被翻成同一个名字）");
+				assert.deepEqual(
+					[...values].sort(),
+					[...PALACE_NAMES_ORDER].sort(),
+					"映射表与 PALACE_NAMES_ORDER 不是同集合"
+				);
+			});
+
+			it("宫名 = iztro 原始名按独立规则改写（iztro 直连，不读映射表）", () => {
+				// 期望值由 **iztro 自己返回的字符串** + 这里独立写出的改写规则算出，
+				// 既不看 IZTRO_TO_PROJECT_PALACE，也不看 PALACE_NAMES_ORDER。
+				// 映射表里任何一处置换（如「仆役」↔「夫妻」）都会在这里变红。
+				// 宫名映射与具体盘无关，故抽样即可（每 20 条取 1）。
+				const rewrite = n => (n === "仆役" ? "交友宫" : n === "命宫" ? "命宫" : `${n}宫`);
+				const pad2 = n => String(n).padStart(2, "0");
+				const seen = new Set();
+
+				for (const { birth, chart } of charts.filter((_, i) => i % 20 === 0)) {
+					const astrolabe = astro.bySolar(
+						`${birth.year}-${pad2(birth.month)}-${pad2(birth.day)}`,
+						birth.hour,
+						birth.gender === "male" ? "男" : "女",
+						true,
+						"zh-CN"
+					);
+					for (const ip of astrolabe.palaces) {
+						const b = BRANCHES.indexOf(ip.earthlyBranch);
+						const ours = chart.palaces.find(p => p.branch === b);
+						assert.ok(ours, `${label(birth)}：找不到地支 ${ip.earthlyBranch} 的宫`);
+						assert.equal(
+							ours.name,
+							rewrite(ip.name),
+							`${label(birth)}：iztro 的「${ip.name}」应改写为「${rewrite(ip.name)}」`
+						);
+						seen.add(ip.name);
+					}
+				}
+				assert.equal(seen.size, 12, `只覆盖到 ${seen.size} 种 iztro 宫名，应覆盖全 12 种`);
+			});
+
+			it("宫名与「相对命宫的逆行偏移」一致（位置算术，不依赖 iztro）", () => {
+				// 十二宫由命宫**逆行**排布：兄弟宫在命宫地支 −1，夫妻 −2，…，父母 +1。
+				// （方向已用基准样本实测确认，别想当然写成顺行。）
+				// 期望序列取自 PALACE_NAMES_ORDER —— **有序数组**，与映射表那张**无序词典**
+				// 是两种不同形式的表示，改错一个不会连带另一个。
+				for (const { birth, chart } of charts) {
+					for (const p of chart.palaces) {
+						const k = (chart.mingGongBranch - p.branch + 12) % 12;
+						assert.equal(
+							p.name,
+							PALACE_NAMES_ORDER[k],
+							`${label(birth)}：${BRANCHES[p.branch]}宫在偏移 ${k}，应为 ${PALACE_NAMES_ORDER[k]}`
+						);
+					}
+				}
+			});
 		});
 	});
 
@@ -334,6 +407,330 @@ describe("排盘结构不变量", () => {
 				}
 			}
 			assert.ok(emptyCount > 0, "300 条基准中应存在空宫（否则该断言从未真正生效）");
+		});
+	});
+
+	// ── 格局识别：两个「静默失效」点 ──
+	//
+	// patterns.ts 的 detectHuaLuRuCai / detectHuaQuanRuGuan 按**宫名**查找
+	// （原先写 `p.name === "财帛"`）。宫名口径改为项目本位后，若不跟着改，这类失效
+	// **不报错** —— 两个函数都带 `if (!cai) return` 守卫，格局只是从此永不触发，
+	// 输出里静悄悄地少两条判词。
+	//
+	// 期望值刻意**不走宫名**，改走安星法给出的偏移算术：财帛宫 = 命宫偏移 4，
+	// 官禄宫 = 偏移 8（十二宫由命宫逆行排布，见上面的偏移恒等式）。
+	// 实现按宫名找、断言按偏移算 —— 两条路径不同，才不是复读机。
+	describe("格局识别：化禄入财 / 化权入官（按偏移算术核对）", () => {
+		const OFFSET_CAI = 4; // 财帛宫
+		const OFFSET_GUAN = 8; // 官禄宫
+		const palaceAt = (chart, offset) =>
+			chart.palaces.find(p => p.branch === (chart.mingGongBranch - offset + 12) % 12);
+
+		for (const { name, offset, siHua } of [
+			{ name: "化禄入财", offset: OFFSET_CAI, siHua: "禄" },
+			{ name: "化权入官", offset: OFFSET_GUAN, siHua: "权" },
+		]) {
+			it(`${name}：当且仅当偏移 ${offset} 之宫的主星带化${siHua}`, () => {
+				let yes = 0;
+				let no = 0;
+				for (const { birth, chart } of charts) {
+					const p = palaceAt(chart, offset);
+					assert.ok(p, `${label(birth)}：偏移 ${offset} 处没有宫位`);
+					const should = p.stars.some(s => s.type === "major" && s.siHua === siHua);
+					const got = detectPatterns(chart).some(x => x.name === name);
+					assert.equal(
+						got,
+						should,
+						`${label(birth)}：${p.name}（偏移 ${offset}）主星化${siHua}=${should}，但格局识别=${got}`
+					);
+					if (should) yes++;
+					else no++;
+				}
+				// 两侧都要有样本，否则断言可能在「全 false」上空转全绿
+				assert.ok(yes > 0, `300 条样本里没有一条化${siHua}入该宫，正例侧未生效`);
+				assert.ok(no > 0, `300 条样本里全部化${siHua}入该宫，反例侧未生效`);
+			});
+		}
+
+		// ── 格局识别：70 个格局名的独立预言机 ──
+		//
+		// patterns.ts（约 1,190 行、41 个 detect 函数）产出 **70 个**格局名，此前零基准。
+		//
+		// 【独立性从哪来】
+		// 实现定位三方四正 / 夹宫走的是**地支算术**（getSanFangPalaces 的 `[m,(m+4),(m+8),(m+6)]`、
+		// getJiaPalaces 的 `(b±1)`）；下面一律走**宫名**（"财帛宫"、"兄弟宫"…），火贪/铃贪处
+		// 还用**相对偏移取模**而实现是正向枚举。两条路径在「怎么从 chart 找到那几个宫」这一步
+		// 分岔，任一侧写错都会对不上。宫名本身的正确性由上面「十二宫」块的两条偏移恒等式独立
+		// 保证 —— 分层验证，不是同源复读。
+		//
+		// 【效力边界 · 别高估】
+		// · 只核对「格局**是否触发**」。level（excellent/good/…）不覆盖 —— 它由 bonus/breaking
+		//   决定，属判词分级；description / conditions 的文案同理不覆盖
+		// · 「昌曲夹命」「火铃夹命」在 300 条基准里触发 **0** 次，其断言是**空转**的，已显式登记
+		// · 预言机复刻的是**实现当前的口径**，不是照命理理想口径重写。已发现一处口径争议
+		//   （火贪/铃贪，见 huoTan），此处照实现复刻，免得把口径分歧伪装成回归
+		describe("格局识别", () => {
+			// ══ 定位基础设施：一律走宫名 ══
+			const SANFANG_NAMES = ["命宫", "财帛宫", "官禄宫", "迁移宫"];
+			const JIA_NAMES = ["兄弟宫", "父母宫"];
+			const TRINE_OFFSETS = [0, 4, 6, 8]; // 本宫 / 三合 ×2 / 对宫
+
+			const palaceNamed = (chart, n) => chart.palaces.find(p => p.name === n);
+			const starsNamed = (chart, n) => palaceNamed(chart, n)?.stars ?? [];
+			const namesNamed = (chart, n) => starsNamed(chart, n).map(s => s.name);
+			const majorOf = (chart, n) => starsNamed(chart, n).filter(s => s.type === "major");
+			const siHuaStarsIn = (chart, n, hua) => starsNamed(chart, n).filter(s => s.siHua === hua);
+			const siHuaMajorNames = (chart, n, hua) =>
+				majorOf(chart, n).filter(s => s.siHua === hua).map(s => s.name);
+			const sanFangNames = chart => SANFANG_NAMES.flatMap(n => namesNamed(chart, n));
+			const palaceOfStar = (chart, s) => chart.palaces.find(p => p.stars.some(x => x.name === s));
+			const hasAll = (arr, ...xs) => xs.every(x => arr.includes(x));
+			const offsetBetween = (from, to) => (to - from + 12) % 12;
+
+			/** 三方四正里是否有星带某四化（不限 major）—— 三奇加会 / 双禄朝垣用。 */
+			function hasSiHuaInSanFang(chart, hua) {
+				return SANFANG_NAMES.some(n => siHuaStarsIn(chart, n, hua).length > 0);
+			}
+			/** 三方四正里是否有**主星**带某四化 —— 科权双会用（实现限定 type === "major"）。 */
+			function hasMajorSiHuaInSanFang(chart, hua) {
+				return SANFANG_NAMES.some(n => majorOf(chart, n).some(s => s.siHua === hua));
+			}
+			/** 地支 → 该支上的宫名（身宫按地支定位，宫名表里没有「身宫」这一宫）。 */
+			function palaceNameOfBranch(chart, branch) {
+				return chart.palaces.find(p => p.branch === branch)?.name;
+			}
+
+			/** 夹命：一颗星在兄弟宫、另一颗在父母宫（两宫＝命宫地支 −1 / +1）。 */
+			const jiaPair = (chart, a, b) =>
+				(namesNamed(chart, "兄弟宫").includes(a) && namesNamed(chart, "父母宫").includes(b)) ||
+				(namesNamed(chart, "兄弟宫").includes(b) && namesNamed(chart, "父母宫").includes(a));
+
+			/** 同宫：两星落在同一个宫（实现是「分别定位再比坐标」，这里是「找共同容器」）。 */
+			const sharePalace = (chart, a, b) => {
+				const x = palaceOfStar(chart, a);
+				const y = palaceOfStar(chart, b);
+				return !!x && !!y && x.name === y.name;
+			};
+
+			/** 火贪 / 铃贪：贪狼会照命宫三方，且该煞星与贪狼互为三方四正。
+			 *
+			 *  ⚠️ **已知口径争议**：实现的 `sameOrTrine` 用的是**贪狼的**三方四正，而 `isInSanFang`
+			 *  只约束了**贪狼**会照命宫，未要求该煞星也会照命宫。贪狼不在命宫时「贪狼的三方」
+			 *  ≠「命宫的三方」（三方四正**不是传递关系**：命宫与贪狼每差 6 位对宫就换一个），
+			 *  于是命中的盘里有一部分煞星其实照不到命宫。实测 32 次命中里 **12 次**属此类。
+			 *  此处照**实现**复刻（不是照命理理想口径），免得把口径分歧伪装成回归；
+			 *  要不要收紧留给项目方定 —— 收紧只需再加一条 `SANFANG_NAMES.includes(sha.name)`。 */
+			const huoTan = (chart, shaName) => {
+				const tan = palaceOfStar(chart, "贪狼");
+				const sha = palaceOfStar(chart, shaName);
+				if (!tan || !sha) return false;
+				if (!SANFANG_NAMES.includes(tan.name)) return false;
+				return TRINE_OFFSETS.includes(offsetBetween(tan.branch, sha.branch));
+			};
+
+			// ══ 预言机表：格局名 → 「是否应当触发」 ══
+			const ORACLE = {
+				// ── 三方四正包含类 ──
+				杀破狼: c => hasAll(sanFangNames(c), "七杀", "破军", "贪狼"),
+				机月同梁: c => hasAll(sanFangNames(c), "天机", "太阴", "天同", "天梁"),
+				机月同梁三星会: c =>
+					["天机", "太阴", "天同", "天梁"].filter(s => sanFangNames(c).includes(s)).length === 3,
+				三奇加会: c => ["禄", "权", "科"].every(h => hasSiHuaInSanFang(c, h)),
+				双禄朝垣: c => hasSiHuaInSanFang(c, "禄") && sanFangNames(c).includes("禄存"),
+				廉杀羊: c => hasAll(sanFangNames(c), "廉贞", "七杀", "擎羊"),
+				巨火羊: c => hasAll(sanFangNames(c), "巨门", "火星", "擎羊"),
+				铃昌陀武: c => hasAll(sanFangNames(c), "铃星", "文昌", "陀罗", "武曲"),
+				昌曲同会: c =>
+					hasAll(sanFangNames(c), "文昌", "文曲") &&
+					!(namesNamed(c, "命宫").includes("文昌") && namesNamed(c, "命宫").includes("文曲")),
+				昌曲坐命: c =>
+					hasAll(sanFangNames(c), "文昌", "文曲") &&
+					namesNamed(c, "命宫").includes("文昌") &&
+					namesNamed(c, "命宫").includes("文曲"),
+				辅弼同会: c => hasAll(sanFangNames(c), "左辅", "右弼"),
+				魁钺同会: c => hasAll(sanFangNames(c), "天魁", "天钺"),
+				科权双会: c => hasMajorSiHuaInSanFang(c, "科") && hasMajorSiHuaInSanFang(c, "权"),
+				君臣庆会: c =>
+					namesNamed(c, "命宫").includes("紫微") && hasAll(sanFangNames(c), "左辅", "右弼"),
+				阳梁昌禄: c => hasAll(sanFangNames(c), "太阳", "天梁", "文昌", "禄存"),
+
+				// ── 同宫 / 对宫类 ──
+				紫府同宫: c => sharePalace(c, "紫微", "天府"),
+				廉贞天相格: c => sharePalace(c, "廉贞", "天相"),
+				武曲七杀: c => sharePalace(c, "武曲", "七杀"),
+				天同天梁格: c => sharePalace(c, "天同", "天梁"),
+				武贪格: c => {
+					const w = palaceOfStar(c, "武曲");
+					const t = palaceOfStar(c, "贪狼");
+					if (!w || !t) return false;
+					const d = offsetBetween(w.branch, t.branch);
+					if (d !== 0 && d !== 6) return false;
+					return SANFANG_NAMES.includes(w.name) || SANFANG_NAMES.includes(t.name);
+				},
+				日月同宫: c => {
+					const s = palaceOfStar(c, "太阳");
+					const m = palaceOfStar(c, "太阴");
+					return !!s && !!m && s.name === m.name && (s.branch === 1 || s.branch === 7);
+				},
+				巨日同宫: c => {
+					const j = palaceOfStar(c, "巨门");
+					const s = palaceOfStar(c, "太阳");
+					return !!j && !!s && j.name === s.name && (j.branch === 2 || j.branch === 8);
+				},
+				府相朝垣: c => {
+					const f = palaceOfStar(c, "天府");
+					const x = palaceOfStar(c, "天相");
+					if (!f || !x || f.name === x.name) return false;
+					return SANFANG_NAMES.includes(f.name) && SANFANG_NAMES.includes(x.name);
+				},
+				火贪格: c => huoTan(c, "火星"),
+				铃贪格: c => huoTan(c, "铃星"),
+
+				// ── 夹宫类 ──
+				日月夹命: c => jiaPair(c, "太阳", "太阴"),
+				辅弼夹命: c => jiaPair(c, "左辅", "右弼"),
+				昌曲夹命: c => jiaPair(c, "文昌", "文曲"),
+				魁钺夹命: c => jiaPair(c, "天魁", "天钺"),
+				火铃夹命: c => jiaPair(c, "火星", "铃星"),
+				空劫夹命: c => jiaPair(c, "地空", "地劫"),
+				羊陀夹忌: c => siHuaStarsIn(c, "命宫", "忌").length > 0 && jiaPair(c, "擎羊", "陀罗"),
+
+				// ── 单星坐宫类 ──
+				石中隐玉: c => {
+					const m = palaceNamed(c, "命宫");
+					return namesNamed(c, "命宫").includes("巨门") && (m.branch === 0 || m.branch === 6);
+				},
+				马头带箭: c => palaceNamed(c, "命宫").branch === 6 && namesNamed(c, "命宫").includes("擎羊"),
+				明珠出海: c =>
+					palaceNamed(c, "命宫").branch === 7 &&
+					majorOf(c, "命宫").length === 0 &&
+					hasAll(namesNamed(c, "迁移宫"), "太阳", "太阴"),
+				紫微入命: c =>
+					namesNamed(c, "命宫").includes("紫微") && !namesNamed(c, "命宫").includes("天府"),
+				禄存守命: c => namesNamed(c, "命宫").includes("禄存"),
+				禄存守身: c => {
+					const p = palaceOfStar(c, "禄存");
+					return !!p && p.branch === c.shenGongBranch && p.branch !== c.mingGongBranch;
+				},
+				天马入命: c => namesNamed(c, "命宫").includes("天马"),
+				天马在迁: c => palaceOfStar(c, "天马")?.name === "迁移宫",
+
+				// ── 四化入宫类（固定名） ──
+				化禄入财: c => siHuaMajorNames(c, "财帛宫", "禄").length > 0,
+				化权入官: c => siHuaMajorNames(c, "官禄宫", "权").length > 0,
+				化科入命: c => siHuaMajorNames(c, "命宫", "科").length > 0,
+				化科入身: c =>
+					siHuaMajorNames(c, "命宫", "科").length === 0 &&
+					palaceNamed(c, "命宫").branch !== c.shenGongBranch &&
+					siHuaMajorNames(c, palaceNameOfBranch(c, c.shenGongBranch), "科").length > 0,
+			};
+
+			// 名字由星名派生的格局：逐个穷举不现实，改断「后缀匹配到的名字集合」
+			const DERIVED = [
+				{ suffix: "化禄入命", palace: "命宫", hua: "禄" },
+				{ suffix: "化忌入命", palace: "命宫", hua: "忌" },
+				{ suffix: "化忌入迁", palace: "迁移宫", hua: "忌" },
+			];
+			const DERIVED_SUFFIXES = DERIVED.map(d => d.suffix);
+
+			// 一次算完供下列各 it 复用（否则 70 × 300 次 detectPatterns 太浪费）
+			const detected = charts.map(({ chart }) => new Set(detectPatterns(chart).map(p => p.name)));
+
+			// 300 条基准里触发 **0** 次的格局：断言会退化成空转，显式登记而非静默通过。
+			// 将来样本能触发它们时下面会失败，提醒把名字从这里删掉、让它回归真断言。
+			const NO_HIT_IN_FIXTURES = new Set(["昌曲夹命", "火铃夹命"]);
+
+			for (const [name, shouldFire] of Object.entries(ORACLE)) {
+				it(`${name}：逐盘与独立预言机一致`, () => {
+					let yes = 0;
+					let no = 0;
+					for (const [i, { birth, chart }] of charts.entries()) {
+						const should = shouldFire(chart);
+						const got = detected[i].has(name);
+						assert.equal(
+							got,
+							should,
+							`${label(birth)}：预言机=${should}，实现=${got}（命宫在${BRANCHES[chart.mingGongBranch]}）`
+						);
+						if (should) yes++;
+						else no++;
+					}
+					// 两侧都要有样本，否则断言可能在「全 false / 全 true」上空转全绿
+					if (NO_HIT_IN_FIXTURES.has(name)) {
+						assert.equal(yes, 0, `${name} 已被触发 ${yes} 次，请从 NO_HIT_IN_FIXTURES 移除`);
+					} else {
+						assert.ok(yes > 0, `${name} 在 300 条基准里一次都没触发，正例侧未生效`);
+					}
+					assert.ok(no > 0, `${name} 在 300 条基准里全部触发，反例侧未生效`);
+				});
+			}
+
+			describe("派生名格局（按星名展开）", () => {
+				for (const { suffix, palace, hua } of DERIVED) {
+					it(`*${suffix}：与「${palace}主星带化${hua}」一一对应`, () => {
+						let hits = 0;
+						for (const [i, { birth, chart }] of charts.entries()) {
+							const want = siHuaMajorNames(chart, palace, hua)
+								.map(s => `${s}${suffix}`)
+								.sort();
+							const got = [...detected[i]].filter(n => n.endsWith(suffix)).sort();
+							assert.deepEqual(got, want, `${label(birth)}：*${suffix} 的名字集合不符`);
+							hits += want.length;
+						}
+						assert.ok(hits > 0, `300 条基准里没有任何 *${suffix}，断言是空转的`);
+					});
+				}
+			});
+
+			// ── 输出结构不变量：与判定逻辑无关，管的是「产出的东西是不是良构」 ──
+			describe("输出结构", () => {
+				const LEVELS = new Set(["excellent", "good", "neutral", "caution"]);
+				const LEGAL_PALACES = new Set([...PALACE_NAMES_ORDER, "身宫"]);
+
+				it("每条 Pattern 的字段完整且取值合法", () => {
+					let total = 0;
+					for (const { birth, chart } of charts) {
+						for (const p of detectPatterns(chart)) {
+							total++;
+							const at = `${label(birth)} 的「${p.name}」`;
+							assert.ok(p.name && typeof p.name === "string", `${at}：name 缺失`);
+							assert.ok(LEVELS.has(p.level), `${at}：level 非法（${p.level}）`);
+							assert.ok(p.description?.length > 0, `${at}：description 为空`);
+							assert.ok(Array.isArray(p.palaces) && p.palaces.length > 0, `${at}：palaces 为空`);
+							for (const pn of p.palaces) {
+								assert.ok(LEGAL_PALACES.has(pn), `${at}：palaces 含非法宫名「${pn}」`);
+							}
+							assert.ok(p.conditions?.required?.length > 0, `${at}：conditions.required 为空`);
+							assert.ok(p.source?.length > 0, `${at}：source 缺失`);
+						}
+					}
+					assert.ok(total > 1000, `300 条盘只产出 ${total} 条格局，明显偏少`);
+				});
+
+				it("同一张盘不返回重名格局", () => {
+					for (const { birth, chart } of charts) {
+						const names = detectPatterns(chart).map(p => p.name);
+						assert.equal(new Set(names).size, names.length, `${label(birth)}：出现重名格局`);
+					}
+				});
+
+				it("没有未被预言机覆盖的格局名（新增格局须同步补预言机）", () => {
+					const covered = new Set(Object.keys(ORACLE));
+					const uncovered = new Set();
+					for (const set of detected) {
+						for (const n of set) {
+							if (covered.has(n)) continue;
+							if (DERIVED_SUFFIXES.some(sfx => n.endsWith(sfx))) continue;
+							uncovered.add(n);
+						}
+					}
+					assert.deepEqual(
+						[...uncovered].sort(),
+						[],
+						`以下格局名没有任何预言机覆盖：${[...uncovered].join("、")}`
+					);
+				});
+			});
 		});
 	});
 });
