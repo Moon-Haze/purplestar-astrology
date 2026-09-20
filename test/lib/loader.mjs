@@ -46,7 +46,7 @@ export { ROOT, ROOT_LABEL };
 // ── 解析钩子：@/ 别名指向内核根，相对导入补 .ts，裸包名从内核根解析 ──
 // `@/xxx` 的 @ 是**内核根**（scripts/）而非 skill 根：`@/ziwei/algorithm` → scripts/ziwei/algorithm.ts。
 // 裸包名重定向的意义：脱离项目运行时从文件位置向上找不到 node_modules，
-// 必须显式把 iztro / lunar-javascript 指到内核根去解析。
+// 必须显式把 iztro / lunar-typescript 指到内核根去解析。
 const ROOT_PARENT_URL = pathToFileURL(resolve(ROOT, "package.json")).href;
 
 registerHooks({
@@ -91,7 +91,7 @@ export async function load(spec) {
 		throw new Error(
 			`无法加载 ${spec}\n  ${err.message}\n` +
 				`  当前内核根：${ROOT}（来源：${ROOT_LABEL}）\n` +
-				`  → Cannot find module 'iztro' / 'lunar-javascript'：依赖未装，在 skill 根执行 npm install\n` +
+				`  → Cannot find module 'iztro' / 'lunar-typescript'：依赖未装，在 skill 根执行 npm install\n` +
 				`  → registerHooks is not a function 或 TS 语法报错：Node 版本过低，需 ≥ 22.15（当前 ${process.version}）`
 		);
 	}

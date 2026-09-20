@@ -2,7 +2,7 @@
 //
 // 这一层测的是**基准样本覆盖不到的 CLI 层逻辑**：样本的 longitude 恒为 120（真太阳时
 // 校正量恒为 0）、hour 只有 0-11（无晚子时）、出生信息恒为公历。这些逻辑全在 CLI 层，
-// 故无 golden 基准可依，用手工基准 + 独立换算（lunar-javascript）互证。
+// 故无 golden 基准可依，用手工基准 + 独立换算（lunar-typescript）互证。
 //
 // 本文件另有一条**防漂移断言**：内核直调结果必须等于 CLI --json 的输出。
 // test/lib/loader.mjs 是 scripts/purple-star.ts 加载机制的副本，这条断言盯着两者不分叉。
@@ -200,9 +200,9 @@ describe("CLI 端到端", () => {
 			assert.equal(o.chart.lunarInfo.isLeapMonth, false);
 		});
 
-		it("闰月用 --leap 指定，且与 lunar-javascript 的独立换算一致", async () => {
-			// 1960 年闰六月。用 lunar-javascript 独立算出该闰月首日的公历日期作为期望值。
-			const { Lunar } = await import("lunar-javascript");
+		it("闰月用 --leap 指定，且与 lunar-typescript 的独立换算一致", async () => {
+			// 1960 年闰六月。用 lunar-typescript 独立算出该闰月首日的公历日期作为期望值。
+			const { Lunar } = await import("lunar-typescript");
 			const expected = Lunar.fromYmd(1960, -6, 1).getSolar();
 			const o = await cliJson(["--lunar", "1960-06-01", "--leap", "--branch", "5", "--gender", "male"]);
 			assert.equal(o.chart.birthInfo.year, expected.getYear());
@@ -214,7 +214,7 @@ describe("CLI 端到端", () => {
 
 		it("公历与等价农历排出同一张盘", async () => {
 			const viaSolar = await cliJson(["--date", "1988-08-08", "--branch", "5", "--gender", "male"]);
-			const { Lunar } = await import("lunar-javascript");
+			const { Lunar } = await import("lunar-typescript");
 			const l = Lunar.fromYmd(1988, 6, 26);
 			const s = l.getSolar();
 			const viaLunar = await cliJson([

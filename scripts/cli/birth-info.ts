@@ -4,7 +4,7 @@
  * 拆自 purple-star.ts。这一层是一整个内聚单元：输入是 `CliArgs`，输出是 `BirthInfoResult`，
  * 中间的复杂之处全在「真太阳时」与「农历换算」两件事上，与渲染、命令分发无关。
  *
- * 依赖：./args（参数表）、./render（日期格式化）、@/ziwei/{constants,cities}、lunar-javascript
+ * 依赖：./args（参数表）、./render（日期格式化）、@/ziwei/{constants,cities}、lunar-typescript
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
  */
@@ -14,7 +14,7 @@ import { fmtDate } from "./render";
 import type { BirthInfo } from "@/ziwei/types";
 import { BRANCHES, SHICHEN } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
-import { Lunar, type Solar } from "lunar-javascript";
+import { Lunar, type Solar } from "lunar-typescript";
 
 /**
  * 时辰支索引 → `"巳时(09:00-11:00)"`。
@@ -344,7 +344,7 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 		if (ld < 1 || ld > 30) throw new Error(`农历日期应为 1-30，收到：${ld}`);
 		let solar: Solar;
 		try {
-			// lunar-javascript 约定：闰月用负数月份表示；该年若无此闰月会抛 "wrong lunar year ..."
+			// lunar-typescript 约定：闰月用负数月份表示；该年若无此闰月会抛 "wrong lunar year ..."
 			solar = Lunar.fromYmd(ly, isLeap ? -lm : lm, ld).getSolar();
 		} catch (err) {
 			const hint = isLeap

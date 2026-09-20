@@ -8,7 +8,7 @@
  */
 
 import { astro } from "iztro";
-import { Solar } from "lunar-javascript";
+import { Solar } from "lunar-typescript";
 import type { BirthInfo, LunarInfo, Star, Palace, DaXian, DaXianSiHua, ZiweiChart } from "./types";
 import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "./constants";
 // 飞星派工具仅供导出，不再在排盘时调用（倪师《天纪 03》：四化星永远固定不动）
@@ -57,7 +57,7 @@ function projectPalaceName(iztroName: string): string {
  * 只服务输出层展示与 {@link generateChart} 里虚岁的农历年换算，**不参与安星**
  * （iztro 的排盘入参本身就是公历）。
  *
- * `lunar-javascript` 用**负数月份**表示闰月，故月份取 `Math.abs` 后另以
+ * `lunar-typescript` 用**负数月份**表示闰月，故月份取 `Math.abs` 后另以
  * `isLeapMonth` 单独标记。年干支靠 `indexOf` 查表，未命中兜底 0（甲 / 子）。
  */
 export function getLunarInfo(year: number, month: number, day: number): LunarInfo {

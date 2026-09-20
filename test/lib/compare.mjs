@@ -14,7 +14,7 @@
 //   4. 宫名口径：样本存的是 iztro 的名（…/仆役/…），本项目存的是倪师《天纪》的名
 //      （…/交友宫/…）。翻译**只施加在 baseline 一侧**，见 normalizePalaceName。
 // 农历换算。刻意在此**独立**调用，不复用内核的 getLunarInfo —— 见 expectedAge 的注释。
-import { Solar } from "lunar-javascript";
+import { Solar } from "lunar-typescript";
 
 import { loadConstants } from "./loader.mjs";
 

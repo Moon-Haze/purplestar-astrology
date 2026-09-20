@@ -95,7 +95,7 @@ export function buildStarSiHuaMap(stemIndex: number): Record<string, SiHua> {
  *
  * ⚠️ **按公历年直接取模，不做农历年或节气的边界切换**：1–2 月出生者，其年柱按农历
  * 口径可能仍属上一农历年 —— 此时本函数与 `algorithm.ts` 的 `getLunarInfo` 返回的
- * `lunarInfo.yearStem`（由 `lunar-javascript` 算出的农历年干）会**相差一位**。
+ * `lunarInfo.yearStem`（由 `lunar-typescript` 算出的农历年干）会**相差一位**。
  * 两者用途不同：本函数服务 `cli/commands.ts` 的生年四化展示，`lunarInfo.yearStem`
  * 只服务输出层。
  */

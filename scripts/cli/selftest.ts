@@ -31,7 +31,7 @@ import { STEMS, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { HEMING_METHODOLOGY, STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU } from "@/ziwei/heming-knowledge";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
 import { TIANJI_MODULES, RENJI_MODULES, DIJI_MODULES } from "@/nihai/index";
-import { Lunar } from "lunar-javascript";
+import { Lunar } from "lunar-typescript";
 
 /**
  * `selftest` 命令：跑一组排盘不变量与知识源可用性断言，返回逐项报告。

@@ -71,7 +71,7 @@ export interface LunarInfo {
 	/**
 	 * 农历月（1–12），**恒为正数**。
 	 *
-	 * ⚠️ 闰月不在此处用负号表达：`lunar-javascript` 的 `getMonth()` 确实以**负数月份**表示闰月，
+	 * ⚠️ 闰月不在此处用负号表达：`lunar-typescript` 的 `getMonth()` 确实以**负数月份**表示闰月，
 	 * 但 `getLunarInfo` 取了 `Math.abs`，闰月与否单独由 {@link isLeapMonth} 标记。
 	 */
 	lunarMonth: number;
@@ -81,7 +81,7 @@ export interface LunarInfo {
 	yearStem: number;
 	/** 年柱地支索引 0–11（0=子 … 11=亥）。查表未命中时兜底 0 */
 	yearBranch: number;
-	/** 该农历月是否为闰月（即 `lunar-javascript` 负数月份口径的布尔化） */
+	/** 该农历月是否为闰月（即 `lunar-typescript` 负数月份口径的布尔化） */
 	isLeapMonth: boolean;
 }
 

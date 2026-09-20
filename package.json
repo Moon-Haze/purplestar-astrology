@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "iztro": "2.6.1",
-    "lunar-javascript": "1.7.7"
+    "lunar-typescript": "1.8.6"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",

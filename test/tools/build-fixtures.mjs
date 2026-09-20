@@ -61,7 +61,7 @@ async function main() {
 		process.exit(1);
 	}
 
-	const { LunarYear, Lunar } = await import("lunar-javascript");
+	const { LunarYear, Lunar } = await import("lunar-typescript");
 	const samples = [];
 	const stats = { months: new Set(), hours: new Set(), genders: new Set(), wuxing: new Set(), leapYears: [] };
 

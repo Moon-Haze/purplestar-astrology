@@ -155,7 +155,7 @@ const ROOT: string = rootFound;
  * @remarks
  * 该文件通常不存在，无妨 —— Node 会自它向上逐级查找 `node_modules`，最终命中 skill 根的
  * `node_modules/`。这条重定向的意义在于：脱离项目运行时，从文件位置向上找不到 `node_modules`，
- * 必须显式把 `iztro` / `lunar-javascript` 指到当前内核根去解析。
+ * 必须显式把 `iztro` / `lunar-typescript` 指到当前内核根去解析。
  */
 const ROOT_PARENT_URL = pathToFileURL(resolve(ROOT, "package.json")).href;
 
@@ -241,7 +241,7 @@ async function load<T>(spec: string): Promise<T> {
 		console.error(
 			`[ziwei 启动失败] 无法加载 ${spec}\n  ${(err as Error).message}\n` +
 				`  当前内核根：${ROOT}（来源：${ROOT_LABEL}）\n` +
-				`  → Cannot find module 'iztro' / 'lunar-javascript'：依赖未装。\n` +
+				`  → Cannot find module 'iztro' / 'lunar-typescript'：依赖未装。\n` +
 				`     在 skill 根（${resolve(ROOT, "..")}）执行 npm install 即可（依赖清单见该目录 package.json）\n` +
 				`  → registerHooks is not a function 或 TS 语法报错：Node 版本过低，需 ≥ 22.15（当前 ${process.version}）`
 		);
@@ -258,7 +258,7 @@ const { STEMS, BRANCHES, SHICHEN, STAR_DESCRIPTIONS } =
 	await load<ConstantsModule>("@/ziwei/constants");
 const { PROVINCES } = await load<CitiesModule>("@/ziwei/cities");
 const { searchClassics } = await load<ClassicsModule>("@/classics/index");
-const { Lunar } = await load<typeof import("lunar-javascript")>("lunar-javascript");
+const { Lunar } = await load<typeof import("lunar-typescript")>("lunar-typescript");
 
 const { parseArgs } = await load<ArgsModule>("@/cli/args");
 const { COMMANDS } = await load<CommandsModule>("@/cli/commands");
