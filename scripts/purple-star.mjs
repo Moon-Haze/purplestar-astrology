@@ -139,7 +139,25 @@ const { generateChart } = await load("@/ziwei/algorithm");
 const { detectPatterns, getMingGongSummary } = await load("@/ziwei/patterns");
 const { getSiHuaByStem, getYearStemIndex, getLiuNianSiHua, getLiuYueSiHua } =
 	await load("@/ziwei/sihua");
-const { STEMS, BRANCHES, SHICHEN, STAR_DESCRIPTIONS } = await load("@/ziwei/constants");
+const { STEMS, BRANCHES, SHICHEN, STAR_DESCRIPTIONS, IZTRO_TO_PROJECT_PALACE } = await load(
+	"@/ziwei/constants"
+);
+
+// ── `--focus` 的宫名别名表 ──
+//
+// 宫名口径已改为项目本位（倪师《天纪》体系，见 constants.ts 的 IZTRO_TO_PROJECT_PALACE），
+// 但用户嘴里说的、别的排盘软件里写的仍是老叫法。这里把四种写法都收进来，
+// 免得模型照用户原话传参却聚焦失败：
+//     项目全名（交友宫）· 口语简称（交友，去「宫」字）· iztro 旧口径（仆役）· 旧口径加宫（仆役宫）
+// 地支名（子/丑/…）不在此表，由匹配处单独比对。
+// 整张表从 IZTRO_TO_PROJECT_PALACE 派生，故不会与内核映射表漂移。
+const FOCUS_ALIASES = new Map();
+for (const [iztroName, projectName] of Object.entries(IZTRO_TO_PROJECT_PALACE)) {
+	FOCUS_ALIASES.set(projectName, projectName); // 交友宫
+	FOCUS_ALIASES.set(projectName.replace(/宫$/, ""), projectName); // 交友
+	FOCUS_ALIASES.set(iztroName, projectName); // 仆役
+	FOCUS_ALIASES.set(iztroName + "宫", projectName); // 仆役宫
+}
 const { PROVINCES } = await load("@/ziwei/cities");
 const {
 	HEMING_METHODOLOGY,
@@ -903,13 +921,16 @@ function cmdAnalyze(args) {
 
 	// 指定宫位深挖
 	if (args.focus) {
+		// 先把输入归一化到项目口径再比：交友宫 / 交友 / 仆役 / 仆役宫 四种写法都能命中
+		const want = FOCUS_ALIASES.get(args.focus);
 		const target = chart.palaces.find(
-			p => p.name === args.focus || BRANCHES[p.branch] === args.focus
+			p => p.name === want || BRANCHES[p.branch] === args.focus
 		);
 		if (!target) {
 			out.push(
 				"",
-				`【聚焦失败】找不到宫位「${args.focus}」。可用：${chart.palaces.map(p => p.name).join("、")}`
+				`【聚焦失败】找不到宫位「${args.focus}」。可用：${chart.palaces.map(p => p.name).join("、")}`,
+				"（也接受口语简称与旧写法，如「交友」「仆役」；或直接给地支名）"
 			);
 		} else {
 			out.push("", `【聚焦：${target.name}】`);
@@ -923,6 +944,25 @@ function cmdAnalyze(args) {
 	return out.join("\n");
 }
 
+/**
+ * 按**项目口径**的宫名取宫位，取不到当场抛错。
+ *
+ * 这里原先写的是 `find(p => p.name === "夫妻")`（iztro 旧口径）。宫名改为项目口径后
+ * 它会静默返回 undefined，而调用点紧接着就读 `.branch` —— 合盘会以 TypeError 崩掉，
+ * 报错还指不到真正的原因（「Cannot read properties of undefined」）。宫名是耦合点，
+ * 取不到就该当场说清是哪个名字、当前的十二宫叫什么。
+ */
+function mustPalace(chart, palaceName) {
+	const p = chart.palaces.find(x => x.name === palaceName);
+	if (!p) {
+		throw new Error(
+			`找不到「${palaceName}」宫 —— 宫名口径与 constants.ts 的 IZTRO_TO_PROJECT_PALACE 不一致？\n` +
+				`  该盘实际十二宫：${chart.palaces.map(x => x.name).join("、")}`
+		);
+	}
+	return p;
+}
+
 function cmdHeming(args) {
 	const a = buildBirthInfo(args, "a-");
 	const b = buildBirthInfo(args, "b-");
@@ -931,10 +971,10 @@ function cmdHeming(args) {
 
 	const mingA = ca.palaces.find(p => p.branch === ca.mingGongBranch);
 	const mingB = cb.palaces.find(p => p.branch === cb.mingGongBranch);
-	const fuqiA = ca.palaces.find(p => p.name === "夫妻");
-	const fuqiB = cb.palaces.find(p => p.name === "夫妻");
-	const fudeA = ca.palaces.find(p => p.name === "福德");
-	const fudeB = cb.palaces.find(p => p.name === "福德");
+	const fuqiA = mustPalace(ca, "夫妻宫");
+	const fuqiB = mustPalace(cb, "夫妻宫");
+	const fudeA = mustPalace(ca, "福德宫");
+	const fudeB = mustPalace(cb, "福德宫");
 
 	const majors = p => (p?.stars ?? []).filter(s => s.type === "major").map(s => s.name);
 	const mA = majors(mingA),

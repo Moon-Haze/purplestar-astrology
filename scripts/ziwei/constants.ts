@@ -36,6 +36,38 @@ export const PALACE_NAMES_ORDER = [
 	"父母宫",
 ];
 
+/**
+ * iztro 宫名 → 本项目宫名（倪师《天纪》体系）。
+ *
+ * 为什么需要这张表：`algorithm.ts` 原先写的是 `name: p.name`，宫名**直通 iztro**，
+ * 于是 iztro 的第 8 宫「仆役」直接漏进了本项目的输出。而倪师《天纪》原文
+ * （`nihai/tianji.ts`）与本文件上方的 `PALACE_NAMES_ORDER` 用的都是「交友」——
+ * 项目自己的口径早就定好了，只是从未生效。经这张表映射，等于把宫名收回项目手里。
+ *
+ * 与 `PALACE_NAMES_ORDER` 的分工：这里是**无序的词典**（按 iztro 的原始名索引），
+ * 那里是**有序的序列**（按命宫顺时针排）。两者必须同集合，且互为对照 ——
+ * `test/invariants.test.mjs` 用后者验证前者，正是为了防「映射表写错了、
+ * 比对器跟着一起错」的同源盲区（见 test/README.md「复读机」那条教训）。
+ *
+ * ⚠️ 增删条目时同步 `PALACE_NAMES_ORDER`，两边必须同集合。
+ * ⚠️ 未命中的宫名一律**抛错**而非回退（见 algorithm.ts 的 projectPalaceName）——
+ *    宫名是十二宫一览、--focus、三方四正、大限、格局判定的公共索引，不能静默降级。
+ */
+export const IZTRO_TO_PROJECT_PALACE: Record<string, string> = {
+	命宫: "命宫",
+	兄弟: "兄弟宫",
+	夫妻: "夫妻宫",
+	子女: "子女宫",
+	财帛: "财帛宫",
+	疾厄: "疾厄宫",
+	迁移: "迁移宫",
+	仆役: "交友宫",
+	官禄: "官禄宫",
+	田宅: "田宅宫",
+	福德: "福德宫",
+	父母: "父母宫",
+};
+
 // 纳音五行（30组干支对的五行）
 export const NAYIN_ELEMENTS = [
 	"金",

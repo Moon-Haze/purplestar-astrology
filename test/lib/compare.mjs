@@ -3,7 +3,7 @@
 // 拿本项目的 `generateChart()` 输出，与 toolkit 样本里的 `chart` 逐字段比。
 // 产出**结构化 diff 列表**而非布尔值 —— 300 条基准里某条失败时要能一眼看出是哪个字段。
 //
-// 三处归一化（都是实测出来的真实差异，不是防御性代码）：
+// 四处归一化（都是实测出来的真实差异，不是防御性代码）：
 //   1. 空值形态：本项目无四化的星是显式 `siHua: undefined`，样本则该键不存在；
 //      两边无庙旺的星都可能给 `""`。一律视为「无此属性」并忽略键的存在性差异。
 //   2. 字段超集：本项目 `Palace` 比样本多出 `oppositeBranch` / `isEmpty`
@@ -11,8 +11,39 @@
 //      这些是本项目新增的借宫结构化字段，样本没有，故只比共有字段。
 //   3. 顺序：两边 `palaces` 数组顺序实测一致（都是寅起），但**按 branch 建索引**比对，
 //      不依赖数组下标 —— 将来顺序若有变化也不会误判。
+//   4. 宫名口径：样本存的是 iztro 的名（…/仆役/…），本项目存的是倪师《天纪》的名
+//      （…/交友宫/…）。翻译**只施加在 baseline 一侧**，见 normalizePalaceName。
 // 农历换算。刻意在此**独立**调用，不复用内核的 getLunarInfo —— 见 expectedAge 的注释。
 import { Solar } from "lunar-javascript";
+
+import { loadConstants } from "./loader.mjs";
+
+// 宫名映射**从内核取**，不在此另抄一份。
+// 宫名是项目自己的词汇，`scripts/ziwei/constants.ts` 是它唯一的定义处；比对器只是要把
+// 基准样本的 iztro 词汇翻译成项目词汇才比得起来，本身对宫名没有立场。
+// 另起一份转录只会制造第二个真相源 —— 认表错误的任务交给下面这条注释指向的预言机。
+//
+// ⚠️ 用顶层 await 而非静态 import：ESM 的静态 import 在 loader.mjs 注册解析钩子
+//    **之前**就完成了链接，那时 `@/ziwei/constants`（.ts）还解析不了。
+//
+// ⚠️⚠️ 共用同一张表意味着：**表若被写错（比如把「仆役」映射成「官禄宫」），
+//    本文件与内核会一起错，层 1 照旧全绿**。这与 test/README.md 记录的 02 号历史
+//    事故是同一个形状（比对器与内核同源同错）。堵这个盲区的是层 3 的两条**不读本表**
+//    的预言机：invariants.test.mjs 的「iztro 直连词法」与「十二宫偏移位置」。
+const { IZTRO_TO_PROJECT_PALACE } = await loadConstants();
+
+/**
+ * 把**基准样本**的宫名翻成项目口径。
+ *
+ * ⚠️ 只对 baseline 一侧调用，**绝不碰 actual** —— 这是本函数唯一要紧的事。
+ *    若两侧都归一化，「内核忘记映射」（有人回退 algorithm.ts 的 projectPalaceName）
+ *    会让 expected 与 actual 一起退回 iztro 名，差异被吞、回归静默通过。
+ *    单向归一化下同一个回归会报 `expected=夫妻宫, actual=夫妻`，又准又可读。
+ *
+ * 未命中原样返回而不抛错：iztro 哪天改了宫名，应当表现为一条**可读的 diff**，
+ * 而不是把整个套件炸成一堆异常。
+ */
+const normalizePalaceName = v => IZTRO_TO_PROJECT_PALACE[v] ?? v;
 
 // 十二地支。刻意在此独立定义而不从内核 constants.ts 取：比对器是同步函数，
 // 而内核模块是异步加载的；且这份表是常量，不随内核演进而变。
@@ -144,6 +175,20 @@ export function compareChart(actual, baseline, opts = {}) {
 		}
 		for (const f of SHARED_PALACE_FIELDS) {
 			if (f === "branch") continue;
+			if (f === "name") {
+				// 宫名唯一需要翻译（见 normalizePalaceName）。翻译后仍是**严格相等**比对，
+				// 没有跳过任何字段 —— 性质是词汇翻译，不是放宽断言。
+				const want = normalizePalaceName(bP.name);
+				if (aP.name !== want) {
+					push(
+						`palaces[${label}].name`,
+						want,
+						aP.name,
+						want !== bP.name ? `基准原文「${bP.name}」是 iztro 旧口径` : undefined
+					);
+				}
+				continue;
+			}
 			const a = f === "daXianAge" ? JSON.stringify(aP[f] ?? null) : aP[f];
 			const bb = f === "daXianAge" ? JSON.stringify(bP[f] ?? null) : bP[f];
 			if (a !== bb) push(`palaces[${label}].${f}`, bP[f] ?? null, aP[f] ?? null);
@@ -159,6 +204,21 @@ export function compareChart(actual, baseline, opts = {}) {
 	} else {
 		for (let i = 0; i < bD.length; i++) {
 			for (const f of DAXIAN_FIELDS) {
+				if (f === "palaceName") {
+					// 同 palaces[].name：翻译 baseline 一侧后再严格相等比对
+					const want = normalizePalaceName(bD[i].palaceName);
+					if (aD[i].palaceName !== want) {
+						push(
+							`daXians[${i}].palaceName`,
+							want,
+							aD[i].palaceName,
+							want !== bD[i].palaceName
+								? `基准原文「${bD[i].palaceName}」是 iztro 旧口径`
+								: undefined
+						);
+					}
+					continue;
+				}
 				if (aD[i][f] !== bD[i][f]) push(`daXians[${i}].${f}`, bD[i][f], aD[i][f]);
 			}
 		}

@@ -314,7 +314,7 @@ function detectShaPoLang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 		description:
 			"七杀、破军、贪狼三星会命，开创闯荡之命格。一生变动多、不甘平凡，宜创业、军警、业务、销售。中年后才能稳定守成，年轻时易因冲动失利。",
 		palaces: getSanFangPalaces(chart)
-			.filter(p => has.includes(getMajorStarNames(p)[0]))
+			.filter(p => has.some(s => getMajorStarNames(p).includes(s)))
 			.map(p => p.name),
 		conditions: { required, bonus, breaking },
 		source: "《紫微斗数全书·杀破狼》",
@@ -932,7 +932,7 @@ function detectTianMaRuMing(chart: ZiweiChart, patterns: Pattern[]) {
 
 /** 化禄入财：财帛宫主星化禄 */
 function detectHuaLuRuCai(chart: ZiweiChart, patterns: Pattern[]) {
-	const cai = chart.palaces.find(p => p.name === "财帛");
+	const cai = chart.palaces.find(p => p.name === "财帛宫");
 	if (!cai) return;
 	const luStar = cai.stars.find(s => s.type === "major" && s.siHua === "禄");
 	if (!luStar) return;
@@ -940,7 +940,7 @@ function detectHuaLuRuCai(chart: ZiweiChart, patterns: Pattern[]) {
 		name: "化禄入财",
 		level: "good",
 		description: `${luStar.name}化禄入财帛宫，主财源畅通、收入稳定。倪师讲化禄是「正财」象征——这个化禄星所代表的能力（${luStar.name}的核心特质）是你赚钱的主轴。配禄存或天马则财源更广。`,
-		palaces: ["财帛"],
+		palaces: ["财帛宫"],
 		conditions: { required: [`${luStar.name}化禄入财帛宫`] },
 		source: "《紫微斗数全书·四化论》",
 	});
@@ -948,7 +948,7 @@ function detectHuaLuRuCai(chart: ZiweiChart, patterns: Pattern[]) {
 
 /** 化权入官：官禄宫主星化权 */
 function detectHuaQuanRuGuan(chart: ZiweiChart, patterns: Pattern[]) {
-	const guan = chart.palaces.find(p => p.name === "官禄");
+	const guan = chart.palaces.find(p => p.name === "官禄宫");
 	if (!guan) return;
 	const quanStar = guan.stars.find(s => s.type === "major" && s.siHua === "权");
 	if (!quanStar) return;
@@ -956,7 +956,7 @@ function detectHuaQuanRuGuan(chart: ZiweiChart, patterns: Pattern[]) {
 		name: "化权入官",
 		level: "good",
 		description: `${quanStar.name}化权入官禄宫，主事业有掌控力、能担当独当一面的职位。化权代表权力与执行力——${quanStar.name}化权说明你在事业上能成为决策者或核心执行者，宜走管理或技术权威路线。`,
-		palaces: ["官禄"],
+		palaces: ["官禄宫"],
 		conditions: { required: [`${quanStar.name}化权入官禄宫`] },
 		source: "《紫微斗数全书·四化论》",
 	});

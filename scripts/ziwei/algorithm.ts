@@ -6,9 +6,33 @@
 import { astro } from "iztro";
 import { Solar } from "lunar-javascript";
 import type { BirthInfo, LunarInfo, Star, Palace, DaXian, DaXianSiHua, ZiweiChart } from "./types";
-import { BRANCHES, STEMS } from "./constants";
+import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "./constants";
 // 飞星派工具仅供导出，不再在排盘时调用（倪师《天纪 03》：四化星永远固定不动）
 // import { detectSelfSihua, getSiHuaByStem } from './sihua';
+
+// ─── 宫名口径 ────────────────────────────────────────────────────
+/**
+ * 把 iztro 的宫名翻成本项目口径（倪师《天纪》体系）。
+ *
+ * iztro 第 8 宫叫「仆役」，倪师体系叫「交友宫」；其余 11 宫只是统一补上「宫」字。
+ * 映射表在 `constants.ts` 的 `IZTRO_TO_PROJECT_PALACE`。
+ *
+ * ⚠️ 未命中时**抛错，不回退到原名**。回退看着更「稳」，其实是让一个未知宫名静默
+ *    流进输出 —— 而宫名是十二宫一览、`--focus`、三方四正、大限、格局判定的公共索引，
+ *    错一个名字就是错一片下游。这与 `purple-star.mjs` 顶部 REQUIRED_EXPORTS 自检
+ *    是同一个理念：**宁可启动失败，也不静默产出错盘**。
+ */
+function projectPalaceName(iztroName: string): string {
+	const mapped = IZTRO_TO_PROJECT_PALACE[iztroName];
+	if (!mapped) {
+		throw new Error(
+			`未知的 iztro 宫名「${iztroName}」—— IZTRO_TO_PROJECT_PALACE 未覆盖。` +
+				`若 iztro 改了宫名口径，请同步 scripts/ziwei/constants.ts 的映射表` +
+				`（并同步 PALACE_NAMES_ORDER 与 test/lib/compare.mjs 的说明）。`
+		);
+	}
+	return mapped;
+}
 
 // ─── 农历信息（兼容保留）────────────────────────────────────────
 export function getLunarInfo(year: number, month: number, day: number): LunarInfo {
@@ -134,7 +158,7 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 		return {
 			branch: branch >= 0 ? branch : 0,
 			stem: stem >= 0 ? stem : 0,
-			name: p.name as string,
+			name: projectPalaceName(p.name as string),
 			stars: allStars,
 			daXianAge: range ? ([range[0], range[1]] as [number, number]) : undefined,
 			isMingGong: p.name === "命宫",
