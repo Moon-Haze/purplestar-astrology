@@ -56,7 +56,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 ├── SKILL.md              # 技能定义（Claude Code 入口）
 ├── README.md             # 本文件
 ├── LICENSE               # MIT
-├── package.json          # 声明 iztro / lunar-javascript
+├── package.json          # 声明 iztro / lunar-typescript
 ├── package-lock.json     # 锁定精确版本
 ├── tsconfig.json         # 仅供 npm run typecheck，不参与运行
 ├── scripts/              # CLI 与排盘内核同处一层（内核根）
@@ -72,7 +72,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 ## 环境要求
 
 - **Node ≥ 22.15** —— 依赖 `module.registerHooks` 与原生 TypeScript 类型擦除（开发环境为 v26）。**直接运行不需要编译**，`.ts` 由 Node 自己擦类型。
-- 依赖 `iztro` 2.6.1、`lunar-javascript` 1.7.7，由 `package-lock.json` 锁定，保证排盘结果不因环境分叉。
+- 依赖 `iztro` 2.6.1、`lunar-typescript` 1.8.6，由 `package-lock.json` 锁定，保证排盘结果不因环境分叉。
 - 开发依赖 `typescript` / `@types/node`，只服务 `npm run typecheck`；不装也照样排盘。
 
 ## 数据来源
@@ -94,7 +94,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 
 抽取时只保留了排盘与解读必需的部分——未含 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts` 以及整个 `lib/seo/`，那些是站点侧功能。
 
-上游的 `lunar-javascript.d.ts` 类型声明则一并保留了下来（在 `scripts/ziwei/`）：`lunar-javascript` 这个包自身不带类型，缺了它 `tsc` 会报 TS7016。纯类型文件，运行时被忽略，不影响排盘。
+上游曾一并带上手写的 `lunar-javascript.d.ts` 类型声明（`lunar-javascript` 包自身不带类型，缺了它 `tsc` 会报 TS7016）。本项目现已改用同作者的 TypeScript 移植版 `lunar-typescript`，该声明随之删除——`lunar-typescript` 自带 `dist/index.d.ts`，`tsc` 直接取得到类型，无需手写。
 
 内核在本项目内独立演化，日常改动直接改 `scripts/` 下的对应文件，不存在需要同步的副本。
 

@@ -223,8 +223,8 @@ node scripts/purple-star.ts heming \
 ├── SKILL.md                ← 技能定义（Claude Code 入口）
 ├── README.md               ← 人类可读的项目说明
 ├── LICENSE                 ← MIT
-├── package.json            ← 声明 iztro / lunar-javascript
-├── package-lock.json       ← 锁定精确版本（iztro 2.6.1 / lunar-javascript 1.7.7）
+├── package.json            ← 声明 iztro / lunar-typescript
+├── package-lock.json       ← 锁定精确版本（iztro 2.6.1 / lunar-typescript 1.8.6）
 ├── tsconfig.json           ← 仅供 IDE / tsc 用（含 @/* → scripts/* 映射），运行时不依赖
 ├── scripts/                ← CLI 与排盘内核同处一层（内核根）★ 排盘只需这一层
 │   ├── purple-star.ts      ← CLI 入口（引导层：定位内核根 → 注册 TS 钩子 → 分发命令）
@@ -261,12 +261,12 @@ cp -r <本仓库> ~/.claude/skills/purplestar-astrology
 cd ~/.claude/skills/purplestar-astrology && npm install
 ```
 
-`package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-javascript 1.7.7），排盘结果不会因环境不同而分叉。
+`package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-typescript 1.8.6），排盘结果不会因环境不同而分叉。
 
-**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中约 6,600 行自定义内核代码（按 `scripts/ziwei`、`classics`、`nihai` 下的 `.ts` 计，约 6,677 行；不含 `lunar-javascript.d.ts` 类型声明，也不含 CLI 的 `scripts/purple-star.ts` 与 `scripts/cli/`）——格局库（`patterns.ts`，约 1,200 行）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
+**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中约 8,300 行自定义内核代码（按 `scripts/ziwei`、`classics`、`nihai` 下的 `.ts` 计，约 8,295 行；不含 CLI 的 `scripts/purple-star.ts` 与 `scripts/cli/`）——格局库（`patterns.ts`，约 1,600 行）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
 
 > 行数只给量级、不给精确值：内核在本仓库持续演化，精确数字必然漂移。要当前值就现场数：
-> `find scripts -name '*.ts' ! -name 'lunar-javascript.d.ts' | xargs wc -l | tail -1`
+> `find scripts/ziwei scripts/classics scripts/nihai -name '*.ts' | xargs wc -l | tail -1`
 
 ### 内核来源
 
@@ -274,14 +274,14 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 
 抽取时只保留了排盘与解读必需的部分——未含站点侧的 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts` 与 `lib/seo/`。
 
-上游的 `lunar-javascript.d.ts` 类型声明则一并保留了下来（`scripts/ziwei/`）：`lunar-javascript` 包自身不带类型，缺了它 `tsc` 会报 TS7016。纯类型文件，运行时被类型擦除忽略，不影响排盘。
+上游曾一并带上手写的 `lunar-javascript.d.ts` 类型声明（`lunar-javascript` 包自身不带类型，缺了它 `tsc` 会报 TS7016）。本项目现已改用同作者的 TypeScript 移植版 `lunar-typescript`，该声明随之删除——`lunar-typescript` 自带 `dist/index.d.ts`，`tsc` 直接取得到类型，无需手写。
 
 内核在本 skill 内独立演化，改内核直接改 `scripts/` 下的对应文件，不存在需要同步的副本。
 
 ## 若脚本报错
 
 - `[ziwei 启动失败] 找不到排盘内核` → skill 目录不完整，`<skill>/scripts/` 下的内核缺失（拷贝时漏带）。从本仓库补回 `ziwei/`、`classics/`、`nihai/` 三个内核目录，或用 `ZIWEI_ROOT=<含 ziwei/ 的目录>` 指定内核位置。
-- `Cannot find module 'iztro'` / `'lunar-javascript'` → 依赖未装。**看报错里的「当前内核根」**，在该目录下 `npm install`。
+- `Cannot find module 'iztro'` / `'lunar-typescript'` → 依赖未装。**看报错里的「当前内核根」**，在该目录下 `npm install`。
 - `registerHooks is not a function` 或 TS 语法报错 → Node 版本过低，需 ≥ 22.15（本项目开发环境为 v26）。
 - `[ziwei 启动自检失败]` → 内核被重构、关键导出改名或删除。核对 `scripts/cli/` 各模块的 import 列表与 `scripts/` 下内核的实际导出是否对得上。
 - `未收录城市` → 改用 `--lng` 直接给经度。

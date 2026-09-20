@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 没有构建、没有 lint（`typecheck` 是类型检查，不是 lint），排盘与解读全部经由 CLI 入口（`npm test` 只跑测试，不参与运行）：
 
 ```bash
-npm install        # 装依赖（iztro / lunar-javascript）
+npm install        # 装依赖（iztro / lunar-typescript）
 
 # 主力命令：命盘 + 十二宫 + 格局 + 四化 + 大限，解读所需数据一次给全
 node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male
@@ -66,7 +66,7 @@ npm run typecheck
 `scripts/purple-star.ts` 用 Node ≥ 22.15 的 `module.registerHooks` 注册了解析钩子（见文件开头的 `registerHooks({...})`）：
 
 - `@/xxx` → 解析到 `<内核根>/xxx`，自动补 `.ts` 或 `/index.ts`。**内核根是 `scripts/` 而非 skill 根**，所以 `@/ziwei/algorithm` = `scripts/ziwei/algorithm.ts`
-- **裸包名**（`iztro`、`lunar-javascript`）→ 自内核根向上查找 `node_modules` 解析，而非 cwd 或文件所在位置
+- **裸包名**（`iztro`、`lunar-typescript`）→ 自内核根向上查找 `node_modules` 解析，而非 cwd 或文件所在位置
 
 因此脚本可从**任意 cwd** 运行，**运行**既不需要构建步骤，也不需要 `tsconfig.json`。
 
@@ -125,7 +125,7 @@ npm run typecheck
 
 ## 依赖变更的后果
 
-`iztro` 是排盘引擎，**升级它会改变排盘结果**。`package-lock.json` 已提交以锁定精确版本（iztro 2.6.1 / lunar-javascript 1.7.7）。动过依赖后先跑 `selftest` **与 `npm test`** 再交付解读。
+`iztro` 是排盘引擎，**升级它会改变排盘结果**。`package-lock.json` 已提交以锁定精确版本（iztro 2.6.1 / lunar-typescript 1.8.6）。动过依赖后先跑 `selftest` **与 `npm test`** 再交付解读。
 
 基准样本是 iztro **2.5.8** 拍的快照，与本项目的 2.6.1 有且仅有两处已知差异（太阳/太阴在酉宫的亮度，见 `test/lib/compare.mjs` 的白名单）。升级 iztro 后若出现白名单之外的差异，`npm test` 会变红——**这是要你显式审阅行为变化的信号，不是测试该修的 bug**。流程见 [test/README.md](../test/README.md)。
 
