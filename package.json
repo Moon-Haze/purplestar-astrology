@@ -6,10 +6,15 @@
   "description": "紫微斗数排盘与解读 skill 的运行时依赖。排盘内核是 ziwei-master 项目的私有源码（未发布到 npm），已直接置于 scripts/；本文件只声明内核所需的 npm 包。",
   "scripts": {
     "test": "node --test \"test/**/*.test.mjs\"",
-    "test:corpus": "node test/tools/full-corpus.mjs"
+    "test:corpus": "node test/tools/full-corpus.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "iztro": "2.6.1",
     "lunar-javascript": "1.7.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2"
   }
 }
