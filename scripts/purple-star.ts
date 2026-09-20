@@ -25,6 +25,8 @@
  * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
  * 帮助：node scripts/purple-star.ts help
  * 自检：node scripts/purple-star.ts selftest
+ *
+ * @packageDocumentation
  */
 
 import { registerHooks } from "node:module";
@@ -41,7 +43,16 @@ import { dirname, resolve } from "node:path";
 //    `scripts/cli/` 下的自家子模块也不行（它们静态 import 内核，同样会触发提前加载）。
 //    凡是要用的值，一律走下面的 load<T>()。这是本文件最容易被改坏的一处。
 
-// 动态导入的模块类型：下方 load<T>() 用它把 `await import(spec)` 的 any 收窄回真实签名。
+/**
+ * 动态导入的模块类型：下方 `load<T>()` 用它把 `await import(spec)` 的 `any` 收窄回真实签名。
+ *
+ * @remarks
+ * `typeof import("...")` 是**类型层节点**，运行时被完全擦除，因此可以安全地写在文件顶部 ——
+ * 这是本文件能同时「自举注册 TS 钩子」与「拿到内核真实类型」的关键（详见上方注释）。
+ *
+ * ⚠️ 这里只允许类型层的 `typeof import(...)`：任何**值导入**（含把内核模块或 `scripts/cli/*`
+ * 写成普通静态 `import`）都会在钩子注册之前触发加载，直接崩掉。
+ */
 type AlgorithmModule = typeof import("@/ziwei/algorithm");
 type PatternsModule = typeof import("@/ziwei/patterns");
 type SihuaModule = typeof import("@/ziwei/sihua");
@@ -51,8 +62,15 @@ type ClassicsModule = typeof import("@/classics/index");
 type ArgsModule = typeof import("@/cli/args");
 type CommandsModule = typeof import("@/cli/commands");
 
-// 抑制噪声：内核 *.ts 若落在无 "type":"module" 的包内，Node 每次加载都会告警。
-// 不能改 package.json（Next.js 的 next.config.js / postcss.config.js 依赖 CJS），故在此过滤。
+/**
+ * 抑制噪声：内核 `*.ts` 若落在无 `"type":"module"` 的包内，Node 每次加载都会告警。
+ *
+ * @remarks
+ * 不能改 `package.json`（Next.js 的 `next.config.js` / `postcss.config.js` 依赖 CJS），故在此过滤。
+ *
+ * 只吞 `MODULE_TYPELESS_PACKAGE_JSON` 一种 code，其余告警一律经原生的 `emitWarning` 透传 ——
+ * 这里兼容两种调用形态：`(warning, type, code)` 与 `(warning, options)`，故先做形态判别再取 code。
+ */
 const _emitWarning = process.emitWarning.bind(process) as (
 	warning: string | Error,
 	...rest: unknown[]
@@ -67,15 +85,31 @@ process.emitWarning = ((warning: string | Error, ...rest: unknown[]): void => {
 	_emitWarning(warning, ...rest);
 }) as typeof process.emitWarning;
 
-const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/scripts
+/** 本脚本所在目录，即 `<skill 根>/scripts`（内核根的第一个候选，见 {@link pickRoot}） */
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ── 排盘内核根目录：两级优先级 ──
-//   1. ZIWEI_ROOT 环境变量 —— 显式指定（想把内核指到别处时用）
-//   2. 技能自带内核        —— 就是本脚本所在目录 <skill 根>/scripts/
-//
-// 内核根 = scripts/ 本身：CLI（purple-star.ts、cli/）与三个内核目录（ziwei/、classics/、nihai/）同处一层。
-// 因此下方 `@/` 别名指向的是 scripts/，而**不是** skill 根。
-// 这里刻意**没有**「宿主项目」候选：仓库内只有这一份内核，不存在副本漂移问题。
+/**
+ * 定位排盘内核根目录。
+ *
+ * @returns `root` 为命中的内核根（`null` 表示全部候选都不成立）；`label` 是该来源的描述
+ *   （「ZIWEI_ROOT 环境变量」/「技能自带内核」）；`tried` 是已尝试过的候选清单，供失败时逐条列给用户
+ *
+ * @remarks
+ * 优先级：
+ * 1. `ZIWEI_ROOT` 环境变量 —— 显式指定（想把内核指到别处时用）
+ * 2. 技能自带内核 —— 就是本脚本所在目录 `<skill 根>/scripts/`
+ *
+ * 判定依据是「该目录下存在 `ziwei/algorithm.ts`」，而非目录本身是否存在。
+ *
+ * 内核根 = `scripts/` **本身**：CLI（`purple-star.ts`、`cli/`）与三个内核目录（`ziwei/`、`classics/`、`nihai/`）
+ * 同处一层。因此 `@/` 别名指向的是 `scripts/`，而**不是** skill 根。
+ *
+ * 这里刻意**没有**「宿主项目」候选：仓库内只有这一份内核，不存在副本漂移问题。
+ *
+ * ⚠️ 失败时 `label` 取**空串**而非 `null`：调用点随即 `exit`，用不到它，而空串让返回类型保持
+ * `label: string`，省得调用点为了给 `CliContext` 传值再断言一次。
+ */
 function pickRoot() {
 	const tried: string[] = [];
 	const candidates: [string | undefined, string][] = [
@@ -87,8 +121,6 @@ function pickRoot() {
 		if (existsSync(resolve(dir, "ziwei/algorithm.ts"))) return { root: dir, label, tried };
 		tried.push(`${label}：${dir}`);
 	}
-	// 失败时 label 取空串而非 null：下方立刻 exit，用不到它，而空串让返回类型保持
-	// `label: string`，省得调用点为了给 CliContext 传值再断言一次。
 	return { root: null, label: "", tried };
 }
 
@@ -107,19 +139,46 @@ if (!rootFound) {
 	process.exit(1);
 }
 
-// 收窄在模块顶层成立，但**不会延续到函数体内**（load 的错误分支就要用 ROOT）。
-// 故此处显式落成一个非空 string，免得每个闭包里都得再断言一次。
+/**
+ * 内核根（已确定为非空）。
+ *
+ * @remarks
+ * `rootFound` 的收窄在模块顶层成立，但**不会延续到函数体内**（`load` 的错误分支就要用 `ROOT`）。
+ * 故此处显式落成一个非空 `string`，免得每个闭包里都得再断言一次。
+ */
 const ROOT: string = rootFound;
 
 // ── 让 Node 直接加载 TS：解析 @/ 别名，补全省略的 .ts / index.ts，并把裸包名指向当前根 ──
-// `@/xxx` 里的 @ 指**内核根**（scripts/）：`@/ziwei/algorithm` → scripts/ziwei/algorithm.ts，
-// `@/cli/commands` → scripts/cli/commands.ts。子模块内部的相对 import（`./args`）也走这里补 .ts。
-// 裸包名重定向的意义：脱离项目运行时，从文件位置向上找不到 node_modules，
-// 必须显式把 'iztro' / 'lunar-javascript' 指到当前内核根去解析。
-// 下方 parentURL 用的是「内核根/package.json」（该文件通常不存在，无妨）——Node 会自它
-// 向上逐级查找 node_modules，最终命中 skill 根的 node_modules/。
+/**
+ * 裸包名重定向所用的 parentURL：「内核根/package.json」。
+ *
+ * @remarks
+ * 该文件通常不存在，无妨 —— Node 会自它向上逐级查找 `node_modules`，最终命中 skill 根的
+ * `node_modules/`。这条重定向的意义在于：脱离项目运行时，从文件位置向上找不到 `node_modules`，
+ * 必须显式把 `iztro` / `lunar-javascript` 指到当前内核根去解析。
+ */
 const ROOT_PARENT_URL = pathToFileURL(resolve(ROOT, "package.json")).href;
 
+/**
+ * 注册 TS 解析钩子，让 Node 直接加载本仓库的 `.ts`。
+ *
+ * @param specifier - 待解析的模块说明符
+ * @param context - Node 传入的解析上下文（含 parentURL）
+ * @param nextResolve - 链上的下一个解析器；本钩子未命中的说明符一律原样交给它
+ * @returns 该说明符的解析结果
+ *
+ * @remarks
+ * **钩子必须在任何内核模块被求值之前注册**（见文件顶部注释）：ESM 的静态 import 会被提升到
+ * 模块求值之前，晚一步注册，内核的 `.ts` 就已经要加载了。三条分支：
+ *
+ * 1. `@/xxx` —— `@` 指**内核根**（`scripts/`）：`@/ziwei/algorithm` → `scripts/ziwei/algorithm.ts`，
+ *    `@/cli/commands` → `scripts/cli/commands.ts`。依次尝试「原样 → `<base>.ts` → `<base>/index.ts`」，
+ *    目录导入兜底是为了避免 `ERR_UNSUPPORTED_DIR_IMPORT`。
+ * 2. `./xxx` —— 子模块内部的相对 import（如 `./args`）在这里补 `.ts`；已带 `.ts` / `.mts` / `.cts` /
+ *    `.js` / `.mjs` / `.cjs` 后缀的原样放行，补后缀失败则落回默认解析。
+ * 3. 裸包名（含 `@scope/pkg`）—— 若当前内核根的 `node_modules` 里有同名包，就以
+ *    {@link ROOT_PARENT_URL} 为 parentURL 重新解析，摆脱对 cwd 与文件位置的依赖；`node:` 前缀一律不碰。
+ */
 registerHooks({
 	resolve(specifier, context, nextResolve) {
 		if (specifier.startsWith("@/")) {
@@ -159,10 +218,24 @@ registerHooks({
 });
 
 // ── 统一加载器：任何上游模块挂了都给出可执行的排查指引，而不是裸栈 ──
+/**
+ * 动态加载一个内核或 CLI 子模块；任何上游模块挂了，都给出可执行的排查指引而不是裸栈。
+ *
+ * @typeParam T - 模块类型，以 `typeof import("...")` 的别名传入（如 `AlgorithmModule`）
+ * @param spec - 模块说明符；解析交给上方 `registerHooks` 注册的钩子（`@/...` 或裸包名）
+ * @returns 加载到的模块命名空间
+ *
+ * @remarks
+ * **所有内核模块与 `scripts/cli/*` 子模块都必须经由本函数加载**（见文件顶部注释：钩子注册前
+ * 不允许出现普通静态 import）。`spec` 是变量，TS 推不出模块类型，故由调用方以
+ * `load<Module 类型>()` 指定；`as T` 断言只影响类型层，运行时的解析仍由 `registerHooks` 决定。
+ *
+ * ⚠️ 失败时**不抛错，而是打印排查指引后 `process.exit(1)`** —— 所以调用点拿到的返回值必然非空，
+ * 也就不必再写 try/catch。指引分两支：依赖未装（在 skill 根执行 `npm install`）与 Node 版本过低
+ * （需 ≥ 22.15，`registerHooks` 不可用或 TS 语法报错即属此类）。
+ */
 async function load<T>(spec: string): Promise<T> {
 	try {
-		// spec 是变量，TS 推不出模块类型，故由调用方以 load<Module 类型>() 指定；
-		// 断言只影响类型层，运行时的解析仍由上方 registerHooks 决定。
 		return (await import(spec)) as T;
 	} catch (err) {
 		console.error(
@@ -191,10 +264,17 @@ const { parseArgs } = await load<ArgsModule>("@/cli/args");
 const { COMMANDS } = await load<CommandsModule>("@/cli/commands");
 
 // ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默产出错盘 ──
-//
-// 子模块是静态 import 内核的，少一个导出本来就会让它们加载失败；但那时抛的是裸的
-// `SyntaxError: does not provide an export named ...`，指不到该改哪里。这里先 load 一遍
-// 并逐项点名，把「哪个导出没了、当前内核根在哪、接下来怎么办」一次说清。
+/**
+ * 启动期必须存在的上游导出清单，每项是 `[导出名, 运行时值]`。
+ *
+ * @remarks
+ * 子模块是静态 import 内核的，少一个导出本来就会让它们加载失败；但那时抛的是裸的
+ * `SyntaxError: does not provide an export named ...`，指不到该改哪里。这里先 load 一遍
+ * 并逐项点名，把「哪个导出没了、当前内核根在哪、接下来怎么办」一次说清。
+ *
+ * ⚠️ 也因此：在内核里重命名或删除导出会让 CLI 立刻报错 —— **这是有意的，不是脆弱**。
+ * 与 `algorithm.ts` 的 `projectPalaceName` 同一理念：宁可启动失败，也不静默产出错盘。
+ */
 const REQUIRED_EXPORTS = [
 	["generateChart", generateChart],
 	["detectPatterns", detectPatterns],
@@ -228,6 +308,13 @@ const REQUIRED_EXPORTS = [
 
 // ══════════════════════ 入口 ══════════════════════
 
+/**
+ * 帮助文本（无参数、`help`、`--help`、`-h` 时打印）。
+ *
+ * @remarks
+ * ⚠️ 内容必须与 `scripts/cli/commands.ts` 的 `COMMANDS` 表及各命令的实际参数保持一致；
+ * CLI 改了参数名或输出格式，这里要同步改 —— `SKILL.md` 同理，否则 Claude 会照着过时的说明调用。
+ */
 const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知识库
 
 用法：node scripts/purple-star.ts <command> [options]
@@ -295,6 +382,18 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
   node scripts/purple-star.ts selftest
 `;
 
+/**
+ * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
+ *
+ * @remarks
+ * `console.log` 只在这一处发生 —— 七个 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
+ *
+ * 无参数、`help`、`--help`、`-h` 都打印 {@link HELP}；未知命令与命令内部抛出的错误都以非零码退出
+ * （只打印 `err.message`，不打印栈）。传给命令的第二个参数是 `CliContext`（内核根及其来源），
+ * 目前只有 `selftest` 用得上。
+ *
+ * ⚠️ 命令名直接来自 `argv`，故查表必然可能未命中 —— `COMMANDS` 的值类型显式带 `| undefined`。
+ */
 function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];

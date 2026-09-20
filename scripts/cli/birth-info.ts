@@ -16,20 +16,40 @@ import { BRANCHES, SHICHEN } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
 import { Lunar, type Solar } from "lunar-javascript";
 
-/** 时辰支索引 → "巳时(09:00-11:00)"；SHICHEN 是 {branch,name,range} 对象数组 */
+/**
+ * 时辰支索引 → `"巳时(09:00-11:00)"`。
+ *
+ * @param i - 时辰支索引 0–11（0=子 … 11=亥）
+ * @returns 时辰名与钟点区间拼接成的标签；索引越界时两处都取不到（结果是 `undefined时()`）
+ *
+ * @remarks
+ * `SHICHEN` 是 `{ branch, name, range }` 对象数组，与 `BRANCHES` 同为 0–11 序，故两处都能查到名字。
+ */
 const shichenLabel = (i: number) =>
 	`${SHICHEN[i]?.name ?? BRANCHES[i] + "时"}(${SHICHEN[i]?.range ?? ""})`;
 
-/** 带符号的分钟数，用于拼「+4 分 / -14 分」这类交代文案。 */
+/**
+ * 带符号的分钟数，用于拼「+4 分 / -14 分」这类交代文案。
+ *
+ * @param n - 已取整的分钟数，可为负
+ * @returns 非负数带 `+` 前缀；负数保留自身的 `-`
+ */
 const signed = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
 
 /**
  * 均时差（equation of time），单位：分钟。真太阳时 = 平太阳时 + 均时差。
  *
- * 用常见的工程近似式（9.87·sin2B − 7.53·cosB − 1.5·sinB），全年幅度实测 −14.6 ~ +16.5 分钟。
+ * @param year - 公历年；只用来判断闰年（决定 B 的分母是 366 还是 365）
+ * @param month - 公历月 1–12
+ * @param day - 公历日
+ * @returns 当日的均时差（分钟），可正可负
  *
- * ⚠️ 该项**与经度无关**：即使 --lng 120（标准经线）也不为 0。所以「--lng 120 = 不做校正」
- * 这个直觉只在默认口径下成立；开了 --eot 之后，120° 出生的盘照样会被均时差推动。
+ * @remarks
+ * 用常见的工程近似式（`9.87·sin2B − 7.53·cosB − 1.5·sinB`，B 由「年内第几天」折算），
+ * 全年幅度实测 −14.6 ~ +16.5 分钟。
+ *
+ * ⚠️ 该项**与经度无关**：即使 `--lng 120`（标准经线）也不为 0。所以「`--lng 120` = 不做校正」
+ * 这个直觉只在默认口径下成立；开了 `--eot` 之后，120° 出生的盘照样会被均时差推动。
  */
 export function equationOfTime(year: number, month: number, day: number): number {
 	const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
@@ -39,47 +59,83 @@ export function equationOfTime(year: number, month: number, day: number): number
 	return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
 }
 
-/** calcTrueSolar 的可选项：`eot` 决定是否计入均时差，其余三项是均时差所需的日期 */
+/**
+ * {@link calcTrueSolar} 的可选项。
+ *
+ * @remarks
+ * `eot` 决定是否计入均时差，其余三项是均时差所需的日期。
+ *
+ * ⚠️ 只有 `year` 有显式校验（开了 `eot` 却缺它就直接抛错）；`month` / `day` 缺省时会原样下传，
+ * 在 {@link equationOfTime} 里静默算出 `NaN`，故开了 `eot` 就应该三项一起给。
+ */
 export interface TrueSolarOptions {
+	/** 是否额外计入均时差。默认 `false`，即传统口径（只做经度校正） */
 	eot?: boolean;
+	/** 公历年，`eot` 为真时必填 */
 	year?: number;
+	/** 公历月 1–12，`eot` 为真时应提供 */
 	month?: number;
+	/** 公历日，`eot` 为真时应提供 */
 	day?: number;
 }
 
-/** calcTrueSolar 的返回值，各字段含义见其上方注释 */
+/** {@link calcTrueSolar} 的返回值。 */
 export interface TrueSolarResult {
+	/** 时辰支 0–11（0=子 … 11=亥）。注意：此值不会是 12，晚子时由 {@link isLateZi} 单独标记 */
 	branch: number;
+	/**
+	 * 校正后是否落在 23:00–23:59（晚子时）。
+	 *
+	 * ⚠️ 这个区分很重要：子时横跨两日，23:00 后出生按传统三合派应「算次日」，
+	 * 排出的盘与当日早子时完全不同。
+	 */
 	isLateZi: boolean;
+	/**
+	 * 校正后跨了几天的**日界**：0 = 未跨天，+1 = 落到次日，-1 = 落到前一日。
+	 *
+	 * ⚠️ **调用方必须据此调整日期**：真太阳时是一条连续的时间轴，日期与时辰都得取自它。
+	 * 只取时辰而把日期留在钟表轴上，「日 + 时」这个组合指向的就不是出生时刻。
+	 * 例：喀什 00:30 的真太阳时是前一日 21:38，日期不回退则「亥时」偏了约 9 小时，
+	 * 农历日跟着错一天 → 紫微星定位错 → 整盘十二宫全变。
+	 */
 	dayOffset: number;
+	/**
+	 * 总校正（经度 + 均时差），分钟。
+	 *
+	 * 算法是**分项各自取整后相加**，好让提示里的「经度 A + 均时差 B = C」自洽
+	 * （若先相加再取整，-14.4 与 +3.8 会显示成 -14 + 4 = -11，看着像算错了）。
+	 */
 	offsetMinutes: number;
+	/** 经度项的贡献 `(经度 − 120) × 4`，取整后的分钟数 */
 	longitudeMinutes: number;
+	/** 均时差项的贡献，取整后的分钟数；未开 `eot` 时恒为 0 */
 	eotMinutes: number;
+	/** 校正后的**当日分钟数** 0–1439（已按 1440 取模归一，故不含跨天信息），取整后 */
 	solarMinutes: number;
 }
 
 /**
  * 北京时间 + 经度 → 真太阳时。
- * 与 components/BirthForm.tsx 的 calcTrueSolarBranch 保持同一换算公式。
+ *
+ * @param clockHour - 钟表时的小时 0–23
+ * @param clockMinute - 钟表时的分钟 0–59
+ * @param longitude - 出生地经度，**东经为正**；调用方未给出生地时传 120（即不做经度校正）
+ * @param opts - 口径开关与均时差所需日期，缺省即传统口径
+ * @returns 时辰支、晚子时标记、跨天日界与各项校正量；逐字段含义见 {@link TrueSolarResult}
+ * @throws 开了 `opts.eot` 却没给 `opts.year` 时
+ *
+ * @remarks
+ * 与 `components/BirthForm.tsx` 的 `calcTrueSolarBranch` 保持同一换算公式。
  *
  * 校正量默认**只含经度项** `(经度 − 120) × 4`；传 `opts.eot` 时再加均时差，
- * 得到天文学严格意义上的真太阳时。两种口径的差别不是小数点级的——均时差可达 ±16 分钟，
+ * 得到天文学严格意义上的真太阳时。两种口径的差别不是小数点级的 —— 均时差可达 ±16 分钟，
  * 足以把结果推过时辰边界（实测北京全年约 5% 的出生时间会因此换一个时辰，而时辰一换整张盘全变）。
- * 故默认保持传统口径，要严格口径须显式开 --eot，**不做静默切换**。
+ * 故默认保持传统口径，要严格口径须显式开 `--eot`，**不做静默切换**。
  *
- * 返回 { branch, isLateZi, dayOffset, offsetMinutes, longitudeMinutes, eotMinutes, solarMinutes }：
- *   branch           时辰支 0-11（0=子 … 11=亥）
- *   isLateZi         是否落在 23:00–23:59（晚子时）——**这个区分很重要**：
- *                    子时横跨两日，23:00 后出生按传统三合派应「算次日」，排出的盘与当日早子时完全不同。
- *   dayOffset        校正后跨了几天的**日界**：0 = 未跨天，+1 = 落到次日，-1 = 落到前一日。
- *                    **调用方必须据此调整日期**：真太阳时是一条连续的时间轴，日期与时辰都得
- *                    取自它。只取时辰而把日期留在钟表轴上，"日 + 时"这个组合指向的就不是出生时刻。
- *                    例：喀什 00:30 的真太阳时是前一日 21:38，日期不回退则「亥时」偏了约 9 小时，
- *                    农历日跟着错一天 → 紫微星定位错 → 整盘十二宫全变。
- *   offsetMinutes    总校正（经度 + 均时差）。**分项各自取整后相加**，好让提示里的
- *                    「经度 A + 均时差 B = C」自洽（若先相加再取整，-14.4 与 +3.8 会
- *                    显示成 -14 + 4 = -11，看着像算错了）
- *   longitudeMinutes / eotMinutes   两项各自的贡献
+ * 判定（`dayOffset` / `isLateZi` / `branch`）一律用**未取整**的校正量：未开 `--eot` 时均时差恒为 0，
+ * 故默认口径与旧实现逐位相同，不存在行为漂移；而跨没跨过午夜由精确时刻决定，先取整再判断会在边界翻车。
+ *
+ * ⚠️ 均时差依赖具体日期，缺了会静默算出 `NaN` —— 宁可当场失败，也不产出错时辰。
  */
 export function calcTrueSolar(
 	clockHour: number,
@@ -88,7 +144,6 @@ export function calcTrueSolar(
 	opts: TrueSolarOptions = {}
 ): TrueSolarResult {
 	const clockMins = clockHour * 60 + clockMinute;
-	// 均时差依赖具体日期，缺了会静默算出 NaN —— 宁可当场失败，也不产出错时辰
 	if (opts.eot && !Number.isInteger(opts.year))
 		throw new Error("calcTrueSolar：开启 eot 时必须提供 year/month/day");
 	const longitudeRaw = (longitude - 120) * 4;
@@ -118,9 +173,16 @@ export function calcTrueSolar(
 }
 
 /**
- * 按天数偏移公历日期，返回 { year, month, day }。
+ * 按天数偏移公历日期。
  *
- * 用 Date.UTC 做日历运算，而不是 `day ± 86400000` —— 后者跨月、跨年、闰年都要自己判，
+ * @param year - 公历年
+ * @param month - 公历月 1–12
+ * @param day - 公历日
+ * @param days - 偏移天数，可为负；调用点传的是 {@link TrueSolarResult.dayOffset}（0 / +1 / -1）
+ * @returns 偏移后的 `{ year, month, day }`（月份已归一为 1–12）
+ *
+ * @remarks
+ * 用 `Date.UTC` 做日历运算，而不是 `day ± 86400000` —— 后者跨月、跨年、闰年都要自己判，
  * 且一旦掺进本地时区就会在夏令时切换日出错。UTC 没有夏令时，日期进退交给它算最稳。
  */
 export function shiftDate(
@@ -133,22 +195,46 @@ export function shiftDate(
 	return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
 
-// 行政区划后缀：用户常写「石家庄市」「石家庄地区」「XX自治州」，而城市表里存的是简称
+/**
+ * 行政区划后缀：用户常写「石家庄市」「石家庄地区」「XX自治州」，而城市表里存的是简称。
+ *
+ * 只匹配**结尾**的后缀；匹配到的整段会被 {@link stripSuffix} 去掉。
+ */
 const ADMIN_SUFFIX = /(特别行政区|自治州|自治县|自治区|地区|盟|市|县|区|旗)$/;
+
+/**
+ * 去掉城市名末尾的行政区划后缀。
+ *
+ * @param s - 用户输入的城市名（如「石家庄市」）
+ * @returns 去空白、去后缀后的名字（如「石家庄」）；没有后缀时原样返回
+ */
 const stripSuffix = (s: string) => String(s).trim().replace(ADMIN_SUFFIX, "");
 
-/** findLongitude 的命中结果；`exact` 为 false 表示做了容错解析，`ambiguous` 非空表示存在同名候选 */
+/**
+ * {@link findLongitude} 的命中结果。
+ */
 export interface LongitudeHit {
+	/** 命中城市的经度，东经为正 */
 	longitude: number;
+	/** 实际命中的**表内**城市名（可能与用户所写不同，即发生了容错解析） */
 	matched: string;
+	/** 是否精确命中：`true` = 用户写的就是表里那个名字；`false` = 做了容错解析 */
 	exact: boolean;
+	/** 同长度的同名候选（最多 5 个，形如「吉林(126.57)」）；无歧义时为 `null` */
 	ambiguous: string[] | null;
 }
 
 /**
  * 按城市名查经度（容错匹配）。
- * 依次尝试：原名精确 → 去行政后缀精确 → 双向包含（取最短名，最贴近）。
- * @returns 命中结果；未收录时返回 null
+ *
+ * @param cityName - 用户输入的城市名，可带行政区划后缀
+ * @returns 命中结果；未收录（或输入为空）时返回 `null`
+ *
+ * @remarks
+ * 依次尝试：原名精确 → 去行政后缀精确 → 双向包含（`c.name.includes(bare) || bare.includes(c.name)`）。
+ *
+ * 双向包含命中多个时**取最短的城市名**（最短名最贴近用户所写），并将同长度的其余候选记进
+ * `ambiguous` 提醒用户确认。
  */
 export function findLongitude(cityName: string): LongitudeHit | null {
 	const raw = String(cityName).trim();
@@ -182,15 +268,19 @@ export function findLongitude(cityName: string): LongitudeHit | null {
 }
 
 /**
- * buildBirthInfo 的结果。
- * `info` 可直接喂给 generateChart；其余字段供上层渲染提示，不参与排盘。
+ * {@link buildBirthInfo} 的结果。
+ *
+ * @remarks
+ * `info` 可直接喂给 `generateChart`；其余字段供上层渲染提示，**不参与排盘**。
  */
 export interface BirthInfoResult {
+	/** 可直接用于排盘的出生信息（钟表时已换算为时辰序号，日期已按跨天调整） */
 	info: BirthInfo;
-	/** 时辰那一条说明（notes 的其中一项） */
+	/** 时辰那一条说明（`notes` 的其中一项） */
 	note: string;
-	/** 日期 / 出生地 / 时辰三类说明的合集 */
+	/** 日期 / 出生地 / 时辰三类说明的合集，已滤掉空串 */
 	notes: string[];
+	/** 本次实际采用的经度（东经为正）；`info.longitude` 与它同值 */
 	longitude: number;
 	/** 出生地解析提示，精确命中时为空串 */
 	lngNote: string;
@@ -205,16 +295,29 @@ export interface BirthInfoResult {
 /**
  * 从参数构造 BirthInfo。
  *
+ * @param args - CLI 参数表；heming 的甲/乙两方各传一次本函数
+ * @param p - 参数前缀；heming 传 `"a-"` / `"b-"`，其余命令传空串（默认）
+ * @returns 排盘用的 `info` 加上供渲染提示的说明字段，见 {@link BirthInfoResult}
+ * @throws 日期缺失 / 格式非法 / 农历换算失败、性别缺失或非法、出生地未收录、
+ *   时辰缺失或非法，以及 `--lunar` 与 `--date` 同用、`--late-zi` 未配合 `--time`
+ *
+ * @remarks
  * 日期（三选一）：
- *   --date  YYYY-MM-DD        公历生日
- *   --lunar YYYY-MM-DD        农历生日（脚本自动换算成公历）
- *   --year/--month/--day      公历生日（分写）
- *   --leap                    配合 --lunar 表示闰月
+ * - `--date YYYY-MM-DD` 公历生日
+ * - `--lunar YYYY-MM-DD` 农历生日（自动换算成公历，配合 `--leap` 表示闰月）
+ * - `--year` / `--month` / `--day` 公历生日（分写）
+ *
  * 时辰（二选一）：
- *   --time   HH:MM + --lng/--city  → 真太阳时自动换算
- *   --branch 0-12                  → 直接指定时辰支（0=子 … 11=亥；12=晚子时）
- *   --late-zi                      → 配合 --time，把 23:00–23:59 改按「晚子时算次日」排
- *   --eot                          → 配合 --time，真太阳时额外计入均时差（见 calcTrueSolar）
+ * - `--time HH:MM` 配合 `--lng` / `--city` / `--province` → 走 {@link calcTrueSolar} 换算真太阳时
+ * - `--branch 0-12` → 直接指定时辰支（0=子 … 11=亥；12=晚子时）
+ * - `--late-zi` 配合 `--time`，把 23:00–23:59 改按「晚子时算次日」排
+ * - `--eot` 配合 `--time`，真太阳时额外计入均时差
+ *
+ * 出生地（`--lng` 优先，其次 `--city` / `--province`，都没有则按东经 120°）与性别护栏的
+ * 「宁可启动失败，也不静默产出错盘」立场，见各自的块内注释。
+ *
+ * ⚠️ 真太阳时跨过午夜时，此处会就地用 {@link shiftDate} 调整 `year` / `month` / `day` 并记进
+ * `note` —— 日期是单点流入 `info` 的，改在这里，下游（农历、排盘、合盘、流年）自动跟随。
  */
 export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 	const g = (k: string) => args[p + k];

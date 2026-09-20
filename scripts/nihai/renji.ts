@@ -19,6 +19,20 @@ import type {
 } from "./types";
 
 // ─── 人纪模块 ────────────────────────────────────────────
+/**
+ * 人纪五大经典课程模块清单。
+ *
+ * @remarks
+ * 共 5 条，`order` 即倪师规定的学习顺序：针灸大成 → 黄帝内经 → 神农本草经 → 伤寒论 → 金匮要略，
+ * 五者 `status` 均为 `active`。
+ *
+ * 每条为 `NiModule`（定义见 `./types`），关键字段：`id`（`rj-` 前缀）、`name` / `nameEn`、
+ * `lessons`（课时口径，如「44集（每集约44分钟）」）、`references`、`keywords`、`slug`，
+ * 以及 `chapters` 子章节数组（五模块合计 15 章）。
+ *
+ * 消费方：经 `nihai/index.ts` 再导出，由 CLI 的 `nihai` 命令（`cli/commands.ts` 的 `cmdNihai`）
+ * 按模块与章节逐层展开输出；`cli/selftest.ts` 的「知识源可用性」一项亦断言本表非空。
+ */
 export const RENJI_MODULES: NiModule[] = [
 	{
 		id: "rj-zhenjiu",
@@ -353,6 +367,20 @@ export const RENJI_MODULES: NiModule[] = [
 ];
 
 // ─── 215条针灸经验穴位（倪师临床精华） ────────────────────
+/**
+ * 针灸经验穴位表（倪师临床精华）。
+ *
+ * @remarks
+ * 共 120 条，`id` 为 1–120 的连续编号。每条为 `AcuExperience`（定义见 `./types`），关键字段：
+ * `id`、`condition`（适应症 / 疾病）、`acupoints`（穴位组合）、`category`（分类），
+ * 以及可选的 `note`（补充说明，仅 2 条有）。`category` 共 10 类：妇科（23 条）、脾胃（17）、
+ * 神志（13）、肾系（13）、伤科（12）、五官（10）、其他（10）、肺系（9）、心血管（7）、肝胆（6）。
+ *
+ * ⚠️ 上方分节线写作「215条」，与本表实收条数不符——**以本表实际条数为准（当前 120 条）**，
+ * `RENJI_STATS.acuExperienceCount` 的 215 同样是硬编码值。
+ *
+ * 经 `nihai/index.ts` 再导出；仓库内 CLI 目前只消费三张模块表。
+ */
 export const ACU_EXPERIENCES: AcuExperience[] = [
 	// 01 心·心血管系统
 	{ id: 1, condition: "冠心病", acupoints: "关元、巨阙、少府、涌泉、公孙", category: "心血管" },
@@ -602,6 +630,17 @@ export const ACU_EXPERIENCES: AcuExperience[] = [
 ];
 
 // ─── 31条透针透穴法 ────────────────────────────────────────
+/**
+ * 透针透穴法表。
+ *
+ * @remarks
+ * 共 31 条，`id` 为 1–31 的连续编号。每条为 `TransNeedling`（定义见 `./types`），关键字段：
+ * `id`、`combo`（透穴组合，形如「中府透云门」）、`indication`（治疗症状）、`supporting`
+ * （可选配穴）、`source`（来源）。`source` 共 5 种取值：孙培荣（13 条）、倪海厦（7）、
+ * 孙培荣/周左宇/倪海厦（6）、周左宇（3）、孙培荣/周左宇（2）。
+ *
+ * 经 `nihai/index.ts` 再导出；仓库内 CLI 目前只消费三张模块表。
+ */
 export const TRANS_NEEDLING: TransNeedling[] = [
 	{
 		id: 1,
@@ -787,6 +826,21 @@ export const TRANS_NEEDLING: TransNeedling[] = [
 ];
 
 // ─── 汉唐100方完整列表 ────────────────────────────────────
+/**
+ * 汉唐方剂表。
+ *
+ * @remarks
+ * 共 97 条，`id` 取 1–100 中的 97 个——**51、91、94 三个编号空缺**，编号本身无重复。
+ *
+ * 每条为 `HantangFormula`（定义见 `./types`），关键字段：`id`、`name`（方名）、
+ * `indication`（主治疾病）、`theory`（核心理论，97 条全有）、`ingredients`（主要成分，
+ * 仅 18 条公开）。
+ *
+ * ⚠️ 上方分节线写作「汉唐100方」，与本表实收条数不符——**以本表实际条数为准（当前 97 条）**，
+ * `RENJI_STATS.hantangFormulaCount` 的 100 同样是硬编码值。
+ *
+ * 经 `nihai/index.ts` 再导出；仓库内 CLI 目前只消费三张模块表。
+ */
 export const HANTANG_FORMULAS: HantangFormula[] = [
 	{
 		id: 1,
@@ -1036,6 +1090,18 @@ export const HANTANG_FORMULAS: HantangFormula[] = [
 ];
 
 // ─── 核心经方精选（伤寒论+金匮要略） ──────────────────────
+/**
+ * 核心经方精选表（伤寒论 + 金匮要略）。
+ *
+ * @remarks
+ * 共 25 条，`id` 为 `cf-01`–`cf-25` 的连续编号。按 `source` 分布：伤寒论 20 条、金匮 5 条。
+ *
+ * 每条为 `ClassicFormula`（定义见 `./types`），关键字段：`id`、`name`（方名）、`source`（出处）、
+ * `composition`（组成药物与剂量）、`indication`（主治）、`niUsage`（倪师用法要点）。
+ * 本表是**精选条目**，不是经方全集。
+ *
+ * 经 `nihai/index.ts` 再导出；仓库内 CLI 目前只消费三张模块表。
+ */
 export const CLASSIC_FORMULAS: ClassicFormula[] = [
 	{
 		id: "cf-01",
@@ -1243,6 +1309,20 @@ export const CLASSIC_FORMULAS: ClassicFormula[] = [
 ];
 
 // ─── 统计 ────────────────────────────────────────────────
+/**
+ * 人纪各表的规模统计。
+ *
+ * @remarks
+ * 字段分两类。**派生值**直接读 {@link RENJI_MODULES} 的表长，表变则统计自动跟随：
+ * `totalModules`、`totalChapters`。**硬编码值**是讲义侧的总数口径，与代码无关：
+ * `totalLessons`、`completionYear`、`learningOrder`，以及三个「总数」计数——
+ * ⚠️ `acuExperienceCount: 215`、`hantangFormulaCount: 100`、`classicFormulaCount: 259`
+ * 均**不读表长**，与本文件的实收条数（120 / 97 / 25）**不一致**；`classicFormulaCount`
+ * 对应的是经方总数口径，而本文件的 {@link CLASSIC_FORMULAS} 只是 25 条精选。
+ * 调整上述任何一张表，这三个数都不会自动跟随。
+ *
+ * 经 `nihai/index.ts` 再导出；仓库内 CLI 目前只消费三张模块表。
+ */
 export const RENJI_STATS = {
 	totalModules: RENJI_MODULES.length,
 	totalChapters: RENJI_MODULES.reduce((sum, m) => sum + m.chapters.length, 0),

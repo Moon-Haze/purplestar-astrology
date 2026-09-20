@@ -320,7 +320,7 @@ export function formatDiffs(diffs, limit = 25) {
 /**
  * 盘指纹：快速判定两张盘是否逐宫一致（用于 CLI 的 --branch 12 ≡ 次日 --branch 0 之类断言）。
  *
- * ⚠️ 与 scripts/purple-star.ts 里的 chartSignature 是**两份必须行为一致的实现** ——
+ * ⚠️ 与 scripts/cli/render.ts 里的 chartSignature 是**两份必须行为一致的实现** ——
  *    test/ 与 CLI 刻意不共享模块（同 lib/loader.mjs 的理由），故改动其一时必须同步另一个。
  *    先按 branch 排序再拼接，使指纹与 `palaces` 的数组顺序无关（实测为寅起 2,3,…,11,0,1）。
  */

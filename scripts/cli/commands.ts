@@ -39,6 +39,18 @@ import {
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
 import { TIANJI_MODULES, RENJI_MODULES, DIJI_MODULES, NI_HAIXIA_BIO } from "@/nihai/index";
 
+/**
+ * `chart` 命令：纯排盘十二宫。
+ *
+ * @param args - CLI 参数表
+ * @returns 已渲染好的文本；带 `--json` 时返回命盘的原始 JSON 字符串
+ *
+ * @remarks
+ * 最小排盘：只要出生信息，不算流年、格局与四化。输出命盘头（姓名 / 日期 / 时辰 / 性别 / 农历 /
+ * 命身宫 / 五行局 / 紫微位）、出生地与晚子时提示、逐宫详表，最后是大限一览与当前年龄大限。
+ *
+ * 返回字符串而不打印 —— `console.log` 由引导层统一负责（本文件七个命令皆然）。
+ */
 function cmdChart(args: CliArgs) {
 	const { info, note, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } = buildBirthInfo(args);
 	const chart = generateChart(info);
@@ -69,6 +81,21 @@ function cmdChart(args: CliArgs) {
 	return out.join("\n");
 }
 
+/**
+ * `analyze` 命令：解读用的完整输入包（本 CLI 最常用的一条）。
+ *
+ * @param args - CLI 参数表；除出生信息外还认 `--liunian` / `--liuyue` / `--focus`
+ * @returns 已渲染好的文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 字符串
+ *
+ * @remarks
+ * 输出顺序：命盘总览 → 出生地与晚子时提示 → 十二宫一览 → 命宫 / 身宫详表 → 格局识别
+ * （含成立 / 加分 / 破格条件与出处）→ 生年 / 流年 / 流月四化落宫 → 大限（当前大限详表加全部大限）
+ * → `--focus` 指定宫的深挖。其中「十二宫一览」是直接遍历 `chart.palaces` 输出的，即**数组原序**
+ * （不是地支升序，见 `ziwei/types.ts` 的 `palaces` 字段说明）。
+ *
+ * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，这里改从借入的对宫主星取释义；
+ * 两者都取不到时星性落成「无主星亦无对宫可借，全看三方四正会照」。
+ */
 function cmdAnalyze(args: CliArgs) {
 	const { info, note, longitude, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } =
 		buildBirthInfo(args);
@@ -157,7 +184,9 @@ function cmdAnalyze(args: CliArgs) {
 	out.push(...lateZiSection(chart, info, isLateZi, lateZiCandidate));
 
 	// ── 十二宫一览（按地支序，速查全盘用；解读主力仍是下方命宫/身宫详表）──
-	out.push("【十二宫一览】按地支序 子→亥");
+	// ⚠️ 是**寅→丑**（数组原序，寅起），不是子→亥 —— `chart.palaces` 按地支数组序排，
+	//    `palaceBrief` 不做任何排序。表头写错会让读者按错误顺序去数宫位。
+	out.push("【十二宫一览】按地支序 寅→丑");
 	for (const p of chart.palaces) out.push(palaceBrief(p));
 	out.push("");
 
@@ -228,8 +257,9 @@ function cmdAnalyze(args: CliArgs) {
 
 	// 指定宫位深挖
 	if (args.focus) {
-		// --focus 只接受单个宫位。重复给出该参数时 parseArgs 产出的是数组，
-		// 此处与迁移前保持同样结果：不参与比对，直接落到下面的「聚焦失败」分支。
+		// --focus 只接受单个宫位。typeof 判空挡掉的是「给了 --focus 却没跟值」的形态 ——
+		// 此时 parseArgs 把它存成布尔 true（不是字符串），不参与下面的比对，
+		// 直接落到「聚焦失败」分支并列出可用宫名。
 		const focus = typeof args.focus === "string" ? args.focus : null;
 		// 先把输入归一化到项目口径再比：交友宫 / 交友 / 仆役 / 仆役宫 四种写法都能命中
 		const want = focus ? FOCUS_ALIASES.get(focus) : undefined;
@@ -254,6 +284,20 @@ function cmdAnalyze(args: CliArgs) {
 	return out.join("\n");
 }
 
+/**
+ * `heming` 命令：合盘（双宫联参 + 夫妻宫断语 + 方法论）。
+ *
+ * @param args - CLI 参数表；甲乙两方各一套出生信息参数，分别带 `a-` / `b-` 前缀
+ * @returns 已渲染好的文本；带 `--json` 时返回两方命盘摘要 + 方法论 + 评分标准的原始 JSON 字符串
+ *
+ * @remarks
+ * 遵循倪海夏的双宫联参口径：看婚姻不能只看夫妻宫，必须同时看福德宫。输出两方命宫 / 夫妻宫 /
+ * 福德宫主星、天作之合对应关系判定、夫妻宫断语（空宫借对宫主星论）、生年四化入夫妻宫、
+ * 夫妻宫桃花孤克星，最后附评分标准与完整方法论。
+ *
+ * ⚠️ 任一方校正后的出生时刻落在 23:00–23:59 时单独提示：本次按**当日早子时**口径排，
+ * 若改用 `--a-late-zi` / `--b-late-zi`（晚子时算次日），该方命盘会整体改变，合盘结论需重跑。
+ */
 function cmdHeming(args: CliArgs) {
 	const a = buildBirthInfo(args, "a-");
 	const b = buildBirthInfo(args, "b-");
@@ -413,6 +457,17 @@ function cmdHeming(args: CliArgs) {
 	return out.join("\n");
 }
 
+/**
+ * `classics` 命令：古籍原文检索。
+ *
+ * @param args - CLI 参数表；`--search` 为关键词（也可用位置参数代替），`--limit` 为条数上限（默认 15）
+ * @returns 已渲染好的文本
+ *
+ * @remarks
+ * 无关键词时列出已收录的书目与总段数；有关键词时逐条输出「书名 · 章节」与摘要。
+ *
+ * 摘要里的 `<mark>` 高亮标签会换成 `『』`，并把 `『词『` 这类未闭合的嵌套收尾成一个 `』`。
+ */
 function cmdClassics(args: CliArgs) {
 	if (!args.search && !args._.length) {
 		return [
@@ -438,6 +493,17 @@ function cmdClassics(args: CliArgs) {
 	return out.join("\n");
 }
 
+/**
+ * `nihai` 命令：倪海厦天纪 / 地纪 / 人纪知识。
+ *
+ * @param args - CLI 参数表；`--category` 限 `tianji` / `diji` / `renji`（大小写不敏感），
+ *   `--bio` 改出倪师生平
+ * @returns 已渲染好的文本；带 `--bio` 时返回生平 JSON 字符串
+ *
+ * @remarks
+ * 不传 `--category` 时三纪全列。逐模块输出中文名（英文名）与状态、副标题、简介、关键词，
+ * 再逐章输出标题、描述、要点与原文引用。
+ */
 function cmdNihai(args: CliArgs) {
 	const cat = String(args.category ?? "").toLowerCase();
 	if (args.bio) {
@@ -473,6 +539,17 @@ function cmdNihai(args: CliArgs) {
 	return out.join("\n");
 }
 
+/**
+ * `cities` 命令：城市经纬度查询（真太阳时校正用）。
+ *
+ * @param args - CLI 参数表；`--search` 为关键词（也可用位置参数代替）
+ * @returns 已渲染好的文本
+ *
+ * @remarks
+ * 无关键词时列出全部省级行政区与城市及其经度；有关键词时按省名与市名各做一次包含匹配、
+ * 去重后输出，并附上 `findLongitude` 的**容错解析**结果 —— 免得出现「查询有结果但 `--city`
+ * 传不进去」。两者的措辞互斥：容错解析命中时不会同时报「未收录」。
+ */
 function cmdCities(args: CliArgs) {
 	const q = String(args.search ?? args._.join(" "));
 	if (!q) {
@@ -514,6 +591,16 @@ function cmdCities(args: CliArgs) {
 	);
 }
 
+/**
+ * `stars` 命令：星曜释义。
+ *
+ * @param args - CLI 参数表；`--search` 为星名
+ * @returns 已渲染好的文本
+ *
+ * @remarks
+ * 不给 `--search` 时列出全部已收录星曜的「关键词 · 星性 · 五行」；给定时只出该星一条，
+ * 未收录则回列全部星名。
+ */
 function cmdStars(args: CliArgs) {
 	const names = Object.keys(STAR_DESCRIPTIONS);
 	if (args.search) {
@@ -536,11 +623,16 @@ function cmdStars(args: CliArgs) {
 // ══════════════════════ 命令表 ══════════════════════
 
 /**
+ * 命令表：命令名 → 实现（返回**已渲染好的文本**，由引导层 `console.log`）。
+ *
+ * @remarks
  * 值类型显式写出 `| undefined`：命令名来自 argv，查表必然未命中，
  * 这里让「未命中」在类型上就成立，而不是靠断言把 undefined 抹掉。
  *
- * 多数命令只需要 args，签名里少的那个参数 TS 允许省略；只有 selftest 用得上 ctx
- * （它要在输出里交代内核根是哪一份）。
+ * 多数命令（含七个 `cmdXxx`）只需要 args，签名里少的那个参数 TS 允许省略；
+ * 只有 selftest 用得上 ctx（它要在输出里交代内核根是哪一份）。
+ *
+ * `help` 不在表内 —— 引导层单独处理，见 `purple-star.ts` 的 `main()`。
  */
 export const COMMANDS: Record<
 	string,

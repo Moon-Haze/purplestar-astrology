@@ -1,6 +1,10 @@
 /**
- * 紫微斗数排盘算法 — 基于 iztro 开源库
- * https://github.com/SylarLong/iztro
+ * 紫微斗数排盘算法 —— 基于 {@link https://github.com/SylarLong/iztro | iztro}。
+ *
+ * 本模块是 iztro 与本项目领域模型之间的**唯一翻译层**：安星、五行局、大限区间全部由
+ * iztro 推算，这里只负责换算宫名口径、分类星曜、补借对宫字段，不重复实现任何命理逻辑。
+ *
+ * @packageDocumentation
  */
 
 import { astro } from "iztro";
@@ -15,12 +19,18 @@ import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "./constants";
  * 把 iztro 的宫名翻成本项目口径（倪师《天纪》体系）。
  *
  * iztro 第 8 宫叫「仆役」，倪师体系叫「交友宫」；其余 11 宫只是统一补上「宫」字。
+ *
+ * @param iztroName - iztro 返回的原始宫名
+ * @returns 本项目口径的宫名
+ * @throws 当 `IZTRO_TO_PROJECT_PALACE` 未覆盖该宫名时
+ *
+ * @remarks
  * 映射表在 `constants.ts` 的 `IZTRO_TO_PROJECT_PALACE`。
  *
  * ⚠️ 未命中时**抛错，不回退到原名**。回退看着更「稳」，其实是让一个未知宫名静默
- *    流进输出 —— 而宫名是十二宫一览、`--focus`、三方四正、大限、格局判定的公共索引，
- *    错一个名字就是错一片下游。这与 `purple-star.ts` 顶部 REQUIRED_EXPORTS 自检
- *    是同一个理念：**宁可启动失败，也不静默产出错盘**。
+ * 流进输出 —— 而宫名是十二宫一览、`--focus`、三方四正、大限、格局判定的公共索引，
+ * 错一个名字就是错一片下游。这与 `purple-star.ts` 顶部 `REQUIRED_EXPORTS` 自检
+ * 是同一个理念：**宁可启动失败，也不静默产出错盘**。
  */
 function projectPalaceName(iztroName: string): string {
 	const mapped = IZTRO_TO_PROJECT_PALACE[iztroName];
@@ -35,6 +45,21 @@ function projectPalaceName(iztroName: string): string {
 }
 
 // ─── 农历信息（兼容保留）────────────────────────────────────────
+/**
+ * 由公历日期取农历信息。
+ *
+ * @param year - 公历年
+ * @param month - 公历月（1–12）
+ * @param day - 公历日
+ * @returns 农历年月日、年干支索引、是否闰月
+ *
+ * @remarks
+ * 只服务输出层展示与 {@link generateChart} 里虚岁的农历年换算，**不参与安星**
+ * （iztro 的排盘入参本身就是公历）。
+ *
+ * `lunar-javascript` 用**负数月份**表示闰月，故月份取 `Math.abs` 后另以
+ * `isLeapMonth` 单独标记。年干支靠 `indexOf` 查表，未命中兜底 0（甲 / 子）。
+ */
 export function getLunarInfo(year: number, month: number, day: number): LunarInfo {
 	const solar = Solar.fromYmd(year, month, day);
 	const lunar = solar.getLunar();
@@ -52,6 +77,18 @@ export function getLunarInfo(year: number, month: number, day: number): LunarInf
 }
 
 // ─── 亮度映射 ────────────────────────────────────────────────────
+/**
+ * 把 iztro 的中文亮度归并成三档。
+ *
+ * @param b - iztro 的亮度字（「庙」「旺」「得」「利」「平」「不」「陷」等），可缺省
+ * @returns `bright`（庙 / 旺）、`dim`（陷 / 不），其余一切（含缺省）归 `normal`
+ *
+ * @remarks
+ * 只归三档，是因为下游只问「够不够亮」这一个问题（`patterns.ts` 的 `isBright` / `isDim`）；
+ * 「得 / 利 / 平」的细分差异在倪师体系里不进格局条件。
+ *
+ * ⚠️ 缺省值走 `normal` 而非 `dim` —— 拿不到亮度时不做负面假设。
+ */
 function mapBrightness(b?: string): "bright" | "normal" | "dim" {
 	if (!b) return "normal";
 	if (b === "庙" || b === "旺") return "bright";
@@ -60,6 +97,16 @@ function mapBrightness(b?: string): "bright" | "normal" | "dim" {
 }
 
 // ─── 星曜类型映射 ────────────────────────────────────────────────
+/**
+ * 煞星名单。
+ *
+ * @remarks
+ * 与 {@link LUCKY_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**：名字在表内
+ * 就先定类型，不再看 iztro 的 `type` 字段（判定顺序见该函数）。
+ *
+ * ⚠️ 改这张表会改变 `Star.type`，进而改变 `patterns.ts` 的格局命中 ——
+ * `npm test` 的语料回归盯着这条链路，别顺手加星。
+ */
 const SHA_STARS = new Set([
 	"擎羊",
 	"陀罗",
@@ -74,6 +121,15 @@ const SHA_STARS = new Set([
 	"天使",
 	"天伤",
 ]);
+/**
+ * 吉星名单。
+ *
+ * @remarks
+ * 与 {@link SHA_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**。两表**不重叠**，
+ * 顺序上煞星先判 —— 若将来往两表里加同名星，`sha` 会赢。
+ *
+ * ⚠️ 同 {@link SHA_STARS}：改表即改格局命中，`npm test` 会盯着。
+ */
 const LUCKY_STARS = new Set([
 	"文昌",
 	"文曲",
@@ -100,6 +156,23 @@ const LUCKY_STARS = new Set([
 	"寡宿",
 ]);
 
+/**
+ * 判定星曜类型。
+ *
+ * @param starName - 星曜中文名
+ * @param iztroType - iztro 给的 `type` 字段（「主星」「煞星」「吉星」「禄存」「天马」等）
+ * @returns `Star["type"]`，取值为 `major` / `sha` / `lucky` / `minor`
+ *
+ * @remarks
+ * 判定优先级从高到低：
+ * 1. 名字命中 {@link SHA_STARS} → `sha`
+ * 2. 名字命中 {@link LUCKY_STARS} → `lucky`
+ * 3. iztro 的 `type`（转小写后比对，中英文皆认）→ 对应类型
+ * 4. 兜底 `minor`
+ *
+ * 前两级先看名字，是 {@link SHA_STARS} 那张表存在的理由。注意 `major` **只能**由
+ * iztro 的 `type` 给出 —— 两张名单里没有主星。
+ */
 function mapStarType(starName: string, iztroType: string): Star["type"] {
 	if (SHA_STARS.has(starName)) return "sha";
 	if (LUCKY_STARS.has(starName)) return "lucky";
@@ -111,6 +184,19 @@ function mapStarType(starName: string, iztroType: string): Star["type"] {
 }
 
 // ─── 五行局名称 → 数字 ──────────────────────────────────────────
+/**
+ * 从五行局名解析出局数。
+ *
+ * @param name - iztro 给的五行局名，如「水二局」「木三局」
+ * @returns 局数 2–6
+ *
+ * @remarks
+ * 靠**中文数字**匹配，故 iztro 若改用阿拉伯数字（「水2局」）会整片落到兜底值。
+ *
+ * ⚠️ 兜底返回 3（木三局）而**不抛错** —— 与 {@link projectPalaceName} 的严格口径相反。
+ * 差别在于局数不参与安星（安星由 iztro 完成，此值只随盘输出），猜错的代价低于中断排盘；
+ * 宫名则是下游一切索引的键，错不起。
+ */
 function parseWuxingJu(name: string): number {
 	if (name.includes("二")) return 2;
 	if (name.includes("三")) return 3;
@@ -121,6 +207,28 @@ function parseWuxingJu(name: string): number {
 }
 
 // ─── 主函数：生成命盘 ────────────────────────────────────────────
+/**
+ * 生成紫微斗数命盘。
+ *
+ * @param birthInfo - 出生信息。⚠️ `hour` 是**时辰序号 0–12**（0=子 … 11=亥，12=晚子时），
+ *   **不是** 0–23 的钟表时；钟表时到时辰序号的换算（含真太阳时校正）在 `cli/birth-info.ts` 完成
+ * @returns 完整命盘。`palaces` 按**地支数组序**排列（寅起），比对时按 `branch` 建索引
+ * @throws 当 iztro 返回未知宫名时（见 {@link projectPalaceName}）
+ *
+ * @remarks
+ * **只做组装、不做推算**：调 iztro 排盘 → 逐宫翻译宫名与星曜 → 算虚岁与当前大限
+ * → 补借对宫字段。命理逻辑一律不在此处重复实现。
+ *
+ * **大限四化已主动下线**：不再生成 `daXians[].siHua` / `stemIndex`（飞星派口径）。
+ * 体系立场见 `.claude/CLAUDE.md` 与 `SKILL.md`。
+ *
+ * @example
+ * ```ts
+ * // hour: 5 = 巳时；务必先经 buildBirthInfo 把钟表时换算成时辰序号
+ * const chart = generateChart({ year: 1990, month: 5, day: 15, hour: 5, gender: "male" });
+ * const ming = chart.palaces.find(p => p.isMingGong);
+ * ```
+ */
 export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const { year, month, day, hour, gender } = birthInfo;
 

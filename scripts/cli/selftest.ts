@@ -34,25 +34,56 @@ import { TIANJI_MODULES, RENJI_MODULES, DIJI_MODULES } from "@/nihai/index";
 import { Lunar } from "lunar-javascript";
 
 /**
- * 覆盖：农历换算、真太阳时、晚子时等价性、城市容错、性别护栏、排盘不变量、三合派约束、格局与知识源可用性。
+ * `selftest` 命令：跑一组排盘不变量与知识源可用性断言，返回逐项报告。
  *
- * 内核根从 `ctx` 取而非自己推导：那是引导层 `pickRoot()` 的职责，自检只负责把它交代出来
- * （用户得知道这张盘是用哪一份内核排的）。失败时以非零码退出，`test/cli.test.mjs` 依赖这一点。
+ * @param ctx - 运行期上下文（内核根与其来源）—— 自检要在输出里交代这张盘是用哪一份内核排的
+ * @returns 已渲染好的报告文本；首行为「通过 N/N」，第二行是内核根
+ *
+ * @remarks
+ * 覆盖：农历换算、真太阳时、晚子时等价性、城市容错、性别护栏、排盘不变量、三合派约束、
+ * 格局与知识源可用性（当前共 **44 项**）。
+ *
+ * 内核根从 `ctx` 取而非自己推导：那是引导层 `pickRoot()` 的职责，自检只负责把它交代出来。
+ *
+ * ⚠️ 有失败项时**不抛错，而是先 `console.error` 全量报告再 `process.exit(1)`** ——
+ * `test/cli.test.mjs` 依赖这个退出码判定自检是否全绿。
  */
 export function cmdSelftest(ctx: CliContext): string {
+	/** 单条断言的结果 */
 	interface Assertion {
+		/** 是否通过 */
 		pass: boolean;
+		/** 断言名（本身即断言内容的描述，直接进报告） */
 		name: string;
+		/** 补充说明：通过时是断言体返回的 detail，失败时是抛出的错误信息 */
 		detail: string;
 	}
 	const results: Assertion[] = [];
+	/**
+	 * 相等断言，不等即抛错。
+	 *
+	 * @param actual - 实得值
+	 * @param expected - 期望值
+	 * @param msg - 错误信息前缀，用来点明是哪一处比对失败
+	 *
+	 * @remarks
+	 * 用 `!==` **严格相等**比较，不做深比较也不做类型转换；失败信息里用 `JSON.stringify` 展开两侧取值。
+	 */
 	const eq = (actual: unknown, expected: unknown, msg = "") => {
 		if (actual !== expected)
 			throw new Error(
 				`${msg}期望 ${JSON.stringify(expected)}，实得 ${JSON.stringify(actual)}`
 			);
 	};
-	/** fn 抛错即判失败；返回值若非空则作为该项的补充说明 */
+	/**
+	 * 跑一条断言并登记结果。
+	 *
+	 * @param name - 断言名，直接进报告
+	 * @param fn - 断言体：抛错即判失败；返回值若非空则作为该项的补充说明
+	 *
+	 * @remarks
+	 * 断言体里的 `eq` 失败会抛错，异常在此被捕获并记为该条失败 —— 一条失败不影响其余断言继续跑。
+	 */
 	const ok = (name: string, fn: () => unknown) => {
 		try {
 			const detail = fn();
@@ -62,6 +93,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		}
 	};
 
+	/** 排盘不变量与三合派约束断言共用的样本盘：1990-05-15 巳时（时辰序号 5），男 */
 	const sample: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male" };
 	const sol = (y: number, m: number, d: number) => `${y}-${m}-${d}`;
 

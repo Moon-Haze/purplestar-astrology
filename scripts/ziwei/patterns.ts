@@ -1,103 +1,421 @@
 /**
- * 紫微斗数格局识别（v2 严格化版本）
+ * 紫微斗数格局识别（v2 严格化版本）。
  *
- * 设计原则：
+ * 本模块是解读层的主体：由一张已排好的 {@link ZiweiChart} 判出命中的格局清单，
+ * 每条含名称、分级、判词、涉及宫位与**分层的成立条件**。41 个 `detect*` 识别器各推入
+ * 0 或 1 条 {@link Pattern}（其中火贪/铃贪、化忌入命/迁等可推入多条），合计覆盖约 70 个
+ * 格局名。
+ *
+ * ## 设计原则
+ *
  * 1. 古书条件优先：每个格局列出"必须 / 加分 / 破格"三层结构，出处可考
  * 2. 倪师立场：不使用宫干自化、大限四化、来因宫等飞星派工具
  * 3. 庙旺利陷：用 brightness 字段（bright=庙旺、normal=平、dim=陷）
  * 4. 三方四正会照：命宫 + 财帛 + 官禄 + 迁移
  * 5. 夹宫：命宫前后两宫
  *
- * 主要古籍出处：
+ * ## 判定怎么做（实现口径）
+ *
+ * - **只看结构化字段，不解析文案**：判定依据是 `Palace.branch`、`Star.type`、
+ *   `Star.brightness`、`Star.siHua` 四项，不读 `description` 文本
+ * - **定位宫位走地支算术**：三方四正是 `[m, (m+4), (m+8), (m+6)]`、夹宫是 `(b±1)`、
+ *   对宫是 `(b+6)`（见 `getSanFangPalaces` / `getJiaPalaces` / `getDuiGong`）。
+ *   少数例外按**宫名**查找（`detectHuaLuRuCai` 找「财帛宫」、`detectHuaQuanRuGuan`
+ *   找「官禄宫」），依赖 `algorithm.ts` 的宫名口径，见 `constants.ts` 的
+ *   `IZTRO_TO_PROJECT_PALACE`
+ * - **识别器一律"命中才推入"**：每个 `detect*` 内部先判条件，不成立即 `return`，
+ *   从不推入"未成立"的条目；因此返回数组的长度即命中数
+ * - **`conditions` 是回填结果、不是判定依据**：`required` / `bonus` / `breaking`
+ *   记录的是**已经过判定**的项（见 {@link PatternCondition}）
+ *
+ * ## 主要古籍出处
+ *
  *  - 《紫微斗数全集》（陈抟祖师传，明代刊本）
  *  - 《紫微斗数全书》（罗洪先编，明代刊本）
  *  - 《骨髓赋》《女命骨髓赋》《十二宫诸星得地合格诀》
  *  - 倪海厦《天纪》紫微斗数讲义
+ *
+ * ## 回归与效力边界
+ *
+ * `test/invariants.test.mjs` 的层 3 为全部约 70 个格局名建了**独立预言机**（按定义复算，
+ * 不看实现），另有「化禄入财 / 化权入官」两条按偏移算术核对的断言；`cli/selftest.ts`
+ * 只断言返回结构与条目必备字段。⚠️ 该预言机复刻的是**实现当前的口径**，不是照命理理想
+ * 口径重写，且 `level` 分级、`description` / `conditions` 文案均不在其覆盖范围内 ——
+ * 详见 `test/README.md`。
+ *
+ * @packageDocumentation
  */
 
-import type { ZiweiChart, Palace, Star } from "./types";
+import type { ZiweiChart, Palace, Star, SiHua } from "./types";
 
 // ────────────────── 类型 ──────────────────
+/**
+ * 格局的成立条件分层（v2 结构）。
+ *
+ * @remarks
+ * ⚠️ 这三个数组是**回填已判定项**的结果记录，**不是判定依据**：识别器先用代码判完条件，
+ * 再把已命中的项写进来给文案层展示。故"某条件不在 `required` 里"不等于"该条件不成立"，
+ * 只是那个识别器没有把它列进去。
+ *
+ * 三层语义：`required` 全部成立格局才被推入；`bonus` 与 `breaking` 只影响
+ * {@link Pattern.level} 的取值（有 `breaking` 通常降级）。
+ */
 export interface PatternCondition {
 	required: string[]; // 必须满足条件（已通过的）
 	bonus?: string[]; // 加分项（已触发）
 	breaking?: string[]; // 破格警示（已触发）
 }
 
+/**
+ * 一条已命中的格局。
+ *
+ * @remarks
+ * 由各 `detect*` 识别器在条件成立时推入 {@link detectPatterns} 的累积数组。
+ */
 export interface Pattern {
-	name: string;
-	level: "excellent" | "good" | "neutral" | "caution";
-	description: string;
-	palaces: string[]; // 涉及宫位
+	name: string; // 格局名；部分识别器会拼入星名（如「武曲化禄入命」「太阴化忌入迁」）
+	level: "excellent" | "good" | "neutral" | "caution"; // 分级：excellent 上格 / good 吉格 / neutral 平 / caution 凶格警示。触发破格条件时**降级**（如 excellent → good、good → caution）
+	description: string; // 判词文案，由 cli/commands.ts 直接输出给用户
+	palaces: string[]; // 涉及宫位（**宫名**，非地支索引；可能含"身宫"或格局定名宫位）
 	conditions?: PatternCondition; // 成立条件分层（v2 新增）
 	source?: string; // 古籍出处（v2 新增）
 }
 
 // ────────────────── 常量 ──────────────────
+// 三张煞星名单：多个识别器共用同一份口径，改这里等于同时改所有引用它的格局。
+// SHA_NAMES 是全集（六煞）；SHA_HARD（四煞）与 SHA_KONG（空劫）是它的**两个互不相交的
+// 子集** —— 空劫不在四煞之内，故计煞时两者分别累加，不会重复计数。
+/** 六煞名单：擎羊、陀罗、火星、铃星、地空、地劫。{@link hasShaInPalace} 的默认口径。 */
 const SHA_NAMES = ["擎羊", "陀罗", "火星", "铃星", "地空", "地劫"];
+/** 四煞名单（不含空劫）。陷阱计数类判定的默认口径，见 {@link shaCountInPalace} / {@link sanFangShaCount}。 */
 const SHA_HARD = ["擎羊", "陀罗", "火星", "铃星"]; // 四煞
+/** 空劫名单。紫微、双禄等格局的"最忌空劫"判定用它，与四煞分开计。 */
 const SHA_KONG = ["地空", "地劫"]; // 空劫
+/**
+ * 左辅、右弼的名单。
+ *
+ * @remarks
+ * ⚠️ 本文件内**无任何引用**：辅弼的判定都在调用点直接写字面量（`sanFangSet.has("左辅")
+ * && sanFangSet.has("右弼")`），未走这张表。保留是为了不动逻辑，改动时别以为它在生效。
+ */
 const ZUO_YOU = ["左辅", "右弼"];
+/**
+ * 文昌、文曲的名单。
+ *
+ * @remarks
+ * ⚠️ 本文件内**无任何引用**，同 {@link ZUO_YOU}：昌曲判定在调用点直接写字面量。
+ */
 const CHANG_QU = ["文昌", "文曲"];
+/**
+ * 天魁、天钺的名单。
+ *
+ * @remarks
+ * ⚠️ 本文件内**无任何引用**，同 {@link ZUO_YOU}：魁钺判定在调用点直接写字面量。
+ */
 const KUI_YUE = ["天魁", "天钺"];
 
 // ────────────────── 辅助函数 ──────────────────
+/**
+ * 取一宫的主星名列表。
+ *
+ * @param palace - 目标宫位
+ * @returns 该宫 `type === "major"` 的星名；**不含**吉煞与杂耀
+ *
+ * @remarks
+ * "空宫"判定（`detectMingZhuChuHai`）与 "本宫含某主星" 判定（`detectShaPoLang` /
+ * `detectJiYueTongLiang` 的 `palaces` 回填）都走这里，故口径必须与 `Star.type`
+ * 保持一致 —— 而 `Star.type` 由 `algorithm.ts` 的 `mapStarType` 决定。
+ */
 function getMajorStarNames(palace: Palace): string[] {
 	return palace.stars.filter(s => s.type === "major").map(s => s.name);
 }
+/**
+ * 在一宫内按星名取星。
+ *
+ * @param palace - 目标宫位
+ * @param name - 星曜中文名
+ * @returns 命中的 {@link Star}；该宫无此星时返回 `undefined`
+ *
+ * @remarks
+ * 与 {@link hasStar} 的差别是返回值：需要读亮度 / 四化时用本函数，只问有无时用 `hasStar`。
+ * 同名星同宫出现多次时只取首个（`find` 语义）。
+ */
 function findStar(palace: Palace, name: string): Star | undefined {
 	return palace.stars.find(s => s.name === name);
 }
+/**
+ * 判断一宫内是否有某星。
+ *
+ * @param palace - 目标宫位
+ * @param name - 星曜中文名
+ * @returns 该宫含此星则为 `true`
+ */
 function hasStar(palace: Palace, name: string): boolean {
 	return palace.stars.some(s => s.name === name);
 }
+/**
+ * 在整张盘里按星名找宫位。
+ *
+ * @param chart - 命盘
+ * @param name - 星曜中文名
+ * @returns 第一个含该星的宫位；全盘无此星时返回 `undefined`
+ *
+ * @remarks
+ * ⚠️ 只返回**首个**命中宫。主星在十二宫中唯一，吉煞与杂耀按安星法也各只落一宫，故实际
+ * 不会歧义；但若 `Star` 数据异常（同名星出现两次），后一个会被静默忽略。
+ *
+ * ⚠️ 星曜**不在盘上**（`star` 未出现在任何宫）时同样返回 `undefined`，与"该宫为空"无法
+ * 区分。多数调用点因此先判空再取。
+ */
 function findStarPalace(chart: ZiweiChart, name: string): Palace | undefined {
 	return chart.palaces.find(p => p.stars.some(s => s.name === name));
 }
+/**
+ * 按地支索引取宫位。
+ *
+ * @param chart - 命盘
+ * @param branch - 地支索引；可为任意整数（含负数、超出 0–11）
+ * @returns 该地支对应的宫位；无匹配时返回 `undefined`
+ *
+ * @remarks
+ * `((branch % 12) + 12) % 12` 是两步取模，把入参规整到 0–11。调用点因此可以直接写
+ * `(branch + 6) % 12`、`(branch + 11) % 12` 这类偏移算式而不必再判界。
+ */
 function getPalaceByBranch(chart: ZiweiChart, branch: number): Palace | undefined {
 	return chart.palaces.find(p => p.branch === ((branch % 12) + 12) % 12);
 }
+/**
+ * 数一宫内的煞星个数。
+ *
+ * @param palace - 目标宫位
+ * @param list - 煞星名单，默认 {@link SHA_HARD}（四煞）
+ * @returns 该宫中属于 `list` 的星数
+ *
+ * @remarks
+ * 逐星计数，故一宫同时坐羊、陀会返回 2。默认口径是四煞而非六煞 —— 空劫要单独数时
+ * 显式传 {@link SHA_KONG}。
+ */
 function shaCountInPalace(palace: Palace, list: string[] = SHA_HARD): number {
 	return palace.stars.filter(s => list.includes(s.name)).length;
 }
+/**
+ * 判断一宫内是否坐着煞星。
+ *
+ * @param palace - 目标宫位
+ * @param list - 煞星名单，默认 {@link SHA_NAMES}（六煞，含空劫）
+ * @returns 命中名单中任意一颗即为 `true`
+ *
+ * @remarks
+ * ⚠️ 默认口径与 {@link shaCountInPalace} **不同**：这里默认六煞（含空劫），那里默认四煞。
+ * 需要"坐四煞"而非"坐六煞"时显式传 {@link SHA_HARD}（如 `detectWuQiSha`、
+ * `detectTongLiang` 就是这么调的）。
+ */
 function hasShaInPalace(palace: Palace, list: string[] = SHA_NAMES): boolean {
 	return palace.stars.some(s => list.includes(s.name));
 }
+/**
+ * 取命宫的三方四正。
+ *
+ * @param chart - 命盘
+ * @returns 命宫、官禄宫、财帛宫、迁移宫四个宫位
+ *
+ * @remarks
+ * 以 `chart.mingGongBranch` 为基准做地支偏移，四个地支分别是：
+ *
+ * | 偏移 | 宫位 |
+ * | --- | --- |
+ * | `m` | 命宫 |
+ * | `m + 4` | 官禄宫 |
+ * | `m + 8` | 财帛宫 |
+ * | `m + 6` | 迁移宫 |
+ *
+ * 偏移方向以 `test/invariants.test.mjs` 的「宫名与相对命宫的逆行偏移一致」为准
+ * （`k = (mingGongBranch − branch + 12) % 12`，期望宫名取自 `PALACE_NAMES_ORDER`）——
+ * 十二宫由命宫**逆行**排布，别想当然写成顺行。
+ *
+ * ⚠️ 返回顺序是 **`chart.palaces` 的地支序**（`filter` 保持原数组序），不是上表的偏移序，
+ * 也不是宫位顺序；需要稳定顺序时请自行排序。正常命盘恒返回 4 个宫位。
+ */
 function getSanFangPalaces(chart: ZiweiChart): Palace[] {
 	const m = chart.mingGongBranch;
 	const branches = [m, (m + 4) % 12, (m + 8) % 12, (m + 6) % 12];
 	return chart.palaces.filter(p => branches.includes(p.branch));
 }
+/**
+ * 判断某地支是否落在命宫的三方四正内。
+ *
+ * @param chart - 命盘
+ * @param branch - 待判定的地支索引（**需已规整在 0–11**，此处不做取模）
+ * @returns 在命宫、官禄宫、财帛宫或迁移宫则为 `true`
+ *
+ * @remarks
+ * 与 {@link getSanFangPalaces} 同一组偏移，但走 `includes` 直判，省去构造数组 ——
+ * 识别器里高频调用（如火贪/武贪的"会照命宫三方"关卡）。
+ *
+ * ⚠️ 入参不做 `% 12` 规整，与 {@link getPalaceByBranch} 不同：传入越界值一律判 `false`，
+ * 不会误命中。
+ */
 function isInSanFang(chart: ZiweiChart, branch: number): boolean {
 	const m = chart.mingGongBranch;
 	return [m, (m + 4) % 12, (m + 8) % 12, (m + 6) % 12].includes(branch);
 }
+/**
+ * 取对宫。
+ *
+ * @param chart - 命盘
+ * @param branch - 基准地支索引
+ * @returns 相隔六个地支的那个宫位；无匹配时返回 `undefined`
+ *
+ * @remarks
+ * 对宫恒为 `(branch + 6) % 12`，与 `algorithm.ts` 填的 `Palace.oppositeBranch`
+ * 是同一个算式。
+ */
 function getDuiGong(chart: ZiweiChart, branch: number): Palace | undefined {
 	return getPalaceByBranch(chart, (branch + 6) % 12);
 }
+/**
+ * 取夹宫：某宫地支前后各一宫。
+ *
+ * @param chart - 命盘
+ * @param branch - 基准地支索引（通常传 `chart.mingGongBranch`）
+ * @returns `prev` 为地支序前一位（`(branch + 11) % 12`），`next` 为后一位（`(branch + 1) % 12`）；
+ *   宫位缺失时对应字段为 `undefined`
+ *
+ * @remarks
+ * "夹"看的是**地支相邻**，与宫名无关。以命宫（`m`）为基准时，`prev` 即兄弟宫
+ * （偏移 1）、`next` 即父母宫（偏移 11）—— 偏移口径同 {@link getSanFangPalaces}。
+ *
+ * 调用点（`detectRiYueJiaMing` / `detectFuBiJiaMing` / `detectYangTuoJiaJi` 等）
+ * 一律先 `if (!prev || !next) return;`，因为缺一宫就构不成"夹"。
+ */
 function getJiaPalaces(chart: ZiweiChart, branch: number): { prev?: Palace; next?: Palace } {
 	return {
 		prev: getPalaceByBranch(chart, (branch + 11) % 12),
 		next: getPalaceByBranch(chart, (branch + 1) % 12),
 	};
 }
+/**
+ * 取命宫三方四正内出现过的所有星名。
+ *
+ * @param chart - 命盘
+ * @returns 三方四正四宫中全部星曜名的集合（含主星、吉煞、杂耀）
+ *
+ * @remarks
+ * 是 {@link getSanFangPalaces} 的聚合视图，识别器里最常用的入口（"再会昌曲"、"辅弼同会"
+ * 这类判定都基于它）。
+ *
+ * ⚠️ 返回 `Set` 即**去重**：同名星出现多次只留一份。所以它只能回答"有没有"，
+ * 不能用来数煞星个数 —— 数个数请用 {@link sanFangShaCount}。
+ *
+ * ⚠️ 判定的是**星名是否出现在这四宫**，与"该星是否在本宫 / 是否同宫"无关。要区分
+ * 同宫与会照，得另比 `Palace.branch`（如 `detectHuoTanLingTan` 的做法）。
+ */
 function sanFangAllStars(chart: ZiweiChart): Set<string> {
 	return new Set(getSanFangPalaces(chart).flatMap(p => p.stars.map(s => s.name)));
 }
+/**
+ * 数命宫三方四正内的煞星个数。
+ *
+ * @param chart - 命盘
+ * @param list - 煞星名单，默认 {@link SHA_HARD}（四煞）
+ * @returns 四宫煞星数之和
+ *
+ * @remarks
+ * 逐宫累加（`reduce` + {@link shaCountInPalace}），故**保留重复计数** —— 与
+ * {@link sanFangAllStars} 的去重语义相反，这正是"三方煞重"类破格条件所需。
+ */
 function sanFangShaCount(chart: ZiweiChart, list: string[] = SHA_HARD): number {
 	return getSanFangPalaces(chart).reduce((sum, p) => sum + shaCountInPalace(p, list), 0);
 }
+/**
+ * 判断一宫内某星是否庙旺。
+ *
+ * @param palace - 目标宫位
+ * @param starName - 星曜中文名
+ * @returns 该星在该宫亮度为 `"bright"` 则为 `true`
+ *
+ * @remarks
+ * ⚠️ 星不在该宫、或亮度字段缺省（`undefined`）时**一律返回 `false`** —— 拿不到亮度时
+ * 不做正面假设。加分之处的误判方向因此是"少加分"而非"多加分"，与 `algorithm.ts`
+ * 的 `mapBrightness`（缺省归 `normal`）口径呼应。
+ *
+ * 三档亮度里 `"normal"`（得 / 利 / 平）**不算**庙旺。
+ */
 function isBright(palace: Palace, starName: string): boolean {
 	const s = findStar(palace, starName);
 	return s?.brightness === "bright";
 }
+/**
+ * 判断一宫内某星是否落陷。
+ *
+ * @param palace - 目标宫位
+ * @param starName - 星曜中文名
+ * @returns 该星在该宫亮度为 `"dim"` 则为 `true`
+ *
+ * @remarks
+ * ⚠️ 同 {@link isBright}：星不在该宫或亮度缺省时返回 `false`，不把"不知道"当成"落陷"。
+ * 破格判定因此偏向"少判破格"。
+ */
 function isDim(palace: Palace, starName: string): boolean {
 	const s = findStar(palace, starName);
 	return s?.brightness === "dim";
 }
+/**
+ * 取一宫内某星的四化标记。
+ *
+ * @param palace - 目标宫位
+ * @param starName - 星曜中文名
+ * @returns 该星的 `siHua`（禄 / 权 / 科 / 忌）；无四化或星不在该宫时为 `undefined`
+ *
+ * @remarks
+ * 读到的是**生年四化**（`algorithm.ts` 把 iztro 的 `mutagen` 落到 `Star.siHua`），
+ * 三合派口径；不涉及宫干，故不受飞星派下线影响。
+ */
 function getStarSiHua(palace: Palace, starName: string): Star["siHua"] | undefined {
 	return findStar(palace, starName)?.siHua;
 }
+/**
+ * 判断一宫内是否有**任意**星带指定四化。
+ *
+ * @param palace - 目标宫位
+ * @param hua - 四化之一（禄 / 权 / 科 / 忌）
+ * @returns 该宫存在带此四化的星则为 `true`
+ *
+ * @remarks
+ * 与 {@link getStarSiHua} 的分工：后者问「**某颗指定星**化没化」，本函数问「**这一宫**里
+ * 有没有星化」。判「命宫见禄」这类**不指定星**的条件时用本函数。
+ *
+ * ⚠️ 不要用 `palace.stars.some(s => s.name === "化禄")` 代替本函数 —— 四化是
+ * `Star.siHua` **字段**（取值「禄」「权」「科」「忌」），不是星曜名。把「化禄」当星名去查
+ * 星名集合**恒为 false**，条件静默失效而 `tsc` 与测试都发现不了。
+ */
+function palaceHasSiHua(palace: Palace, hua: SiHua): boolean {
+	return palace.stars.some(s => s.siHua === hua);
+}
+/**
+ * 判断命宫三方四正内是否有**任意**星带指定四化。
+ *
+ * @param chart - 命盘
+ * @param hua - 四化之一（禄 / 权 / 科 / 忌）
+ * @returns 四宫中任一宫存在带此四化的星则为 `true`
+ *
+ * @remarks
+ * 是 {@link palaceHasSiHua} 的三方四正视图，用于「再会化科」「三方有化禄或化权」这类
+ * 会照判定。会照**不分宫位**，故只看「四宫里有没有」，不比 `Palace.branch`。
+ *
+ * ⚠️ 理由同 {@link palaceHasSiHua}：`sanFangAllStars(chart).has("化科")` 是恒假写法，
+ * 因为那个 `Set` 装的是**星名**。
+ */
+function sanFangHasSiHua(chart: ZiweiChart, hua: SiHua): boolean {
+	return getSanFangPalaces(chart).some(p => palaceHasSiHua(p, hua));
+}
+/**
+ * 地支索引 → 地支名。
+ *
+ * @remarks
+ * 索引口径与 `types.ts` 的 `Palace.branch` 一致：0=子 … 11=亥。仅用于拼判词
+ * （如"太阳太阴同入**未**宫"、"巨门入命于**子**宫"）与 `PatternCondition` 的文案。
+ */
 const BRANCH_NAMES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
 
 // ────────────────── 正格识别器 ──────────────────
@@ -169,7 +487,7 @@ function detectFuXiangChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Patter
 	const required = ["天府坐命三方", "天相坐命三方", "两星不同宫"];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
-	if (hasStar(ming, "禄存") || hasStar(ming, "化禄")) bonus.push("命宫见禄");
+	if (hasStar(ming, "禄存") || palaceHasSiHua(ming, "禄")) bonus.push("命宫见禄");
 	if (sanFangAllStars(chart).has("左辅")) bonus.push("再会左辅");
 	if (hasShaInPalace(ming, SHA_HARD)) breaking.push("命宫坐煞星");
 	if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push("三方四正煞星过多");
@@ -203,7 +521,7 @@ function detectYangLiangChangLu(chart: ZiweiChart, ming: Palace, patterns: Patte
 	const breaking: string[] = [];
 	if (isBright(sun, "太阳")) bonus.push("太阳庙旺");
 	if (isBright(liang, "天梁")) bonus.push("天梁庙旺");
-	if (sanFangSet.has("化科")) bonus.push("再会化科");
+	if (sanFangHasSiHua(chart, "科")) bonus.push("再会化科");
 	if (isDim(sun, "太阳")) breaking.push("太阳落陷（阳梁失辉）");
 	if (sanFangShaCount(chart, SHA_HARD) >= 2) breaking.push("三方煞重");
 
@@ -302,7 +620,7 @@ function detectShaPoLang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 	const required = ["七杀、破军、贪狼三星齐入命宫三方四正"];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
-	if (sanFangSet.has("化禄") || sanFangSet.has("化权"))
+	if (sanFangHasSiHua(chart, "禄") || sanFangHasSiHua(chart, "权"))
 		bonus.push("三方有化禄或化权（动得有力）");
 	if (sanFangSet.has("左辅") && sanFangSet.has("右弼")) bonus.push("辅弼同会（变动中得贵人）");
 	if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push("煞星过重（动而无成）");
@@ -331,7 +649,7 @@ function detectJiYueTongLiang(chart: ZiweiChart, ming: Palace, patterns: Pattern
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (sanFangSet.has("文昌") || sanFangSet.has("文曲")) bonus.push("再会昌曲");
-	if (sanFangSet.has("化科")) bonus.push("再会化科");
+	if (sanFangHasSiHua(chart, "科")) bonus.push("再会化科");
 	if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push("煞星过多（机月同梁忌煞）");
 	if (hasShaInPalace(ming, SHA_HARD)) breaking.push("命宫坐煞");
 
@@ -983,7 +1301,16 @@ function detectHuaKeRuMingShen(chart: ZiweiChart, patterns: Pattern[]) {
 	}
 }
 
-/** 机月同梁三星会（降级版）：天机/太阴/天同/天梁 任 3 星齐入三方四正 */
+/**
+ * 机月同梁三星会（降级版）：天机/太阴/天同/天梁 任 3 星齐入三方四正。
+ *
+ * @remarks
+ * 与 `detectJiYueTongLiang` 互补：四星齐由那个识别器处理，本函数只在**恰好 3 星**时触发
+ * （`has.length !== 3` 即返回），两者不会重复产出。
+ *
+ * ⚠️ `ming` 形参**未被使用**，函数体末尾以 `void ming;` 显式吞掉 —— 判定只依赖三方四正，
+ * 不需要命宫本身。保留形参是为了与其它识别器的调用签名一致，改动时别当成漏用。
+ */
 function detectJiYueTongLiangPartial(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	const has = ["天机", "太阴", "天同", "天梁"].filter(s => sanFangSet.has(s));
@@ -1078,6 +1405,42 @@ function detectKeQuanShuangHui(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 // ────────────────── 主入口 ──────────────────
+/**
+ * 识别一张命盘命中的全部格局。
+ *
+ * @param chart - 已排好的命盘（{@link ZiweiChart}）
+ * @returns 命中的格局清单，按识别器的**调用顺序**排列（上格 → 中格 → 助力格 → 恶格 →
+ *   基础格局）；无命中时为**空数组**
+ *
+ * @remarks
+ * 本模块的唯一主入口，也是解读层的数据源头：`cli/commands.ts` 的 `analyze` 把它同时放进
+ * 文本输出（`【格局识别】共 N 个`）与 `--json` 的 `patterns` 字段；`purple-star.ts` 的
+ * `REQUIRED_EXPORTS` 自检盯着本导出存在。
+ *
+ * **实现是"全量扫描 + 累积推入"**：顺序调用 41 个 `detect*` 识别器，每个自行判条件、
+ * 命中就往同一个数组推入 —— 识别器之间**互不排斥**，同一张盘可以同时命中多条，
+ * 甚至是互相矛盾的格局（如既有"君臣庆会"又有"紫微入命"）。这与"取最高分格局"的思路不同，
+ * 是刻意的：判词交给解读层权衡，判定层不替它做取舍。
+ *
+ * 格局名**可能带星名**：`detectHuaLuRuMing` 产出 `${星名}化禄入命`、
+ * `detectHuaJiRuMingQian` 产出 `${星名}化忌入命/迁`，故返回条目的 `name` 不全是固定表；
+ * 按名字做查表比对的调用方需注意（见 `test/invariants.test.mjs` 的预言机口径）。
+ *
+ * ⚠️ **命宫缺失即空手而归**：开头的 `if (!ming) return patterns;` 让整轮识别直接跳过，
+ * 返回空数组而非报错。正常命盘必有命宫，此分支只在 `chart` 数据不完整时触发。
+ *
+ * ⚠️ **顺序即语义**：识别器按"上格 → 中格 → 助力格 → 恶格 → 基础格局"分组调用，改动调用
+ * 顺序会改变输出的排列（`test/invariants.test.mjs` 有断言按名集合比对，不按序）。
+ *
+ * @example
+ * ```ts
+ * const patterns = detectPatterns(chart);
+ * for (const p of patterns) {
+ *   console.log(p.name, p.level, p.palaces.join("、"));
+ *   if (p.conditions?.breaking?.length) console.log("  破格：", p.conditions.breaking.join("；"));
+ * }
+ * ```
+ */
 export function detectPatterns(chart: ZiweiChart): Pattern[] {
 	const patterns: Pattern[] = [];
 	const ming = chart.palaces.find(p => p.branch === chart.mingGongBranch);
@@ -1138,6 +1501,37 @@ export function detectPatterns(chart: ZiweiChart): Pattern[] {
 }
 
 // ────────────────── 命宫摘要（保持向后兼容）──────────────────
+/**
+ * 取命宫主星的简要概括：星名、关键词、星性。
+ *
+ * @param chart - 已排好的命盘
+ * @returns `stars` 为命宫主星名列表（按宫内星序），`keywords` 为关键词（最多 5 个），
+ *   `nature` 为星性；命宫缺失时三项皆空
+ *
+ * @remarks
+ * 为**向后兼容**保留的轻量摘要：两张大表（`keywordMap` / `natureMap`）是按 14 主星硬编码
+ * 的中文词条，故与 `patterns.ts` 其余部分不同 —— 这里**不判条件，只做映射**，属纯文案层。
+ * `cli/commands.ts` 的 `analyze`（文本与 `--json` 的 `mingGongSummary`）都取它，与
+ * `detectPatterns` 的输出拼成完整解读素材。
+ *
+ * 三处口径需要注意：
+ *
+ * 1. **只看主星**：`keywordMap` 与 `natureMap` 都只覆盖 14 主星，吉煞杂耀一概不参与
+ * 2. **空宫给"空宫"**：`stars` 为空（命宫无主星）时 `nature` 直接是字面量 `"空宫"`，
+ *    `keywords` 为空数组 —— 此时调用方需改为从**借入的对宫主星**取释义，
+ *    `cli/commands.ts` 就是这么处理的（见 `Palace.borrowedStars`）
+ * 3. **`nature` 与 `keywords` 都锚在首颗主星**：`nature` 取 `starNames[0]`，而
+ *    `keywords` 把**所有**主星的词条摊平后 `slice(0, 5)` —— 命宫坐双主星时，
+ *    首星决定星性、两星共同贡献关键词
+ *
+ * 未收录的星名（表外键）不会报错：`keywordMap[n] ?? []` 跳过，`nature` 兜底为空串。
+ *
+ * @example
+ * ```ts
+ * const { stars, keywords, nature } = getMingGongSummary(chart);
+ * // 空宫时 stars = []、nature = "空宫"，改用 chart 里该宫的 borrowedStars 取释义
+ * ```
+ */
 export function getMingGongSummary(chart: ZiweiChart): {
 	stars: string[];
 	keywords: string[];

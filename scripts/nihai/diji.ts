@@ -12,6 +12,21 @@
 import type { NiModule } from "./types";
 
 // ─── 地纪模块 ────────────────────────────────────────────
+/**
+ * 地纪模块清单——地纪是倪师未竟之业，本表收的是构想与理论基础，不是成书内容。
+ *
+ * @remarks
+ * 共 3 条，`order` 即排列次序：国家地理志（`preview`）、堪舆理论基础（`active`）、
+ * 遗稿与后学（`coming`），合计 6 章。
+ *
+ * 每条为 `NiModule`（定义见 `./types`），关键字段：`id`（`dj-` 前缀）、`name` / `nameEn`、
+ * `subtitle`、`description`、`details`、`references`、`keywords`、`status`、`slug`，
+ * 以及 `chapters` 子章节数组；`school`（九星派）仅「堪舆理论基础」一条有。
+ *
+ * 消费方：经 `nihai/index.ts` 再导出，由 CLI 的 `nihai` 命令（`cli/commands.ts` 的 `cmdNihai`，
+ * `--category diji`）按模块与章节逐层展开输出；`cli/selftest.ts` 的「知识源可用性」一项
+ * 亦断言本表非空。
+ */
 export const DIJI_MODULES: NiModule[] = [
 	{
 		id: "dj-guojiadili",
@@ -168,6 +183,15 @@ export const DIJI_MODULES: NiModule[] = [
 ];
 
 // ─── 统计 ────────────────────────────────────────────────
+/**
+ * 地纪规模统计。
+ *
+ * @remarks
+ * `totalModules` 与 `totalChapters` 直接读 {@link DIJI_MODULES} 的表长（当前为 3 个模块、
+ * 6 章），表变则统计自动跟随；`status` 与 `note` 是讲义层面的固定文案，与代码无关。
+ *
+ * 经 `nihai/index.ts` 再导出；仓库内 CLI 目前只消费三张模块表。
+ */
 export const DIJI_STATS = {
 	totalModules: DIJI_MODULES.length,
 	totalChapters: DIJI_MODULES.reduce((sum, m) => sum + m.chapters.length, 0),

@@ -7,6 +7,19 @@
 
 import type { Book } from "../types";
 
+/**
+ * 《骨髓赋》数据。
+ *
+ * 明代刊本、无确切作者的紫微斗数核心口诀，全文约 1500 字。本文件收录其 9 章：
+ * 总论篇、紫微星论、七杀星论、杀破狼格、机月同梁、四化星论、辅弼魁钺论、六煞星论、
+ * 十二宫论。
+ *
+ * @remarks
+ * 书目元数据一律以本对象字段为准（`title` / `slug` / `dynasty` / `author` /
+ * `wordCount` / `intro`）。段落 id 前缀为 `gsf-<章号>-<段号>`（如 `gsf-1-1`）；
+ * {@link ALL_BOOKS} 以 `slug` = `"gusuifu"` 收录本对象，
+ * `classics` 命令的输出即以该 slug 标识命中来源。
+ */
 export const guSuiFu: Book = {
 	title: "骨髓赋",
 	slug: "gusuifu",

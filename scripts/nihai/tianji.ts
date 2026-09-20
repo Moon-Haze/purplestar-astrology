@@ -15,6 +15,19 @@
 import type { NiModule, Hexagram, FengShuiEntry, TianjiEpisode } from "./types";
 
 // ─── 天纪模块 ────────────────────────────────────────────
+/**
+ * 天纪六大模块清单。
+ *
+ * @remarks
+ * 共 6 条：紫微斗数、易经六十四卦、堪舆学（`active`），推命学、面相学（`preview`），测字术（`coming`）。
+ *
+ * 每条为 `NiModule`（定义见 `./types`），关键字段：`id`（`tj-` 前缀）、`name` / `nameEn`、
+ * `subtitle`、`description`、`details`、`keywords`、`status`、`order`、`slug`，以及
+ * `chapters` 子章节数组（六模块合计 13 章，章节内含 `keyPoints` 与可选的 `quotes` 原文）。
+ *
+ * 消费方：经 `nihai/index.ts` 再导出，由 CLI 的 `nihai` 命令（`cli/commands.ts` 的 `cmdNihai`）
+ * 按模块与章节逐层展开输出；`cli/selftest.ts` 的「知识源可用性」一项亦断言本表非空。
+ */
 export const TIANJI_MODULES: NiModule[] = [
 	{
 		id: "tj-ziwei",
@@ -371,6 +384,32 @@ export const TIANJI_MODULES: NiModule[] = [
 ];
 
 // ─── 易经六十四卦数据库 ──────────────────────────────────
+/**
+ * 易经六十四卦全表。
+ *
+ * @remarks
+ * 共 64 条，`number` 为 1–64 的连续卦序，无缺号、无重复。
+ *
+ * 每条为 `Hexagram`（定义见 `./types`），关键字段：`number`（卦序）、`name`（卦名）、
+ * `composition`（卦象，如「乾为天」）、`upper` / `lower`（上卦与下卦）、`meaning`（卦辞要点）、
+ * `niInterpretation`（倪师讲解要点）、`divination`（断事要诀）。
+ *
+ * 经 `nihai/index.ts` 再导出，供上层按卦序检索；`TIANJI_STATS.totalHexagrams` 亦读本表长度。
+ *
+ * @example
+ * ```ts
+ * {
+ *   number: 1,
+ *   name: "乾",
+ *   composition: "乾为天",
+ *   upper: "乾",
+ *   lower: "乾",
+ *   meaning: "元亨利贞，天行健，君子以自强不息",
+ *   niInterpretation: "纯阳之卦，刚健中正，至大至刚",
+ *   divination: "大吉大利，但需注意亢龙有悔",
+ * }
+ * ```
+ */
 export const HEXAGRAMS: Hexagram[] = [
 	{
 		number: 1,
@@ -1015,6 +1054,18 @@ export const HEXAGRAMS: Hexagram[] = [
 ];
 
 // ─── 堪舆学条目 ──────────────────────────────────────────
+/**
+ * 天纪堪舆学条目表。
+ *
+ * @remarks
+ * 共 6 条，`category` 三值各 2 条：`theory`（八煞黄泉、城局与九星）、`yangzhai`（三吉六秀、阳宅布局）、
+ * `yinzhai`（天星四贵、龙穴砂水）。
+ *
+ * 每条为 `FengShuiEntry`（定义见 `./types`），关键字段：`id`（`fs-` 前缀）、`title`、
+ * `category`、`description`、`keyPoints`。本表只收条目要点，不含完整论断。
+ *
+ * 经 `nihai/index.ts` 再导出；`TIANJI_STATS.totalFengShui` 亦读本表长度。
+ */
 export const FENGSHUI_ENTRIES: FengShuiEntry[] = [
 	{
 		id: "fs-bashayq",
@@ -1071,6 +1122,17 @@ export const FENGSHUI_ENTRIES: FengShuiEntry[] = [
 ];
 
 // ─── 天纪24集课程结构（每集2小时：前半段命学/后半段易经） ──
+/**
+ * 天纪 24 集课程结构表。
+ *
+ * @remarks
+ * 共 24 条，`dvd` 为 1–24 的 DVD 编号。每集 2 小时：前一小时讲命学，后一小时讲易经。
+ *
+ * 每条为 `TianjiEpisode`（定义见 `./types`），关键字段：`dvd`（编号）、`firstHalf`（前半段主题）、
+ * `secondHalf`（后半段主题）、`highlights`（关键内容要点）。
+ *
+ * 经 `nihai/index.ts` 再导出；`TIANJI_STATS.totalEpisodes` 亦读本表长度。
+ */
 export const TIANJI_EPISODES: TianjiEpisode[] = [
 	{
 		dvd: 1,
@@ -1241,6 +1303,18 @@ export const TIANJI_EPISODES: TianjiEpisode[] = [
 ];
 
 // ─── 倪师天纪核心语录库 ──────────────────────────────────
+/**
+ * 倪师天纪核心语录表。
+ *
+ * @remarks
+ * 共 29 条，与 `TIANJI_STATS.totalQuotes` 的硬编码值一致。
+ *
+ * 每条为 `{ text, topic }`：`text` 为语录原文，`topic` 为分类标签。`topic` 共 11 种取值——
+ * 紫微斗数（7 条）、面相（5）、堪舆（4）、命学哲理（4）、易经（3），以及传承、识人、
+ * 天纪总论、天文、学习态度、综合各 1 条。
+ *
+ * 经 `nihai/index.ts` 再导出，供上层按 `topic` 检索；仓库内 CLI 目前未消费本表。
+ */
 export const TIANJI_QUOTES = [
 	{
 		text: "文字只是协助诸位到达真理的彼岸，千万不要三个月以后，怎么还是扛着船在马路上跑",
@@ -1280,6 +1354,18 @@ export const TIANJI_QUOTES = [
 ];
 
 // ─── 统计 ────────────────────────────────────────────────
+/**
+ * 天纪各表的派生规模统计。
+ *
+ * @remarks
+ * 字段分两类。**派生值**直接读表长，表变则统计自动跟随：`totalModules`、`activeModules`、
+ * `totalChapters`、`totalHexagrams`、`totalFengShui`、`totalEpisodes`。**硬编码值**是讲义
+ * 层面的事实，不随代码变化：`totalQuotes`、`videoHours`、`videoEpisodes`、`hdEpisodes`、
+ * `recordYear`、`lectureBooks`、`schools`——其中 `totalQuotes: 29` 目前与
+ * {@link TIANJI_QUOTES} 的实收条数一致，调整语录表时需手动同步。
+ *
+ * 经 `nihai/index.ts` 再导出，供上层取用；仓库内 CLI 目前只消费三张模块表。
+ */
 export const TIANJI_STATS = {
 	totalModules: TIANJI_MODULES.length,
 	activeModules: TIANJI_MODULES.filter(m => m.status === "active").length,
