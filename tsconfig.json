@@ -6,6 +6,7 @@
     "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "isolatedModules": true,
@@ -15,6 +16,6 @@
       "@/*": ["./scripts/*"]
     }
   },
-  "include": ["scripts/**/*.ts"],
+  "include": ["scripts/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "reference"]
 }

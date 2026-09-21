@@ -2,7 +2,7 @@
 //
 // 拿本项目 generateChart() 的输出去比 toolkit 样本里的 chart，逐字段全等比对。
 // 基准是 iztro 2.5.8 的行为快照，本项目用 2.6.1 —— 已知差异（太阳/太阴在酉宫的亮度）
-// 登记在 test/lib/compare.mjs 的 KNOWN_DIVERGENCES，白名单**之外**的任何差异都会失败。
+// 登记在 test/lib/compare.ts 的 KNOWN_DIVERGENCES，白名单**之外**的任何差异都会失败。
 //
 // ⚠️ 这套测试是**回归锁定 / 跨版本差分**，不是独立正确性证明：样本与本项目内核同源
 //    （都调 iztro 的 bySolar），两边一起错的地方测不出来。详见 test/README.md。
@@ -12,20 +12,23 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadAlgorithm, ROOT } from "./lib/loader.mjs";
-import { compareChart, formatDiffs, BRANCHES } from "./lib/compare.mjs";
+import type { BirthInfo } from "@/ziwei/types";
+import { loadAlgorithm, ROOT } from "./lib/loader.ts";
+import { BRANCHES, compareChart, formatDiffs, type BaselineSample } from "./lib/compare.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-const manifest = JSON.parse(readFileSync(resolve(HERE, "fixtures/manifest.json"), "utf8"));
+const manifest = JSON.parse(readFileSync(resolve(HERE, "fixtures/manifest.json"), "utf8")) as {
+	count: number;
+};
 const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 	.split("\n")
 	.filter(Boolean)
-	.map(JSON.parse);
+	.map(line => JSON.parse(line) as BaselineSample);
 
 const { generateChart } = await loadAlgorithm();
 
-const describeBirth = b =>
+const describeBirth = (b: BirthInfo): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ` +
 	`${BRANCHES[b.hour] ?? `timeIndex${b.hour}`}时 ${b.gender}`;
 
@@ -47,10 +50,10 @@ test("排盘内核可加载", () => {
 
 // ── 主体：逐条比对，按年份分组，用例名带完整出生信息便于定位 ──
 describe("排盘对标（基准：iztro 2.5.8 样本）", () => {
-	const byYear = new Map();
+	const byYear = new Map<number, BaselineSample[]>();
 	for (const s of samples) {
 		if (!byYear.has(s.birthInfo.year)) byYear.set(s.birthInfo.year, []);
-		byYear.get(s.birthInfo.year).push(s);
+		byYear.get(s.birthInfo.year)!.push(s);
 	}
 
 	for (const [year, list] of [...byYear].sort((a, b) => a[0] - b[0])) {
@@ -98,9 +101,9 @@ describe("随年份漂移的字段", () => {
 // 若某天它不再发生（比如 iztro 回退了亮度表），说明白名单该清理了 —— 提示而非失败。
 describe("已知差异白名单", () => {
 	it("白名单条目在基准中确有体现", () => {
-		const hits = new Set();
+		const hits = new Set<string>();
 		for (const s of samples) {
-			const you = s.chart.palaces.find(p => p.branch === 9);
+			const you = s.chart.palaces?.find(p => p.branch === 9);
 			for (const st of you?.stars ?? []) {
 				if (st.name === "太阳" || st.name === "太阴") hits.add(st.name);
 			}

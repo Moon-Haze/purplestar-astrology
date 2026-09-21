@@ -37,7 +37,7 @@
  *
  * ## 回归与效力边界
  *
- * `test/invariants.test.mjs` 的层 3 为全部约 70 个格局名建了**独立预言机**（按定义复算，
+ * `test/invariants.test.ts` 的层 3 为全部约 70 个格局名建了**独立预言机**（按定义复算，
  * 不看实现），另有「化禄入财 / 化权入官」两条按偏移算术核对的断言；`cli/selftest.ts`
  * 只断言返回结构与条目必备字段。⚠️ 该预言机复刻的是**实现当前的口径**，不是照命理理想
  * 口径重写，且 `level` 分级、`description` / `conditions` 文案均不在其覆盖范围内 ——
@@ -229,7 +229,7 @@ function hasShaInPalace(palace: Palace, list: string[] = SHA_NAMES): boolean {
  * | `m + 8` | 财帛宫 |
  * | `m + 6` | 迁移宫 |
  *
- * 偏移方向以 `test/invariants.test.mjs` 的「宫名与相对命宫的逆行偏移一致」为准
+ * 偏移方向以 `test/invariants.test.ts` 的「宫名与相对命宫的逆行偏移一致」为准
  * （`k = (mingGongBranch − branch + 12) % 12`，期望宫名取自 `PALACE_NAMES_ORDER`）——
  * 十二宫由命宫**逆行**排布，别想当然写成顺行。
  *
@@ -1424,13 +1424,13 @@ function detectKeQuanShuangHui(chart: ZiweiChart, patterns: Pattern[]) {
  *
  * 格局名**可能带星名**：`detectHuaLuRuMing` 产出 `${星名}化禄入命`、
  * `detectHuaJiRuMingQian` 产出 `${星名}化忌入命/迁`，故返回条目的 `name` 不全是固定表；
- * 按名字做查表比对的调用方需注意（见 `test/invariants.test.mjs` 的预言机口径）。
+ * 按名字做查表比对的调用方需注意（见 `test/invariants.test.ts` 的预言机口径）。
  *
  * ⚠️ **命宫缺失即空手而归**：开头的 `if (!ming) return patterns;` 让整轮识别直接跳过，
  * 返回空数组而非报错。正常命盘必有命宫，此分支只在 `chart` 数据不完整时触发。
  *
  * ⚠️ **顺序即语义**：识别器按"上格 → 中格 → 助力格 → 恶格 → 基础格局"分组调用，改动调用
- * 顺序会改变输出的排列（`test/invariants.test.mjs` 有断言按名集合比对，不按序）。
+ * 顺序会改变输出的排列（`test/invariants.test.ts` 有断言按名集合比对，不按序）。
  *
  * @example
  * ```ts

@@ -53,7 +53,7 @@ export const SHICHEN = [
  * 的用词；iztro 的原始名是「仆役」，换算见 {@link IZTRO_TO_PROJECT_PALACE}。
  *
  * ⚠️ 与 {@link IZTRO_TO_PROJECT_PALACE} 的分工：这里是**有序序列**，那里是**无序词典**，
- * 两者必须**同集合**。`test/invariants.test.mjs` 用本数组验证那张映射表，正是为了防
+ * 两者必须**同集合**。`test/invariants.test.ts` 用本数组验证那张映射表，正是为了防
  * 「映射表写错了、比对器跟着一起错」的同源盲区（见 `test/README.md`「复读机」那条教训）。
  * **增删条目时两张表必须同步**。
  *
@@ -85,7 +85,7 @@ export const PALACE_NAMES_ORDER = [
  *
  * 与 `PALACE_NAMES_ORDER` 的分工：这里是**无序的词典**（按 iztro 的原始名索引），
  * 那里是**有序的序列**（按命宫顺时针排）。两者必须同集合，且互为对照 ——
- * `test/invariants.test.mjs` 用后者验证前者，正是为了防「映射表写错了、
+ * `test/invariants.test.ts` 用后者验证前者，正是为了防「映射表写错了、
  * 比对器跟着一起错」的同源盲区（见 test/README.md「复读机」那条教训）。
  *
  * ⚠️ 增删条目时同步 `PALACE_NAMES_ORDER`，两边必须同集合。

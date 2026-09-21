@@ -23,7 +23,7 @@
  * 它们仅作历史遗留与前端展示兼容保留。`algorithm.ts` 已停止填充 `Palace.selfSihua`、
  * `daXians[].siHua` / `stemIndex`，故此处的函数在排盘链路上**没有调用点**。
  * 完整立场见 `.claude/CLAUDE.md` 的「体系硬约束：三合派，不是飞星派」一节，以及 `SKILL.md`
- * 的同名陷阱条目；`test/school.test.mjs` 与 `cli/selftest.ts` 各有断言盯着这些字段不被重新填回。
+ * 的同名陷阱条目；`test/school.test.ts` 与 `cli/selftest.ts` 各有断言盯着这些字段不被重新填回。
  *
  * ## 保留的上游口径原文（飞星派，本项目不采用）
  *
@@ -267,7 +267,7 @@ export interface SelfSihua {
  *
  * ⚠️ **本项目不使用、存在不等于该用。** 宫干自化是飞星派工具，已主动下线 ——
  * `algorithm.ts` 不再填充 `Palace.selfSihua`，本函数在排盘链路上**没有调用点**，
- * 仅为历史遗留与前端展示兼容保留。`test/school.test.mjs` 与 `cli/selftest.ts` 都有断言
+ * 仅为历史遗留与前端展示兼容保留。`test/school.test.ts` 与 `cli/selftest.ts` 都有断言
  * 盯着 `selfSihua` 不被重新填回。见 `.claude/CLAUDE.md` 的
  * 「体系硬约束：三合派，不是飞星派」一节。
  */

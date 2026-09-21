@@ -16,20 +16,82 @@
 // 农历换算。刻意在此**独立**调用，不复用内核的 getLunarInfo —— 见 expectedAge 的注释。
 import { Solar } from "lunar-typescript";
 
-import { loadConstants } from "./loader.mjs";
+import type { BirthInfo, LunarInfo, Star, ZiweiChart } from "@/ziwei/types";
+import { loadConstants } from "./loader.ts";
+
+// ── 基准样本的类型（iztro 2.5.8 的 JSON 快照） ──
+//
+// 刻意**不**复用 @/ziwei/types 的 Palace / ZiweiChart 来描述样本：那些是「本项目产出」的
+// 契约，样本是**外部数据**，字段集不同（宫名是 iztro 词汇、无借宫字段、可选键可能整键
+// 缺失或为空串 —— 见上面的四处归一化）。星曜的 type / brightness / siHua 在此放宽为
+// string 也是刻意的：比对器对外部数据不做预设，任何取值先收进来、由断言与白名单去判。
+export interface BaselineStar {
+	name: string;
+	type: string;
+	brightness?: string;
+	siHua?: string;
+}
+
+export interface BaselinePalace {
+	branch: number;
+	stem: number;
+	/** iztro 口径宫名（如「仆役」），比对前经 normalizePalaceName 翻译 */
+	name: string;
+	stars: BaselineStar[];
+	/** 该宫所属大限区间 `[起, 讫]`（虚岁，闭区间） */
+	daXianAge?: [number, number];
+	isMingGong?: boolean;
+	isShenGong?: boolean;
+	isCurrentDaXian?: boolean;
+}
+
+export interface BaselineDaXian {
+	startAge: number;
+	endAge: number;
+	palaceBranch: number;
+	/** iztro 口径宫名 */
+	palaceName: string;
+}
+
+export interface BaselineChart {
+	mingGongBranch: number;
+	shenGongBranch: number;
+	wuxingJu: number;
+	wuxingJuName: string;
+	ziweiPos: number;
+	lunarInfo?: Partial<LunarInfo>;
+	palaces?: BaselinePalace[];
+	daXians?: BaselineDaXian[];
+}
+
+/** fixtures/charts.jsonl 的一行：出生信息 + 基准盘（样本其余字段如 topics 已剔除）。 */
+export interface BaselineSample {
+	birthInfo: BirthInfo;
+	chart: BaselineChart;
+}
+
+/** 一处字段差异（结构化而非布尔，失败时要能一眼看出是哪个字段）。 */
+export interface ChartDiff {
+	path: string;
+	expected: unknown;
+	actual: unknown;
+	note?: string;
+	/** 白名单内的已知差异（仅 keepWhitelisted 模式下会保留并打标） */
+	whitelisted?: boolean;
+}
 
 // 宫名映射**从内核取**，不在此另抄一份。
 // 宫名是项目自己的词汇，`scripts/ziwei/constants.ts` 是它唯一的定义处；比对器只是要把
 // 基准样本的 iztro 词汇翻译成项目词汇才比得起来，本身对宫名没有立场。
 // 另起一份转录只会制造第二个真相源 —— 认表错误的任务交给下面这条注释指向的预言机。
 //
-// ⚠️ 用顶层 await 而非静态 import：ESM 的静态 import 在 loader.mjs 注册解析钩子
+// ⚠️ 用顶层 await 而非静态 import：ESM 的静态 import 在 loader.ts 注册解析钩子
 //    **之前**就完成了链接，那时 `@/ziwei/constants`（.ts）还解析不了。
 //
 // ⚠️⚠️ 共用同一张表意味着：**表若被写错（比如把「仆役」映射成「官禄宫」），
-//    本文件与内核会一起错，层 1 照旧全绿**。这与 test/README.md 记录的 02 号历史
-//    事故是同一个形状（比对器与内核同源同错）。堵这个盲区的是层 3 的两条**不读本表**
-//    的预言机：invariants.test.mjs 的「iztro 直连词法」与「十二宫偏移位置」。
+// 本文件与内核会一起错，层 1 照旧全绿**。这与 test/README.md 记录的 02 号历史
+// 事故是同一个形状（比对器与内核同源同错）。堵这个盲区的是层 3 的两条**不读本表**
+// 的预言机：invariants.test.ts 的「iztro 直连词法」与「十二宫偏移位置」。
 const { IZTRO_TO_PROJECT_PALACE } = await loadConstants();
 
 /**
@@ -43,7 +105,7 @@ const { IZTRO_TO_PROJECT_PALACE } = await loadConstants();
  * 未命中原样返回而不抛错：iztro 哪天改了宫名，应当表现为一条**可读的 diff**，
  * 而不是把整个套件炸成一堆异常。
  */
-const normalizePalaceName = v => IZTRO_TO_PROJECT_PALACE[v] ?? v;
+const normalizePalaceName = (v: string): string => IZTRO_TO_PROJECT_PALACE[v] ?? v;
 
 // 十二地支。刻意在此独立定义而不从内核 constants.ts 取：比对器是同步函数，
 // 而内核模块是异步加载的；且这份表是常量，不随内核演进而变。
@@ -57,7 +119,17 @@ export const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未",
 //
 // 白名单条目必须写明 `cause`：它是升级 iztro 时审阅差异的依据，不是掩盖差异的补丁。
 // 只放行**单个字段**（brightness）的差异，不是整颗星 —— 星曜名、type、siHua 仍严格比对。
-export const KNOWN_DIVERGENCES = [
+export interface KnownDivergence {
+	star: string;
+	branch: number;
+	/** 样本（iztro 2.5.8）侧的取值 */
+	baseline: string;
+	/** 本项目（iztro 2.6.1）侧的取值 */
+	current: string;
+	cause: string;
+}
+
+export const KNOWN_DIVERGENCES: KnownDivergence[] = [
 	{
 		star: "太阳",
 		branch: 9, // 酉
@@ -74,7 +146,12 @@ export const KNOWN_DIVERGENCES = [
 	},
 ];
 
-function isWhitelisted(starName, branch, baseline, current) {
+function isWhitelisted(
+	starName: string,
+	branch: number,
+	baseline: string | undefined,
+	current: string | undefined
+): boolean {
 	return KNOWN_DIVERGENCES.some(
 		d =>
 			d.star === starName &&
@@ -85,7 +162,8 @@ function isWhitelisted(starName, branch, baseline, current) {
 }
 
 // 空值（'' / undefined / null）一律归一为「无」
-const val = v => (v === "" || v === null ? undefined : v);
+const val = (v: string | undefined | null): string | undefined =>
+	v === "" || v === null ? undefined : v;
 
 /** 本项目 `Palace` 中样本也有的字段 —— 比对只覆盖这些。 */
 export const SHARED_PALACE_FIELDS = [
@@ -95,10 +173,10 @@ export const SHARED_PALACE_FIELDS = [
 	"daXianAge",
 	"isMingGong",
 	"isShenGong",
-];
+] as const;
 
 /** 大限的可比字段（飞星派的 stemIndex / stemName / siHua 两边都不该有）。 */
-export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"];
+export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"] as const;
 
 /**
  * 依「注入的当前时间」独立重算虚岁期望值。
@@ -112,49 +190,65 @@ export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"
  *    2026-09 之前两边都写 `getFullYear() - year`（周岁），域不同却公式同形，
  *    于是内核算错、比对器跟着错，测试恒绿 —— 大限错位因此潜伏了很久。
  *    比对器的期望值必须来自另一条计算路径，否则它就只是内核的复读机。
- *    （更独立的预言机：iztro 自身的 horoscope().age.nominalAge，见 invariants.test.mjs。）
+ *    （更独立的预言机：iztro 自身的 horoscope().age.nominalAge，见 invariants.test.ts。）
  *
- * @param {{year:number, month:number, day:number}} birthInfo 出生公历
- * @param {Date} [now] 注入「当前时间」以便测试漂移逻辑，默认取真实时间
+ * @param birthInfo 出生公历（只取年月日）
+ * @param [now] 注入「当前时间」以便测试漂移逻辑，默认取真实时间
  */
-export function expectedAge(birthInfo, now = new Date()) {
-	const lunarYearAt = d =>
+export function expectedAge(birthInfo: Pick<BirthInfo, "year" | "month" | "day">, now: Date = new Date()): number {
+	const lunarYearAt = (d: Date): number =>
 		Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate()).getLunar().getYear();
 	const birth = new Date(birthInfo.year, birthInfo.month - 1, birthInfo.day);
 	return lunarYearAt(now) - lunarYearAt(birth) + 1;
 }
 
+export interface CompareOptions {
+	/** 注入「当前时间」以便测试漂移逻辑，默认取真实时间 */
+	now?: Date;
+	/**
+	 * 保留白名单内的已知差异并打上 `whitelisted: true`（默认丢弃）。
+	 * 全量核验脚本用它统计白名单放行了多少处，以便升级 iztro 时判断
+	 * 这些已知差异是仍在、还是已消失（消失即说明白名单该清理了）。
+	 */
+	keepWhitelisted?: boolean;
+}
+
+/** compareChart 内部落 diff 的回调签名（传给 compareStars 复用）。 */
+type PushDiff = (
+	path: string,
+	expected: unknown,
+	got: unknown,
+	note?: string,
+	whitelisted?: boolean
+) => void;
+
 /**
  * 比对本项目排盘结果与基准样本。
- * @param {object} actual   本项目 generateChart() 的输出
- * @param {object} baseline 样本里的 chart
- * @param {object} [opts]
- * @param {Date}   [opts.now] 注入「当前时间」以便测试漂移逻辑，默认取真实时间
- * @returns {Array<{path:string, expected:*, actual:*, note?:string}>} 空数组表示完全一致
+ * @param actual   本项目 generateChart() 的输出
+ * @param baseline 样本里的 chart
+ * @param [opts]
+ * @returns 结构化 diff 列表，空数组表示完全一致
  */
-export function compareChart(actual, baseline, opts = {}) {
+export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: CompareOptions = {}): ChartDiff[] {
 	const now = opts.now ?? new Date();
-	const diffs = [];
-	// keepWhitelisted：保留白名单内的已知差异并打上 `whitelisted: true`。
-	// 默认丢弃（测试只关心「白名单之外零差异」）；全量核验脚本用它统计白名单放行了多少处，
-	// 以便升级 iztro 时判断这些已知差异是仍在、还是已消失（消失即说明白名单该清理了）。
-	const push = (path, expected, got, note, whitelisted) => {
+	const diffs: ChartDiff[] = [];
+	const push: PushDiff = (path, expected, got, note, whitelisted) => {
 		if (whitelisted && !opts.keepWhitelisted) return;
-		const d = { path, expected, actual: got };
+		const d: ChartDiff = { path, expected, actual: got };
 		if (note) d.note = note;
 		if (whitelisted) d.whitelisted = true;
 		diffs.push(d);
 	};
 
 	// ── 顶层标量 ──
-	for (const k of ["mingGongBranch", "shenGongBranch", "wuxingJu", "wuxingJuName", "ziweiPos"]) {
+	for (const k of ["mingGongBranch", "shenGongBranch", "wuxingJu", "wuxingJuName", "ziweiPos"] as const) {
 		if (actual[k] !== baseline[k]) push(k, baseline[k], actual[k]);
 	}
 
 	// ── 农历 ──
-	const aL = actual.lunarInfo ?? {};
+	const aL = actual.lunarInfo;
 	const bL = baseline.lunarInfo ?? {};
-	for (const k of ["lunarYear", "lunarMonth", "lunarDay", "yearStem", "yearBranch", "isLeapMonth"]) {
+	for (const k of ["lunarYear", "lunarMonth", "lunarDay", "yearStem", "yearBranch", "isLeapMonth"] as const) {
 		if (aL[k] !== bL[k]) push(`lunarInfo.${k}`, bL[k], aL[k]);
 	}
 
@@ -269,7 +363,13 @@ export function compareChart(actual, baseline, opts = {}) {
 }
 
 /** 比对一个宫内的星曜集合：按星名建索引，比对 type / brightness / siHua。 */
-function compareStars(aStars, bStars, label, branch, push) {
+function compareStars(
+	aStars: Star[],
+	bStars: BaselineStar[],
+	label: string,
+	branch: number,
+	push: PushDiff
+): void {
 	const aByName = new Map(aStars.map(s => [s.name, s]));
 	const bByName = new Map(bStars.map(s => [s.name, s]));
 
@@ -305,7 +405,7 @@ function compareStars(aStars, bStars, label, branch, push) {
 }
 
 /** 把 diff 列表渲染成可读的失败信息（node:test 的断言消息里用）。 */
-export function formatDiffs(diffs, limit = 25) {
+export function formatDiffs(diffs: ChartDiff[], limit = 25): string {
 	if (!diffs.length) return "无差异";
 	const head = diffs
 		.slice(0, limit)
@@ -321,10 +421,10 @@ export function formatDiffs(diffs, limit = 25) {
  * 盘指纹：快速判定两张盘是否逐宫一致（用于 CLI 的 --branch 12 ≡ 次日 --branch 0 之类断言）。
  *
  * ⚠️ 与 scripts/cli/render.ts 里的 chartSignature 是**两份必须行为一致的实现** ——
- *    test/ 与 CLI 刻意不共享模块（同 lib/loader.mjs 的理由），故改动其一时必须同步另一个。
+ *    test/ 与 CLI 刻意不共享模块（同 lib/loader.ts 的理由），故改动其一时必须同步另一个。
  *    先按 branch 排序再拼接，使指纹与 `palaces` 的数组顺序无关（实测为寅起 2,3,…,11,0,1）。
  */
-export function chartSignature(chart) {
+export function chartSignature(chart: Pick<ZiweiChart, "palaces">): string {
 	return [...chart.palaces]
 		.sort((x, y) => x.branch - y.branch)
 		.map(p => `${p.name}:${p.branch}:${p.stars.map(s => s.name).sort().join(",")}`)

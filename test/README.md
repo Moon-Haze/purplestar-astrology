@@ -30,10 +30,10 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 
 | 文件 | 层 | 依赖基准样本 | 测什么 |
 | --- | --- | --- | --- |
-| [chart.test.mjs](chart.test.mjs) | 1（主力） | ✅ | 300 条样本逐字段全等比对 |
-| [cli.test.mjs](cli.test.mjs) | 2 | ❌ | CLI 端到端：真太阳时、农历入参、晚子时、性别护栏、城市容错、`--focus` 宫名写法、`heming` 合盘 |
-| [invariants.test.mjs](invariants.test.mjs) | 3 | ❌ | 排盘结构不变量：12 宫必齐、十四主星各一、大限区间连续……；另用 iztro 的 `horoscope()` 作外部预言机核对虚岁与大限，用**宫位偏移算术**核对宫名，用**宫名路径的独立预言机**覆盖全部 70 个格局名 |
-| [school.test.mjs](school.test.mjs) | 4 | ✅ | 三合派体系约束：飞星派字段不得被回填 |
+| [chart.test.ts](chart.test.ts) | 1（主力） | ✅ | 300 条样本逐字段全等比对 |
+| [cli.test.ts](cli.test.ts) | 2 | ❌ | CLI 端到端：真太阳时、农历入参、晚子时、性别护栏、城市容错、`--focus` 宫名写法、`heming` 合盘（含**参数隔离与输出自洽的独立预言机**） |
+| [invariants.test.ts](invariants.test.ts) | 3 | ❌ | 排盘结构不变量：12 宫必齐、十四主星各一、大限区间连续……；另用 iztro 的 `horoscope()` 作外部预言机核对虚岁与大限，用**宫位偏移算术**核对宫名与合盘取宫入口，用**宫名路径的独立预言机**覆盖全部 70 个格局名与生年四化落宫 |
+| [school.test.ts](school.test.ts) | 4 | ✅ | 三合派体系约束：飞星派字段不得被回填 |
 
 层 2、3 刻意**不依赖基准样本**，因此不受 iztro 升级影响 —— 层 1 变红时，它们能帮你区分
 「是 iztro 行为变了」还是「内核真的排出了坏盘」。
@@ -67,7 +67,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 两边的 `mapBrightness()` 代码完全相同，差异源自 iztro 自身的亮度表变更，**不是任何一方的 bug**。
 新版取值（酉宫日平、月旺）更合传统口径，故本项目是对的，样本是旧版的陈旧值。
 
-这两条登记在 [lib/compare.mjs](lib/compare.mjs) 的 `KNOWN_DIVERGENCES` 白名单里。
+这两条登记在 [lib/compare.ts](lib/compare.ts) 的 `KNOWN_DIVERGENCES` 白名单里。
 它的价值在于：**证明这套比对机制确实能发现行为变化** —— 如果 300 条盘全都"恰好一致"，
 你无从判断是排盘真的没变，还是比对器根本没在工作。
 
@@ -89,7 +89,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 影响 `chart.currentAge`、`chart.currentDaXianIndex`、`palace.isCurrentDaXian` 三处。
 
 样本生成于 2026 年，直接比对会在**跨过下一个正月初一后全线失败**。故比对器
-**按注入的当前时间独立重算期望值**（[lib/compare.mjs](lib/compare.mjs) 的 `expectedAge()`），
+**按注入的当前时间独立重算期望值**（[lib/compare.ts](lib/compare.ts) 的 `expectedAge()`），
 而非抄样本的陈旧快照。
 
 > ⚠️ **「独立」二字是重点，这里曾是一起真实的长期事故。**
@@ -121,7 +121,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 基准样本存的是 **iztro 的宫名**（第 8 宫叫「仆役」，且十二宫都不带「宫」字），
 本项目现在输出的是**倪师《天纪》的口径**（「交友宫」，十二宫统一带「宫」字）。
 比对器把 **baseline 一侧**的 `palaces[].name` / `daXians[].palaceName` 翻译后再严格相等比对
-（[lib/compare.mjs](lib/compare.mjs) 的 `normalizePalaceName`，映射表**从内核 import**，
+（[lib/compare.ts](lib/compare.ts) 的 `normalizePalaceName`，映射表**从内核 import**，
 不另抄一份）。翻译后没有跳过任何字段，性质是**词汇翻译**而非放宽断言。
 
 > ⚠️ **只翻 baseline 一侧，这一条是要紧的。** 若两侧都归一化，那么「内核忘记映射」
@@ -209,9 +209,30 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
   它还抓出并修掉了「杀破狼」`palaces` 用 `getMajorStarNames(p)[0]` 只认第一颗主星、
   致 64% 的盘宫位列表为空。
 
-- **合盘**：层 2 断言 `heming` 跑得通、且 `--json` 的 `fuQiGong` / `fuDeGong` 与
-  `chart` 里同名宫的主星一致。它守的是「宫名查找落空」（旧名会让 `--json` 路径
-  **静默输出空数组**、文本路径抛 TypeError），不是合盘的论断内容。
+- **合盘**：分两处。层 2 先断言 `heming` 跑得通、且 `--json` 的 `fuQiGong` / `fuDeGong`
+  与 `chart` 里同名宫的主星一致 —— 那守的是「宫名查找落空」（旧名会让 `--json` 路径
+  **静默输出空数组**、文本路径抛 TypeError）。
+
+  在其之上，层 2 另有一组**参数隔离与输出自洽的独立预言机**，层 3 有合盘取宫入口与
+  生年四化落宫的逐盘预言机。独立性来自**两条分岔的路径**：期望值一律由测试进程用
+  `generateChart` 独立排盘后按安星法恒等式复算（或取「交换 `--a-*` / `--b-*` 之后的
+  另一次运行」），被测值只取 CLI 子进程的文本 / JSON 输出，从不反过来拿它算期望值。
+
+  覆盖的是合盘**论断本身**：两方参数有没有各就各位（交换后两方盘须精确互换、且各自
+  等于独立排的盘）、文本里的三方宫位地支是否满足「夫妻宫 = 命宫−2、福德宫 = 命宫+2」、
+  生年四化入夫妻宫的判定、天作之合的交叉集合与判定方向、晚子时提醒落在哪一方、
+  夫妻宫空宫时是否改用借自对宫的主星。
+
+  **效力边界**：断语**文案**（`STAR_IN_FUQI_GU` 的吉象/凶象/婚期等）与 `HEMING_METHODOLOGY`
+  的正文不覆盖，只覆盖「取用了哪颗星的断语」；期望值复刻的是**实现当前的口径**，
+  不是照命理理想口径重写。样本是**挑过的**（`CROSS_A` / `CROSS_B` 专为交叉方向而选、
+  `EMPTY_A` 专为空宫借宫而选），不是随机抽样。
+
+  反向注入 10 种失效模式验证过，全部只有目标断言变红、无一漏网。其中一条值得记下来：
+  「天作之合的交叉判定方向写反」在**最初选的样本上不会让任何断言变红** —— 因为那对
+  样本两向交集皆空，写反与写对输出完全相同。换成 `甲夫 ∩ 乙命` 非空、而 `甲夫 ∩ 甲命`
+  为空的一对之后才抓住。这就是为什么每组样本都配一条**样本守卫**断言（命中数为 0
+  即失败）：宁可让「空对空」显式报错，也不让它静默通过。
 
 > 这两处此前是**全仓零覆盖**，也正是宫名口径切换时会静默失效的地方 —— 补测的动因见
 > [docs/test/05](../docs/test/05-corpus-and-blindspots.md)。
@@ -235,7 +256,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 ### 重建 fixtures
 
 ```bash
-node test/tools/build-fixtures.mjs
+node test/tools/build-fixtures.ts
 ```
 
 只在**需要重建基准**时手动跑（`reference/` 不存在时跑不了，但**日常测试不需要它** —— fixtures 已入库）。
@@ -257,10 +278,10 @@ npm run typecheck                          # 3. 类型检查（升级 iztro 可�
 
 - **全绿** → 行为未变，直接提交 `package.json` + `package-lock.json`
 - **变红** → 逐个看失败信息（带宫位、星名、基准值、实际值）。确认是预期的版本行为变化后：
-  1. 在 [lib/compare.mjs](lib/compare.mjs) 的 `KNOWN_DIVERGENCES` **登记新条目并写明 `cause`**
+  1. 在 [lib/compare.ts](lib/compare.ts) 的 `KNOWN_DIVERGENCES` **登记新条目并写明 `cause`**
      （哪一版、改了什么、为什么新值是对的）
   2. 跑 `npm run test:corpus -- --year <受影响年份>` 确认差异范围没有超出预期
-  3. 必要时 `node test/tools/build-fixtures.mjs` 重建基准
+  3. 必要时 `node test/tools/build-fixtures.ts` 重建基准
   4. 重跑 `npm test` 确认全绿
 
 **不要**为了让测试变绿而直接删白名单条目或放宽比对字段 —— 那等于关掉报警器。
@@ -272,28 +293,28 @@ npm run typecheck                          # 3. 类型检查（升级 iztro 可�
 ```text
 test/
 ├── README.md                  本文件
-├── chart.test.mjs             层 1：排盘对标（主力）
-├── cli.test.mjs               层 2：CLI 端到端
-├── invariants.test.mjs        层 3：排盘结构不变量
-├── school.test.mjs            层 4：三合派体系约束
+├── chart.test.ts             层 1：排盘对标（主力）
+├── cli.test.ts               层 2：CLI 端到端
+├── invariants.test.ts        层 3：排盘结构不变量
+├── school.test.ts            层 4：三合派体系约束
 ├── lib/
-│   ├── loader.mjs             加载 TS 内核（scripts/purple-star.ts 加载机制的副本）
-│   └── compare.mjs            比对器 + 归一化 + 已知差异白名单
+│   ├── loader.ts             加载 TS 内核（scripts/purple-star.ts 加载机制的副本）
+│   └── compare.ts            比对器 + 归一化 + 已知差异白名单
 ├── fixtures/
 │   ├── charts.jsonl           300 条基准（每行 {"birthInfo":…,"chart":…}）
 │   └── manifest.json          来源、基准引擎版本、抽样算法、覆盖度
 └── tools/
-    ├── build-fixtures.mjs     从 reference/ 抽样重建 fixtures（手动执行）
-    └── full-corpus.mjs        全量核验 518,400 条（手动执行）
+    ├── build-fixtures.ts     从 reference/ 抽样重建 fixtures（手动执行）
+    └── full-corpus.ts        全量核验 518,400 条（手动执行）
 ```
 
 ### 两处需要留意的维护点
 
-1. **`lib/loader.mjs` 是 `scripts/purple-star.ts` 加载机制的副本**，两者必须行为一致。
+1. **`lib/loader.ts` 是 `scripts/purple-star.ts` 加载机制的副本**，两者必须行为一致。
    刻意不抽成共享模块：CLI 的加载器带 CLI 特有的错误处理（`console.error` + `process.exit(1)`），
    测试需要**抛错**而非退进程。改任意一侧的 `registerHooks` 或 `pickRoot` 时请同步另一侧 ——
-   `cli.test.mjs` 里有一条断言（内核直调结果 ≡ CLI `--json` 子进程输出）专门盯着两侧不漂移。
+   `cli.test.ts` 里有一条断言（内核直调结果 ≡ CLI `--json` 子进程输出）专门盯着两侧不漂移。
 
 2. **`tools/` 下的脚本都带「仅直接执行才跑 `main()`」的守卫**。Node 的默认测试文件识别模式
-   含 `test/**/*`，没有这道守卫时 `node --test test/` 可能把会写盘的 `build-fixtures.mjs`
-   当成测试文件执行。`npm test` 用的是显式 glob `test/**/*.test.mjs`，双重保险。
+   含 `test/**/*`，没有这道守卫时 `node --test test/` 可能把会写盘的 `build-fixtures.ts`
+   当成测试文件执行。`npm test` 用的是显式 glob `test/**/*.test.ts`，双重保险。

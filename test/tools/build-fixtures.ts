@@ -2,17 +2,19 @@
 // ── 从 toolkit 样本集抽样，生成 test/fixtures/ 轻量基准 ──
 //
 // 仅在需要**重建**基准时手动执行（reference/ 不入版本控制，正常跑测试不需要它）：
-//   node test/tools/build-fixtures.mjs
+//   node test/tools/build-fixtures.ts
 //
 // 抽样是**确定性的**（不用随机数），同样的输入必然产出同样的 fixtures —— 基准可复现、可审阅 diff。
 //
 // ⚠️ 产出的基准是 **iztro 2.5.8** 的行为快照，本项目用 2.6.1，两者有且仅有两处已知差异
-//    （太阳/太阴在酉宫的亮度），已在 test/lib/compare.mjs 的 KNOWN_DIVERGENCES 里显式登记。
+//    （太阳/太阴在酉宫的亮度），已在 test/lib/compare.ts 的 KNOWN_DIVERGENCES 里显式登记。
 import { createReadStream, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { createGunzip } from "node:zlib";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import type { BaselineSample } from "../lib/compare.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/tools
 const SKILL_ROOT = resolve(HERE, "../..");
@@ -31,10 +33,10 @@ const YEAR_END = 1983;
 const DAYS = [1, 8, 15, 22]; // 日：1 号用于覆盖「公历年初落在农历上一年」的跨年边界
 
 /** 读取某个分片的全部行。 */
-async function readShard(year, month) {
+async function readShard(year: number, month: number): Promise<string[] | null> {
 	const file = resolve(SAMPLES, `year-${year}`, `${year}-${String(month).padStart(2, "0")}.jsonl.gz`);
 	if (!existsSync(file)) return null;
-	const lines = [];
+	const lines: string[] = [];
 	const rl = createInterface({
 		input: createReadStream(file).pipe(createGunzip()),
 		crlfDelay: Infinity,
@@ -44,14 +46,14 @@ async function readShard(year, month) {
 }
 
 /** 分片内按 (日, 时辰, 性别) 排序，故可直接算下标：idx = (day-1)*24 + hour*2 + genderIdx */
-function pickFrom(lines, day, hour, gender) {
+function pickFrom(lines: string[] | null, day: number, hour: number, gender: string): BaselineSample | null {
 	if (!lines) return null;
 	const idx = (day - 1) * 24 + hour * 2 + (gender === "female" ? 1 : 0);
 	const line = lines[idx];
-	return line ? JSON.parse(line) : null;
+	return line ? (JSON.parse(line) as BaselineSample) : null;
 }
 
-async function main() {
+async function main(): Promise<void> {
 	if (!existsSync(SAMPLES)) {
 		console.error(
 			`找不到样本目录：${SAMPLES}\n` +
@@ -62,8 +64,14 @@ async function main() {
 	}
 
 	const { LunarYear, Lunar } = await import("lunar-typescript");
-	const samples = [];
-	const stats = { months: new Set(), hours: new Set(), genders: new Set(), wuxing: new Set(), leapYears: [] };
+	const samples: BaselineSample[] = [];
+	const stats = {
+		months: new Set<number>(),
+		hours: new Set<number>(),
+		genders: new Set<string>(),
+		wuxing: new Set<string>(),
+		leapYears: [] as string[],
+	};
 
 	for (let year = YEAR_START, i = 0; year <= YEAR_END; year++, i++) {
 		// ── 常规槽位 0-3 ──
@@ -86,7 +94,7 @@ async function main() {
 
 		// ── 槽位 4：闰月年取闰月首日（农历换算的闰月分支），平年取 12-30 子时 ──
 		const leapMonth = LunarYear.fromYear(year).getLeapMonth();
-		let raw;
+		let raw: BaselineSample | null;
 		if (leapMonth) {
 			const solar = Lunar.fromYmd(year, -leapMonth, 1).getSolar();
 			const hour = (i * 7 + 3) % 12;
@@ -112,11 +120,11 @@ async function main() {
 	// 故先比对一遍：白名单之外的差异一律拦下，逼出显式审阅。
 	// ⚠️ 这条路会把「样板是 iztro 2.5.8 快照」这一前提也一起检查 —— 若 toolkit 换了样本集，
 	//    差异会大面积出现，此时该做的是重新评估整份基准，而不是往白名单里加条目。
-	const { loadAlgorithm } = await import("../lib/loader.mjs");
-	const { compareChart, formatDiffs } = await import("../lib/compare.mjs");
+	const { loadAlgorithm } = await import("../lib/loader.ts");
+	const { compareChart, formatDiffs } = await import("../lib/compare.ts");
 	const { generateChart } = await loadAlgorithm();
 
-	const diverged = [];
+	const diverged: Array<{ birth: BaselineSample["birthInfo"]; diffs: ReturnType<typeof compareChart> }> = [];
 	for (const s of samples) {
 		const diffs = compareChart(generateChart({ ...s.birthInfo }), s.chart);
 		if (diffs.length) diverged.push({ birth: s.birthInfo, diffs });
@@ -126,7 +134,7 @@ async function main() {
 			`\n✖ 抽样中已有 ${diverged.length}/${samples.length} 条与当前内核不一致，拒绝写盘。\n` +
 				`  基准是 iztro 2.5.8 的行为快照；本项目内核可能已随 iztro 升级而变化。\n\n` +
 				`  处理：\n` +
-				`    · 若确为预期的版本行为变化 → 先在 test/lib/compare.mjs 的 KNOWN_DIVERGENCES\n` +
+				`    · 若确为预期的版本行为变化 → 先在 test/lib/compare.ts 的 KNOWN_DIVERGENCES\n` +
 				`      登记根因（写清是哪一版改了什么），再重建\n` +
 				`    · 若不是预期变化 → 这是回归，先查 scripts/ziwei/ 下的内核改动\n`
 		);
@@ -156,10 +164,10 @@ async function main() {
 				source: "reference/ziwei-samples-toolkit/samples-out",
 				baselineEngine: "iztro 2.5.8",
 				note:
-					"基准为 iztro 2.5.8 的行为快照；本项目用 2.6.1，已知差异见 test/lib/compare.mjs 的 KNOWN_DIVERGENCES。" +
+					"基准为 iztro 2.5.8 的行为快照；本项目用 2.6.1，已知差异见 test/lib/compare.ts 的 KNOWN_DIVERGENCES。" +
 					"另：样本的 palaces[].name / daXians[].palaceName 存的是 iztro 宫名（第 8 宫为「仆役」、十二宫不带「宫」字），" +
 					"本项目输出的是倪师《天纪》口径（「交友宫」、统一带「宫」字）——" +
-					"比对时由 compare.mjs 的 normalizePalaceName 施加在 baseline 一侧翻译，样本本身不做改动",
+					"比对时由 compare.ts 的 normalizePalaceName 施加在 baseline 一侧翻译，样本本身不做改动",
 				generatedAt: new Date().toISOString().slice(0, 10),
 				count: samples.length,
 				yearRange: [YEAR_START, YEAR_END],

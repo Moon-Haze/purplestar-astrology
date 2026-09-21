@@ -13,17 +13,19 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadAlgorithm } from "./lib/loader.mjs";
+import { loadAlgorithm } from "./lib/loader.ts";
+import type { BaselineSample } from "./lib/compare.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 	.split("\n")
 	.filter(Boolean)
-	.map(JSON.parse);
+	.map(line => JSON.parse(line) as BaselineSample);
 
 const { generateChart } = await loadAlgorithm();
 const charts = samples.map(s => ({ birth: s.birthInfo, chart: generateChart({ ...s.birthInfo }) }));
-const label = b => `${b.year}-${b.month}-${b.day}/${b.hour}/${b.gender}`;
+const label = (b: { year: number; month: number; day: number; hour: number; gender: string }): string =>
+	`${b.year}-${b.month}-${b.day}/${b.hour}/${b.gender}`;
 
 const DAXIAN_ALLOWED = ["startAge", "endAge", "palaceBranch", "palaceName"];
 
@@ -43,7 +45,7 @@ describe("三合派体系约束", () => {
 	it("大限不含飞星派字段（stemIndex / stemName / siHua）", () => {
 		for (const { birth, chart } of charts) {
 			for (const [i, dx] of chart.daXians.entries()) {
-				for (const banned of ["stemIndex", "stemName", "siHua"]) {
+				for (const banned of ["stemIndex", "stemName", "siHua"] as const) {
 					assert.ok(
 						!(banned in dx),
 						`${label(birth)}：第 ${i} 步大限出现了 ${banned} —— 飞星派大限四化，本项目已下线`
@@ -96,7 +98,7 @@ describe("三合派体系约束", () => {
 		});
 
 		it("四化标记取值合法（只有禄权科忌，空值不算）", () => {
-			const VALID = new Set(["禄", "权", "科", "忌", "", undefined]);
+			const VALID = new Set<string | undefined>(["禄", "权", "科", "忌", "", undefined]);
 			for (const { birth, chart } of charts) {
 				for (const p of chart.palaces) {
 					for (const s of p.stars) {

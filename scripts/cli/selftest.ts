@@ -46,7 +46,7 @@ import { Lunar } from "lunar-typescript";
  * 内核根从 `ctx` 取而非自己推导：那是引导层 `pickRoot()` 的职责，自检只负责把它交代出来。
  *
  * ⚠️ 有失败项时**不抛错，而是先 `console.error` 全量报告再 `process.exit(1)`** ——
- * `test/cli.test.mjs` 依赖这个退出码判定自检是否全绿。
+ * `test/cli.test.ts` 依赖这个退出码判定自检是否全绿。
  */
 export function cmdSelftest(ctx: CliContext): string {
 	/** 单条断言的结果 */

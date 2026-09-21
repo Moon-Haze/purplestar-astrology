@@ -2,7 +2,7 @@
  * 紫微斗数领域模型 —— 内核、CLI 与测试之间的公共类型契约。
  *
  * 本模块**只有类型，不含任何逻辑**。每个字段的取值域（索引基、是否可选、单位）在此定死：
- * `algorithm.ts` 按它产出，`cli/render.ts` 按它渲染，`test/lib/compare.mjs` 按它比对。
+ * `algorithm.ts` 按它产出，`cli/render.ts` 按它渲染，`test/lib/compare.ts` 按它比对。
  *
  * 贯穿全项目的三套索引约定（三者**不同域**，混用必错）：
  * - **天干索引** 0–9，序同 `constants.ts` 的 `STEMS`（0=甲 … 9=癸）
@@ -131,7 +131,7 @@ export interface Star {
  *
  * 唯一生产者是 `sihua.ts` 的 `detectSelfSihua`，而 `algorithm.ts` 已停止填充
  * {@link Palace.selfSihua}（倪师不主张飞星派宫干自化论）。`cli/selftest.ts` 与
- * `test/school.test.mjs` 各有断言盯着它不被重新填回 —— **存在不等于该用**，
+ * `test/school.test.ts` 各有断言盯着它不被重新填回 —— **存在不等于该用**，
  * 拿它解读就是背离本项目的体系立场。
  */
 export interface SelfSihuaMark {
@@ -176,7 +176,7 @@ export interface Palace {
 	 *
 	 * ⚠️ **飞星派字段，本项目（三合派）不使用，仅为兼容保留。**
 	 * `algorithm.ts` 已停止填充此字段（倪师不主张飞星派宫干自化论），运行时恒为 `undefined`；
-	 * `cli/selftest.ts` 与 `test/school.test.mjs` 有断言盯着它不被重新填回。
+	 * `cli/selftest.ts` 与 `test/school.test.ts` 有断言盯着它不被重新填回。
 	 */
 	selfSihua?: SelfSihuaMark[];
 	/** 对宫地支索引，恒等于 `(branch + 6) % 12` */

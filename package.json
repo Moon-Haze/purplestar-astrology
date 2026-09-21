@@ -5,8 +5,8 @@
   "type": "module",
   "description": "紫微斗数排盘与解读 skill 的运行时依赖。排盘内核是 ziwei-master 项目的私有源码（未发布到 npm），已直接置于 scripts/；本文件只声明内核所需的 npm 包。",
   "scripts": {
-    "test": "node --test \"test/**/*.test.mjs\"",
-    "test:corpus": "node test/tools/full-corpus.mjs",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "test:corpus": "node test/tools/full-corpus.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

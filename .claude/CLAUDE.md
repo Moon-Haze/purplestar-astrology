@@ -127,13 +127,13 @@ npm run typecheck
 
 `iztro` 是排盘引擎，**升级它会改变排盘结果**。`package-lock.json` 已提交以锁定精确版本（iztro 2.6.1 / lunar-typescript 1.8.6）。动过依赖后先跑 `selftest` **与 `npm test`** 再交付解读。
 
-基准样本是 iztro **2.5.8** 拍的快照，与本项目的 2.6.1 有且仅有两处已知差异（太阳/太阴在酉宫的亮度，见 `test/lib/compare.mjs` 的白名单）。升级 iztro 后若出现白名单之外的差异，`npm test` 会变红——**这是要你显式审阅行为变化的信号，不是测试该修的 bug**。流程见 [test/README.md](../test/README.md)。
+基准样本是 iztro **2.5.8** 拍的快照，与本项目的 2.6.1 有且仅有两处已知差异（太阳/太阴在酉宫的亮度，见 `test/lib/compare.ts` 的白名单）。升级 iztro 后若出现白名单之外的差异，`npm test` 会变红——**这是要你显式审阅行为变化的信号，不是测试该修的 bug**。流程见 [test/README.md](../test/README.md)。
 
 ## SKILL.md 与 CLI 的耦合
 
 `SKILL.md` 描述的命令、参数、输出结构必须与 CLI 的实际行为一致，否则 Claude 会照着过时的说明调用。改 CLI 的参数名或输出格式时，同步改 `SKILL.md`。
 
-容易漂移的几处：命令路径（文档统一写 `node scripts/purple-star.ts`，相对 skill 根）、`selftest` 声称的断言数、`scripts/` 下内核与 `scripts/cli/` 的文件数与体积。**文档里引用 CLI 代码位置时优先写模块名而非行号**——`cli/` 拆过一次，行号是漂移最快的东西（`test/lib/loader.mjs` 的注释已按此改）。
+容易漂移的几处：命令路径（文档统一写 `node scripts/purple-star.ts`，相对 skill 根）、`selftest` 声称的断言数、`scripts/` 下内核与 `scripts/cli/` 的文件数与体积。**文档里引用 CLI 代码位置时优先写模块名而非行号**——`cli/` 拆过一次，行号是漂移最快的东西（`test/lib/loader.ts` 的注释已按此改）。
 
 参数解析在 `cli/args.ts`，出生信息在 `cli/birth-info.ts`，输出格式在 `cli/render.ts`——下面这些「非常规设计」多数落在 `birth-info.ts` 与 `commands.ts`：
 

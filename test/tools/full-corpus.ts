@@ -11,15 +11,15 @@
 //   · 排查某个特定年份/月份的问题
 //
 // 用法（在 skill 根执行）：
-//   node test/tools/full-corpus.mjs                        # 全量，约 2 小时
-//   node test/tools/full-corpus.mjs --year 1960            # 只跑 1960 年（8,640 条，约 2 分钟）
-//   node test/tools/full-corpus.mjs --year 1960 --month 6  # 只跑 1960-06（720 条，约 12 秒）
-//   node test/tools/full-corpus.mjs --limit 5000           # 只跑前 5,000 条
-//   node test/tools/full-corpus.mjs --quiet                # 不打印进度，只出报告
+//   node test/tools/full-corpus.ts                        # 全量，约 2 小时
+//   node test/tools/full-corpus.ts --year 1960            # 只跑 1960 年（8,640 条，约 2 分钟）
+//   node test/tools/full-corpus.ts --year 1960 --month 6  # 只跑 1960-06（720 条，约 12 秒）
+//   node test/tools/full-corpus.ts --limit 5000           # 只跑前 5,000 条
+//   node test/tools/full-corpus.ts --quiet                # 不打印进度，只出报告
 //
 // 退出码：0 = 白名单之外零差异；1 = 有差异，或样本目录/依赖缺失。可直接用于 CI。
 //
-// ⚠️ 与 npm test 用**同一个比对器与同一份白名单**（test/lib/compare.mjs）。
+// ⚠️ 与 npm test 用**同一个比对器与同一份白名单**（test/lib/compare.ts）。
 //    这里不用白名单过滤掉差异，而是用 keepWhitelisted 保留后再分类统计 ——
 //    这样报告里能同时看到「放行了多少处已知差异」和「有没有出现新差异」。
 import { createReadStream, existsSync } from "node:fs";
@@ -28,8 +28,9 @@ import { createGunzip } from "node:zlib";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadAlgorithm } from "../lib/loader.mjs";
-import { compareChart, formatDiffs, BRANCHES } from "../lib/compare.mjs";
+import type { BirthInfo } from "@/ziwei/types";
+import { loadAlgorithm } from "../lib/loader.ts";
+import { compareChart, formatDiffs, BRANCHES, type BaselineSample, type ChartDiff } from "../lib/compare.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/tools
 const SKILL_ROOT = resolve(HERE, "../..");
@@ -41,12 +42,12 @@ const MAX_DETAIL = 20; // 明细最多列这么多条
 
 // ── 参数 ──
 const argv = process.argv.slice(2);
-const hasFlag = name => argv.includes(`--${name}`);
-const optOf = (name, fallback = null) => {
+const hasFlag = (name: string): boolean => argv.includes(`--${name}`);
+const optOf = (name: string): string | null => {
 	const i = argv.indexOf(`--${name}`);
-	if (i < 0) return fallback;
+	if (i < 0) return null;
 	const v = argv[i + 1];
-	return v && !v.startsWith("--") ? v : fallback;
+	return v && !v.startsWith("--") ? v : null;
 };
 
 const QUIET = hasFlag("quiet");
@@ -57,26 +58,26 @@ const LIMIT = optOf("limit") ? Number(optOf("limit")) : Infinity;
 const years = YEAR ? [YEAR] : range(YEAR_ALL.start, YEAR_ALL.end);
 const months = MONTH ? [MONTH] : range(1, 12);
 
-function range(a, b) {
-	const out = [];
+function range(a: number, b: number): number[] {
+	const out: number[] = [];
 	for (let i = a; i <= b; i++) out.push(i);
 	return out;
 }
 
 /** 分片文件路径：samples-out/year-XXXX/YYYY-MM.jsonl.gz */
-function shardPath(year, month) {
+function shardPath(year: number, month: number): string {
 	return resolve(SAMPLES, `year-${year}`, `${year}-${String(month).padStart(2, "0")}.jsonl.gz`);
 }
 
-/** 流式逐行读取一个分片，回调每条样本。 */
-async function forEachSample(file, fn) {
+/** 流式逐行读取一个分片，回调每条样本（返回 false 即停止读取）。 */
+async function forEachSample(file: string, fn: (raw: BaselineSample) => boolean | void): Promise<boolean> {
 	const rl = createInterface({
 		input: createReadStream(file).pipe(createGunzip()),
 		crlfDelay: Infinity,
 	});
 	for await (const line of rl) {
 		if (!line.trim()) continue;
-		if (fn(JSON.parse(line)) === false) {
+		if (fn(JSON.parse(line) as BaselineSample) === false) {
 			rl.close();
 			return false;
 		}
@@ -84,9 +85,29 @@ async function forEachSample(file, fn) {
 	return true;
 }
 
-const label = b => `${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${BRANCHES[b.hour] ?? b.hour}时 ${b.gender}`;
+const label = (b: BirthInfo): string =>
+	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${BRANCHES[b.hour] ?? b.hour}时 ${b.gender}`;
 
-async function main() {
+interface DiffBucket {
+	count: number;
+	expected: unknown;
+	actual: unknown;
+	sample: BirthInfo;
+}
+
+interface CorpusStats {
+	checked: number;
+	clean: number;
+	dirty: number;
+	missingShards: number;
+	/** 白名单放行的差异**处**数（一处 = 一条盘上的一个字段） */
+	whitelistedCells: number;
+	/** 差异路径 → { count, expected, actual, sample } */
+	buckets: Map<string, DiffBucket>;
+	detail: Array<{ birth: BirthInfo; diffs: ChartDiff[] }>;
+}
+
+async function main(): Promise<void> {
 	if (!existsSync(SAMPLES)) {
 		console.error(
 			`找不到样本目录：${SAMPLES}\n` +
@@ -99,13 +120,13 @@ async function main() {
 	const { generateChart } = await loadAlgorithm();
 
 	const shards = years.flatMap(y => months.map(m => ({ year: y, month: m })));
-	const stats = {
+	const stats: CorpusStats = {
 		checked: 0,
 		clean: 0,
 		dirty: 0,
 		missingShards: 0,
-		whitelistedCells: 0, // 白名单放行的差异**处**数（一处 = 一条盘上的一个字段）
-		buckets: new Map(), // 差异路径 → { count, expected, actual, sample }
+		whitelistedCells: 0,
+		buckets: new Map(),
 		detail: [],
 	};
 	const t0 = Date.now();
@@ -122,7 +143,7 @@ async function main() {
 			const actual = generateChart({ ...raw.birthInfo });
 			const all = compareChart(actual, raw.chart, { keepWhitelisted: true });
 
-			let real = null;
+			let real: ChartDiff[] | null = null;
 			for (const d of all) {
 				if (d.whitelisted) {
 					stats.whitelistedCells++;
@@ -160,8 +181,8 @@ async function main() {
 	process.exit(stats.dirty > 0 ? 1 : 0);
 }
 
-function report(s, shardCount, ms) {
-	const line = (k, v) => console.log(`  ${k.padEnd(12, "　")} ${v}`);
+function report(s: CorpusStats, shardCount: number, ms: number): void {
+	const line = (k: string, v: string): void => console.log(`  ${k.padEnd(12, "　")} ${v}`);
 	const scope = `${years[0]}-${String(months[0]).padStart(2, "0")} ~ ${years.at(-1)}-${String(months.at(-1)).padStart(2, "0")}`;
 	const limited = s.checked < shardCount * 720;
 
@@ -170,7 +191,7 @@ function report(s, shardCount, ms) {
 	line("检查条数", s.checked.toLocaleString("en-US"));
 	line("完全一致", s.clean.toLocaleString("en-US"));
 	line("有差异", s.dirty.toLocaleString("en-US"));
-	line("白名单放行", `${s.whitelistedCells.toLocaleString("en-US")} 处（已知：太阳/太阴在酉宫的亮度，见 test/lib/compare.mjs）`);
+	line("白名单放行", `${s.whitelistedCells.toLocaleString("en-US")} 处（已知：太阳/太阴在酉宫的亮度，见 test/lib/compare.ts）`);
 	line("耗时", `${(ms / 1000).toFixed(1)} 秒（${(ms / Math.max(s.checked, 1)).toFixed(1)} ms/条）`);
 	if (s.missingShards) line("缺失分片", `${s.missingShards} 个`);
 	console.log("");
@@ -200,7 +221,7 @@ function report(s, shardCount, ms) {
 
 	console.log(
 		"\n处理：先跑 npm test 定位是抽样内的变化，或 \n" +
-			"      · 若是 iztro 升级带来的预期行为变化 → 审阅后更新 test/lib/compare.mjs 的 KNOWN_DIVERGENCES（须写明根因）\n" +
+			"      · 若是 iztro 升级带来的预期行为变化 → 审阅后更新 test/lib/compare.ts 的 KNOWN_DIVERGENCES（须写明根因）\n" +
 			"      · 若不是预期变化 → 这是回归，检查 scripts/ziwei/ 下的内核改动"
 	);
 }

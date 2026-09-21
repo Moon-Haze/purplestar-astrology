@@ -38,7 +38,7 @@ function projectPalaceName(iztroName: string): string {
 		throw new Error(
 			`未知的 iztro 宫名「${iztroName}」—— IZTRO_TO_PROJECT_PALACE 未覆盖。` +
 				`若 iztro 改了宫名口径，请同步 scripts/ziwei/constants.ts 的映射表` +
-				`（并同步 PALACE_NAMES_ORDER 与 test/lib/compare.mjs 的说明）。`
+				`（并同步 PALACE_NAMES_ORDER 与 test/lib/compare.ts 的说明）。`
 		);
 	}
 	return mapped;
