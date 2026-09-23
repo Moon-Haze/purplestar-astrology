@@ -9,7 +9,7 @@ npm test -- --year 1953                   # 同上，但层 1 只跑 1953 年的
 npm run test:corpus -- --year 1960        # 全量核验：只跑 1960 年（8,640 条，约 2 分钟）
 npm run test:corpus                       # 全量核验：518,400 条，约 2.3 小时
 
-node scripts/purple-star.ts selftest     # CLI 自带的 44 项自检（与本套测试分工不同，见下）
+node scripts/purple-star.ts selftest     # CLI 自带的 46 项自检（与本套测试分工不同，见下）
 npm run typecheck                        # 类型检查：必须 0 错误（与本套测试也分工不同）
 ```
 

@@ -9,7 +9,7 @@
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
  *   cli/commands.ts    七个命令实现 + 命令表
- *   cli/selftest.ts    回归自检（44 项断言；留在 scripts/ 而非 test/，理由见该文件）
+ *   cli/selftest.ts    回归自检（46 项断言；留在 scripts/ 而非 test/，理由见该文件）
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
  *   scripts/ziwei/algorithm.ts        排盘主流程
@@ -62,28 +62,10 @@ type ClassicsModule = typeof import("@/classics/index");
 type ArgsModule = typeof import("@/cli/args");
 type CommandsModule = typeof import("@/cli/commands");
 
-/**
- * 抑制噪声：内核 `*.ts` 若落在无 `"type":"module"` 的包内，Node 每次加载都会告警。
- *
- * @remarks
- * 不能改 `package.json`（Next.js 的 `next.config.js` / `postcss.config.js` 依赖 CJS），故在此过滤。
- *
- * 只吞 `MODULE_TYPELESS_PACKAGE_JSON` 一种 code，其余告警一律经原生的 `emitWarning` 透传 ——
- * 这里兼容两种调用形态：`(warning, type, code)` 与 `(warning, options)`，故先做形态判别再取 code。
- */
-const _emitWarning = process.emitWarning.bind(process) as (
-	warning: string | Error,
-	...rest: unknown[]
-) => void;
-process.emitWarning = ((warning: string | Error, ...rest: unknown[]): void => {
-	const code =
-		typeof rest[0] === "string" && typeof rest[1] === "string"
-			? rest[1] // (warning, type, code)
-			: ((rest[0] as { code?: string } | undefined)?.code ??
-				(warning as { code?: string })?.code); // (warning, options)
-	if (code === "MODULE_TYPELESS_PACKAGE_JSON") return;
-	_emitWarning(warning, ...rest);
-}) as typeof process.emitWarning;
+// 历史注记：这里曾有一段 `process.emitWarning` 猴子补丁，用于过滤
+// `MODULE_TYPELESS_PACKAGE_JSON` 告警 —— 那是上游 ziwei-master（Next.js 项目，不能把
+// package.json 改成 "type":"module"）的约束，随内核拷贝带了过来。本仓库的 package.json
+// 已声明 "type": "module"，该告警不会触发，补丁是死代码，已删除。
 
 /** 本脚本所在目录，即 `<skill 根>/scripts`（内核根的第一个候选，见 {@link pickRoot}） */
 const HERE = dirname(fileURLToPath(import.meta.url));

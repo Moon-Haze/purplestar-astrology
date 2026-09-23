@@ -65,8 +65,9 @@ export function equationOfTime(year: number, month: number, day: number): number
  * @remarks
  * `eot` 决定是否计入均时差，其余三项是均时差所需的日期。
  *
- * ⚠️ 只有 `year` 有显式校验（开了 `eot` 却缺它就直接抛错）；`month` / `day` 缺省时会原样下传，
- * 在 {@link equationOfTime} 里静默算出 `NaN`，故开了 `eot` 就应该三项一起给。
+ * ⚠️ 开了 `eot` 时 `year` / `month` / `day` **三项都必须给**，缺任何一项都会当场抛错 ——
+ * 均时差依赖具体日期，缺项会在 {@link equationOfTime} 里静默算出 `NaN`，污染
+ * `branch` / `dayOffset` 整条结果链（宁可在入口失败，也不产出错时辰）。
  */
 export interface TrueSolarOptions {
 	/** 是否额外计入均时差。默认 `false`，即传统口径（只做经度校正） */
@@ -144,10 +145,13 @@ export function calcTrueSolar(
 	opts: TrueSolarOptions = {}
 ): TrueSolarResult {
 	const clockMins = clockHour * 60 + clockMinute;
-	if (opts.eot && !Number.isInteger(opts.year))
-		throw new Error("calcTrueSolar：开启 eot 时必须提供 year/month/day");
+	if (
+		opts.eot &&
+		(!Number.isInteger(opts.year) || !Number.isInteger(opts.month) || !Number.isInteger(opts.day))
+	)
+		throw new Error("calcTrueSolar：开启 eot 时必须提供 year/month/day 三项（缺项会静默算出 NaN）");
 	const longitudeRaw = (longitude - 120) * 4;
-	// year 已由上一行保证为整数；month/day 照原样下传（缺省时得到 NaN，与迁移前逐位一致）
+	// 三项日期已由上一行校验为整数（as 断言只影响类型层），可安全下传
 	const eotRaw = opts.eot
 		? equationOfTime(opts.year as number, opts.month as number, opts.day as number)
 		: 0;
@@ -439,6 +443,12 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 	// 23:00–23:59 出生 → 早/晚子时两口径会排出不同的盘，此标记用于上层给出提醒
 	let lateZiCandidate = false;
 
+	// --late-zi 只对 --time 有意义：--branch 直接指定时辰（晚子时就是 --branch 12），
+	// 与之同用属于参数误用 —— 当场报错，而不是静默忽略（原先的校验放在时辰解析之后，
+	// 且条件含「两者皆缺」，而那时缺时辰早就在上方抛错 —— 实际不可达，等于没校验）。
+	if (wantLateZi && g("time") === undefined)
+		throw new Error("--late-zi 需配合 --time 使用；直接指定时辰时，晚子时请用 --branch 12");
+
 	if (g("branch") !== undefined) {
 		hour = Number(g("branch"));
 		// 12 = 晚子时（安星按次日），是本 CLI 对 iztro timeIndex 12 的显式暴露
@@ -486,10 +496,6 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 		hourNote += dayShiftText;
 	} else {
 		throw new Error("缺少出生时辰：需 --time HH:MM 或 --branch 0-12");
-	}
-
-	if (wantLateZi && g("time") === undefined && g("branch") === undefined) {
-		throw new Error("--late-zi 需配合 --time 使用");
 	}
 
 	const notes = [dateNote, lngNote, hourNote].filter(Boolean);

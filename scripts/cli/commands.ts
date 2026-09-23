@@ -26,7 +26,7 @@ import { cmdSelftest } from "./selftest";
 import type { Palace } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
-import { getSiHuaByStem, getYearStemIndex, getLiuNianSiHua, getLiuYueSiHua } from "@/ziwei/sihua";
+import { getSiHuaByStem, getLiuNianSiHua, getLiuYueSiHua } from "@/ziwei/sihua";
 import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
 import {
@@ -101,12 +101,23 @@ function cmdAnalyze(args: CliArgs) {
 		buildBirthInfo(args);
 	const chart = generateChart(info);
 
-	const yearStem = getYearStemIndex(info.year);
+	// 生年四化的年干必须取**农历年干**（chart.lunarInfo.yearStem），与 iztro 落在
+	// Star.siHua 上的 mutagen 同源。不可用 getYearStemIndex(info.year)：那是公历年取模，
+	// 1-2 月出生（农历仍在上一年）者两口径分叉，本区块会与宫详表自相矛盾
+	// （实测 1990-01-15：农历己巳年 → 武曲化禄，公历取模却得庚 → 化权武曲）。
+	const yearStem = chart.lunarInfo.yearStem;
 	const native = getSiHuaByStem(yearStem);
 	// 注意：流年用 --liunian，不可复用 --year —— 后者是出生年的回退参数。
 	// 二者同时给出不会报错：流年取 --liunian；而出生日期一旦给了 --date/--lunar，
 	// --year 就被静默忽略（buildBirthInfo 里 --date/--lunar 优先），不会有任何提示。
-	const liuNianYear = args.liunian ? Number(args.liunian) : new Date().getFullYear();
+	if (args.liunian === true)
+		throw new Error("--liunian 需要一个年份值（如 --liunian 2027）");
+	const liuNianYear =
+		args.liunian !== undefined ? Number(args.liunian) : new Date().getFullYear();
+	// 非数字静默传下去会得到「【NaN 流年四化】」的垃圾输出（NaN 天干 → 四空串），
+	// 与 --liuyue 的校验同一纪律：宁可报错，不静默产出错盘。
+	if (!Number.isInteger(liuNianYear) || liuNianYear < 1 || liuNianYear > 9999)
+		throw new Error(`--liunian 应为 1-9999 的整数年份，收到：${args.liunian}`);
 	const liuNian = getLiuNianSiHua(liuNianYear);
 	// 流月：农历月 1-12，取流年干推五虎遁（可选）
 	const liuYueMonth = args.liuyue !== undefined ? Number(args.liuyue) : null;
@@ -416,7 +427,8 @@ function cmdHeming(args: CliArgs) {
 		["甲", ca, fuqiA],
 		["乙", cb, fuqiB],
 	] as const) {
-		const stem = getYearStemIndex(chart.birthInfo.year);
+		// 生年四化取农历年干（与盘面 Star.siHua 的 mutagen 同源），不用公历取模 —— 理由见 cmdAnalyze
+		const stem = chart.lunarInfo.yearStem;
 		for (const x of locateSihua(chart, getSiHuaByStem(stem))) {
 			if (x.palace !== fuqi.name) continue;
 			sihuaHit++;

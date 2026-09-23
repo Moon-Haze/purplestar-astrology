@@ -76,7 +76,7 @@ async function cliFails(args: string[]): Promise<string> {
 }
 
 const { generateChart } = await loadAlgorithm();
-const { getSiHuaByStem, getYearStemIndex } = await loadSihua();
+const { getSiHuaByStem } = await loadSihua();
 
 describe("CLI 端到端", () => {
 	describe("真太阳时校正", () => {
@@ -490,7 +490,10 @@ describe("CLI 端到端", () => {
 				[B, "乙"],
 			] as const) {
 				const chart = chartOf(cfg);
-				const transforms = getSiHuaByStem(getYearStemIndex(chart.birthInfo.year));
+				// 年干取农历年干（chart.lunarInfo.yearStem），与 iztro 落在 Star.siHua 上的
+				// mutagen 同源。样本 A（1980-02-03）农历仍在己未年 —— 若预言机按公历年取模
+				// （庚），它会与被测实现共用同一个错口径，测试假绿（历史上确实如此）。
+				const transforms = getSiHuaByStem(chart.lunarInfo.yearStem);
 				// 独立路径：先由年干取四化**星名**，再到盘上找那颗星坐在哪个宫 —— 不调 locateSihua。
 				const expect = (["禄", "权", "科", "忌"] as const).filter(h =>
 					chart.palaces.some(
@@ -576,6 +579,57 @@ describe("CLI 端到端", () => {
 				viaCli.chart.lunarInfo,
 				"农历信息也应一致（--lng 120 时无真太阳时校正）"
 			);
+		});
+	});
+
+	describe("生年四化的年干口径", () => {
+		// iztro 落在 Star.siHua 上的 mutagen 按农历年干标注；analyze / heming 的
+		// 【生年四化】区块若改按公历年取模（getYearStemIndex），1-2 月出生（农历仍在
+		// 上一年）者两口径分叉：同屏出现「武曲化禄」（宫详表，农历口径）与「化权武曲」
+		// （区块，公历口径）互相矛盾。区块必须与盘面同源 —— 即 chart.lunarInfo.yearStem。
+		it("跨年月出生按农历年干（1990-01-15 = 农历己巳年腊月，非公历取模的庚）", async () => {
+			const chart = generateChart({ year: 1990, month: 1, day: 15, hour: 5, gender: "male" });
+			assert.equal(chart.lunarInfo.yearStem, 5, "样本前提：1990-01-15 农历年干应为己（索引 5）");
+			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male"]);
+			assert.ok(t.includes("【生年四化】年干 己"), "年干应取农历年干「己」，而非公历取模的「庚」");
+			for (const h of ["禄", "权", "科", "忌"] as const) {
+				const star = getSiHuaByStem(5)[h];
+				assert.ok(t.includes(`化${h} ${star}`), `化${h} 应为己干四化的「${star}」`);
+			}
+		});
+
+		it("生年四化区块与盘面 mutagen 标记逐颗一致（金标准不变量）", async () => {
+			// 盘面 Star.siHua（iztro mutagen，农历年干口径）是金标准：区块里的四颗
+			// 「化X 星Y」必须恰为盘面上所有带 siHua 标记的星，一颗不多一颗不少。
+			const birth = { year: 1990, month: 1, day: 15, hour: 5, gender: "male" } as const;
+			const onChart = generateChart({ ...birth })
+				.palaces.flatMap(p => p.stars)
+				.filter(s => s.siHua)
+				.map(s => `${s.siHua}:${s.name}`)
+				.sort();
+			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male"]);
+			// 只取【生年四化】区块 —— 流年/流月区块的行格式相同，混入会误判
+			const block = t.split("【生年四化】")[1]?.split("【")[0] ?? "";
+			const inBlock = [...block.matchAll(/化([禄权科忌]) (.+?) → /g)]
+				.map(m => `${m[1]}:${m[2]}`)
+				.sort();
+			assert.deepEqual(inBlock, onChart, "【生年四化】区块与盘面 mutagen 不一致 —— 双口径分叉");
+		});
+	});
+
+	describe("analyze 参数校验", () => {
+		it("--liunian 非数字报错退出（不得静默产出 NaN 四化）", async () => {
+			const stderr = await cliFails([
+				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "abc",
+			]);
+			assert.ok(stderr.includes("--liunian"), `报错应点名 --liunian，实得：${stderr}`);
+		});
+
+		it("--late-zi 与 --branch 同用报错（该开关只配合 --time）", async () => {
+			const stderr = await cliFails([
+				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--late-zi",
+			]);
+			assert.ok(stderr.includes("--late-zi"), `报错应点名 --late-zi，实得：${stderr}`);
 		});
 	});
 });

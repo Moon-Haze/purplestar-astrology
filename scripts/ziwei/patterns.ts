@@ -47,6 +47,7 @@
  */
 
 import type { ZiweiChart, Palace, Star, SiHua } from "./types";
+import { BRANCHES } from "./constants";
 
 // ────────────────── 类型 ──────────────────
 /**
@@ -416,7 +417,9 @@ function sanFangHasSiHua(chart: ZiweiChart, hua: SiHua): boolean {
  * 索引口径与 `types.ts` 的 `Palace.branch` 一致：0=子 … 11=亥。仅用于拼判词
  * （如"太阳太阴同入**未**宫"、"巨门入命于**子**宫"）与 `PatternCondition` 的文案。
  */
-const BRANCH_NAMES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+// 判词用的地支名直接取 constants 的 BRANCHES（原先此处有一份内容相同的本地副本，
+// 两份相同数据表是漂移隐患 —— 已删除，见 .claude/CLAUDE.md 的架构说明）；
+const BRANCH_NAMES = BRANCHES;
 
 // ────────────────── 正格识别器 ──────────────────
 

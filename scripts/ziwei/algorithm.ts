@@ -9,7 +9,7 @@
 
 import { astro } from "iztro";
 import { Solar } from "lunar-typescript";
-import type { BirthInfo, LunarInfo, Star, Palace, DaXian, DaXianSiHua, ZiweiChart } from "./types";
+import type { BirthInfo, LunarInfo, Star, Palace, DaXian, ZiweiChart } from "./types";
 import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "./constants";
 // 飞星派工具仅供导出，不再在排盘时调用（倪师《天纪 03》：四化星永远固定不动）
 // import { detectSelfSihua, getSiHuaByStem } from './sihua';
@@ -241,6 +241,15 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const palaces: Palace[] = astrolabe.palaces.map(p => {
 		const branch = BRANCHES.indexOf(p.earthlyBranch as string);
 		const stem = STEMS.indexOf(p.heavenlyStem as string);
+		// branch / stem 是下游一切索引的键（宫位定位、三方四正、大限、格局判定全按它查），
+		// 查表失败若静默兜底 0，会出现「两宫同指子位」且零信号 —— 与下方 projectPalaceName
+		// 同一纪律：宁可当场失败，也不静默产出错盘。BRANCHES / STEMS 覆盖全部十二支十干，
+		// 正常情况下 indexOf 不可能失败；真失败即说明 iztro 输出已损坏。
+		if (branch < 0 || stem < 0)
+			throw new Error(
+				`未知的 iztro 天干地支「${p.heavenlyStem}${p.earthlyBranch}」（宫名 ${p.name}）—— ` +
+					`内核输出已损坏，请核对 iztro 版本是否变更了干支口径`
+			);
 
 		// 合并所有星：主星 + 次星 + 杂耀
 		const allStars: Star[] = [
@@ -264,8 +273,8 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 
 		const range = p.decadal?.range;
 		return {
-			branch: branch >= 0 ? branch : 0,
-			stem: stem >= 0 ? stem : 0,
+			branch,
+			stem,
 			name: projectPalaceName(p.name as string),
 			stars: allStars,
 			daXianAge: range ? ([range[0], range[1]] as [number, number]) : undefined,
@@ -314,6 +323,13 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	// ── 关键宫支 ──
 	const mingGongBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfSoulPalace as string);
 	const shenGongBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfBodyPalace as string);
+	// 命宫 / 身宫地支必在十二宫内，这是排盘不变量（cli/render.ts 的 palaceAtBranch 同样
+	// 依赖它）；查不到即内核输出已损坏，当场报错而非兜底 0（理由同上方宫循环的干支校验）。
+	if (mingGongBranch < 0 || shenGongBranch < 0)
+		throw new Error(
+			`命宫/身宫地支不在十二支内（命宫=${astrolabe.earthlyBranchOfSoulPalace}，` +
+				`身宫=${astrolabe.earthlyBranchOfBodyPalace}）—— 内核输出已损坏`
+		);
 	const wuxingJuName = astrolabe.fiveElementsClass as string;
 	const wuxingJu = parseWuxingJu(wuxingJuName);
 
@@ -321,7 +337,9 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const ziweiPalace = palaces.find(p =>
 		p.stars.some(s => s.name === "紫微" && s.type === "major")
 	);
-	const ziweiPos = ziweiPalace?.branch ?? 0;
+	// 紫微必上盘（安星法的锚点），找不到即内核输出已损坏 —— 兜底 0 会静默指向子位错盘
+	if (!ziweiPalace) throw new Error("紫微星不在任何宫位 —— 内核输出已损坏，无法定位紫微");
+	const ziweiPos = ziweiPalace.branch;
 
 	// ── 大限数组（倪师《天纪》正统：四化永远固定，大限只看宫位移动）──
 	// 不再生成 daXians[].siHua / stemIndex / stemName（飞星派字段已下线）
@@ -344,8 +362,8 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	return {
 		birthInfo,
 		lunarInfo,
-		mingGongBranch: mingGongBranch >= 0 ? mingGongBranch : 0,
-		shenGongBranch: shenGongBranch >= 0 ? shenGongBranch : 0,
+		mingGongBranch,
+		shenGongBranch,
 		wuxingJu,
 		wuxingJuName,
 		ziweiPos,

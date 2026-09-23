@@ -23,7 +23,7 @@ node scripts/purple-star.ts classics --search 机月同梁              # 古籍
 node scripts/purple-star.ts nihai --category tianji                # 倪海夏三纪
 node scripts/purple-star.ts help                                   # 全部命令与参数
 
-# 第一层：CLI 自带自检，44 项断言，整体执行，不支持筛选单项
+# 第一层：CLI 自带自检，46 项断言，整体执行，不支持筛选单项
 node scripts/purple-star.ts selftest
 
 # 第二层：基准回归，用 toolkit 的 518,400 条样本对标排盘结果（默认跑 300 条抽样，约 8 秒）
@@ -50,9 +50,9 @@ npm run typecheck
     ├── cli/birth-info.ts         出生信息（真太阳时 / 农历 / 城市容错）
     ├── cli/render.ts             命盘渲染（宫位 / 星曜 / 四化 / 宫名口径）
     ├── cli/commands.ts           七个命令实现 + COMMANDS 表
-    ├── cli/selftest.ts           44 项回归断言
+    ├── cli/selftest.ts           46 项回归断言
     ├── ziwei/algorithm.ts        iztro 排盘主流程
-    ├── ziwei/patterns.ts         40+ 格局识别（1190 行，含古籍出处与破格条件）
+    ├── ziwei/patterns.ts         40+ 格局识别（含古籍出处与破格条件）
     ├── ziwei/sihua.ts            四化（生年 / 流年 / 流月）
     ├── ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
     ├── classics/                 三部古籍原文检索
@@ -106,7 +106,7 @@ npm run typecheck
 ### 三处启动期防御
 
 1. **`REQUIRED_EXPORTS` 自检**：模块加载后立刻校验 14 个关键导出，缺任何一个直接退出。设计意图是**宁可启动失败，也不静默产出错盘**——所以在内核里重命名或删除导出会让 CLI 立刻报错，这是有意的，不是脆弱。
-2. **`selftest`**：CLI 自带的 44 项断言，整体执行。
+2. **`selftest`**：CLI 自带的 46 项断言，整体执行。
 3. **`npm test`**：`test/` 下的基准回归，用 toolkit 样本对标排盘结果（默认 300 条抽样，约 8 秒）。失效的基准是负债而非保障 —— 见 [test/README.md](../test/README.md) 的「升级 iztro 的流程」。
 
 ## 体系硬约束：三合派，不是飞星派

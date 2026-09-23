@@ -96,8 +96,11 @@ export function buildStarSiHuaMap(stemIndex: number): Record<string, SiHua> {
  * ⚠️ **按公历年直接取模，不做农历年或节气的边界切换**：1–2 月出生者，其年柱按农历
  * 口径可能仍属上一农历年 —— 此时本函数与 `algorithm.ts` 的 `getLunarInfo` 返回的
  * `lunarInfo.yearStem`（由 `lunar-typescript` 算出的农历年干）会**相差一位**。
- * 两者用途不同：本函数服务 `cli/commands.ts` 的生年四化展示，`lunarInfo.yearStem`
- * 只服务输出层。
+ * 两者用途不同：本函数**只服务流年四化**（用户问「2026 年运势」即指公历年份对应的
+ * 干支年，取模恰好正确）；**生年四化必须用 `chart.lunarInfo.yearStem`** —— 盘面上
+ * iztro 的 `Star.siHua`（mutagen）按农历年干标注，生年若走公历取模，1–2 月出生者
+ * 的【生年四化】区块会与宫详表自相矛盾（实测 1990-01-15：农历己巳 vs 公历庚）。
+ * `test/cli.test.ts` 的「生年四化的年干口径」一节盯着这条红线。
  */
 export function getYearStemIndex(year: number): number {
 	return (((year - 4) % 10) + 10) % 10;

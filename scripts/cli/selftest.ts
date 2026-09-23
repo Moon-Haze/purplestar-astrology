@@ -41,7 +41,7 @@ import { Lunar } from "lunar-typescript";
  *
  * @remarks
  * 覆盖：农历换算、真太阳时、晚子时等价性、城市容错、性别护栏、排盘不变量、三合派约束、
- * 格局与知识源可用性（当前共 **44 项**）。
+ * 格局与知识源可用性（当前共 **46 项**）。
  *
  * 内核根从 `ctx` 取而非自己推导：那是引导层 `pickRoot()` 的职责，自检只负责把它交代出来。
  *
@@ -190,6 +190,16 @@ export function cmdSelftest(ctx: CliContext): string {
 		const onMeridian = calcTrueSolar(12, 0, 120, { eot: true, year: 1990, month: 5, day: 15 });
 		eq(onMeridian.longitudeMinutes, 0);
 		eq(onMeridian.offsetMinutes, onMeridian.eotMinutes);
+	});
+	ok("真太阳时：开启 eot 却缺 month / day 必须报错（不得静默产出 NaN）", () => {
+		let msg: string | null = null;
+		try {
+			calcTrueSolar(12, 0, 116.4, { eot: true, year: 1990 });
+		} catch (e) {
+			msg = (e as Error).message;
+		}
+		if (!msg) throw new Error("缺 month/day 时未报错 —— NaN 会静默污染 branch / dayOffset 整条结果链");
+		return msg;
 	});
 	ok("真太阳时：均时差全年幅度落在 -15 ~ +17 分（实测 -14.6 ~ +16.5）", () => {
 		// 区间同时卡住上下界：公式被改坏（符号反了、系数错了）都会掉出这个窗口
@@ -476,9 +486,27 @@ export function cmdSelftest(ctx: CliContext): string {
 		const t = getSiHuaByStem(0);
 		eq(`${t.禄}${t.权}${t.科}${t.忌}`, "廉贞破军武曲太阳");
 	});
-	ok("四化：生年干索引按 (year-4)%10 计（1990 → 庚 = 6）", () => {
+	ok("四化：流年干索引按 (year-4)%10 计（1990 → 庚 = 6，仅流年用）", () => {
+		// 注意：这是**公历年取模**口径，只服务流年四化（用户问「2026 年运势」即指公历
+		// 年份对应的干支年）。生年四化必须用 chart.lunarInfo.yearStem（农历年干），
+		// 两口径在 1-2 月出生者身上分叉 —— 见下方「与盘面 mutagen 一致」断言。
 		eq(getYearStemIndex(1990), 6);
 		eq(STEMS[getYearStemIndex(1990)], "庚");
+	});
+	ok("四化：生年四化取农历年干，与盘面 mutagen 逐颗一致（跨年月样本）", () => {
+		// 1990-01-15 农历仍在己巳年（腊月），公历取模却是庚 —— 专挑两口径分叉的样本。
+		// iztro 落在 Star.siHua 上的 mutagen 按农历年干标注，是生年四化的金标准；
+		// lunarInfo.yearStem 若与它分叉，CLI 的【生年四化】区块就会与宫详表自相矛盾。
+		const c = generateChart({ year: 1990, month: 1, day: 15, hour: 5, gender: "male" });
+		eq(c.lunarInfo.yearStem, 5, "农历年干应为己（索引 5）");
+		const tf = getSiHuaByStem(c.lunarInfo.yearStem);
+		const byStem = (["禄", "权", "科", "忌"] as const).map(h => `${h}:${tf[h]}`).sort();
+		const onChart = c.palaces
+			.flatMap(p => p.stars)
+			.filter(s => s.siHua)
+			.map(s => `${s.siHua}:${s.name}`)
+			.sort();
+		eq(onChart.join("、"), byStem.join("、"), "盘面 mutagen 与农历年干四化");
 	});
 	ok("流月：五虎遁 甲年正月 = 丙寅", () => {
 		eq(getLiuYueSiHua(0, 1).stemName, "丙");
