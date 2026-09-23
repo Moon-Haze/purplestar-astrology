@@ -5,6 +5,7 @@
 
 ```bash
 npm test                                  # 日常回归：300 条抽样基准 + 预言机对账，约 8 秒
+npm test -- --year 1953                   # 同上，但层 1 只跑 1953 年的基准条目（层 2-4 照常全跑）
 npm run test:corpus -- --year 1960        # 全量核验：只跑 1960 年（8,640 条，约 2 分钟）
 npm run test:corpus                       # 全量核验：518,400 条，约 2.3 小时
 
@@ -38,7 +39,13 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 层 2、3 刻意**不依赖基准样本**，因此不受 iztro 升级影响 —— 层 1 变红时，它们能帮你区分
 「是 iztro 行为变了」还是「内核真的排出了坏盘」。
 
-`test/lib/` 是共享工具（内核加载器 + 比对器），`test/tools/` 是手动执行的脚本，两者都不是测试文件。
+`test/lib/` 是共享工具（内核加载器 + 比对器 + `npm test` 的入口与聚合 reporter），`test/tools/` 是手动执行的脚本，两者都不是测试文件。
+
+`npm test` 的实际入口是 [lib/run.ts](lib/run.ts)（package.json 指向它）：它包一层 `node --test`，
+输出**头部环境块**（时间 / Node / git / 引擎版本 / 基准覆盖维度）与**尾部分层汇总**
+（层 1-4 项数与耗时、最慢 5 项、白名单命中数、失败明细），中间的 spec 输出原样透传；
+失败时汇总照常打印并透传退出码。层 1 每条基准 `✔` 下的诊断行（虚岁 / 白名单命中 /
+其余字段结果）由 [chart.test.ts](chart.test.ts) 的 `t.diagnostic` 产生。
 
 ---
 
@@ -299,7 +306,9 @@ test/
 ├── school.test.ts            层 4：三合派体系约束
 ├── lib/
 │   ├── loader.ts             加载 TS 内核（scripts/purple-star.ts 加载机制的副本）
-│   └── compare.ts            比对器 + 归一化 + 已知差异白名单
+│   ├── compare.ts            比对器 + 归一化 + 已知差异白名单
+│   ├── run.ts                npm test 入口：环境块 + node --test 包壳 + 分层汇总
+│   └── reporter.ts           聚合 reporter：事件流过滤成 JSON 行供 run.ts 汇总
 ├── fixtures/
 │   ├── charts.jsonl           300 条基准（每行 {"birthInfo":…,"chart":…}）
 │   └── manifest.json          来源、基准引擎版本、抽样算法、覆盖度
@@ -308,7 +317,7 @@ test/
     └── full-corpus.ts        全量核验 518,400 条（手动执行）
 ```
 
-### 两处需要留意的维护点
+### 四处需要留意的维护点
 
 1. **`lib/loader.ts` 是 `scripts/purple-star.ts` 加载机制的副本**，两者必须行为一致。
    刻意不抽成共享模块：CLI 的加载器带 CLI 特有的错误处理（`console.error` + `process.exit(1)`），
@@ -318,3 +327,12 @@ test/
 2. **`tools/` 下的脚本都带「仅直接执行才跑 `main()`」的守卫**。Node 的默认测试文件识别模式
    含 `test/**/*`，没有这道守卫时 `node --test test/` 可能把会写盘的 `build-fixtures.ts`
    当成测试文件执行。`npm test` 用的是显式 glob `test/**/*.test.ts`，双重保险。
+
+3. **`lib/run.ts` 的 LAYERS 表把测试文件映射到层 1-4**，是分层汇总与失败明细归层的
+   唯一依据。`test/` 下新增测试文件时须同步登记，否则该文件的项数只进「其他」、
+   且尾部会对账报警（分层合计 ≠ node:test 官方总计）。
+
+4. **`lib/reporter.ts` 刻意只依赖单事件自带的字段**（file / name / duration / message）。
+   实测 node 26 多文件并行下 `classname` / `nesting` / `parentId` 会部分丢失或错乱
+   （单文件跑正常，全量跑就变），任何基于「测试树形状」的聚合在这里都不可靠。
+   若要换 Node 大版本，先跑一次全量并核对分层合计与官方总计对账行。

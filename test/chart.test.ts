@@ -14,7 +14,12 @@ import { fileURLToPath } from "node:url";
 
 import type { BirthInfo } from "@/ziwei/types";
 import { loadAlgorithm, ROOT } from "./lib/loader.ts";
-import { BRANCHES, compareChart, formatDiffs, type BaselineSample } from "./lib/compare.ts";
+import { BRANCHES, compareChart, expectedAge, formatDiffs, type BaselineSample } from "./lib/compare.ts";
+
+// 年份筛选（npm test -- --year 1953，由 test/lib/run.ts 经环境变量传入）。
+// 刻意用「空串视为无」而非 has 判断：run.ts 总是设置该变量（无筛选时置空），
+// 直接读值可避免「变量存在但为空」的歧义。
+const YEAR_FILTER = process.env.ZIWEI_TEST_YEAR ? Number(process.env.ZIWEI_TEST_YEAR) : null;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -57,12 +62,30 @@ describe("排盘对标（基准：iztro 2.5.8 样本）", () => {
 	}
 
 	for (const [year, list] of [...byYear].sort((a, b) => a[0] - b[0])) {
+		if (YEAR_FILTER !== null && year !== YEAR_FILTER) continue;
 		describe(`${year} 年`, () => {
 			for (const s of list) {
-				it(describeBirth(s.birthInfo), () => {
+				it(describeBirth(s.birthInfo), t => {
 					const actual = generateChart({ ...s.birthInfo });
-					const diffs = compareChart(actual, s.chart);
+					// keepWhitelisted 保留白名单差异并打 whitelisted 标（供下面的诊断行报告），
+					// 断言只看非白名单部分 —— 与原先「compareChart 默认丢弃白名单差异后
+					// length === 0」**严格等价**（判的仍是「白名单之外零差异」，没有放宽；
+					// 注入实验验证过：白名单外的新差异照样红）。
+					const all = compareChart(actual, s.chart, { keepWhitelisted: true });
+					const diffs = all.filter(d => !d.whitelisted);
 					assert.equal(diffs.length, 0, `\n${formatDiffs(diffs)}`);
+					// 每条基准的执行情况（只报动态量：随年份漂移的虚岁、白名单命中、其余字段结果）
+					const wl = all.filter(d => d.whitelisted);
+					const hits = wl
+						.map(d => {
+							const star = d.path.match(/stars\[(.+?)\]/)?.[1] ?? "?";
+							const branch = d.path.match(/\[(.+?)宫/)?.[1] ?? "?";
+							return `${star}@${branch}`;
+						})
+						.join("、");
+					t.diagnostic(
+						`虚岁${expectedAge(s.birthInfo)} · 白名单${wl.length}${hits ? `(${hits})` : ""} · ${diffs.length ? "有差异" : "其他字段全等"}`
+					);
 				});
 			}
 		});
@@ -100,7 +123,7 @@ describe("随年份漂移的字段", () => {
 // 白名单里的两条差异应当**确实发生**（酉宫有太阳或太阴时）。
 // 若某天它不再发生（比如 iztro 回退了亮度表），说明白名单该清理了 —— 提示而非失败。
 describe("已知差异白名单", () => {
-	it("白名单条目在基准中确有体现", () => {
+	it("白名单条目在基准中确有体现", t => {
 		const hits = new Set<string>();
 		for (const s of samples) {
 			const you = s.chart.palaces?.find(p => p.branch === 9);
@@ -110,5 +133,7 @@ describe("已知差异白名单", () => {
 		}
 		// 样本量足够大，酉宫必然出现过日月之一
 		assert.ok(hits.size > 0, "300 条基准中酉宫应至少出现过太阳或太阴");
+		// 尾部汇总引用的证据行：白名单不是死条目，基准里真的命中过
+		t.diagnostic(`白名单在基准中体现为：${[...hits].join("、")}`);
 	});
 });
