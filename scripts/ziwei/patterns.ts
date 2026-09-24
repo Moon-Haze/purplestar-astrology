@@ -75,7 +75,7 @@ export interface PatternCondition {
  */
 export interface Pattern {
 	name: string; // 格局名；部分识别器会拼入星名（如「武曲化禄入命」「太阴化忌入迁」）
-	level: "excellent" | "good" | "neutral" | "caution"; // 分级：excellent 上格 / good 吉格 / neutral 平 / caution 凶格警示。触发破格条件时**降级**（如 excellent → good、good → caution）
+	level: 90 | 75 | 60 | 40; // 等级分数：90 上格 / 75 吉格 / 60 平格 / 40 凶格警示。触发破格条件时**降档**（如 90 → 75、75 → 40）
 	description: string; // 判词文案，由 cli/commands.ts 直接输出给用户
 	palaces: string[]; // 涉及宫位（**宫名**，非地支索引；可能含"身宫"或格局定名宫位）
 	conditions?: PatternCondition; // 成立条件分层（v2 新增）
@@ -441,7 +441,7 @@ function detectJunChenQingHui(chart: ZiweiChart, ming: Palace, patterns: Pattern
 
 	patterns.push({
 		name: "君臣庆会",
-		level: breaking.length ? "good" : "excellent",
+		level: breaking.length ? 75 : 90,
 		description:
 			"紫微入命，左辅右弼同会，帝王得贤臣辅佐，主大富大贵、统御之命。一生贵人不绝，宜走政商高位、跨界领袖之途。",
 		palaces: ["命宫"],
@@ -468,7 +468,7 @@ function detectZiFu(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "紫府同宫",
-		level: inMing && !breaking.length ? "excellent" : "good",
+		level: inMing && !breaking.length ? 90 : 75,
 		description: inMing
 			? "紫微天府同入命宫，帝相并临，尊贵之命。主品行端正、衣食无忧、有领导才能，宜担任要职。需要左右辅弼来配合方为完整大格。"
 			: "紫微天府同宫但未坐命，主一生有贵人贵气依托，但本身不一定大富贵，需看会照吉煞而定。",
@@ -497,7 +497,7 @@ function detectFuXiangChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Patter
 
 	patterns.push({
 		name: "府相朝垣",
-		level: breaking.length ? "good" : "excellent",
+		level: breaking.length ? 75 : 90,
 		description:
 			'天府天相分守命宫三方四正，文武并济、权印双辉，主一生衣食丰足、地位崇高。古书云"府相朝垣千钟食禄"，常见于政界、企业管理者。',
 		palaces: [tianfu.name, tianxiang.name],
@@ -530,7 +530,7 @@ function detectYangLiangChangLu(chart: ZiweiChart, ming: Palace, patterns: Patte
 
 	patterns.push({
 		name: "阳梁昌禄",
-		level: breaking.length ? "good" : "excellent",
+		level: breaking.length ? 75 : 90,
 		description:
 			'太阳、天梁、文昌、禄存四星齐会命宫三方，号称"科举之星"，主清贵显达、考运极佳，宜走学术、文教、研究、专业认证之路，一生功名易就。',
 		palaces: [sun.name, liang.name],
@@ -573,7 +573,7 @@ function detectHuoTanLingTan(chart: ZiweiChart, ming: Palace, patterns: Pattern[
 
 		patterns.push({
 			name: shaName === "火星" ? "火贪格" : "铃贪格",
-			level: breaking.length ? "good" : "excellent",
+			level: breaking.length ? 75 : 90,
 			description: `贪狼遇${shaName}${tan.branch === shaPalace.branch ? "同宫" : "三方会照"}，主突发横财、突如其来的机遇。古书云“贪狼遇火铃，必发横财”，但来得快去得也快，宜见好就收。${breaking.length ? "本盘破格条件已触发，发力打折。" : ""}`,
 			palaces: [tan.name, shaPalace.name],
 			conditions: { required, bonus, breaking },
@@ -605,7 +605,7 @@ function detectWuTan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "武贪格",
-		level: breaking.length ? "good" : "excellent",
+		level: breaking.length ? 75 : 90,
 		description:
 			'武曲贪狼会命，财星与桃花欲望星交辉，古书云"武贪不发少年人"——三十岁后方能厚积薄发。主中年以后大富大贵，财源由人脉、应酬、欲望管理而来，适合金融、投机、销售、娱乐业。',
 		palaces: [wu.name, tan.name],
@@ -631,7 +631,7 @@ function detectShaPoLang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "杀破狼",
-		level: breaking.length ? "caution" : "good",
+		level: breaking.length ? 40 : 75,
 		description:
 			"七杀、破军、贪狼三星会命，开创闯荡之命格。一生变动多、不甘平凡，宜创业、军警、业务、销售。中年后才能稳定守成，年轻时易因冲动失利。",
 		palaces: getSanFangPalaces(chart)
@@ -658,7 +658,7 @@ function detectJiYueTongLiang(chart: ZiweiChart, ming: Palace, patterns: Pattern
 
 	patterns.push({
 		name: "机月同梁",
-		level: breaking.length ? "good" : "excellent",
+		level: breaking.length ? 75 : 90,
 		description:
 			"天机太阴天同天梁四星齐入命迁财官，文质彬彬、聪慧善谋。最适合公职、学术、文艺、医疗、服务等需稳定累积的行业，不宜大冒险大投机。",
 		palaces: getSanFangPalaces(chart)
@@ -687,7 +687,7 @@ function detectLianXiang(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "廉贞天相格",
-		level: breaking.length ? "caution" : inMing ? "good" : "neutral",
+		level: breaking.length ? 40 : inMing ? 75 : 60,
 		description:
 			"廉贞天相同宫，印绶格局，主秉公处事、清廉之名，宜任公职、行政管理、法务、企划。怕见擎羊化忌，则反主官非。",
 		palaces: [lian.name],
@@ -713,7 +713,7 @@ function detectWuQiSha(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "武曲七杀",
-		level: breaking.length ? "caution" : inMing ? "excellent" : "good",
+		level: breaking.length ? 40 : inMing ? 90 : 75,
 		description:
 			"武曲七杀同宫，将星配财星，主果决刚毅、理财能力强，适合金融、军警、创业。但忌见化忌煞星，否则凶险。一生奋斗、积财但操心。",
 		palaces: [wu.name],
@@ -737,7 +737,7 @@ function detectTongLiang(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "天同天梁格",
-		level: breaking.length ? "neutral" : "good",
+		level: breaking.length ? 60 : 75,
 		description:
 			"天同天梁同宫，福星与荫星共会，主宽厚和善、乐于助人，宜医疗、教育、宗教、社会公益。但偏温和保守，难成大富大贵之局。",
 		palaces: [tong.name],
@@ -764,7 +764,7 @@ function detectRiYueTongGong(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "日月同宫",
-		level: breaking.length ? "good" : inMing ? "excellent" : "good",
+		level: breaking.length ? 75 : inMing ? 90 : 75,
 		description: `太阳太阴于${BRANCH_NAMES[sun.branch]}宫同宫，阴阳平衡，文武兼备。主异性缘佳、事业顺遂、名声远播。${sun.branch === 7 ? "未宫日月双美尤佳。" : "丑宫日月同宫力量较平。"}`,
 		palaces: [sun.name],
 		conditions: { required, bonus, breaking },
@@ -795,7 +795,7 @@ function detectRiYueJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "日月夹命",
-		level: breaking.length ? "good" : "excellent",
+		level: breaking.length ? 75 : 90,
 		description:
 			"太阳太阴分居命宫两侧夹照，光明磊落，一生贵人相助，事业蓬勃。男主官贵，女主旺夫兴家。日月须不落陷方为真夹。",
 		palaces: [sunPalace.name, moonPalace.name],
@@ -823,7 +823,7 @@ function detectJuRiTongGong(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "巨日同宫",
-		level: breaking.length ? "caution" : inMing && ju.branch === 2 ? "excellent" : "good",
+		level: breaking.length ? 40 : inMing && ju.branch === 2 ? 90 : 75,
 		description: `巨门太阳同${BRANCH_NAMES[ju.branch]}宫，太阳化解巨门暗曜，主以口才、传媒、外语、专业立业。寅宫为佳，申宫力减。怕巨门化忌则官非。`,
 		palaces: [ju.name],
 		conditions: { required, bonus, breaking },
@@ -847,7 +847,7 @@ function detectShiZhongYinYu(chart: ZiweiChart, ming: Palace, patterns: Pattern[
 
 	patterns.push({
 		name: "石中隐玉",
-		level: breaking.length ? "caution" : "excellent",
+		level: breaking.length ? 40 : 90,
 		description:
 			'巨门坐命子午，外表平凡而内蕴才学。早年默默无闻、中年方显贵气，宜走专业、研究、口才、传媒。需有禄权或文昌相助方能"凿石见玉"。',
 		palaces: ["命宫"],
@@ -875,7 +875,7 @@ function detectMingZhuChuHai(chart: ZiweiChart, ming: Palace, patterns: Pattern[
 
 	patterns.push({
 		name: "明珠出海",
-		level: breaking.length ? "good" : "excellent",
+		level: breaking.length ? 75 : 90,
 		description:
 			'命未空宫，对宫丑宫日月同辉拱照，号"明珠出海"。主出生平凡、后天努力出头，宜远赴他乡、学术研究或大公司高位，主大富大贵。',
 		palaces: ["命宫", dui.name],
@@ -899,7 +899,7 @@ function detectZiWeiInMing(chart: ZiweiChart, ming: Palace, patterns: Pattern[])
 
 	patterns.push({
 		name: "紫微入命",
-		level: breaking.length ? "caution" : bonus.length ? "excellent" : "good",
+		level: breaking.length ? 40 : bonus.length ? 90 : 75,
 		description:
 			'紫微独坐命宫，帝王之星，自尊心强、有领导魅力。但紫微最忌"在野孤君"——若无左右辅弼相会，反成孤高自傲、易招毁谤。',
 		palaces: ["命宫"],
@@ -926,7 +926,7 @@ function detectFuBiJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "辅弼夹命",
-		level: "excellent",
+		level: 90,
 		description:
 			'左辅右弼夹命，一生贵人不断、逢凶化吉。适合走仕途、大企业管理，有贵人提携之命。古书云"左辅右弼，终身福厚"。',
 		palaces: ["命宫", prev.name, next.name],
@@ -947,7 +947,7 @@ function detectChangQuJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "昌曲夹命",
-		level: "excellent",
+		level: 90,
 		description:
 			'文昌文曲夹命宫，主聪明俊秀、文采斐然，宜走文教、学术、艺术、写作。古书云"昌曲夹命主科甲"，最利考运。',
 		palaces: ["命宫", prev.name, next.name],
@@ -966,7 +966,7 @@ function detectKuiYueJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "魁钺夹命",
-		level: "good",
+		level: 75,
 		description:
 			"天魁天钺夹命，男称天乙、女称玉堂，一生贵人提携。考试、求职、关键时刻常有意外贵人相助。",
 		palaces: ["命宫", prev.name, next.name],
@@ -988,7 +988,7 @@ function detectShuangLuChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Patte
 
 	patterns.push({
 		name: "双禄朝垣",
-		level: "excellent",
+		level: 90,
 		description:
 			'化禄、禄存同会命宫三方四正，财源涌动、衣食丰足。古书云"双禄朝垣，富比陶朱"，主一生不愁财，多有正财横财兼得。',
 		palaces: sanFang.map(p => p.name),
@@ -1019,7 +1019,7 @@ function detectSanQiJiaHui(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "三奇加会",
-		level: "excellent",
+		level: 90,
 		description:
 			'化禄、化权、化科三吉化齐会命宫三方四正，号称"三奇加会"。主一生功名、财富、贵人三全，是紫微斗数最高吉格之一。',
 		palaces: sanFangPalaces.map(p => p.name),
@@ -1035,7 +1035,7 @@ function detectHuaLuRuMing(chart: ZiweiChart, ming: Palace, patterns: Pattern[])
 
 	patterns.push({
 		name: `${huaLuStar.name}化禄入命`,
-		level: "good",
+		level: 75,
 		description: `${huaLuStar.name}化禄坐命，主生财顺利、人缘佳、机缘多。${huaLuStar.name === "武曲" ? "武曲化禄属正财，宜实业、金融。" : huaLuStar.name === "太阴" ? "太阴化禄属阴财、不动产。" : huaLuStar.name === "贪狼" ? "贪狼化禄属人脉财、桃花财。" : ""}`,
 		palaces: ["命宫"],
 		conditions: { required: [`${huaLuStar.name}化禄坐命宫`] },
@@ -1056,7 +1056,7 @@ function detectHuaJiRuMingQian(chart: ZiweiChart, patterns: Pattern[]) {
 		const inMing = palace.branch === chart.mingGongBranch;
 		patterns.push({
 			name: `${jiStar.name}化忌入${inMing ? "命" : "迁"}`,
-			level: "caution",
+			level: 40,
 			description: inMing
 				? `${jiStar.name}化忌坐命宫，需留意自身固执、心理障碍或健康隐患，凡事退一步思考。化忌不一定坏，代表此星能量需要特别关注。`
 				: `${jiStar.name}化忌坐迁移宫，外出、远行、人际关系易有波折，宜守不宜动。`,
@@ -1082,7 +1082,7 @@ function detectYangTuoJiaJi(chart: ZiweiChart, patterns: Pattern[]) {
 
 		patterns.push({
 			name: "羊陀夹忌",
-			level: "caution",
+			level: 40,
 			description:
 				'化忌坐命，左右擎羊陀罗夹命，古书云"羊陀夹忌为败局"，主一生劳碌奔波、坎坷不顺、身心俱疲。需以德行修养与积极做事化解，凡事谨慎为上。',
 			palaces: ["命宫", prev.name, next.name],
@@ -1103,7 +1103,7 @@ function detectHuoLingJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "火铃夹命",
-		level: "caution",
+		level: 40,
 		description:
 			"火星铃星分居命宫前后两宫夹命，主性急、易冲动、突发意外或纠纷。需培养耐性、避免冲动决策。",
 		palaces: ["命宫", prev.name, next.name],
@@ -1122,7 +1122,7 @@ function detectKongJieJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "空劫夹命",
-		level: "caution",
+		level: 40,
 		description:
 			'地空地劫夹命，主财来财去、思想脱俗、易遁入宗教哲学。古书云"空劫夹命，财不聚"。宜技艺、宗教、研究等不重物质之业。',
 		palaces: ["命宫", prev.name, next.name],
@@ -1138,7 +1138,7 @@ function detectLianShaYang(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "廉杀羊",
-		level: "caution",
+		level: 40,
 		description:
 			"廉贞、七杀、擎羊三星会照命宫三方，古书警示之凶格。主血光、官非、意外。本命有此格不必惊慌，但流年大限再触发时需特别谨慎驾驶、避免冲突、注意手术风险。",
 		palaces: ["命宫"],
@@ -1154,7 +1154,7 @@ function detectJuHuoYang(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "巨火羊",
-		level: "caution",
+		level: 40,
 		description:
 			'巨门、火星、擎羊三星会照，古书云"巨火羊，终身缢死"——古时凶格。现代理解为：易因口舌、激烈冲突而招大祸。需修身养性、慎言慎行，避免极端情绪。',
 		palaces: ["命宫"],
@@ -1176,7 +1176,7 @@ function detectLingChangTuoWu(chart: ZiweiChart, patterns: Pattern[]) {
 
 	patterns.push({
 		name: "铃昌陀武",
-		level: "caution",
+		level: 40,
 		description:
 			'铃星、文昌、陀罗、武曲四星齐会，古书云"铃昌陀武，限至投河"——古时大凶格。本命有此组合本身不必恐慌，但流年大限触发时需高度警觉重大决策、情绪起伏、水边活动。',
 		palaces: ["命宫"],
@@ -1200,7 +1200,7 @@ function detectMaTouDaiJian(chart: ZiweiChart, ming: Palace, patterns: Pattern[]
 
 	patterns.push({
 		name: "马头带箭",
-		level: bonus.length ? "good" : "caution",
+		level: bonus.length ? 75 : 40,
 		description:
 			'擎羊于午宫坐命，号"马头带箭"。古书云"威镇边疆"——主刚毅果决、有冲杀之力，宜军警武职、运动员、外科医师。但同时主危险与意外，需配合杀破狼或贵人方为大格，否则反主血光。',
 		palaces: ["命宫"],
@@ -1222,7 +1222,7 @@ function detectLuCunShouShen(chart: ZiweiChart, patterns: Pattern[]) {
 	if (!inMing && !inShen) return;
 	patterns.push({
 		name: inMing ? "禄存守命" : "禄存守身",
-		level: "good",
+		level: 75,
 		description: inMing
 			? "禄存坐命，主一生衣食无忧、财禄稳定。性格保守，善积累，但羊陀夹禄须防小人。最宜配化禄、左辅右弼方为大格。"
 			: "禄存入身宫，主中年后财源稳定、得禄自享。倪师说「禄存入身，财气近身」——配偶或事业方向能带来稳定财禄。",
@@ -1241,7 +1241,7 @@ function detectTianMaRuMing(chart: ZiweiChart, patterns: Pattern[]) {
 	if (!inMing && !inQian) return;
 	patterns.push({
 		name: inMing ? "天马入命" : "天马在迁",
-		level: "neutral",
+		level: 60,
 		description: inMing
 			? "天马坐命，主一生奔波、动中得财，宜走商旅、外勤、跨界发展。倪师说「天马入命，无禄不发」——若再会禄存或化禄即「禄马交驰」之富格。"
 			: "天马在迁移宫，主外出有利、远行得财，宜异乡发展。配化禄主异地生财，配煞星则旅途多波折。",
@@ -1259,7 +1259,7 @@ function detectHuaLuRuCai(chart: ZiweiChart, patterns: Pattern[]) {
 	if (!luStar) return;
 	patterns.push({
 		name: "化禄入财",
-		level: "good",
+		level: 75,
 		description: `${luStar.name}化禄入财帛宫，主财源畅通、收入稳定。倪师讲化禄是「正财」象征——这个化禄星所代表的能力（${luStar.name}的核心特质）是你赚钱的主轴。配禄存或天马则财源更广。`,
 		palaces: ["财帛宫"],
 		conditions: { required: [`${luStar.name}化禄入财帛宫`] },
@@ -1275,7 +1275,7 @@ function detectHuaQuanRuGuan(chart: ZiweiChart, patterns: Pattern[]) {
 	if (!quanStar) return;
 	patterns.push({
 		name: "化权入官",
-		level: "good",
+		level: 75,
 		description: `${quanStar.name}化权入官禄宫，主事业有掌控力、能担当独当一面的职位。化权代表权力与执行力——${quanStar.name}化权说明你在事业上能成为决策者或核心执行者，宜走管理或技术权威路线。`,
 		palaces: ["官禄宫"],
 		conditions: { required: [`${quanStar.name}化权入官禄宫`] },
@@ -1294,7 +1294,7 @@ function detectHuaKeRuMingShen(chart: ZiweiChart, patterns: Pattern[]) {
 		const isMing = p.branch === chart.mingGongBranch;
 		patterns.push({
 			name: isMing ? "化科入命" : "化科入身",
-			level: "good",
+			level: 75,
 			description: `${keStar.name}化科入${isMing ? "命" : "身"}宫，主名声、文书、学术运。倪师讲化科是「贵人星」——${keStar.name}化科带来的是被人看重的特质，宜从事文书、教育、研究、咨询、文创等“以名取利”的方向。`,
 			palaces: [isMing ? "命宫" : "身宫"],
 			conditions: { required: [`${keStar.name}化科入${isMing ? "命" : "身"}宫`] },
@@ -1322,7 +1322,7 @@ function detectJiYueTongLiangPartial(chart: ZiweiChart, ming: Palace, patterns: 
 	const missing = ["天机", "太阴", "天同", "天梁"].filter(s => !sanFangSet.has(s));
 	patterns.push({
 		name: "机月同梁三星会",
-		level: "neutral",
+		level: 60,
 		description: `三方四正会齐${has.join("、")}，差${missing.join("、")}未会。机月同梁不全格，文质带谋，但稳定度不如四星齐。仍宜公职、教研、医疗、服务等需要积累与稳定的行业，关键看缺位星与四化的配合。`,
 		palaces: getSanFangPalaces(chart)
 			.filter(p => has.some(s => getMajorStarNames(p).includes(s)))
@@ -1344,7 +1344,7 @@ function detectChangQuTongHui(chart: ZiweiChart, patterns: Pattern[]) {
 	const inMing = hasStar(ming, "文昌") && hasStar(ming, "文曲");
 	patterns.push({
 		name: inMing ? "昌曲坐命" : "昌曲同会",
-		level: "good",
+		level: 75,
 		description: inMing
 			? "文昌文曲同入命宫，主聪明俊秀、文采斐然，宜文学、教育、写作、咨询。最忌化忌——昌曲化忌主文书契约暗亏。"
 			: "文昌文曲同会三方四正，主才华横溢、口才文笔俱佳。宜走需要表达与文采的行业，化科加持则名声大显。",
@@ -1360,7 +1360,7 @@ function detectFuBiTongHui(chart: ZiweiChart, patterns: Pattern[]) {
 	if (!sanFangSet.has("左辅") || !sanFangSet.has("右弼")) return;
 	patterns.push({
 		name: "辅弼同会",
-		level: "good",
+		level: 75,
 		description:
 			"左辅右弼同会命宫三方四正，主一生贵人不绝、人缘极佳。最宜领导岗位与团队合作型工作。倪师说「辅弼夹命，平生贵人多」——你不是单打独斗的命，要善用人际网络。",
 		palaces: ["命宫"],
@@ -1375,7 +1375,7 @@ function detectKuiYueTongHui(chart: ZiweiChart, patterns: Pattern[]) {
 	if (!sanFangSet.has("天魁") || !sanFangSet.has("天钺")) return;
 	patterns.push({
 		name: "魁钺同会",
-		level: "good",
+		level: 75,
 		description:
 			'天魁天钺同会命宫三方四正，主"天乙贵人"加持，关键时刻总有贵人提携。倪师说「魁钺夹命，必为贵人」——遇到困难时身边会出现得力相助者，宜主动维护人脉。',
 		palaces: ["命宫"],
@@ -1398,7 +1398,7 @@ function detectKeQuanShuangHui(chart: ZiweiChart, patterns: Pattern[]) {
 	if (!hasKe || !hasQuan) return;
 	patterns.push({
 		name: "科权双会",
-		level: "good",
+		level: 75,
 		description:
 			'化科 + 化权 同会三方四正，主名权双美——既有学识/名声（科），又有掌控力（权），宜走"专业权威"路线（如医生、律师、教授、技术骨干），名利双收且根基扎实。',
 		palaces: ["命宫"],

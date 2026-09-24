@@ -213,7 +213,7 @@ function cmdAnalyze(args: CliArgs) {
 	out.push(`【格局识别】共 ${patterns.length} 个`);
 	if (!patterns.length) out.push("  （未识别到已收录格局）");
 	for (const p of patterns) {
-		out.push(`  ▸ ${p.name} [${p.level}]  涉及：${p.palaces.join("、")}`);
+		out.push(`  ▸ ${p.name} [${p.level}分]  涉及：${p.palaces.join("、")}`);
 		out.push(`    ${p.description}`);
 		if (p.conditions) {
 			if (p.conditions.required?.length)

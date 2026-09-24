@@ -618,7 +618,7 @@ describe("排盘结构不变量", () => {
 		// 保证 —— 分层验证，不是同源复读。
 		//
 		// 【效力边界 · 别高估】
-		// · 只核对「格局**是否触发**」。level（excellent/good/…）不覆盖 —— 它由 bonus/breaking
+		// · 只核对「格局**是否触发**」。level（90/75/…）不覆盖 —— 它由 bonus/breaking
 		//   决定，属判词分级；description / conditions 的文案同理不覆盖
 		// · 「昌曲夹命」「火铃夹命」在 300 条基准里触发 **0** 次，其断言是**空转**的，已显式登记
 		// · 预言机复刻的是**实现当前的口径**，不是照命理理想口径重写。已发现一处口径争议
@@ -847,7 +847,7 @@ describe("排盘结构不变量", () => {
 
 			// ── 输出结构不变量：与判定逻辑无关，管的是「产出的东西是不是良构」 ──
 			describe("输出结构", () => {
-				const LEVELS = new Set(["excellent", "good", "neutral", "caution"]);
+				const LEVELS = new Set([90, 75, 60, 40]);
 				const LEGAL_PALACES = new Set([...PALACE_NAMES_ORDER, "身宫"]);
 
 				it("每条 Pattern 的字段完整且取值合法", () => {
