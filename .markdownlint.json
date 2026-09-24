@@ -28,6 +28,7 @@
         "allowed_languages": [
             "c",
             "c++",
+            "diff",
             "bash",
             "html",
             "plaintext",
