@@ -36,6 +36,22 @@ interface HemingSide {
 	fuQiGong: string[];
 	fuDeGong: string[];
 }
+/** locateSihua 的一项（analyze --json 的 located 数组元素）。 */
+interface LocatedSihuaItem {
+	hua: string;
+	star: string;
+	palace?: string | null;
+	branch?: string | null;
+	isMajor: boolean;
+}
+/** analyze --json 的动态四化层（liuNianSiHua / liuYueSiHua 共用形态）。 */
+interface DynamicSihua {
+	year?: number;
+	month?: number;
+	stem: string;
+	transforms: Record<string, string>;
+	located: LocatedSihuaItem[];
+}
 /** heming --json 的输出。 */
 interface HemingJson {
 	a: HemingSide;
@@ -614,6 +630,122 @@ describe("CLI 端到端", () => {
 				.map(m => `${m[1]}:${m[2]}`)
 				.sort();
 			assert.deepEqual(inBlock, onChart, "【生年四化】区块与盘面 mutagen 不一致 —— 双口径分叉");
+		});
+	});
+
+	describe("流年/流月四化", () => {
+		// 层 3 已核过两函数的算术（五虎遁口诀表、lunar 年柱、固定向量），这里测
+		// **CLI 组装**：标题行、四化落宫、以及三条只有端到端才能钉住的口径 ——
+		// 流月由「流年干」推（不串生年干）、生年/流年两口径刻意分家、--json 派生字段。
+		// 期望值一律由本进程 generateChart 独立排盘后**按星名直接找宫**，不走 locateSihua
+		//（那是被测实现的渲染路径，用它算期望值就成了复读机）。
+
+		/** 独立定位：按星名在盘上找宫，返回与文本行同形态的「宫名(支)」；找不到即「（未上盘）」。 */
+		const locateByStar = (chart: ZiweiChart, star: string): string => {
+			const p = chart.palaces.find(pp => pp.stars.some(s => s.name === star));
+			return p ? `${p.name}(${BRANCHES[p.branch]})` : "（未上盘）";
+		};
+
+		/** 复核一整层四化：每颗「化X 星Y → 宫(支)」行都须与独立复算逐字一致。
+		 *  各调用用例的 --date 均为 1990-05-15，故独立排盘也钉这份出生信息。 */
+		const assertRows = async (args: string[], header: string, stemIndex: number) => {
+			const t = await cli(args);
+			const block = t.split(header)[1]?.split("【")[0] ?? "";
+			const rows = [...block.matchAll(/化([禄权科忌]) (\S+) → (.+)$/gm)];
+			assert.equal(rows.length, 4, `${header} 区块应恰有 4 行，实得 ${rows.length}`);
+			const transforms = getSiHuaByStem(stemIndex);
+			const chart = generateChart({ year: 1990, month: 5, day: 15, hour: 5, gender: "male" });
+			for (const m of rows) {
+				const [hua, star, palace] = [m[1]!, m[2]!, m[3]!];
+				assert.equal(transforms[hua as "禄"], star, `化${hua}应为该干四化的「${transforms[hua as "禄"]}」`);
+				assert.equal(palace, locateByStar(chart, star), `化${hua} ${star} 的落宫应与独立复算一致`);
+			}
+			return t;
+		};
+
+		it("--liunian 2026：年干丙，四化落宫与独立复算一致", async () => {
+			// (2026−4) mod 10 = 2 → 丙。标题行钉干支，四行落宫走 assertRows 独立复算。
+			await assertRows(
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "2026"],
+				"【2026 流年四化】",
+				2
+			);
+		});
+
+		it("--liuyue 走五虎遁：2027 丁年正月月干壬，落宫与独立复算一致", async () => {
+			const t = await assertRows(
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "2027", "--liuyue", "1"],
+				"【2027 年 农历1月 流月四化】",
+				8 // 丁年正月壬寅 → 月干壬
+			);
+			assert.ok(
+				t.includes("月干 壬（五虎遁，由流年干 丁 推）"),
+				"标题应写明月干壬及其推导来源（丁年正月起壬寅）"
+			);
+		});
+
+		it("流月由流年干推，不串生年干（生年庚 × 流年甲 → 正月月干丙）", async () => {
+			// 1990-06-15 在农历庚午年内（生年干庚）；--liunian 2024 为甲年，正月丙寅。
+			// 若误用生年干庚推月干会得「戊」—— 两口径月干不同，此样本专钉不串台。
+			const chart = generateChart({ year: 1990, month: 6, day: 15, hour: 5, gender: "male" });
+			assert.equal(chart.lunarInfo.yearStem, 6, "样本前提：1990-06-15 农历年干应为庚（索引 6）");
+			const t = await cli([
+				"--date", "1990-06-15", "--branch", "5", "--gender", "male",
+				"--liunian", "2024", "--liuyue", "1",
+			]);
+			assert.ok(
+				t.includes("月干 丙（五虎遁，由流年干 甲 推）"),
+				"甲年正月应起丙寅；若串成生年干庚会推得「戊」"
+			);
+		});
+
+		it("生年与流年的年干口径刻意分家：1990-01-15 生年己（农历）、流年庚（公历）同屏", async () => {
+			// 生年四化取农历年干（chart.lunarInfo.yearStem，2026-09 修复），流年四化取
+			// 公历年取模 —— 两口径在 1-2 月出生者身上分叉，且**应当**分家：
+			// 问「1990 年流年」指公历 1990 这一年，与出生那年的农历归属无关。
+			const t = await cli([
+				"--date", "1990-01-15", "--branch", "5", "--gender", "male", "--liunian", "1990",
+			]);
+			assert.ok(t.includes("【生年四化】年干 己"), "生年应取农历年干「己」（己巳年腊月）");
+			assert.ok(t.includes("【1990 流年四化】年干 庚"), "流年应取公历取模的「庚」");
+		});
+
+		it("--liunian / --liuyue 参数护栏（缺值、越界、非数字均报错，不静默产出）", async () => {
+			for (const args of [
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian"], // 旗标没跟值
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "0"],
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "10000"],
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liuyue", "0"],
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liuyue", "13"],
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liuyue", "abc"],
+			] as string[][]) {
+				const stderr = await cliFails(args);
+				const flag = args.includes("--liunian") ? "--liunian" : "--liuyue";
+				assert.ok(stderr.includes(flag), `报错应点名 ${flag}（${args[args.length - 1]}），实得：${stderr}`);
+			}
+		});
+
+		it("--json 的 liuNianSiHua / liuYueSiHua 与独立复算一致", async () => {
+			const j = await cliJson<AnalyzeJson & { liuNianSiHua: DynamicSihua; liuYueSiHua: DynamicSihua }>([
+				"--date", "1990-05-15", "--branch", "5", "--gender", "male",
+				"--liunian", "2026", "--liuyue", "3",
+			]);
+			assert.equal(j.liuNianSiHua.year, 2026);
+			assert.equal(j.liuNianSiHua.stem, "丙");
+			assert.equal(j.liuYueSiHua.month, 3);
+			assert.equal(j.liuYueSiHua.stem, "壬", "丙年正月起庚寅，三月壬（五虎遁顺推）");
+			const chart = generateChart({ year: 1990, month: 5, day: 15, hour: 5, gender: "male" });
+			for (const [transforms, located] of [
+				[getSiHuaByStem(2), j.liuNianSiHua.located],
+				[getSiHuaByStem(8), j.liuYueSiHua.located],
+			] as const) {
+				assert.equal(located.length, 4, "每层四化应恰 4 颗");
+				for (const x of located) {
+					assert.equal(transforms[x.hua as "禄"], x.star, `化${x.hua}的星名与四化表不符`);
+					const palace = chart.palaces.find(p => p.stars.some(s => s.name === x.star));
+					assert.equal(x.palace ?? null, palace?.name ?? null, `${x.star} 的落宫应与独立复算一致`);
+				}
+			}
 		});
 	});
 

@@ -27,7 +27,7 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 const { generateChart } = await loadAlgorithm();
 const { PALACE_NAMES_ORDER, IZTRO_TO_PROJECT_PALACE, SI_HUA_TABLE, STEMS } = await loadConstants();
 const { detectPatterns } = await loadPatterns();
-const { getSiHuaByStem, getYearStemIndex } = await loadSihua();
+const { getSiHuaByStem, getYearStemIndex, getLiuNianSiHua, getLiuYueStemIndex } = await loadSihua();
 const { mustPalace, locateSihua } = await loadRender();
 
 const MAJOR_STARS = [
@@ -512,6 +512,68 @@ describe("排盘结构不变量", () => {
 	// 期望值刻意**不走宫名**，改走安星法给出的偏移算术：财帛宫 = 命宫偏移 4，
 	// 官禄宫 = 偏移 8（十二宫由命宫逆行排布，见上面的偏移恒等式）。
 	// 实现按宫名找、断言按偏移算 —— 两条路径不同，才不是复读机。
+	describe("流年/流月四化（独立预言机）", () => {
+		// 生年四化（上一组）之外，三合派三层四化还有「流年 / 流月」两动态层：
+		// `getLiuNianSiHua`（公历年 → 年干，刻意**不**切农历年界）与
+		// `getLiuYueSiHua`（五虎遁：流年干 + 农历月序 → 月干）。
+		// 此前测试只有「--liunian 非数字报错」一条边角断言，两函数的**算术**零覆盖。
+		// 期望值若照抄实现公式就只是复读机，这里全部换第三条路径：
+		//   · 五虎遁 ← 口诀独立表（120 格逐格写死，与实现的 startStemOfYin 零共享）
+		//   · 流年年干 ← lunar-typescript 年柱 + 万年历固定向量（两条互不相干的路径）
+
+		it("五虎遁月干：全 120 格（10 年干 × 12 农历月）与口诀独立表一致", () => {
+			// 口诀：甲己之年丙作首，乙庚之岁戊为头，丙辛必定寻庚起，
+			//       丁壬壬位顺行流，戊癸何方发，甲寅之上好追求。
+			// 正月（寅月）天干由此起，逐月顺推一位。
+			const firstStemOfYinByChant: Record<number, number> = {
+				0: 2, 5: 2, // 甲己 → 丙
+				1: 4, 6: 4, // 乙庚 → 戊
+				2: 6, 7: 6, // 丙辛 → 庚
+				3: 8, 8: 8, // 丁壬 → 壬
+				4: 0, 9: 0, // 戊癸 → 甲
+			};
+			for (let s = 0; s < 10; s++) {
+				for (let m = 1; m <= 12; m++) {
+					const expected = (firstStemOfYinByChant[s]! + m - 1) % 10;
+					assert.equal(
+						getLiuYueStemIndex(s, m),
+						expected,
+						`${STEMS[s]}年农历${m}月的月干应为${STEMS[expected]}，口诀表与实现分叉`
+					);
+				}
+			}
+		});
+
+		it("流年年干与 lunar-typescript 年柱逐年一致（1924–2100）", async () => {
+			// 取**年中**（公历 6 月 15 日）取年柱：远离立春（约 2 月）与正月初一
+			// （1–2 月）两个切年边界，年干无歧义。lunar-typescript 的 getYearInGanZhi()
+			// 按正月初一切年（与本项目同口径），getYearInGanZhiByLiChun() 才是立春界 ——
+			// 年中日期两种切法结果相同，故此断言对切年口径不敏感。
+			const { Solar } = await import("lunar-typescript");
+			for (let y = 1924; y <= 2100; y++) {
+				const ganZhi = Solar.fromYmd(y, 6, 15).getLunar().getYearInGanZhi();
+				const expected = STEMS.indexOf(ganZhi[0]!);
+				assert.ok(expected >= 0, `lunar 年柱「${ganZhi}」的天干不在 STEMS 里`);
+				assert.equal(
+					getLiuNianSiHua(y).stemIndex,
+					expected,
+					`${y} 年流年干应为${ganZhi[0]}，实现与 lunar-typescript 年柱分叉`
+				);
+			}
+		});
+
+		it("流年年干的万年历固定向量（第三条路径，防 lunar 与实现同错）", () => {
+			// 纸面常识写死的已知年份（干支纪年与公历的通行对应），不依赖任何库。
+			// 上一条验的是「实现与 lunar 一致」，这条验「两者**共同**的答案没一起错」。
+			const known: Array<[number, string]> = [
+				[1900, "庚"], [1984, "甲"], [1996, "丙"], [2000, "庚"], [2024, "甲"], [2026, "丙"],
+			];
+			for (const [y, stem] of known) {
+				assert.equal(getLiuNianSiHua(y).stemName, stem, `${y} 年流年干的通行口径为${stem}`);
+			}
+		});
+	});
+
 	describe("格局识别：化禄入财 / 化权入官（按偏移算术核对）", () => {
 		const OFFSET_CAI = 4; // 财帛宫
 		const OFFSET_GUAN = 8; // 官禄宫
