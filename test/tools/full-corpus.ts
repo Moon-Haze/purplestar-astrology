@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// ── 全量核验：把 reference/ 下的全部 518,400 条样本跑一遍 ──
+// ── 全量核验：把 db/ziwei.duckdb 里的全部 518,400 条样本跑一遍 ──
 //
 // 与 npm test 的分工：
 //   npm test                 → test/fixtures/ 里 300 条**抽样**基准，秒级，日常回归
-//   本脚本                    → reference/ 里**全量**语料，单线程约 2 小时，按需手动跑
+//   本脚本                    → DuckDB 里**全量**语料，单线程约 2 小时，按需手动跑
 //
 // 什么时候需要它：
 //   · 升级 iztro 之后，确认「差异集合没有扩大」（抽样可能刚好没抽到变化的那一宫）
@@ -17,27 +17,19 @@
 //   node test/tools/full-corpus.ts --limit 5000           # 只跑前 5,000 条
 //   node test/tools/full-corpus.ts --quiet                # 不打印进度，只出报告
 //
-// 退出码：0 = 白名单之外零差异；1 = 有差异，或样本目录/依赖缺失。可直接用于 CI。
+// 退出码：0 = 白名单之外零差异；1 = 有差异，或数据库/依赖缺失。可直接用于 CI。
 //
 // ⚠️ 与 npm test 用**同一个比对器与同一份白名单**（test/lib/compare.ts）。
 //    这里不用白名单过滤掉差异，而是用 keepWhitelisted 保留后再分类统计 ——
 //    这样报告里能同时看到「放行了多少处已知差异」和「有没有出现新差异」。
-import { createReadStream, existsSync } from "node:fs";
-import { createInterface } from "node:readline";
-import { createGunzip } from "node:zlib";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BirthInfo } from "@/ziwei/types";
 import { loadAlgorithm } from "../lib/loader.ts";
-import { compareChart, formatDiffs, BRANCHES, type BaselineSample, type ChartDiff } from "../lib/compare.ts";
+import { compareChart, formatDiffs, BRANCHES, type ChartDiff } from "../lib/compare.ts";
+import { forEachSample, openSource, closeSource, SourceError, SAMPLE_DB } from "../lib/sample-source.ts";
 
-const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/tools
-const SKILL_ROOT = resolve(HERE, "../..");
-const SAMPLES = resolve(SKILL_ROOT, "reference/ziwei-samples-toolkit/samples-out");
-
-const YEAR_ALL = { start: 1924, end: 1983 }; // 与 toolkit 的语料范围一致
-const PROGRESS_EVERY = 10; // 每完成 N 个分片报一次进度
 const MAX_DETAIL = 20; // 明细最多列这么多条
 
 // ── 参数 ──
@@ -55,36 +47,6 @@ const YEAR = optOf("year") ? Number(optOf("year")) : null;
 const MONTH = optOf("month") ? Number(optOf("month")) : null;
 const LIMIT = optOf("limit") ? Number(optOf("limit")) : Infinity;
 
-const years = YEAR ? [YEAR] : range(YEAR_ALL.start, YEAR_ALL.end);
-const months = MONTH ? [MONTH] : range(1, 12);
-
-function range(a: number, b: number): number[] {
-	const out: number[] = [];
-	for (let i = a; i <= b; i++) out.push(i);
-	return out;
-}
-
-/** 分片文件路径：samples-out/year-XXXX/YYYY-MM.jsonl.gz */
-function shardPath(year: number, month: number): string {
-	return resolve(SAMPLES, `year-${year}`, `${year}-${String(month).padStart(2, "0")}.jsonl.gz`);
-}
-
-/** 流式逐行读取一个分片，回调每条样本（返回 false 即停止读取）。 */
-async function forEachSample(file: string, fn: (raw: BaselineSample) => boolean | void): Promise<boolean> {
-	const rl = createInterface({
-		input: createReadStream(file).pipe(createGunzip()),
-		crlfDelay: Infinity,
-	});
-	for await (const line of rl) {
-		if (!line.trim()) continue;
-		if (fn(JSON.parse(line) as BaselineSample) === false) {
-			rl.close();
-			return false;
-		}
-	}
-	return true;
-}
-
 const label = (b: BirthInfo): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${BRANCHES[b.hour] ?? b.hour}时 ${b.gender}`;
 
@@ -99,7 +61,6 @@ interface CorpusStats {
 	checked: number;
 	clean: number;
 	dirty: number;
-	missingShards: number;
 	/** 白名单放行的差异**处**数（一处 = 一条盘上的一个字段） */
 	whitelistedCells: number;
 	/** 差异路径 → { count, expected, actual, sample } */
@@ -107,38 +68,35 @@ interface CorpusStats {
 	detail: Array<{ birth: BirthInfo; diffs: ChartDiff[] }>;
 }
 
+/** 进度输出的间隔（条）。旧实现按分片报（每 10 个分片 ≈ 7,200 条），此处等价换算成条数。 */
+const PROGRESS_EVERY = 7200;
+
 async function main(): Promise<void> {
-	if (!existsSync(SAMPLES)) {
-		console.error(
-			`找不到样本目录：${SAMPLES}\n` +
-				`  本脚本需要 reference/ziwei-samples-toolkit/ 存在（该目录不入版本控制）。\n` +
-				`  日常回归不需要它 —— 跑 npm test 即可，fixtures 已入库。`
-		);
-		process.exit(1);
+	try {
+		await openSource();
+	} catch (err) {
+		if (err instanceof SourceError) {
+			console.error(err.message);
+			process.exit(1);
+		}
+		throw err;
 	}
 
 	const { generateChart } = await loadAlgorithm();
 
-	const shards = years.flatMap(y => months.map(m => ({ year: y, month: m })));
 	const stats: CorpusStats = {
 		checked: 0,
 		clean: 0,
 		dirty: 0,
-		missingShards: 0,
 		whitelistedCells: 0,
 		buckets: new Map(),
 		detail: [],
 	};
 	const t0 = Date.now();
 
-	outer: for (const [i, { year, month }] of shards.entries()) {
-		const file = shardPath(year, month);
-		if (!existsSync(file)) {
-			stats.missingShards++;
-			continue;
-		}
-
-		const done = await forEachSample(file, raw => {
+	const done = await forEachSample(
+		{ year: YEAR ?? undefined, month: MONTH ?? undefined, limit: LIMIT },
+		raw => {
 			stats.checked++;
 			const actual = generateChart({ ...raw.birthInfo });
 			const all = compareChart(actual, raw.chart, { keepWhitelisted: true });
@@ -165,35 +123,40 @@ async function main(): Promise<void> {
 				stats.clean++;
 			}
 
-			return stats.checked < LIMIT; // false 即停止读取
-		});
+			if (!QUIET && stats.checked % PROGRESS_EVERY === 0) {
+				process.stderr.write(
+					`  已检查 ${stats.checked.toLocaleString("en-US")} 条` +
+						`（用时 ${((Date.now() - t0) / 1000).toFixed(0)} 秒）\n`
+				);
+			}
 
-		if (!QUIET && (i + 1) % PROGRESS_EVERY === 0) {
-			process.stderr.write(
-				`  已检查 ${stats.checked.toLocaleString("en-US")} 条` +
-					`（分片 ${i + 1}/${shards.length}，${year}-${String(month).padStart(2, "0")}）\n`
-			);
+			return true; // 停止由 filter.limit 负责
 		}
-		if (!done || stats.checked >= LIMIT) break outer;
-	}
+	);
 
-	report(stats, shards.length, Date.now() - t0);
+	report(stats, expectedTotal(), done, Date.now() - t0);
+	closeSource();
 	process.exit(stats.dirty > 0 ? 1 : 0);
 }
 
-function report(s: CorpusStats, shardCount: number, ms: number): void {
+/** 本次过滤条件覆盖的样本总数（用于判断报告是否被 --limit 截断）。 */
+function expectedTotal(): number {
+	return (YEAR ? 1 : 60) * (MONTH ? 1 : 12) * 720;
+}
+
+function report(s: CorpusStats, expected: number, completed: boolean, ms: number): void {
 	const line = (k: string, v: string): void => console.log(`  ${k.padEnd(12, "　")} ${v}`);
-	const scope = `${years[0]}-${String(months[0]).padStart(2, "0")} ~ ${years.at(-1)}-${String(months.at(-1)).padStart(2, "0")}`;
-	const limited = s.checked < shardCount * 720;
+	const scope = `${YEAR ?? 1924}-${String(MONTH ?? 1).padStart(2, "0")} ~ ${YEAR ?? 1983}-${String(MONTH ?? 12).padStart(2, "0")}`;
+	const limited = !completed || s.checked < expected;
 
 	console.log("\n══ 全量核验汇总 ══");
-	line("范围", `${scope}（${shardCount} 个分片${limited ? "，受 --limit 截断" : ""}）`);
+	line("数据源", SAMPLE_DB);
+	line("范围", `${scope}（${expected.toLocaleString("en-US")} 条${limited ? "，受 --limit 截断" : ""}）`);
 	line("检查条数", s.checked.toLocaleString("en-US"));
 	line("完全一致", s.clean.toLocaleString("en-US"));
 	line("有差异", s.dirty.toLocaleString("en-US"));
 	line("白名单放行", `${s.whitelistedCells.toLocaleString("en-US")} 处（已知：太阳/太阴在酉宫的亮度，见 test/lib/compare.ts）`);
 	line("耗时", `${(ms / 1000).toFixed(1)} 秒（${(ms / Math.max(s.checked, 1)).toFixed(1)} ms/条）`);
-	if (s.missingShards) line("缺失分片", `${s.missingShards} 个`);
 	console.log("");
 
 	if (s.dirty === 0) {
