@@ -359,6 +359,30 @@ const ORDER = `ORDER BY s.sample_id, (p.branch + 10) % 12`;
 const KEY_COLUMNS = "s.year = ? AND s.month = ? AND s.day = ? AND s.hour = ? AND s.gender = ?";
 
 /**
+ * 出生五元组主键（样本唯一标识）。
+ *
+ * ⚠️ 基类型取 `SampleRow` 而非 `BirthInfo`：`SampleRow.gender` 是 `string`，`BirthInfo.gender`
+ *    是 `"male" | "female"` 联合。用后者会让 `forEachSample` 传 `current` 时因 `string`
+ *    不兼容联合而报类型错误，只能靠断言绕过 —— 这里取 `SampleRow` 让 `fetchSample`（传
+ *    `birthInfo`）与 `forEachSample`（传 `current`）两边都**免断言**兼容。
+ */
+type SampleKey = Pick<SampleRow, "year" | "month" | "day" | "hour" | "gender">;
+
+/**
+ * 完备性护栏：正常样本恒 12 行宫位。既不是 12，只可能是库被截断或半写入 ——
+ * 必须大声失败，而不是静默产出一个宫数不足的畸形盘（rowsToSample 不会自检）。
+ */
+export function assertTwelveRows(rows: PalaceRow[], key: SampleKey): void {
+	if (rows.length !== 12) {
+		throw new SourceError(
+			`样本 ${key.year}-${key.month}-${key.day} 时辰${key.hour} ` +
+				`（${key.gender}）的宫位行数异常：预期 12 行，实际 ${rows.length} 行。` +
+				`数据库可能被截断或半写入，拒绝产出形状不完整的样本。`
+		);
+	}
+}
+
+/**
  * 按出生信息精确取一条样本；不存在返回 `null`。
  *
  * ⚠️ `birthInfo.hour` 是**时辰序号** 0–11（12=晚子时，语料中不存在）。
@@ -379,15 +403,9 @@ export async function fetchSample(birthInfo: BirthInfo): Promise<BaselineSample 
 	const rows = reader.getRowObjectsJS() as unknown as JoinedRow[];
 	if (rows.length === 0) return null;
 
-	// 完备性护栏：正常样本恒 12 行宫位。既不是 0 也不是 12，只可能是库被截断或半写入 ——
-	// 必须大声失败，而不是静默产出一个宫数不足的畸形盘（rowsToSample 不会自检）。
-	if (rows.length !== 12) {
-		throw new SourceError(
-			`样本 ${birthInfo.year}-${birthInfo.month}-${birthInfo.day} 时辰${birthInfo.hour} ` +
-				`（${birthInfo.gender}）的宫位行数异常：预期 12 行，实际 ${rows.length} 行。` +
-				`数据库可能被截断或半写入，拒绝产出形状不完整的样本。`
-		);
-	}
+	// 完备性护栏：先判「0 行 = 样本不存在」（正常语义），再判「12 行 = 形状完整」。
+	// 两者语义相反，顺序不能颠倒 —— 0 行不是异常，12 行守卫才是。
+	assertTwelveRows(rows, birthInfo);
 
 	// 只借 `first` 的样本级列（任一 JOIN 行都携带同一份样本列）；`rows` 必须传**全部 12 行**
 	// —— `rowsToSample` 的 `palaces.map` 与 `daXiansOf(palaces)` 对整个数组照用，传少了会
@@ -436,6 +454,8 @@ export async function forEachSample(
 	const flush = (): boolean => {
 		if (current === null) return true;
 		seen++;
+		// 形状守卫：与 fetchSample 对称 —— 截断库在此会产出畸形盘，必须大声失败而非静默比对。
+		assertTwelveRows(palaces, current);
 		const sample = rowsToSample(current, palaces);
 		if (fn(sample) === false) return false;
 		return !(Number.isFinite(filter.limit) && seen >= (filter.limit as number));

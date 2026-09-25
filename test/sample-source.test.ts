@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import {
 	SAMPLE_DB,
 	SourceError,
+	assertTwelveRows,
 	missingDbHint,
 	missingDepHint,
 	openSource,
@@ -195,8 +196,19 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 
 	it("不就地改动传入的 palaces 数组", () => {
 		const palaces = twelvePalaces();
+		palaces.reverse(); // ⚠️ 必须先打乱：上面的 daXians 测试已证明 twelvePalaces() 天然有序，
+		                   //    有序输入会让 rowsToSample 的 sort 退化成 no-op，断言恒真
 		const before = palaces.map(p => p.branch);
 		rowsToSample(sampleRow(), palaces);
 		assert.deepEqual(palaces.map(p => p.branch), before);
+	});
+
+	it("assertTwelveRows：11 行宫位抛 SourceError，12 行放行", () => {
+		const palaces = twelvePalaces();
+		assert.doesNotThrow(() => assertTwelveRows(palaces, sampleRow()));
+		assert.throws(
+			() => assertTwelveRows(palaces.slice(0, 11), sampleRow()),
+			(err: unknown) => err instanceof SourceError && /预期 12 行，实际 11 行/.test((err as Error).message)
+		);
 	});
 });

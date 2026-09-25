@@ -147,7 +147,9 @@ function expectedTotal(): number {
 function report(s: CorpusStats, expected: number, completed: boolean, ms: number): void {
 	const line = (k: string, v: string): void => console.log(`  ${k.padEnd(12, "　")} ${v}`);
 	const scope = `${YEAR ?? 1924}-${String(MONTH ?? 1).padStart(2, "0")} ~ ${YEAR ?? 1983}-${String(MONTH ?? 12).padStart(2, "0")}`;
-	const limited = !completed || s.checked < expected;
+	// 只有「没读完」**且**「条数确实少于应有」才算截断。
+	// 单看 `!completed` 会误报：--limit 恰好等于总数时 forEachSample 也返回 false。
+	const limited = !completed && s.checked < expected;
 
 	console.log("\n══ 全量核验汇总 ══");
 	line("数据源", SAMPLE_DB);

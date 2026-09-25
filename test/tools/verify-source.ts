@@ -82,7 +82,9 @@ function canonical(v: unknown): unknown {
 	if (Array.isArray(v)) return v.map(canonical);
 	if (v && typeof v === "object") {
 		const o = v as Record<string, unknown>;
-		return Object.fromEntries(Object.keys(o).sort().map(k => [k, canonical(o[k])]));
+		return Object.fromEntries(
+			Object.keys(o).filter(k => o[k] !== undefined).sort().map(k => [k, canonical(o[k])])
+		);
 	}
 	return v;
 }
@@ -251,15 +253,19 @@ async function main(): Promise<void> {
 		}
 		rl.close();
 
+		const hitLimit = checked >= LIMIT;
 		if (!QUIET) {
-			process.stderr.write(`  分片 ${year}-${String(month).padStart(2, "0")} 完成（累计 ${checked} 条）\n`);
+			process.stderr.write(
+				`  分片 ${year}-${String(month).padStart(2, "0")} ` +
+					`${hitLimit ? "已中止（受 --limit 截断）" : "完成"}（累计 ${checked} 条）\n`
+			);
 		}
 
-		if (checked >= LIMIT) break;
+		if (hitLimit) break;
 	}
 
 	console.log(`\n${RULE}`);
-	console.log(`  检查条数  : ${checked}`);
+	console.log(`  检查条数  : ${checked}${checked >= LIMIT ? "   ⚠ 受 --limit 截断，本次并未核验全部" : ""}`);
 	console.log(`  逐字节一致: ${identical}`);
 	console.log(`  有差异    : ${failures.length}`);
 	if (skippedShards > 0) {
