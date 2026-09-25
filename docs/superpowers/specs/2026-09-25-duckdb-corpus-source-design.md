@@ -184,17 +184,20 @@ export function closeSource(): void;
 `undefined` 的键**。因此「有 `siHua` 键但值为 `""`」与「完全没有 `siHua` 键」是两种不同的
 JSON，取决于 iztro 原始数据是否给了 `mutagen` 字段。
 
-对 300 条 fixtures 的统计显示，该差异**按星名恒定**：
+实测（全库扫 2000 条样本、按星名聚合）该差异**按星名恒定、无一混用**，且集合是：
 
-- 恒有键：`左辅` `右弼` `文昌` `文曲`（+ 全部主星）
-- 恒无键：`天魁` `天钺` `禄存` `天马`（+ 全部煞星、全部杂曜）
+- **恒有键（18 颗）**：14 主星 + `左辅` `右弼` `文昌` `文曲`
+- **恒无键（54 颗）**：`天魁` `天钺` `禄存` `天马` 等全部煞星与杂曜
 
-这**恰好等于十干四化表覆盖的 15 颗星**。故规则可从内核现成常量算出：
+18 这个数**不等于**十干四化表自身的覆盖数。表里 40 个格子去重后是 **15 颗**（11 主星 +
+`左辅右弼文昌文曲`），差额来自**终生不参与四化的三颗主星** `天府` `天相` `七杀`——它们有
+`siHua` 键（因为 `type === "major"`），值恒为 `""`。故规则拆成两半，正好由两个来源拼出：
 
 ```js
 // 键存在 ⟺ 是主星，或星名落在四化表取值集合内
-const SIHUA_STARS = new Set(Object.values(SI_HUA_TABLE).flat());
+const SIHUA_STARS = new Set(Object.values(SI_HUA_TABLE).flat()); // 15 颗
 const hasKey = (type: Star["type"], name: string) => type === "major" || SIHUA_STARS.has(name);
+// → major 一侧出 14 颗（含天府/天相/七杀），SIHUA_STARS 一侧只额外补进 4 颗辅星 = 18
 ```
 
 值从 `palaces.sihua_stars`（格式 `'贪狼:忌'`）解析；该星无四化时填 `""`。
