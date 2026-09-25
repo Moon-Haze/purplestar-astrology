@@ -1,7 +1,7 @@
 /**
- * 命令实现 —— 七个 `cmdXxx` 与命令表。
+ * 命令实现 —— 八个 `cmdXxx` 与命令表。
  *
- * 拆自 purple-star.ts。七个命令互不调用，故集中在一处反而好对照；
+ * 拆自 purple-star.ts。八个命令互不调用，故集中在一处反而好对照；
  * 只有 `selftest` 另立门户（见 ./selftest.ts 的说明）。
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
@@ -27,6 +27,13 @@ import type { Palace } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
 import { getSiHuaByStem, getLiuNianSiHua, getLiuYueSiHua } from "@/ziwei/sihua";
+import {
+	getTopicAnalysis,
+	TOPIC_LABEL,
+	TOPIC_PALACE_NAME,
+	type TopicKey,
+	type AnalysisView,
+} from "@/ziwei/db-analysis";
 import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
 import {
@@ -40,6 +47,39 @@ import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
 import { TIANJI_MODULES, RENJI_MODULES, DIJI_MODULES, NI_HAIXIA_BIO } from "@/nihai/index";
 
 /**
+ * `--liunian` 的年份校验（`analyze` 的流年四化与 `topic` 的流年论断共用）。
+ *
+ * @param args - CLI 参数表
+ * @returns 流年年份；未给时默认当前公历年
+ * @throws 裸开关（`--liunian` 后无值）、非整数或超出 1-9999 时
+ *
+ * @remarks
+ * 非数字静默传下去会得到「NaN 天干 → 四空串」的垃圾输出，与 `--liuyue` 同一纪律：
+ * 宁可报错，不静默产出错盘。
+ */
+function parseLiuNianArg(args: CliArgs): number {
+	if (args.liunian === true) throw new Error("--liunian 需要一个年份值（如 --liunian 2027）");
+	const y = args.liunian !== undefined ? Number(args.liunian) : new Date().getFullYear();
+	if (!Number.isInteger(y) || y < 1 || y > 9999)
+		throw new Error(`--liunian 应为 1-9999 的整数年份，收到：${args.liunian}`);
+	return y;
+}
+
+/**
+ * `--liuyue` 的农历月校验（`analyze` 与 `topic` 共用）。
+ *
+ * @param args - CLI 参数表
+ * @returns 农历月 1-12；未给时为 `null`（表示「不算流月」）
+ * @throws 非整数或超出 1-12 时
+ */
+function parseLiuYueArg(args: CliArgs): number | null {
+	const m = args.liuyue !== undefined ? Number(args.liuyue) : null;
+	if (m !== null && (!Number.isInteger(m) || m < 1 || m > 12))
+		throw new Error("--liuyue 应为农历月 1-12");
+	return m;
+}
+
+/**
  * `chart` 命令：纯排盘十二宫。
  *
  * @param args - CLI 参数表
@@ -49,7 +89,7 @@ import { TIANJI_MODULES, RENJI_MODULES, DIJI_MODULES, NI_HAIXIA_BIO } from "@/ni
  * 最小排盘：只要出生信息，不算流年、格局与四化。输出命盘头（姓名 / 日期 / 时辰 / 性别 / 农历 /
  * 命身宫 / 五行局 / 紫微位）、出生地与晚子时提示、逐宫详表，最后是大限一览与当前年龄大限。
  *
- * 返回字符串而不打印 —— `console.log` 由引导层统一负责（本文件七个命令皆然）。
+ * 返回字符串而不打印 —— `console.log` 由引导层统一负责（本文件命令皆然）。
  */
 function cmdChart(args: CliArgs) {
 	const { info, note, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } = buildBirthInfo(args);
@@ -110,23 +150,10 @@ function cmdAnalyze(args: CliArgs) {
 	// 注意：流年用 --liunian，不可复用 --year —— 后者是出生年的回退参数。
 	// 二者同时给出不会报错：流年取 --liunian；而出生日期一旦给了 --date/--lunar，
 	// --year 就被静默忽略（buildBirthInfo 里 --date/--lunar 优先），不会有任何提示。
-	if (args.liunian === true)
-		throw new Error("--liunian 需要一个年份值（如 --liunian 2027）");
-	const liuNianYear =
-		args.liunian !== undefined ? Number(args.liunian) : new Date().getFullYear();
-	// 非数字静默传下去会得到「【NaN 流年四化】」的垃圾输出（NaN 天干 → 四空串），
-	// 与 --liuyue 的校验同一纪律：宁可报错，不静默产出错盘。
-	if (!Number.isInteger(liuNianYear) || liuNianYear < 1 || liuNianYear > 9999)
-		throw new Error(`--liunian 应为 1-9999 的整数年份，收到：${args.liunian}`);
+	const liuNianYear = parseLiuNianArg(args);
 	const liuNian = getLiuNianSiHua(liuNianYear);
 	// 流月：农历月 1-12，取流年干推五虎遁（可选）
-	const liuYueMonth = args.liuyue !== undefined ? Number(args.liuyue) : null;
-	if (
-		liuYueMonth !== null &&
-		(!Number.isInteger(liuYueMonth) || liuYueMonth < 1 || liuYueMonth > 12)
-	) {
-		throw new Error("--liuyue 应为农历月 1-12");
-	}
+	const liuYueMonth = parseLiuYueArg(args);
 	const liuYue = liuYueMonth !== null ? getLiuYueSiHua(liuNian.stemIndex, liuYueMonth) : null;
 
 	if (args.json) {
@@ -632,6 +659,74 @@ function cmdStars(args: CliArgs) {
 	].join("\n");
 }
 
+/**
+ * `topic` 命令：主题论断 —— 十四主星 × 13 主题的**动态推算**（分析数据库 v3）。
+ *
+ * @param args - CLI 参数表；出生信息参数与 `analyze` 相同，另认
+ *   `--topic <key>`（13 主题之一）、`--view mingpan|daxian|liunian|liuyue`（默认 mingpan）、
+ *   `--liunian` / `--liuyue`（view 为流年/流月时的目标年月）
+ * @returns 已渲染好的论断文本
+ *
+ * @remarks
+ * 与静态文案库不同：`getTopicAnalysis` 基于**整张盘**动态推算 —— 主宫主星（空宫借对宫）、
+ * 三方四正会照、本命四化（取 `Star.siHua`，农历年干口径，与盘面同源）、格局、以及所选
+ * view 的大限/流年/流月引动，逐层拼出论断。
+ *
+ * 不带 `--topic` 时列出 13 个主题清单（key · 标签 · 对应宫位）。
+ *
+ * ⚠️ 输出末尾固定披露**知识来源分级**（verified/traditional/methodology/suspect）：
+ * 库中「倪师说」引号句部分为传统口诀的风格化转述，不一定是《天纪》逐字原话 ——
+ * 引用下断语时须注明口径，防止把转述当原话。
+ */
+function cmdTopic(args: CliArgs) {
+	const { info, note } = buildBirthInfo(args);
+
+	// 不带 --topic：列主题清单（--topic 裸开关也走这里，与「给了没值」的形态一致）
+	if (args.topic === undefined || args.topic === true) {
+		const rows = (Object.keys(TOPIC_LABEL) as TopicKey[]).map(
+			k => `  ${k.padEnd(11)} ${TOPIC_LABEL[k]}（看${TOPIC_PALACE_NAME[k]}）`
+		);
+		return [
+			"13 个主题（--topic <key> 选其一）：",
+			...rows,
+			"",
+			"view 可选：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月）",
+			"示例：node scripts/purple-star.ts topic --date 1990-05-15 --branch 5 --gender male --topic love",
+		].join("\n");
+	}
+
+	const topic = String(args.topic) as TopicKey;
+	if (!TOPIC_LABEL[topic])
+		throw new Error(
+			`--topic 应为 13 个主题之一（${Object.keys(TOPIC_LABEL).join("/")}），收到：${args.topic}`
+		);
+
+	const viewRaw = args.view !== undefined ? String(args.view) : "mingpan";
+	if (!["mingpan", "daxian", "liunian", "liuyue"].includes(viewRaw))
+		throw new Error(`--view 应为 mingpan/daxian/liunian/liuyue，收到：${args.view}`);
+	// 上行已限定四值，断言只影响类型层
+	const view = viewRaw as AnalysisView;
+
+	const chart = generateChart(info);
+	const liuNianYear = parseLiuNianArg(args);
+	const liuYueMonth = parseLiuYueArg(args);
+	const text = getTopicAnalysis(chart, topic, {
+		view,
+		liunianYear: liuNianYear,
+		liuyueMonth: liuYueMonth ?? undefined,
+	});
+
+	return [
+		`【主题论断 · ${TOPIC_LABEL[topic]}】${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)}`,
+		"",
+		text,
+		"",
+		"⚠️ 知识来源分级：以上论断出自分析数据库 v3 —— 其中「倪师说」引号句部分为传统口诀的",
+		"   风格化转述，不一定是《天纪》逐字原话（verified / traditional / methodology / suspect 四级），",
+		"   引用下断语时请注明口径。",
+	].join("\n");
+}
+
 // ══════════════════════ 命令表 ══════════════════════
 
 /**
@@ -641,7 +736,7 @@ function cmdStars(args: CliArgs) {
  * 值类型显式写出 `| undefined`：命令名来自 argv，查表必然未命中，
  * 这里让「未命中」在类型上就成立，而不是靠断言把 undefined 抹掉。
  *
- * 多数命令（含七个 `cmdXxx`）只需要 args，签名里少的那个参数 TS 允许省略；
+ * 多数命令（含八个 `cmdXxx`）只需要 args，签名里少的那个参数 TS 允许省略；
  * 只有 selftest 用得上 ctx（它要在输出里交代内核根是哪一份）。
  *
  * `help` 不在表内 —— 引导层单独处理，见 `purple-star.ts` 的 `main()`。
@@ -652,6 +747,7 @@ export const COMMANDS: Record<
 > = {
 	analyze: cmdAnalyze,
 	chart: cmdChart,
+	topic: cmdTopic,
 	heming: cmdHeming,
 	classics: cmdClassics,
 	nihai: cmdNihai,

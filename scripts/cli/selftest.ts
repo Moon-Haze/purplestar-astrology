@@ -15,6 +15,8 @@
 
 import type { CliContext } from "./args";
 import { parseArgs } from "./args";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
 	buildBirthInfo,
 	calcTrueSolar,
@@ -27,6 +29,12 @@ import type { BirthInfo } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns } from "@/ziwei/patterns";
 import { getSiHuaByStem, getYearStemIndex, getLiuYueSiHua } from "@/ziwei/sihua";
+import {
+	getTopicAnalysis,
+	TOPIC_LABEL,
+	type TopicKey,
+	type AnalysisView,
+} from "@/ziwei/db-analysis";
 import { STEMS, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { HEMING_METHODOLOGY, STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU } from "@/ziwei/heming-knowledge";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
@@ -41,7 +49,7 @@ import { Lunar } from "lunar-typescript";
  *
  * @remarks
  * 覆盖：农历换算、真太阳时、晚子时等价性、城市容错、性别护栏、排盘不变量、三合派约束、
- * 格局与知识源可用性（当前共 **46 项**）。
+ * 格局与知识源可用性（当前共 **49 项**）。
  *
  * 内核根从 `ctx` 取而非自己推导：那是引导层 `pickRoot()` 的职责，自检只负责把它交代出来。
  *
@@ -555,6 +563,49 @@ export function cmdSelftest(ctx: CliContext): string {
 		const miss = majorStars.filter(s => !STAR_DESCRIPTIONS[s]);
 		if (miss.length) throw new Error(`缺失释义：${miss.join("、")}`);
 		eq(Object.keys(STAR_DESCRIPTIONS).length, 14, "星曜释义条数 ");
+	});
+	ok("知识源：主题论断库 13 主题均可产出（样本盘，非空且宫名不失配）", () => {
+		// TOPIC_PALACE_NAME 已适配项目宫名口径（「交友宫」而非 iztro 旧口径「仆役」）；
+		// 若口径漂移，getTopicAnalysis 会静默落到「无法找到 xx」的兜底文案 —— 这条断言盯着它
+		const c = generateChart(sample);
+		const bad = (Object.keys(TOPIC_LABEL) as TopicKey[]).filter(k => {
+			const t = getTopicAnalysis(c, k);
+			return t.length < 100 || t.includes("无法找到");
+		});
+		if (bad.length) throw new Error(`以下主题产出异常：${bad.join("、")}`);
+		return "13 主题全部产出";
+	});
+	ok("论断：四种 view（mingpan/daxian/liunian/liuyue）均可产出", () => {
+		const c = generateChart(sample);
+		for (const v of ["mingpan", "daxian", "liunian", "liuyue"] as AnalysisView[]) {
+			const t = getTopicAnalysis(c, "wealth", { view: v, liunianYear: 2027, liuyueMonth: 6 });
+			if (t.length < 100) throw new Error(`view=${v} 产出过短：${t.length} 字`);
+		}
+		return "mingpan / daxian / liunian / liuyue";
+	});
+	ok("论断引用核对：未核实引文不得冒充倪师原话（对照 annotations.json）", () => {
+		// annotations.json 是对 db-analysis 中「倪师/倪海夏」引用的文献核对记录
+		//（拷自 reference/ziwei-samples-toolkit/corpus/，针对 v2 核对，v3 已清掉全部
+		// fabricated）。此断言锁住清修成果：源码中所有「倪海夏/倪师…说」带出的引文，
+		// 不得出现在 suspect / fabricated 清单里 —— 改归属保留引文（如「古诀云」）是
+		// 合法处置，不算违规。
+		const ann = JSON.parse(
+			readFileSync(resolve(ctx.root, "ziwei/annotations.json"), "utf8")
+		) as { entries: { status: string; text: string }[] };
+		const src = readFileSync(resolve(ctx.root, "ziwei/db-analysis.ts"), "utf8");
+		// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
+		const banned = new Set(
+		 ann.entries
+			.filter(e => e.status === "suspect" || e.status === "fabricated")
+			.flatMap(e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1]))
+		);
+		// 源码中所有「倪海夏/倪师…说/言/警示…：『引文』」的引文核心
+		const citeRe =
+			/倪(?:海夏|师)[^。\n]{0,10}(?:说|言|称|警示|警告|明言|强调|描述|提醒)[：:]?\s*[「"『]([^」"』]{4,})[」"』]/g;
+		const bad = [...src.matchAll(citeRe)].filter(m => banned.has(m[1])).map(m => m[1].slice(0, 40));
+		if (bad.length)
+			throw new Error(`以下未核实引文仍冒充倪师原话（应改古诀云/紫微斗数有云/一说）：\n     ${bad.join("\n     ")}`);
+		return `核对 ${ann.entries.length} 条记录，suspect/fabricated 引文零强归属`;
 	});
 
 	// ── 输出 ──

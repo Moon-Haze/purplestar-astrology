@@ -8,13 +8,14 @@
  *   cli/args.ts        CLI 参数表与解析（纯函数，不依赖内核）
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
- *   cli/commands.ts    七个命令实现 + 命令表
- *   cli/selftest.ts    回归自检（46 项断言；留在 scripts/ 而非 test/，理由见该文件）
+ *   cli/commands.ts    八个命令实现 + 命令表
+ *   cli/selftest.ts    回归自检（49 项断言；留在 scripts/ 而非 test/，理由见该文件）
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
  *   scripts/ziwei/algorithm.ts        排盘主流程
  *   scripts/ziwei/patterns.ts         格局识别（40+ 格局，含古籍出处与破格条件）
  *   scripts/ziwei/sihua.ts            四化（生年 / 流年 / 流月）
+ *   scripts/ziwei/db-analysis.ts      分析数据库 v3（主题论断动态推算，topic 命令用）
  *   scripts/ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
  *   scripts/ziwei/cities.ts           中国城市经纬度（真太阳时校正）
  *   scripts/ziwei/constants.ts        天干地支 / 四化表 / 星曜释义
@@ -304,6 +305,7 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
 命令：
   analyze    解读用完整输入包（命盘 + 十二宫一览 + 格局 + 四化 + 大限）★ 最常用
   chart      纯排盘十二宫
+  topic      主题论断（13 主题动态推算：主宫 + 三方四正 + 四化会照 + 大限/流年）
   heming     合盘（双宫联参 + 夫妻宫断语 + 方法论）
   classics   古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）
   nihai      倪海厦天纪 / 地纪 / 人纪知识
@@ -368,7 +370,7 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
  * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
  *
  * @remarks
- * `console.log` 只在这一处发生 —— 七个 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
+ * `console.log` 只在这一处发生 —— 八个 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
  *
  * 无参数、`help`、`--help`、`-h` 都打印 {@link HELP}；未知命令与命令内部抛出的错误都以非零码退出
  * （只打印 `err.message`，不打印栈）。传给命令的第二个参数是 `CliContext`（内核根及其来源），

@@ -764,4 +764,60 @@ describe("CLI 端到端", () => {
 			assert.ok(stderr.includes("--late-zi"), `报错应点名 --late-zi，实得：${stderr}`);
 		});
 	});
+
+	describe("topic 论断命令", () => {
+		/** 跑一次任意子命令并断言失败（cliFails 是 analyze 专用的）。 */
+		async function cmdFails(sub: string, args: string[]): Promise<string> {
+			try {
+				await cliCmd(sub, args);
+			} catch (err) {
+				return (err as { stderr?: string }).stderr ?? "";
+			}
+			assert.fail(`命令本应失败却成功了：purple-star.ts ${sub} ${args.join(" ")}`);
+		}
+
+		it("不带 --topic 时列出 13 个主题清单", async () => {
+			const t = await cliCmd("topic", ["--date", "1990-05-15", "--branch", "5", "--gender", "male"]);
+			assert.ok(t.includes("overview") && t.includes("love") && t.includes("parents"),
+				"应列出全部主题 key");
+		});
+
+		it("love 主题产出夫妻宫论断（本命视角，非空壳）", async () => {
+			const t = await cliCmd("topic", [
+				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "love",
+			]);
+			assert.ok(t.includes("夫妻"), "love 主题应指向夫妻宫（宫名口径适配生效）");
+			assert.ok(t.length > 300, `论断文本不应是空壳，实得 ${t.length} 字`);
+			assert.ok(!t.includes("无法找到"), "按宫名找宫失配会输出兜底文案 —— 宫名口径未适配");
+		});
+
+		it("friends 主题适配项目宫名口径（iztro 旧口径「仆役」→「交友宫」）", async () => {
+			const t = await cliCmd("topic", [
+				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "friends",
+			]);
+			assert.ok(!t.includes("无法找到"), "friends 主题按「交友宫」找宫不应失配");
+		});
+
+		it("四种 view（本命/大限/流年/流月）均可产出", async () => {
+			const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "wealth"];
+			for (const view of ["mingpan", "daxian", "liunian", "liuyue"]) {
+				const t = await cliCmd("topic", [...base, "--view", view]);
+				assert.ok(t.length > 100 && !t.includes("无法找到"), `view=${view} 应正常产出`);
+			}
+		});
+
+		it("未知 topic 报错并列出可用值", async () => {
+			const stderr = await cmdFails("topic", [
+				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "xyz",
+			]);
+			assert.ok(stderr.includes("--topic"), `报错应点名 --topic，实得：${stderr}`);
+		});
+
+		it("输出末尾带知识来源分级提示", async () => {
+			const t = await cliCmd("topic", [
+				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "career",
+			]);
+			assert.ok(t.includes("转述") || t.includes("来源"), "论断输出应披露来源分级，防止把转述当原话");
+		});
+	});
 });
