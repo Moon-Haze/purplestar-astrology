@@ -23,6 +23,12 @@ import { fileURLToPath } from "node:url";
 
 import type { DuckDBConnection } from "@duckdb/node-api";
 
+import type { BirthInfo, Star } from "@/ziwei/types";
+import { loadConstants } from "./loader.ts";
+import type {
+	BaselineChart, BaselineDaXian, BaselinePalace, BaselineSample, BaselineStar,
+} from "./compare.ts";
+
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/lib
 const SKILL_ROOT = resolve(HERE, "../..");
 
@@ -121,4 +127,197 @@ export function closeSource(): void {
 		pending.then(conn => conn.closeSync()).catch(() => {});
 	}
 	connections.clear();
+}
+
+// ── 表结构 → 基准样本的映射 ──
+//
+// 这里的每一条规则都是实测出来的，不是推断。最隐晦的一条是 `siHua` 键的**存在性**
+// （见 hasSiHuaKey），它搞错了 `npm test` 也不会红 —— 只有字节级比对能抓住。
+// 详见 docs/superpowers/specs/2026-09-25-duckdb-corpus-source-design.md 的 4.2。
+
+/** `samples` 表的一行（只列本模块用到的列）。 */
+export interface SampleRow {
+	year: number;
+	month: number;
+	day: number;
+	/** **时辰序号** 0–11（不是 24 小时制的小时；库中正是此时辰序号）。 */
+	hour: number;
+	gender: string;
+	longitude: number;
+	lunar_year: number;
+	lunar_month: number;
+	lunar_day: number;
+	year_stem: number;
+	year_branch: number;
+	is_leap_month: boolean;
+	ming_gong_branch: number;
+	shen_gong_branch: number;
+	wuxing_ju: number;
+	wuxing_ju_name: string;
+	ziwei_pos: number;
+	current_age: number;
+	current_daxian_index: number;
+}
+
+/** `palaces` 表的一行（只列本模块用到的列）。 */
+export interface PalaceRow {
+	branch: number;
+	stem: number;
+	/** **iztro 原生口径**宫名（有「仆役」无「交友」）；翻译交给 `compare.ts` 的 normalizePalaceName。 */
+	palace_name: string;
+	major_stars: string[];
+	lucky_stars: string[];
+	sha_stars: string[];
+	minor_stars: string[];
+	/** 与 `major_stars` **按下标配对**。 */
+	major_brightness: string[];
+	/** 形如 `["巨门:权"]`；某星无四化则**不在数组内**。 */
+	sihua_stars: string[];
+	is_ming_gong: boolean;
+	is_shen_gong: boolean;
+	is_current_daxian: boolean;
+	daxian_start: number;
+	daxian_end: number;
+}
+
+// 四化表从内核取，不在此另抄一份 —— 它是四化的唯一定义处。
+// ⚠️ 与 compare.ts 取 IZTRO_TO_PROJECT_PALACE 同理，必须动态获取（见文件头注释）。
+const { SI_HUA_TABLE } = await loadConstants();
+const SIHUA_STARS: ReadonlySet<string> = new Set(Object.values(SI_HUA_TABLE).flat());
+
+/**
+ * 重建出的星曜是否该带 `siHua` **键**（键的存在性，与「值为 `""`」是两回事）。
+ *
+ * 实测（全库扫 2000 条样本、按星名聚合、无一混用）：
+ *   恒有键 18 颗 = 14 主星 + 左辅/右弼/文昌/文曲
+ *   恒无键 54 颗 = 天魁/天钺/禄存/天马 + 全部煞星与杂曜
+ *
+ * 18 ≠ 四化表自身的覆盖数 15：表里 40 个格子去重是 15 颗（11 主星 + 4 辅星），差额来自
+ * **终生不参与四化的三颗主星** 天府/天相/七杀 —— 它们有键（因为 type 是 major）、值恒为 ""。
+ * 所以规则拆成两半：major 一侧出 14 颗，SIHUA_STARS 一侧只额外补进 4 颗辅星。
+ */
+function hasSiHuaKey(type: Star["type"], name: string): boolean {
+	return type === "major" || SIHUA_STARS.has(name);
+}
+
+/** 从 `palaces.sihua_stars`（形如 `["巨门:权"]`）取该星的四化值；该星无四化则 `""`。 */
+function siHuaOf(p: PalaceRow, name: string): string {
+	for (const entry of p.sihua_stars ?? []) {
+		const i = entry.indexOf(":");
+		if (i > 0 && entry.slice(0, i) === name) return entry.slice(i + 1);
+	}
+	return "";
+}
+
+/**
+ * 一个宫 → `BaselinePalace`。
+ *
+ * ⚠️ **键序即 JSON 输出顺序**，必须与 jsonl 逐字一致：`branch, stem, name, stars,
+ *    daXianAge, isMingGong, isShenGong, isCurrentDaXian`。调换字面量里的书写顺序
+ *    会让 charts.jsonl 产生 diff（比对器察觉不到，只有字节级互验能抓住）。
+ */
+function palaceOf(p: PalaceRow): BaselinePalace {
+	const stars: BaselineStar[] = [];
+
+	// 顺序恒为 major → lucky → sha → minor。实测 1200 条样本 × 12 宫 = 14,400 个宫，
+	// 段序违例 0 处，故四段直接拼接，不需要按类型排序。
+	const majors = p.major_stars ?? [];
+	const brightness = p.major_brightness ?? [];
+	for (let i = 0; i < majors.length; i++) {
+		stars.push({
+			name: majors[i],
+			type: "major",
+			brightness: brightness[i], // 按下标配对；实测长度相等且无空串
+			siHua: siHuaOf(p, majors[i]), // 主星恒有键
+		});
+	}
+	for (const name of p.lucky_stars ?? []) {
+		if (hasSiHuaKey("lucky", name)) {
+			stars.push({ name, type: "lucky", siHua: siHuaOf(p, name) });
+		} else {
+			stars.push({ name, type: "lucky" }); // 整键缺失，不是 ""
+		}
+	}
+	for (const name of p.sha_stars ?? []) stars.push({ name, type: "sha" });
+	for (const name of p.minor_stars ?? []) stars.push({ name, type: "minor" });
+
+	return {
+		branch: p.branch,
+		stem: p.stem,
+		name: p.palace_name,
+		stars,
+		daXianAge: [p.daxian_start, p.daxian_end],
+		isMingGong: p.is_ming_gong,
+		isShenGong: p.is_shen_gong,
+		isCurrentDaXian: p.is_current_daxian,
+	};
+}
+
+/**
+ * 12 个宫的 `[daxian_start, daxian_end]` 即 12 个大限，**按 `startAge` 升序**排列。
+ *
+ * ⚠️ 比对器对 `daXians` 是**按下标**逐项比的（`aD[i]` vs `bD[i]`），顺序错了直接报红 ——
+ *    这与 `palaces` 按 `branch` 建索引不同。库中行序是丑起，不能直接用。
+ */
+function daXiansOf(palaces: PalaceRow[]): BaselineDaXian[] {
+	return [...palaces] // 复制：不就地改动调用方的数组
+		.sort((a, b) => a.daxian_start - b.daxian_start)
+		.map(p => ({
+			startAge: p.daxian_start,
+			endAge: p.daxian_end,
+			palaceBranch: p.branch,
+			palaceName: p.palace_name,
+		}));
+}
+
+/**
+ * 关系表行 → `BaselineSample`。**纯函数**：不碰数据库、不碰文件系统，故可被 `npm test`
+ * 用合成行覆盖（`test/sample-source.test.ts`）。
+ *
+ * ⚠️ 各层的**键插入顺序**必须与 jsonl 完全一致 —— `JSON.stringify` 按插入顺序输出，
+ *    而 `verify-source.ts` 是逐字节比对。顺序见本文件顶部与 spec 的「事实基线」。
+ *
+ * @param sample  `samples` 表的一行
+ * @param palaces 该样本的 12 行 `palaces`，**已按 `(branch + 10) % 12` 排好**（寅起）
+ */
+export function rowsToSample(sample: SampleRow, palaces: PalaceRow[]): BaselineSample {
+	const birthInfo: BirthInfo = {
+		year: sample.year,
+		month: sample.month,
+		day: sample.day,
+		hour: sample.hour,
+		gender: sample.gender === "female" ? "female" : "male",
+		longitude: sample.longitude,
+	};
+
+	// ⚠️ 类型不能光写 `BaselineChart` —— 它接口里**没有** `birthInfo` / `currentAge` /
+	//    `currentDaXianIndex` 三个字段，但 jsonl 的每一行都有它们（是 JSON.parse 带进来的
+	//    多余字段，build-fixtures 写盘时原样保留）。不填它们，重写出的 charts.jsonl 会凭空少字段。
+	//    Global Constraints 禁止改 compare.ts 的契约，所以在这里显式扩展类型。
+	const chart: BaselineChart & {
+		birthInfo: BirthInfo;
+		currentAge: number;
+		currentDaXianIndex: number;
+	} = {
+		birthInfo: { ...birthInfo },
+		lunarInfo: {
+			lunarYear: sample.lunar_year,
+			lunarMonth: sample.lunar_month,
+			lunarDay: sample.lunar_day,
+			yearStem: sample.year_stem,
+			yearBranch: sample.year_branch,
+			isLeapMonth: sample.is_leap_month,
+		},
+		mingGongBranch: sample.ming_gong_branch,
+		shenGongBranch: sample.shen_gong_branch,
+		wuxingJu: sample.wuxing_ju,
+		wuxingJuName: sample.wuxing_ju_name,
+		ziweiPos: sample.ziwei_pos,
+		palaces: palaces.map(palaceOf),
+		daXians: daXiansOf(palaces),
+		currentAge: sample.current_age,
+		currentDaXianIndex: sample.current_daxian_index,
+	};
+
+	return { birthInfo, chart };
 }
