@@ -39,7 +39,9 @@
             "text",
             "txt",
             "verilog",
-            "shell"
+            "shell",
+            "ts",
+            "typescript"
         ],
         "language_only": true
     },
@@ -61,6 +63,9 @@
     },
     "no-duplicate-heading": {
         "siblings_only": true
+    },
+    "no-hard-tabs": {
+        "code_blocks": false
     },
     "ol-prefix": {
         "style": "ordered"

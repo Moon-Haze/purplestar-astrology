@@ -1,15 +1,25 @@
 # 排盘基准测试
 
-本目录是本 skill 的回归测试，用 `reference/ziwei-samples-toolkit/` 的 518,400 条紫微斗数样本
-作为 golden 基准，锁定 `scripts/ziwei/` 排盘内核的行为。
+本目录是本 skill 的回归测试，用 518,400 条紫微斗数样本作为 golden 基准，
+锁定 `scripts/ziwei/` 排盘内核的行为。
+
+语料有**两个等价载体，并存且互为验证**（不是备份关系，也不是孤本）：
+
+| 载体 | 体积 | 谁用 |
+|---|---|---|
+| `reference/ziwei-samples-toolkit/samples-out/` | 5.5 GB / 720 个 `jsonl.gz` / 60 个年份目录 | 只用于 `verify-source.ts` 的互验 |
+| `db/ziwei.duckdb` | 1.7 GB / `samples` + `palaces` 两张关系表 | `test/tools/` 下基准工具的数据源 |
+
+两者都在 `.gitignore` 里。**核查它们请用 `find` / `stat` / `du`，不要用 `ls`** ——
+本机 `ls` 是指向 `eza -al --git-ignore` 的别名，会把这两个目录显示成空的。
 
 ```bash
 npm test                                  # 日常回归：300 条抽样基准 + 预言机对账，约 8 秒
-npm test -- --year 1953                   # 同上，但层 1 只跑 1953 年的基准条目（层 2-4 照常全跑）
+npm test -- --year 1953                   # 同上，但层 1 只跑 1953 年的基准条目（层 2-5 照常全跑）
 npm run test:corpus -- --year 1960        # 全量核验：只跑 1960 年（8,640 条，约 2 分钟）
 npm run test:corpus                       # 全量核验：518,400 条，约 2.3 小时
 
-node scripts/purple-star.ts selftest     # CLI 自带的 46 项自检（与本套测试分工不同，见下）
+node scripts/purple-star.ts selftest     # CLI 自带的 49 项自检（与本套测试分工不同，见下）
 npm run typecheck                        # 类型检查：必须 0 错误（与本套测试也分工不同）
 ```
 
@@ -27,7 +37,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 
 ---
 
-## 一、测试分四层
+## 一、测试分五层
 
 | 文件 | 层 | 依赖基准样本 | 测什么 |
 | --- | --- | --- | --- |
@@ -35,15 +45,16 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 | [cli.test.ts](cli.test.ts) | 2 | ❌ | CLI 端到端：真太阳时、农历入参、晚子时、性别护栏、城市容错、`--focus` 宫名写法、`heming` 合盘（含**参数隔离与输出自洽的独立预言机**）、流年/流月四化（含**五虎遁与年干口径的独立复算**） |
 | [invariants.test.ts](invariants.test.ts) | 3 | ❌ | 排盘结构不变量：12 宫必齐、十四主星各一、大限区间连续……；另用 iztro 的 `horoscope()` 作外部预言机核对虚岁与大限，用**宫位偏移算术**核对宫名与合盘取宫入口，用**宫名路径的独立预言机**覆盖全部 70 个格局名与生年四化落宫，用**口诀表 / lunar 年柱 / 万年历向量**三条独立路径核对流年流月四化 |
 | [school.test.ts](school.test.ts) | 4 | ✅ | 三合派体系约束：飞星派字段不得被回填 |
+| [sample-source.test.ts](sample-source.test.ts) | 5 | ❌ | 数据源纯函数：DuckDB 行 → BaselineSample 的映射、12 行完整性守卫、流式遍历语义（不碰任何数据文件） |
 
 层 2、3 刻意**不依赖基准样本**，因此不受 iztro 升级影响 —— 层 1 变红时，它们能帮你区分
 「是 iztro 行为变了」还是「内核真的排出了坏盘」。
 
-`test/lib/` 是共享工具（内核加载器 + 比对器 + `npm test` 的入口与聚合 reporter），`test/tools/` 是手动执行的脚本，两者都不是测试文件。
+`test/lib/` 是共享工具（内核加载器 + 比对器 + 数据源 + `npm test` 的入口与聚合 reporter），`test/tools/` 是手动执行的脚本，两者都不是测试文件。
 
 `npm test` 的实际入口是 [lib/run.ts](lib/run.ts)（package.json 指向它）：它包一层 `node --test`，
 输出**头部环境块**（时间 / Node / git / 引擎版本 / 基准覆盖维度）与**尾部分层汇总**
-（层 1-4 项数与耗时、最慢 5 项、白名单命中数、失败明细），中间的 spec 输出原样透传；
+（层 1-5 项数与耗时、最慢 5 项、白名单命中数、失败明细），中间的 spec 输出原样透传；
 失败时汇总照常打印并透传退出码。层 1 每条基准 `✔` 下的诊断行（虚岁 / 白名单命中 /
 其余字段结果）由 [chart.test.ts](chart.test.ts) 的 `t.diagnostic` 产生。
 
@@ -266,9 +277,26 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 
 ---
 
+## 三·五、四层验证的分工
+
+| 层 | 内容 | 需要什么 | 何时跑 |
+|---|---|---|---|
+| 日常回归 | `npm test`（300 条抽样基准 + 各层预言机） | **什么都不需要**（fixtures 已入库） | 每次 |
+| 逐条互验 | `node test/tools/verify-source.ts --year 1960` | `db/ziwei.duckdb` **与** `reference/` jsonl 语料 | 改过样本重建映射后 |
+| 零 diff 验收 | `node test/tools/build-fixtures.ts` + `git diff --exit-code` | `db/ziwei.duckdb` | 重建基准时（数秒） |
+| 全量核验 | `npm run test:corpus`（518,400 条） | `db/ziwei.duckdb` | 升级 iztro 后（约 2.3 小时） |
+
+⚠️ **只有第一层是回归测试，后三层都是手动执行的构建/验收步骤。** 这条边界是刻意的：
+`npm test` 必须在「无 `db/ziwei.duckdb`、无 DuckDB 依赖、无 jsonl 语料」的环境下跑通，
+所以它**不依赖任何数据文件**。`test/sample-source.test.ts` 是这个约束下唯一新增的用例 ——
+它只用合成行与一个写死的、不存在的路径，不碰数据文件，故合规。
+
+---
+
 ## 四、fixtures 从哪来
 
-- **来源**：`reference/ziwei-samples-toolkit/samples-out/`（5.5GB，**不入版本控制**）
+- **来源**：`db/ziwei.duckdb`（1.7GB，**不入版本控制**；语料源自 `reference/ziwei-samples-toolkit`，
+  两者等价并存，见文首）
 - **抽样**：60 年（1924–1983）每年 5 条 = 300 条，实测覆盖
   **12/12 月 · 12/12 时辰 · 2/2 性别 · 5/5 五行局 · 22 个闰月年**
 - **只存 `birthInfo` + `chart`**：样本的 `topics`（13 主题解读文本）占单条体积 90%，
@@ -286,11 +314,16 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 node test/tools/build-fixtures.ts
 ```
 
-只在**需要重建基准**时手动跑（`reference/` 不存在时跑不了，但**日常测试不需要它** —— fixtures 已入库）。
+只在**需要重建基准**时手动跑（`db/ziwei.duckdb` 不存在时跑不了 —— 它会打印指引并退出，
+但**日常测试不需要它** —— fixtures 已入库）。
 
 脚本会在写盘前做**分歧自检**：拿当前内核重排这 300 条，若与基准有白名单之外的差异，
 **拒绝写盘**并列出差异。理由是重建 fixtures 等于「把当前行为固化成新基准」，
 若此刻已有分歧，直接固化等于把分歧悄悄转正 —— 下次跑测试就是绿的，谁也不知道行为变过。
+
+重建后 `git diff` 里**唯一**可能多的是一行 `manifest.json` 的 `generatedAt`（被写成当天日期）——
+这个字段无任何代码读取，是纯元数据。若 diff **只有这一行**，说明 fixtures 的实质内容
+**一字未变**；把它**还原**掉（`git checkout -- test/fixtures/manifest.json`），不要提交这个日期变更。
 
 ---
 
@@ -324,17 +357,20 @@ test/
 ├── cli.test.ts               层 2：CLI 端到端
 ├── invariants.test.ts        层 3：排盘结构不变量
 ├── school.test.ts            层 4：三合派体系约束
+├── sample-source.test.ts     层 5：数据源纯函数
 ├── lib/
 │   ├── loader.ts             加载 TS 内核（scripts/purple-star.ts 加载机制的副本）
 │   ├── compare.ts            比对器 + 归一化 + 已知差异白名单
 │   ├── run.ts                npm test 入口：环境块 + node --test 包壳 + 分层汇总
+│   ├── sample-source.ts      DuckDB 数据源（open/close/rowsToSample/fetchSample/forEachSample）
 │   └── reporter.ts           聚合 reporter：事件流过滤成 JSON 行供 run.ts 汇总
 ├── fixtures/
 │   ├── charts.jsonl           300 条基准（每行 {"birthInfo":…,"chart":…}）
 │   └── manifest.json          来源、基准引擎版本、抽样算法、覆盖度
 └── tools/
-    ├── build-fixtures.ts     从 reference/ 抽样重建 fixtures（手动执行）
+    ├── build-fixtures.ts     从 db/ziwei.duckdb 抽样重建 fixtures（手动执行）
     ├── full-corpus.ts        全量核验 518,400 条，1924–1983 有外部基准（手动执行）
+    ├── verify-source.ts      jsonl ↔ DuckDB 逐条逐字节互验（手动执行，需要 reference/ 语料）
     └── year-scan.ts          1900–2100 恒等式扫描，约 87,000 条，数据集外年份段的自洽性（手动执行）
 ```
 
@@ -349,7 +385,7 @@ test/
    含 `test/**/*`，没有这道守卫时 `node --test test/` 可能把会写盘的 `build-fixtures.ts`
    当成测试文件执行。`npm test` 用的是显式 glob `test/**/*.test.ts`，双重保险。
 
-3. **`lib/run.ts` 的 LAYERS 表把测试文件映射到层 1-4**，是分层汇总与失败明细归层的
+3. **`lib/run.ts` 的 LAYERS 表把测试文件映射到层 1-5**，是分层汇总与失败明细归层的
    唯一依据。`test/` 下新增测试文件时须同步登记，否则该文件的项数只进「其他」、
    且尾部会对账报警（分层合计 ≠ node:test 官方总计）。
 
