@@ -20,20 +20,26 @@ describe("基准数据源（纯函数与错误指引）", () => {
 		assert.match(SAMPLE_DB, /\/db\/ziwei\.duckdb$/);
 	});
 
-	it("库文件缺失时抛 SourceError，指引里写明「不是数据丢失」与语料仍在 reference/", async () => {
+	it("库文件缺失时抛 SourceError，指引写明「不是数据丢失」与语料仍在 reference/", async () => {
+		// 文本细节直接断言纯函数 missingDbHint：不触依赖，有/无依赖环境下行为一致。
+		const hint = missingDbHint("/nonexistent/ziwei-does-not-exist.duckdb");
+		for (const must of [
+			"/nonexistent/ziwei-does-not-exist.duckdb",
+			"不入版本控制",
+			"reference/ziwei-samples-toolkit/samples-out",
+			"不是",
+			"npm test",
+		]) {
+			assert.ok(hint.includes(must), `指引里应含「${must}」，实际：\n${hint}`);
+		}
+
+		// openSource 只断言结构性契约：rejects + SourceError + 非空指引。
+		// 有依赖时走 missingDbHint、无依赖时走 missingDepHint，两者都是可读指引，绝非 ENOENT 堆栈。
 		await assert.rejects(
 			() => openSource("/nonexistent/ziwei-does-not-exist.duckdb"),
 			(err: unknown) => {
 				assert.ok(err instanceof SourceError, "应当是 SourceError");
-				for (const must of [
-					"/nonexistent/ziwei-does-not-exist.duckdb",
-					"不入版本控制",
-					"reference/ziwei-samples-toolkit/samples-out",
-					"不是",
-					"npm test",
-				]) {
-					assert.ok(err.message.includes(must), `指引里应含「${must}」，实际：\n${err.message}`);
-				}
+				assert.ok(err.message.length > 0, "message 应为非空指引");
 				return true;
 			}
 		);
