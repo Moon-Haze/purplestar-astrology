@@ -1,24 +1,26 @@
 #!/usr/bin/env node
-// ── 从 toolkit 样本集抽样，生成 test/fixtures/ 轻量基准 ──
+// ── 从 DuckDB 样本库抽样，生成 test/fixtures/ 轻量基准 ──
 //
-// 仅在需要**重建**基准时手动执行（reference/ 不入版本控制，正常跑测试不需要它）：
+// 仅在需要**重建**基准时手动执行（db/ziwei.duckdb 不入版本控制，正常跑测试不需要它）：
 //   node test/tools/build-fixtures.ts
 //
 // 抽样是**确定性的**（不用随机数），同样的输入必然产出同样的 fixtures —— 基准可复现、可审阅 diff。
 //
 // ⚠️ 产出的基准是 **iztro 2.5.8** 的行为快照，本项目用 2.6.1，两者有且仅有两处已知差异
 //    （太阳/太阴在酉宫的亮度），已在 test/lib/compare.ts 的 KNOWN_DIVERGENCES 里显式登记。
-import { createReadStream, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { createInterface } from "node:readline";
-import { createGunzip } from "node:zlib";
-import { dirname, resolve } from "node:path";
+//
+// ⚠️ 取样本改为**按出生五元组主键查询**（旧实现按行下标算址：idx = (day-1)*24 + hour*2 + genderIdx）。
+//    下标算址隐含「每月每天都齐 24 条样本」的假设，改成主键查询后这个假设不再需要，语义更正确。
+//    若重建结果与既有 charts.jsonl 出现 diff，**先怀疑旧实现曾经错位取数**，
+//    用 test/tools/verify-source.ts 查清，而不是直接覆盖。
+import { mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BaselineSample } from "../lib/compare.ts";
+import { fetchSample, openSource, closeSource, SourceError } from "../lib/sample-source.ts";
 
-const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/tools
-const SKILL_ROOT = resolve(HERE, "../..");
-const SAMPLES = resolve(SKILL_ROOT, "reference/ziwei-samples-toolkit/samples-out");
+const HERE = fileURLToPath(new URL(".", import.meta.url)); // <skill 根>/test/tools
 const OUT_DIR = resolve(HERE, "../fixtures");
 
 const YEAR_START = 1924;
@@ -32,35 +34,15 @@ const YEAR_END = 1983;
 // 固定槽位（每月固定某日某时）只能盖到 4 个时辰、10 个月份，实测过，不够。
 const DAYS = [1, 8, 15, 22]; // 日：1 号用于覆盖「公历年初落在农历上一年」的跨年边界
 
-/** 读取某个分片的全部行。 */
-async function readShard(year: number, month: number): Promise<string[] | null> {
-	const file = resolve(SAMPLES, `year-${year}`, `${year}-${String(month).padStart(2, "0")}.jsonl.gz`);
-	if (!existsSync(file)) return null;
-	const lines: string[] = [];
-	const rl = createInterface({
-		input: createReadStream(file).pipe(createGunzip()),
-		crlfDelay: Infinity,
-	});
-	for await (const line of rl) if (line.trim()) lines.push(line);
-	return lines;
-}
-
-/** 分片内按 (日, 时辰, 性别) 排序，故可直接算下标：idx = (day-1)*24 + hour*2 + genderIdx */
-function pickFrom(lines: string[] | null, day: number, hour: number, gender: string): BaselineSample | null {
-	if (!lines) return null;
-	const idx = (day - 1) * 24 + hour * 2 + (gender === "female" ? 1 : 0);
-	const line = lines[idx];
-	return line ? (JSON.parse(line) as BaselineSample) : null;
-}
-
 async function main(): Promise<void> {
-	if (!existsSync(SAMPLES)) {
-		console.error(
-			`找不到样本目录：${SAMPLES}\n` +
-				`  本脚本需要 reference/ziwei-samples-toolkit/ 存在（该目录不入版本控制）。\n` +
-				`  测试本身不需要它 —— fixtures 已入库；只有重建基准时才跑本脚本。`
-		);
-		process.exit(1);
+	try {
+		await openSource();
+	} catch (err) {
+		if (err instanceof SourceError) {
+			console.error(err.message);
+			process.exit(1);
+		}
+		throw err;
 	}
 
 	const { LunarYear, Lunar } = await import("lunar-typescript");
@@ -80,7 +62,7 @@ async function main(): Promise<void> {
 			const hour = (i * 7 + s * 3) % 12;
 			const gender = s % 2 === 0 ? "male" : "female";
 			const day = DAYS[s];
-			const raw = pickFrom(await readShard(year, month), day, hour, gender);
+			const raw = await fetchSample({ year, month, day, hour, gender });
 			if (!raw) {
 				console.warn(`  ⚠ ${year}-${month}-${day} 时${hour} ${gender}：样本缺失`);
 				continue;
@@ -98,10 +80,10 @@ async function main(): Promise<void> {
 		if (leapMonth) {
 			const solar = Lunar.fromYmd(year, -leapMonth, 1).getSolar();
 			const hour = (i * 7 + 3) % 12;
-			raw = pickFrom(await readShard(year, solar.getMonth()), solar.getDay(), hour, "male");
+			raw = await fetchSample({ year, month: solar.getMonth(), day: solar.getDay(), hour, gender: "male" });
 			if (raw) stats.leapYears.push(`${year}(闰${leapMonth})`);
 		} else {
-			raw = pickFrom(await readShard(year, 12), 30, 0, "male");
+			raw = await fetchSample({ year, month: 12, day: 30, hour: 0, gender: "male" });
 		}
 		if (!raw) {
 			console.warn(`  ⚠ ${year} 槽位 4：样本缺失`);
@@ -193,6 +175,8 @@ async function main(): Promise<void> {
 		`  覆盖：${m}/12 月 · ${h}/12 时辰 · ${stats.genders.size}/2 性别 · ${stats.wuxing.size}/5 五行局 · ${stats.leapYears.length} 个闰月年`
 	);
 	if (m < 12 || h < 12) console.warn("  ⚠ 月或时辰覆盖不全，检查槽位轮转公式");
+
+	closeSource();
 }
 
 // ── 仅直接执行时跑 main ──
