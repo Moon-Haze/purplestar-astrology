@@ -321,3 +321,66 @@ export function rowsToSample(sample: SampleRow, palaces: PalaceRow[]): BaselineS
 
 	return { birthInfo, chart };
 }
+
+// ── 查询 ──
+
+/**
+ * 一条 JOIN 结果行 = `samples` 的列 + `palaces` 的列。
+ *
+ * ⚠️ `sample_id` 在 JS 侧是 **BigInt**（DuckDB 的 bigint 列经 `yieldRowObjectJs` 不转 number）。
+ *    `BigInt(1) !== 1` 恒为 `true`，所以**分组前必须 `Number()` 归一**，否则每组都退化成
+ *    「一行一个样本」—— 而且不会报错，只会静默产出 12 倍数量的畸形样本。
+ */
+type JoinedRow = SampleRow & PalaceRow & { sample_id: bigint };
+
+/**
+ * 本模块用到的全部列。`s.sample_id` 供流式遍历分组用（单条取时多余，但共用一条 SQL 更好维护）。
+ *
+ * ⚠️ 刻意**不** `SELECT *`：库里有 8 个本模块不用的 `sihua_*_star` / `sihua_*_palace` 列，
+ *    还有 `topics` 那套论断文本。只取要用的，622 万行的流式读取才不会被无用列拖慢。
+ */
+const COLUMNS = `
+	s.sample_id,
+	s.year, s.month, s.day, s.hour, s.gender, s.longitude,
+	s.lunar_year, s.lunar_month, s.lunar_day, s.year_stem, s.year_branch, s.is_leap_month,
+	s.ming_gong_branch, s.shen_gong_branch, s.wuxing_ju, s.wuxing_ju_name, s.ziwei_pos,
+	s.current_age, s.current_daxian_index,
+	p.branch, p.stem, p.palace_name,
+	p.major_stars, p.lucky_stars, p.sha_stars, p.minor_stars, p.major_brightness, p.sihua_stars,
+	p.is_ming_gong, p.is_shen_gong, p.is_current_daxian,
+	p.daxian_start, p.daxian_end`;
+
+const FROM = `FROM samples s JOIN palaces p USING (sample_id)`;
+
+/** 宫位必须排成寅起 `[2,3,…,11,0,1]` —— 库中行的物理顺序是丑起 `[1,0,11,…,2]`。 */
+const ORDER = `ORDER BY s.sample_id, (p.branch + 10) % 12`;
+
+/** 出生五元组主键（库中唯一确定一条样本）。 */
+const KEY_COLUMNS = "s.year = ? AND s.month = ? AND s.day = ? AND s.hour = ? AND s.gender = ?";
+
+/**
+ * 按出生信息精确取一条样本；不存在返回 `null`。
+ *
+ * ⚠️ `birthInfo.hour` 是**时辰序号** 0–11（12=晚子时，语料中不存在）。
+ *    `build-fixtures.ts` 的槽位公式恒产出 0–11。
+ *
+ * ⚠️ 返回 `null` 而非抛错是有意的：`build-fixtures.ts` 在闰月边界上真会遇到取不到的槽位，
+ *    它的既有行为是打印「样本缺失」后 `continue`。抛错会让整个重建中断。
+ */
+export async function fetchSample(birthInfo: BirthInfo): Promise<BaselineSample | null> {
+	const conn = await openSource();
+	const reader = await conn.runAndReadAll(
+		`SELECT ${COLUMNS} ${FROM} WHERE ${KEY_COLUMNS} ${ORDER}`,
+		[birthInfo.year, birthInfo.month, birthInfo.day, birthInfo.hour, birthInfo.gender]
+	);
+	// 唯一一处类型断言：驱动把行值声明为宽松的 `JS` 联合，而我们**刚刚**用上面的 SELECT
+	// 亲手指定了列名与顺序，类型由构造保证。断言在 SELECT 旁边，改了列名会立刻失配。
+	const rows = reader.getRowObjectsJS() as unknown as JoinedRow[];
+	if (rows.length === 0) return null;
+
+	// 只借 `first` 的样本级列（任一 JOIN 行都携带同一份样本列）；`rows` 必须传**全部 12 行**
+	// —— `rowsToSample` 的 `palaces.map` 与 `daXiansOf(palaces)` 对整个数组照用，传少了会
+	// 产出宫数不足的畸形盘。
+	const [first] = rows;
+	return rowsToSample(first, rows);
+}
