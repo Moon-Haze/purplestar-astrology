@@ -373,14 +373,92 @@ export async function fetchSample(birthInfo: BirthInfo): Promise<BaselineSample 
 		`SELECT ${COLUMNS} ${FROM} WHERE ${KEY_COLUMNS} ${ORDER}`,
 		[birthInfo.year, birthInfo.month, birthInfo.day, birthInfo.hour, birthInfo.gender]
 	);
-	// 唯一一处类型断言：驱动把行值声明为宽松的 `JS` 联合，而我们**刚刚**用上面的 SELECT
-	// 亲手指定了列名与顺序，类型由构造保证。断言在 SELECT 旁边，改了列名会立刻失配。
+	// 类型断言（驱动返回值边界，本文件两处之一；另一处在 forEachSample）：驱动把行值声明为
+	// 宽松的 `JS` 联合，而我们**刚刚**用上面的 SELECT 亲手指定了列名与顺序，类型由构造
+	// 保证。断言在 SELECT 旁边，改了列名会立刻失配。
 	const rows = reader.getRowObjectsJS() as unknown as JoinedRow[];
 	if (rows.length === 0) return null;
+
+	// 完备性护栏：正常样本恒 12 行宫位。既不是 0 也不是 12，只可能是库被截断或半写入 ——
+	// 必须大声失败，而不是静默产出一个宫数不足的畸形盘（rowsToSample 不会自检）。
+	if (rows.length !== 12) {
+		throw new SourceError(
+			`样本 ${birthInfo.year}-${birthInfo.month}-${birthInfo.day} 时辰${birthInfo.hour} ` +
+				`（${birthInfo.gender}）的宫位行数异常：预期 12 行，实际 ${rows.length} 行。` +
+				`数据库可能被截断或半写入，拒绝产出形状不完整的样本。`
+		);
+	}
 
 	// 只借 `first` 的样本级列（任一 JOIN 行都携带同一份样本列）；`rows` 必须传**全部 12 行**
 	// —— `rowsToSample` 的 `palaces.map` 与 `daXiansOf(palaces)` 对整个数组照用，传少了会
 	// 产出宫数不足的畸形盘。
 	const [first] = rows;
 	return rowsToSample(first, rows);
+}
+
+/**
+ * 流式遍历样本。回调返回 `false` 即停止读取。
+ *
+ * @returns `true` = 读尽；`false` = 被回调中止，或达到了 `filter.limit`。
+ *          **这个返回值是刻意保留的** —— `full-corpus.ts` 的 `--limit` 逻辑靠它区分
+ *          「扫完了」与「够了，停」。不要图省事改成 `void`。
+ *
+ * ⚠️ **不把 622 万行一次读进内存**：`conn.stream()` 按 2048 行一批吐出（实测无 WHERE 的
+ *    全量 JOIN + ORDER BY 查询首批 432 ms 到达、`WHERE year=1924 AND month=1` 首批 31 ms，
+ *    DuckDB 的 ORDER_BY 是增量的），本函数只在内存里攒**当前这一个样本**的 12 行。
+ */
+export async function forEachSample(
+	filter: SampleFilter,
+	fn: (raw: BaselineSample) => boolean | void
+): Promise<boolean> {
+	const conn = await openSource();
+
+	const where: string[] = [];
+	const params: Array<number | string> = [];
+	if (filter.year !== undefined) {
+		where.push("s.year = ?");
+		params.push(filter.year);
+	}
+	if (filter.month !== undefined) {
+		where.push("s.month = ?");
+		params.push(filter.month);
+	}
+	const sql = `SELECT ${COLUMNS} ${FROM}${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ${ORDER}`;
+
+	const result = await conn.stream(sql, params);
+
+	let currentId: number | null = null;
+	let current: SampleRow | null = null;
+	let palaces: PalaceRow[] = [];
+	let seen = 0;
+
+	/** 组装当前样本并回调；返回 false 表示应当停止。 */
+	const flush = (): boolean => {
+		if (current === null) return true;
+		seen++;
+		const sample = rowsToSample(current, palaces);
+		if (fn(sample) === false) return false;
+		return !(Number.isFinite(filter.limit) && seen >= (filter.limit as number));
+	};
+
+	for await (const batch of result.yieldRowObjectJs()) {
+		for (const raw of batch) {
+			// ⚠️ 必须 Number()：sample_id 是 bigint 列，JS 侧是 BigInt，
+			//    而 `BigInt(1) !== 1` 恒为 true —— 直接比会让每个样本都被当成新样本。
+			// 类型断言（驱动返回值边界，本文件两处之二；另一处在 fetchSample）：`yieldRowObjectJs()`
+			// 声明返回 `Record<string, JS>[]`，`JS` 是 @duckdb/node-api 的宽联合，不 `as unknown as`
+			// 收窄不到 `JoinedRow`。列名与顺序仍由上面的 COLUMNS / SELECT 保证。
+			const row = raw as unknown as JoinedRow;
+			const id = Number(row.sample_id);
+
+			if (id !== currentId) {
+				if (!flush()) return false;
+				currentId = id;
+				current = row;
+				palaces = [];
+			}
+			palaces.push(row);
+		}
+	}
+	return flush();
 }
