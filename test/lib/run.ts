@@ -130,6 +130,7 @@ const LAYERS = [
 	{ label: "层 2 CLI 端到端", file: "cli.test.ts", suite: "CLI 端到端" },
 	{ label: "层 3 排盘结构不变量", file: "invariants.test.ts", suite: "排盘结构不变量" },
 	{ label: "层 4 三合派约束", file: "school.test.ts", suite: "三合派体系约束" },
+	{ label: "层 5 数据源纯函数", file: "sample-source.test.ts", suite: "基准数据源（纯函数与错误指引）" },
 ] as const;
 const basename = (p: string | null): string => p?.split("/").pop() ?? "";
 const layerOf = (file: string | null): string => LAYERS.find(l => l.file === basename(file))?.label ?? "其他";
