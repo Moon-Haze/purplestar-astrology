@@ -31,7 +31,7 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 	.filter(Boolean)
 	.map(line => JSON.parse(line) as BaselineSample);
 
-const { generateChart } = await loadAlgorithm();
+const { generateChart, parseWuxingJu } = await loadAlgorithm();
 
 const describeBirth = (b: BirthInfo): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ` +
@@ -135,5 +135,34 @@ describe("已知差异白名单", () => {
 		assert.ok(hits.size > 0, "300 条基准中酉宫应至少出现过太阳或太阴");
 		// 尾部汇总引用的证据行：白名单不是死条目，基准里真的命中过
 		t.diagnostic(`白名单在基准中体现为：${[...hits].join("、")}`);
+	});
+});
+
+// ── 五行局名 → 局数 的解析 ──
+// `chart.wuxingJu` 的唯一来源，而它是**从局名这一字符串反推数字**得出的，故口径需单独锁住。
+// 上面的「排盘对标」只能覆盖 iztro 实际产出的中文数字写法（300 条样本全是「水二局」这类），
+// 覆盖不到口径变更后的形态 —— 那正是这里要盯的。
+describe("五行局名解析", () => {
+	it("五个标准局名各解析出对应局数", () => {
+		assert.equal(parseWuxingJu("水二局"), 2);
+		assert.equal(parseWuxingJu("木三局"), 3);
+		assert.equal(parseWuxingJu("金四局"), 4);
+		assert.equal(parseWuxingJu("土五局"), 5);
+		assert.equal(parseWuxingJu("火六局"), 6);
+	});
+
+	it("阿拉伯数字变体同样解析成功", () => {
+		// iztro 若把 fiveElementsClass 改写成「水2局」，按纯中文数字匹配会整片落到兜底 3。
+		// 局数虽不参与安星，但会让 wuxingJu 与 wuxingJuName 互相矛盾 —— 局名说「水二局」、
+		// 局数说 3，而 invariants 里的「名称与数字对应」不变量正盯着这一致性。
+		assert.equal(parseWuxingJu("水2局"), 2);
+		assert.equal(parseWuxingJu("火6局"), 6);
+	});
+
+	it("无法识别的局名兜底为 3 且不抛错", () => {
+		// 与 projectPalaceName 的严格口径相反：局数不参与安星，猜错的代价低于中断排盘。
+		// 这条锁的是**取舍本身**（types.ts 的 wuxingJu 注释也这么写），不是锁 3 这个值更好。
+		assert.equal(parseWuxingJu("未知局"), 3);
+		assert.equal(parseWuxingJu(""), 3);
 	});
 });

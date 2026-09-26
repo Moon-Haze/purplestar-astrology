@@ -262,8 +262,9 @@ export interface ZiweiChart {
 	/**
 	 * 五行局名，iztro 原文（如「水二局」）。
 	 *
-	 * ⚠️ 局数 {@link wuxingJu} 是**靠中文数字匹配**解析出来的，失配会兜底成 3（木三局）；
-	 * 而本字段永远是 iztro 的原文。两者可能不一致，**展示以本字段为准**。
+	 * ⚠️ 局数 {@link wuxingJu} 是**取局名首字五行查表**（`constants.ts` 的 `ELEMENT_TO_JU`）
+	 * 解析出来的，首字非五行时兜底成 3（木三局）；而本字段永远是 iztro 的原文。
+	 * 两者可能不一致，**展示以本字段为准**。
 	 */
 	wuxingJuName: string;
 	/** 紫微星所在宫的地支索引 0–11 */

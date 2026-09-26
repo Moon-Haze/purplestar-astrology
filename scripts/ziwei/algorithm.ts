@@ -10,7 +10,7 @@
 import { astro } from "iztro";
 import { Solar } from "lunar-typescript";
 import type { BirthInfo, LunarInfo, Star, Palace, DaXian, ZiweiChart } from "./types";
-import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "./constants";
+import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE, ELEMENT_TO_JU } from "./constants";
 // 飞星派工具仅供导出，不再在排盘时调用（倪师《天纪 03》：四化星永远固定不动）
 // import { detectSelfSihua, getSiHuaByStem } from './sihua';
 
@@ -191,19 +191,19 @@ function mapStarType(starName: string, iztroType: string): Star["type"] {
  * @returns 局数 2–6
  *
  * @remarks
- * 靠**中文数字**匹配，故 iztro 若改用阿拉伯数字（「水2局」）会整片落到兜底值。
+ * 取**首字五行**查 {@link ELEMENT_TO_JU}：五行与局数是固定的一一对应
+ * （水二 / 木三 / 金四 / 土五 / 火六），首字已足以定局数，无须解析后面的数字。
+ * 这同时免疫了写法变更 —— 局名里的数字是中文还是阿拉伯（「水二局」/「水2局」）都不影响结果。
  *
  * ⚠️ 兜底返回 3（木三局）而**不抛错** —— 与 {@link projectPalaceName} 的严格口径相反。
  * 差别在于局数不参与安星（安星由 iztro 完成，此值只随盘输出），猜错的代价低于中断排盘；
  * 宫名则是下游一切索引的键，错不起。
  */
-function parseWuxingJu(name: string): number {
-	if (name.includes("二")) return 2;
-	if (name.includes("三")) return 3;
-	if (name.includes("四")) return 4;
-	if (name.includes("五")) return 5;
-	if (name.includes("六")) return 6;
-	return 3;
+export function parseWuxingJu(name: string): number {
+	// 显式标注 `| undefined`：Record 索引签名在 tsc 眼里恒为 number，
+	// 不标就掩盖了「查不到」这条真实路径（缺了它，下面的兜底看着像多余的代码）。
+	const ju: number | undefined = ELEMENT_TO_JU[name.charAt(0)];
+	return ju ?? 3;
 }
 
 // ─── 主函数：生成命盘 ────────────────────────────────────────────

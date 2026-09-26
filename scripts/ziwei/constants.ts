@@ -155,9 +155,11 @@ export const NAYIN_ELEMENTS = [
  *
  * 键是单个汉字五行（「水」「木」「金」「土」「火」），值为局数 2–6。
  *
- * ⚠️ 当前 `scripts/` 与 `test/` 中**无消费者** —— 运行时的局数由 `algorithm.ts` 的
- * `parseWuxingJu` 直接从局名（「水二局」）解析中文数字得出，**未走本表**。
- * 仅为数据留存。
+ * 消费者：`algorithm.ts` 的 `parseWuxingJu` —— 取局名首字五行查本表得出局数。
+ *
+ * ⚠️ 改本表会改变 `ZiweiChart.wuxingJu`，从而改变 300 条基准的对标结果。两处独立预言机
+ * 盯着这条映射：`test/invariants.test.ts` 的「五行局取值 2-6 且名称与数字对应」用的是
+ * 表外自带的字面量表，`test/lib/compare.ts` 比对的 `wuxingJu` 则来自 toolkit 的样本快照。
  */
 export const ELEMENT_TO_JU: Record<string, number> = {
 	水: 2,
@@ -172,6 +174,9 @@ export const ELEMENT_TO_JU: Record<string, number> = {
  *
  * ⚠️ 当前无消费者：运行时展示的是 iztro 的原文 `ZiweiChart.wuxingJuName`，不经本表。
  * 它与 {@link ELEMENT_TO_JU} 成对（五行 ↔ 局数 ↔ 局名），仅为数据留存。
+ *
+ * 注意本表与 {@link ELEMENT_TO_JU} 的**状态不对等**：后者已被 `parseWuxingJu` 消费，
+ * 本表仍无消费者，是刻意的数据留存 —— 见到这处不对称不必"顺手补齐"。
  */
 export const JU_NAMES: Record<number, string> = {
 	2: "水二局",
