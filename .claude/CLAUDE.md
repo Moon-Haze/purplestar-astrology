@@ -52,9 +52,11 @@ npm run typecheck
     ├── cli/commands.ts           八个命令实现 + COMMANDS 表
     ├── cli/selftest.ts           49 项回归断言
     ├── ziwei/algorithm.ts        iztro 排盘主流程
-    ├── ziwei/patterns.ts         40+ 格局识别（含古籍出处与破格条件）
+    ├── ziwei/patterns.ts         51 个格局识别器 / 82 个格局名（含古籍出处与破格条件）
+    │                             + 两套判词：description（analyze 短判词）/ topicDescription（topic 倪师口吻）
     ├── ziwei/sihua.ts            四化（生年 / 流年 / 流月）
     ├── ziwei/db-analysis.ts      分析数据库 v3（主题论断动态推算，topic 命令用）
+    │                             格局部分只是薄壳：从 detectPatterns 挑出有 topicDescription 的命中
     ├── ziwei/annotations.json    「倪师引用」文献核对记录（selftest 锁 suspect 零强归属）
     ├── ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
     ├── classics/                 三部古籍原文检索
