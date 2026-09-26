@@ -16,6 +16,6 @@
       "@/*": ["./scripts/*"]
     }
   },
-  "include": ["scripts/**/*.ts", "test/**/*.ts"],
+  "include": ["scripts/**/*.ts", "test/**/*.ts", "tools/**/*.ts"],
   "exclude": ["node_modules", "reference"]
 }
