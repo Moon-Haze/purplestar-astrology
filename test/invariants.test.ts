@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { astro } from "iztro";
 
 import type { BirthInfo, Palace, ZiweiChart } from "@/ziwei/types";
-import { loadAlgorithm, loadConstants, loadPatterns, loadRender, loadSihua } from "./lib/loader.ts";
+import { load, loadAlgorithm, loadConstants, loadPatterns, loadRender, loadSihua } from "./lib/loader.ts";
 import { BRANCHES, type BaselineSample } from "./lib/compare.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -26,7 +26,8 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 
 const { generateChart } = await loadAlgorithm();
 const { PALACE_NAMES_ORDER, IZTRO_TO_PROJECT_PALACE, SI_HUA_TABLE, STEMS } = await loadConstants();
-const { detectPatterns } = await loadPatterns();
+const { detectPatterns, GEJU_NAME_ALIASES } = await loadPatterns();
+const { ALL_BOOKS } = await load<typeof import("@/classics/index")>("@/classics/index");
 const { getSiHuaByStem, getYearStemIndex, getLiuNianSiHua, getLiuYueStemIndex } = await loadSihua();
 const { mustPalace, locateSihua } = await loadRender();
 
@@ -896,7 +897,7 @@ describe("排盘结构不变量", () => {
 			const DERIVED = [
 				{ suffix: "化禄入命", palace: "命宫", hua: "禄" },
 				{ suffix: "化忌入命", palace: "命宫", hua: "忌" },
-				{ suffix: "化忌入迁", palace: "迁移宫", hua: "忌" },
+				{ suffix: "化忌冲命", palace: "迁移宫", hua: "忌" },
 			] as const;
 			const DERIVED_SUFFIXES = DERIVED.map(d => d.suffix);
 
@@ -999,5 +1000,65 @@ describe("排盘结构不变量", () => {
 				});
 			});
 		});
+	});
+});
+
+// ── 层 3（续）：格局名的「同现象异名」裁决 ──
+//
+// 判定早已收敛到一处，但历史上 analyze 与 topic 各叫各的（实测星名集合 0/300
+// 不一致，纯命名差异）。2026-09-27 按「古文优先」裁决：显示名一律取**本仓古籍库
+// 词频最高者**，裁决结果记在 patterns.ts 的 GEJU_NAME_ALIASES。
+//
+// 本组是那条裁决的预言机 —— **期望值来自古籍库重算**，不是复述常量表：
+// 表里的数字是人工实测的，语料一改就作废。变红时该**重新裁决**（或补一句说明），
+// 不是把表里的数字改大。
+describe("格局名裁决（古籍词频）", () => {
+	const paragraphs = ALL_BOOKS.flatMap(b =>
+		b.chapters.flatMap(ch => ch.paragraphs.map(p => ({ text: p.text })))
+	);
+	/** 原文子串计数（与裁决时的口径一致：不区分语境，只比大小） */
+	const freq = (name: string): number =>
+		paragraphs.reduce((n, p) => n + (p.text.split(name).length - 1), 0);
+
+	it("裁决表结构完整：每条都有异名可对照、有出处、counts 覆盖全部名字", () => {
+		assert.ok(GEJU_NAME_ALIASES.length > 0, "裁决表为空");
+		for (const a of GEJU_NAME_ALIASES) {
+			assert.ok(a.aliases.length > 0, `「${a.canonical}」没有异名，不该进裁决表`);
+			assert.ok(a.sources.trim().length > 0, `「${a.canonical}」缺少古籍出处`);
+			for (const n of [a.canonical, ...a.aliases])
+				assert.ok(n in a.counts, `「${a.canonical}」的 counts 缺名字「${n}」`);
+		}
+	});
+
+	it("表里记的词频与古籍库重算结果逐一对得上", () => {
+		for (const a of GEJU_NAME_ALIASES)
+			for (const [name, recorded] of Object.entries(a.counts))
+				assert.equal(
+					freq(name),
+					recorded,
+					`「${name}」表记 ${recorded} 次，古籍库实为 ${freq(name)} 次 —— 语料变了，该重新裁决`
+				);
+	});
+
+	it("现用名的词频严格高于它的每一个异名", () => {
+		for (const a of GEJU_NAME_ALIASES)
+			for (const alias of a.aliases)
+				assert.ok(
+					a.counts[a.canonical] > a.counts[alias],
+					`「${a.canonical}」(${a.counts[a.canonical]}) 未高于异名「${alias}」(${a.counts[alias]}) —— 该重新裁决，而不是改数字`
+				);
+	});
+
+	it("落选的异名不再出现在任何排盘产出里（300 条基准逐盘扫）", () => {
+		for (const [i, { birth, chart }] of charts.entries()) {
+			const where = `${birth.year}-${birth.month}-${birth.day}`;
+			for (const p of detectPatterns(chart))
+				for (const a of GEJU_NAME_ALIASES)
+					for (const alias of a.aliases)
+						assert.ok(
+							!p.name.endsWith(alias),
+							`第 ${i} 张盘（${where}）产出旧名「${p.name}」—— 应已统一为「${a.canonical}」`
+						);
+		}
 	});
 });

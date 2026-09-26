@@ -3,7 +3,7 @@
  *
  * 本模块是解读层的主体：由一张已排好的 {@link ZiweiChart} 判出命中的格局清单，
  * 每条含名称、分级、判词、涉及宫位与**分层的成立条件**。51 个 `detect*` 识别器各推入
- * 0 或 1 条 {@link Pattern}（其中火贪/铃贪、化忌入命/迁等可推入多条），合计覆盖约 82 个
+ * 0 或 1 条 {@link Pattern}（其中火贪/铃贪、化忌入命/冲命等可推入多条），合计覆盖约 82 个
  * 格局名。
  *
  * ## 设计原则
@@ -74,13 +74,73 @@ export interface PatternCondition {
  * 由各 `detect*` 识别器在条件成立时推入 {@link detectPatterns} 的累积数组。
  */
 export interface Pattern {
-	name: string; // 格局名；部分识别器会拼入星名（如「武曲化禄入命」「太阴化忌入迁」）
+	name: string; // 格局名；部分识别器会拼入星名（如「武曲化禄入命」「太阴化忌冲命」）
 	level: 90 | 75 | 60 | 40; // 等级分数：90 上格 / 75 吉格 / 60 平格 / 40 凶格警示。触发破格条件时**降档**（如 90 → 75、75 → 40）
 	description: string; // 判词文案，由 cli/commands.ts 直接输出给用户
 	palaces: string[]; // 涉及宫位（**宫名**，非地支索引；可能含"身宫"或格局定名宫位）
 	conditions?: PatternCondition; // 成立条件分层（v2 新增）
 	source?: string; // 古籍出处（v2 新增）
 }
+
+/**
+ * 格局名的「同现象异名」裁决表 —— 显示名一律取**本仓古籍库词频最高者**。
+ *
+ * @remarks
+ * 判定早已收敛到一处（{@link detectPatterns}），但历史上两侧各叫各的：`analyze`
+ * 用 A 名、`topic` 的 `detectGeJu` 用 B 名，同一现象两个名字（实测星名集合
+ * 0/300 不一致 —— 纯命名差异，非覆盖差异）。2026-09-27 按「古文优先」裁决：
+ * 逐名统计 `scripts/classics/` 三部古籍的出现次数，取高者作**唯一显示名**，两侧
+ * 共用；落选的名字留在本表备查，不再用于显示。
+ *
+ * ⚠️ **表里的数字是当时实测，语料一改就作废。** `test/invariants.test.ts` 有一条
+ * 预言机从古籍库重算并与此表比对 —— 它变红时该**重新裁决**，不是把数字改大。
+ *
+ * ⚠️ 计数口径是**原文子串**，不区分语境。故 `化禄入命` 那 4 处里含 1 处
+ * 「财帛宫化禄入命」（讲的是另一组配置）；本表只用来比大小，不用来断言语义。
+ */
+export interface GejuNameAlias {
+	/** 现用显示名：古籍词频最高者。带星名的家族写**后缀**形式（星名由识别器拼在前面） */
+	canonical: string;
+	/** 落选的同现象异名，保留备查，不再用于显示 */
+	aliases: string[];
+	/** 实测词频，键为名字原文 */
+	counts: Record<string, number>;
+	/** 词频 > 0 的出处（书·篇） */
+	sources: string;
+	/** 需要额外说明的裁决理由（尤其词频悬殊不大时） */
+	note?: string;
+}
+
+export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
+	{
+		canonical: "化禄入命",
+		aliases: ["化禄守命"],
+		counts: { 化禄入命: 4, 化禄守命: 0 },
+		sources:
+			"骨髓赋·四化星论、紫微斗数全集·卷五·四化与格局论、紫微斗数全书·十二宫论·财帛宫、紫微斗数全书·四化论",
+	},
+	{
+		canonical: "化忌入命",
+		aliases: ["化忌守命"],
+		counts: { 化忌入命: 3, 化忌守命: 0 },
+		sources: "骨髓赋·四化星论、紫微斗数全集·卷五·四化与格局论、紫微斗数全书·四化论",
+	},
+	{
+		canonical: "化忌冲命",
+		aliases: ["化忌入迁"],
+		counts: { 化忌冲命: 1, 化忌入迁: 0 },
+		sources: "紫微斗数全书·十二宫论·夫妻宫",
+		note: "仅 1:0 险胜，且唯一那处是**夫妻宫**语境（「夫妻宫化忌冲命，主婚姻多波折」），并非命宫格局名的用例；但「化忌入迁」全库零见，故仍取「化忌冲命」。",
+	},
+	{
+		canonical: "双禄朝垣",
+		aliases: ["双禄交流"],
+		counts: { 双禄朝垣: 7, 双禄交流: 0 },
+		sources:
+			"骨髓赋·四化星论、紫微斗数全集·卷三·南斗六星论、紫微斗数全集·卷五·四化与格局论、紫微斗数全书·双禄朝垣格",
+		note: "「双禄朝垣」在《紫微斗数全书》有**专章**；「双禄交流」全库零见，而旧判词写作「倪师称为双禄交流」——该归属在 annotations.json 里记为 traditional（传统格局名，非倪师原话），故一并改为引古文。",
+	},
+];
 
 // ────────────────── 常量 ──────────────────
 // 三张煞星名单：多个识别器共用同一份口径，改这里等于同时改所有引用它的格局。
@@ -1063,7 +1123,7 @@ function detectHuaLuRuMing(chart: ZiweiChart, ming: Palace, patterns: Pattern[])
 
 // ────────────────── 恶格识别器 ──────────────────
 
-/** 化忌入命/迁 */
+/** 化忌入命（坐命宫）/ 化忌冲命（坐迁移宫，对冲命宫） */
 function detectHuaJiRuMingQian(chart: ZiweiChart, patterns: Pattern[]) {
 	const qianBranch = (chart.mingGongBranch + 6) % 12;
 	for (const palace of chart.palaces) {
@@ -1073,7 +1133,9 @@ function detectHuaJiRuMingQian(chart: ZiweiChart, patterns: Pattern[]) {
 
 		const inMing = palace.branch === chart.mingGongBranch;
 		patterns.push({
-			name: `${jiStar.name}化忌入${inMing ? "命" : "迁"}`,
+			// 迁移分支取名「冲命」而**不是**「入迁」：后者在本仓古籍库零见，前者有 1 处
+			// （《紫微斗数全书·十二宫论·夫妻宫》）。裁决依据见 {@link GEJU_NAME_ALIASES}。
+			name: `${jiStar.name}化忌${inMing ? "入命" : "冲命"}`,
 			level: 40,
 			description: inMing
 				? `${jiStar.name}化忌坐命宫，需留意自身固执、心理障碍或健康隐患，凡事退一步思考。化忌不一定坏，代表此星能量需要特别关注。`
@@ -1618,7 +1680,7 @@ function detectChangQuHuaJi(chart: ZiweiChart, patterns: Pattern[]) {
  * 是刻意的：判词交给解读层权衡，判定层不替它做取舍。
  *
  * 格局名**可能带星名**：`detectHuaLuRuMing` 产出 `${星名}化禄入命`、
- * `detectHuaJiRuMingQian` 产出 `${星名}化忌入命/迁`，故返回条目的 `name` 不全是固定表；
+ * `detectHuaJiRuMingQian` 产出 `${星名}化忌入命/冲命`，故返回条目的 `name` 不全是固定表；
  * 按名字做查表比对的调用方需注意（见 `test/invariants.test.ts` 的预言机口径）。
  *
  * ⚠️ **命宫缺失即空手而归**：开头的 `if (!ming) return patterns;` 让整轮识别直接跳过，
