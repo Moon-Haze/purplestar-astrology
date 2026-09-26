@@ -2,8 +2,8 @@
  * 紫微斗数格局识别（v2 严格化版本）。
  *
  * 本模块是解读层的主体：由一张已排好的 {@link ZiweiChart} 判出命中的格局清单，
- * 每条含名称、分级、判词、涉及宫位与**分层的成立条件**。41 个 `detect*` 识别器各推入
- * 0 或 1 条 {@link Pattern}（其中火贪/铃贪、化忌入命/迁等可推入多条），合计覆盖约 70 个
+ * 每条含名称、分级、判词、涉及宫位与**分层的成立条件**。51 个 `detect*` 识别器各推入
+ * 0 或 1 条 {@link Pattern}（其中火贪/铃贪、化忌入命/迁等可推入多条），合计覆盖约 82 个
  * 格局名。
  *
  * ## 设计原则
@@ -37,7 +37,7 @@
  *
  * ## 回归与效力边界
  *
- * `test/invariants.test.ts` 的层 3 为全部约 70 个格局名建了**独立预言机**（按定义复算，
+ * `test/invariants.test.ts` 的层 3 为全部约 82 个格局名建了**独立预言机**（按定义复算，
  * 不看实现），另有「化禄入财 / 化权入官」两条按偏移算术核对的断言；`cli/selftest.ts`
  * 只断言返回结构与条目必备字段。⚠️ 该预言机复刻的是**实现当前的口径**，不是照命理理想
  * 口径重写，且 `level` 分级、`description` / `conditions` 文案均不在其覆盖范围内 ——
@@ -450,14 +450,24 @@ function detectJunChenQingHui(chart: ZiweiChart, ming: Palace, patterns: Pattern
 	});
 }
 
-/** 紫府同宫：紫微+天府于命宫（限寅、申宫） */
+/** 紫府同宫：紫微+天府同宫，且该宫为命宫或迁移宫 */
 function detectZiFu(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 	const ziwei = findStarPalace(chart, "紫微");
 	const tianfu = findStarPalace(chart, "天府");
 	if (!ziwei || !tianfu || ziwei.branch !== tianfu.branch) return;
 
+	// 判定域：同宫的那一宫必须是命宫或迁移宫。
+	//
+	// ⚠️ 2026-09-26 由「任一同宫皆可」收窄，取 topic 侧（db-analysis.ts 的 detectGeJu）口径 ——
+	// 它只认 `hasStar('命宫'|'迁移', …)`。旧口径下紫府同宫在任何宫都成格（只把未坐命的降为 75），
+	// 与 topic 侧实测 44/300 盘判定相反（如紫府坐财帛：这边报格、那边不报）。
+	// 代价：紫微天府同宫于它宫时不再产出「紫府同宫」，那类盘在这两处都不再有此格局。
+	// ✓ 迁移宫即命宫对宫（`(命宫 + 6) % 12`），与 `isInSanFang` 的第 4 个偏移同源。
 	const inMing = ziwei.branch === chart.mingGongBranch;
-	const required = inMing ? ["紫微天府同入命宫"] : ["紫微天府同宫（不在命宫，会照减力）"];
+	const inQianYi = ziwei.branch === (chart.mingGongBranch + 6) % 12;
+	if (!inMing && !inQianYi) return;
+
+	const required = [inMing ? "紫微天府同入命宫" : "紫微天府同入迁移宫（照命，力减）"];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	const sanFangSet = sanFangAllStars(chart);
@@ -471,7 +481,7 @@ function detectZiFu(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 		level: inMing && !breaking.length ? 90 : 75,
 		description: inMing
 			? "紫微天府同入命宫，帝相并临，尊贵之命。主品行端正、衣食无忧、有领导才能，宜担任要职。需要左右辅弼来配合方为完整大格。"
-			: "紫微天府同宫但未坐命，主一生有贵人贵气依托，但本身不一定大富贵，需看会照吉煞而定。",
+			: "紫微天府同宫于迁移宫，照拱命宫而非坐守，主一生有贵人贵气依托，但本身不一定大富贵，需看会照吉煞而定。",
 		palaces: [ziwei.name],
 		conditions: { required, bonus, breaking },
 		source: "《紫微斗数全书·紫府同宫格》",
@@ -539,47 +549,44 @@ function detectYangLiangChangLu(chart: ZiweiChart, ming: Palace, patterns: Patte
 	});
 }
 
-/** 火贪格 / 铃贪格：贪狼+火星 或 贪狼+铃星 同宫或会照 */
-function detectHuoTanLingTan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+/** 火贪格 / 铃贪格：贪狼与火星或铃星**同宫**（不含会照） */
+function detectHuoTanLingTan(chart: ZiweiChart, patterns: Pattern[]) {
 	const tan = findStarPalace(chart, "贪狼");
 	if (!tan) return;
-	const huo = findStarPalace(chart, "火星");
-	const ling = findStarPalace(chart, "铃星");
 
-	for (const [shaName, shaPalace] of [
-		["火星", huo],
-		["铃星", ling],
-	] as const) {
-		if (!shaPalace) continue;
-		const sameOrTrine =
-			tan.branch === shaPalace.branch ||
-			(tan.branch + 4) % 12 === shaPalace.branch ||
-			(tan.branch + 8) % 12 === shaPalace.branch ||
-			(tan.branch + 6) % 12 === shaPalace.branch;
-		if (!sameOrTrine) continue;
-		if (!isInSanFang(chart, tan.branch)) continue;
+	// 判定域：火/铃与贪狼**同宫**。
+	//
+	// ⚠️ 2026-09-26 由「同宫或三方四正会照 + 贪狼须会照命宫三方」收窄，取 topic 侧
+	// （db-analysis.ts 的 detectGeJu）口径 —— 它只要求 `贪狼宫内有火铃`。
+	// 旧口径的两个毛病：① 三方四正**不可传递**，`sameOrTrine` 比的是**贪狼的**三方，
+	// 而 `isInSanFang` 只约束贪狼本身，于是命中盘里有一部分煞星其实照不到命宫
+	// （旧断言实测 32 次命中里 12 次如此）；② 判词写「主突发横财」，但贪狼在命宫三方
+	// 之外（如田宅宫）逢火铃也算，与命格无关。
+	// 代价：格局不再锚定命宫，贪狼在田宅/夫妻等宫逢火铃同样成格 —— `required` 如实写出这一点。
+	//
+	// 火铃**同时**同宫于贪狼时只出「火贪格」：沿用 topic 的 `else if` 语义，不并列两条。
+	const hasFire = hasStar(tan, "火星");
+	const hasLing = hasStar(tan, "铃星");
+	if (!hasFire && !hasLing) return;
+	const shaName = hasFire ? "火星" : "铃星";
 
-		const required = [
-			`贪狼${tan.branch === shaPalace.branch ? "同宫" : "会照"}${shaName}`,
-			"贪狼会照命宫三方",
-		];
-		const bonus: string[] = [];
-		const breaking: string[] = [];
-		if (isBright(tan, "贪狼")) bonus.push("贪狼庙旺");
-		if (getStarSiHua(tan, "贪狼") === "禄" || getStarSiHua(tan, "贪狼") === "权")
-			bonus.push("贪狼化禄/化权");
-		if (hasShaInPalace(tan, ["擎羊", "陀罗"])) breaking.push("贪狼宫又见羊陀（破横发之力）");
-		if (hasShaInPalace(tan, SHA_KONG)) breaking.push("贪狼遇空劫（财来财去）");
+	const required = [`贪狼与${shaName}同宫`];
+	const bonus: string[] = [];
+	const breaking: string[] = [];
+	if (isBright(tan, "贪狼")) bonus.push("贪狼庙旺");
+	if (getStarSiHua(tan, "贪狼") === "禄" || getStarSiHua(tan, "贪狼") === "权")
+		bonus.push("贪狼化禄/化权");
+	if (hasShaInPalace(tan, ["擎羊", "陀罗"])) breaking.push("贪狼宫又见羊陀（破横发之力）");
+	if (hasShaInPalace(tan, SHA_KONG)) breaking.push("贪狼遇空劫（财来财去）");
 
-		patterns.push({
-			name: shaName === "火星" ? "火贪格" : "铃贪格",
-			level: breaking.length ? 75 : 90,
-			description: `贪狼遇${shaName}${tan.branch === shaPalace.branch ? "同宫" : "三方会照"}，主突发横财、突如其来的机遇。古书云“贪狼遇火铃，必发横财”，但来得快去得也快，宜见好就收。${breaking.length ? "本盘破格条件已触发，发力打折。" : ""}`,
-			palaces: [tan.name, shaPalace.name],
-			conditions: { required, bonus, breaking },
-			source: "《紫微斗数骨髓赋》",
-		});
-	}
+	patterns.push({
+		name: shaName === "火星" ? "火贪格" : "铃贪格",
+		level: breaking.length ? 75 : 90,
+		description: `贪狼与${shaName}同宫，主突发横财、突如其来的机遇。古书云“贪狼遇火铃，必发横财”，但来得快去得也快，宜见好就收。${breaking.length ? "本盘破格条件已触发，发力打折。" : ""}`,
+		palaces: [tan.name],
+		conditions: { required, bonus, breaking },
+		source: "《紫微斗数骨髓赋》",
+	});
 }
 
 /** 武贪格：武曲+贪狼 同宫（丑、未） 或 对照 */
@@ -642,30 +649,41 @@ function detectShaPoLang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 	});
 }
 
-/** 机月同梁：天机、太阴、天同、天梁四星齐入命迁财官 */
+/** 机月同梁：天机、太阴、天同、天梁会入命宫三方四正（四星齐为上格，只齐三星为不全格） */
 function detectJiYueTongLiang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	const has = ["天机", "太阴", "天同", "天梁"].filter(s => sanFangSet.has(s));
-	if (has.length < 4) return;
+	if (has.length < 3) return;
 
-	const required = ["天机、太阴、天同、天梁四星齐入命宫三方四正"];
+	// 「四星齐」与「恰好三星」原是两个格局名（机月同梁 / 机月同梁三星会），2026-09-26 合并为一个：
+	// 判定域放宽到 `>= 3`，缺星时把「不全格」记进 breaking 并把 level 降为 60。
+	//
+	// ⚠️ 域是**三方四正**（含迁移宫），不是「命宫三方」—— topic 侧的 detectGeJu 用的是三方
+	// （`[m, m+4, m+8]`），但那会丢掉全部三星盘：实测四星落在命宫三方的个数恒为 **0/1/2/4**
+	// （永不为 3），故 topic 侧的 ≥3 与「三方四正四星齐」在 300 条基准上是**同一组 26 盘**。
+	// 也就说那 55 张三星盘本来就是 analyze 独有的降级覆盖，topic 从不报它们、无矛盾可消；
+	// 照 topic 的域收窄只会让这 55 盘彻底没有机月同梁。此处取并集（26 + 55 = 81 盘）。
+	const full = has.length === 4;
+	const required = [`${has.join("、")}会入命宫三方四正${full ? "（四星齐）" : `（四星中 ${has.length} 星）`}`];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (sanFangSet.has("文昌") || sanFangSet.has("文曲")) bonus.push("再会昌曲");
 	if (sanFangHasSiHua(chart, "科")) bonus.push("再会化科");
 	if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push("煞星过多（机月同梁忌煞）");
 	if (hasShaInPalace(ming, SHA_HARD)) breaking.push("命宫坐煞");
+	if (!full) breaking.push(`三方四正只齐 ${has.length} 星（机月同梁不全格）`);
 
 	patterns.push({
 		name: "机月同梁",
-		level: breaking.length ? 75 : 90,
-		description:
-			"天机太阴天同天梁四星齐入命迁财官，文质彬彬、聪慧善谋。最适合公职、学术、文艺、医疗、服务等需稳定累积的行业，不宜大冒险大投机。",
+		level: full ? (breaking.length ? 75 : 90) : 60,
+		description: full
+			? "天机太阴天同天梁四星齐入命迁财官，文质彬彬、聪慧善谋。最适合公职、学术、文艺、医疗、服务等需稳定累积的行业，不宜大冒险大投机。"
+			: `三方四正会齐${has.join("、")}，机月同梁不全格，文质带谋，但稳定度不如四星齐。仍宜公职、教研、医疗、服务等需要积累与稳定的行业，关键看缺位星与四化的配合。`,
 		palaces: getSanFangPalaces(chart)
 			.filter(p => has.some(s => getMajorStarNames(p).includes(s)))
 			.map(p => p.name),
 		conditions: { required, bonus, breaking },
-		source: "《紫微斗数全书·机月同梁格》",
+		source: full ? "《紫微斗数全书·机月同梁格》" : "《紫微斗数全书·机月同梁格》（降级版）",
 	});
 }
 
@@ -1304,36 +1322,6 @@ function detectHuaKeRuMingShen(chart: ZiweiChart, patterns: Pattern[]) {
 	}
 }
 
-/**
- * 机月同梁三星会（降级版）：天机/太阴/天同/天梁 任 3 星齐入三方四正。
- *
- * @remarks
- * 与 `detectJiYueTongLiang` 互补：四星齐由那个识别器处理，本函数只在**恰好 3 星**时触发
- * （`has.length !== 3` 即返回），两者不会重复产出。
- *
- * ⚠️ `ming` 形参**未被使用**，函数体末尾以 `void ming;` 显式吞掉 —— 判定只依赖三方四正，
- * 不需要命宫本身。保留形参是为了与其它识别器的调用签名一致，改动时别当成漏用。
- */
-function detectJiYueTongLiangPartial(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
-	const sanFangSet = sanFangAllStars(chart);
-	const has = ["天机", "太阴", "天同", "天梁"].filter(s => sanFangSet.has(s));
-	if (has.length !== 3) return; // 4 星齐由 detectJiYueTongLiang 处理
-	// 避免和上面 detectJiYueTongLiang 重复（4 星齐的不进这里）
-	const missing = ["天机", "太阴", "天同", "天梁"].filter(s => !sanFangSet.has(s));
-	patterns.push({
-		name: "机月同梁三星会",
-		level: 60,
-		description: `三方四正会齐${has.join("、")}，差${missing.join("、")}未会。机月同梁不全格，文质带谋，但稳定度不如四星齐。仍宜公职、教研、医疗、服务等需要积累与稳定的行业，关键看缺位星与四化的配合。`,
-		palaces: getSanFangPalaces(chart)
-			.filter(p => has.some(s => getMajorStarNames(p).includes(s)))
-			.map(p => p.name),
-		conditions: {
-			required: [`三方四正会${has.join("、")}（机月同梁缺${missing.join("、")}）`],
-		},
-		source: "《紫微斗数全书·机月同梁格》（降级版）",
-	});
-	void ming;
-}
 
 /** 昌曲同会：文昌+文曲都在命三方四正 */
 function detectChangQuTongHui(chart: ZiweiChart, patterns: Pattern[]) {
@@ -1407,6 +1395,210 @@ function detectKeQuanShuangHui(chart: ZiweiChart, patterns: Pattern[]) {
 	});
 }
 
+// ────────────────── 收敛自 db-analysis 的格局（2026-09-27）──────────────────
+// 以下 11 个识别器（产出 13 个格局名）原先**只**存在于 `db-analysis.ts` 的 `detectGeJu` 里 ——
+// 那是 topic 命令展示判词时另写一遍的判定，与本文件同名格局构成两套实现。2026-09-27 起判定
+// 收敛到本文件，`detectGeJu` 只按名字取用这里的产出、保留自己的倪师口吻长判词。
+//
+// **口径照搬，不趁迁移"顺手修正"**：判定条件逐字对齐原 `detectGeJu`（含它偏宽或偏窄之处），
+// 差异要改就两侧一起改 —— `test/invariants.test.ts` 里这 13 个名字都有独立预言机盯着。
+//
+// `source` 照实标注：本仓古籍库（`classics --search`）查得到直接出处的写书名与篇名，
+// 查不到的写「传统口诀（本仓古籍库无直接出处）」—— **不编造篇名**，等将来补录古籍再换。
+
+/** 七杀朝斗格：七杀居寅或申，且落命宫或迁移宫（对宫紫微天府相照） */
+function detectQiShaChaoDou(chart: ZiweiChart, patterns: Pattern[]) {
+	const qisha = findStarPalace(chart, "七杀");
+	if (!qisha) return;
+	if (qisha.branch !== 2 && qisha.branch !== 8) return; // 寅=2、申=8
+	const inMing = qisha.branch === chart.mingGongBranch;
+	const inQianYi = qisha.branch === (chart.mingGongBranch + 6) % 12;
+	if (!inMing && !inQianYi) return;
+
+	patterns.push({
+		name: "七杀朝斗格",
+		level: 90,
+		description: `七杀居${inMing ? "命宫" : "迁移宫"}（寅或申），对宫紫微天府相照——古书云"七杀朝斗，爵禄荣昌"，是武职大贵之格，最宜军警政界、企业高管，一生贵气难挡。`,
+		palaces: [qisha.name],
+		conditions: { required: ["七杀居寅宫或申宫", "七杀坐命宫或迁移宫"] },
+		source: "《紫微斗数骨髓赋·七杀星论》",
+	});
+}
+
+/** 日月并明格：太阳与太阴**同时**入庙（不限宫位，也不要求同宫——后者是「日月同宫」） */
+function detectRiYueBingMing(chart: ZiweiChart, patterns: Pattern[]) {
+	const sun = findStarPalace(chart, "太阳");
+	const moon = findStarPalace(chart, "太阴");
+	if (!sun || !moon) return;
+	if (!isBright(sun, "太阳") || !isBright(moon, "太阴")) return;
+
+	patterns.push({
+		name: "日月并明格",
+		level: 90,
+		description:
+			'太阳太阴同时入庙旺，号"日月并明"——主一生贵人多助、行事左右逢源，名声与实利可以兼得，宜走动、宜公众事务；日月分居两宫亦成格，不必同宫。',
+		palaces: [sun.name, moon.name],
+		conditions: { required: ["太阳入庙（bright）", "太阴入庙（bright）"] },
+		source: "传统口诀（本仓古籍库无直接出处）",
+	});
+}
+
+/** 英星入庙格：破军居子或午守命 */
+function detectYingXingRuMiao(ming: Palace, patterns: Pattern[]) {
+	if (ming.branch !== 0 && ming.branch !== 6) return; // 子=0、午=6
+	if (!hasStar(ming, "破军")) return;
+
+	patterns.push({
+		name: "英星入庙格",
+		level: 90,
+		description:
+			"破军居子午守命，号「英星入庙」——英气逼人、敢破敢立，宜军警武职或自主创业，一生大开大合；女命此格气质独特、事业心强于感情，宜晚婚。",
+		palaces: ["命宫"],
+		conditions: { required: ["破军居子宫或午宫", "破军坐命宫"] },
+		source: "传统口诀（本仓古籍库无直接出处）",
+	});
+}
+
+/** 日丽中天格：太阳居午守命，光芒最盛 */
+function detectRiLiZhongTian(ming: Palace, patterns: Pattern[]) {
+	if (ming.branch !== 6) return; // 必须午
+	if (!hasStar(ming, "太阳")) return;
+
+	patterns.push({
+		name: "日丽中天格",
+		level: 90,
+		description:
+			"太阳居午宫守命，正午当天、光芒最盛——主声名显达、社会地位高，最宜政界、军警、公众事务一类要「露脸」的行当，名利双收。",
+		palaces: ["命宫"],
+		conditions: { required: ["太阳居午宫", "太阳坐命宫"] },
+		source: "传统口诀（本仓古籍库无直接出处）",
+	});
+}
+
+/** 昌曲守命：文昌或文曲坐命宫（两星俱在时只出「文昌守命」，与 db-analysis 的取值一致） */
+function detectChangQuShouMing(ming: Palace, patterns: Pattern[]) {
+	const hasChang = hasStar(ming, "文昌");
+	const hasQu = hasStar(ming, "文曲");
+	if (!hasChang && !hasQu) return;
+	const starName = hasChang ? "文昌" : "文曲";
+
+	patterns.push({
+		name: `${starName}守命`,
+		level: 75,
+		description: `${starName}坐命宫，为"文星守命"——主聪明俊秀、才华出众，利考试与名声，宜文教、艺术、传媒或需要专业技艺的行当，以才华换取名利最为顺畅。`,
+		palaces: ["命宫"],
+		conditions: { required: [`${starName}坐命宫`] },
+		source: "《紫微斗数全书·十二宫论·命宫》",
+	});
+}
+
+/** 擎羊入命：擎羊坐命宫（刑克之星。擎羊在午守命另有更专门的「马头带箭」，两者可同时命中） */
+function detectQingYangRuMing(ming: Palace, patterns: Pattern[]) {
+	if (!hasStar(ming, "擎羊")) return;
+
+	patterns.push({
+		name: "擎羊入命",
+		level: 40,
+		description:
+			"擎羊坐命宫——化气为刑，性刚果决、行事冲动，易招是非与伤灾。然此星自带开创闯劲，宜军警执法、外科、机械等刚性行当，以「刑」化「刑」反成其大。",
+		palaces: ["命宫"],
+		conditions: { required: ["擎羊坐命宫"] },
+		source: "《紫微斗数骨髓赋·六煞星论》",
+	});
+}
+
+/** 禄马交驰格：禄存与天马同宫，或同会命宫三方四正 */
+function detectLuMaJiaoChi(chart: ZiweiChart, patterns: Pattern[]) {
+	const lu = findStarPalace(chart, "禄存");
+	const ma = findStarPalace(chart, "天马");
+	if (!lu || !ma) return;
+	const samePalace = lu.branch === ma.branch;
+	const bothInSanFang = isInSanFang(chart, lu.branch) && isInSanFang(chart, ma.branch);
+	if (!samePalace && !bothInSanFang) return;
+
+	patterns.push({
+		name: "禄马交驰格",
+		level: 90,
+		description: `${samePalace ? "禄存与天马同宫" : "禄存与天马同会命宫三方四正"}，号"禄马交驰"——主财从动中生，宜外贸、物流、异地经商、常出差的行当；禄存为静财、天马为动财，一静一动方成富局。`,
+		palaces: samePalace ? [lu.name] : [lu.name, ma.name],
+		conditions: { required: [samePalace ? "禄存与天马同宫" : "禄存与天马同会命宫三方四正"] },
+		source: "传统口诀（本仓古籍库无直接出处）",
+	});
+}
+
+/** 羊陀夹命：擎羊陀罗分居命宫前后两宫（煞格） */
+function detectYangTuoJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
+	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
+	if (!prev || !next) return;
+	const okA = hasStar(prev, "擎羊") && hasStar(next, "陀罗");
+	const okB = hasStar(prev, "陀罗") && hasStar(next, "擎羊");
+	if (!okA && !okB) return;
+
+	patterns.push({
+		name: "羊陀夹命",
+		level: 40,
+		description:
+			"擎羊陀罗分居命宫前后两宫夹命——主一生多波折起伏、六亲缘薄；然逆境最磨韧劲，宜军警、外科、医疗等以「刑」化「刑」的行当，反可成器。",
+		palaces: ["命宫", prev.name, next.name],
+		conditions: { required: ["擎羊陀罗分居命宫前后两宫"] },
+		source: "《紫微斗数全书》",
+	});
+}
+
+/** 紫府朝垣格：紫微、天府分居三方四正朝拱，而命宫本身不坐紫府 */
+function detectZiFuChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+	const sanFang = sanFangAllStars(chart);
+	if (!sanFang.has("紫微") || !sanFang.has("天府")) return;
+	if (hasStar(ming, "紫微") || hasStar(ming, "天府")) return;
+
+	patterns.push({
+		name: "紫府朝垣格",
+		level: 90,
+		description:
+			"紫微天府分居命宫三方四正朝拱，命宫本身不坐紫府——两帝星照命而不自居，贵气由外而来，宜仕途或大企业高位，一生贵人不绝。",
+		palaces: getSanFangPalaces(chart)
+			.filter(p => hasStar(p, "紫微") || hasStar(p, "天府"))
+			.map(p => p.name),
+		conditions: { required: ["紫微与天府同会命宫三方四正", "命宫不坐紫微、天府"] },
+		source: "传统口诀（本仓古籍库无直接出处）",
+	});
+}
+
+/** 天马落空：天马与地空、地劫、旬空或截路同宫 */
+function detectTianMaLuoKong(chart: ZiweiChart, patterns: Pattern[]) {
+	const ma = findStarPalace(chart, "天马");
+	if (!ma) return;
+	const spoilers = ["地空", "地劫", "旬空", "截路"].filter(n => hasStar(ma, n));
+	if (!spoilers.length) return;
+
+	patterns.push({
+		name: "天马落空",
+		level: 40,
+		description: `天马与${spoilers.join("、")}同宫——"马落空亡"，主外出奔波而少实得，出差、远行、跳槽一类动态机会容易落空，宜谋定而后动。`,
+		palaces: [ma.name],
+		conditions: { required: [`天马与${spoilers.join("、")}同宫`] },
+		source: "传统口诀（本仓古籍库无直接出处）",
+	});
+}
+
+/** 昌曲化忌：文昌或文曲带生年化忌（文星受伤，不限宫位） */
+function detectChangQuHuaJi(chart: ZiweiChart, patterns: Pattern[]) {
+	for (const starName of CHANG_QU) {
+		const palace = findStarPalace(chart, starName);
+		if (!palace) continue;
+		if (getStarSiHua(palace, starName) !== "忌") continue;
+
+		patterns.push({
+			name: `${starName}化忌`,
+			level: 40,
+			description: `${starName}化忌——文星受伤，主文书、契约、考试、言论一类的事易生暗亏：签约核对条款、考试防疏漏、言语慎出口，化忌是功课而非定论。`,
+			palaces: [palace.name],
+			conditions: { required: [`${starName}带生年化忌`] },
+			source: "传统口诀（本仓古籍库无直接出处）",
+		});
+	}
+}
+
 // ────────────────── 主入口 ──────────────────
 /**
  * 识别一张命盘命中的全部格局。
@@ -1420,7 +1612,7 @@ function detectKeQuanShuangHui(chart: ZiweiChart, patterns: Pattern[]) {
  * 文本输出（`【格局识别】共 N 个`）与 `--json` 的 `patterns` 字段；`purple-star.ts` 的
  * `REQUIRED_EXPORTS` 自检盯着本导出存在。
  *
- * **实现是"全量扫描 + 累积推入"**：顺序调用 41 个 `detect*` 识别器，每个自行判条件、
+ * **实现是"全量扫描 + 累积推入"**：顺序调用 51 个 `detect*` 识别器，每个自行判条件、
  * 命中就往同一个数组推入 —— 识别器之间**互不排斥**，同一张盘可以同时命中多条，
  * 甚至是互相矛盾的格局（如既有"君臣庆会"又有"紫微入命"）。这与"取最高分格局"的思路不同，
  * 是刻意的：判词交给解读层权衡，判定层不替它做取舍。
@@ -1454,7 +1646,7 @@ export function detectPatterns(chart: ZiweiChart): Pattern[] {
 	detectZiFu(chart, ming, patterns);
 	detectFuXiangChaoYuan(chart, ming, patterns);
 	detectYangLiangChangLu(chart, ming, patterns);
-	detectHuoTanLingTan(chart, ming, patterns);
+	detectHuoTanLingTan(chart, patterns);
 	detectWuTan(chart, ming, patterns);
 	detectShaPoLang(chart, ming, patterns);
 	detectJiYueTongLiang(chart, ming, patterns);
@@ -1494,11 +1686,23 @@ export function detectPatterns(chart: ZiweiChart): Pattern[] {
 	detectHuaLuRuCai(chart, patterns);
 	detectHuaQuanRuGuan(chart, patterns);
 	detectHuaKeRuMingShen(chart, patterns);
-	detectJiYueTongLiangPartial(chart, ming, patterns);
 	detectChangQuTongHui(chart, patterns);
 	detectFuBiTongHui(chart, patterns);
 	detectKuiYueTongHui(chart, patterns);
 	detectKeQuanShuangHui(chart, patterns);
+
+	// 2026-09-27 由 db-analysis 侧收敛进来的判定（原先那边另写一遍，见本组识别器的段首说明）
+	detectQiShaChaoDou(chart, patterns);
+	detectRiYueBingMing(chart, patterns);
+	detectYingXingRuMiao(ming, patterns);
+	detectRiLiZhongTian(ming, patterns);
+	detectChangQuShouMing(ming, patterns);
+	detectQingYangRuMing(ming, patterns);
+	detectLuMaJiaoChi(chart, patterns);
+	detectYangTuoJiaMing(chart, patterns);
+	detectZiFuChaoYuan(chart, ming, patterns);
+	detectTianMaLuoKong(chart, patterns);
+	detectChangQuHuaJi(chart, patterns);
 
 	return patterns;
 }

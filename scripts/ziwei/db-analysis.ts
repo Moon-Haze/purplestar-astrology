@@ -29,6 +29,11 @@
 
 import type { ZiweiChart, Palace, Star, SiHua } from './types';
 import { BRANCHES, STEMS } from './constants';
+// 格局的**命中判定**统一由 patterns.ts 负责（本文件只写判词），故这里引它的产出。
+// 2026-09-26 先对齐了 4 个口径分歧的格局（紫府同宫 / 火贪格 / 铃贪格 / 机月同梁）；
+// 2026-09-27 把剩下 ~30 段手写判定**全部**收敛过去（含 12 个原先只在本文件存在的格局，
+// 判定搬进 patterns.ts 的「收敛自 db-analysis 的格局」一组）。至此 `detectGeJu` 不含任何判定。
+import { detectPatterns, type Pattern } from './patterns';
 // getYearStemIndex 是**公历年取模**口径，本文件只用于流年干（唯一合法用途；
 // 生年四化必须用 chart.lunarInfo.yearStem —— 两口径在 1-2 月出生者身上分叉，
 // 见 sihua.ts 的口径说明与 test/cli.test.ts 的「生年四化的年干口径」）
@@ -1389,73 +1394,73 @@ const TOPIC_KEY_PALACES: Record<TopicKey, Array<{ palace: string; lu?: string; q
 /** 识别命盘中的重要格局 */
 function detectGeJu(chart: ZiweiChart): { name: string; description: string }[] {
   const patterns: { name: string; description: string }[] = [];
-  const palaces = chart.palaces;
 
-  // 宫名归一化：内容区散布旧口径名（如 '迁移'），补「宫」字兜住 —— 与本仓
-  // Palace.name（项目口径，带「宫」字）双向兼容，旧调用零改动
-  const getPalace = (name: string) =>
-    palaces.find(p => p.name === name || p.name === name + '宫');
-  const hasStar = (palaceName: string, starName: string) => {
-    const p = getPalace(palaceName);
-    return p?.stars.some(s => s.name === starName && s.type === 'major') ?? false;
-  };
-  const getStarPalace = (starName: string) => palaces.find(p => p.stars.some(s => s.name === starName && s.type === 'major'));
+  // 格局的**命中事实层**：判定只在一处 —— `patterns.ts` 的 `detectPatterns`（那边有 82 个
+  // 独立预言机逐盘盯着）。本文件只按名字取用、写自己的判词：analyze 是短判词 + level，
+  // 这里是倪师口吻长判词。**两种文风都是有意的分工，两套判定不是。**
+  //
+  // 2026-09-27 之前，本函数散着 ~30 段**手写判定**（七杀朝斗、日月并明、禄马交驰…），
+  // 与 patterns.ts 的同名格局构成两套实现 —— 改一边另一边不会跟着变。现已全部收敛：
+  // 本函数不再判断任何格局条件，只做「取命中 → 写判词」。
+  //
+  // 存 `Pattern` 而非只存名字：判词要按 level / palaces / conditions 分版
+  // （「入格 / 不全格」「坐命 / 照命」），否则降级盘会被写成满格判词 —— 那正是收敛前
+  // 判词失真的来源（如 55 张三星盘曾被写成满格机月同梁）。
+  const detected = detectPatterns(chart);
+  const geJu = new Map(detected.map(p => [p.name, p]));
+  /** 命中里是否有这几个名字之一（同一段判词对应多个可能名字，如文昌守命 / 文曲守命）。 */
+  const hasAny = (...names: string[]): boolean => names.some(n => geJu.has(n));
+  /** 取命中里名字以某后缀结尾的一条 —— 星名派生的格局名（`X化禄入命` / `X化忌入迁`）用。 */
+  const bySuffix = (suffix: string): Pattern | undefined => detected.find(p => p.name.endsWith(suffix));
+  /** 从派生名里剥出星名：「武曲化禄入命」剥离后缀「化禄入命」得「武曲」。 */
+  const starOf = (p: Pattern, suffix: string): string => p.name.slice(0, -suffix.length);
 
-  const mingGongBranch = chart.mingGongBranch;
-
-  // 1. 七杀朝斗格：七杀在寅或申宫守命（或对宫紫微天府）
-  const qishaPalace = getStarPalace('七杀');
-  if (qishaPalace && (qishaPalace.branch === 2 || qishaPalace.branch === 8)) {
-    // 寅=2, 申=8 (0-indexed branch)
-    if (qishaPalace.branch === mingGongBranch || qishaPalace.branch === (mingGongBranch + 6) % 12) {
-      patterns.push({
-        name: '七杀朝斗格',
-        description: '七杀居寅申，对宫紫微天府相照——倪海夏说「爵禄荣昌」，这是武职大贵的格局，最宜军警政界或企业高管，一生贵气难挡。',
-      });
-    }
-  }
-
-  // 2. 紫府同宫格：紫微天府同宫（丑宫或未宫）
-  if ((hasStar('命宫', '紫微') && hasStar('命宫', '天府')) ||
-      (hasStar('迁移', '紫微') && hasStar('迁移', '天府'))) {
+  // 1. 七杀朝斗格（判定：detectQiShaChaoDou —— 七杀居寅申且落命宫或迁移宫）
+  if (hasAny('七杀朝斗格')) {
     patterns.push({
-      name: '紫府同宫格',
-      description: '紫微天府同处丑未宫——南北二帝同坐，福禄双全，一生衣食无忧，地位与财富兼得，是最稳健富贵的命格之一。',
+      name: '七杀朝斗格',
+      description: '七杀居寅申，对宫紫微天府相照——倪海夏说「爵禄荣昌」，这是武职大贵的格局，最宜军警政界或企业高管，一生贵气难挡。',
     });
   }
 
-  // 3. 日月并明格：太阳在命宫三方（卯至申宫，入庙），太阴在对应吉位
-  const taiyangPalace = getStarPalace('太阳');
-  const taiyinPalace = getStarPalace('太阴');
-  if (taiyangPalace && taiyinPalace) {
-    const taiyangBright = taiyangPalace.stars.find(s => s.name === '太阳')?.brightness === 'bright';
-    const taiyinBright = taiyinPalace.stars.find(s => s.name === '太阴')?.brightness === 'bright';
-    if (taiyangBright && taiyinBright) {
-      patterns.push({
-        name: '日月并明格',
-        description: '太阳太阴同时入庙旺——倪海夏说「做事情左右逢源，一辈子做事情荣华」，此格局代表日月同辉，一生贵人多，做事顺遂，名利双全。',
-      });
-    }
+  // 2. 紫府同宫格：紫微天府同宫（限寅宫或申宫）
+  // 判词里的宫位原写「丑未」，与安星法不符（紫微天府同宫只在寅/申，实测 300 盘亦只现申、寅），
+  // 此处一并校正；坐命与在迁移宫分两版，后者照命不坐命，不再写成满格。
+  const ziFu = geJu.get('紫府同宫');
+  if (ziFu) {
+    const inQianYi = ziFu.palaces[0] !== '命宫';
+    patterns.push({
+      name: '紫府同宫格',
+      description: inQianYi
+        ? '紫微天府同处寅申宫，且在迁移宫照拱命宫——南北二帝同坐，福禄双全，一生衣食无忧；惟非坐命，贵气照入而非自居，成就多借外力与际遇，需看会照吉煞而定。'
+        : '紫微天府同处寅申宫——南北二帝同坐，福禄双全，一生衣食无忧，地位与财富兼得，是最稳健富贵的命格之一。',
+    });
   }
-  if (taiyangPalace && taiyinPalace && taiyangPalace.branch === taiyinPalace.branch) {
+
+  // 3. 日月三格：并明（日月同时入庙）/ 同宫 / 夹命（判定分别在
+  //    detectRiYueBingMing / detectRiYueTongGong / detectRiYueJiaMing）
+  if (hasAny('日月并明格')) {
+    patterns.push({
+      name: '日月并明格',
+      description: '太阳太阴同时入庙旺——倪海夏说「做事情左右逢源，一辈子做事情荣华」，此格局代表日月同辉，一生贵人多，做事顺遂，名利双全。',
+    });
+  }
+  if (hasAny('日月同宫')) {
     patterns.push({
       name: '日月同宫格',
       description: '太阳太阴同宫，日月同照一处——一生常在名声、情感、家庭责任之间取得平衡；庙旺则左右逢源，落陷则内外压力并重。',
     });
   }
-  if (taiyangPalace && taiyinPalace) {
-    const flank = new Set([(mingGongBranch + 11) % 12, (mingGongBranch + 1) % 12]);
-    if (flank.has(taiyangPalace.branch) && flank.has(taiyinPalace.branch) && taiyangPalace.branch !== taiyinPalace.branch) {
-      patterns.push({
-        name: '日月夹命格',
-        description: '太阳太阴分居命宫两侧形成日月夹命，主一生得父母、男女贵人、明暗两路资源扶持；若日月庙旺，事业与家庭两端皆有助力。',
-      });
-    }
+  if (hasAny('日月夹命')) {
+    patterns.push({
+      name: '日月夹命格',
+      description: '太阳太阴分居命宫两侧形成日月夹命，主一生得父母、男女贵人、明暗两路资源扶持；若日月庙旺，事业与家庭两端皆有助力。',
+    });
   }
 
-  // 4. 英星入庙：破军在子宫（branch=0）或午宫（branch=6）守命
-  const pojunPalace = getStarPalace('破军');
-  if (pojunPalace && (pojunPalace.branch === 0 || pojunPalace.branch === 6) && pojunPalace.branch === mingGongBranch) {
+  // 4. 英星入庙格：破军子/午守命（判定：detectYingXingRuMiao）
+  // 男女判词不同 —— 这是**文案分支**，不是判定分支，故留在这里按性别取文。
+  if (hasAny('英星入庙格')) {
     const gender = chart.birthInfo?.gender;
     patterns.push({
       name: '英星入庙格',
@@ -1465,8 +1470,8 @@ function detectGeJu(chart: ZiweiChart): { name: string; description: string }[] 
     });
   }
 
-  // 5. 日丽中天格：太阳在午宫（branch=6）守命入庙
-  if (mingGongBranch === 6 && hasStar('命宫', '太阳')) {
+  // 5. 日丽中天格：太阳居午守命（判定：detectRiLiZhongTian）
+  if (hasAny('日丽中天格')) {
     patterns.push({
       name: '日丽中天格',
       description: '太阳午宫正午当天，光芒最盛——倪海夏列为武职大贵格，最宜政界、军警、公众事务，名利双收，社会地位极高。',
@@ -1474,264 +1479,210 @@ function detectGeJu(chart: ZiweiChart): { name: string; description: string }[] 
   }
 
   // 6. 火贪格/铃贪格：贪狼与火星或铃星同宫
-  const tanlangPalace = getStarPalace('贪狼');
-  if (tanlangPalace) {
-    const hasFire = tanlangPalace.stars.some(s => s.name === '火星');
-    const hasLing = tanlangPalace.stars.some(s => s.name === '铃星');
-    if (hasFire) {
-      patterns.push({
-        name: '火贪格',
-        description: '贪狼逢火星——偏财暴发格，倪海夏说「火贪格，出将入相，武贵之路」，一生有偏财大发的机遇，尤其在特定大限流年中可有意外横财。',
-      });
-    } else if (hasLing) {
-      patterns.push({
-        name: '铃贪格',
-        description: '贪狼逢铃星——偏财暴发格，与火贪格同效，一生有偏财大发的机遇，但暴起暴落，需把握时机并做好财富保护。',
-      });
-    }
-  }
-
-  // 7. 机月同梁格：命宫三方有天机、太阴、天同、天梁四星（不需全部）
-  const sanFangBranches = [mingGongBranch, (mingGongBranch + 4) % 12, (mingGongBranch + 8) % 12];
-  const sanFangStars = sanFangBranches.flatMap(b => {
-    const p = palaces.find(q => q.branch === b);
-    return p?.stars.filter(s => s.type === 'major').map(s => s.name) ?? [];
-  });
-  const jiYueLiangStars = ['天机', '太阴', '天同', '天梁'];
-  const matchCount = jiYueLiangStars.filter(s => sanFangStars.includes(s)).length;
-  if (matchCount >= 3) {
+  // 「火铃并存只出火贪」的优先级在 patterns.ts（详见 detectHuoTanLingTan 的注释）。
+  if (geJu.has('火贪格')) {
     patterns.push({
-      name: '机月同梁格',
-      description: '天机、太阴、天同、天梁聚于命宫三方——古训「机月同梁格，作吏人」，最宜公教、政府、传播、文化事业，一生以稳健的打工路线最为吉利，不宜冒险创业。',
+      name: '火贪格',
+      description: '贪狼逢火星——偏财暴发格，倪海夏说「火贪格，出将入相，武贵之路」，一生有偏财大发的机遇，尤其在特定大限流年中可有意外横财。',
+    });
+  } else if (geJu.has('铃贪格')) {
+    patterns.push({
+      name: '铃贪格',
+      description: '贪狼逢铃星——偏财暴发格，与火贪格同效，一生有偏财大发的机遇，但暴起暴落，需把握时机并做好财富保护。',
     });
   }
 
-  // 8. 魁钺夹命：天魁天钺分居命宫前后（夹命）
-  const mingBranch = mingGongBranch;
-  const prevPalace = palaces.find(p => p.branch === (mingBranch + 11) % 12);
-  const nextPalace = palaces.find(p => p.branch === (mingBranch + 1) % 12);
-  const prevHasKui = prevPalace?.stars.some(s => s.name === '天魁');
-  const nextHasYue = nextPalace?.stars.some(s => s.name === '天钺');
-  const prevHasYue = prevPalace?.stars.some(s => s.name === '天钺');
-  const nextHasKui = nextPalace?.stars.some(s => s.name === '天魁');
-  if ((prevHasKui && nextHasYue) || (prevHasYue && nextHasKui)) {
+  // 7. 机月同梁格：天机、太阴、天同、天梁会入命宫三方四正（四星齐为上格，只齐三星为不全格）
+  // 域是**三方四正**（含迁移宫）而非三方，原因是三方口径会漏掉全部三星盘
+  // （详见 patterns.ts 的 detectJiYueTongLiang 注释）。
+  // level 60 即「只齐三星」的降级版（该分级由 patterns.ts 独占，不到 4 星才可能为 60），
+  // 故判词分两版，避免 55/81 的三星盘被写成满格。
+  const jiYue = geJu.get('机月同梁');
+  if (jiYue) {
+    patterns.push({
+      name: '机月同梁格',
+      description:
+        jiYue.level === 60
+          ? '天机、太阴、天同、天梁会入命宫三方四正，惟四星中只齐三星——机月同梁为「不全格」，古训「机月同梁格，作吏人」的稳健路线仍在，但格局力量打折，成败更看缺位之星与四化的配合；宜公教、政府、传播、文化事业，不宜冒险创业。'
+          : '天机、太阴、天同、天梁聚于命宫三方——古训「机月同梁格，作吏人」，最宜公教、政府、传播、文化事业，一生以稳健的打工路线最为吉利，不宜冒险创业。',
+    });
+  }
+
+  // 8. 魁钺夹命：天魁天钺分居命宫前后（判定：detectKuiYueJiaMing）
+  // ⚠️ 收敛前去重：原函数在本条与下面「倪师体系补强」段各推入一次**同名**判词（后者文案略异），
+  //    一份命中会打出两条「魁钺夹命格」。现只保留本条。
+  if (hasAny('魁钺夹命')) {
     patterns.push({
       name: '魁钺夹命格',
       description: '天魁天钺夹住命宫——古诀云「魁钺夹命，官至极品」，贵人运极强，逢凶化吉，一生重要关口总有贵人相助，是命中最吉利的辅星配置。',
     });
   }
 
-  // 9. 化禄守命格：命宫主星化禄（本命年干）
-  const mingStarsList = palaces.find(p => p.branch === mingGongBranch)?.stars.filter(s => s.type === 'major') ?? [];
-  const luStar = mingStarsList.find(s => s.siHua === '禄');
-  if (luStar) {
+  // 9. 化禄守命格：命宫主星化禄（判定：detectHuaLuRuMing，产出名「X化禄入命」）
+  const luRuMing = bySuffix('化禄入命');
+  if (luRuMing) {
+    const star = starOf(luRuMing, '化禄入命');
     patterns.push({
-      name: `${luStar.name}化禄守命`,
-      description: `${luStar.name}化禄坐镇命宫——财禄直入命宫，是本命盘最直接的好运信号，命宫代表的领域因此得到充分的禄气滋润，主人生顺遂，贵人多助，该星代表的能量在你身上发挥到最佳状态。`,
+      name: `${star}化禄守命`,
+      description: `${star}化禄坐镇命宫——财禄直入命宫，是本命盘最直接的好运信号，命宫代表的领域因此得到充分的禄气滋润，主人生顺遂，贵人多助，该星代表的能量在你身上发挥到最佳状态。`,
     });
   }
 
-  // 10. 化忌守命格：命宫主星化忌（明确指出需注意）
-  const jiStar = mingStarsList.find(s => s.siHua === '忌');
-  if (jiStar) {
+  // 10. 化忌守命格：命宫主星化忌（判定：detectHuaJiRuMingQian 的命宫分支，产出名「X化忌入命」）
+  const jiRuMing = bySuffix('化忌入命');
+  if (jiRuMing) {
+    const star = starOf(jiRuMing, '化忌入命');
     patterns.push({
-      name: `${jiStar.name}化忌守命`,
-      description: `${jiStar.name}化忌坐镇命宫——古诀云「化忌主是非」，化忌入命意味着此星的能量在命主身上需要特别关注与化解，该星代表的领域容易产生阻滞或困扰。化忌不是坏事，而是一个人生重要课题的标记，越早认识越能转化为成长动力。`,
+      name: `${star}化忌守命`,
+      description: `${star}化忌坐镇命宫——古诀云「化忌主是非」，化忌入命意味着此星的能量在命主身上需要特别关注与化解，该星代表的领域容易产生阻滞或困扰。化忌不是坏事，而是一个人生重要课题的标记，越早认识越能转化为成长动力。`,
     });
   }
 
-  // 11. 禄存守命格：禄存在命宫
-  const mingPalaceStars = palaces.find(p => p.branch === mingGongBranch)?.stars ?? [];
-  const hasLucun = mingPalaceStars.some(s => s.name === '禄存');
-  if (hasLucun) {
+  // 11. 禄存守命格：禄存在命宫（判定：detectLuCunShouShen）
+  if (hasAny('禄存守命')) {
     patterns.push({
       name: '禄存守命格',
       description: '禄存坐命——财禄厚实，一生衣食无忧，有稳定的财富积累能力。但禄存前后必有擎羊陀罗夹持，孤独倾向较重，财有余而情不足；理财能力出色，守财胜于生财，适合稳健投资。',
     });
   }
 
-  // 12. 文昌文曲守命（科名格）：文昌或文曲在命宫
-  const hasWenchang = mingPalaceStars.some(s => s.name === '文昌');
-  const hasWenqu = mingPalaceStars.some(s => s.name === '文曲');
-  if (hasWenchang || hasWenqu) {
-    const starName = hasWenchang ? '文昌' : '文曲';
+  // 12. 文昌文曲守命（科名格）：判定在 detectChangQuShouMing —— 两星俱在命宫时那边只出「文昌守命」，
+  //     这里取到哪条就用哪条，与那边的取值口径一致。
+  const shouMing = geJu.get('文昌守命') ?? geJu.get('文曲守命');
+  if (shouMing) {
+    const star = starOf(shouMing, '守命');
     patterns.push({
-      name: `${starName}守命`,
-      description: `${starName}坐命——才华横溢，文采出众，有学识与艺术天赋，是科甲名声之星。主考试运佳，学业顺遂；适合文教、艺术、传媒或需要专业技艺的领域，以才华换取名利是最顺畅的人生路线。`,
+      name: `${star}守命`,
+      description: `${star}坐命——才华横溢，文采出众，有学识与艺术天赋，是科甲名声之星。主考试运佳，学业顺遂；适合文教、艺术、传媒或需要专业技艺的领域，以才华换取名利是最顺畅的人生路线。`,
     });
   }
 
-  // 13. 擎羊守命（刑克之星）：擎羊在命宫
-  const hasQingyang = mingPalaceStars.some(s => s.name === '擎羊');
-  if (hasQingyang) {
+  // 13. 擎羊守命（刑克之星）：擎羊在命宫（判定：detectQingYangRuMing）
+  if (hasAny('擎羊入命')) {
     patterns.push({
       name: '擎羊入命',
       description: '擎羊坐命——化气为刑，性格冲动，行事果决但容易招惹是非，有手术意外的风险。擎羊入命之人多具有开创闯劲，能在逆境中突破，宜从事军警执法、外科、机械等刚性行业。倪海夏说「擎羊入命，刑克自伤」，需特别注意冲动带来的后果。',
     });
   }
 
-  // ───────── 以下为倪师体系的关键格局补强 ─────────
+  // ───────── 以下为倪师体系的关键格局补强（判定同样全在 patterns.ts）─────────
 
-  const sanFangBranchArr = [
-    mingGongBranch,
-    (mingGongBranch + 4) % 12,
-    (mingGongBranch + 8) % 12,
-    (mingGongBranch + 6) % 12,
-  ];
-  const sanFangPalaces = palaces.filter(p => sanFangBranchArr.includes(p.branch));
-  const mingPalaceStarsAll = sanFangPalaces.find(p => p.branch === mingGongBranch)?.stars ?? [];
-  const sanFangStarNames = new Set(sanFangPalaces.flatMap(p => p.stars.map(s => s.name)));
-
-  const findAnyStarPalace = (starName: string) => palaces.find(p => p.stars.some(s => s.name === starName));
-  const dashingBranch = (mingGongBranch + 1) % 12;
-  const lagBranch = (mingGongBranch + 11) % 12;
-
-  if (['七杀', '破军', '贪狼'].every(name => sanFangStarNames.has(name))) {
+  // 14. 杀破狼格（判定：detectShaPoLang）
+  if (hasAny('杀破狼')) {
     patterns.push({
       name: '杀破狼格',
       description: '七杀、破军、贪狼会照命宫三方四正，形成杀破狼格——一生变动大、开创性强，适合走创业、技术、军警、外地发展路线，关键在以行动力换格局。',
     });
   }
 
-  const lianzhenPalace = getStarPalace('廉贞');
-  const tianxiangPalace = getStarPalace('天相');
-  if (lianzhenPalace && tianxiangPalace && lianzhenPalace.branch === tianxiangPalace.branch) {
+  // 15. 廉相格：廉贞天相同宫（判定：detectLianXiang，那边的名字是「廉贞天相格」）
+  if (hasAny('廉贞天相格')) {
     patterns.push({
       name: '廉相格',
       description: '廉贞天相同宫成廉相格，才艺、制度、协调并重；格局清贵，宜法务、行政、管理、审美与规则并行的领域。',
     });
   }
 
-  const wuquPalace = getStarPalace('武曲');
-  if (wuquPalace && qishaPalace && wuquPalace.branch === qishaPalace.branch) {
+  // 16. 武曲七杀（判定：detectWuQiSha）
+  if (hasAny('武曲七杀')) {
     patterns.push({
       name: '武曲七杀',
       description: '武曲七杀同宫，财星遇将星，做事果断、执行强、风险也重；宜军警、金融、创业、工程技术，忌冲动投资与硬碰硬。',
     });
   }
 
-  const zuofuPalace = findAnyStarPalace('左辅');
-  const youbiPalace = findAnyStarPalace('右弼');
-  if (zuofuPalace && youbiPalace) {
-    const flank = new Set([dashingBranch, lagBranch]);
-    if (flank.has(zuofuPalace.branch) && flank.has(youbiPalace.branch) && zuofuPalace.branch !== youbiPalace.branch) {
-      patterns.push({
-        name: '辅弼夹命格',
-        description: '左辅右弼分居命宫两侧形成辅弼夹命，主左右有人、团队助力强；命主若愿意纳谏用人，事业格局更容易放大。',
-      });
-    }
+  // 17. 辅弼夹命格（判定：detectFuBiJiaMing）
+  if (hasAny('辅弼夹命')) {
+    patterns.push({
+      name: '辅弼夹命格',
+      description: '左辅右弼分居命宫两侧形成辅弼夹命，主左右有人、团队助力强；命主若愿意纳谏用人，事业格局更容易放大。',
+    });
   }
 
-  // 14. 双禄交流（化禄星 + 禄存同宫或三方会照）
-  const luStarInSanFang = sanFangPalaces.flatMap(p => p.stars.filter(s => s.siHua === '禄'));
-  const lucunPalace = findAnyStarPalace('禄存');
-  if (luStarInSanFang.length > 0 && lucunPalace && sanFangBranchArr.includes(lucunPalace.branch)) {
+  // 18. 双禄交流：化禄星与禄存同会命宫三方四正
+  //     （判定：detectShuangLuChaoYuan，那边的名字是「双禄朝垣」——同一格局的两个叫法）
+  if (hasAny('双禄朝垣')) {
     patterns.push({
       name: '双禄交流格',
       description: '化禄星与禄存同时会照命宫三方四正——倪师称为「双禄交流」，主一生财源滚滚、福禄双至，财禄稳定且增长有力，是紫微斗数财运最上乘的格局之一。',
     });
   }
 
-  // 15. 禄马交驰（禄存 + 天马同宫或同在三方）
-  const tianmaPalace = findAnyStarPalace('天马');
-  if (lucunPalace && tianmaPalace) {
-    const sameBranch = lucunPalace.branch === tianmaPalace.branch;
-    const bothInSanFang = sanFangBranchArr.includes(lucunPalace.branch) && sanFangBranchArr.includes(tianmaPalace.branch);
-    if (sameBranch || bothInSanFang) {
-      patterns.push({
-        name: '禄马交驰格',
-        description: '禄存与天马同宫或会照——倪师说「禄马交驰，财从动中来」，主财富动中取，宜从事出差、外地经商、贸易物流等行业，异地财、流动财尤旺；禄存为稳财，天马为动财，一稳一动，财源通畅。',
-      });
-    }
+  // 19. 禄马交驰：禄存 + 天马同宫或同会三方四正（判定：detectLuMaJiaoChi）
+  if (hasAny('禄马交驰格')) {
+    patterns.push({
+      name: '禄马交驰格',
+      description: '禄存与天马同宫或会照——倪师说「禄马交驰，财从动中来」，主财富动中取，宜从事出差、外地经商、贸易物流等行业，异地财、流动财尤旺；禄存为稳财，天马为动财，一稳一动，财源通畅。',
+    });
   }
 
-  // 16. 魁钺夹命（天魁天钺分别在命宫前后）
-  const kueiPalace = findAnyStarPalace('天魁');
-  const yuePalace = findAnyStarPalace('天钺');
-  if (kueiPalace && yuePalace) {
-    const flank = new Set([dashingBranch, lagBranch]);
-    if (flank.has(kueiPalace.branch) && flank.has(yuePalace.branch) && kueiPalace.branch !== yuePalace.branch) {
-      patterns.push({
-        name: '魁钺夹命格',
-        description: '天魁天钺夹命——贵人格局，一生多得贵人提携，逢凶化吉。倪师说「魁钺夹命，贵人在旁」，在关键时刻总有长辈、师长、上司出现给予帮助，是非常稀有的吉格。',
-      });
-    }
+  // 20. 火铃夹命（煞格警示）（判定：detectHuoLingJiaMing，那边的名字是「火铃夹命」）
+  if (hasAny('火铃夹命')) {
+    patterns.push({
+      name: '火铃夹命（煞格）',
+      description: '火星铃星夹命——倪师警示：「火铃夹命，性急刑伤」，性格急躁易怒，行事冲动，人生起伏大；需修炼耐心与情绪管理，避免因冲动招祸，尤其留意意外伤害与官非。',
+    });
   }
 
-  // 17. 火铃夹命（火星铃星夹命，煞格警示）
-  const huoPalace = findAnyStarPalace('火星');
-  const lingPalace = findAnyStarPalace('铃星');
-  if (huoPalace && lingPalace) {
-    const flank = new Set([dashingBranch, lagBranch]);
-    if (flank.has(huoPalace.branch) && flank.has(lingPalace.branch) && huoPalace.branch !== lingPalace.branch) {
-      patterns.push({
-        name: '火铃夹命（煞格）',
-        description: '火星铃星夹命——倪师警示：「火铃夹命，性急刑伤」，性格急躁易怒，行事冲动，人生起伏大；需修炼耐心与情绪管理，避免因冲动招祸，尤其留意意外伤害与官非。',
-      });
-    }
+  // 21. 羊陀夹命（煞格警示）（判定：detectYangTuoJiaMing）
+  //     ⚠️ 与上一条「禄存守命格」实为**同一组盘**：安星法里擎羊恒在禄存前一位、陀罗恒在后一位，
+  //     故羊陀夹的永远是禄存所在宫（实测 300 条基准 0 差异）。两个名字都报是照倪师侧的展示口径，
+  //     不是判定分歧 —— 若嫌重复，该改的是展示口径，不是判定。
+  if (hasAny('羊陀夹命')) {
+    patterns.push({
+      name: '羊陀夹命（煞格）',
+      description: '擎羊陀罗夹命——典型的凶格，倪师说「羊陀夹命，刑克逃不掉」，一生多波折、起伏、六亲缘薄。但在逆境中能磨砺坚韧品格，适合走军警、医生、外科等以「刑」化「刑」的行业，反成其大。',
+    });
   }
 
-  // 18. 羊陀夹命（擎羊陀罗夹命，煞格警示）
-  const yangPalace = findAnyStarPalace('擎羊');
-  const tuoPalace = findAnyStarPalace('陀罗');
-  if (yangPalace && tuoPalace) {
-    const flank = new Set([dashingBranch, lagBranch]);
-    if (flank.has(yangPalace.branch) && flank.has(tuoPalace.branch) && yangPalace.branch !== tuoPalace.branch) {
-      patterns.push({
-        name: '羊陀夹命（煞格）',
-        description: '擎羊陀罗夹命——典型的凶格，倪师说「羊陀夹命，刑克逃不掉」，一生多波折、起伏、六亲缘薄。但在逆境中能磨砺坚韧品格，适合走军警、医生、外科等以「刑」化「刑」的行业，反成其大。',
-      });
-    }
-  }
-
-  // 19. 紫府朝垣（紫微、天府分别在三方四正，命宫非紫府）
-  const hasZiweiInSanFang = sanFangStarNames.has('紫微');
-  const hasTianfuInSanFang = sanFangStarNames.has('天府');
-  const mingHasZiweiOrFu = mingPalaceStarsAll.some(s => s.name === '紫微' || s.name === '天府');
-  if (hasZiweiInSanFang && hasTianfuInSanFang && !mingHasZiweiOrFu) {
+  // 22. 紫府朝垣（判定：detectZiFuChaoYuan）
+  if (hasAny('紫府朝垣格')) {
     patterns.push({
       name: '紫府朝垣格',
       description: '紫微天府分居三方朝拱命宫——格局高贵，命主有王侯气象，一生贵人不绝，事业稳中有贵。这是非同宫的紫府格局，能量辐射命宫，适合走仕途或大企业管理层。',
     });
   }
 
-  // 20. 化忌入迁移宫（半空折翅警示）
-  const qianyiPalace = getPalace('迁移');
-  const qianyiJi = qianyiPalace?.stars.find(s => s.siHua === '忌' && s.type === 'major');
-  if (qianyiJi) {
+  // 23. 化忌入迁移宫（半空折翅警示）
+  //     （判定：detectHuaJiRuMingQian 的迁移宫分支，产出名「X化忌入迁」）
+  const jiRuQian = bySuffix('化忌入迁');
+  if (jiRuQian) {
+    const star = starOf(jiRuQian, '化忌入迁');
     patterns.push({
-      name: `${qianyiJi.name}化忌冲命（半空折翅）`,
-      description: `倪师警示：「迁移化忌，半空折翅」——${qianyiJi.name}化忌落迁移对冲命宫，是本命盘最需要关注的警讯之一。三十岁前后容易遇到重大挫折，外出需格外小心交通安全与意外，宜稳守不宜远行冒险，特别是长途出差、异地创业需谨慎评估。`,
+      name: `${star}化忌冲命（半空折翅）`,
+      description: `倪师警示：「迁移化忌，半空折翅」——${star}化忌落迁移对冲命宫，是本命盘最需要关注的警讯之一。三十岁前后容易遇到重大挫折，外出需格外小心交通安全与意外，宜稳守不宜远行冒险，特别是长途出差、异地创业需谨慎评估。`,
     });
   }
 
-  // 21. 天马落空（天马同宫地空、地劫、旬空、截路）
-  if (tianmaPalace) {
-    const spoilers = tianmaPalace.stars.filter(s => ['地空', '地劫', '旬空', '截路'].includes(s.name));
-    if (spoilers.length > 0) {
-      patterns.push({
-        name: '天马落空',
-        description: `天马与${spoilers.map(s => s.name).join('、')}同宫——倪师说「马落空亡，徒劳奔波」，外出事务多劳而无功，出差、远行、跳槽等动态机会容易竹篮打水，宜三思而后行。`,
-      });
-    }
+  // 24. 天马落空（判定：detectTianMaLuoKong）
+  //     同宫的杂曜名从 patterns.ts 发布的 conditions 里取回 —— 不再在这里列一遍名单，
+  //     否则名单一改两处会不一致。此处只做文案插值，不参与判定。
+  const luoKong = geJu.get('天马落空');
+  if (luoKong) {
+    const joined = (luoKong.conditions?.required?.[0] ?? '').replace(/^天马与/, '').replace(/同宫$/, '');
+    patterns.push({
+      name: '天马落空',
+      description: `天马与${joined}同宫——倪师说「马落空亡，徒劳奔波」，外出事务多劳而无功，出差、远行、跳槽等动态机会容易竹篮打水，宜三思而后行。`,
+    });
   }
 
-  // 22. 文昌化忌 / 文曲化忌（文星受伤）
-  const wenchangJi = palaces.flatMap(p => p.stars).find(s => s.name === '文昌' && s.siHua === '忌');
-  const wenquJi = palaces.flatMap(p => p.stars).find(s => s.name === '文曲' && s.siHua === '忌');
-  if (wenchangJi) {
+  // 25. 昌曲化忌（文星受伤）（判定：detectChangQuHuaJi）
+  if (hasAny('文昌化忌')) {
     patterns.push({
       name: '文昌化忌',
       description: '文昌化忌——文书契约是非多，倪师说「昌曲化忌，文书暗亏」，签约前务必仔细核对条款，防印鉴、合约、考试凭证相关的麻烦；考试、论文、文件审批类的事宜需格外严谨。',
     });
   }
-  if (wenquJi) {
+  if (hasAny('文曲化忌')) {
     patterns.push({
       name: '文曲化忌',
       description: '文曲化忌——口才表达与情感感性方面易生波折；社交场合的言语需谨慎，桃花事务多纠葛，文艺创作虽有灵感但落地易生误解。',
     });
   }
 
+  // 本函数至此**不含任何格局判定**（2026-09-27 收敛完成）：上面每一处 `if` 都只是在
+  // patterns.ts 的命中结果里查名字。新增格局请加到 patterns.ts（那边有独立预言机覆盖），
+  // 这里只补判词；某个名字在这边没有对应判词时，它只是不出现在 topic 的展示里，不影响判定。
   return patterns;
 }
 

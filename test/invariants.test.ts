@@ -626,28 +626,33 @@ describe("排盘结构不变量", () => {
 			});
 		}
 
-		// ── 格局识别：70 个格局名的独立预言机 ──
+		// ── 格局识别：82 个格局名的独立预言机 ──
 		//
-		// patterns.ts（约 1,190 行、41 个 detect 函数）产出 **70 个**格局名，此前零基准。
+		// patterns.ts（51 个 detect 函数）产出 **82 个**格局名，此前零基准。
+		// （2026-09-26 起「机月同梁三星会」并入「机月同梁」，故比原先少 1 名、少 1 个识别器；
+		//   2026-09-27 起 db-analysis 侧的 12 个格局判定也收敛进来，故比原先多 13 名、多 11 个识别器
+		//   —— 「文昌守命 / 文曲守命」由同一个识别器产出。）
 		//
 		// 【独立性从哪来】
 		// 实现定位三方四正 / 夹宫走的是**地支算术**（getSanFangPalaces 的 `[m,(m+4),(m+8),(m+6)]`、
-		// getJiaPalaces 的 `(b±1)`）；下面一律走**宫名**（"财帛宫"、"兄弟宫"…），火贪/铃贪处
-		// 还用**相对偏移取模**而实现是正向枚举。两条路径在「怎么从 chart 找到那几个宫」这一步
-		// 分岔，任一侧写错都会对不上。宫名本身的正确性由上面「十二宫」块的两条偏移恒等式独立
-		// 保证 —— 分层验证，不是同源复读。
+		// getJiaPalaces 的 `(b±1)`）；下面一律走**宫名**（"财帛宫"、"兄弟宫"…），同宫类则走
+		// 「找共同容器」而实现是「分别定位再比地支」。两条路径在「怎么从 chart 找到那几个宫」
+		// 这一步分岔，任一侧写错都会对不上。宫名本身的正确性由上面「十二宫」块的两条偏移恒等式
+		// 独立保证 —— 分层验证，不是同源复读。
 		//
 		// 【效力边界 · 别高估】
 		// · 只核对「格局**是否触发**」。level（90/75/…）不覆盖 —— 它由 bonus/breaking
 		//   决定，属判词分级；description / conditions 的文案同理不覆盖
 		// · 「昌曲夹命」「火铃夹命」在 300 条基准里触发 **0** 次，其断言是**空转**的，已显式登记
-		// · 预言机复刻的是**实现当前的口径**，不是照命理理想口径重写。已发现一处口径争议
-		//   （火贪/铃贪，见 huoTan），此处照实现复刻，免得把口径分歧伪装成回归
+		// · 预言机复刻的是**实现当前的口径**，不是照命理理想口径重写。两处口径曾与实现分歧
+		//   （火贪/铃贪的会照范围、紫府同宫是否限命/迁），2026-09-26 已按「与 topic 侧统一」定案，
+		//   见 tanWithSha 与紫府同宫两处的说明 —— 现在是**照定案口径**复刻
+		// · 「羊陀夹命」与「禄存守命」在 300 条基准上**判定完全相同**（安星法使然，实测 0/300
+		//   差异）。两条预言机都在，但它们是同一条命理事实的两面，不是两条独立证据
 		describe("格局识别", () => {
 			// ══ 定位基础设施：一律走宫名 ══
 			const SANFANG_NAMES = ["命宫", "财帛宫", "官禄宫", "迁移宫"];
 			const JIA_NAMES = ["兄弟宫", "父母宫"];
-			const TRINE_OFFSETS = [0, 4, 6, 8]; // 本宫 / 三合 ×2 / 对宫
 
 			// 参数 n 放宽为 string | undefined：身宫按地支定位时可能取不到宫名（palaceNameOfBranch），
 			// 此时 find 不命中、?. 兜底空集，与运行时行为一致。
@@ -692,20 +697,37 @@ describe("排盘结构不变量", () => {
 				return !!x && !!y && x.name === y.name;
 			};
 
-			/** 火贪 / 铃贪：贪狼会照命宫三方，且该煞星与贪狼互为三方四正。
+			/** 紫微落在命宫或迁移宫（紫府同宫的附加域限制，实现走地支 `(命宫+6)%12`，这里走宫名）。 */
+			const ziFuInMingOrQianYi = (chart: ZiweiChart): boolean => {
+				const p = palaceOfStar(chart, "紫微");
+				return !!p && (p.name === "命宫" || p.name === "迁移宫");
+			};
+
+			/** 某星是否入庙（bright）。亮度是排盘产出的事实，两侧无第二条独立路径可走。 */
+			const brightStar = (chart: ZiweiChart, s: string): boolean => {
+				const p = palaceOfStar(chart, s);
+				return p?.stars.find(x => x.name === s)?.brightness === "bright";
+			};
+
+			/** 某星是否带指定四化（不限宫、不限主星）。 */
+			const starHasHua = (chart: ZiweiChart, s: string, hua: string): boolean => {
+				const p = palaceOfStar(chart, s);
+				return !!p && p.stars.some(x => x.name === s && x.siHua === hua);
+			};
+
+			/** 火贪 / 铃贪：煞星与贪狼**同宫**（不含会照，也不引用命宫）。
 			 *
-			 *  ⚠️ **已知口径争议**：实现的 `sameOrTrine` 用的是**贪狼的**三方四正，而 `isInSanFang`
-			 *  只约束了**贪狼**会照命宫，未要求该煞星也会照命宫。贪狼不在命宫时「贪狼的三方」
-			 *  ≠「命宫的三方」（三方四正**不是传递关系**：命宫与贪狼每差 6 位对宫就换一个），
-			 *  于是命中的盘里有一部分煞星其实照不到命宫。实测 32 次命中里 **12 次**属此类。
-			 *  此处照**实现**复刻（不是照命理理想口径），免得把口径分歧伪装成回归；
-			 *  要不要收紧留给项目方定 —— 收紧只需再加一条 `SANFANG_NAMES.includes(sha.name)`。 */
-			const huoTan = (chart: ZiweiChart, shaName: string): boolean => {
+			 *  ⚠️ **本口径于 2026-09-26 由「两套引擎对齐」定案，取 topic 侧（`db-analysis.ts` 的
+			 *  `detectGeJu`）为准**，不是照命理理想口径重写。此前两侧各有一套：
+			 *  analyze 侧要求「贪狼在命宫三方四正 + 煞星与贪狼互为三方四正」（且因三方四正不可传递，
+			 *  实测 32 次命中里有 12 次的煞星其实照不到命宫）；topic 侧只要求同宫。
+			 *  合并后 analyze 侧改为同宫，**代价是格局不再锚定命宫** —— 贪狼在田宅宫逢火铃也会计入。
+			 *
+			 *  同宫时火铃并存只出「火贪格」（沿用 topic 的 `else if`），故铃贪的预言机要排除火贪。 */
+			const tanWithSha = (chart: ZiweiChart, shaName: string): boolean => {
 				const tan = palaceOfStar(chart, "贪狼");
 				const sha = palaceOfStar(chart, shaName);
-				if (!tan || !sha) return false;
-				if (!SANFANG_NAMES.includes(tan.name)) return false;
-				return TRINE_OFFSETS.includes(offsetBetween(tan.branch, sha.branch));
+				return !!tan && !!sha && tan.name === sha.name;
 			};
 
 			// ══ 预言机表：格局名 → 「是否应当触发」 ══
@@ -715,9 +737,18 @@ describe("排盘结构不变量", () => {
 			const ORACLE: Record<string, (c: ZiweiChart) => boolean> = {
 				// ── 三方四正包含类 ──
 				杀破狼: c => hasAll(sanFangNames(c), "七杀", "破军", "贪狼"),
-				机月同梁: c => hasAll(sanFangNames(c), "天机", "太阴", "天同", "天梁"),
-				机月同梁三星会: c =>
-					["天机", "太阴", "天同", "天梁"].filter(s => sanFangNames(c).includes(s)).length === 3,
+				// 机月同梁：命宫**三方四正**会齐四星中任意 ≥3 颗。四星齐 level 90，只齐三星 level 60
+				// 并在 conditions.breaking 记「不全格」—— 但**触发与否只看 ≥3**，分级不进预言机。
+				//
+				// 2026-09-26 前这里是「四星齐才触发」，恰好三星的盘另有一个独立格局名
+				// 「机月同梁三星会」（level 60）；现合并为单一「机月同梁」，故本行的阈值从 `=== 4`
+				// 放宽到 `>= 3`（口径即「两个旧格局的并集」，26 + 55 = 81 盘）。
+				//
+				// ⚠️ 别再把它收窄成「命宫**三方**（不含迁移宫）」—— 实测那样只剩 26 盘、
+				// 55 盘的三星盘一盘不中（四星在命宫三方的个数恒为 0/1/2/4，**永不为 3**），
+				// 等于把 analyze 独有的降级覆盖整段删掉，而 topic 侧本来就不报这 55 盘（无矛盾可消）。
+				机月同梁: c =>
+					["天机", "太阴", "天同", "天梁"].filter(s => sanFangNames(c).includes(s)).length >= 3,
 				三奇加会: c => ["禄", "权", "科"].every(h => hasSiHuaInSanFang(c, h)),
 				双禄朝垣: c => hasSiHuaInSanFang(c, "禄") && sanFangNames(c).includes("禄存"),
 				廉杀羊: c => hasAll(sanFangNames(c), "廉贞", "七杀", "擎羊"),
@@ -738,7 +769,10 @@ describe("排盘结构不变量", () => {
 				阳梁昌禄: c => hasAll(sanFangNames(c), "太阳", "天梁", "文昌", "禄存"),
 
 				// ── 同宫 / 对宫类 ──
-				紫府同宫: c => sharePalace(c, "紫微", "天府"),
+				// 紫府同宫：紫微天府同宫，且该宫是命宫或迁移宫（2026-09-26 由「任一同宫」收窄，
+				// 取 topic 侧 detectGeJu 的口径 —— 它只认 `hasStar('命宫'|'迁移', ...)`）。
+				紫府同宫: c => sharePalace(c, "紫微", "天府") && ziFuInMingOrQianYi(c),
+
 				廉贞天相格: c => sharePalace(c, "廉贞", "天相"),
 				武曲七杀: c => sharePalace(c, "武曲", "七杀"),
 				天同天梁格: c => sharePalace(c, "天同", "天梁"),
@@ -766,8 +800,8 @@ describe("排盘结构不变量", () => {
 					if (!f || !x || f.name === x.name) return false;
 					return SANFANG_NAMES.includes(f.name) && SANFANG_NAMES.includes(x.name);
 				},
-				火贪格: c => huoTan(c, "火星"),
-				铃贪格: c => huoTan(c, "铃星"),
+				火贪格: c => tanWithSha(c, "火星"),
+				铃贪格: c => !tanWithSha(c, "火星") && tanWithSha(c, "铃星"),
 
 				// ── 夹宫类 ──
 				日月夹命: c => jiaPair(c, "太阳", "太阴"),
@@ -806,6 +840,56 @@ describe("排盘结构不变量", () => {
 					siHuaMajorNames(c, "命宫", "科").length === 0 &&
 					palaceNamed(c, "命宫")!.branch !== c.shenGongBranch &&
 					siHuaMajorNames(c, palaceNameOfBranch(c, c.shenGongBranch), "科").length > 0,
+
+				// ── 2026-09-27 由 db-analysis 收敛进来的 12 个格局名 ──
+				// 这些名字此前只在 `detectGeJu` 里手写判定（topic 命令的展示判词）。
+				// 现在判定搬进 patterns.ts，本组预言机按**同样口径**复刻 —— 复刻的是迁过来的口径本身，
+				// 不是照命理理想口径重写；有分歧要改的是实现与预言机两边，不是只改一边。
+				七杀朝斗格: c => {
+					const p = palaceOfStar(c, "七杀");
+					if (!p) return false;
+					// 寅=2 / 申=8：这里走地支**名**，实现走地支**索引**，两条路径在「寅申是哪两支」上分岔
+					if (BRANCHES[p.branch] !== "寅" && BRANCHES[p.branch] !== "申") return false;
+					return p.name === "命宫" || p.name === "迁移宫";
+				},
+				// 日月并明：太阳、太阴**同时**入庙（不限宫位，也不要求同宫 —— 后者是「日月同宫」）
+				日月并明格: c => brightStar(c, "太阳") && brightStar(c, "太阴"),
+				英星入庙格: c => {
+					const m = palaceNamed(c, "命宫")!;
+					return (
+						namesNamed(c, "命宫").includes("破军") &&
+						(BRANCHES[m.branch] === "子" || BRANCHES[m.branch] === "午")
+					);
+				},
+				日丽中天格: c =>
+					BRANCHES[palaceNamed(c, "命宫")!.branch] === "午" && namesNamed(c, "命宫").includes("太阳"),
+
+				// 昌曲守命：两者同在命宫时只出「文昌守命」（实现取了文昌优先，故文曲那行要排除文昌）
+				文昌守命: c => namesNamed(c, "命宫").includes("文昌"),
+				文曲守命: c => !namesNamed(c, "命宫").includes("文昌") && namesNamed(c, "命宫").includes("文曲"),
+				擎羊入命: c => namesNamed(c, "命宫").includes("擎羊"),
+
+				禄马交驰格: c => {
+					const lu = palaceOfStar(c, "禄存");
+					const ma = palaceOfStar(c, "天马");
+					if (!lu || !ma) return false;
+					return lu.name === ma.name || (SANFANG_NAMES.includes(lu.name) && SANFANG_NAMES.includes(ma.name));
+				},
+				// 羊陀夹命：擎羊陀罗分居命宫两侧。
+				// ⚠️ 实测它与「禄存守命」在 300 条基准上**判定完全相同（0/300 差异）**——
+				// 这是安星法的必然：擎羊恒在禄存前一位、陀罗恒在后一位，故羊陀夹的永远是禄存所在宫。
+				// 保留为两个名字是照 topic 侧的展示口径（那边两个都报），不是判定分歧。
+				羊陀夹命: c => jiaPair(c, "擎羊", "陀罗"),
+				紫府朝垣格: c =>
+					hasAll(sanFangNames(c), "紫微", "天府") &&
+					!namesNamed(c, "命宫").includes("紫微") &&
+					!namesNamed(c, "命宫").includes("天府"),
+				天马落空: c => {
+					const p = palaceOfStar(c, "天马");
+					return !!p && p.stars.some(s => ["地空", "地劫", "旬空", "截路"].includes(s.name));
+				},
+				文昌化忌: c => starHasHua(c, "文昌", "忌"),
+				文曲化忌: c => starHasHua(c, "文曲", "忌"),
 			};
 
 			// 名字由星名派生的格局：逐个穷举不现实，改断「后缀匹配到的名字集合」
