@@ -331,10 +331,9 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 
 `package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-typescript 1.8.6），排盘结果不会因环境不同而分叉。
 
-**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中约 10,700 行自定义内核代码（按 `scripts/ziwei`、`classics`、`nihai` 下的 `.ts` 递归计，10,742 行；不含 CLI 的 `scripts/purple-star.ts` 与 `scripts/cli/`）——格局库（`patterns.ts`，约 2,050 行，含判定 + 两套判词）、分析数据库 v3（`db-analysis.ts`，约 1,950 行，拷自 `reference/ziwei-samples-toolkit/`）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
+**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 `scripts/ziwei`、`classics`、`nihai` 下的 `.ts` 全是本仓自有的内核代码（不含 CLI 的 `scripts/purple-star.ts` 与 `scripts/cli/`）——格局库（`patterns.ts`，含判定 + 两套判词）、分析数据库 v3（`db-analysis.ts`，拷自 `reference/ziwei-samples-toolkit/`）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
 
-> 行数只给量级、不给精确值：内核在本仓库持续演化，精确数字必然漂移。要当前值就现场数：
-> `find scripts/ziwei scripts/classics scripts/nihai -name '*.ts' | xargs wc -l | tail -1`
+> 此处有意不登记内核行数：内核在本仓库持续演化，写死的数字改一次代码就失效一次。
 
 ### 内核来源
 
