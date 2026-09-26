@@ -13,7 +13,7 @@ import type { CliArgs } from "./args";
 import { fmtDate } from "./render";
 import type { BirthInfo } from "@/ziwei/types";
 import { BRANCHES, SHICHEN } from "@/ziwei/constants";
-import { PROVINCES } from "@/ziwei/cities";
+import { PROVINCES, type CityInfo } from "@/ziwei/cities";
 import { Lunar, type Solar } from "lunar-typescript";
 
 /**
@@ -229,6 +229,18 @@ export interface LongitudeHit {
 }
 
 /**
+ * {@link PROVINCES} 平铺后的全部城市（335 条），模块加载时算一次。
+ *
+ * @remarks
+ * 提到模块作用域是为了**可读性** —— 「查经度就是在这 335 条里找」比每次调用现摊一遍更直白。
+ * ⚠️ **不要**把它当性能优化引用：`flatMap` 实测约 4μs/次，省下的是噪声。
+ *
+ * ⚠️ 这是对 `PROVINCES` 的一次性快照。该表是静态常量、运行时不变，故当前等价；
+ * 若将来有测试去改 `PROVINCES` 的内容，`findLongitude` 会读到陈旧数据。
+ */
+const ALL_CITIES: CityInfo[] = PROVINCES.flatMap(p => p.cities);
+
+/**
  * 按城市名查经度（容错匹配）。
  *
  * @param cityName - 用户输入的城市名，可带行政区划后缀
@@ -244,10 +256,10 @@ export function findLongitude(cityName: string): LongitudeHit | null {
 	const raw = String(cityName).trim();
 	if (!raw) return null;
 	const bare = stripSuffix(raw);
-	const all = PROVINCES.flatMap(p => p.cities);
 
 	const hit =
-		all.find(c => c.name === raw) ?? (bare !== raw ? all.find(c => c.name === bare) : null);
+		ALL_CITIES.find(c => c.name === raw) ??
+		(bare !== raw ? ALL_CITIES.find(c => c.name === bare) : null);
 	// exact 表示「用户写的就是表里那个名字」，用于上层决定要不要提示已做容错解析
 	if (hit)
 		return {
@@ -257,7 +269,7 @@ export function findLongitude(cityName: string): LongitudeHit | null {
 			ambiguous: null,
 		};
 
-	const cands = all.filter(c => c.name.includes(bare) || bare.includes(c.name));
+	const cands = ALL_CITIES.filter(c => c.name.includes(bare) || bare.includes(c.name));
 	if (!cands.length) return null;
 	// 命中最短的城市名（最短名最贴近用户所写），并记录同长度候选供提示
 	cands.sort((a, b) => a.name.length - b.name.length || a.name.localeCompare(b.name));
