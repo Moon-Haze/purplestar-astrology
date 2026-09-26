@@ -93,6 +93,22 @@ export interface Pattern {
 	conditions?: PatternCondition; // 成立条件分层（v2 新增）
 	source?: string; // 古籍出处（v2 新增）
 }
+/**
+ * 识别器上下文：{@link detectPatterns} 一次组装、传给全部 51 个识别器的公共入参。
+ *
+ * @remarks
+ * 各识别器**按需解构** —— `{ chart }` / `{ chart, ming }` / `{ ming }`。
+ * 这样既让注册表能是一张同签名函数数组（见 `DETECTORS`），又保住
+ * 「这个识别器依不依赖命宫」在签名处一眼可见。
+ *
+ * ⚠️ `ming` 由 `detectPatterns` 保证非空：无命宫时它已提前 `return`，
+ * 识别器无须再判空。
+ */
+interface DetectContext {
+	chart: ZiweiChart;
+	ming: Palace;
+}
+
 
 /**
  * 格局名的「同现象异名」裁决表 —— 同一现象只留一个**显示名**。
@@ -608,7 +624,7 @@ const BRANCH_NAMES = BRANCHES;
 // ────────────────── 正格识别器 ──────────────────
 
 /** 君臣庆会：紫微入命，左辅右弼同会（同宫或三方） */
-function detectJunChenQingHui(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectJunChenQingHui({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	if (!hasStar(ming, "紫微")) return;
 	const sanFangSet = sanFangAllStars(chart);
 	const hasZuo = sanFangSet.has("左辅");
@@ -635,7 +651,7 @@ function detectJunChenQingHui(chart: ZiweiChart, ming: Palace, patterns: Pattern
 }
 
 /** 紫府同宫：紫微+天府同宫，且该宫为命宫或迁移宫 */
-function detectZiFu(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectZiFu({ chart }: DetectContext, patterns: Pattern[]) {
 	const ziwei = findStarPalace(chart, "紫微");
 	const tianfu = findStarPalace(chart, "天府");
 	if (!ziwei || !tianfu || ziwei.branch !== tianfu.branch) return;
@@ -676,7 +692,7 @@ function detectZiFu(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 }
 
 /** 府相朝垣：天府、天相分别坐守命宫的三方四正 */
-function detectFuXiangChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectFuXiangChaoYuan({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	const tianfu = findStarPalace(chart, "天府");
 	const tianxiang = findStarPalace(chart, "天相");
 	if (!tianfu || !tianxiang) return;
@@ -704,7 +720,7 @@ function detectFuXiangChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Patter
 }
 
 /** 阳梁昌禄：太阳+天梁+文昌+禄存四星会命宫，大贵格 */
-function detectYangLiangChangLu(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectYangLiangChangLu({ chart }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	if (
 		!sanFangSet.has("太阳") ||
@@ -737,7 +753,7 @@ function detectYangLiangChangLu(chart: ZiweiChart, ming: Palace, patterns: Patte
 }
 
 /** 火贪格 / 铃贪格：贪狼与火星或铃星**同宫**（不含会照） */
-function detectHuoTanLingTan(chart: ZiweiChart, patterns: Pattern[]) {
+function detectHuoTanLingTan({ chart }: DetectContext, patterns: Pattern[]) {
 	const tan = findStarPalace(chart, "贪狼");
 	if (!tan) return;
 
@@ -781,7 +797,7 @@ function detectHuoTanLingTan(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 武贪格：武曲+贪狼 同宫（丑、未） 或 对照 */
-function detectWuTan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectWuTan({ chart }: DetectContext, patterns: Pattern[]) {
 	const wu = findStarPalace(chart, "武曲");
 	const tan = findStarPalace(chart, "贪狼");
 	if (!wu || !tan) return;
@@ -813,7 +829,7 @@ function detectWuTan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 }
 
 /** 杀破狼：七杀、破军、贪狼三方齐聚 */
-function detectShaPoLang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectShaPoLang({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	const has = ["七杀", "破军", "贪狼"].filter(s => sanFangSet.has(s));
 	if (has.length < 3) return;
@@ -843,7 +859,7 @@ function detectShaPoLang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 }
 
 /** 机月同梁：天机、太阴、天同、天梁会入命宫三方四正（四星齐为上格，只齐三星为不全格） */
-function detectJiYueTongLiang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectJiYueTongLiang({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	const has = ["天机", "太阴", "天同", "天梁"].filter(s => sanFangSet.has(s));
 	if (has.length < 3) return;
@@ -884,7 +900,7 @@ function detectJiYueTongLiang(chart: ZiweiChart, ming: Palace, patterns: Pattern
 }
 
 /** 廉贞天相：同宫 */
-function detectLianXiang(chart: ZiweiChart, patterns: Pattern[]) {
+function detectLianXiang({ chart }: DetectContext, patterns: Pattern[]) {
 	const lian = findStarPalace(chart, "廉贞");
 	const xiang = findStarPalace(chart, "天相");
 	if (!lian || !xiang || lian.branch !== xiang.branch) return;
@@ -915,7 +931,7 @@ function detectLianXiang(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 武曲七杀：同宫，将星配财星 */
-function detectWuQiSha(chart: ZiweiChart, patterns: Pattern[]) {
+function detectWuQiSha({ chart }: DetectContext, patterns: Pattern[]) {
 	const wu = findStarPalace(chart, "武曲");
 	const qi = findStarPalace(chart, "七杀");
 	if (!wu || !qi || wu.branch !== qi.branch) return;
@@ -943,7 +959,7 @@ function detectWuQiSha(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 天同天梁：同宫 */
-function detectTongLiang(chart: ZiweiChart, patterns: Pattern[]) {
+function detectTongLiang({ chart }: DetectContext, patterns: Pattern[]) {
 	const tong = findStarPalace(chart, "天同");
 	const liang = findStarPalace(chart, "天梁");
 	if (!tong || !liang || tong.branch !== liang.branch) return;
@@ -967,7 +983,7 @@ function detectTongLiang(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 日月同宫：太阳太阴丑或未宫同宫 */
-function detectRiYueTongGong(chart: ZiweiChart, patterns: Pattern[]) {
+function detectRiYueTongGong({ chart }: DetectContext, patterns: Pattern[]) {
 	const sun = findStarPalace(chart, "太阳");
 	const moon = findStarPalace(chart, "太阴");
 	if (!sun || !moon || sun.branch !== moon.branch) return;
@@ -995,7 +1011,7 @@ function detectRiYueTongGong(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 日月夹命：太阳太阴在命宫前后两宫 */
-function detectRiYueJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
+function detectRiYueJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
 	if (!prev || !next) return;
 	const prevHasSun = hasStar(prev, "太阳");
@@ -1029,7 +1045,7 @@ function detectRiYueJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 巨日同宫：巨门太阳同入寅或申 */
-function detectJuRiTongGong(chart: ZiweiChart, patterns: Pattern[]) {
+function detectJuRiTongGong({ chart }: DetectContext, patterns: Pattern[]) {
 	const ju = findStarPalace(chart, "巨门");
 	const sun = findStarPalace(chart, "太阳");
 	if (!ju || !sun || ju.branch !== sun.branch) return;
@@ -1056,7 +1072,7 @@ function detectJuRiTongGong(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 石中隐玉：巨门入命于子午宫 */
-function detectShiZhongYinYu(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectShiZhongYinYu({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	if (!hasStar(ming, "巨门")) return;
 	if (ming.branch !== 0 && ming.branch !== 6) return; // 子(0) 或 午(6)
 
@@ -1081,7 +1097,7 @@ function detectShiZhongYinYu(chart: ZiweiChart, ming: Palace, patterns: Pattern[
 }
 
 /** 明珠出海：命宫在未空宫，对宫丑宫为太阳太阴 */
-function detectMingZhuChuHai(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectMingZhuChuHai({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	if (ming.branch !== 7) return; // 命在未
 	if (getMajorStarNames(ming).length > 0) return; // 命宫为空宫
 	const dui = getDuiGong(chart, ming.branch);
@@ -1109,7 +1125,7 @@ function detectMingZhuChuHai(chart: ZiweiChart, ming: Palace, patterns: Pattern[
 }
 
 /** 紫微独坐入命 */
-function detectZiWeiInMing(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectZiWeiInMing({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	if (!hasStar(ming, "紫微") || hasStar(ming, "天府")) return;
 
 	const required = ["紫微独坐命宫（无天府同坐）"];
@@ -1133,7 +1149,7 @@ function detectZiWeiInMing(chart: ZiweiChart, ming: Palace, patterns: Pattern[])
 }
 
 /** 辅弼夹命 */
-function detectFuBiJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
+function detectFuBiJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
 	if (!prev || !next) return;
 	const prevHasZuo = hasStar(prev, "左辅");
@@ -1162,7 +1178,7 @@ function detectFuBiJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 昌曲夹命 */
-function detectChangQuJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
+function detectChangQuJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
 	if (!prev || !next) return;
 	const prevHasChang = hasStar(prev, "文昌");
@@ -1183,7 +1199,7 @@ function detectChangQuJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 魁钺夹命 */
-function detectKuiYueJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
+function detectKuiYueJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
 	if (!prev || !next) return;
 	const okA = hasStar(prev, "天魁") && hasStar(next, "天钺");
@@ -1204,7 +1220,7 @@ function detectKuiYueJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 双禄朝垣：化禄 + 禄存 同会三方 */
-function detectShuangLuChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectShuangLuChaoYuan({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	const sanFang = getSanFangPalaces(chart);
 	let huaLuFound = false;
 	let luCunFound = false;
@@ -1233,7 +1249,7 @@ function detectShuangLuChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Patte
 }
 
 /** 三奇加会：化禄 化权 化科 同会三方 */
-function detectSanQiJiaHui(chart: ZiweiChart, patterns: Pattern[]) {
+function detectSanQiJiaHui({ chart }: DetectContext, patterns: Pattern[]) {
 	const sanFangPalaces = getSanFangPalaces(chart);
 	let lu = false,
 		quan = false,
@@ -1259,7 +1275,7 @@ function detectSanQiJiaHui(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 化禄入命/官/财 */
-function detectHuaLuRuMing(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectHuaLuRuMing({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	const huaLuStar = ming.stars.find(s => s.siHua === "禄" && s.type === "major");
 	if (!huaLuStar) return;
 
@@ -1277,7 +1293,7 @@ function detectHuaLuRuMing(chart: ZiweiChart, ming: Palace, patterns: Pattern[])
 // ────────────────── 恶格识别器 ──────────────────
 
 /** 化忌入命（坐命宫）/ 化忌冲命（坐迁移宫，对冲命宫） */
-function detectHuaJiRuMingQian(chart: ZiweiChart, patterns: Pattern[]) {
+function detectHuaJiRuMingQian({ chart }: DetectContext, patterns: Pattern[]) {
 	const qianBranch = (chart.mingGongBranch + 6) % 12;
 	for (const palace of chart.palaces) {
 		if (palace.branch !== chart.mingGongBranch && palace.branch !== qianBranch) continue;
@@ -1306,7 +1322,7 @@ function detectHuaJiRuMingQian(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 羊陀夹忌：化忌坐宫，左右被擎羊陀罗夹 */
-function detectYangTuoJiaJi(chart: ZiweiChart, patterns: Pattern[]) {
+function detectYangTuoJiaJi({ chart }: DetectContext, patterns: Pattern[]) {
 	for (const palace of chart.palaces) {
 		const jiStar = palace.stars.find(s => s.siHua === "忌");
 		if (!jiStar) continue;
@@ -1332,7 +1348,7 @@ function detectYangTuoJiaJi(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 火铃夹命：火星铃星分居命宫前后 */
-function detectHuoLingJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
+function detectHuoLingJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
 	if (!prev || !next) return;
 	const okA = hasStar(prev, "火星") && hasStar(next, "铃星");
@@ -1355,7 +1371,7 @@ function detectHuoLingJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 空劫夹命：地空地劫分居命宫前后 */
-function detectKongJieJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
+function detectKongJieJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
 	if (!prev || !next) return;
 	const okA = hasStar(prev, "地空") && hasStar(next, "地劫");
@@ -1374,7 +1390,7 @@ function detectKongJieJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 廉杀羊：廉贞、七杀、擎羊三星会照（流年大限最凶） */
-function detectLianShaYang(chart: ZiweiChart, patterns: Pattern[]) {
+function detectLianShaYang({ chart }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!(sanFangSet.has("廉贞") && sanFangSet.has("七杀") && sanFangSet.has("擎羊"))) return;
 
@@ -1390,7 +1406,7 @@ function detectLianShaYang(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 巨火羊：巨门、火星、擎羊会照 */
-function detectJuHuoYang(chart: ZiweiChart, patterns: Pattern[]) {
+function detectJuHuoYang({ chart }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!(sanFangSet.has("巨门") && sanFangSet.has("火星") && sanFangSet.has("擎羊"))) return;
 
@@ -1406,7 +1422,7 @@ function detectJuHuoYang(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 铃昌陀武：铃星、文昌、陀罗、武曲会照（限至投河） */
-function detectLingChangTuoWu(chart: ZiweiChart, patterns: Pattern[]) {
+function detectLingChangTuoWu({ chart }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!(
 		sanFangSet.has("铃星") &&
@@ -1428,7 +1444,7 @@ function detectLingChangTuoWu(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 马头带箭：擎羊在午宫坐命 */
-function detectMaTouDaiJian(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectMaTouDaiJian({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	if (ming.branch !== 6) return; // 必须午
 	if (!hasStar(ming, "擎羊")) return;
 
@@ -1456,7 +1472,7 @@ function detectMaTouDaiJian(chart: ZiweiChart, ming: Palace, patterns: Pattern[]
 // 这些都是单一条件触发的轻量识别，level 多为 neutral / good。
 
 /** 禄存守身：禄存入身宫（或命宫与身宫同宫） */
-function detectLuCunShouShen(chart: ZiweiChart, patterns: Pattern[]) {
+function detectLuCunShouShen({ chart }: DetectContext, patterns: Pattern[]) {
 	const luCunPalace = findStarPalace(chart, "禄存");
 	if (!luCunPalace) return;
 	const inMing = luCunPalace.branch === chart.mingGongBranch;
@@ -1479,7 +1495,7 @@ function detectLuCunShouShen(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 天马入命/迁：驿马星动 */
-function detectTianMaRuMing(chart: ZiweiChart, patterns: Pattern[]) {
+function detectTianMaRuMing({ chart }: DetectContext, patterns: Pattern[]) {
 	const tianMaPalace = findStarPalace(chart, "天马");
 	if (!tianMaPalace) return;
 	const inMing = tianMaPalace.branch === chart.mingGongBranch;
@@ -1498,7 +1514,7 @@ function detectTianMaRuMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 化禄入财：财帛宫主星化禄 */
-function detectHuaLuRuCai(chart: ZiweiChart, patterns: Pattern[]) {
+function detectHuaLuRuCai({ chart }: DetectContext, patterns: Pattern[]) {
 	const cai = chart.palaces.find(p => p.name === "财帛宫");
 	if (!cai) return;
 	const luStar = cai.stars.find(s => s.type === "major" && s.siHua === "禄");
@@ -1514,7 +1530,7 @@ function detectHuaLuRuCai(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 化权入官：官禄宫主星化权 */
-function detectHuaQuanRuGuan(chart: ZiweiChart, patterns: Pattern[]) {
+function detectHuaQuanRuGuan({ chart }: DetectContext, patterns: Pattern[]) {
 	const guan = chart.palaces.find(p => p.name === "官禄宫");
 	if (!guan) return;
 	const quanStar = guan.stars.find(s => s.type === "major" && s.siHua === "权");
@@ -1530,8 +1546,7 @@ function detectHuaQuanRuGuan(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 化科入命/身：科名加身 */
-function detectHuaKeRuMingShen(chart: ZiweiChart, patterns: Pattern[]) {
-	const ming = chart.palaces.find(p => p.branch === chart.mingGongBranch);
+function detectHuaKeRuMingShen({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	const shen = chart.palaces.find(p => p.branch === chart.shenGongBranch);
 	const target = [ming, shen].filter((p): p is Palace => Boolean(p));
 	for (const p of target) {
@@ -1552,11 +1567,9 @@ function detectHuaKeRuMingShen(chart: ZiweiChart, patterns: Pattern[]) {
 
 
 /** 昌曲同会：文昌+文曲都在命三方四正 */
-function detectChangQuTongHui(chart: ZiweiChart, patterns: Pattern[]) {
+function detectChangQuTongHui({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!sanFangSet.has("文昌") || !sanFangSet.has("文曲")) return;
-	const ming = chart.palaces.find(p => p.branch === chart.mingGongBranch);
-	if (!ming) return;
 	const inMing = hasStar(ming, "文昌") && hasStar(ming, "文曲");
 	patterns.push({
 		name: inMing ? "昌曲坐命" : "昌曲同会",
@@ -1571,7 +1584,7 @@ function detectChangQuTongHui(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 辅弼同会：左辅+右弼都在命三方四正 */
-function detectFuBiTongHui(chart: ZiweiChart, patterns: Pattern[]) {
+function detectFuBiTongHui({ chart }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!sanFangSet.has("左辅") || !sanFangSet.has("右弼")) return;
 	patterns.push({
@@ -1586,7 +1599,7 @@ function detectFuBiTongHui(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 魁钺同会：天魁+天钺都在命三方四正 */
-function detectKuiYueTongHui(chart: ZiweiChart, patterns: Pattern[]) {
+function detectKuiYueTongHui({ chart }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!sanFangSet.has("天魁") || !sanFangSet.has("天钺")) return;
 	patterns.push({
@@ -1601,7 +1614,7 @@ function detectKuiYueTongHui(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 科权双会：化科 + 化权 同会三方四正 */
-function detectKeQuanShuangHui(chart: ZiweiChart, patterns: Pattern[]) {
+function detectKeQuanShuangHui({ chart }: DetectContext, patterns: Pattern[]) {
 	const sfPalaces = getSanFangPalaces(chart);
 	let hasKe = false,
 		hasQuan = false;
@@ -1635,7 +1648,7 @@ function detectKeQuanShuangHui(chart: ZiweiChart, patterns: Pattern[]) {
 // 查不到的写「传统口诀（本仓古籍库无直接出处）」—— **不编造篇名**，等将来补录古籍再换。
 
 /** 七杀朝斗格：七杀居寅或申，且落命宫或迁移宫（对宫紫微天府相照） */
-function detectQiShaChaoDou(chart: ZiweiChart, patterns: Pattern[]) {
+function detectQiShaChaoDou({ chart }: DetectContext, patterns: Pattern[]) {
 	const qisha = findStarPalace(chart, "七杀");
 	if (!qisha) return;
 	if (qisha.branch !== 2 && qisha.branch !== 8) return; // 寅=2、申=8
@@ -1656,7 +1669,7 @@ function detectQiShaChaoDou(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 日月并明格：太阳与太阴**同时**入庙（不限宫位，也不要求同宫——后者是「日月同宫」） */
-function detectRiYueBingMing(chart: ZiweiChart, patterns: Pattern[]) {
+function detectRiYueBingMing({ chart }: DetectContext, patterns: Pattern[]) {
 	const sun = findStarPalace(chart, "太阳");
 	const moon = findStarPalace(chart, "太阴");
 	if (!sun || !moon) return;
@@ -1676,7 +1689,7 @@ function detectRiYueBingMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 英星入庙格：破军居子或午守命 */
-function detectYingXingRuMiao(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectYingXingRuMiao({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	if (ming.branch !== 0 && ming.branch !== 6) return; // 子=0、午=6
 	if (!hasStar(ming, "破军")) return;
 
@@ -1698,7 +1711,7 @@ function detectYingXingRuMiao(chart: ZiweiChart, ming: Palace, patterns: Pattern
 }
 
 /** 日丽中天格：太阳居午守命，光芒最盛 */
-function detectRiLiZhongTian(ming: Palace, patterns: Pattern[]) {
+function detectRiLiZhongTian({ ming }: DetectContext, patterns: Pattern[]) {
 	if (ming.branch !== 6) return; // 必须午
 	if (!hasStar(ming, "太阳")) return;
 
@@ -1716,7 +1729,7 @@ function detectRiLiZhongTian(ming: Palace, patterns: Pattern[]) {
 }
 
 /** 昌曲守命：文昌或文曲坐命宫（两星俱在时只出「文昌守命」，与 db-analysis 的取值一致） */
-function detectChangQuShouMing(ming: Palace, patterns: Pattern[]) {
+function detectChangQuShouMing({ ming }: DetectContext, patterns: Pattern[]) {
 	const hasChang = hasStar(ming, "文昌");
 	const hasQu = hasStar(ming, "文曲");
 	if (!hasChang && !hasQu) return;
@@ -1734,7 +1747,7 @@ function detectChangQuShouMing(ming: Palace, patterns: Pattern[]) {
 }
 
 /** 擎羊入命：擎羊坐命宫（刑克之星。擎羊在午守命另有更专门的「马头带箭」，两者可同时命中） */
-function detectQingYangRuMing(ming: Palace, patterns: Pattern[]) {
+function detectQingYangRuMing({ ming }: DetectContext, patterns: Pattern[]) {
 	if (!hasStar(ming, "擎羊")) return;
 
 	patterns.push({
@@ -1751,7 +1764,7 @@ function detectQingYangRuMing(ming: Palace, patterns: Pattern[]) {
 }
 
 /** 禄马交驰格：禄存与天马同宫，或同会命宫三方四正 */
-function detectLuMaJiaoChi(chart: ZiweiChart, patterns: Pattern[]) {
+function detectLuMaJiaoChi({ chart }: DetectContext, patterns: Pattern[]) {
 	const lu = findStarPalace(chart, "禄存");
 	const ma = findStarPalace(chart, "天马");
 	if (!lu || !ma) return;
@@ -1772,7 +1785,7 @@ function detectLuMaJiaoChi(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 羊陀夹命：擎羊陀罗分居命宫前后两宫（煞格） */
-function detectYangTuoJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
+function detectYangTuoJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
 	if (!prev || !next) return;
 	const okA = hasStar(prev, "擎羊") && hasStar(next, "陀罗");
@@ -1795,7 +1808,7 @@ function detectYangTuoJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 紫府朝垣格：紫微、天府分居三方四正朝拱，而命宫本身不坐紫府 */
-function detectZiFuChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
+function detectZiFuChaoYuan({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	const sanFang = sanFangAllStars(chart);
 	if (!sanFang.has("紫微") || !sanFang.has("天府")) return;
 	if (hasStar(ming, "紫微") || hasStar(ming, "天府")) return;
@@ -1816,7 +1829,7 @@ function detectZiFuChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]
 }
 
 /** 天马落空：天马与地空、地劫、旬空或截路同宫 */
-function detectTianMaLuoKong(chart: ZiweiChart, patterns: Pattern[]) {
+function detectTianMaLuoKong({ chart }: DetectContext, patterns: Pattern[]) {
 	const ma = findStarPalace(chart, "天马");
 	if (!ma) return;
 	const spoilers = ["地空", "地劫", "旬空", "截路"].filter(n => hasStar(ma, n));
@@ -1836,7 +1849,7 @@ function detectTianMaLuoKong(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 昌曲化忌：文昌或文曲带生年化忌（文星受伤，不限宫位） */
-function detectChangQuHuaJi(chart: ZiweiChart, patterns: Pattern[]) {
+function detectChangQuHuaJi({ chart }: DetectContext, patterns: Pattern[]) {
 	for (const starName of CHANG_QU) {
 		const palace = findStarPalace(chart, starName);
 		if (!palace) continue;
@@ -1870,7 +1883,7 @@ function detectChangQuHuaJi(chart: ZiweiChart, patterns: Pattern[]) {
  * 文本输出（`【格局识别】共 N 个`）与 `--json` 的 `patterns` 字段；`purple-star.ts` 的
  * `REQUIRED_EXPORTS` 自检盯着本导出存在。
  *
- * **实现是"全量扫描 + 累积推入"**：顺序调用 51 个 `detect*` 识别器，每个自行判条件、
+ * **实现是"全量扫描 + 累积推入"**：按函数内的 `DETECTORS` 注册表依次调用 51 个 `detect*` 识别器，每个自行判条件、
  * 命中就往同一个数组推入 —— 识别器之间**互不排斥**，同一张盘可以同时命中多条，
  * 甚至是互相矛盾的格局（如既有"君臣庆会"又有"紫微入命"）。这与"取最高分格局"的思路不同，
  * 是刻意的：判词交给解读层权衡，判定层不替它做取舍。
@@ -1882,8 +1895,9 @@ function detectChangQuHuaJi(chart: ZiweiChart, patterns: Pattern[]) {
  * ⚠️ **命宫缺失即空手而归**：开头的 `if (!ming) return patterns;` 让整轮识别直接跳过，
  * 返回空数组而非报错。正常命盘必有命宫，此分支只在 `chart` 数据不完整时触发。
  *
- * ⚠️ **顺序即语义**：识别器按"上格 → 中格 → 助力格 → 恶格 → 基础格局"分组调用，改动调用
- * 顺序会改变输出的排列（`test/invariants.test.ts` 有断言按名集合比对，不按序）。
+ * ⚠️ **顺序即语义**：识别器全部登记在函数内的 `DETECTORS` 表里，按"上格 → 中格 → 助力格 →
+ * 恶格 → 基础格局 → 收敛组"分组排列。增删条目、调整组序或组内次序，都会改变输出的排列
+ * （`test/invariants.test.ts` 有断言按名集合比对，不按序）。
  *
  * @example
  * ```ts
@@ -1899,68 +1913,75 @@ export function detectPatterns(chart: ZiweiChart): Pattern[] {
 	const ming = chart.palaces.find(p => p.branch === chart.mingGongBranch);
 	if (!ming) return patterns;
 
-	// 上格
-	detectJunChenQingHui(chart, ming, patterns);
-	detectZiFu(chart, ming, patterns);
-	detectFuXiangChaoYuan(chart, ming, patterns);
-	detectYangLiangChangLu(chart, ming, patterns);
-	detectHuoTanLingTan(chart, patterns);
-	detectWuTan(chart, ming, patterns);
-	detectShaPoLang(chart, ming, patterns);
-	detectJiYueTongLiang(chart, ming, patterns);
+	// 识别器注册表。**顺序即语义** —— 分组与组内次序都影响输出排列（见函数头说明）。
+	// 签名统一为 ({ chart, ming }: DetectContext, patterns)；各识别器按需解构，
+	// 因此「谁依赖命宫」在下表里仍然一眼可见。
+	const DETECTORS: ReadonlyArray<(ctx: DetectContext, patterns: Pattern[]) => void> = [
+		// 上格
+		detectJunChenQingHui,
+		detectZiFu,
+		detectFuXiangChaoYuan,
+		detectYangLiangChangLu,
+		detectHuoTanLingTan,
+		detectWuTan,
+		detectShaPoLang,
+		detectJiYueTongLiang,
 
-	// 中格
-	detectLianXiang(chart, patterns);
-	detectWuQiSha(chart, patterns);
-	detectTongLiang(chart, patterns);
-	detectRiYueTongGong(chart, patterns);
-	detectRiYueJiaMing(chart, patterns);
-	detectJuRiTongGong(chart, patterns);
-	detectShiZhongYinYu(chart, ming, patterns);
-	detectMingZhuChuHai(chart, ming, patterns);
-	detectZiWeiInMing(chart, ming, patterns);
+		// 中格
+		detectLianXiang,
+		detectWuQiSha,
+		detectTongLiang,
+		detectRiYueTongGong,
+		detectRiYueJiaMing,
+		detectJuRiTongGong,
+		detectShiZhongYinYu,
+		detectMingZhuChuHai,
+		detectZiWeiInMing,
 
-	// 助力格
-	detectFuBiJiaMing(chart, patterns);
-	detectChangQuJiaMing(chart, patterns);
-	detectKuiYueJiaMing(chart, patterns);
-	detectShuangLuChaoYuan(chart, ming, patterns);
-	detectSanQiJiaHui(chart, patterns);
-	detectHuaLuRuMing(chart, ming, patterns);
+		// 助力格
+		detectFuBiJiaMing,
+		detectChangQuJiaMing,
+		detectKuiYueJiaMing,
+		detectShuangLuChaoYuan,
+		detectSanQiJiaHui,
+		detectHuaLuRuMing,
 
-	// 恶格
-	detectHuaJiRuMingQian(chart, patterns);
-	detectYangTuoJiaJi(chart, patterns);
-	detectHuoLingJiaMing(chart, patterns);
-	detectKongJieJiaMing(chart, patterns);
-	detectLianShaYang(chart, patterns);
-	detectJuHuoYang(chart, patterns);
-	detectLingChangTuoWu(chart, patterns);
-	detectMaTouDaiJian(chart, ming, patterns);
+		// 恶格
+		detectHuaJiRuMingQian,
+		detectYangTuoJiaJi,
+		detectHuoLingJiaMing,
+		detectKongJieJiaMing,
+		detectLianShaYang,
+		detectJuHuoYang,
+		detectLingChangTuoWu,
+		detectMaTouDaiJian,
 
-	// 基础格局（提升识别覆盖率，让普通命盘也能识别 1-3 个）
-	detectLuCunShouShen(chart, patterns);
-	detectTianMaRuMing(chart, patterns);
-	detectHuaLuRuCai(chart, patterns);
-	detectHuaQuanRuGuan(chart, patterns);
-	detectHuaKeRuMingShen(chart, patterns);
-	detectChangQuTongHui(chart, patterns);
-	detectFuBiTongHui(chart, patterns);
-	detectKuiYueTongHui(chart, patterns);
-	detectKeQuanShuangHui(chart, patterns);
+		// 基础格局（提升识别覆盖率，让普通命盘也能识别 1-3 个）
+		detectLuCunShouShen,
+		detectTianMaRuMing,
+		detectHuaLuRuCai,
+		detectHuaQuanRuGuan,
+		detectHuaKeRuMingShen,
+		detectChangQuTongHui,
+		detectFuBiTongHui,
+		detectKuiYueTongHui,
+		detectKeQuanShuangHui,
 
-	// 2026-09-27 由 db-analysis 侧收敛进来的判定（原先那边另写一遍，见本组识别器的段首说明）
-	detectQiShaChaoDou(chart, patterns);
-	detectRiYueBingMing(chart, patterns);
-	detectYingXingRuMiao(chart, ming, patterns);
-	detectRiLiZhongTian(ming, patterns);
-	detectChangQuShouMing(ming, patterns);
-	detectQingYangRuMing(ming, patterns);
-	detectLuMaJiaoChi(chart, patterns);
-	detectYangTuoJiaMing(chart, patterns);
-	detectZiFuChaoYuan(chart, ming, patterns);
-	detectTianMaLuoKong(chart, patterns);
-	detectChangQuHuaJi(chart, patterns);
+		// 2026-09-27 由 db-analysis 侧收敛进来的判定（原先那边另写一遍，见本组识别器的段首说明）
+		detectQiShaChaoDou,
+		detectRiYueBingMing,
+		detectYingXingRuMiao,
+		detectRiLiZhongTian,
+		detectChangQuShouMing,
+		detectQingYangRuMing,
+		detectLuMaJiaoChi,
+		detectYangTuoJiaMing,
+		detectZiFuChaoYuan,
+		detectTianMaLuoKong,
+		detectChangQuHuaJi,
+	];
+
+	for (const detect of DETECTORS) detect({ chart, ming }, patterns);
 
 	return patterns;
 }
