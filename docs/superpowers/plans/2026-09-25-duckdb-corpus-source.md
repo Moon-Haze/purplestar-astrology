@@ -64,6 +64,7 @@ spec 是愿景文档，它说了软件该做什么，没说它会遇到什么。
 
 > ⚠️ **`reference/`、`reference/ziwei-samples-toolkit`、`.../samples-out` 实测三层全是实体目录，无一是符号链接**
 > （`[ -L ]` 逐一验过）。本轮所有关于「符号链接接入」的旧说法都要改。
+
 - `samples` 518,400 行；`palaces` 6,220,800 行（每样本恒 12 行）；`topics`/`topic_dict`/`topic_lines` 本次不用。
 - 语料范围：60 年（1924–1983）× 12 月 × 30 日 × 12 时辰（**`hour` 列是 0–11 的时辰序号，不是 24 小时制**）× 2 性别 = 518,400。`sample_id` 为 1..518400，连续无重复。
 - `palaces` 中行的物理顺序是 `[1,0,11,…,2]`（丑起），**必须**用 `ORDER BY (branch + 10) % 12` 排成 `[2,3,…,11,0,1]`（寅起）才能与 fixtures 一致。
@@ -138,48 +139,48 @@ const hasKey = (type, name) => type === "major" || SIHUA_STARS.has(name);
 
 语料按 `60 年 × 12 月 × 30 日 × 12 时辰 × 2 性别` 穷举生成，**不遵循真实月长**：
 
-| 五元组 | 在库中 |
-|---|---|
-| `1924-02-30`（2 月 30 日） | **存在**（24 条）—— 别拿它当「查不到」的反例 |
-| `day = 31` | 不存在（日是 1..30） |
-| `hour = 12` | 不存在（时辰序号是 0..11；12 是晚子时口径，语料无） |
-| `month = 13` | 不存在 |
-| `year = 1900` | 不存在（年份是 1924..1983） |
-| `1924-01-01 时0 male` | 存在，且 `sample_id = 1` |
+| 五元组                     | 在库中                                              |
+| -------------------------- | --------------------------------------------------- |
+| `1924-02-30`（2 月 30 日） | **存在**（24 条）—— 别拿它当「查不到」的反例        |
+| `day = 31`                 | 不存在（日是 1..30）                                |
+| `hour = 12`                | 不存在（时辰序号是 0..11；12 是晚子时口径，语料无） |
+| `month = 13`               | 不存在                                              |
+| `year = 1900`              | 不存在（年份是 1924..1983）                         |
+| `1924-01-01 时0 male`      | 存在，且 `sample_id = 1`                            |
 
 ### 列的取值域（实测）
 
-| 列 | 实测取值 |
-|---|---|
-| `gender` | `male` / `female` |
-| `longitude` | 恒 `120.0`（JS 侧 `120`，`JSON.stringify` 输出 `120`，与 jsonl 一致） |
-| `major_brightness[]` | 仅 `bright` / `normal` / `dim`，**无空串**，长度与 `major_stars` 相等 |
-| `major_stars[]` 长度 | 0 / 1 / 2（空宫为 0） |
-| `lucky_stars[]` / `sha_stars[]` / `minor_stars[]` | 无空串 |
-| `sihua_stars[]` | 形如 `["巨门:权"]`，`星名:四化`；某星无四化则**不在数组内** |
-| `palace_name` | 12 个值全集：`命宫 兄弟 夫妻 子女 财帛 疾厄 迁移 仆役 官禄 田宅 福德 父母`（**iztro 原生口径**，有「仆役」无「交友」） |
-| `is_leap_month` | `true` / `false` |
-| `daxian_start` / `daxian_end` | 无空值；每样本 12 个互不相同的连续十年段 |
+| 列                                                | 实测取值                                                                                                               |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `gender`                                          | `male` / `female`                                                                                                      |
+| `longitude`                                       | 恒 `120.0`（JS 侧 `120`，`JSON.stringify` 输出 `120`，与 jsonl 一致）                                                  |
+| `major_brightness[]`                              | 仅 `bright` / `normal` / `dim`，**无空串**，长度与 `major_stars` 相等                                                  |
+| `major_stars[]` 长度                              | 0 / 1 / 2（空宫为 0）                                                                                                  |
+| `lucky_stars[]` / `sha_stars[]` / `minor_stars[]` | 无空串                                                                                                                 |
+| `sihua_stars[]`                                   | 形如 `["巨门:权"]`，`星名:四化`；某星无四化则**不在数组内**                                                            |
+| `palace_name`                                     | 12 个值全集：`命宫 兄弟 夫妻 子女 财帛 疾厄 迁移 仆役 官禄 田宅 福德 父母`（**iztro 原生口径**，有「仆役」无「交友」） |
+| `is_leap_month`                                   | `true` / `false`                                                                                                       |
+| `daxian_start` / `daxian_end`                     | 无空值；每样本 12 个互不相同的连续十年段                                                                               |
 
 ---
 
 ## 文件结构
 
-| 文件 | 动作 | 职责 |
-|---|---|---|
-| `package.json` | 改（+1 行） | `devDependencies` 加 `@duckdb/node-api: 1.5.5-r.5` |
-| `package-lock.json` | 改（+165 行） | 依赖锁 |
-| `test/lib/sample-source.ts` | **新建** | 唯一懂 DuckDB 与表结构的地方：连接、SQL、行→`BaselineSample` 的纯映射、流式遍历 |
-| `test/sample-source.test.ts` | **新建** | 用**合成行**与**不存在的路径**测纯映射与错误指引。不碰任何数据文件 |
-| `test/lib/run.ts` | 改（+1 行） | 把新测试文件登记进 `LAYERS`，否则分层汇总会报「未映射到层」 |
-| `test/tools/verify-source.ts` | **新建** | 互验工具：jsonl ↔ DuckDB 逐字节比对 |
-| `test/tools/full-corpus.ts` | 改 | 数据源换成 `sample-source`；`--year`/`--month`/`--limit` 语义不变 |
-| `test/tools/build-fixtures.ts` | 改 | 取样本换成 `fetchSample`；下标算址的 `pickFrom` 删除 |
-| `test/README.md` | 改 | 数据集描述补上 DuckDB 载体与「两者并存、互为验证」；工具数 3→4；补一节四层验证分工 |
-| `docs/test/05-corpus-and-blindspots.md` | 改 | 同上；并更正「符号链接」的说法与 `full-corpus.mjs` 的扩展名 |
-| `.gitignore` | 改（1 个数字） | 注释里的库体积 `1.8G` → `1.7G`（实测） |
-| `.markdownlint.json` | 改（2 处，本计划的增补） | 放行 `ts`/`typescript` 围栏；MD010 跳过代码块 |
-| `test/tools/year-scan.ts` | **不动** | 1900–2100 恒等式扫描，与本次改造无关 |
+| 文件                                    | 动作                     | 职责                                                                               |
+| --------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------- |
+| `package.json`                          | 改（+1 行）              | `devDependencies` 加 `@duckdb/node-api: 1.5.5-r.5`                                 |
+| `package-lock.json`                     | 改（+165 行）            | 依赖锁                                                                             |
+| `test/lib/sample-source.ts`             | **新建**                 | 唯一懂 DuckDB 与表结构的地方：连接、SQL、行→`BaselineSample` 的纯映射、流式遍历    |
+| `test/sample-source.test.ts`            | **新建**                 | 用**合成行**与**不存在的路径**测纯映射与错误指引。不碰任何数据文件                 |
+| `test/lib/run.ts`                       | 改（+1 行）              | 把新测试文件登记进 `LAYERS`，否则分层汇总会报「未映射到层」                        |
+| `test/tools/verify-source.ts`           | **新建**                 | 互验工具：jsonl ↔ DuckDB 逐字节比对                                                |
+| `test/tools/full-corpus.ts`             | 改                       | 数据源换成 `sample-source`；`--year`/`--month`/`--limit` 语义不变                  |
+| `test/tools/build-fixtures.ts`          | 改                       | 取样本换成 `fetchSample`；下标算址的 `pickFrom` 删除                               |
+| `test/README.md`                        | 改                       | 数据集描述补上 DuckDB 载体与「两者并存、互为验证」；工具数 3→4；补一节四层验证分工 |
+| `docs/test/05-corpus-and-blindspots.md` | 改                       | 同上；并更正「符号链接」的说法与 `full-corpus.mjs` 的扩展名                        |
+| `.gitignore`                            | 改（1 个数字）           | 注释里的库体积 `1.8G` → `1.7G`（实测）                                             |
+| `.markdownlint.json`                    | 改（2 处，本计划的增补） | 放行 `ts`/`typescript` 围栏；MD010 跳过代码块                                      |
+| `test/tools/year-scan.ts`               | **不动**                 | 1900–2100 恒等式扫描，与本次改造无关                                               |
 
 **任务依赖顺序：** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8。Task 3 之后每一环都能独立跑通。
 
@@ -1696,11 +1697,11 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 **先删这三块**（它们在下面的替换范围之外，删漏了就是一片死代码）：
 
-| 位置 | 删什么 | 为什么 |
-|---|---|---|
-| 文件头 import 区 | `createReadStream`、`existsSync`（`node:fs` 整行）、`createInterface`（`node:readline` 整行）、`createGunzip`（`node:zlib` 整行）、`dirname`（`node:path` 那行的 `dirname` 分量）、`type BaselineSample`（`compare.ts` import 里的一项） | 只服务于被删掉的 jsonl 读取层 |
-| 常量区 | `SKILL_ROOT`、`SAMPLES`、`YEAR_ALL` | 数据源已换；年份范围改由 `expectedTotal()` 表达 |
-| 函数与派生量 | `range()`、`shardPath()`、整块本地 `forEachSample()`（readline+gunzip 那版）、`const years = …`、`const months = …` | 全部由 `sample-source.ts` 接管 |
+| 位置             | 删什么                                                                                                                                                                                                                                   | 为什么                                          |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| 文件头 import 区 | `createReadStream`、`existsSync`（`node:fs` 整行）、`createInterface`（`node:readline` 整行）、`createGunzip`（`node:zlib` 整行）、`dirname`（`node:path` 那行的 `dirname` 分量）、`type BaselineSample`（`compare.ts` import 里的一项） | 只服务于被删掉的 jsonl 读取层                   |
+| 常量区           | `SKILL_ROOT`、`SAMPLES`、`YEAR_ALL`                                                                                                                                                                                                      | 数据源已换；年份范围改由 `expectedTotal()` 表达 |
+| 函数与派生量     | `range()`、`shardPath()`、整块本地 `forEachSample()`（readline+gunzip 那版）、`const years = …`、`const months = …`                                                                                                                      | 全部由 `sample-source.ts` 接管                  |
 
 **保留不动**：`hasFlag` / `optOf` / `YEAR` / `MONTH` / `LIMIT` / `QUIET`（参数块原样留着）、
 `label()`、`DiffBucket`、`MAX_DETAIL`、文件末尾的 `isDirectRun` 守卫
@@ -2109,10 +2110,10 @@ grep -n "reference/ziwei-samples-toolkit\|5\.5\|1\.8\|符号链接\|jsonl" test/
 
 语料有**两个等价载体，并存且互为验证**（不是备份关系，也不是孤本）：
 
-| 载体 | 体积 | 谁用 |
-|---|---|---|
+| 载体                                           | 体积                                       | 谁用                             |
+| ---------------------------------------------- | ------------------------------------------ | -------------------------------- |
 | `reference/ziwei-samples-toolkit/samples-out/` | 5.5 GB / 720 个 `jsonl.gz` / 60 个年份目录 | 只用于 `verify-source.ts` 的互验 |
-| `db/ziwei.duckdb` | 1.7 GB / `samples` + `palaces` 两张关系表 | `test/tools/` 下基准工具的数据源 |
+| `db/ziwei.duckdb`                              | 1.7 GB / `samples` + `palaces` 两张关系表  | `test/tools/` 下基准工具的数据源 |
 
 两者都在 `.gitignore` 里。**核查它们请用 `find` / `stat` / `du`，不要用 `ls`** ——
 本机 `ls` 是指向 `eza -al --git-ignore` 的别名，会把这两个目录显示成空的。
@@ -2159,12 +2160,12 @@ grep -n "reference/ziwei-samples-toolkit\|5\.5\|1\.8\|符号链接\|jsonl" test/
 ```markdown
 ## 三·五、四层验证的分工
 
-| 层 | 内容 | 需要什么 | 何时跑 |
-|---|---|---|---|
-| 日常回归 | `npm test`（300 条抽样基准 + 各层预言机） | **什么都不需要**（fixtures 已入库） | 每次 |
-| 逐条互验 | `node test/tools/verify-source.ts --year 1960` | `db/ziwei.duckdb` **与** `reference/` jsonl 语料 | 改过样本重建映射后 |
-| 零 diff 验收 | `node test/tools/build-fixtures.ts` + `git diff --exit-code` | `db/ziwei.duckdb` | 重建基准时（数秒） |
-| 全量核验 | `npm run test:corpus`（518,400 条） | `db/ziwei.duckdb` | 升级 iztro 后（约 2.3 小时） |
+| 层           | 内容                                                         | 需要什么                                         | 何时跑                       |
+| ------------ | ------------------------------------------------------------ | ------------------------------------------------ | ---------------------------- |
+| 日常回归     | `npm test`（300 条抽样基准 + 各层预言机）                    | **什么都不需要**（fixtures 已入库）              | 每次                         |
+| 逐条互验     | `node test/tools/verify-source.ts --year 1960`               | `db/ziwei.duckdb` **与** `reference/` jsonl 语料 | 改过样本重建映射后           |
+| 零 diff 验收 | `node test/tools/build-fixtures.ts` + `git diff --exit-code` | `db/ziwei.duckdb`                                | 重建基准时（数秒）           |
+| 全量核验     | `npm run test:corpus`（518,400 条）                          | `db/ziwei.duckdb`                                | 升级 iztro 后（约 2.3 小时） |
 
 ⚠️ **只有第一层是回归测试，后三层都是手动执行的构建/验收步骤。** 这条边界是刻意的：
 `npm test` 必须在「无 `db/ziwei.duckdb`、无 DuckDB 依赖、无 jsonl 语料」的环境下跑通，

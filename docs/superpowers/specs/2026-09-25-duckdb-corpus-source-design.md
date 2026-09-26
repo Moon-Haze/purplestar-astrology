@@ -62,11 +62,11 @@
 
 ### 表结构（`ziwei` 库，`main` schema）
 
-| 表 | 行数 | 用途 |
-|---|---|---|
-| `samples` | 518,400 | 样本主表：出生信息 + 农历 + 盘级标量 |
-| `palaces` | 6,220,800 | 每样本恒 12 行：宫位 + 星曜 + 大限区间 |
-| `topics` / `topic_dict` / `topic_lines` | 518,400 / 21,435 / 6,739,200 | 本次不用 |
+| 表                                      | 行数                         | 用途                                   |
+| --------------------------------------- | ---------------------------- | -------------------------------------- |
+| `samples`                               | 518,400                      | 样本主表：出生信息 + 农历 + 盘级标量   |
+| `palaces`                               | 6,220,800                    | 每样本恒 12 行：宫位 + 星曜 + 大限区间 |
+| `topics` / `topic_dict` / `topic_lines` | 518,400 / 21,435 / 6,739,200 | 本次不用                               |
 
 `sample_id` 为 1..518400，连续无重复。语料范围 60 年 × 12 月 × 30 日 × 12 时辰 × 2 性别
 = 518,400（`hour` 列是 0–11 的**时辰序号**，不是 24 小时制的小时），
@@ -77,13 +77,13 @@
 以下每一条都经过实测（`duckdb -readonly` 查询 + 对 300 条既有 fixtures 的统计），
 是重建逻辑的**事实基础**，不是推断：
 
-| 事实 | 核实方式 |
-|---|---|
-| `palaces` 每样本恒 12 行，`daxian_start/end` 无空值 | `HAVING count(*)<>12` → 0 条 |
-| 每样本恒有 12 个不同大限区间，为连续十年段 | `HAVING count(DISTINCT daxian_start)<>12` → 0 条 |
-| 宫名是 **iztro 原生口径**（有「仆役」、无「交友」） | `SELECT DISTINCT palace_name` → 12 个 |
-| `major_brightness` 已是三档 `bright`/`normal`/`dim` | 与 fixtures 逐值一致 |
-| `fixtures` 与 DuckDB 是**同一次快照** | 两者 `currentAge` 均为 102、`currentDaXianIndex` 均为 9 |
+| 事实                                                | 核实方式                                                |
+| --------------------------------------------------- | ------------------------------------------------------- |
+| `palaces` 每样本恒 12 行，`daxian_start/end` 无空值 | `HAVING count(*)<>12` → 0 条                            |
+| 每样本恒有 12 个不同大限区间，为连续十年段          | `HAVING count(DISTINCT daxian_start)<>12` → 0 条        |
+| 宫名是 **iztro 原生口径**（有「仆役」、无「交友」） | `SELECT DISTINCT palace_name` → 12 个                   |
+| `major_brightness` 已是三档 `bright`/`normal`/`dim` | 与 fixtures 逐值一致                                    |
+| `fixtures` 与 DuckDB 是**同一次快照**               | 两者 `currentAge` 均为 102、`currentDaXianIndex` 均为 9 |
 
 ### 大限可从 `palaces` 反推
 
@@ -139,12 +139,12 @@ export function closeSource(): void;
 
 #### `samples` 行 → `chart` 标量与出生信息
 
-| 库中列 | 去处 |
-|---|---|
-| `year` `month` `day` `hour` `gender` `longitude` | `birthInfo` **与** `chart.birthInfo` |
-| `lunar_year` `lunar_month` `lunar_day` `year_stem` `year_branch` `is_leap_month` | `chart.lunarInfo`（六字段一一对应） |
-| `ming_gong_branch` `shen_gong_branch` `wuxing_ju` `wuxing_ju_name` `ziwei_pos` | 同名标量 |
-| `current_age` `current_daxian_index` | 同名标量，**原样带入不重算** |
+| 库中列                                                                           | 去处                                 |
+| -------------------------------------------------------------------------------- | ------------------------------------ |
+| `year` `month` `day` `hour` `gender` `longitude`                                 | `birthInfo` **与** `chart.birthInfo` |
+| `lunar_year` `lunar_month` `lunar_day` `year_stem` `year_branch` `is_leap_month` | `chart.lunarInfo`（六字段一一对应）  |
+| `ming_gong_branch` `shen_gong_branch` `wuxing_ju` `wuxing_ju_name` `ziwei_pos`   | 同名标量                             |
+| `current_age` `current_daxian_index`                                             | 同名标量，**原样带入不重算**         |
 
 > ⚠️ `chart.birthInfo` 在 `BaselineChart` 接口中**没有声明**，但 fixtures 的每一行都有它 ——
 > 它是 `JSON.parse` 带进来的多余字段，而 `build-fixtures.ts` 写盘时 `JSON.stringify` 会原样保留。
@@ -157,12 +157,12 @@ export function closeSource(): void;
 
 单宫映射：
 
-| 库中列 | 去处 |
-|---|---|
-| `branch` `stem` | 同名 |
-| `palace_name` | `name`，**原样保留 iztro 口径**（如「仆役」） |
-| `daxian_start` `daxian_end` | `daXianAge: [起, 讫]` |
-| `is_ming_gong` `is_shen_gong` `is_current_daxian` | 同名 |
+| 库中列                                            | 去处                                          |
+| ------------------------------------------------- | --------------------------------------------- |
+| `branch` `stem`                                   | 同名                                          |
+| `palace_name`                                     | `name`，**原样保留 iztro 口径**（如「仆役」） |
+| `daxian_start` `daxian_end`                       | `daXianAge: [起, 讫]`                         |
+| `is_ming_gong` `is_shen_gong` `is_current_daxian` | 同名                                          |
 
 宫名的翻译**不在这里做** —— 与旧行为一致，由 `compare.ts` 的 `normalizePalaceName`
 施加在 baseline 一侧。数据源保持原样，比对器负责口径转换。
@@ -171,12 +171,12 @@ export function closeSource(): void;
 
 顺序恒为 **major → lucky → sha → minor**（实测吉煞星不交错，四段直接拼接即可）：
 
-| 库中列 | type | 附加字段 |
-|---|---|---|
+| 库中列           | type    | 附加字段                                                 |
+| ---------------- | ------- | -------------------------------------------------------- |
 | `major_stars[i]` | `major` | `brightness: major_brightness[i]`（按下标配对）、`siHua` |
-| `lucky_stars[]` | `lucky` | `siHua`（按下方规则决定是否带此键） |
-| `sha_stars[]` | `sha` | 无 |
-| `minor_stars[]` | `minor` | 无 |
+| `lucky_stars[]`  | `lucky` | `siHua`（按下方规则决定是否带此键）                      |
+| `sha_stars[]`    | `sha`   | 无                                                       |
+| `minor_stars[]`  | `minor` | 无                                                       |
 
 #### `siHua` 键的存在性 —— 本次最隐晦的一条规则
 
@@ -248,10 +248,10 @@ ORDER BY s.sample_id, (p.branch + 10) % 12
 
 ### 4.4 两个调用点的改造
 
-| 文件 | 改动 |
-|---|---|
-| `full-corpus.ts` | `SAMPLES` 常量与 `forEachSample` / `shardPath` 实现移除，改调 `sample-source`；`--year` / `--month` / `--limit` 语义不变 |
-| `build-fixtures.ts` | `readShard` / `pickFrom` 移除，改调 `fetchSample` |
+| 文件                               | 改动                                                                                                                                                              |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `full-corpus.ts`                   | `SAMPLES` 常量与 `forEachSample` / `shardPath` 实现移除，改调 `sample-source`；`--year` / `--month` / `--limit` 语义不变                                          |
+| `build-fixtures.ts`                | `readShard` / `pickFrom` 移除，改调 `fetchSample`                                                                                                                 |
 | `verify-source.ts`（新增，见 4.5） | 承接 `readShard` 的**顺序读法**作为 jsonl 侧参照实现；`pickFrom` 的下标算址**不承接**（理由见 4.5），但其公式保留在工具内用于「按下标取 vs 按五元组取」的对照输出 |
 
 > ⚠️ `build-fixtures.ts` 旧的 `pickFrom` 用**下标算址**：`idx = (day-1)*24 + hour*2 + genderIdx`。
@@ -289,11 +289,11 @@ ORDER BY s.sample_id, (p.branch + 10) % 12
 
 沿用旧实现「给出可执行指引后退出」的风格，三个分支：
 
-| 情形 | 指引 |
-|---|---|
-| `@duckdb/node-api` 未安装 | 在 skill 根执行 `npm install` |
-| `db/ziwei.duckdb` 不存在 | 说明它不入版本控制、体积 1.8 GB；**并指出 `reference/ziwei-samples-toolkit/samples-out` 是同一份语料的原始形态**，可由其重建该库，不必视为数据丢失 |
-| jsonl 语料不存在（仅 `verify-source.ts`） | 指向 `reference/ziwei-samples-toolkit/samples-out`，说明它是 5.5 GB 只读语料、不入版本控制；互验需要它，其余工具不需要 |
+| 情形                                      | 指引                                                                                                                                               |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@duckdb/node-api` 未安装                 | 在 skill 根执行 `npm install`                                                                                                                      |
+| `db/ziwei.duckdb` 不存在                  | 说明它不入版本控制、体积 1.8 GB；**并指出 `reference/ziwei-samples-toolkit/samples-out` 是同一份语料的原始形态**，可由其重建该库，不必视为数据丢失 |
+| jsonl 语料不存在（仅 `verify-source.ts`） | 指向 `reference/ziwei-samples-toolkit/samples-out`，说明它是 5.5 GB 只读语料、不入版本控制；互验需要它，其余工具不需要                             |
 
 `full-corpus.ts` 原先的「跳过缺失分片并计数」逻辑**移除** —— 单一数据文件不存在时，
 不存在「部分缺失」这种中间状态。
@@ -339,12 +339,12 @@ node test/tools/build-fixtures.ts && git diff --exit-code test/fixtures/charts.j
 
 ### 测试安排
 
-| 层 | 内容 | 何时跑 |
-|---|---|---|
-| 逐条互验 | `verify-source.ts`：jsonl ↔ DuckDB 逐字节 | 手动，改造落地时 + 每次改动映射后 |
-| 零 diff 验收 | 重建 300 条 fixtures 与既有 `charts.jsonl` 逐字节一致 | 手动，重建基准时（数秒） |
-| 全量核验 | `npm run test:corpus`（518,400 条） | 手动，约 2.3 小时 |
-| 日常回归 | `npm test` —— **不受本次改造影响** | 每次 |
+| 层           | 内容                                                  | 何时跑                            |
+| ------------ | ----------------------------------------------------- | --------------------------------- |
+| 逐条互验     | `verify-source.ts`：jsonl ↔ DuckDB 逐字节             | 手动，改造落地时 + 每次改动映射后 |
+| 零 diff 验收 | 重建 300 条 fixtures 与既有 `charts.jsonl` 逐字节一致 | 手动，重建基准时（数秒）          |
+| 全量核验     | `npm run test:corpus`（518,400 条）                   | 手动，约 2.3 小时                 |
+| 日常回归     | `npm test` —— **不受本次改造影响**                    | 每次                              |
 
 > ⚠️ **日常回归必须继续在「无 `db/ziwei.duckdb`、无 DuckDB 依赖、无 jsonl 语料」的
 > 环境下跑通。** `fixtures` 已入库的设计意图正是如此（见 `test/README.md`）。因此本次
@@ -374,12 +374,12 @@ node test/tools/build-fixtures.ts && git diff --exit-code test/fixtures/charts.j
 
 改造落地后，以下几处对数据源的描述需要更新（有的会失效，有的需补记两份数据并存的现状）：
 
-| 文件 | 位置 | 现状 | 应改为 |
-|---|---|---|---|
-| `test/README.md` | 第 3、271、289、336 行 | 只提 `reference/ziwei-samples-toolkit`（5.5 GB，不入版本控制） | 补上 `db/ziwei.duckdb`（1.8 GB）作为基准工具的数据源，并写明**两者并存、互为验证**（不是孤本） |
-| `docs/test/05-corpus-and-blindspots.md` | 第 4、16、222 行 | 同上的数据集描述 | 同上 |
-| `docs/test/05-corpus-and-blindspots.md` | 第 531–533 行 | 称语料以**符号链接**接入外部项目 | 实测该目录是**实体目录**（非符号链接）；补记 DuckDB 等价载体已就位，两者并存 |
-| `.gitignore` | `reference/` 与 `db/` 两节的注释 | 「语料本身已改以 `db/ziwei.duckdb` 的形式提供」 | 改为：语料仍在 `reference/`，`db/ziwei.duckdb` 是其等价载体；并记下**核查这两个目录不能用 `ls`**（本机 `ls` 是带 `--git-ignore` 的 eza 别名） |
+| 文件                                    | 位置                             | 现状                                                           | 应改为                                                                                                                                        |
+| --------------------------------------- | -------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test/README.md`                        | 第 3、271、289、336 行           | 只提 `reference/ziwei-samples-toolkit`（5.5 GB，不入版本控制） | 补上 `db/ziwei.duckdb`（1.8 GB）作为基准工具的数据源，并写明**两者并存、互为验证**（不是孤本）                                                |
+| `docs/test/05-corpus-and-blindspots.md` | 第 4、16、222 行                 | 同上的数据集描述                                               | 同上                                                                                                                                          |
+| `docs/test/05-corpus-and-blindspots.md` | 第 531–533 行                    | 称语料以**符号链接**接入外部项目                               | 实测该目录是**实体目录**（非符号链接）；补记 DuckDB 等价载体已就位，两者并存                                                                  |
+| `.gitignore`                            | `reference/` 与 `db/` 两节的注释 | 「语料本身已改以 `db/ziwei.duckdb` 的形式提供」                | 改为：语料仍在 `reference/`，`db/ziwei.duckdb` 是其等价载体；并记下**核查这两个目录不能用 `ls`**（本机 `ls` 是带 `--git-ignore` 的 eza 别名） |
 
 **不需要改**：`SKILL.md` 第 188、333 行提到的 `reference/ziwei-samples-toolkit/` 是指
 `db-analysis.ts` 的**历史出处**，与 corpus 数据源无关，改造后该描述依然属实。
