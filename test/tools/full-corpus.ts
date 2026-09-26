@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ── 全量核验：把 db/ziwei.duckdb 里的全部 518,400 条样本跑一遍 ──
+// ── 全量核验：把 db/ziwei-s.duckdb 里的全部 518,400 条样本跑一遍 ──
 //
 // 与 npm test 的分工：
 //   npm test                 → test/fixtures/ 里 300 条**抽样**基准，秒级，日常回归

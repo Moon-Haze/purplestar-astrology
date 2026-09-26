@@ -1,10 +1,10 @@
-// ── 基准样本数据源：db/ziwei.duckdb ──
+// ── 基准样本数据源：db/ziwei-s.duckdb ──
 //
 // 全项目**唯一**懂 DuckDB 与表结构的地方。三个手工工具（test/tools/full-corpus.ts、
 // test/tools/build-fixtures.ts、test/tools/verify-source.ts）都从这里取样本，
 // 它们自己不写 SQL、不碰连接。
 //
-// ⚠️ 本模块**不进 `npm test` 的断言** —— `npm test` 必须继续在「无 db/ziwei.duckdb、
+// ⚠️ 本模块**不进 `npm test` 的断言** —— `npm test` 必须继续在「无 db/ziwei-s.duckdb、
 //    无 DuckDB 依赖、无 jsonl 语料」的环境下跑通（见 test/README.md）。
 //    test/sample-source.test.ts 只用**合成行**与**不存在的路径**测纯函数，不碰数据文件。
 //
@@ -15,7 +15,7 @@
 //
 // 为什么数据源是单文件而非 720 个 jsonl.gz 分片：
 //   · `--year` / `--month` 从「拼路径 + 判文件存在」变成 SQL 谓词，中间状态消失
-//   · 1.7 GB 对 5.5 GB
+//   · 0.67 GB 对 5.5 GB
 //   · 可直接 SQL 探查，核对排盘不变量不必再写一次性脚本
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -32,8 +32,8 @@ import type {
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/lib
 const SKILL_ROOT = resolve(HERE, "../..");
 
-/** 数据文件路径：<skill 根>/db/ziwei.duckdb */
-export const SAMPLE_DB: string = resolve(SKILL_ROOT, "db/ziwei.duckdb");
+/** 数据文件路径：<skill 根>/db/ziwei-s.duckdb */
+export const SAMPLE_DB: string = resolve(SKILL_ROOT, "db/ziwei-s.duckdb");
 
 /** 过滤条件。对应 CLI 的 `--year` / `--month`；`limit` 对应 `--limit`。 */
 export interface SampleFilter {
@@ -66,7 +66,7 @@ export function missingDepHint(err: unknown): string {
 }
 
 /**
- * `db/ziwei.duckdb` 不存在时的指引。
+ * `db/ziwei-s.duckdb` 不存在时的指引。
  *
  * ⚠️ 措辞要挡住一个真实的误判：该库不入版本控制，克隆仓库后它必然缺失，很容易被读成
  *    「语料丢了」。它不是唯一副本 —— `reference/` 下的 jsonl 语料是同一份数据的原始形态，
@@ -76,7 +76,7 @@ export function missingDepHint(err: unknown): string {
 export function missingDbHint(path: string = SAMPLE_DB): string {
 	return (
 		`找不到样本数据库：${path}\n` +
-		`  该文件**不入版本控制**（1.7 GB，超出 GitHub 单文件上限 100 MB）。\n` +
+		`  该文件**不入版本控制**（0.67 GB，超出 GitHub 单文件上限 100 MB）。\n` +
 		`  它不是唯一副本，所以这里**不是**数据丢失：\n` +
 		`    reference/ziwei-samples-toolkit/samples-out  是同一份语料的原始形态\n` +
 		`    （5.5 GB / 720 个 jsonl.gz / 60 个年份目录 1924-1983），可由其重建本库。\n` +
@@ -85,7 +85,7 @@ export function missingDbHint(path: string = SAMPLE_DB): string {
 }
 
 /**
- * `db/ziwei.duckdb` 被**其他进程**以读写模式占用、拿不到锁时的指引。
+ * `db/ziwei-s.duckdb` 被**其他进程**以读写模式占用、拿不到锁时的指引。
  *
  * ⚠️ 触发场景很日常，绝非异常：VS Code 装了 DuckDB / SQL 之类的扩展，或手动预览过这个库，
  *    它会以**读写**模式打开并持排他锁。DuckDB 的读写锁与只读锁**互斥**，于是本模块的

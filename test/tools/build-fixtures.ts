@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ── 从 DuckDB 样本库抽样，生成 test/fixtures/ 轻量基准 ──
 //
-// 仅在需要**重建**基准时手动执行（db/ziwei.duckdb 不入版本控制，正常跑测试不需要它）：
+// 仅在需要**重建**基准时手动执行（db/ziwei-s.duckdb 不入版本控制，正常跑测试不需要它）：
 //   node test/tools/build-fixtures.ts
 //
 // 抽样是**确定性的**（不用随机数），同样的输入必然产出同样的 fixtures —— 基准可复现、可审阅 diff。

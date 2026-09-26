@@ -1,6 +1,6 @@
 // ── 层 5：基准数据源的纯函数 ──
 //
-// ⚠️ 本文件**不得触碰任何数据文件**。`npm test` 必须在「无 db/ziwei.duckdb、
+// ⚠️ 本文件**不得触碰任何数据文件**。`npm test` 必须在「无 db/ziwei-s.duckdb、
 //    无 DuckDB 依赖、无 jsonl 语料」的环境下跑通（见 test/README.md）。
 //    所以这里只测两样东西：错误指引的文本、以及**用不存在的路径**触发的失败分支。
 //    真正的映射正确性由 test/tools/verify-source.ts 拿真实语料逐字节证明。
@@ -21,8 +21,8 @@ import type { PalaceRow, SampleRow } from "./lib/sample-source.ts";
 import type { BaselineChart } from "./lib/compare.ts";
 
 describe("基准数据源（纯函数与错误指引）", () => {
-	it("SAMPLE_DB 指向 <skill 根>/db/ziwei.duckdb", () => {
-		assert.match(SAMPLE_DB, /\/db\/ziwei\.duckdb$/);
+	it("SAMPLE_DB 指向 <skill 根>/db/ziwei-s.duckdb", () => {
+		assert.match(SAMPLE_DB, /\/db\/ziwei-s\.duckdb$/);
 	});
 
 	it("库文件缺失时抛 SourceError，指引写明「不是数据丢失」与语料仍在 reference/", async () => {
