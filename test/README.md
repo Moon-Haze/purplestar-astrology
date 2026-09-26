@@ -7,14 +7,16 @@
 
 | 载体 | 体积 | 入库 | 谁用 |
 |---|---|---|---|
-| `db/dataset/`（`samples.parquet` + `palaces.parquet`） | 0.8 MiB + 12.0 MiB | ✔ 随仓库分发 | `test/tools/` 下基准工具的数据源 |
-| `db/ziwei.duckdb` | 641.5 MiB / 同名两张关系表 | ✘ 构建中间物 | 仅为上面那份数据集的导出来源，已不由任何工具读取 |
+| `db/dataset/`（`samples` + `palaces` + `topics-*` 三类 parquet） | 0.8 + 12.0 + 378.9 MiB | ✔ 随仓库分发 | `test/tools/` 的工具读 samples/palaces；`query` / `verify:db` 另读 topics 建视图 |
+| `db/ziwei.duckdb` | 641.5 MiB / 同名三张关系表 | ✘ 构建中间物 | 仅为上面那份数据集的导出来源，已不由任何工具读取 |
 | `reference/ziwei-samples-toolkit/samples-out/` | 5.5 GB / 720 个 `jsonl.gz` / 60 个年份目录 | ✘ | 只用于 `verify-source.ts` 的互验 |
 
-数据集由 `db/ziwei.duckdb` 经 `tools/db/build-duckdb.ts --mode=dataset` 导出，
-同一份数据 Parquet 比 DuckDB 小 **50 倍**：
-DuckDB 的 `LIST<VARCHAR>` 逐元素存放星曜名，而 Parquet 对该嵌套列做字典编码，
-把重复星名压成整数索引。导出无损由 `verify-source.ts` 逐字节证明，不是「看着像」。
+数据集由 `db/ziwei.duckdb` 经 `tools/db/build-duckdb.ts --mode=dataset` 导出。
+Parquet 的红利几乎全在星曜那 6 个嵌套列上：DuckDB 的 `LIST<VARCHAR>` 逐元素存放星曜名，
+而 Parquet 对该嵌套列做字典编码，把重复星名压成整数索引，两张表因此只有 12.8 MiB。
+⚠️ 而 `topics` 是纯文本、压不动（378.9 MiB 基本照搬），所以**整份数据集 391.7 MiB，
+对 641.5 MiB 的库是 1.6 倍** —— 早先「50 倍」的说法是拿含 topics 的整库去比只有两张表
+的 Parquet，口径不同，别沿用。导出无损由 `verify-source.ts` 逐字节证明，不是「看着像」。
 
 后两者都在 `.gitignore` 里。**核查它们请用 `find` / `stat` / `du`，不要用 `ls`** ——
 本机 `ls` 是指向 `eza -al --git-ignore` 的别名，会把这两个目录显示成空的。

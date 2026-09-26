@@ -14,9 +14,10 @@
 //   topics —— 本次不用（论断文本），另有 db/dataset/topics-*.parquet 共 11 片
 //
 // 为什么是 parquet 而非单个 .duckdb：
-//   · 同一份数据，DuckDB 文件 641.5 MiB、Parquet 12.8 MiB（50 倍）。差额集中在星曜那
-//     6 个 varchar[] 列：DuckDB 逐元素存储，Parquet 对嵌套列做字典编码把星名压成索引
-//   · 12.8 MiB 的数据集在 GitHub 单文件上限（100 MiB）内，可直接入库分发，不再依赖
+//   · samples + palaces 两张表 12.8 MiB。差额集中在星曜那 6 个 varchar[] 列：
+//     DuckDB 逐元素存储，Parquet 对嵌套列做字典编码把星名压成索引
+//     （⚠️ 别把这当成整份数据集的压缩率 —— topics 也是纯文本、压不动，见 .gitignore）
+//   · 每个文件都在 GitHub 单文件上限（100 MiB）内，可直接入库分发，不再依赖
 //     「本地重建」这一前提
 //   · 内存库 + 视图没有文件锁，编辑器里的 DuckDB 扩展再也占不住数据（旧库形态下这是
 //     真实撞到过的故障，见 docs/superpowers/specs/）

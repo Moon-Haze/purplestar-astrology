@@ -693,9 +693,23 @@ DuckDB / SQL 扩展打开该库时会以读写模式持有它 —— 基准工�
 
 （八）记的 `db/samples/data_0.parquet` + `db/palaces/data_0.parquet`（2.6 + 21 MiB）
 是**手工导出**那一代的形态。当晚 `tools/db/` 工具链建成后重新导出，产物改为扁平的
-`db/dataset/samples.parquet` + `db/dataset/palaces.parquet`（0.8 + 12.0 MiB，合计 12.8 MiB；
-对 641.5 MiB 的 DuckDB 是 50 倍），topics 固定为 `topics-<起始 sample_id>.parquet` 共 11 片。
-`db/ziwei.duckdb`、`db/dataset.staging/` 与 topics 分片列入 `.gitignore`。
+`db/dataset/samples.parquet` + `db/dataset/palaces.parquet`（0.8 + 12.0 MiB，合计 12.8 MiB），
+topics 固定为 `topics-<起始 sample_id>.parquet` 共 11 片（378.9 MiB）。`db/ziwei.duckdb`
+与 `db/dataset.staging/` 列入 `.gitignore`。
+
+**（八）那处「28 倍 / 50 倍」的口径要修正。** 12.8 MiB 是**只有 samples + palaces 两张表**
+的 Parquet，而拿来比的 641.5 MiB 是**含 topics 的整库** —— 分母多了一张纯文本大表。
+同口径是 391.7 MiB 对 641.5 MiB，**1.6 倍**。压缩红利几乎全部集中在星曜那 6 个
+`varchar[]` 嵌套列上（DuckDB 逐元素存星名，Parquet 做字典编码压成整数索引）；
+topics 是纯文本，字典编码对它无效，378.9 MiB 基本照搬。**别把 50 倍当成整份数据集的压缩率。**
+
+**topics 分片也入库了，理由不是「方便」而是「必需」。** `db.ts` 的 `datasetSchemaSql()`
+**无条件**建 topics 视图，而 `read_parquet()` 的 glob **匹配不到文件是直接报错、不是返回空集** ——
+缺了这 11 片，连 `SELECT count(*) FROM samples` 都会在建视图那步失败。全新 clone 恰好就是
+这个状态，实测 `npm run query -- "SELECT count(*) AS n FROM samples"` 会报
+`dataset 目录不完整或损坏 … No files found that match the pattern "…/topics-*.parquet"`。
+代价是仓库增大约 379 MiB，且 git 对二进制不做 delta，日后每次重建都要全量重传。
+单文件最大 39.5 MB（`topics-000001.parquet`），仍在 GitHub 单文件 100 MB 限内。
 
 消费侧（`test/lib/sample-source.ts` 的 `DB_DIR`、`test/tools/` 三个工具的注释、
 `test/README.md`、`test/fixtures/manifest.json`）随后按 `db/dataset/` 对齐。
