@@ -7,11 +7,12 @@
 
 | 载体 | 体积 | 入库 | 谁用 |
 |---|---|---|---|
-| `db/samples/` + `db/palaces/`（Parquet 分片） | 2.6 MiB + 21 MiB | ✔ 随仓库分发 | `test/tools/` 下基准工具的数据源 |
-| `db/ziwei-s.duckdb` | 641.8 MiB / 同名两张关系表 | ✘ 构建中间物 | 仅为上面那份数据集的导出来源，已不由任何工具读取 |
+| `db/dataset/`（`samples.parquet` + `palaces.parquet`） | 0.8 MiB + 12.0 MiB | ✔ 随仓库分发 | `test/tools/` 下基准工具的数据源 |
+| `db/ziwei.duckdb` | 641.5 MiB / 同名两张关系表 | ✘ 构建中间物 | 仅为上面那份数据集的导出来源，已不由任何工具读取 |
 | `reference/ziwei-samples-toolkit/samples-out/` | 5.5 GB / 720 个 `jsonl.gz` / 60 个年份目录 | ✘ | 只用于 `verify-source.ts` 的互验 |
 
-数据集由 `db/ziwei-s.duckdb` 导出，同一份数据 Parquet 比 DuckDB 小 **28 倍**：
+数据集由 `db/ziwei.duckdb` 经 `tools/db/build-duckdb.ts --mode=dataset` 导出，
+同一份数据 Parquet 比 DuckDB 小 **50 倍**：
 DuckDB 的 `LIST<VARCHAR>` 逐元素存放星曜名，而 Parquet 对该嵌套列做字典编码，
 把重复星名压成整数索引。导出无损由 `verify-source.ts` 逐字节证明，不是「看着像」。
 
@@ -287,9 +288,9 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 | 层 | 内容 | 需要什么 | 何时跑 |
 |---|---|---|---|
 | 日常回归 | `npm test`（300 条抽样基准 + 各层预言机） | **什么都不需要**（fixtures 已入库） | 每次 |
-| 逐条互验 | `node test/tools/verify-source.ts --year 1960` | `db/{samples,palaces}/` **与** `reference/` jsonl 语料 | 改过样本重建映射后 |
-| 零 diff 验收 | `node test/tools/build-fixtures.ts` + `git diff --exit-code` | `db/{samples,palaces}/` | 重建基准时（数秒） |
-| 全量核验 | `npm run test:corpus`（518,400 条） | `db/{samples,palaces}/` | 升级 iztro 后（约 2.3 小时） |
+| 逐条互验 | `node test/tools/verify-source.ts --year 1960` | `db/dataset/` **与** `reference/` jsonl 语料 | 改过样本重建映射后 |
+| 零 diff 验收 | `node test/tools/build-fixtures.ts` + `git diff --exit-code` | `db/dataset/` | 重建基准时（数秒） |
+| 全量核验 | `npm run test:corpus`（518,400 条） | `db/dataset/` | 升级 iztro 后（约 2.3 小时） |
 
 ⚠️ **只有第一层是回归测试，后三层都是手动执行的构建/验收步骤。** 这条边界是刻意的：
 `npm test` **不读任何数据文件** —— 数据集虽然随仓库分发（就在 `db/` 下），
@@ -305,7 +306,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 
 ## 四、fixtures 从哪来
 
-- **来源**：`db/samples/` + `db/palaces/`（Parquet 分片 2.6 MiB + 21 MiB，**随仓库分发**；
+- **来源**：`db/dataset/samples.parquet` + `db/dataset/palaces.parquet`（0.8 MiB + 12.0 MiB，**随仓库分发**；
   同一份数据的原始载体是 `reference/ziwei-samples-toolkit/samples-out/`，三者等价并存，见文首）
 - **抽样**：60 年（1924–1983）每年 5 条 = 300 条，实测覆盖
   **12/12 月 · 12/12 时辰 · 2/2 性别 · 5/5 五行局 · 22 个闰月年**

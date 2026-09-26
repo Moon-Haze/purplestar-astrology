@@ -20,23 +20,28 @@ import type { PalaceRow, SampleRow } from "./lib/sample-source.ts";
 import type { BaselineChart } from "./lib/compare.ts";
 
 describe("基准数据源（纯函数与错误指引）", () => {
-	it("DB_DIR 指向 <skill 根>/db", () => {
-		assert.match(DB_DIR, /\/db$/);
+	it("DB_DIR 指向 <skill 根>/db/dataset", () => {
+		assert.match(DB_DIR, /\/db\/dataset$/);
 	});
 
-	it("数据集缺失时抛 SourceError，指引写明分片位置与语料仍在 reference/", async () => {
+	it("数据集缺失时抛 SourceError，指引写明缺失的表与语料仍在 reference/", async () => {
 		// 文本细节直接断言纯函数 missingDbHint：不触依赖，有/无依赖环境下行为一致。
 		const hint = missingDbHint("/nonexistent/ziwei-does-not-exist");
 		for (const must of [
 			"/nonexistent/ziwei-does-not-exist",
-			"samples",
-			"palaces",
+			"samples.parquet",
+			"palaces.parquet",
 			"reference/ziwei-samples-toolkit/samples-out",
 			"不是",
 			"npm test",
 		]) {
 			assert.ok(hint.includes(must), `指引里应含「${must}」，实际：\n${hint}`);
 		}
+
+		// 缺哪张要指名道姓。文件名规则（<表>.parquet）是产出方与消费方之间唯一的契约，
+		// 一旦两边漂移，「数据集不完整」会被读成「数据集不存在」——正是两种不同的处理。
+		const partial = missingDbHint("/nonexistent", ["palaces"]);
+		assert.ok(partial.includes("缺少的表：palaces"), `应点名缺失的表，实际：\n${partial}`);
 
 		// openSource 只断言结构性契约：rejects + SourceError + 非空指引。
 		// 有依赖时走 missingDbHint、无依赖时走 missingDepHint，两者都是可读指引，绝非 ENOENT 堆栈。

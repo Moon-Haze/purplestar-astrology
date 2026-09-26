@@ -1,7 +1,7 @@
 # 05 · 数据集全量核验与盲区补测报告
 
 **日期：** 2026-09-19
-**被测对象：** 518,400 条全量语料（载体：`db/ziwei-s.duckdb`，等价于 `reference/ziwei-samples-toolkit`）+ `patterns.ts`（格局）+ `heming`（合盘）+ SKILL.md ↔ CLI 一致性
+**被测对象：** 518,400 条全量语料（载体：`db/dataset/` 的 `samples.parquet` + `palaces.parquet`，等价于 `reference/ziwei-samples-toolkit`）+ `patterns.ts`（格局）+ `heming`（合盘）+ SKILL.md ↔ CLI 一致性
 **状态：** ✅ **全量核验已完成**（518,400/518,400 零差异，2026-09-23 重启跑完，见第五节）；✅ 格局 / 合盘 / 一致性审计已完成；✅ 6 处文档漂移已修（2026-09-19）；✅ **P1 的处置方向已被后续决策反转**（2026-09-19，见文末「后续修正」）；✅ **格局识别已固化为层 3 的 50 项独立预言机**（2026-09-20，见文末「后续修正（二）」）；✅ **合盘已固化为 12 条独立预言机**（2026-09-20，见文末「后续修正（三）」）；✅ **流年/流月四化已固化为 9 条独立预言机**（2026-09-23，见文末「后续修正（四）」）；✅ **1984–2100 恒等式扫描与 taibu 对拍完成**（2026-09-23，见文末「后续修正（六）」）
 
 ---
@@ -13,7 +13,7 @@
 
 | 项目        | 规模                                                                 |
 | ----------- | -------------------------------------------------------------------- |
-| 数据集      | `db/ziwei-s.duckdb`，0.67 GB / 518,400 条（原始载体 `reference/…/samples-out`，5.5 GB / 720 分片） |
+| 数据集      | `db/dataset/`（`samples.parquet` + `palaces.parquet`），12.8 MiB / 518,400 条（原始载体 `reference/…/samples-out`，5.5 GB / 720 分片） |
 | 语料条数    | 518,400（60 年 × 12 月 × 720 条/月；1924–1983）                      |
 | 完整性      | ✅ 720/720 分片齐备，每片 720 条，抽样解压正常                        |
 | 全量核验    | `node test/tools/full-corpus.ts`（单线程，实测约 16.3 ms/条）         |
@@ -688,3 +688,28 @@ DuckDB / SQL 扩展打开该库时会以读写模式持有它 —— 基准工�
 ⚠️ 重建那一步是本次最强的证据：300 条样本从 Parquet 取出后一路走完映射与排序，
 产出的 `charts.jsonl` 与上一代载体入库的基准**一字不差**。`manifest.json` 只有三行变化
 （`description` / `source` 随载体改名，`generatedAt` 按惯例还原）。
+
+### 同日校正（2026-09-26 晚）：数据集改由工具链导出，布局变为扁平
+
+（八）记的 `db/samples/data_0.parquet` + `db/palaces/data_0.parquet`（2.6 + 21 MiB）
+是**手工导出**那一代的形态。当晚 `tools/db/` 工具链建成后重新导出，产物改为扁平的
+`db/dataset/samples.parquet` + `db/dataset/palaces.parquet`（0.8 + 12.0 MiB，合计 12.8 MiB；
+对 641.5 MiB 的 DuckDB 是 50 倍），topics 固定为 `topics-<起始 sample_id>.parquet` 共 11 片。
+`db/ziwei.duckdb`、`db/dataset.staging/` 与 topics 分片列入 `.gitignore`。
+
+消费侧（`test/lib/sample-source.ts` 的 `DB_DIR`、`test/tools/` 三个工具的注释、
+`test/README.md`、`test/fixtures/manifest.json`）随后按 `db/dataset/` 对齐。
+⚠️ 这一处漂移值得记下：（八）写完后又换了一次布局，而消费侧停在旧口径 ——
+`openSource()` 会对着**真实存在**的数据集报「缺 samples/palaces 分片」，指向一个不存在
+的目录形态，比「文件不存在」更难判读。
+
+（八）表里的两项证明已对着**新载体**重跑，结论不变：
+
+| 验证 | 结果 |
+| ---- | ---- |
+| 导出无损（`node test/tools/verify-source.ts --year 1960`） | 8,640/8,640 一致，0 差异 |
+| 重建幂等（`node test/tools/build-fixtures.ts`） | `charts.jsonl` sha256 前后相同（`9e3a75af…`） |
+
+⚠️ **尚未重跑**：`npm run test:corpus` 的 518,400 条全量核验（约 2.3 小时）针对的仍是旧载体。
+上面两项只覆盖 1960 年（8,640 条）与抽样的 300 条；体积由 23 MiB 降至 12.8 MiB
+是否为纯编码差异，也要等全量核验才能下结论。

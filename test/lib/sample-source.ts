@@ -1,4 +1,4 @@
-// ── 基准样本数据源：db/{samples,palaces}/*.parquet ──
+// ── 基准样本数据源：db/dataset/*.parquet ──
 //
 // 全项目**唯一**懂 DuckDB 与表结构的地方。三个手工工具（test/tools/full-corpus.ts、
 // test/tools/build-fixtures.ts、test/tools/verify-source.ts）都从这里取样本，
@@ -8,20 +8,20 @@
 //    无 DuckDB 依赖、无 jsonl 语料」的环境下跑通（见 test/README.md）。
 //    test/sample-source.test.ts 只用**合成行**与**不存在的路径**测纯函数，不碰数据文件。
 //
-// 表结构（两个 parquet 目录，经视图暴露为同名表）：
+// 表结构（dataset 目录下两个 parquet 文件，经视图暴露为同名表）：
 //   samples  518,400 行 —— 出生信息 + 农历 + 盘级标量
 //   palaces  6,220,800 行 —— 每样本恒 12 行：宫位 + 星曜 + 大限区间
-//   topics —— 本次不用（论断文本），另有 db/topics/ 下的 720 个 parquet
+//   topics —— 本次不用（论断文本），另有 db/dataset/topics-*.parquet 共 11 片
 //
 // 为什么是 parquet 而非单个 .duckdb：
-//   · 同一份数据，DuckDB 文件 641.7 MiB、Parquet 22.8 MiB（28 倍）。差额集中在星曜那
+//   · 同一份数据，DuckDB 文件 641.5 MiB、Parquet 12.8 MiB（50 倍）。差额集中在星曜那
 //     6 个 varchar[] 列：DuckDB 逐元素存储，Parquet 对嵌套列做字典编码把星名压成索引
-//   · 22.8 MiB 的分片在 GitHub 单文件上限（100 MiB）内，可直接入库分发，不再依赖
+//   · 12.8 MiB 的数据集在 GitHub 单文件上限（100 MiB）内，可直接入库分发，不再依赖
 //     「本地重建」这一前提
 //   · 内存库 + 视图没有文件锁，编辑器里的 DuckDB 扩展再也占不住数据（旧库形态下这是
 //     真实撞到过的故障，见 docs/superpowers/specs/）
 //   · 仍然能 SQL 探查，核对排盘不变量不必再写一次性脚本
-import { readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -36,8 +36,8 @@ import type {
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/lib
 const SKILL_ROOT = resolve(HERE, "../..");
 
-/** 数据集目录：<skill 根>/db，内含 samples/ 与 palaces/ 两个 parquet 目录。 */
-export const DB_DIR: string = resolve(SKILL_ROOT, "db");
+/** 数据集目录：<skill 根>/db/dataset，内含 samples.parquet 与 palaces.parquet 两张表。 */
+export const DB_DIR: string = resolve(SKILL_ROOT, "db/dataset");
 
 /** 数据集里的表。视图名与表名一致，所以调用方的 SQL 不必知道底层是 parquet。 */
 const TABLES = ["samples", "palaces"] as const;
@@ -73,22 +73,22 @@ export function missingDepHint(err: unknown): string {
 }
 
 /**
- * 数据集目录不可用（分片缺失）时的指引。
+ * 数据集目录不可用（表文件缺失）时的指引。
  *
  * ⚠️ 语义与旧版（单文件 `.duckdb` 时代）**相反**：这份数据集现在**随仓库分发**
- *    （samples 约 2.6 MiB、palaces 约 20 MiB，都在 GitHub 单文件上限内），所以「缺失」
+ *    （samples 0.8 MiB、palaces 12.0 MiB，都在 GitHub 单文件上限内），所以「缺失」
  *    意味着克隆不完整或目录被清理，而不是「本来就没有」。但它仍不是唯一副本 ——
  *    `reference/` 下的 jsonl 语料是同一份数据的原始形态。
  *    2026-09-25 曾因 `ls` 是带 `--git-ignore` 的 eza 别名而误判语料已失，
  *    见 docs/superpowers/specs/ 下的设计文档。
  */
 export function missingDbHint(dbDir: string = DB_DIR, missing: readonly string[] = []): string {
-	const which = missing.length > 0 ? `  缺少分片的表：${missing.join("、")}\n` : "";
+	const which = missing.length > 0 ? `  缺少的表：${missing.join("、")}\n` : "";
 	return (
 		`找不到样本数据集：${dbDir}\n` +
 		which +
-		`  期望 <数据集>/samples/ 与 <数据集>/palaces/ 下各有若干 *.parquet 分片。\n` +
-		`  这份数据集**随仓库分发**（2.6 MiB + 20 MiB），缺失多半是克隆不完整或目录被清理。\n` +
+		`  期望该目录下有 samples.parquet 与 palaces.parquet 两张表。\n` +
+		`  这份数据集**随仓库分发**（0.8 MiB + 12.0 MiB），缺失多半是克隆不完整或目录被清理。\n` +
 		`  它不是唯一副本，所以这**不是**数据丢失：\n` +
 		`    reference/ziwei-samples-toolkit/samples-out  是同一份语料的原始形态\n` +
 		`    （5.5 GB / 720 个 jsonl.gz / 60 个年份目录 1924-1983），可由其重建。\n` +
@@ -101,13 +101,12 @@ export function missingDbHint(dbDir: string = DB_DIR, missing: readonly string[]
 /** 惰性单例：数据集目录 → 已建立的连接。进程退出时自然释放。 */
 const connections = new Map<string, Promise<DuckDBConnection>>();
 
-/** 某个表目录下的 parquet 分片文件名；目录不存在或不可读时返回空数组。 */
-function parquetShards(tableDir: string): string[] {
-	try {
-		return readdirSync(tableDir).filter(f => f.endsWith(".parquet"));
-	} catch {
-		return [];
-	}
+/**
+ * 数据集里某张表的 parquet 文件路径。命名规则与产出方一致：`<表>.parquet` ——
+ * 唯一定义处是 tools/db/db.ts，构建器按 `path.join(datasetDir, 表名 + ".parquet")` 导出。
+ */
+function tablePath(dbDir: string, table: string): string {
+	return resolve(dbDir, `${table}.parquet`);
 }
 
 /**
@@ -124,12 +123,12 @@ function sqlLiteral(value: string): string {
  * 建立（或复用）到样本数据集的连接。
  *
  * 返回的是**内存库**连接，上面注册了 `samples` / `palaces` 两个视图，指向数据集目录下的
- * parquet 分片。调用方因此完全不必知道数据来自 parquet —— `FROM samples JOIN palaces`
+ * parquet 文件。调用方因此完全不必知道数据来自 parquet —— `FROM samples JOIN palaces`
  * 照写，本文件下半部分的查询代码一个字都不用改。
  *
  * @param dbDir 数据集目录。**仅供测试注入一个不存在的路径**；生产调用一律走默认值，
  *              三个工具都不传这个参数。
- * @throws {SourceError} 缺依赖、缺任一张表的分片、或分片读不出来时，
+ * @throws {SourceError} 缺依赖、缺任一张表、或 parquet 读不出来时，
  *         `message` 已是可直接打印的完整指引。
  */
 export async function openSource(dbDir: string = DB_DIR): Promise<DuckDBConnection> {
@@ -146,9 +145,9 @@ export async function openSource(dbDir: string = DB_DIR): Promise<DuckDBConnecti
 			throw new SourceError(missingDepHint(err));
 		}
 
-		// 两张表都必须有分片才认为数据集可用：只有一张同样是残缺状态，而残缺会一路静默
+		// 两张表都必须存在才认为数据集可用：只有一张同样是残缺状态，而残缺会一路静默
 		// 传到比对结果里 —— JOIN 出 0 行，表现成「每个样本都不存在」，没有一处会报错。
-		const missing = TABLES.filter(t => parquetShards(resolve(dbDir, t)).length === 0);
+		const missing = TABLES.filter(t => !existsSync(tablePath(dbDir, t)));
 		if (missing.length > 0) throw new SourceError(missingDbHint(dbDir, missing));
 
 		// 内存库 + 视图：数据留在 parquet 里按需读取，不整表载入内存。
@@ -158,18 +157,18 @@ export async function openSource(dbDir: string = DB_DIR): Promise<DuckDBConnecti
 		const conn = await inst.connect();
 		try {
 			for (const table of TABLES) {
-				const glob = resolve(dbDir, table, "*.parquet");
-				await conn.run(`CREATE VIEW ${table} AS SELECT * FROM read_parquet(${sqlLiteral(glob)})`);
-				// 视图是惰性的：建视图不读文件，分片损坏要等到第一次查询才炸，而那时现场
+				const file = tablePath(dbDir, table);
+				await conn.run(`CREATE VIEW ${table} AS SELECT * FROM read_parquet(${sqlLiteral(file)})`);
+				// 视图是惰性的：建视图不读文件，parquet 损坏要等到第一次查询才炸，而那时现场
 				// 已经离这里很远。立刻验一次元数据，把损坏挡在 openSource 里。
 				await conn.run(`DESCRIBE SELECT * FROM ${table}`);
 			}
 		} catch (err) {
 			conn.closeSync();
 			throw new SourceError(
-				`样本数据集的分片读不出来：${dbDir}\n` +
+				`样本数据集的 parquet 读不出来：${dbDir}\n` +
 				`  底层错误：${err instanceof Error ? err.message : String(err)}\n` +
-				`  多半是分片损坏或残缺（拷贝中断）。这**不是**语料丢失：\n` +
+				`  多半是 parquet 损坏或残缺（拷贝中断）。这**不是**语料丢失：\n` +
 				`    reference/ziwei-samples-toolkit/samples-out  是同一份语料的原始形态。`
 			);
 		}
