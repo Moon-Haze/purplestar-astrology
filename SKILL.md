@@ -301,8 +301,9 @@ node scripts/purple-star.ts heming \
 │   └── nihai/              ← 倪海夏天纪 / 地纪 / 人纪
 ├── test/                   ← 回归测试（npm test）。怎么跑与效力边界见 test/README.md
 │   ├── fixtures/           ← 300 条基准样本（已入库，跑 npm test 不需要 reference/）
-│   └── tools/              ← 手动脚本：重建基准、全量语料核验（需 reference/）
+│   └── tools/              ← 手动脚本：重建基准、全量语料核验（需 db/；互验另需 reference/）
 ├── docs/test/              ← 历次测试报告存档
+├── db/                     ← 样本语料库（DuckDB 单文件，未入版本控制；基准工具的数据源）
 ├── reference/              ← 外部数据集，未入版本控制（缺了不影响排盘与 npm test）
 └── node_modules/           ← npm install 生成，已被 gitignore
 ```
