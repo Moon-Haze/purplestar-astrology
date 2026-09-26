@@ -308,9 +308,20 @@ describe("排盘结构不变量", () => {
 			let decadal = 0;
 			let childhood = 0;
 
-			/** 用 iztro 独立核对一张盘，返回它落在「已起运」还是「童限」。 */
-			const check = (birth: LabeledBirth): "decadal" | "childhood" => {
-				const chart = generateChart({ ...birth });
+			/**
+			 * 用 iztro 独立核对一张盘，返回它落在「已起运」还是「童限」。
+			 *
+			 * `ready` 供调用方传入**已经排好的盘**：主循环那 60 条样本在模块加载时
+			 * 就由 `charts`（第 45 行）排过一次，这里再排一遍纯属重复，约占本用例一半
+			 * 耗时。省略 `ready` 则照常现排 —— `recent` 那 12 条盘不在 `charts` 里，走这条。
+			 *
+			 * 复用不改变断言语义：`generateChart` 对同一 `birthInfo` 是确定性的，
+			 * `charts` 与本用例用的是同一份 `birthInfo`。唯一理论差异是 `currentAge`
+			 * 依赖「此刻」，若模块加载与用例执行跨了**年份**边界会不一致 ——
+			 * 两者相隔仅数秒，跨年概率可忽略。
+			 */
+			const check = (birth: LabeledBirth, ready?: ZiweiChart): "decadal" | "childhood" => {
+				const chart = ready ?? generateChart({ ...birth });
 				const tag = label(birth);
 				const astrolabe = astro.bySolar(
 					`${birth.year}-${pad2(birth.month)}-${pad2(birth.day)}`,
@@ -350,10 +361,19 @@ describe("排盘结构不变量", () => {
 
 			// 基准样本：出生年 1924-1983，全部早已起运。horoscope() 较重，
 			// 故每 5 条抽 1（60 条）以控制日常回归耗时。
-			for (const { birth } of charts.filter((_, i) => i % 5 === 0)) {
-				if (check(birth) === "childhood") childhood++;
-				else decadal++;
+			// 这 60 张盘 `charts` 已排好，直接复用，见上方 `check` 的 `ready` 参数。
+			const sampled = charts.filter((_, i) => i % 5 === 0);
+			let baseDecadal = 0;
+			for (const { birth, chart } of sampled) {
+				if (check(birth, chart) === "childhood") childhood++;
+				else baseDecadal++;
 			}
+			decadal += baseDecadal;
+			// 末尾那两条 `> 0` 是弱断言：只证明「至少分到了一条」，不证明**分对了**。
+			// 基准样本最老的 1924 年生、最小的 1983 年生（今也已 40 余岁），必然条条已起运，
+			// 所以这里钉死「全部落在 decadal」。计数若被写反，decadal 会塌成 recent 里
+			// 的零星几条 —— 仍然 > 0，那两条弱断言照样全绿，只有这条会报出来。
+			assert.equal(baseDecadal, sampled.length, "基准样本应全部已起运（计数写反会在此暴露）");
 
 			// 童限分支：样本里永远走不到（最小的样本也已 43 岁），故另行构造近年出生的盘。
 			// 「今天出生」必然虚岁 1，而五行局起运最早也要 2 岁（水二局），故必定落在童限 ——
