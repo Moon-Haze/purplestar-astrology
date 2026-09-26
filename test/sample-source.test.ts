@@ -11,6 +11,7 @@ import {
 	SAMPLE_DB,
 	SourceError,
 	assertTwelveRows,
+	lockedDbHint,
 	missingDbHint,
 	missingDepHint,
 	openSource,
@@ -59,6 +60,27 @@ describe("基准数据源（纯函数与错误指引）", () => {
 	it("missingDbHint 可接受自定义路径（供 openSource 复用）", () => {
 		assert.ok(missingDbHint("/tmp/x.duckdb").includes("/tmp/x.duckdb"));
 		assert.ok(missingDbHint().includes(SAMPLE_DB));
+	});
+
+	// 这条指引的存在理由是「别让人误判成语料丢了」——真实撞上时（VS Code 的 DuckDB
+	// 扩展以读写模式占了库）最贵的错误就是去找根本不存在的备份。所以断言不只验
+	// 「提到了锁」，还验它给出了解法（lsof / 关掉占用者）与安抚（npm test 不受影响）。
+	it("库被其他进程锁住时，指引指向「关掉占用它的进程」而非数据丢失", () => {
+		const hint = lockedDbHint(
+			new Error(
+				'IO Error: Could not set lock on file "/x/ziwei.duckdb": ' +
+					"Conflicting lock is held in /usr/share/code/code (PID 462628) by user swix."
+			),
+			"/x/ziwei.duckdb"
+		);
+		for (const must of ["/x/ziwei.duckdb", "PID 462628", "锁", "lsof", "npm test"]) {
+			assert.ok(hint.includes(must), `指引里应含「${must}」，实际：\n${hint}`);
+		}
+		assert.ok(hint.includes("不是") && hint.includes("损坏"), "必须明说这不是数据损坏");
+	});
+
+	it("lockedDbHint 默认指向样本库路径", () => {
+		assert.ok(lockedDbHint(new Error("boom")).includes(SAMPLE_DB));
 	});
 });
 

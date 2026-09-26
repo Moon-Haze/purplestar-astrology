@@ -43,7 +43,7 @@ export interface SampleFilter {
 	limit?: number;
 }
 
-/** 数据源不可用（缺文件 / 缺依赖）。`message` 已是可直接打印给用户的完整指引。 */
+/** 数据源不可用（缺依赖 / 缺文件 / 被其他进程锁住）。`message` 已是可直接打印给用户的完整指引。 */
 export class SourceError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -84,6 +84,30 @@ export function missingDbHint(path: string = SAMPLE_DB): string {
 	);
 }
 
+/**
+ * `db/ziwei.duckdb` 被**其他进程**以读写模式占用、拿不到锁时的指引。
+ *
+ * ⚠️ 触发场景很日常，绝非异常：VS Code 装了 DuckDB / SQL 之类的扩展，或手动预览过这个库，
+ *    它会以**读写**模式打开并持排他锁。DuckDB 的读写锁与只读锁**互斥**，于是本模块的
+ *    `READ_ONLY` 连接被拒。2026-09-26 实测撞上：持锁者是 `code` 进程本身，三个语料工具
+ *    全部失败，而 `npm test` 不受影响（它不读这个库 —— 这正是全局约束 2 的价值）。
+ *
+ * 与另两条指引的分工：这不是缺依赖、也不是缺文件，**更不是数据损坏或语料丢失**。
+ * 误判成后者会让人去找根本不存在的备份，所以这条必须把「只是锁冲突」写在最前面。
+ */
+export function lockedDbHint(err: unknown, path: string = SAMPLE_DB): string {
+	return (
+		`无法以只读方式打开样本数据库：${path}\n` +
+		`  它正被**另一个进程**以读写模式占用 —— DuckDB 的读写锁与只读锁互斥。\n` +
+		`  底层错误：${err instanceof Error ? err.message : String(err)}\n` +
+		`  这**不是**文件损坏，也**不是**语料丢失，只是锁冲突。\n` +
+		`  处理：关掉占用它的进程再重试。多半是编辑器里的数据库扩展（或 SQL 预览）打开了\n` +
+		`    这个库；上面的 PID 就是持有者。也可直接定位：\n` +
+		`      lsof ${path}\n` +
+		`  日常回归不受影响 —— npm test 不读这个库。`
+	);
+}
+
 /** 惰性单例：路径 → 已建立的连接。进程退出时自然释放。 */
 const connections = new Map<string, Promise<DuckDBConnection>>();
 
@@ -111,7 +135,12 @@ export async function openSource(dbPath: string = SAMPLE_DB): Promise<DuckDBConn
 		if (!existsSync(dbPath)) throw new SourceError(missingDbHint(dbPath));
 
 		// READ_ONLY：基准工具的立场是「只读语料」。写坏了这个库，两个验收层会一起失真。
-		const inst = await DuckDBInstance.create(dbPath, { access_mode: "READ_ONLY" });
+		// 失败必须与另两条路径同等**分类**：被别的进程锁住是最容易真实撞上的一种，
+		// 而裸 IO Error 只说明「有冲突」，不指向「去关掉占用它的编辑器扩展」这个解法。
+		// `.catch` 只包住 create —— connect 失败另有其因，套用锁的指引会误导。
+		const inst = await DuckDBInstance.create(dbPath, { access_mode: "READ_ONLY" }).catch(err => {
+			throw new SourceError(lockedDbHint(err, dbPath));
+		});
 		return inst.connect();
 	})();
 

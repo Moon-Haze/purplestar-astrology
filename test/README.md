@@ -45,7 +45,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 | [cli.test.ts](cli.test.ts) | 2 | ❌ | CLI 端到端：真太阳时、农历入参、晚子时、性别护栏、城市容错、`--focus` 宫名写法、`heming` 合盘（含**参数隔离与输出自洽的独立预言机**）、流年/流月四化（含**五虎遁与年干口径的独立复算**） |
 | [invariants.test.ts](invariants.test.ts) | 3 | ❌ | 排盘结构不变量：12 宫必齐、十四主星各一、大限区间连续……；另用 iztro 的 `horoscope()` 作外部预言机核对虚岁与大限，用**宫位偏移算术**核对宫名与合盘取宫入口，用**宫名路径的独立预言机**覆盖全部 70 个格局名与生年四化落宫，用**口诀表 / lunar 年柱 / 万年历向量**三条独立路径核对流年流月四化 |
 | [school.test.ts](school.test.ts) | 4 | ✅ | 三合派体系约束：飞星派字段不得被回填 |
-| [sample-source.test.ts](sample-source.test.ts) | 5 | ❌ | 数据源纯函数：DuckDB 行 → BaselineSample 的映射、12 行完整性守卫、流式遍历语义（不碰任何数据文件） |
+| [sample-source.test.ts](sample-source.test.ts) | 5 | ❌ | 数据源纯函数：DuckDB 行 → BaselineSample 的映射、12 行完整性守卫、流式遍历语义、三条失败路径的指引（缺依赖 / 缺库文件 / 库被其他进程锁住）（不碰任何数据文件） |
 
 层 2、3 刻意**不依赖基准样本**，因此不受 iztro 升级影响 —— 层 1 变红时，它们能帮你区分
 「是 iztro 行为变了」还是「内核真的排出了坏盘」。
