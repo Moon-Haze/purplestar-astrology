@@ -638,3 +638,53 @@ DuckDB / SQL 扩展打开该库时会以读写模式持有它 —— 基准工�
 
 **日常回归不受影响**：`npm test` 472 项全过（304 / 65 / 82 / 6 / 15），`npm run typecheck`
 0 错误 —— `npm test` 不读这个库，fixtures 已入库。
+
+---
+
+### 后续修正（八）（2026-09-26）：载体再换代 —— DuckDB 库 → Parquet 数据集
+
+**日期：** 2026-09-26
+**被测对象：** 基准语料的**分发形态**（能否随仓库分发，而不撞 GitHub 的体积限制）
+**状态：** ✅ 已完成（逐字节互验 8,640/8,640；重建基准零 diff；`npm test` 470 项全过；`typecheck` 0 错误）
+
+（七）刚把载体换成 `db/ziwei-s.duckdb`（641.8 MiB），随即撞上下一堵墙：**GitHub 单文件硬限
+100 MiB**。这个库进不了版本控制，于是「克隆即可跑基准」始终做不到 —— 数据集仍是每台机器
+各自重建的本地物，而 `reference/` 那份 5.5 GB 原始语料同样不入库。
+
+**换代结果**：同一份语料改为 Parquet 分片 `db/samples/data_0.parquet`（2.6 MiB）+
+`db/palaces/data_0.parquet`（21 MiB），**合计 23 MiB，随仓库分发**。`db/ziwei-s.duckdb`
+降级为「导出来源」这一构建中间物，与 `db/topics/`（502 MiB）一同列入 `.gitignore`。
+
+**28 倍的差距不是压缩率，是存储布局**（实测定位，非推断）：
+
+| 因素 | DuckDB | Parquet |
+| ---- | ------ | ------- |
+| 嵌套星曜列 | `LIST<VARCHAR>` 逐元素存放星名（BitPacking） | 对该嵌套列做**字典编码**，重复星名压成整数索引 |
+| `palace_name` / `sihua_flags` | 标记为 **Uncompressed**，合计白占 92.6 MiB | 同样的字典编码 |
+
+先排除了「库虚胖」：`free_blocks` 仅 12/2567，没有空洞可回收。再用全列 `sum(hash(...))`
+（int128）证明导出无损 —— 两侧逐位相同。⚠️ 由此也可知**重建一个「更紧凑的 .duckdb」是徒劳**：
+同数据、同格式，必然同大小，只有换格式才有效。分卷压缩包同理被否：git 对二进制不做 delta，
+每次重建都要全量重传。
+
+**改动面：一处。** `test/lib/sample-source.ts` 改为内存库 + Parquet 视图 ——
+`DuckDBInstance.create(":memory:")` 之后 `CREATE VIEW samples AS SELECT * FROM read_parquet(...)`。
+视图名与表名相同，故 `full-corpus.ts` / `build-fixtures.ts` / `verify-source.ts` 三个工具
+与其中全部 SQL **零改动**。
+
+**顺带消掉（七）记的那个痛点。** 内存库不碰磁盘文件，**没有锁可争** —— `lockedDbHint`
+整条指引连同层 5 的两条断言一并删除（472 → 470 项）。那个「编辑器扩展持排他锁」的故障类
+不是被绕过，而是不再存在。
+
+**端到端验证**：
+
+| 验证 | 手段 | 结果 |
+| ---- | ---- | ---- |
+| 导出无损 | `node test/tools/verify-source.ts --year 1960`（Parquet ↔ jsonl 语料逐字节） | 8,640/8,640 一致，0 差异 |
+| 重建幂等 | `node test/tools/build-fixtures.ts` + `git diff` | `charts.jsonl` **零 diff** |
+| 日常回归 | `npm test` | 470/470（304 / 65 / 82 / 6 / 13） |
+| 类型 | `npm run typecheck` | 0 错误 |
+
+⚠️ 重建那一步是本次最强的证据：300 条样本从 Parquet 取出后一路走完映射与排序，
+产出的 `charts.jsonl` 与上一代载体入库的基准**一字不差**。`manifest.json` 只有三行变化
+（`description` / `source` 随载体改名，`generatedAt` 按惯例还原）。

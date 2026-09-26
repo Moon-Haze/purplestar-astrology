@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
 
 import type { BirthInfo } from "@/ziwei/types";
 import type { BaselineSample } from "../lib/compare.ts";
-import { fetchSample, openSource, closeSource, SourceError, SAMPLE_DB } from "../lib/sample-source.ts";
+import { fetchSample, openSource, closeSource, SourceError, DB_DIR } from "../lib/sample-source.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/tools
 const SKILL_ROOT = resolve(HERE, "../..");
@@ -161,8 +161,8 @@ async function main(): Promise<void> {
 	}
 
 	console.log(RULE);
-	console.log("基准数据源互验（jsonl ↔ DuckDB 逐字节）");
-	console.log(`  数据库  : ${SAMPLE_DB}`);
+	console.log("基准数据源互验（jsonl ↔ parquet 数据集，逐字节）");
+	console.log(`  数据集  : ${DB_DIR}`);
 	console.log(`  语料    : ${SAMPLES}`);
 	console.log(`  范围    : ${shards.length} 个分片${Number.isFinite(LIMIT) ? `，全局至多 ${LIMIT} 条` : ""}`);
 	console.log(RULE);

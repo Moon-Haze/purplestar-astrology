@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// ── 全量核验：把 db/ziwei-s.duckdb 里的全部 518,400 条样本跑一遍 ──
+// ── 全量核验：把 db/{samples,palaces}/ 里的全部 518,400 条样本跑一遍 ──
 //
 // 与 npm test 的分工：
 //   npm test                 → test/fixtures/ 里 300 条**抽样**基准，秒级，日常回归
-//   本脚本                    → DuckDB 里**全量**语料，单线程约 2 小时，按需手动跑
+//   本脚本                    → 数据集里**全量**语料，单线程约 2 小时，按需手动跑
 //
 // 什么时候需要它：
 //   · 升级 iztro 之后，确认「差异集合没有扩大」（抽样可能刚好没抽到变化的那一宫）
@@ -17,7 +17,7 @@
 //   node test/tools/full-corpus.ts --limit 5000           # 只跑前 5,000 条
 //   node test/tools/full-corpus.ts --quiet                # 不打印进度，只出报告
 //
-// 退出码：0 = 白名单之外零差异；1 = 有差异，或数据库/依赖缺失。可直接用于 CI。
+// 退出码：0 = 白名单之外零差异；1 = 有差异，或数据集/依赖缺失。可直接用于 CI。
 //
 // ⚠️ 与 npm test 用**同一个比对器与同一份白名单**（test/lib/compare.ts）。
 //    这里不用白名单过滤掉差异，而是用 keepWhitelisted 保留后再分类统计 ——
@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url";
 import type { BirthInfo } from "@/ziwei/types";
 import { loadAlgorithm } from "../lib/loader.ts";
 import { compareChart, formatDiffs, BRANCHES, type ChartDiff } from "../lib/compare.ts";
-import { forEachSample, openSource, closeSource, SourceError, SAMPLE_DB } from "../lib/sample-source.ts";
+import { forEachSample, openSource, closeSource, SourceError, DB_DIR } from "../lib/sample-source.ts";
 
 const MAX_DETAIL = 20; // 明细最多列这么多条
 
@@ -152,7 +152,7 @@ function report(s: CorpusStats, expected: number, completed: boolean, ms: number
 	const limited = !completed && s.checked < expected;
 
 	console.log("\n══ 全量核验汇总 ══");
-	line("数据源", SAMPLE_DB);
+	line("数据源", DB_DIR);
 	line("范围", `${scope}（${expected.toLocaleString("en-US")} 条${limited ? "，受 --limit 截断" : ""}）`);
 	line("检查条数", s.checked.toLocaleString("en-US"));
 	line("完全一致", s.clean.toLocaleString("en-US"));

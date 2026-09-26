@@ -1,6 +1,6 @@
 // ── 层 5：基准数据源的纯函数 ──
 //
-// ⚠️ 本文件**不得触碰任何数据文件**。`npm test` 必须在「无 db/ziwei-s.duckdb、
+// ⚠️ 本文件**不得触碰任何数据文件**。`npm test` 必须在「无 db/ 数据集、
 //    无 DuckDB 依赖、无 jsonl 语料」的环境下跑通（见 test/README.md）。
 //    所以这里只测两样东西：错误指引的文本、以及**用不存在的路径**触发的失败分支。
 //    真正的映射正确性由 test/tools/verify-source.ts 拿真实语料逐字节证明。
@@ -8,10 +8,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-	SAMPLE_DB,
+	DB_DIR,
 	SourceError,
 	assertTwelveRows,
-	lockedDbHint,
 	missingDbHint,
 	missingDepHint,
 	openSource,
@@ -21,16 +20,17 @@ import type { PalaceRow, SampleRow } from "./lib/sample-source.ts";
 import type { BaselineChart } from "./lib/compare.ts";
 
 describe("基准数据源（纯函数与错误指引）", () => {
-	it("SAMPLE_DB 指向 <skill 根>/db/ziwei-s.duckdb", () => {
-		assert.match(SAMPLE_DB, /\/db\/ziwei-s\.duckdb$/);
+	it("DB_DIR 指向 <skill 根>/db", () => {
+		assert.match(DB_DIR, /\/db$/);
 	});
 
-	it("库文件缺失时抛 SourceError，指引写明「不是数据丢失」与语料仍在 reference/", async () => {
+	it("数据集缺失时抛 SourceError，指引写明分片位置与语料仍在 reference/", async () => {
 		// 文本细节直接断言纯函数 missingDbHint：不触依赖，有/无依赖环境下行为一致。
-		const hint = missingDbHint("/nonexistent/ziwei-does-not-exist.duckdb");
+		const hint = missingDbHint("/nonexistent/ziwei-does-not-exist");
 		for (const must of [
-			"/nonexistent/ziwei-does-not-exist.duckdb",
-			"不入版本控制",
+			"/nonexistent/ziwei-does-not-exist",
+			"samples",
+			"palaces",
 			"reference/ziwei-samples-toolkit/samples-out",
 			"不是",
 			"npm test",
@@ -41,7 +41,7 @@ describe("基准数据源（纯函数与错误指引）", () => {
 		// openSource 只断言结构性契约：rejects + SourceError + 非空指引。
 		// 有依赖时走 missingDbHint、无依赖时走 missingDepHint，两者都是可读指引，绝非 ENOENT 堆栈。
 		await assert.rejects(
-			() => openSource("/nonexistent/ziwei-does-not-exist.duckdb"),
+			() => openSource("/nonexistent/ziwei-does-not-exist"),
 			(err: unknown) => {
 				assert.ok(err instanceof SourceError, "应当是 SourceError");
 				assert.ok(err.message.length > 0, "message 应为非空指引");
@@ -58,29 +58,8 @@ describe("基准数据源（纯函数与错误指引）", () => {
 	});
 
 	it("missingDbHint 可接受自定义路径（供 openSource 复用）", () => {
-		assert.ok(missingDbHint("/tmp/x.duckdb").includes("/tmp/x.duckdb"));
-		assert.ok(missingDbHint().includes(SAMPLE_DB));
-	});
-
-	// 这条指引的存在理由是「别让人误判成语料丢了」——真实撞上时（VS Code 的 DuckDB
-	// 扩展以读写模式占了库）最贵的错误就是去找根本不存在的备份。所以断言不只验
-	// 「提到了锁」，还验它给出了解法（lsof / 关掉占用者）与安抚（npm test 不受影响）。
-	it("库被其他进程锁住时，指引指向「关掉占用它的进程」而非数据丢失", () => {
-		const hint = lockedDbHint(
-			new Error(
-				'IO Error: Could not set lock on file "/x/ziwei.duckdb": ' +
-					"Conflicting lock is held in /usr/share/code/code (PID 462628) by user swix."
-			),
-			"/x/ziwei.duckdb"
-		);
-		for (const must of ["/x/ziwei.duckdb", "PID 462628", "锁", "lsof", "npm test"]) {
-			assert.ok(hint.includes(must), `指引里应含「${must}」，实际：\n${hint}`);
-		}
-		assert.ok(hint.includes("不是") && hint.includes("损坏"), "必须明说这不是数据损坏");
-	});
-
-	it("lockedDbHint 默认指向样本库路径", () => {
-		assert.ok(lockedDbHint(new Error("boom")).includes(SAMPLE_DB));
+		assert.ok(missingDbHint("/tmp/x").includes("/tmp/x"));
+		assert.ok(missingDbHint().includes(DB_DIR));
 	});
 });
 

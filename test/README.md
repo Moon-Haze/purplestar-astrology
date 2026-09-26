@@ -3,14 +3,19 @@
 本目录是本 skill 的回归测试，用 518,400 条紫微斗数样本作为 golden 基准，
 锁定 `scripts/ziwei/` 排盘内核的行为。
 
-语料有**两个等价载体，并存且互为验证**（不是备份关系，也不是孤本）：
+语料有**三个等价载体，并存且互为验证**（不是备份关系，也不是孤本）：
 
-| 载体 | 体积 | 谁用 |
-|---|---|---|
-| `reference/ziwei-samples-toolkit/samples-out/` | 5.5 GB / 720 个 `jsonl.gz` / 60 个年份目录 | 只用于 `verify-source.ts` 的互验 |
-| `db/ziwei-s.duckdb` | 0.67 GB / `samples` + `palaces` 两张关系表 | `test/tools/` 下基准工具的数据源 |
+| 载体 | 体积 | 入库 | 谁用 |
+|---|---|---|---|
+| `db/samples/` + `db/palaces/`（Parquet 分片） | 2.6 MiB + 21 MiB | ✔ 随仓库分发 | `test/tools/` 下基准工具的数据源 |
+| `db/ziwei-s.duckdb` | 641.8 MiB / 同名两张关系表 | ✘ 构建中间物 | 仅为上面那份数据集的导出来源，已不由任何工具读取 |
+| `reference/ziwei-samples-toolkit/samples-out/` | 5.5 GB / 720 个 `jsonl.gz` / 60 个年份目录 | ✘ | 只用于 `verify-source.ts` 的互验 |
 
-两者都在 `.gitignore` 里。**核查它们请用 `find` / `stat` / `du`，不要用 `ls`** ——
+数据集由 `db/ziwei-s.duckdb` 导出，同一份数据 Parquet 比 DuckDB 小 **28 倍**：
+DuckDB 的 `LIST<VARCHAR>` 逐元素存放星曜名，而 Parquet 对该嵌套列做字典编码，
+把重复星名压成整数索引。导出无损由 `verify-source.ts` 逐字节证明，不是「看着像」。
+
+后两者都在 `.gitignore` 里。**核查它们请用 `find` / `stat` / `du`，不要用 `ls`** ——
 本机 `ls` 是指向 `eza -al --git-ignore` 的别名，会把这两个目录显示成空的。
 
 ```bash
@@ -282,13 +287,13 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 | 层 | 内容 | 需要什么 | 何时跑 |
 |---|---|---|---|
 | 日常回归 | `npm test`（300 条抽样基准 + 各层预言机） | **什么都不需要**（fixtures 已入库） | 每次 |
-| 逐条互验 | `node test/tools/verify-source.ts --year 1960` | `db/ziwei-s.duckdb` **与** `reference/` jsonl 语料 | 改过样本重建映射后 |
-| 零 diff 验收 | `node test/tools/build-fixtures.ts` + `git diff --exit-code` | `db/ziwei-s.duckdb` | 重建基准时（数秒） |
-| 全量核验 | `npm run test:corpus`（518,400 条） | `db/ziwei-s.duckdb` | 升级 iztro 后（约 2.3 小时） |
+| 逐条互验 | `node test/tools/verify-source.ts --year 1960` | `db/{samples,palaces}/` **与** `reference/` jsonl 语料 | 改过样本重建映射后 |
+| 零 diff 验收 | `node test/tools/build-fixtures.ts` + `git diff --exit-code` | `db/{samples,palaces}/` | 重建基准时（数秒） |
+| 全量核验 | `npm run test:corpus`（518,400 条） | `db/{samples,palaces}/` | 升级 iztro 后（约 2.3 小时） |
 
 ⚠️ **只有第一层是回归测试，后三层都是手动执行的构建/验收步骤。** 这条边界是刻意的：
-`npm test` 必须在「无 `db/ziwei-s.duckdb`、无 DuckDB 依赖、无 jsonl 语料」的环境下跑通，
-所以它**不依赖任何数据文件**。`test/sample-source.test.ts` 是这个约束下唯一新增的用例 ——
+`npm test` **不读任何数据文件** —— 数据集虽然随仓库分发（就在 `db/` 下），
+但日常回归只吃已入库的 fixtures，所以在无 DuckDB 依赖的环境下照样跑通。`test/sample-source.test.ts` 是这个约束下唯一新增的用例 ——
 它只用合成行与一个写死的、不存在的路径，不碰数据文件，故合规。
 
 ⚠️ **分片缺失算警告不算失败**：`verify-source.ts` 遇到缺失的分片只累加「未检查分片」
@@ -300,8 +305,8 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 
 ## 四、fixtures 从哪来
 
-- **来源**：`db/ziwei-s.duckdb`（0.67GB，**不入版本控制**；语料源自 `reference/ziwei-samples-toolkit`，
-  两者等价并存，见文首）
+- **来源**：`db/samples/` + `db/palaces/`（Parquet 分片 2.6 MiB + 21 MiB，**随仓库分发**；
+  同一份数据的原始载体是 `reference/ziwei-samples-toolkit/samples-out/`，三者等价并存，见文首）
 - **抽样**：60 年（1924–1983）每年 5 条 = 300 条，实测覆盖
   **12/12 月 · 12/12 时辰 · 2/2 性别 · 5/5 五行局 · 22 个闰月年**
 - **只存 `birthInfo` + `chart`**：样本的 `topics`（13 主题解读文本）占单条体积 90%，
@@ -319,8 +324,8 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 node test/tools/build-fixtures.ts
 ```
 
-只在**需要重建基准**时手动跑（`db/ziwei-s.duckdb` 不存在时跑不了 —— 它会打印指引并退出，
-但**日常测试不需要它** —— fixtures 已入库）。
+只在**需要重建基准**时手动跑（数据集缺失时会打印指引并退出；但**日常测试不需要它** ——
+fixtures 已入库，跑 `npm test` 用不着数据集）。
 
 脚本会在写盘前做**分歧自检**：拿当前内核重排这 300 条，若与基准有白名单之外的差异，
 **拒绝写盘**并列出差异。理由是重建 fixtures 等于「把当前行为固化成新基准」，
@@ -373,7 +378,7 @@ test/
 │   ├── charts.jsonl           300 条基准（每行 {"birthInfo":…,"chart":…}）
 │   └── manifest.json          来源、基准引擎版本、抽样算法、覆盖度
 └── tools/
-    ├── build-fixtures.ts     从 db/ziwei-s.duckdb 抽样重建 fixtures（手动执行）
+    ├── build-fixtures.ts     从 db/ 数据集抽样重建 fixtures（手动执行）
     ├── full-corpus.ts        全量核验 518,400 条，1924–1983 有外部基准（手动执行）
     ├── verify-source.ts      jsonl ↔ DuckDB 逐条逐字节互验（手动执行，需要 reference/ 语料）
     └── year-scan.ts          1900–2100 恒等式扫描，约 87,000 条，数据集外年份段的自洽性（手动执行）
