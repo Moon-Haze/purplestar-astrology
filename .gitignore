@@ -26,19 +26,27 @@ node_modules/
 reference/
 
 # ── 样本数据集（随仓库分发，**不忽略**）────────────────────
-# db/dataset/samples.parquet 与 db/dataset/palaces.parquet 是排盘基准工具
-# （test/lib/sample-source.ts）的数据源，共 0.8 MiB + 12.0 MiB，克隆即可用、不必重建。
-# 由 641.5 MiB 的 DuckDB 库导出而来 —— Parquet 对嵌套的星曜名列做字典编码，
-# 同一份数据压到 1/50（DuckDB 的 LIST<VARCHAR> 是逐元素存放的）。
-# 故此处**刻意不写**这两个文件。
+# db/dataset/ 整目录入库，克隆即可用、不必重建：
+#   samples.parquet + palaces.parquet    0.8 + 12.0 MiB —— 排盘基准工具
+#     （test/lib/sample-source.ts）的数据源
+#   topics-*.parquet（11 片）            378.9 MiB —— 13 主题解读文本，
+#     query / verify:db 建 topics 视图时读它。**必须入库**：read_parquet 的 glob
+#     匹配不到文件是**直接报错**而非返回空集，缺了它连 `SELECT count(*) FROM samples`
+#     都会在建视图那步失败 —— 而全新 clone 恰好就是这个状态。
+# 全部由 641.5 MiB 的 DuckDB 库导出。Parquet 的红利几乎全在星曜那 6 个嵌套列上 ——
+# DuckDB 的 LIST<VARCHAR> 逐元素存放星名，Parquet 做字典编码把重复星名压成整数索引；
+# 而 topics 是纯文本，压不动，378.9 MiB 基本照搬。
+# ⚠️ 别把「50 倍」当成整份数据集的压缩率：那是拿**含 topics 的整库**去比**只有两张表
+#    的 Parquet**（口径不同）。同口径是 391.7 MiB 对 641.5 MiB，**1.6 倍**。
+# 故此处**刻意不写** db/dataset/ 下的任何文件。
+# ⚠️ 代价：git 对二进制不做 delta，日后每次重建 topics 都要全量重传这 379 MiB。
 
 # ── 不入版本控制的数据 ────────────────────────────────────
-# db/dataset/topics-*.parquet：各主题解读文本的分片（11 片 / 379 MiB），体积过大。
-# db/ziwei.duckdb：上面那份数据集的**导出来源**（641.5 MiB，超 GitHub 单文件 100 MiB 硬限），
-#   属构建中间物 —— 数据集本身已入库，所以它随时可弃。同名的 .wal / .progress.json /
-#   .dict.jsonl 都是它的边车，一并忽略。
-# db/dataset.staging/：构建期的暂存分片与半截产物。
-db/dataset/topics-*.parquet
+# db/ziwei.duckdb：上面那份数据集的**导出来源**（641.5 MiB，超 GitHub 单文件
+#   100 MiB 硬限），属构建中间物 —— 数据集本身已入库，所以它随时可弃。
+#   同名的 .wal / .progress.json / .dict.jsonl 都是它的边车，一并忽略。
+# db/dataset.staging/：构建期的暂存分片与半截产物，收尾即删。**必须忽略** ——
+#   构建进行中误跑 git add -A，会把半截 parquet 提交进历史。
 db/dataset.staging/
 db/ziwei.duckdb
 db/ziwei.duckdb.*
