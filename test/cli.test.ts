@@ -1,4 +1,4 @@
-# ── 层 2：CLI 端到端 ──
+// ── 层 2：CLI 端到端 ──
 //
 // 这一层测的是**基准样本覆盖不到的 CLI 层逻辑**：样本的 longitude 恒为 120（真太阳时
 // 校正量恒为 0）、hour 只有 0-11（无晚子时）、出生信息恒为公历。这些逻辑全在 CLI 层，
@@ -861,6 +861,263 @@ describe("CLI 端到端", () => {
 				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "career",
 			]);
 			assert.ok(t.includes("转述") || t.includes("来源"), "论断输出应披露来源分级，防止把转述当原话");
+		});
+	});
+
+	// ── cities 容错解析 ──
+	// `ziwei/cities.ts` 只是数据表，没有分支；会「静默取错经度」的是 `cli/birth-info.ts`
+	// 的 findLongitude —— 经度差 1° 就是真太阳时差 4 分钟，足以把时辰推过边界、整张盘换掉。
+	describe("cities 容错解析（findLongitude 分支）", () => {
+		const loadFind = () => load<typeof import("@/cli/birth-info")>("@/cli/birth-info");
+
+		it("歧义分支：同长度候选记进 ambiguous，且最多 5 个（超出截断）", async () => {
+			const { findLongitude } = await loadFind();
+			// 「海」的同长度候选实测 7 个（海东/海口/海西/琼海/上海/威海/珠海），返回值只给 5 个。
+			// 一条断言同时钉住两件事：有歧义必须提示，提示又不能无限长。
+			const hit = findLongitude("海");
+			assert.ok(hit, "「海」应容错解析出城市");
+			assert.equal(hit.ambiguous?.length, 5, "同长度候选超过 5 个时只应保留 5 个");
+			for (const c of hit.ambiguous ?? [])
+				assert.match(c, /^.+\(\d+(\.\d+)?\)$/, `候选应形如「城市(经度)」，实得：${c}`);
+			assert.ok(
+				!(hit.ambiguous ?? []).some(c => c.startsWith(`${hit.matched}(`)),
+				"ambiguous 装的是「其余候选」，不能把命中项自己也算进去"
+			);
+		});
+
+		it("歧义分支：命中项必是表内真实城市，且经度与表内一致（独立预言机）", async () => {
+			const { findLongitude } = await loadFind();
+			const { PROVINCES } = await load<typeof import("@/ziwei/cities")>("@/ziwei/cities");
+			// 期望值取自 PROVINCES 数据表，不读 findLongitude 自己的返回值 ——
+			// 否则「取错城市」时两边一起错，断言照样全绿（本仓历史上栽过同一个跟头）。
+			const all = PROVINCES.flatMap(p => p.cities);
+			for (const q of ["海", "张家", "晋", "阳", "石家庄市", "河北省石家庄市"]) {
+				const hit = findLongitude(q);
+				assert.ok(hit, `「${q}」应能解析`);
+				const inTable = all.find(c => c.name === hit.matched);
+				assert.ok(inTable, `「${q}」命中「${hit.matched}」，但它不在城市表里`);
+				assert.equal(hit.longitude, inTable.longitude, `「${q}」的经度应与表内一致`);
+			}
+		});
+
+		it("exact 只对「写的就是表里的名字」为真；无歧义时 ambiguous 为 null 而非空数组", async () => {
+			const { findLongitude } = await loadFind();
+			// 上层按 exact 决定要不要提示「已做容错解析」，判错会让提示漏发或误发；
+			// null 与 [] 的区别同样对上层可见 —— null 才表示「不必提示」。
+			assert.equal(findLongitude("石家庄")?.exact, true, "精确命中");
+			assert.equal(findLongitude("石家庄市")?.exact, false, "去后缀属容错，需提示");
+			assert.equal(findLongitude("河北省石家庄市")?.exact, false, "省市全名同上");
+			assert.equal(findLongitude("石家庄市")?.ambiguous, null, "无歧义应给 null");
+		});
+
+		it("未收录返回 null：不靠「包含」关系瞎匹配", async () => {
+			const { findLongitude } = await loadFind();
+			assert.equal(findLongitude("不存在XYZ"), null, "查无此城");
+			assert.equal(findLongitude(""), null, "空串");
+			assert.equal(findLongitude("   "), null, "纯空白");
+			// 「海南」是省名不是城市名。省份走 buildBirthInfo 的 --province 分支
+			// （实测 --province 海南 → 110.3，按省会海口计），--city 不该靠包含关系猜一个市。
+			assert.equal(findLongitude("海南"), null, "省名不是城市名，不得瞎猜");
+		});
+
+		it("CLI 层把歧义提示透出，并受同样的 5 个上限约束", async () => {
+			// 解析层记了 ambiguous 而 CLI 不打印，用户照样不知道取了哪个市 —— 这条盯透出。
+			const t = await cliCmd("cities", ["--search", "海"]);
+			const line = t.split("\n").find(l => l.includes("存在同名候选"));
+			assert.ok(line, `应提示同名候选，实得输出：\n${t}`);
+			assert.ok(line.includes("已取最短名"), "应说明按什么规则取的");
+			const listed = line
+				.replace(/^.*存在同名候选：/, "")
+				.replace(/，已取最短名.*$/, "")
+				.split("、");
+			assert.equal(listed.length, 5, `提示里的候选也应是 5 个，实得 ${listed.length} 个`);
+		});
+
+		it("「未收录」与「容错可解析」文案互斥", async () => {
+			// 同一段输出先否定再自证是自相矛盾的：说「未收录」就不能再说「能容错解析」。
+			const miss = await cliCmd("cities", ["--search", "不存在XYZ"]);
+			assert.ok(miss.includes("未收录"), "真查不到应说未收录");
+			assert.ok(!miss.includes("容错解析"), "查不到就不该再提容错解析");
+
+			const fuzzy = await cliCmd("cities", ["--search", "石家庄市"]);
+			assert.ok(fuzzy.includes("未直接命中"), "没直接命中应说明");
+			assert.ok(fuzzy.includes("容错解析"), "应告诉用户排盘时能识别");
+			assert.ok(!fuzzy.includes("未收录"), "能解析就不能说未收录");
+		});
+	});
+
+	// ── classics 古籍检索 ──
+	describe("classics 古籍检索（searchClassics 分支）", () => {
+		const loadClassics = () => load<typeof import("@/classics/index")>("@/classics/index");
+
+		it("空查询返回空数组（不把空白当关键词）", async () => {
+			const { searchClassics } = await loadClassics();
+			for (const q of ["", "   ", "\n", "\t "])
+				assert.deepEqual(searchClassics(q, 10), [], `「${JSON.stringify(q)}」不该有命中`);
+		});
+
+		it("limit 截断命中数；命中不足时返回全部", async () => {
+			const { searchClassics } = await loadClassics();
+			const total = searchClassics("星", 10_000).length;
+			assert.ok(total > 10, `「星」的命中应足够多才测得出截断，实得 ${total}`);
+			assert.equal(searchClassics("星", 5).length, 5, "超过上限只返回 limit 条");
+			assert.equal(searchClassics("星", total).length, total, "上限恰等于总数时全返回");
+			assert.equal(searchClassics("星", total + 1).length, total, "上限高于总数时返回全部");
+		});
+
+		it("limit 非正数或 NaN 时返回空，Infinity 视为无上限", async () => {
+			const { searchClassics } = await loadClassics();
+			// 修复前：上限判定排在 push 之后，limit=0/-3 恒返回 1 条；
+			// NaN 参与比较恒为假，反而返回全部。上限设了却给不出对应结果，两种都是错的。
+			for (const bad of [0, -1, -3, Number.NaN])
+				assert.deepEqual(searchClassics("星", bad), [], `limit=${bad} 应返回空`);
+			assert.equal(
+				searchClassics("星", Number.POSITIVE_INFINITY).length,
+				searchClassics("星", 10_000).length,
+				"Infinity 是「无上限」，应返回全部而非空"
+			);
+		});
+
+		it("计数单位是段落，不是出现次数", async () => {
+			const { searchClassics } = await loadClassics();
+			// gsf-1-1 原文含「星」六处，但只应产出 1 条 —— 否则命中数会被长段落灌水。
+			const hits = searchClassics("星", 10_000).filter(h => h.paragraphId === "gsf-1-1");
+			assert.equal(hits.length, 1, "同段落内多次出现只算一条");
+			assert.ok(
+				hits[0].text.split("星").length - 1 >= 2,
+				"样本段本身应确有多处命中，否则这条断言是空转"
+			);
+		});
+
+		it("按文档顺序返回（书序→章序→段序），无相关度排序", async () => {
+			const { searchClassics, ALL_BOOKS } = await loadClassics();
+			const order = ALL_BOOKS.map(b => b.slug);
+			const hits = searchClassics("星", 10_000);
+			assert.ok(hits.length > 5, "命中太少则顺序断言无意义");
+			for (let i = 1; i < hits.length; i++) {
+				const p = hits[i - 1],
+					c = hits[i];
+				const pi = order.indexOf(p.bookSlug),
+					ci = order.indexOf(c.bookSlug);
+				assert.ok(
+					pi < ci || (pi === ci && p.paragraphId <= c.paragraphId),
+					`顺序应单调：${p.bookSlug}/${p.paragraphId} 之后不该是 ${c.bookSlug}/${c.paragraphId}`
+				);
+			}
+		});
+
+		it("snippet 的上下文窗口是前后各 40 字，两端截断才补 …", async () => {
+			const { searchClassics } = await loadClassics();
+			// 规则级断言（跑全部 41 条命中），不是单点快照：
+			//   前置 … ⇔ 命中位置 > 40；后置 … ⇔ 命中之后仍有超过 40 字。
+			const hits = searchClassics("星", 10_000);
+			assert.ok(hits.length > 5, "命中太少则规则断言无意义");
+			for (const h of hits) {
+				const idx = h.text.indexOf("星");
+				assert.ok(idx >= 0, `${h.paragraphId} 的原文应含检索词`);
+				assert.equal(h.snippet.startsWith("…"), idx > 40, `前置 … 判错：${h.paragraphId}`);
+				assert.equal(
+					h.snippet.endsWith("…"),
+					idx + 1 + 40 < h.text.length,
+					`后置 … 判错：${h.paragraphId}`
+				);
+			}
+		});
+
+		it("snippet 两端都被截断时，前后上下文恰各 40 字", async () => {
+			const { searchClassics } = await loadClassics();
+			// 段落普遍短于 81 字，全库只有 qj-1-1（85 字）容得下两端都截断的命中。
+			// 下列三条 guard 保证算术成立，任一失效都会指名道姓地报出来，而不是静默变松。
+			const hit = searchClassics("之", 10_000).find(h => h.paragraphId === "qj-1-1");
+			assert.ok(hit, "「之」应命中 qj-1-1");
+			assert.equal(hit.text.length, 85, "样本段长度变了，下面的 40+40 算术需重新核对");
+			assert.equal(hit.text.indexOf("之"), 41, "命中位置变了，同上");
+			assert.ok(!/[<>&"']/.test(hit.text), "该段含需转义字符，长度会被 &quot; 撑大");
+
+			const before = hit.snippet.replace(/^…/, "").split("<mark>")[0];
+			const after = hit.snippet.replace(/…$/, "").split("</mark>")[1];
+			assert.equal(before.length, 40, "前置上下文应为 40 字");
+			assert.equal(after.length, 40, "后置上下文应为 40 字");
+		});
+
+		it("snippet 先转义原文再拼 <mark>：原文的引号不会混成标签", async () => {
+			const { searchClassics } = await loadClassics();
+			// gsf-8-4 原文是 `玄学等"非实"行业`（ASCII 双引号，全库共 11 段含它）。
+			// 转义若排在拼 <mark> 之后，原文里的引号就会被当成 HTML 注入 —— 盯的是顺序。
+			// 反向注入验证：去掉这三处 escapeHtml，本用例即变红。
+			const hit = searchClassics("非实", 5)[0];
+			assert.ok(hit, "「非实」应有命中");
+			assert.ok(
+				hit.snippet.includes("&quot;<mark>非实</mark>&quot;"),
+				`应形如 &quot;<mark>非实</mark>&quot;，实得：${hit.snippet}`
+			);
+			// 边界登记（实测）：全库 75 段无一段含裸 < 、> 或 &，只 11 段含 "。
+			// 也就是说 escapeHtml 的尖括号分支在当前数据下**不可达**，任何断言都触发不了它
+			// —— 故此处不写「snippet 无裸尖括号」那种永远为真的断言，只锁真正走得通的引号路径。
+			// 若将来书目引入 < 或 &，这里要补回尖括号断言。
+			for (const h of searchClassics("之", 10_000))
+				assert.ok(!h.snippet.includes('"'), `${h.paragraphId} 的 snippet 漏出裸引号`);
+		});
+
+		it("TOTAL_PARAGRAPHS 与书目结构自洽（独立复算）", async () => {
+			const { ALL_BOOKS, TOTAL_PARAGRAPHS } = await loadClassics();
+			// 常量与结构必须由两条路算出来再对上，否则改书时容易只改一处。
+			const counted = ALL_BOOKS.reduce(
+				(n, b) => n + b.chapters.reduce((m, c) => m + c.paragraphs.length, 0),
+				0
+			);
+			assert.equal(TOTAL_PARAGRAPHS, counted, "总段数应由书目结构数出来");
+		});
+
+		it("无参数时列出全部书目；未命中给明确文案", async () => {
+			const t = await cliCmd("classics", []);
+			for (const b of ["gusuifu", "quanji", "quanshu"])
+				assert.ok(t.includes(b), `书目清单应含 ${b}`);
+			assert.ok(t.includes("用法：classics --search"), "应给出用法");
+
+			const miss = await cliCmd("classics", ["--search", "紫微星"]);
+			assert.equal(miss.trim(), "古籍中未找到「紫微星」。", "未命中应有明确文案");
+		});
+
+		it("CLI 把 <mark> 高亮转成『』（不透出 HTML 标签）", async () => {
+			const t = await cliCmd("classics", ["--search", "紫微", "--limit", "2"]);
+			assert.ok(t.includes("『紫微』"), `命中词应被『』裹住，实得：\n${t}`);
+			assert.ok(!t.includes("<mark>"), "不该把 <mark> 透给终端用户");
+		});
+
+		it("--limit 非正整数时指出是参数问题，不谎报「未找到」", async () => {
+			// 内核把非法 limit 归成空结果后，若 CLI 不加区分，`--limit 0` 会输出
+			// 「古籍中未找到「星」。」—— 明明有 41 条命中，只是上限被设成了 0。
+			for (const bad of ["0", "-3", "abc"]) {
+				const t = await cliCmd("classics", ["--search", "星", "--limit", bad]);
+				assert.ok(!t.includes("未找到"), `--limit ${bad} 不该谎报未找到，实得：${t}`);
+				assert.ok(t.includes("--limit"), `--limit ${bad} 应指出是 limit 的问题，实得：${t}`);
+			}
+		});
+	});
+
+	// ── chart 命令 ──
+	describe("chart 命令", () => {
+		it("渲染冒烟：关键段落齐全", async () => {
+			const t = await cliCmd("chart", [
+				"--date", "1990-05-15", "--time", "09:30", "--city", "北京", "--gender", "male",
+			]);
+			for (const seg of ["命盘", "农历：", "命宫：", "身宫：", "五行局：", "紫微：", "大限：", "当前年龄："])
+				assert.ok(t.includes(seg), `chart 输出应含「${seg}」，实得：\n${t.slice(0, 400)}`);
+		});
+
+		it("--json 输出十二宫齐全，地支 0-11 各一次", async () => {
+			const c = JSON.parse(
+				await cliCmd("chart", [
+					"--date", "1990-05-15", "--time", "09:30", "--city", "北京", "--gender", "male", "--json",
+				])
+			) as ZiweiChart;
+			assert.equal(c.palaces.length, 12, "恒为十二宫");
+			assert.deepEqual(
+				c.palaces.map(p => p.branch).sort((a, b) => a - b),
+				[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+				"地支 0-11 各出现一次"
+			);
 		});
 	});
 });

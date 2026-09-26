@@ -84,7 +84,8 @@ export function getParagraphById(id: string) {
  * 古籍全文检索。
  *
  * @param query - 检索词。首尾空白先被裁掉；裁后长度不足 1 则直接返回空数组
- * @param limit - 命中数上限，默认 30（`classics` 命令传 15）
+ * @param limit - 命中数上限，默认 30（`classics` 命令传 15）。
+ *   `NaN` 或小于 1 时返回空数组；`Infinity` 表示无上限
  * @returns 命中列表，按 {@link ALL_BOOKS} 的书序 → 章节序 → 段落序排列
  *
  * @remarks
@@ -101,6 +102,11 @@ export function getParagraphById(id: string) {
 export function searchClassics(query: string, limit = 30): SearchHit[] {
 	const q = query.trim();
 	if (q.length < 1) return [];
+	// 上限的合法性必须在扫描前判定：命中数是扫描中才累积的，放在循环里判会
+	// 让 limit<=0 至少漏出 1 条（上限判定排在 push 之后），而 NaN 参与比较恒为假、
+	// 等于没有上限。两种都会让「设了上限」与「给出的结果数」对不上。
+	// Infinity 不在此列 —— 它是「无上限」，走正常路径返回全部。
+	if (Number.isNaN(limit) || limit < 1) return [];
 
 	const hits: SearchHit[] = [];
 	for (const book of ALL_BOOKS) {

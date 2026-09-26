@@ -519,7 +519,12 @@ function cmdClassics(args: CliArgs) {
 		].join("\n");
 	}
 	const q = String(args.search ?? args._.join(" "));
-	const hits = searchClassics(q, Number(args.limit ?? 15));
+	const limit = Number(args.limit ?? 15);
+	// 非法上限必须在这里拦下：内核把 NaN / <1 一律归成空结果，若不区分就会掉进
+	// 下面那条「未找到」——明明有命中，只是把上限设成了 0 或写成了非数字。
+	if (Number.isNaN(limit) || limit < 1)
+		return `--limit 需为正整数，实得 ${String(args.limit)}。`;
+	const hits = searchClassics(q, limit);
 	if (!hits.length) return `古籍中未找到「${q}」。`;
 	const out = [`古籍检索「${q}」命中 ${hits.length} 条：`, ""];
 	for (const h of hits) {
