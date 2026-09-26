@@ -142,8 +142,8 @@ async function main(): Promise<void> {
 		resolve(OUT_DIR, "manifest.json"),
 		JSON.stringify(
 			{
-				description: "紫微斗数排盘基准（golden）—— 从 reference/ziwei-samples-toolkit 抽样而来",
-				source: "reference/ziwei-samples-toolkit/samples-out",
+				description: "紫微斗数排盘基准（golden）—— 从 db/ziwei-s.duckdb 抽样而来",
+				source: "db/ziwei-s.duckdb（原始语料 reference/ziwei-samples-toolkit/samples-out，与本库等价）",
 				baselineEngine: "iztro 2.5.8",
 				note:
 					"基准为 iztro 2.5.8 的行为快照；本项目用 2.6.1，已知差异见 test/lib/compare.ts 的 KNOWN_DIVERGENCES。" +
