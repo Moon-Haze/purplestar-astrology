@@ -1,4 +1,4 @@
-// ── 层 2：CLI 端到端 ──
+# ── 层 2：CLI 端到端 ──
 //
 // 这一层测的是**基准样本覆盖不到的 CLI 层逻辑**：样本的 longitude 恒为 120（真太阳时
 // 校正量恒为 0）、hour 只有 0-11（无晚子时）、出生信息恒为公历。这些逻辑全在 CLI 层，
@@ -14,7 +14,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
-import { loadAlgorithm, loadSihua } from "./lib/loader.ts";
+import { loadAlgorithm, loadSihua, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
 import { BRANCHES, chartSignature } from "./lib/compare.ts";
 
 const execFileAsync = promisify(execFile);
@@ -65,8 +65,49 @@ interface HemingCase {
 	gender: "male" | "female";
 }
 
-/** 跑一次 CLI 的任意子命令，返回 stdout。失败时抛出带 stderr 的错误。 */
+/** 把命令抛错包装成与 execFile 失败同形（带 .stderr），兼容 cliFails / cmdFails。 */
+function asCliFailure(msg: string): Error & { stderr: string } {
+	const e = new Error(`错误：${msg}`) as Error & { stderr: string };
+	e.stderr = `错误：${msg}`;
+	return e;
+}
+
+// 进程内复用的 COMMANDS 表（懒加载一次；含 iztro/db-analysis/classics/nihai，仅付一次冷启动税）。
+let commandsMod: typeof import("@/cli/commands") | null = null;
+let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
+
+/**
+ * 进程内执行子命令：直接调 COMMANDS[sub](parseArgs(args), ctx)，与 purple-star.ts main() 同路径。
+ * parseArgs / buildBirthInfo / 业务逻辑全部仍被测，只省掉「每个用例起一个 node 子进程」的冷启动税。
+ */
+async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
+	if (!commandsMod) commandsMod = await load<typeof import("@/cli/commands")>("@/cli/commands");
+	if (!parseArgsFn) ({ parseArgs: parseArgsFn } = await load<typeof import("@/cli/args")>("@/cli/args"));
+	const fn = commandsMod.COMMANDS[sub];
+	if (!fn) throw asCliFailure(`未知命令「${sub}」`);
+	try {
+		return await fn(parseArgsFn(args), { root: ROOT, rootLabel: ROOT_LABEL });
+	} catch (err) {
+		throw asCliFailure((err as Error).message);
+	}
+}
+
+/** 永远走真子进程（防漂移冒烟用）：进程内路径替代不了它对子进程入口的覆盖。 */
+async function cliReal(args: string[]): Promise<string> {
+	const { stdout } = await execFileAsync("node", [CLI, "analyze", ...args], { cwd: SKILL_ROOT });
+	return stdout;
+}
+
+/**
+ * 跑一次 CLI 的任意子命令，返回 stdout。失败时抛出带 stderr 的错误。
+ *
+ * 默认走**进程内**（直接调 COMMANDS[sub]，省掉每个用例起 node 子进程的冷启动税，CLI 层
+ * 从 ~150s 降到 ~5s）。语义等价已用「进程内输出 ≡ 真子进程 stdout（仅差 console.log 尾部换行）」
+ * 逐字节验证。真子进程入口由「内核加载防漂移」断言（cliReal）持续冒烟。
+ * 需要全量真子进程时设 CLI_SUBPROCESS=1。
+ */
 async function cliCmd(sub: string, args: string[]): Promise<string> {
+	if (!process.env.CLI_SUBPROCESS) return cliCmdInProcess(sub, args);
 	const { stdout } = await execFileAsync("node", [CLI, sub, ...args], { cwd: SKILL_ROOT });
 	return stdout;
 }
@@ -582,9 +623,11 @@ describe("CLI 端到端", () => {
 		it("内核直调结果 ≡ CLI --json 输出", async () => {
 			const birth: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male", longitude: 120 };
 			const direct = generateChart({ ...birth });
-			const viaCli = await cliJson([
-				"--date", "1990-05-15", "--branch", "5", "--lng", "120", "--gender", "male",
-			]);
+			// ⚠️ 这条必须走**真子进程**（cliReal）：它盯的是「测试进程内的内核」与「真实 CLI 子进程」不漂移。
+			//    走进程内 cliJson 会退化成「进程内 ≡ 进程内」，失去防漂移意义。
+			const viaCli = JSON.parse(await cliReal([
+				"--date", "1990-05-15", "--branch", "5", "--lng", "120", "--gender", "male", "--json",
+			])) as AnalyzeJson;
 			assert.equal(
 				chartSignature(direct),
 				chartSignature(viaCli.chart),

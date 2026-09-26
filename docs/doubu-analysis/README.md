@@ -2,11 +2,11 @@
 
 **分支：** `doubu-test-analysis`
 **整理日期：** 2026-09-26
-**分析范围：** purplestar-astrology skill 的测试文件、DuckDB 数据库、topics 表、测试覆盖范围与缺口
+**分析范围：** purplestar-astrology skill 的测试文件、DuckDB 数据库、topics 表、测试覆盖范围与缺口、测试套件性能优化
 
 ---
 
-本目录汇总了对该 skill 的测试体系与数据库的完整分析，共 4 篇：
+本目录汇总了对该 skill 的测试体系与数据库的完整分析，共 5 篇：
 
 | 文档 | 内容 |
 |---|---|
@@ -14,6 +14,7 @@
 | [02 · DuckDB 数据库分析与压缩分发方案](02-duckdb-compression.md) | 数据库用途、表结构、硬约束、压缩与分发方案 |
 | [03 · topics 表分析](03-topics-table.md) | topics 三张表是什么、13 主题、为何可安全删除 |
 | [04 · 测试覆盖范围与待补充测试分析](04-coverage-and-gaps.md) | 覆盖全景、命令/模块级缺口、可补测试与方法论建议 |
+| [05 · 测试套件性能分析与优化](05-test-performance-optimization.md) | CLI 测试进程内化，层 2 从 154s 降到 4.7s（33×） |
 
 ---
 
@@ -30,3 +31,5 @@
 5. **主要测试缺口**：`classics`、`nihai`、`cities`、`chart` 四个命令零端到端测试；建议优先补 cities 容错解析边界与 topic 多视图测试。
 
 6. **方法论最大缺口**：缺少非同源正确性验证与系统化变异测试。
+
+7. **测试性能已优化**：CLI 端到端测试改为进程内直调 `COMMANDS`，层 2 从 154s 降到 4.7s（33×），全量 `npm test` 从 90s 降到 18s，450 项全绿且与真子进程输出逐字节等价。
