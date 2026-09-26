@@ -774,7 +774,9 @@ describe("排盘结构不变量", () => {
 				// 取 topic 侧 detectGeJu 的口径 —— 它只认 `hasStar('命宫'|'迁移', ...)`）。
 				紫府同宫: c => sharePalace(c, "紫微", "天府") && ziFuInMingOrQianYi(c),
 
-				廉贞天相格: c => sharePalace(c, "廉贞", "天相"),
+				// 名取古籍简称「廉相格」（全集·卷四「廉贞与天相同宫为『廉相格』」），
+				// 见 patterns.ts 的 GEJU_NAME_ALIASES。
+				廉相格: c => sharePalace(c, "廉贞", "天相"),
 				武曲七杀: c => sharePalace(c, "武曲", "七杀"),
 				天同天梁格: c => sharePalace(c, "天同", "天梁"),
 				武贪格: c => {
@@ -1006,13 +1008,16 @@ describe("排盘结构不变量", () => {
 // ── 层 3（续）：格局名的「同现象异名」裁决 ──
 //
 // 判定早已收敛到一处，但历史上 analyze 与 topic 各叫各的（实测星名集合 0/300
-// 不一致，纯命名差异）。2026-09-27 按「古文优先」裁决：显示名一律取**本仓古籍库
-// 词频最高者**，裁决结果记在 patterns.ts 的 GEJU_NAME_ALIASES。
+// 不一致，纯命名差异）。2026-09-27 统一显示名，裁决结果记在 patterns.ts 的
+// GEJU_NAME_ALIASES。
 //
-// 本组是那条裁决的预言机 —— **期望值来自古籍库重算**，不是复述常量表：
-// 表里的数字是人工实测的，语料一改就作废。变红时该**重新裁决**（或补一句说明），
-// 不是把表里的数字改大。
-describe("格局名裁决（古籍词频）", () => {
+// 裁决依据分两种，**本组按 basis 分别设防**：
+// - `corpus`：显示名取**本仓古籍库词频最高者**。期望值来自古籍库**重算**，
+//   不是复述常量表——表里的数字是人工实测的，语料一改就作废，变红时该
+//   **重新裁决**，不是把表里的数字改大。
+// - `convention`：古籍不足以裁决（双零，或两种写法并用且样本仅个位数），
+//   改按书写约定统一。这类条目**允许平手甚至落败**，但必须写明理由。
+describe("格局名裁决（同现象异名）", () => {
 	const paragraphs = ALL_BOOKS.flatMap(b =>
 		b.chapters.flatMap(ch => ch.paragraphs.map(p => ({ text: p.text })))
 	);
@@ -1020,14 +1025,28 @@ describe("格局名裁决（古籍词频）", () => {
 	const freq = (name: string): number =>
 		paragraphs.reduce((n, p) => n + (p.text.split(name).length - 1), 0);
 
-	it("裁决表结构完整：每条都有异名可对照、有出处、counts 覆盖全部名字", () => {
+	it("裁决表结构完整：每条都有异名可对照、有出处、basis 合法、counts 覆盖全部名字", () => {
 		assert.ok(GEJU_NAME_ALIASES.length > 0, "裁决表为空");
 		for (const a of GEJU_NAME_ALIASES) {
 			assert.ok(a.aliases.length > 0, `「${a.canonical}」没有异名，不该进裁决表`);
 			assert.ok(a.sources.trim().length > 0, `「${a.canonical}」缺少古籍出处`);
+			assert.ok(
+				a.basis === "corpus" || a.basis === "convention",
+				`「${a.canonical}」的 basis 非法：${String(a.basis)}`
+			);
 			for (const n of [a.canonical, ...a.aliases])
 				assert.ok(n in a.counts, `「${a.canonical}」的 counts 缺名字「${n}」`);
 		}
+	});
+
+	it("basis=convention 的条目必须写明为何不走词频", () => {
+		// 「书写统一」与「古籍词频裁决」是两种依据，不能混为一谈。词频裁不了的条目
+		// 若连理由都不写，后人只会看到一堆平手的数字，无从判断当初是怎么定的。
+		for (const a of GEJU_NAME_ALIASES.filter(x => x.basis === "convention"))
+			assert.ok(
+				(a.note ?? "").trim().length > 0,
+				`「${a.canonical}」basis=convention 却没写 note —— 必须说明为何古籍不足以裁决`
+			);
 	});
 
 	it("表里记的词频与古籍库重算结果逐一对得上", () => {
@@ -1040,8 +1059,10 @@ describe("格局名裁决（古籍词频）", () => {
 				);
 	});
 
-	it("现用名的词频严格高于它的每一个异名", () => {
-		for (const a of GEJU_NAME_ALIASES)
+	it("basis=corpus 的条目：现用名词频严格高于它的每一个异名", () => {
+		// 只看 corpus —— convention 类本就是「古籍裁不了」才走约定的，允许平手或落败。
+		// 这条断言若因语料更新而变红，说明裁决结论该重审。
+		for (const a of GEJU_NAME_ALIASES.filter(x => x.basis === "corpus"))
 			for (const alias of a.aliases)
 				assert.ok(
 					a.counts[a.canonical] > a.counts[alias],
@@ -1060,5 +1081,79 @@ describe("格局名裁决（古籍词频）", () => {
 							`第 ${i} 张盘（${where}）产出旧名「${p.name}」—— 应已统一为「${a.canonical}」`
 						);
 		}
+	});
+});
+
+// ── 层 3（续）：topic 侧长判词的守卫 ──
+//
+// topic 的 `overview` / `personality` 展示 `Pattern.topicDescription`（倪师口吻长判词）。
+// 这层长期**零测试覆盖**：判词写错、漏写、或旧的展示标记回流进名字，都不会有断言变红
+// —— 2026-09-27 把 25 段判词从 db-analysis.ts 搬进各识别器时，一并补上这组守卫。
+//
+// 口径是**名册双向匹配**：代码里有判词的名字必须都在名册上，名册上的每一条也必须
+// 都能在基准里找到对应 —— 「新增格局忘了写判词」与「写了判词没登记」都会红。
+describe("topic 长判词（Pattern.topicDescription）", () => {
+	/**
+	 * 名册：当前**应该**带长判词的格局名。星名派生的用 `*` 通配前缀
+	 * （`*化禄入命` 覆盖「太阳化禄入命」「武曲化禄入命」…）。
+	 *
+	 * 增删判词时同步这张表 —— 它是「哪些格局在 topic 侧展示」的唯一书面记录。
+	 */
+	const ROSTER = [
+		"七杀朝斗格", "双禄朝垣", "天马落空", "廉相格", "擎羊入命",
+		"文昌化忌", "文昌守命", "文曲化忌", "文曲守命",
+		"日丽中天格", "日月同宫", "日月夹命", "日月并明格",
+		"机月同梁", "杀破狼", "武曲七杀", "火贪格", "禄存守命",
+		"禄马交驰格", "紫府同宫", "紫府朝垣格", "羊陀夹命",
+		"英星入庙格", "辅弼夹命", "铃贪格", "魁钺夹命",
+		"*化禄入命", "*化忌入命", "*化忌冲命",
+	];
+	/** 名册项与格局名的匹配：含 `*` 的按前后缀，否则全等。 */
+	const matches = (pat: string, name: string): boolean => {
+		const i = pat.indexOf("*");
+		return i < 0 ? pat === name : name.startsWith(pat.slice(0, i)) && name.endsWith(pat.slice(i + 1));
+	};
+
+	const withTopic = new Set<string>();
+	const allNames = new Set<string>();
+	for (const { chart } of charts)
+		for (const p of detectPatterns(chart)) {
+			allNames.add(p.name);
+			if (p.topicDescription) withTopic.add(p.name);
+		}
+
+	it("判词名册双向匹配：代码里有判词的都在册，在册的都有实现", () => {
+		const unlisted = [...withTopic].filter(n => !ROSTER.some(pat => matches(pat, n)));
+		assert.deepEqual(
+			unlisted,
+			[],
+			`以下格局有长判词却不在名册里（新增格局请同步 ROSTER）：${unlisted.join("、")}`
+		);
+		const unimpl = ROSTER.filter(pat => ![...withTopic].some(n => matches(pat, n)));
+		assert.deepEqual(
+			unimpl,
+			[],
+			`名册里这些项在 300 条基准上找不到对应判词（判词被删？识别器忘填 topicDescription？）：${unimpl.join("、")}`
+		);
+	});
+
+	it("每条长判词都成句（长度 > 20）", () => {
+		for (const [i, { birth, chart }] of charts.entries())
+			for (const p of detectPatterns(chart))
+				if (p.topicDescription !== undefined)
+					assert.ok(
+						p.topicDescription.length > 20,
+						`第 ${i} 张盘（${birth.year}-${birth.month}-${birth.day}）的「${p.name}」长判词过短（${p.topicDescription.length} 字）：${p.topicDescription}`
+					);
+	});
+
+	it("格局名不含展示标记（如「（煞格）」）", () => {
+		// 警示后缀属于**展示层**，应写进判词而非挂在 name 上 —— name 是查找键，
+		// 带上括号标注后，所有按名字比对的地方都会失配。
+		for (const name of allNames)
+			assert.ok(
+				!name.includes("（") && !name.includes("("),
+				`格局名「${name}」带上了展示标记 —— 应剥离并写入判词`
+			);
 	});
 });

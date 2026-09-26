@@ -76,45 +76,67 @@ export interface PatternCondition {
 export interface Pattern {
 	name: string; // 格局名；部分识别器会拼入星名（如「武曲化禄入命」「太阴化忌冲命」）
 	level: 90 | 75 | 60 | 40; // 等级分数：90 上格 / 75 吉格 / 60 平格 / 40 凶格警示。触发破格条件时**降档**（如 90 → 75、75 → 40）
-	description: string; // 判词文案，由 cli/commands.ts 直接输出给用户
+	description: string; // 判词文案，由 cli/commands.ts 直接输出给用户（短判词 + level，analyze 用）
+	/**
+	 * topic 侧（`overview` / `personality` 两个主题）用的**倪师口吻长判词**。
+	 *
+	 * @remarks
+	 * 两种文风是**有意的分工**，不是重复：analyze 要的是「一句话 + 等级」，topic 要的是
+	 * 倪师讲课式的展开。缺省表示该格局**不在 topic 侧展示**（82 个格局名里只有约 25 个有），
+	 * 不影响判定、也不影响 analyze。
+	 *
+	 * 用**纯字符串**而非函数：所有条件分支（坐命/照命、满格/不全格、男命/女命、从 name
+	 * 剥星名）在各识别器内部都算得出来，填最终串即可。
+	 */
+	topicDescription?: string;
 	palaces: string[]; // 涉及宫位（**宫名**，非地支索引；可能含"身宫"或格局定名宫位）
 	conditions?: PatternCondition; // 成立条件分层（v2 新增）
 	source?: string; // 古籍出处（v2 新增）
 }
 
 /**
- * 格局名的「同现象异名」裁决表 —— 显示名一律取**本仓古籍库词频最高者**。
+ * 格局名的「同现象异名」裁决表 —— 同一现象只留一个**显示名**。
  *
  * @remarks
  * 判定早已收敛到一处（{@link detectPatterns}），但历史上两侧各叫各的：`analyze`
- * 用 A 名、`topic` 的 `detectGeJu` 用 B 名，同一现象两个名字（实测星名集合
- * 0/300 不一致 —— 纯命名差异，非覆盖差异）。2026-09-27 按「古文优先」裁决：
- * 逐名统计 `scripts/classics/` 三部古籍的出现次数，取高者作**唯一显示名**，两侧
- * 共用；落选的名字留在本表备查，不再用于显示。
+ * 用 A 名、`topic` 的 `detectGeJu` 用 B 名。2026-09-27 起做统一，两侧共用显示名；
+ * 落选的名字留在本表备查，不再用于显示。
+ *
+ * 裁决依据分两种（见 {@link GejuNameAlias.basis}），**不可混为一谈**：
+ *
+ * - `corpus` —— **古籍词频裁决**：逐名统计 `scripts/classics/` 三部古籍的出现次数，
+ *   取高者。这几组是**真异名**（两个不同的词，如 `化禄入命` / `化禄守命`）。
+ * - `convention` —— **古籍不足以裁决**：两组都零见，或者两种写法古籍并用且样本量
+ *   只有个位数（如 `紫府同宫` / `紫府同宫格` 实为一个词差一个「格」字，古籍里
+ *   两种写法都在用）。这类改按书写约定统一，`note` 写明理由。
  *
  * ⚠️ **表里的数字是当时实测，语料一改就作废。** `test/invariants.test.ts` 有一条
  * 预言机从古籍库重算并与此表比对 —— 它变红时该**重新裁决**，不是把数字改大。
  *
- * ⚠️ 计数口径是**原文子串**，不区分语境。故 `化禄入命` 那 4 处里含 1 处
- * 「财帛宫化禄入命」（讲的是另一组配置）；本表只用来比大小，不用来断言语义。
+ * ⚠️ 计数口径是**原文子串**，不区分语境、也不扣包含重叠：故 `紫府同宫` 的 2 次里
+ * 有 1 次其实是写在「紫府同宫格」里的。本表只用来比大小，不用来断言语义。
  */
 export interface GejuNameAlias {
-	/** 现用显示名：古籍词频最高者。带星名的家族写**后缀**形式（星名由识别器拼在前面） */
+	/** 现用显示名。带星名的家族写**后缀**形式（星名由识别器拼在前面） */
 	canonical: string;
 	/** 落选的同现象异名，保留备查，不再用于显示 */
 	aliases: string[];
-	/** 实测词频，键为名字原文 */
+	/** 裁决依据：`corpus` = 古籍词频；`convention` = 书写约定（古籍不足以裁决） */
+	basis: "corpus" | "convention";
+	/** 实测词频，键为名字原文。`convention` 类如实照记，不参与比大小 */
 	counts: Record<string, number>;
 	/** 词频 > 0 的出处（书·篇） */
 	sources: string;
-	/** 需要额外说明的裁决理由（尤其词频悬殊不大时） */
+	/** 需要额外说明的裁决理由（尤其词频悬殊不大、或非词频裁决时） */
 	note?: string;
 }
 
 export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
+	// ────────── 古籍词频裁决（真异名，两个不同的词）──────────
 	{
 		canonical: "化禄入命",
 		aliases: ["化禄守命"],
+		basis: "corpus",
 		counts: { 化禄入命: 4, 化禄守命: 0 },
 		sources:
 			"骨髓赋·四化星论、紫微斗数全集·卷五·四化与格局论、紫微斗数全书·十二宫论·财帛宫、紫微斗数全书·四化论",
@@ -122,12 +144,14 @@ export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
 	{
 		canonical: "化忌入命",
 		aliases: ["化忌守命"],
+		basis: "corpus",
 		counts: { 化忌入命: 3, 化忌守命: 0 },
 		sources: "骨髓赋·四化星论、紫微斗数全集·卷五·四化与格局论、紫微斗数全书·四化论",
 	},
 	{
 		canonical: "化忌冲命",
 		aliases: ["化忌入迁"],
+		basis: "corpus",
 		counts: { 化忌冲命: 1, 化忌入迁: 0 },
 		sources: "紫微斗数全书·十二宫论·夫妻宫",
 		note: "仅 1:0 险胜，且唯一那处是**夫妻宫**语境（「夫妻宫化忌冲命，主婚姻多波折」），并非命宫格局名的用例；但「化忌入迁」全库零见，故仍取「化忌冲命」。",
@@ -135,10 +159,110 @@ export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
 	{
 		canonical: "双禄朝垣",
 		aliases: ["双禄交流"],
+		basis: "corpus",
 		counts: { 双禄朝垣: 7, 双禄交流: 0 },
 		sources:
 			"骨髓赋·四化星论、紫微斗数全集·卷三·南斗六星论、紫微斗数全集·卷五·四化与格局论、紫微斗数全书·双禄朝垣格",
 		note: "「双禄朝垣」在《紫微斗数全书》有**专章**；「双禄交流」全库零见，而旧判词写作「倪师称为双禄交流」——该归属在 annotations.json 里记为 traditional（传统格局名，非倪师原话），故一并改为引古文。",
+	},
+
+	// ────────── 书写统一（古籍不足以裁决）──────────
+	// 这 8 组不是「两个异名」，是**同一个词差一个「格」字**。实测古籍里两种写法都在用
+	// （骨髓赋「称『紫府同宫』格」「称『杀破狼格』」「称机月同梁格」，全集「紫府同宫格：…」），
+	// 且样本量只有 0–3 次 —— 拿词频去裁会得出「看似有依据、实则随机」的结论
+	// （如「紫府同宫」那 2 次里有 1 次正写作「称『紫府同宫』格」，语义上就是带格的）。
+	// 故统一取**不带「格」**者，即判定层现用名；两侧随之统一。
+	{
+		canonical: "紫府同宫",
+		aliases: ["紫府同宫格"],
+		basis: "convention",
+		counts: { 紫府同宫: 3, 紫府同宫格: 1 },
+		sources: "骨髓赋·紫微星论、紫微斗数全集·卷三·南斗六星论、紫微斗数全集·卷五·四化与格局论",
+		note: "实测 3:1，但那 3 次里有 1 次写作「称『紫府同宫』格」——语义上就是「紫府同宫格」，另 2 次分别写作「名「紫府同宫」」与「紫府同宫格：…」。两种写法古籍并用，样本不足以裁决，故按书写约定统一。",
+	},
+	{
+		canonical: "日月同宫",
+		aliases: ["日月同宫格"],
+		basis: "convention",
+		counts: { 日月同宫: 1, 日月同宫格: 1 },
+		sources: "紫微斗数全集·卷五·四化与格局论",
+		note: "古籍仅 1 处且写作「日月同宫格：…」，1:1 平手（该次同时计入两个名字），单一样本不足以裁决，故按书写约定统一。",
+	},
+	{
+		canonical: "日月夹命",
+		aliases: ["日月夹命格"],
+		basis: "convention",
+		counts: { 日月夹命: 0, 日月夹命格: 0 },
+		sources: "（两种写法均古籍零见）",
+		note: "两种写法在本仓古籍库均零见，无从裁决，按书写约定统一。",
+	},
+	{
+		canonical: "机月同梁",
+		aliases: ["机月同梁格"],
+		basis: "convention",
+		counts: { 机月同梁: 5, 机月同梁格: 3 },
+		sources: "骨髓赋·机月同梁、紫微斗数全集·卷五·四化与格局论、紫微斗数全书·机月同梁格",
+		note: "实测 5:3，但 5 次里有 3 次就写在「机月同梁格」内，另有 2 次出自古诀原文「机月同梁作吏人」（本就不带格）。非真异名，按书写约定统一。",
+	},
+	{
+		canonical: "魁钺夹命",
+		aliases: ["魁钺夹命格"],
+		basis: "convention",
+		counts: { 魁钺夹命: 0, 魁钺夹命格: 0 },
+		sources: "（两种写法均古籍零见）",
+		note: "两种写法在本仓古籍库均零见，无从裁决，按书写约定统一。",
+	},
+	{
+		canonical: "禄存守命",
+		aliases: ["禄存守命格"],
+		basis: "convention",
+		counts: { 禄存守命: 0, 禄存守命格: 0 },
+		sources: "（两种写法均古籍零见）",
+		note: "两种写法在本仓古籍库均零见，无从裁决，按书写约定统一。",
+	},
+	{
+		canonical: "杀破狼",
+		aliases: ["杀破狼格"],
+		basis: "convention",
+		counts: { 杀破狼: 3, 杀破狼格: 2 },
+		sources: "骨髓赋·杀破狼格、紫微斗数全集·卷五·四化与格局论",
+		note: "实测 3:2，但那 3 次里有 2 次写在「杀破狼格」内，另 1 次出自「杀破狼三方有化禄或化权」。非真异名，按书写约定统一。",
+	},
+	{
+		canonical: "辅弼夹命",
+		aliases: ["辅弼夹命格"],
+		basis: "convention",
+		counts: { 辅弼夹命: 1, 辅弼夹命格: 0 },
+		sources: "骨髓赋·辅弼魁钺论",
+		note: "古籍唯一一处写作「辅弼夹命：左辅右弼夹于命宫前后两宫」，本就不带格。非真异名，按书写约定统一。",
+	},
+
+	// ────────── 真异名，古籍只认简称 ──────────
+	{
+		canonical: "廉相格",
+		aliases: ["廉贞天相格"],
+		basis: "corpus",
+		counts: { 廉相格: 1, 廉贞天相格: 0 },
+		sources: "紫微斗数全集·卷四·北斗六星论",
+		note: "这一组是**真异名**（简称 vs 全称），与上面那些「±格」性质不同。古籍唯一一处写作「廉贞与天相同宫为『廉相格』，主清廉之名」，**正是本格局所指的现象**，故按「古文优先」取简称 —— 全称「廉贞天相格」在本仓古籍库零见。注意这条**改动了 analyze 侧现用名**（原为全称），与其它条目「topic 跟 analyze 走」的方向相反。",
+	},
+
+	// ────────── 警示后缀剥离 ──────────
+	{
+		canonical: "火铃夹命",
+		aliases: ["火铃夹命（煞格）"],
+		basis: "convention",
+		counts: { 火铃夹命: 0, "火铃夹命（煞格）": 0 },
+		sources: "（两种写法均古籍零见）",
+		note: "「（煞格）」是 topic 侧的**展示警示标记**，不是格局名的一部分——`name` 字段不该带括号标注。警示义已写进该格局的判词（「倪师警示：火铃夹命，性急刑伤」）。",
+	},
+	{
+		canonical: "羊陀夹命",
+		aliases: ["羊陀夹命（煞格）"],
+		basis: "convention",
+		counts: { 羊陀夹命: 0, "羊陀夹命（煞格）": 0 },
+		sources: "（两种写法均古籍零见）",
+		note: "同上：「（煞格）」为展示标记，已从 name 剥离、警示义移入判词。",
 	},
 ];
 
@@ -542,6 +666,9 @@ function detectZiFu(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 		description: inMing
 			? "紫微天府同入命宫，帝相并临，尊贵之命。主品行端正、衣食无忧、有领导才能，宜担任要职。需要左右辅弼来配合方为完整大格。"
 			: "紫微天府同宫于迁移宫，照拱命宫而非坐守，主一生有贵人贵气依托，但本身不一定大富贵，需看会照吉煞而定。",
+		topicDescription: inMing
+			? "紫微天府同处寅申宫——南北二帝同坐，福禄双全，一生衣食无忧，地位与财富兼得，是最稳健富贵的命格之一。"
+			: "紫微天府同处寅申宫，且在迁移宫照拱命宫——南北二帝同坐，福禄双全，一生衣食无忧；惟非坐命，贵气照入而非自居，成就多借外力与际遇，需看会照吉煞而定。",
 		palaces: [ziwei.name],
 		conditions: { required, bonus, breaking },
 		source: "《紫微斗数全书·紫府同宫格》",
@@ -643,6 +770,10 @@ function detectHuoTanLingTan(chart: ZiweiChart, patterns: Pattern[]) {
 		name: shaName === "火星" ? "火贪格" : "铃贪格",
 		level: breaking.length ? 75 : 90,
 		description: `贪狼与${shaName}同宫，主突发横财、突如其来的机遇。古书云“贪狼遇火铃，必发横财”，但来得快去得也快，宜见好就收。${breaking.length ? "本盘破格条件已触发，发力打折。" : ""}`,
+		topicDescription:
+			shaName === "火星"
+				? "贪狼逢火星——偏财暴发格，倪海夏说「火贪格，出将入相，武贵之路」，一生有偏财大发的机遇，尤其在特定大限流年中可有意外横财。"
+				: "贪狼逢铃星——偏财暴发格，与火贪格同效，一生有偏财大发的机遇，但暴起暴落，需把握时机并做好财富保护。",
 		palaces: [tan.name],
 		conditions: { required, bonus, breaking },
 		source: "《紫微斗数骨髓赋》",
@@ -701,6 +832,8 @@ function detectShaPoLang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 		level: breaking.length ? 40 : 75,
 		description:
 			"七杀、破军、贪狼三星会命，开创闯荡之命格。一生变动多、不甘平凡，宜创业、军警、业务、销售。中年后才能稳定守成，年轻时易因冲动失利。",
+		topicDescription:
+			"七杀、破军、贪狼会照命宫三方四正，形成杀破狼格——一生变动大、开创性强，适合走创业、技术、军警、外地发展路线，关键在以行动力换格局。",
 		palaces: getSanFangPalaces(chart)
 			.filter(p => has.some(s => getMajorStarNames(p).includes(s)))
 			.map(p => p.name),
@@ -739,6 +872,9 @@ function detectJiYueTongLiang(chart: ZiweiChart, ming: Palace, patterns: Pattern
 		description: full
 			? "天机太阴天同天梁四星齐入命迁财官，文质彬彬、聪慧善谋。最适合公职、学术、文艺、医疗、服务等需稳定累积的行业，不宜大冒险大投机。"
 			: `三方四正会齐${has.join("、")}，机月同梁不全格，文质带谋，但稳定度不如四星齐。仍宜公职、教研、医疗、服务等需要积累与稳定的行业，关键看缺位星与四化的配合。`,
+		topicDescription: full
+			? "天机、太阴、天同、天梁聚于命宫三方——古训「机月同梁格，作吏人」，最宜公教、政府、传播、文化事业，一生以稳健的打工路线最为吉利，不宜冒险创业。"
+			: "天机、太阴、天同、天梁会入命宫三方四正，惟四星中只齐三星——机月同梁为「不全格」，古训「机月同梁格，作吏人」的稳健路线仍在，但格局力量打折，成败更看缺位之星与四化的配合；宜公教、政府、传播、文化事业，不宜冒险创业。",
 		palaces: getSanFangPalaces(chart)
 			.filter(p => has.some(s => getMajorStarNames(p).includes(s)))
 			.map(p => p.name),
@@ -764,10 +900,14 @@ function detectLianXiang(chart: ZiweiChart, patterns: Pattern[]) {
 	if (getStarSiHua(lian, "廉贞") === "忌") breaking.push("廉贞化忌");
 
 	patterns.push({
-		name: "廉贞天相格",
+		// 名字取古籍用语：全集·卷四「廉贞与天相同宫为『廉相格』」。全称「廉贞天相格」
+		// 古籍零见，2026-09-27 按「古文优先」裁决为简称（见 GEJU_NAME_ALIASES）。
+		name: "廉相格",
 		level: breaking.length ? 40 : inMing ? 75 : 60,
 		description:
 			"廉贞天相同宫，印绶格局，主秉公处事、清廉之名，宜任公职、行政管理、法务、企划。怕见擎羊化忌，则反主官非。",
+		topicDescription:
+			"廉贞天相同宫成廉相格，才艺、制度、协调并重；格局清贵，宜法务、行政、管理、审美与规则并行的领域。",
 		palaces: [lian.name],
 		conditions: { required, bonus, breaking },
 		source: "《紫微斗数全书》",
@@ -794,6 +934,8 @@ function detectWuQiSha(chart: ZiweiChart, patterns: Pattern[]) {
 		level: breaking.length ? 40 : inMing ? 90 : 75,
 		description:
 			"武曲七杀同宫，将星配财星，主果决刚毅、理财能力强，适合金融、军警、创业。但忌见化忌煞星，否则凶险。一生奋斗、积财但操心。",
+		topicDescription:
+			"武曲七杀同宫，财星遇将星，做事果断、执行强、风险也重；宜军警、金融、创业、工程技术，忌冲动投资与硬碰硬。",
 		palaces: [wu.name],
 		conditions: { required, bonus, breaking },
 		source: "《紫微斗数全书》",
@@ -844,6 +986,8 @@ function detectRiYueTongGong(chart: ZiweiChart, patterns: Pattern[]) {
 		name: "日月同宫",
 		level: breaking.length ? 75 : inMing ? 90 : 75,
 		description: `太阳太阴于${BRANCH_NAMES[sun.branch]}宫同宫，阴阳平衡，文武兼备。主异性缘佳、事业顺遂、名声远播。${sun.branch === 7 ? "未宫日月双美尤佳。" : "丑宫日月同宫力量较平。"}`,
+		topicDescription:
+			"太阳太阴同宫，日月同照一处——一生常在名声、情感、家庭责任之间取得平衡；庙旺则左右逢源，落陷则内外压力并重。",
 		palaces: [sun.name],
 		conditions: { required, bonus, breaking },
 		source: "《紫微斗数全书》",
@@ -876,6 +1020,8 @@ function detectRiYueJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 		level: breaking.length ? 75 : 90,
 		description:
 			"太阳太阴分居命宫两侧夹照，光明磊落，一生贵人相助，事业蓬勃。男主官贵，女主旺夫兴家。日月须不落陷方为真夹。",
+		topicDescription:
+			"太阳太阴分居命宫两侧形成日月夹命，主一生得父母、男女贵人、明暗两路资源扶持；若日月庙旺，事业与家庭两端皆有助力。",
 		palaces: [sunPalace.name, moonPalace.name],
 		conditions: { required, bonus, breaking },
 		source: "《紫微斗数全书·日月夹命》",
@@ -1007,6 +1153,8 @@ function detectFuBiJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 		level: 90,
 		description:
 			'左辅右弼夹命，一生贵人不断、逢凶化吉。适合走仕途、大企业管理，有贵人提携之命。古书云"左辅右弼，终身福厚"。',
+		topicDescription:
+			"左辅右弼分居命宫两侧形成辅弼夹命，主左右有人、团队助力强；命主若愿意纳谏用人，事业格局更容易放大。",
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required, bonus, breaking },
 		source: "《紫微斗数全书·辅弼夹命》",
@@ -1047,6 +1195,8 @@ function detectKuiYueJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 		level: 75,
 		description:
 			"天魁天钺夹命，男称天乙、女称玉堂，一生贵人提携。考试、求职、关键时刻常有意外贵人相助。",
+		topicDescription:
+			"天魁天钺夹住命宫——古诀云「魁钺夹命，官至极品」，贵人运极强，逢凶化吉，一生重要关口总有贵人相助，是命中最吉利的辅星配置。",
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required: ["天魁天钺分居命宫前后两宫"] },
 		source: "《紫微斗数全书》",
@@ -1069,6 +1219,8 @@ function detectShuangLuChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Patte
 		level: 90,
 		description:
 			'化禄、禄存同会命宫三方四正，财源涌动、衣食丰足。古书云"双禄朝垣，富比陶朱"，主一生不愁财，多有正财横财兼得。',
+		topicDescription:
+			"化禄星与禄存同时会照命宫三方四正——古云「双禄朝垣，富比陶朱」，主一生财源滚滚、福禄双至，财禄稳定且增长有力，是紫微斗数财运最上乘的格局之一。",
 		palaces: sanFang.map(p => p.name),
 		conditions: {
 			required: ["化禄会照三方四正", "禄存会照三方四正"],
@@ -1115,6 +1267,7 @@ function detectHuaLuRuMing(chart: ZiweiChart, ming: Palace, patterns: Pattern[])
 		name: `${huaLuStar.name}化禄入命`,
 		level: 75,
 		description: `${huaLuStar.name}化禄坐命，主生财顺利、人缘佳、机缘多。${huaLuStar.name === "武曲" ? "武曲化禄属正财，宜实业、金融。" : huaLuStar.name === "太阴" ? "太阴化禄属阴财、不动产。" : huaLuStar.name === "贪狼" ? "贪狼化禄属人脉财、桃花财。" : ""}`,
+		topicDescription: `${huaLuStar.name}化禄坐镇命宫——财禄直入命宫，是本命盘最直接的好运信号，命宫代表的领域因此得到充分的禄气滋润，主人生顺遂，贵人多助，该星代表的能量在你身上发挥到最佳状态。`,
 		palaces: ["命宫"],
 		conditions: { required: [`${huaLuStar.name}化禄坐命宫`] },
 		source: "《紫微斗数全书》",
@@ -1140,6 +1293,11 @@ function detectHuaJiRuMingQian(chart: ZiweiChart, patterns: Pattern[]) {
 			description: inMing
 				? `${jiStar.name}化忌坐命宫，需留意自身固执、心理障碍或健康隐患，凡事退一步思考。化忌不一定坏，代表此星能量需要特别关注。`
 				: `${jiStar.name}化忌坐迁移宫，外出、远行、人际关系易有波折，宜守不宜动。`,
+			// 迁移分支的旧展示名带「（半空折翅）」后缀 —— 那是倪师《天纪 06》的**原话**
+			// （annotations.json 记 verified），属判词而非格局名，故移到文案里、不挂在名字上。
+			topicDescription: inMing
+				? `${jiStar.name}化忌坐镇命宫——古诀云「化忌主是非」，化忌入命意味着此星的能量在命主身上需要特别关注与化解，该星代表的领域容易产生阻滞或困扰。化忌不是坏事，而是一个人生重要课题的标记，越早认识越能转化为成长动力。`
+				: `倪师警示：「迁移化忌，半空折翅」——${jiStar.name}化忌落迁移对冲命宫，是本命盘最需要关注的警讯之一。三十岁前后容易遇到重大挫折，外出需格外小心交通安全与意外，宜稳守不宜远行冒险，特别是长途出差、异地创业需谨慎评估。`,
 			palaces: [palace.name],
 			conditions: { required: [`${jiStar.name}化忌坐${inMing ? "命" : "迁"}宫`] },
 			source: "《紫微斗数全书》",
@@ -1186,6 +1344,10 @@ function detectHuoLingJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 		level: 40,
 		description:
 			"火星铃星分居命宫前后两宫夹命，主性急、易冲动、突发意外或纠纷。需培养耐性、避免冲动决策。",
+		// 展示名不含「（煞格）」——那是旧 topic 侧的展示标记，已从 name 剥离，
+		// 警示义在这句判词里（「性急刑伤」）。
+		topicDescription:
+			"火星铃星夹命——倪师警示：「火铃夹命，性急刑伤」，性格急躁易怒，行事冲动，人生起伏大；需修炼耐心与情绪管理，避免因冲动招祸，尤其留意意外伤害与官非。",
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required: ["火星铃星分居命宫前后两宫"] },
 		source: "《紫微斗数全书》",
@@ -1306,6 +1468,10 @@ function detectLuCunShouShen(chart: ZiweiChart, patterns: Pattern[]) {
 		description: inMing
 			? "禄存坐命，主一生衣食无忧、财禄稳定。性格保守，善积累，但羊陀夹禄须防小人。最宜配化禄、左辅右弼方为大格。"
 			: "禄存入身宫，主中年后财源稳定、得禄自享。倪师说「禄存入身，财气近身」——配偶或事业方向能带来稳定财禄。",
+		// 只有「守命」这一支在 topic 侧展示（「守身」没有对应判词）。
+		topicDescription: inMing
+			? "禄存坐命——财禄厚实，一生衣食无忧，有稳定的财富积累能力。但禄存前后必有擎羊陀罗夹持，孤独倾向较重，财有余而情不足；理财能力出色，守财胜于生财，适合稳健投资。"
+			: undefined,
 		palaces: [inMing ? "命宫" : "身宫"],
 		conditions: { required: [inMing ? "禄存入命宫" : "禄存入身宫"] },
 		source: "《紫微斗数全书·禄存星》",
@@ -1481,6 +1647,8 @@ function detectQiShaChaoDou(chart: ZiweiChart, patterns: Pattern[]) {
 		name: "七杀朝斗格",
 		level: 90,
 		description: `七杀居${inMing ? "命宫" : "迁移宫"}（寅或申），对宫紫微天府相照——古书云"七杀朝斗，爵禄荣昌"，是武职大贵之格，最宜军警政界、企业高管，一生贵气难挡。`,
+		topicDescription:
+			"七杀居寅申，对宫紫微天府相照——倪海夏说「爵禄荣昌」，这是武职大贵的格局，最宜军警政界或企业高管，一生贵气难挡。",
 		palaces: [qisha.name],
 		conditions: { required: ["七杀居寅宫或申宫", "七杀坐命宫或迁移宫"] },
 		source: "《紫微斗数骨髓赋·七杀星论》",
@@ -1499,6 +1667,8 @@ function detectRiYueBingMing(chart: ZiweiChart, patterns: Pattern[]) {
 		level: 90,
 		description:
 			'太阳太阴同时入庙旺，号"日月并明"——主一生贵人多助、行事左右逢源，名声与实利可以兼得，宜走动、宜公众事务；日月分居两宫亦成格，不必同宫。',
+		topicDescription:
+			"太阳太阴同时入庙旺——倪海夏说「做事情左右逢源，一辈子做事情荣华」，此格局代表日月同辉，一生贵人多，做事顺遂，名利双全。",
 		palaces: [sun.name, moon.name],
 		conditions: { required: ["太阳入庙（bright）", "太阴入庙（bright）"] },
 		source: "传统口诀（本仓古籍库无直接出处）",
@@ -1506,7 +1676,7 @@ function detectRiYueBingMing(chart: ZiweiChart, patterns: Pattern[]) {
 }
 
 /** 英星入庙格：破军居子或午守命 */
-function detectYingXingRuMiao(ming: Palace, patterns: Pattern[]) {
+function detectYingXingRuMiao(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
 	if (ming.branch !== 0 && ming.branch !== 6) return; // 子=0、午=6
 	if (!hasStar(ming, "破军")) return;
 
@@ -1515,6 +1685,12 @@ function detectYingXingRuMiao(ming: Palace, patterns: Pattern[]) {
 		level: 90,
 		description:
 			"破军居子午守命，号「英星入庙」——英气逼人、敢破敢立，宜军警武职或自主创业，一生大开大合；女命此格气质独特、事业心强于感情，宜晚婚。",
+		// 男女判词不同 —— 这是**文案分支**，不是判定分支。男命取 `=== "male"`，
+		// 其余（含 birthInfo 缺失）落女版，与旧实现一致。
+		topicDescription:
+			chart.birthInfo?.gender === "male"
+				? "破军子/午宫守命——倪海夏说「男人非常英挺，威震边疆」，英气逼人，武职或创业可有大成就。"
+				: "破军子/午宫守命——倪海夏说「女人瘦瘦干干，婚姻都会晚」，气质独特，事业强于感情，晚婚为宜。",
 		palaces: ["命宫"],
 		conditions: { required: ["破军居子宫或午宫", "破军坐命宫"] },
 		source: "传统口诀（本仓古籍库无直接出处）",
@@ -1531,6 +1707,8 @@ function detectRiLiZhongTian(ming: Palace, patterns: Pattern[]) {
 		level: 90,
 		description:
 			"太阳居午宫守命，正午当天、光芒最盛——主声名显达、社会地位高，最宜政界、军警、公众事务一类要「露脸」的行当，名利双收。",
+		topicDescription:
+			"太阳午宫正午当天，光芒最盛——倪海夏列为武职大贵格，最宜政界、军警、公众事务，名利双收，社会地位极高。",
 		palaces: ["命宫"],
 		conditions: { required: ["太阳居午宫", "太阳坐命宫"] },
 		source: "传统口诀（本仓古籍库无直接出处）",
@@ -1548,6 +1726,7 @@ function detectChangQuShouMing(ming: Palace, patterns: Pattern[]) {
 		name: `${starName}守命`,
 		level: 75,
 		description: `${starName}坐命宫，为"文星守命"——主聪明俊秀、才华出众，利考试与名声，宜文教、艺术、传媒或需要专业技艺的行当，以才华换取名利最为顺畅。`,
+		topicDescription: `${starName}坐命——才华横溢，文采出众，有学识与艺术天赋，是科甲名声之星。主考试运佳，学业顺遂；适合文教、艺术、传媒或需要专业技艺的领域，以才华换取名利是最顺畅的人生路线。`,
 		palaces: ["命宫"],
 		conditions: { required: [`${starName}坐命宫`] },
 		source: "《紫微斗数全书·十二宫论·命宫》",
@@ -1563,6 +1742,8 @@ function detectQingYangRuMing(ming: Palace, patterns: Pattern[]) {
 		level: 40,
 		description:
 			"擎羊坐命宫——化气为刑，性刚果决、行事冲动，易招是非与伤灾。然此星自带开创闯劲，宜军警执法、外科、机械等刚性行当，以「刑」化「刑」反成其大。",
+		topicDescription:
+			"擎羊坐命——化气为刑，性格冲动，行事果决但容易招惹是非，有手术意外的风险。擎羊入命之人多具有开创闯劲，能在逆境中突破，宜从事军警执法、外科、机械等刚性行业。倪海夏说「擎羊入命，刑克自伤」，需特别注意冲动带来的后果。",
 		palaces: ["命宫"],
 		conditions: { required: ["擎羊坐命宫"] },
 		source: "《紫微斗数骨髓赋·六煞星论》",
@@ -1582,6 +1763,8 @@ function detectLuMaJiaoChi(chart: ZiweiChart, patterns: Pattern[]) {
 		name: "禄马交驰格",
 		level: 90,
 		description: `${samePalace ? "禄存与天马同宫" : "禄存与天马同会命宫三方四正"}，号"禄马交驰"——主财从动中生，宜外贸、物流、异地经商、常出差的行当；禄存为静财、天马为动财，一静一动方成富局。`,
+		topicDescription:
+			"禄存与天马同宫或会照——倪师说「禄马交驰，财从动中来」，主财富动中取，宜从事出差、外地经商、贸易物流等行业，异地财、流动财尤旺；禄存为稳财，天马为动财，一稳一动，财源通畅。",
 		palaces: samePalace ? [lu.name] : [lu.name, ma.name],
 		conditions: { required: [samePalace ? "禄存与天马同宫" : "禄存与天马同会命宫三方四正"] },
 		source: "传统口诀（本仓古籍库无直接出处）",
@@ -1601,6 +1784,10 @@ function detectYangTuoJiaMing(chart: ZiweiChart, patterns: Pattern[]) {
 		level: 40,
 		description:
 			"擎羊陀罗分居命宫前后两宫夹命——主一生多波折起伏、六亲缘薄；然逆境最磨韧劲，宜军警、外科、医疗等以「刑」化「刑」的行当，反可成器。",
+		// ⚠️ 本格与「禄存守命」在 300 条基准上**完全同盘**（安星法里擎羊恒在禄存前一位、
+		// 陀罗恒在后一位），两个名字都报是照倪师侧的展示口径，不是判定分歧。
+		topicDescription:
+			"擎羊陀罗夹命——典型的凶格，倪师说「羊陀夹命，刑克逃不掉」，一生多波折、起伏、六亲缘薄。但在逆境中能磨砺坚韧品格，适合走军警、医生、外科等以「刑」化「刑」的行业，反成其大。",
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required: ["擎羊陀罗分居命宫前后两宫"] },
 		source: "《紫微斗数全书》",
@@ -1618,6 +1805,8 @@ function detectZiFuChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Pattern[]
 		level: 90,
 		description:
 			"紫微天府分居命宫三方四正朝拱，命宫本身不坐紫府——两帝星照命而不自居，贵气由外而来，宜仕途或大企业高位，一生贵人不绝。",
+		topicDescription:
+			"紫微天府分居三方朝拱命宫——格局高贵，命主有王侯气象，一生贵人不绝，事业稳中有贵。这是非同宫的紫府格局，能量辐射命宫，适合走仕途或大企业管理层。",
 		palaces: getSanFangPalaces(chart)
 			.filter(p => hasStar(p, "紫微") || hasStar(p, "天府"))
 			.map(p => p.name),
@@ -1637,6 +1826,9 @@ function detectTianMaLuoKong(chart: ZiweiChart, patterns: Pattern[]) {
 		name: "天马落空",
 		level: 40,
 		description: `天马与${spoilers.join("、")}同宫——"马落空亡"，主外出奔波而少实得，出差、远行、跳槽一类动态机会容易落空，宜谋定而后动。`,
+		// 同宫杂曜名从本地 `spoilers` 插值，不再另列一份名单（旧实现在 db-analysis 里
+		// 反向从 conditions.required[0] 剥前缀取回，两处名单易漂移）。
+		topicDescription: `天马与${spoilers.join("、")}同宫——倪师说「马落空亡，徒劳奔波」，外出事务多劳而无功，出差、远行、跳槽等动态机会容易竹篮打水，宜三思而后行。`,
 		palaces: [ma.name],
 		conditions: { required: [`天马与${spoilers.join("、")}同宫`] },
 		source: "传统口诀（本仓古籍库无直接出处）",
@@ -1654,6 +1846,10 @@ function detectChangQuHuaJi(chart: ZiweiChart, patterns: Pattern[]) {
 			name: `${starName}化忌`,
 			level: 40,
 			description: `${starName}化忌——文星受伤，主文书、契约、考试、言论一类的事易生暗亏：签约核对条款、考试防疏漏、言语慎出口，化忌是功课而非定论。`,
+			topicDescription:
+				starName === "文昌"
+					? "文昌化忌——文书契约是非多，倪师说「昌曲化忌，文书暗亏」，签约前务必仔细核对条款，防印鉴、合约、考试凭证相关的麻烦；考试、论文、文件审批类的事宜需格外严谨。"
+					: "文曲化忌——口才表达与情感感性方面易生波折；社交场合的言语需谨慎，桃花事务多纠葛，文艺创作虽有灵感但落地易生误解。",
 			palaces: [palace.name],
 			conditions: { required: [`${starName}带生年化忌`] },
 			source: "传统口诀（本仓古籍库无直接出处）",
@@ -1756,7 +1952,7 @@ export function detectPatterns(chart: ZiweiChart): Pattern[] {
 	// 2026-09-27 由 db-analysis 侧收敛进来的判定（原先那边另写一遍，见本组识别器的段首说明）
 	detectQiShaChaoDou(chart, patterns);
 	detectRiYueBingMing(chart, patterns);
-	detectYingXingRuMiao(ming, patterns);
+	detectYingXingRuMiao(chart, ming, patterns);
 	detectRiLiZhongTian(ming, patterns);
 	detectChangQuShouMing(ming, patterns);
 	detectQingYangRuMing(ming, patterns);

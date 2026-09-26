@@ -592,7 +592,13 @@ export function cmdSelftest(ctx: CliContext): string {
 		const ann = JSON.parse(
 			readFileSync(resolve(ctx.root, "ziwei/annotations.json"), "utf8")
 		) as { entries: { status: string; text: string }[] };
-		const src = readFileSync(resolve(ctx.root, "ziwei/db-analysis.ts"), "utf8");
+		// ⚠️ 扫描范围必须覆盖**所有**带倪师引文的源码。判词原先全在 db-analysis.ts，
+		//    2026-09-27 起 25 段倪师口吻长判词搬到了 patterns.ts（各识别器的
+		//    `topicDescription`），只读一个文件会让本断言**静默失效**——它仍会绿，
+		//    却再扫不到判词所在的文件。新增带引文的模块时，记得加进这个列表。
+		const src = ["ziwei/db-analysis.ts", "ziwei/patterns.ts"]
+			.map(f => readFileSync(resolve(ctx.root, f), "utf8"))
+			.join("\n");
 		// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
 		const banned = new Set(
 		 ann.entries
