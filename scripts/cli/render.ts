@@ -279,10 +279,12 @@ export function palaceBrief(p: Palace): string {
  * @returns 指纹字符串（各宫以 `|` 连接，宫内星曜名排序后以 `,` 连接）
  *
  * @remarks
- * ⚠️ 本函数与 `test/lib/compare.ts` 的 `chartSignature` 是**两份必须行为一致的实现** ——
- * CLI 不能反向依赖 `test/`，故刻意不抽共享模块（与 `lib/loader.ts` 同一处境）。
- * 两侧都先按 `branch` 排序再拼接，使指纹与 `palaces` 的数组顺序无关（该顺序实测为
- * 寅起的 `2,3,…,11,0,1`，不是 0-11）；只在一侧加排序，两边就会静默分叉。
+ * 本函数是**唯一实现** —— `test/lib/compare.ts` 经 `test/lib/loader.ts` 的 `loadRender()`
+ * 转出它，CLI 与测试共用同一份代码。（此前 test/ 侧另有一份逐行副本，两侧靠注释互相提醒
+ * 「必须同步」，却没有任何断言盯着；只在一侧加排序就会静默分叉。）
+ *
+ * 先按 `branch` 排序再拼接，使指纹与 `palaces` 的数组顺序无关（该顺序实测为
+ * 寅起的 `2,3,…,11,0,1`，不是 0-11）。
  */
 export const chartSignature = (c: ZiweiChart): string =>
 	[...c.palaces]

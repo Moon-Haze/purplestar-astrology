@@ -5,7 +5,8 @@
 // 故无 golden 基准可依，用手工基准 + 独立换算（lunar-typescript）互证。
 //
 // 本文件另有一条**防漂移断言**：内核直调结果必须等于 CLI --json 的输出。
-// test/lib/loader.ts 是 scripts/purple-star.ts 加载机制的副本，这条断言盯着两者不分叉。
+// 引导机制现已收敛到 scripts/boot-hooks.ts 一份实现（loader.ts 与 purple-star.ts 共用），
+// 故这条断言守的不是「两份副本别分叉」，而是「进程内内核与真实 CLI 子进程排出同一张盘」。
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
@@ -77,8 +78,11 @@ let commandsMod: typeof import("@/cli/commands") | null = null;
 let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
 
 /**
- * 进程内执行子命令：直接调 COMMANDS[sub](parseArgs(args), ctx)，与 purple-star.ts main() 同路径。
+ * 进程内执行子命令：直接调 COMMANDS[sub](parseArgs(args, sub), ctx)，与 purple-star.ts main() 同路径。
  * parseArgs / buildBirthInfo / 业务逻辑全部仍被测，只省掉「每个用例起一个 node 子进程」的冷启动税。
+ *
+ * ⚠️ `sub` 要传给 parseArgs —— 旗标面是按命令校验的（如 a- / b- 前缀只有 heming 认）。
+ * 漏传就等于绕开校验，本文件里那些「未知旗标必须报错」的用例会静默变成空跑。
  */
 async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 	if (!commandsMod) commandsMod = await load<typeof import("@/cli/commands")>("@/cli/commands");
@@ -86,7 +90,7 @@ async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 	const fn = commandsMod.COMMANDS[sub];
 	if (!fn) throw asCliFailure(`未知命令「${sub}」`);
 	try {
-		return await fn(parseArgsFn(args), { root: ROOT, rootLabel: ROOT_LABEL });
+		return await fn(parseArgsFn(args, sub), { root: ROOT, rootLabel: ROOT_LABEL });
 	} catch (err) {
 		throw asCliFailure((err as Error).message);
 	}
@@ -617,9 +621,10 @@ describe("CLI 端到端", () => {
 	});
 
 	describe("内核加载防漂移", () => {
-		// test/lib/loader.ts 是 scripts/purple-star.ts 加载机制的副本。
-		// 若两侧的 registerHooks / pickRoot 分叉（例如 CLI 改了别名解析而测试没跟上），
-		// 这条断言会把差异暴露出来 —— 否则测试可能一直在验证一个与线上不同的内核。
+		// 引导机制已收敛到 scripts/boot-hooks.ts 一份实现（CLI 与 test/lib/loader.ts 共用），
+		// 故「两侧别名解析分叉」这类缺陷在结构上不再可能。这条断言守的是另一件事：
+		// 进程内内核（走 loader 的钩子）与**真实 CLI 子进程**（走 purple-star 的钩子）
+		// 是否仍排出同一张盘 —— 既覆盖内核本身被改坏，也覆盖两条引导路径的调用策略被改坏。
 		it("内核直调结果 ≡ CLI --json 输出", async () => {
 			const birth: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male", longitude: 120 };
 			const direct = generateChart({ ...birth });

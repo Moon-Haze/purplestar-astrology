@@ -1,48 +1,33 @@
 // ── 测试用的排盘内核加载器 ──
 //
-// ⚠️ 本文件是 scripts/purple-star.ts 里 pickRoot / registerHooks / load 三者的**副本**，两者必须保持行为一致。
-//    这里刻意用函数名而非行号定位：CLI 已按职责拆进 scripts/cli/，行号是漂移最快的东西。
-//    刻意不抽成共享模块：CLI 的加载器带 CLI 特有的错误处理（console.error + process.exit(1)），
-//    而测试场景需要**抛错**而非退出进程 —— 抽共享模块会让两边都被对方的错误处理污染。
-//    若 CLI 的 registerHooks 或 pickRoot 有改动，请同步本文件；test/cli.test.ts 里有一条
-//    断言（内核直调结果 ≡ CLI --json 子进程输出）专门盯着两侧不漂移。
-import { registerHooks } from "node:module";
-import { pathToFileURL, fileURLToPath } from "node:url";
-import { existsSync } from "node:fs";
+// 引导机制（内核根定位 / TS 解析钩子 / 动态加载）与 CLI **共用** scripts/boot-hooks.ts 一份实现，
+// 本文件只提供测试特有的**策略**，两处：
+//
+//   1. 内核根候选的**起点**是 <skill 根>/scripts（CLI 的起点是脚本自身所在目录）
+//   2. 加载失败**抛错**而非退出进程 —— 让 node:test 把失败归到具体用例，
+//      而不是让整个测试进程带着 exit(1) 消失
+//
+// 为什么第 2 条不再构成「必须各存一份副本」的理由：它与「怎么解析 .ts」「内核根怎么找」
+// 是两件事。boot-hooks.ts 把这些差异收进 `onFailure` 与 `candidates` 两个入参，
+// 机制仍只有一份。
+//
+// 历史：本文件曾是 purple-star.ts 里 pickRoot / registerHooks / load 三者的**逐行副本**，
+// 靠注释提醒「两者必须保持行为一致」，只有 test/cli.test.ts 一条断言间接盯着。
+// 副本分叉不会被任何测试抓住 —— 它只影响「测试怎么观察内核」，测试本身照旧全绿。
+import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+
+// ⚠️ 带 `.ts` 扩展名，且 boot-hooks.ts 只依赖 `node:` 内置 —— 故本行在解析钩子注册之前
+//    就能被 Node 的原生类型擦除加载。改动本行前先读 scripts/boot-hooks.ts 的顶部注释。
+import { installHooks, loadFailureHint, makeLoader, pickRoot } from "../../scripts/boot-hooks.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/lib
 
-// ── 内核根定位：与 CLI 同为两级优先级 ──
-// 探测标志是 ziwei/algorithm.ts（内核的入口文件），缺了它说明目录不完整。
-// 刻意用判别联合而非 `root: string | null` 一把抓：命中分支里 label 必然非空，
-// 解构处无须非空断言即可拿到收窄后的 string。
-interface RootFound {
-	root: string;
-	label: string;
-	tried: string[];
-}
-interface RootMissing {
-	root: null;
-	label: null;
-	tried: string[];
-}
-
-function pickRoot(): RootFound | RootMissing {
-	const tried: string[] = [];
-	const candidates: Array<[string | undefined, string]> = [
-		[process.env.ZIWEI_ROOT && resolve(process.env.ZIWEI_ROOT), "ZIWEI_ROOT 环境变量"],
-		[resolve(HERE, "../../scripts"), "技能自带内核"],
-	];
-	for (const [dir, label] of candidates) {
-		if (!dir) continue;
-		if (existsSync(resolve(dir, "ziwei/algorithm.ts"))) return { root: dir, label, tried };
-		tried.push(`${label}：${dir}`);
-	}
-	return { root: null, label: null, tried };
-}
-
-const picked = pickRoot();
+// ── 内核根定位：两级优先级 ──
+const picked = pickRoot([
+	[process.env.ZIWEI_ROOT && resolve(process.env.ZIWEI_ROOT), "ZIWEI_ROOT 环境变量"],
+	[resolve(HERE, "../../scripts"), "技能自带内核"],
+]);
 
 if (!picked.root) {
 	throw new Error(
@@ -54,63 +39,23 @@ if (!picked.root) {
 	);
 }
 
-const { root: ROOT, label: ROOT_LABEL } = picked;
+export const ROOT: string = picked.root;
+export const ROOT_LABEL: string = picked.label;
 
-export { ROOT, ROOT_LABEL };
+installHooks(ROOT);
 
-// ── 解析钩子：@/ 别名指向内核根，相对导入补 .ts，裸包名从内核根解析 ──
-// `@/xxx` 的 @ 是**内核根**（scripts/）而非 skill 根：`@/ziwei/algorithm` → scripts/ziwei/algorithm.ts。
-// 裸包名重定向的意义：脱离项目运行时从文件位置向上找不到 node_modules，
-// 必须显式把 iztro / lunar-typescript 指到内核根去解析。
-const ROOT_PARENT_URL = pathToFileURL(resolve(ROOT, "package.json")).href;
-
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith("@/")) {
-			const base = resolve(ROOT, specifier.slice(2));
-			// 依次尝试：原样 → <base>.ts → <base>/index.ts（目录导入兜底）
-			const target = existsSync(base + ".ts")
-				? base + ".ts"
-				: existsSync(resolve(base, "index.ts"))
-					? resolve(base, "index.ts")
-					: base;
-			return nextResolve(pathToFileURL(target).href, context);
-		}
-		if (specifier.startsWith(".")) {
-			if (!/\.[cm]?[jt]s$/.test(specifier)) {
-				try {
-					return nextResolve(specifier + ".ts", context);
-				} catch {
-					/* 非 TS 目标，落回默认解析 */
-				}
-			}
-			return nextResolve(specifier, context);
-		}
-		if (!specifier.startsWith("node:")) {
-			const pkgName = specifier.startsWith("@")
-				? specifier.split("/").slice(0, 2).join("/")
-				: specifier.split("/")[0];
-			if (existsSync(resolve(ROOT, "node_modules", pkgName))) {
-				return nextResolve(specifier, { ...context, parentURL: ROOT_PARENT_URL });
-			}
-		}
-		return nextResolve(specifier, context);
-	},
+// ── 加载器：与 CLI 同一份机制，策略换成「抛错」 ──
+/**
+ * 动态加载内核或 CLI 子模块；失败时抛错并带上排查指引。
+ *
+ * @remarks
+ * 与 `scripts/purple-star.ts` 的同名加载器共用 `./boot-hooks.ts` 的 `makeLoader`，
+ * 唯一差别是 `onFailure` 策略：此处**抛错**（归到具体用例），CLI 那边退出进程。
+ * 排查指引本身（依赖未装 / Node 版本过低）也共用 `loadFailureHint()`。
+ */
+export const load = makeLoader(ROOT, ROOT_LABEL, f => {
+	throw new Error(`无法加载 ${f.spec}\n  ${f.error.message}\n${loadFailureHint(f)}`);
 });
-
-// 与 CLI 不同：加载失败直接抛错并带上排查指引，不退进程 —— 让 node:test 把失败归到具体用例。
-export async function load<T>(spec: string): Promise<T> {
-	try {
-		return (await import(spec)) as T;
-	} catch (err) {
-		throw new Error(
-			`无法加载 ${spec}\n  ${err instanceof Error ? err.message : String(err)}\n` +
-				`  当前内核根：${ROOT}（来源：${ROOT_LABEL}）\n` +
-				`  → Cannot find module 'iztro' / 'lunar-typescript'：依赖未装，在 skill 根执行 npm install\n` +
-				`  → registerHooks is not a function 或 TS 语法报错：Node 版本过低，需 ≥ 22.15（当前 ${process.version}）`
-		);
-	}
-}
 
 // ── 内核模块入口 ──
 // 每次调用都走 import()，命中 ESM 缓存，无重复解析开销。

@@ -9,11 +9,11 @@
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
  *   cli/commands.ts    七个命令实现 + 命令表
- *   cli/selftest.ts    回归自检（48 项断言；留在 scripts/ 而非 test/，理由见该文件）
+ *   cli/selftest.ts    回归自检（留在 scripts/ 而非 test/，理由见该文件）
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
  *   scripts/ziwei/algorithm.ts        排盘主流程
- *   scripts/ziwei/patterns.ts         格局识别（40+ 格局，含古籍出处与破格条件）
+ *   scripts/ziwei/patterns.ts         格局识别（含古籍出处与破格条件）
  *   scripts/ziwei/sihua.ts            四化（生年 / 流年 / 流月）
  *   scripts/ziwei/analysis.ts         分析数据库 v3（主题论断动态推算，topic 命令用）
  *   scripts/ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
@@ -29,19 +29,29 @@
  * @packageDocumentation
  */
 
-import { registerHooks } from "node:module";
-import { existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+
+// ⚠️ 引导层**唯一**被允许的非 `node:` 静态 import，理由见下方「引导层为什么能静态 import
+//    boot-hooks.ts」—— 该文件自身只依赖 `node:` 内置，且调用点用的是带 `.ts` 扩展名的
+//    说明符，靠 Node 原生类型擦除即可加载，**不需要解析钩子**。除此之外本文件不允许出现
+//    任何普通静态 import。
+import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hooks.ts";
 
 // ── 类型层：`import type` 与 `typeof import(...)` 在运行时被**完全擦除**，不产生任何静态依赖 ──
 // 这一点是本文件能同时「自举注册 TS 钩子」与「拿到内核/子模块类型」的关键：
 // ESM 的静态 import 会被提升到模块求值之前，若用普通 import 引内核或 scripts/cli/*，
-// registerHooks 还没执行、对方的 .ts 就已经要加载了。类型节点擦除后什么都不剩，故安全。
+// 钩子还没注册、对方的 .ts 就已经要加载了。类型节点擦除后什么都不剩，故安全。
 //
-// ⚠️ 因此：**本文件里除了 `node:` 内置模块，不允许出现任何普通静态 import** ——
-//    `scripts/cli/` 下的自家子模块也不行（它们静态 import 内核，同样会触发提前加载）。
+// ⚠️ 因此：**本文件里除 `node:` 内置模块与 ./boot-hooks.ts 外，不允许出现任何普通静态 import**
+//    —— `scripts/cli/` 下的自家子模块也不行（它们静态 import 内核，同样会触发提前加载）。
 //    凡是要用的值，一律走下面的 load<T>()。这是本文件最容易被改坏的一处。
+//
+// **引导层为什么能静态 import boot-hooks.ts**：那条禁令的实质不是「禁止静态 import」，
+// 而是「禁止在钩子注册前触发 `.ts` 解析」。boot-hooks.ts 只 import `node:` 内置，自身不含
+// 任何需要钩子解析的依赖，且调用点写全了 `.ts` 扩展名 —— Node 的原生类型擦除直接就能加载它。
+// 把引导机制抽成共享模块（而非让 CLI 与 test/lib/loader.ts 各存一份逐行副本）正是靠这一点。
+// `cli/selftest.ts` 有一条断言盯着 boot-hooks.ts 的 import 全是 `node:` 前缀，防止这条豁免腐烂。
 
 /**
  * 动态导入的模块类型：下方 `load<T>()` 用它把 `await import(spec)` 的 `any` 收窄回真实签名。
@@ -72,47 +82,30 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ── 排盘内核根目录：两级优先级 ──
 /**
- * 定位排盘内核根目录。
- *
- * @returns `root` 为命中的内核根（`null` 表示全部候选都不成立）；`label` 是该来源的描述
- *   （「ZIWEI_ROOT 环境变量」/「技能自带内核」）；`tried` 是已尝试过的候选清单，供失败时逐条列给用户
+ * 本 CLI 的内核根候选清单（判定规则与失败呈现都在 `./boot-hooks.ts`，此处只给**策略**）。
  *
  * @remarks
  * 优先级：
  * 1. `ZIWEI_ROOT` 环境变量 —— 显式指定（想把内核指到别处时用）
  * 2. 技能自带内核 —— 就是本脚本所在目录 `<skill 根>/scripts/`
  *
- * 判定依据是「该目录下存在 `ziwei/algorithm.ts`」，而非目录本身是否存在。
- *
  * 内核根 = `scripts/` **本身**：CLI（`purple-star.ts`、`cli/`）与两个内核目录（`ziwei/`、`classics/`）
  * 同处一层。因此 `@/` 别名指向的是 `scripts/`，而**不是** skill 根。
  *
  * 这里刻意**没有**「宿主项目」候选：仓库内只有这一份内核，不存在副本漂移问题。
- *
- * ⚠️ 失败时 `label` 取**空串**而非 `null`：调用点随即 `exit`，用不到它，而空串让返回类型保持
- * `label: string`，省得调用点为了给 `CliContext` 传值再断言一次。
  */
-function pickRoot() {
-	const tried: string[] = [];
-	const candidates: [string | undefined, string][] = [
-		[process.env.ZIWEI_ROOT && resolve(process.env.ZIWEI_ROOT), "ZIWEI_ROOT 环境变量"],
-		[HERE, "技能自带内核"],
-	];
-	for (const [dir, label] of candidates) {
-		if (!dir) continue;
-		if (existsSync(resolve(dir, "ziwei/algorithm.ts"))) return { root: dir, label, tried };
-		tried.push(`${label}：${dir}`);
-	}
-	return { root: null, label: "", tried };
-}
+const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
+	[process.env.ZIWEI_ROOT && resolve(process.env.ZIWEI_ROOT), "ZIWEI_ROOT 环境变量"],
+	[HERE, "技能自带内核"],
+];
 
-const { root: rootFound, label: ROOT_LABEL, tried: ROOT_TRIED } = pickRoot();
+const picked = pickRoot(ROOT_CANDIDATES);
 
-if (!rootFound) {
+if (!picked.root) {
 	console.error(
 		`[ziwei 启动失败] 找不到排盘内核（ziwei/algorithm.ts）\n` +
 			`  已尝试：\n` +
-			ROOT_TRIED.map(t => `    - ${t}`).join("\n") +
+			picked.tried.map(t => `    - ${t}`).join("\n") +
 			"\n" +
 			`  处理：\n` +
 			`    ① 确认 skill 目录完整 —— scripts/ 下应同时有 purple-star.ts、cli/ 与 ziwei/、classics/ 两个内核目录（拷贝时漏带内核会走到这里）；或\n` +
@@ -125,111 +118,35 @@ if (!rootFound) {
  * 内核根（已确定为非空）。
  *
  * @remarks
- * `rootFound` 的收窄在模块顶层成立，但**不会延续到函数体内**（`load` 的错误分支就要用 `ROOT`）。
- * 故此处显式落成一个非空 `string`，免得每个闭包里都得再断言一次。
+ * `picked` 是判别联合，`!picked.root` 的守卫之后整体收窄为 `RootFound`，故 `root` 与 `label`
+ * 都直接是 `string`。收窄不会延续到函数体内（`load` 的错误分支就要用 `ROOT`），
+ * 故此处显式落成非空 `string`，免得每个闭包里都得再断言一次。
  */
-const ROOT: string = rootFound;
+const ROOT: string = picked.root;
+const ROOT_LABEL: string = picked.label;
 
 // ── 让 Node 直接加载 TS：解析 @/ 别名，补全省略的 .ts / index.ts，并把裸包名指向当前根 ──
-/**
- * 裸包名重定向所用的 parentURL：「内核根/package.json」。
- *
- * @remarks
- * 该文件通常不存在，无妨 —— Node 会自它向上逐级查找 `node_modules`，最终命中 skill 根的
- * `node_modules/`。这条重定向的意义在于：脱离项目运行时，从文件位置向上找不到 `node_modules`，
- * 必须显式把 `iztro` / `lunar-typescript` 指到当前内核根去解析。
- */
-const ROOT_PARENT_URL = pathToFileURL(resolve(ROOT, "package.json")).href;
-
-/**
- * 注册 TS 解析钩子，让 Node 直接加载本仓库的 `.ts`。
- *
- * @param specifier - 待解析的模块说明符
- * @param context - Node 传入的解析上下文（含 parentURL）
- * @param nextResolve - 链上的下一个解析器；本钩子未命中的说明符一律原样交给它
- * @returns 该说明符的解析结果
- *
- * @remarks
- * **钩子必须在任何内核模块被求值之前注册**（见文件顶部注释）：ESM 的静态 import 会被提升到
- * 模块求值之前，晚一步注册，内核的 `.ts` 就已经要加载了。三条分支：
- *
- * 1. `@/xxx` —— `@` 指**内核根**（`scripts/`）：`@/ziwei/algorithm` → `scripts/ziwei/algorithm.ts`，
- *    `@/cli/commands` → `scripts/cli/commands.ts`。依次尝试「原样 → `<base>.ts` → `<base>/index.ts`」，
- *    目录导入兜底是为了避免 `ERR_UNSUPPORTED_DIR_IMPORT`。
- * 2. `./xxx` —— 子模块内部的相对 import（如 `./args`）在这里补 `.ts`；已带 `.ts` / `.mts` / `.cts` /
- *    `.js` / `.mjs` / `.cjs` 后缀的原样放行，补后缀失败则落回默认解析。
- * 3. 裸包名（含 `@scope/pkg`）—— 若当前内核根的 `node_modules` 里有同名包，就以
- *    {@link ROOT_PARENT_URL} 为 parentURL 重新解析，摆脱对 cwd 与文件位置的依赖；`node:` 前缀一律不碰。
- */
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith("@/")) {
-			const base = resolve(ROOT, specifier.slice(2));
-			// 依次尝试：原样 → <base>.ts → <base>/index.ts（目录导入兜底，避免 ERR_UNSUPPORTED_DIR_IMPORT）
-			const target = existsSync(base + ".ts")
-				? base + ".ts"
-				: existsSync(resolve(base, "index.ts"))
-					? resolve(base, "index.ts")
-					: base;
-			return nextResolve(pathToFileURL(target).href, context);
-		}
-		if (specifier.startsWith(".")) {
-			if (!/\.[cm]?[jt]s$/.test(specifier)) {
-				try {
-					return nextResolve(specifier + ".ts", context);
-				} catch {
-					/* 非 TS 目标，落回默认解析 */
-				}
-			}
-			return nextResolve(specifier, context);
-		}
-		// 裸包名（含 @scope/pkg）：若当前根的 node_modules 里有，就从当前根解析，摆脱对 cwd 与文件位置的依赖
-		if (!specifier.startsWith("node:")) {
-			const pkgName = specifier.startsWith("@")
-				? specifier.split("/").slice(0, 2).join("/")
-				: specifier.split("/")[0];
-			if (existsSync(resolve(ROOT, "node_modules", pkgName))) {
-				return nextResolve(specifier, {
-					...context,
-					parentURL: ROOT_PARENT_URL,
-				});
-			}
-		}
-		return nextResolve(specifier, context);
-	},
-});
+// 钩子本体在 ./boot-hooks.ts（与 test/lib/loader.ts 共用同一份实现），此处只负责**注册时机**：
+// 必须在任何内核模块被求值之前执行，见文件顶部注释。
+installHooks(ROOT);
 
 // ── 统一加载器：任何上游模块挂了都给出可执行的排查指引，而不是裸栈 ──
 /**
- * 动态加载一个内核或 CLI 子模块；任何上游模块挂了，都给出可执行的排查指引而不是裸栈。
- *
- * @typeParam T - 模块类型，以 `typeof import("...")` 的别名传入（如 `AlgorithmModule`）
- * @param spec - 模块说明符；解析交给上方 `registerHooks` 注册的钩子（`@/...` 或裸包名）
- * @returns 加载到的模块命名空间
+ * 动态加载内核或 `scripts/cli/*` 子模块；任何上游模块挂了都给排查指引而不是裸栈。
  *
  * @remarks
- * **所有内核模块与 `scripts/cli/*` 子模块都必须经由本函数加载**（见文件顶部注释：钩子注册前
- * 不允许出现普通静态 import）。`spec` 是变量，TS 推不出模块类型，故由调用方以
- * `load<Module 类型>()` 指定；`as T` 断言只影响类型层，运行时的解析仍由 `registerHooks` 决定。
+ * **所有内核模块与 `scripts/cli/*` 子模块都必须经由本加载器加载**（见文件顶部注释：钩子注册前
+ * 不允许出现会触发 `.ts` 解析的静态 import）。
  *
- * ⚠️ 失败时**不抛错，而是打印排查指引后 `process.exit(1)`** —— 所以调用点拿到的返回值必然非空，
- * 也就不必再写 try/catch。指引分两支：依赖未装（在 skill 根执行 `npm install`）与 Node 版本过低
- * （需 ≥ 22.15，`registerHooks` 不可用或 TS 语法报错即属此类）。
+ * 机制（说明符怎么解析、失败事实长什么样）在 `./boot-hooks.ts` 的 `makeLoader`；
+ * 此处只给**策略** —— CLI 的失败呈现是「渲染指引 + `process.exit(1)`」，故调用点拿到的返回值
+ * 必然非空，不必再写 try/catch。对照 `test/lib/loader.ts` 的同名加载器：同一份机制配的是
+ * 「抛错」策略，让 node:test 把失败归到具体用例；两者共用 `loadFailureHint()` 的排查知识。
  */
-async function load<T>(spec: string): Promise<T> {
-	try {
-		return (await import(spec)) as T;
-	} catch (err) {
-		console.error(
-			`[ziwei 启动失败] 无法加载 ${spec}\n  ${(err as Error).message}\n` +
-				`  当前内核根：${ROOT}（来源：${ROOT_LABEL}）\n` +
-				`  → Cannot find module 'iztro' / 'lunar-typescript'：依赖未装。\n` +
-				`     在 skill 根（${resolve(ROOT, "..")}）执行 npm install 即可（依赖清单见该目录 package.json）\n` +
-				`  → registerHooks is not a function 或 TS 语法报错：Node 版本过低，需 ≥ 22.15（当前 ${process.version}）`
-		);
-		process.exit(1);
-	}
-}
+const load = makeLoader(ROOT, ROOT_LABEL, f => {
+	console.error(`[ziwei 启动失败] 无法加载 ${f.spec}\n  ${f.error.message}\n${loadFailureHint(f)}`);
+	process.exit(1);
+});
 
 // 钩子已就绪，从这里开始才能安全地加载任何 .ts（内核与 scripts/cli/ 下的子模块都一样）。
 const { generateChart } = await load<AlgorithmModule>("@/ziwei/algorithm");
@@ -242,8 +159,8 @@ const { PROVINCES } = await load<CitiesModule>("@/ziwei/cities");
 const { searchClassics } = await load<ClassicsModule>("@/classics/index");
 const { Lunar } = await load<typeof import("lunar-typescript")>("lunar-typescript");
 
-const { parseArgs } = await load<ArgsModule>("@/cli/args");
-const { COMMANDS } = await load<CommandsModule>("@/cli/commands");
+const { parseArgs, renderFlagHelp } = await load<ArgsModule>("@/cli/args");
+const { COMMANDS, renderCommandHelp } = await load<CommandsModule>("@/cli/commands");
 
 // ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默产出错盘 ──
 /**
@@ -294,52 +211,31 @@ const REQUIRED_EXPORTS = [
  * 帮助文本（无参数、`help`、`--help`、`-h` 时打印）。
  *
  * @remarks
- * ⚠️ 内容必须与 `scripts/cli/commands.ts` 的 `COMMANDS` 表及各命令的实际参数保持一致；
- * CLI 改了参数名或输出格式，这里要同步改 —— `SKILL.md` 同理，否则 Claude 会照着过时的说明调用。
+ * 命令段与参数段**不是手写的**：分别由 `commands.ts` 的 `renderCommandHelp()`（源自
+ * `COMMAND_TABLE` + `COMMAND_DESC`）与 `cli/args.ts` 的 `renderFlagHelp()`（源自
+ * `FLAG_GROUPS`）派生。此处只保留「用法 + 两条口径警告 + 示例」这几段散文，
+ * 它们是 HELP 里唯一无法从声明推出的部分。
+ *
+ * ⚠️ 示例段仍在手写，改参数名时要一并改（`selftest` 有一条断言扫 `SKILL.md` 的旗标面，
+ * 示例里的旗标因此也被覆盖到）。
  */
 const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知识库
 
 用法：node scripts/purple-star.ts <command> [options]
 
 命令：
-  analyze    解读用完整输入包（命盘 + 十二宫一览 + 格局 + 四化 + 大限）★ 最常用
-  chart      纯排盘十二宫
-  topic      主题论断（13 主题动态推算：主宫 + 三方四正 + 四化会照 + 大限/流年）
-  heming     合盘（双宫联参 + 夫妻宫断语 + 方法论）
-  classics   古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）
-  stars      星曜释义
-  cities     城市经纬度查询（真太阳时校正用）
-  selftest   回归自检（农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）
+${renderCommandHelp()}
 
-出生日期（三选一；heming 加 a- / b- 前缀）：
-  --date  YYYY-MM-DD   公历生日
-  --lunar YYYY-MM-DD   农历生日（脚本自动换算，勿与 --date 同用）
-  --leap               配合 --lunar，表示闰月
-  --year / --month / --day   公历生日（分写）
+${renderFlagHelp()}
 
-出生时辰（二选一）：
-  --time HH:MM         钟表时间（配合 --lng / --city 自动换算真太阳时）
-  --branch 0-12        直接指定时辰支（0=子 … 11=亥；12=晚子时），与 --time 二选一
-  --late-zi            配合 --time：23:00–23:59 出生改按「晚子时算次日」排
-  --eot                配合 --time：真太阳时额外计入均时差（±16 分），默认不计
-                       ※ 真太阳时跨过午夜时，出生日期会自动回退/顺延一天，
-                         输出里会写明「已跨过午夜，出生日期…」。这是正确行为。
+⚠️ 两个容易排出错盘的口径，复核时先看这两条：
 
-其他出生信息：
-  --gender male|female
-  --lng 116.4          出生地经度（默认 120，即不做经度校正）
-  --city 北京          用城市名代替 --lng（容错「石家庄市」「石家庄地区」等写法）
-  --province 山东      用省份代替 --lng（按省会计）
-  --name 张三          可选
+  · 晚子时：23:00–23:59 出生时，子时横跨两日，【当日早子时】与【晚子时算次日】
+    排出的是两张不同的盘。复核请加 --late-zi 或 --branch 12。
 
-输出选项：
-  --json              输出原始 JSON（供程序消费）
-  --liunian 2027      analyze 时指定流年（默认今年）。勿用 --year，那是出生年
-  --liuyue 6          analyze 时追加农历 6 月的流月四化（需先有流年）
-  --focus 财帛        analyze 时额外展开指定宫位
-
-⚠️ 晚子时：23:00–23:59 出生时，子时横跨两日，【当日早子时】与【晚子时算次日】
-   排出的是两张不同的盘。复核请加 --late-zi 或 --branch 12。
+  · 真太阳时跨过午夜：出生日期会自动回退/顺延一天，输出里会写明「已跨过午夜，
+    出生日期…」。这是正确行为 —— 只换时辰不换日期，排出的「日 + 时」指向的
+    就不是出生时刻（喀什 00:30 的真太阳时是前一日 21:34，农历日会错一天）。
 
 示例：
   # 单人解读（公历）
@@ -375,11 +271,15 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
  * 目前只有 `selftest` 用得上。
  *
  * ⚠️ 命令名直接来自 `argv`，故查表必然可能未命中 —— `COMMANDS` 的值类型显式带 `| undefined`。
+ *
+ * `--help` 出现在**任何位置**都打印 HELP，包括 `analyze --help` 这种。这是刻意的：
+ * `--help` 不在旗标声明表里，放它走到 `parseArgs` 只会得到一句「未知参数 --help」，
+ * 而用户此刻想要的显然是用法。判定提前到分发之前，`parseArgs` 因此永远见不到它。
  */
 function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];
-	if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
+	if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h" || argv.includes("--help")) {
 		console.log(HELP);
 		return;
 	}
@@ -391,7 +291,9 @@ function main() {
 		process.exit(1);
 	}
 	try {
-		console.log(fn(parseArgs(argv.slice(1)), { root: ROOT, rootLabel: ROOT_LABEL }));
+		// 命令名一并交给 parseArgs：旗标面要按命令校验（如 a- / b- 前缀只有 heming 认）
+		const args = parseArgs(argv.slice(1), cmd);
+		console.log(fn(args, { root: ROOT, rootLabel: ROOT_LABEL }));
 	} catch (err) {
 		console.error(`错误：${(err as Error).message}`);
 		process.exit(1);

@@ -10,13 +10,12 @@ export const CREATE_DB_PRAGMAS = [
   "PRAGMA force_compression='zstd'",
 ];
 
-// 13 个主题名，顺序即 topics 视图的列序，也是编码时「主题名列」与「文本列」的配对顺序。
-// 视图、构建、校验三处共用，避免各写一份后悄悄漂移。
-export const TOPIC_KEYS = [
-  'overview', 'personality', 'love', 'career', 'wealth', 'health', 'family',
-  'children', 'move', 'friends', 'home', 'spirit', 'parents',
-] as const;
-export type TopicKey = typeof TOPIC_KEYS[number];
+// 13 个主题名的**唯一定义**在内核：scripts/ziwei/analysis-data.ts 的 TOPIC_KEYS。
+// 此处只转出 —— 内核的 TopicKey 与这里的列序从此不可能漂移（此前是两份，靠注释提醒）。
+// 视图、构建、校验三处共用同一常量。
+// ⚠️ 用相对路径而非 `@/` 别名：tools/ 由 tsx 直接执行，不走 CLI 的解析钩子。
+import { TOPIC_KEYS, type TopicKey } from "../../scripts/ziwei/analysis-data";
+export { TOPIC_KEYS, type TopicKey };
 
 // spec §4.1：结构表两形态共用；主题文本的两张表只有 inline 才建。
 export const DDL_STRUCTURE_STATEMENTS: string[] = [

@@ -17,7 +17,7 @@
 import { Solar } from "lunar-typescript";
 
 import type { BirthInfo, LunarInfo, Star, ZiweiChart } from "@/ziwei/types";
-import { loadConstants } from "./loader.ts";
+import { loadConstants, loadRender } from "./loader.ts";
 
 // ── 基准样本的类型（iztro 2.5.8 的 JSON 快照） ──
 //
@@ -92,7 +92,7 @@ export interface ChartDiff {
 // 本文件与内核会一起错，层 1 照旧全绿**。这与 test/README.md 记录的 02 号历史
 // 事故是同一个形状（比对器与内核同源同错）。堵这个盲区的是层 3 的两条**不读本表**
 // 的预言机：invariants.test.ts 的「iztro 直连词法」与「十二宫偏移位置」。
-const { IZTRO_TO_PROJECT_PALACE } = await loadConstants();
+const { IZTRO_TO_PROJECT_PALACE, BRANCHES } = await loadConstants();
 
 /**
  * 把**基准样本**的宫名翻成项目口径。
@@ -107,9 +107,16 @@ const { IZTRO_TO_PROJECT_PALACE } = await loadConstants();
  */
 const normalizePalaceName = (v: string): string => IZTRO_TO_PROJECT_PALACE[v] ?? v;
 
-// 十二地支。刻意在此独立定义而不从内核 constants.ts 取：比对器是同步函数，
-// 而内核模块是异步加载的；且这份表是常量，不随内核演进而变。
-export const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+/**
+ * 十二地支，索引即地支序（0=子 … 11=亥）。取自内核 `constants.ts`，与上面的宫名映射同一次加载。
+ *
+ * @remarks
+ * 此前这里另抄了一份，理由是「比对器是同步函数，而内核模块是异步加载的」—— 但本模块从
+ * 第一行起就用了顶层 `await loadConstants()`，那条理由从未成立；剩下的「这份表是常量、
+ * 不随内核演进而变」是个**假设**，而假设正是该被结构消除的东西。取同一份之后，
+ * 内核若调整地支表，比对器的判据自动跟随。
+ */
+export { BRANCHES };
 
 // ── 已知差异白名单 ──
 //
@@ -420,13 +427,13 @@ export function formatDiffs(diffs: ChartDiff[], limit = 25): string {
 /**
  * 盘指纹：快速判定两张盘是否逐宫一致（用于 CLI 的 --branch 12 ≡ 次日 --branch 0 之类断言）。
  *
- * ⚠️ 与 scripts/cli/render.ts 里的 chartSignature 是**两份必须行为一致的实现** ——
- *    test/ 与 CLI 刻意不共享模块（同 lib/loader.ts 的理由），故改动其一时必须同步另一个。
- *    先按 branch 排序再拼接，使指纹与 `palaces` 的数组顺序无关（实测为寅起 2,3,…,11,0,1）。
+ * @remarks
+ * **唯一实现在 `scripts/cli/render.ts`**，此处只是转出 —— 本模块与 CLI 走同一份代码，
+ * 不存在「改动其一时必须同步另一个」。此前这里另有一份逐行副本，两侧注释互相提醒却
+ * **没有任何断言盯着**，只在一侧加排序就会静默分叉（指纹仍各不相同，断言照旧全绿）。
+ *
+ * `loader.ts` 早已提供 `loadRender()`，测试本来就在加载 CLI 的模块，
+ * 「CLI 不能反向依赖 test/」这条理由在方向上并不成立。
  */
-export function chartSignature(chart: Pick<ZiweiChart, "palaces">): string {
-	return [...chart.palaces]
-		.sort((x, y) => x.branch - y.branch)
-		.map(p => `${p.name}:${p.branch}:${p.stars.map(s => s.name).sort().join(",")}`)
-		.join("|");
-}
+const { chartSignature } = await loadRender();
+export { chartSignature };

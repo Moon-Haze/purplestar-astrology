@@ -886,20 +886,36 @@ export const STAR_CONTENT_MAP: Record<string, StarContent> = {
 	},
 };
 
-export type TopicKey =
-	| "overview"
-	| "personality"
-	| "love"
-	| "career"
-	| "wealth"
-	| "health"
-	| "family"
-	| "children"
-	| "move"
-	| "friends"
-	| "home"
-	| "spirit"
-	| "parents";
+/**
+ * 13 个主题键。**顺序即存储列序**，故这是一份格式定义，不是随手排的清单。
+ *
+ * @remarks
+ * 这是本项目主题词汇的**唯一定义处**：{@link TopicKey} 由它推出，`tools/db/db.ts` 的
+ * samples / topics 视图列序也直接引用它（那边的原话：「顺序即 topics 视图的列序，
+ * 也是编码时主题名列与文本列配对顺序」）。此前两边各写一份，只靠注释提醒不得漂移；
+ * 合到一处后「同名同序」由类型系统保证 —— `tools/db/db.ts` 只转出该常量。
+ *
+ * ⚠️ 因此**重排本数组等于改存储格式**：已入库的 parquet 会与新代码的列对不上。
+ * 要改必须同时重建数据集（`npm run build:db`）。
+ */
+export const TOPIC_KEYS = [
+	"overview",
+	"personality",
+	"love",
+	"career",
+	"wealth",
+	"health",
+	"family",
+	"children",
+	"move",
+	"friends",
+	"home",
+	"spirit",
+	"parents",
+] as const;
+
+/** 主题键。由 {@link TOPIC_KEYS} 推出，故两者永不脱节 —— 加一个主题只需改那一处数组。 */
+export type TopicKey = (typeof TOPIC_KEYS)[number];
 
 // 本项目宫名口径（与 constants.ts 的 IZTRO_TO_PROJECT_PALACE 一致）：交友宫 = iztro 旧口径「仆役」
 export const TOPIC_PALACE_NAME: Record<TopicKey, string> = {

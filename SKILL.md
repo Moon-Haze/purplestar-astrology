@@ -100,7 +100,7 @@ CLI 已给出命盘数据与格局结论。需要展开论证时，**直接读�
 
 | 需要什么                                                                                         | 读哪里                                                                                                                                              |
 | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 格局判定规则全文（80+ 格局的必须/加分/破格三层条件）+ 各格局的 `analyze` 短判词与 `topic` 长判词 | `scripts/ziwei/patterns.ts`（判定）/ `scripts/ziwei/patterns-defs.ts`（`PATTERN_VERDICTS` 判词表）                                                  |
+| 格局判定规则全文（80+ 格局的必须/加分/破格三层条件）+ 各格局的 `analyze` 短判词与 `topic` 长判词 | `scripts/ziwei/patterns.ts`（判定）/ `scripts/ziwei/patterns-data.ts`（`PATTERN_VERDICTS` 判词表）                                                  |
 | 四化体系、流年流月推法                                                                           | `scripts/ziwei/sihua.ts`                                                                                                                            |
 | 合盘方法论、十四主星在夫妻宫断语、四化入夫妻宫                                                   | `scripts/ziwei/heming-knowledge.ts`                                                                                                                 |
 | 星曜释义（关键词/星性/五行）                                                                     | `scripts/ziwei/constants.ts` 的 `STAR_DESCRIPTIONS`；或 `stars` 命令                                                                                |
@@ -175,7 +175,9 @@ node scripts/purple-star.ts cities --search 成都
 - ❌ **大限四化取宫干** —— `algorithm.ts` 已停止生成 `daXians[].siHua` / `stemIndex`
 - ❌ **来因宫** —— 飞星派追溯法，不使用
 
-⚠️ **陷阱**：`scripts/ziwei/sihua.ts` 里**仍然导出** `detectSelfSihua` / `findIncomingPalaces` / `getDaXianSiHua` 等函数——它们是历史遗留与前端展示兼容代码，**存在不等于该用**。用它解读就是背叛本项目的体系立场。（`selftest` 里有两条断言专门盯着这个，防止上游把这些字段又填回来。）
+⚠️ **陷阱**：`scripts/ziwei/sihua.ts` **只提供上面那三层四化**（`getSiHuaByStem` / `getYearStemIndex` / `getLiuNianSiHua` / `getLiuYueStemIndex` / `getLiuYueSiHua`）。飞星派的 `detectSelfSihua` / `findIncomingPalaces` / `getDaXianSiHua` 等函数已于 2026-09-27 从该模块**删除**——不是改名、不是移到别处，全仓零调用点。
+
+但 `types.ts` 里的 `Palace.selfSihua` / `DaXian.siHua` 字段与 `SelfSihuaMark` / `DaXianSiHua` 两个类型**仍在**，那是**刻意留下的绊线**：`selftest` 与 `test/school.test.ts` 各有断言盯着它们不被重新填回，字段删了就没东西可盯。**存在不等于该用**——用它们解读就是背叛本项目的体系立场。
 
 可用的是：**生年四化**（出生年干）、**流年四化**（当年年干）、**流月四化**（`--liuyue 6`）。CLI 的 `analyze` 已按此口径输出。
 
@@ -187,7 +189,7 @@ node scripts/purple-star.ts cities --search 成都
 
 ## 其他已知事实
 
-- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis.ts` 推算 + `analysis-data.ts` 论断文案与类型映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `topic` 命令使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是第 2 步列出的六个：`patterns.ts`、`sihua.ts`、`analysis.ts`（或 `topic` 命令）、`heming-knowledge.ts`、`constants.ts` 的 `STAR_DESCRIPTIONS`（或 `stars` 命令）、`classics`。
+- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis.ts` 推算 + `analysis-data.ts` 论断文案与类型映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `topic` 命令使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是第 2 步列出的六个：格局库（`patterns.ts` 判定 + `patterns-data.ts` 判词）、`sihua.ts`、`analysis.ts`（或 `topic` 命令）、`heming-knowledge.ts`、`constants.ts` 的 `STAR_DESCRIPTIONS`（或 `stars` 命令）、`classics`。
 - **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `sha` / `lucky`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键），只有 `type === "major"` 的那 14 颗带 `brightness`，其余三类不带（信息比 iztro 原始输出少，是口径选择不是缺漏）。
 - **年龄一律是虚岁**：`currentAge`（当前年龄）、`daXians[].startAge/endAge`、`palace.daXianAge` 三者**同为虚岁**，以**农历年（正月初一）为界** —— 不是生日，也不是立春。数据来自 iztro 的 `decadal.range`。解读时报给用户的年龄就用这个虚岁，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
 - **童限**：`currentDaXianIndex === -1` 表示此人**尚未起运**（虚岁小于五行局数，如土五局要 5 岁才起运），此时 CLI 的「当前大限」显示 `—`。这是正常的，不是数据缺失——此时按命宫论，不要硬套一个大限。
@@ -254,7 +256,7 @@ node scripts/purple-star.ts heming \
 | `classics --search <词>`         | 古籍原文检索                                                             |
 | `stars [--search <星名>]`        | 星曜释义                                                                 |
 | `cities --search <城市>`         | 城市经度                                                                 |
-| `selftest`                       | 回归自检（48 项断言）。改动本技能或升级 `iztro` 后跑一次                 |
+| `selftest`                       | 回归自检（末行自报项数）。改动本技能或升级 `iztro` 后跑一次              |
 
 **出生信息参数**：`--date` / `--lunar`（+`--leap`）/ `--year·--month·--day`；`--time` 或 `--branch 0-12`、`--late-zi`、`--eot`；`--gender`（**必填**）；`--lng` / `--city` / `--province`；`--name`。
 
@@ -335,7 +337,7 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 
 `package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-typescript 1.8.6），排盘结果不会因环境不同而分叉。
 
-**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 `scripts/ziwei`、`classics` 下的 `.ts` 全是本仓自有的内核代码（不含 CLI 的 `scripts/purple-star.ts` 与 `scripts/cli/`）——格局库（`patterns.ts`，含判定 + 两套判词）、分析数据库 v3（`analysis.ts`，拷自 `reference/ziwei-samples-toolkit/`）、合盘断语、中国城市经纬度、三部古籍原文——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
+**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 `scripts/ziwei`、`classics` 下的 `.ts` 全是本仓自有的内核代码（不含 CLI 的 `scripts/purple-star.ts` 与 `scripts/cli/`）——格局库（`patterns.ts` 判定 + `patterns-data.ts` 两套判词）、分析数据库 v3（`analysis.ts`，拷自 `reference/ziwei-samples-toolkit/`）、合盘断语、中国城市经纬度、三部古籍原文——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
 
 > 此处有意不登记内核行数：内核在本仓库持续演化，写死的数字改一次代码就失效一次。
 

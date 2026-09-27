@@ -687,8 +687,35 @@ function cmdTopic(args: CliArgs) {
 
 // ══════════════════════ 命令表 ══════════════════════
 
+/** 命令实现的签名：返回**已渲染好的文本**，由引导层统一 `console.log`。 */
+type Cmd = (args: CliArgs, ctx: CliContext) => string;
+
 /**
- * 命令表：命令名 → 实现（返回**已渲染好的文本**，由引导层 `console.log`）。
+ * 命令名 → 实现。
+ *
+ * @remarks
+ * 刻意**不导出**这张裸表：导出的是下面两个视图（{@link COMMANDS} 供分发、
+ * {@link COMMAND_DESC} 供渲染 HELP）。调用方拿不到「键集与描述可能对不上」的中间态。
+ *
+ * 用 `satisfies` 而非 `: Record<...>` 标注，是为了保住字面量键集 ——
+ * `CommandName` 与 `COMMAND_DESC` 的完备性都建立在它之上（见下）。
+ */
+const COMMAND_TABLE = {
+	analyze: cmdAnalyze,
+	chart: cmdChart,
+	topic: cmdTopic,
+	heming: cmdHeming,
+	classics: cmdClassics,
+	stars: cmdStars,
+	cities: cmdCities,
+	selftest: (_args: CliArgs, ctx: CliContext) => cmdSelftest(ctx),
+} satisfies Record<string, Cmd>;
+
+/** 合法命令名。 */
+export type CommandName = keyof typeof COMMAND_TABLE;
+
+/**
+ * 分发用的命令表：命令名 → 实现。
  *
  * @remarks
  * 值类型显式写出 `| undefined`：命令名来自 argv，查表必然未命中，
@@ -699,16 +726,36 @@ function cmdTopic(args: CliArgs) {
  *
  * `help` 不在表内 —— 引导层单独处理，见 `purple-star.ts` 的 `main()`。
  */
-export const COMMANDS: Record<
-	string,
-	((args: CliArgs, ctx: CliContext) => string) | undefined
-> = {
-	analyze: cmdAnalyze,
-	chart: cmdChart,
-	topic: cmdTopic,
-	heming: cmdHeming,
-	classics: cmdClassics,
-	stars: cmdStars,
-	cities: cmdCities,
-	selftest: (_args, ctx) => cmdSelftest(ctx),
+export const COMMANDS: Record<string, Cmd | undefined> = COMMAND_TABLE;
+
+/**
+ * 命令名 → 一行说明，HELP 的命令段据此派生。
+ *
+ * @remarks
+ * 类型写成 `Record<CommandName, string>` 而非 `Record<string, string>`：**新增命令忘了
+ * 写说明就编译不过**。此前这段文案只活在 `purple-star.ts` 的 `HELP` 字符串里，
+ * 与 `COMMANDS` 的键集靠一句「必须保持一致」的注释互相提醒 —— 参数面已经证明了那种
+ * 提醒拦不住漂移：同一份 `HELP` 的参数段就整整漏掉了 `--search` / `--limit` /
+ * `--topic` / `--view` 四个旗标（只在示例里露过脸）。
+ */
+export const COMMAND_DESC: Record<CommandName, string> = {
+	analyze: "解读用完整输入包（命盘 + 十二宫一览 + 格局 + 四化 + 大限）★ 最常用",
+	chart: "纯排盘十二宫",
+	topic: "主题论断（13 主题动态推算：主宫 + 三方四正 + 四化会照 + 大限/流年）",
+	heming: "合盘（双宫联参 + 夫妻宫断语 + 方法论）",
+	classics: "古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）",
+	stars: "星曜释义",
+	cities: "城市经纬度查询（真太阳时校正用）",
+	selftest: "回归自检（农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",
 };
+
+/**
+ * 渲染 HELP 的命令段。
+ *
+ * @returns 每行「  命令名  说明」，顺序即 {@link COMMAND_TABLE} 的声明顺序
+ */
+export function renderCommandHelp(): string {
+	return (Object.keys(COMMAND_TABLE) as CommandName[])
+		.map(n => `  ${n.padEnd(11)} ${COMMAND_DESC[n]}`)
+		.join("\n");
+}

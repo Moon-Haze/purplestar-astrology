@@ -14,8 +14,8 @@
  */
 
 import type { CliContext } from "./args";
-import { parseArgs } from "./args";
-import { readFileSync, readdirSync } from "node:fs";
+import { FLAG_NAMES, SIDE_PREFIXES, parseArgs } from "./args";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
 	buildBirthInfo,
@@ -28,6 +28,7 @@ import { chartSignature, fmtDate } from "./render";
 import type { BirthInfo } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
 import { ANNOTATIONS } from "@/ziwei/annotations";
+import { scanCitations } from "@/ziwei/citation-guard";
 import { detectPatterns } from "@/ziwei/patterns";
 import { getSiHuaByStem, getYearStemIndex, getLiuYueSiHua } from "@/ziwei/sihua";
 import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
@@ -44,7 +45,7 @@ import { Lunar } from "lunar-typescript";
  *
  * @remarks
  * 覆盖：农历换算、真太阳时、晚子时等价性、城市容错、性别护栏、排盘不变量、三合派约束、
- * 格局与知识源可用性（当前共 **48 项**）。
+ * 格局与知识源可用性。首行自报项数，故此处不写死数字。
  *
  * 内核根从 `ctx` 取而非自己推导：那是引导层 `pickRoot()` 的职责，自检只负责把它交代出来。
  *
@@ -599,44 +600,152 @@ export function cmdSelftest(ctx: CliContext): string {
 		return "mingpan / daxian / liunian / liuyue";
 	});
 	ok("论断引用核对：未核实引文不得冒充倪师原话（对照 annotations.ts）", () => {
-		// annotations.ts 是对本仓内核中「倪师/倪海夏」引用的文献核对记录
-		//（拷自 reference/ziwei-samples-toolkit/corpus/，针对 v2 核对，v3 已清掉全部
-		// fabricated）。此断言锁住清修成果：源码中所有「倪海夏/倪师…说」带出的引文，
-		// 不得出现在 suspect / fabricated 清单里 —— 改归属保留引文（如「古诀云」）是
-		// 合法处置，不算违规。
-		// ⚠️ 扫描范围必须覆盖**所有**带倪师引文的源码，故这里**扫目录**而非硬编码文件清单。
-		//    硬编码清单踩过坑：2026-09-27 的声明分离拆分把引文拆进了新文件
-		//    （patterns-defs.ts 16 处、analysis-content.ts 24 处），清单只跟上了后者，
-		//    前者成了盲区 —— 而本断言**照旧变绿**。静默失效比变红危险得多：
-		//    往盲区文件里写一句未核实引文，没有任何东西会拦。
-		//    扫目录让「新增/拆分出的带引文模块」自动纳入覆盖，不再依赖有人记得改清单。
-		//    （同日稍后 analysis-content.ts 并入了 analysis-data.ts，扫描逻辑不受影响。）
-		//    ⚠️ 唯一要排除的是核对记录自身：annotations.ts 存的就是 suspect 引文的原文，
-		//    扫进去必然自我命中（实测 11~14 条误报）。这不重蹈硬编码清单的覆辙 ——
-		//    排除的是唯一一个语义上不该被扫的文件（它是核对表，不是被核对的对象），
-		//    新增/拆分出的带引文模块仍自动纳入。
-		const src = readdirSync(resolve(ctx.root, "ziwei"))
-			.filter(f => f.endsWith(".ts") && f !== "annotations.ts")
-			.sort()
-			.map(f => readFileSync(resolve(ctx.root, "ziwei", f), "utf8"))
-			.join("\n");
-		// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
-		const banned = new Set(
-			ANNOTATIONS.filter(e => e.status === "suspect" || e.status === "fabricated").flatMap(
-				e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1])
-			)
-		);
-		// 源码中所有「倪海夏/倪师…说/言/警示…：『引文』」的引文核心
-		const citeRe =
-			/倪(?:海夏|师)[^。\n]{0,10}(?:说|言|称|警示|警告|明言|强调|描述|提醒)[：:]?\s*[「"『]([^」"』]{4,})[」"』]/g;
-		const bad = [...src.matchAll(citeRe)]
-			.filter(m => banned.has(m[1]))
-			.map(m => m[1].slice(0, 40));
-		if (bad.length)
+		// 扫描与比对全在 `ziwei/citation-guard.ts`，本断言只负责把结果翻译成人话。
+		// 守卫的失效模式（扫了个空却一片绿）由 test/citation-guard.test.ts 用构造的目录树测，
+		// 那里能造出违例文件；这里造不出来，只能信它 —— 故下面两条「扫到了没有」的检查是必需的。
+		const { violations, checked, skipped } = scanCitations(ctx.root);
+		if (!checked.length)
+			throw new Error(`未扫到任何源码文件 —— 内核根 ${ctx.root} 或递归逻辑可能已失效`);
+		if (!skipped.length)
 			throw new Error(
-				`以下未核实引文仍冒充倪师原话（应改古诀云/紫微斗数有云/一说）：\n     ${bad.join("\n     ")}`
+				"未跳过任何核对表 —— 扫描范围可能已把 annotations.ts 卷进来（其内容会自我命中）"
 			);
-		return `核对 ${ANNOTATIONS.length} 条记录，suspect/fabricated 引文零强归属`;
+		if (violations.length)
+			throw new Error(
+				`以下未核实引文仍冒充倪师原话（应改古诀云/紫微斗数有云/一说）：\n     ${violations.join("\n     ")}`
+			);
+		return `核对 ${ANNOTATIONS.length} 条记录，扫 ${checked.length} 个文件，suspect/fabricated 引文零强归属`;
+	});
+
+	ok("引导层豁免有界：boot-hooks.ts 只依赖 node: 内置", () => {
+		// scripts/boot-hooks.ts 是引导层**唯一**被允许静态 import 的非 node: 模块。
+		// 「引导层不得出现普通静态 import」那条规则的实质是「禁止在钩子注册前触发 .ts 解析」，
+		// 而 boot-hooks.ts 只依赖 node: 内置、调用点又写全了 .ts 扩展名，故由 Node 原生
+		// 类型擦除加载，不触碰钩子 —— 这份豁免正是靠这一点成立。
+		//
+		// ⚠️ 越界有两种形态，只有一种会自己喊出来（两种都实测过）：
+		//   · 省略扩展名（`import … from "./ziwei/constants"`）→ 钩子尚未注册，CLI 当场崩
+		//     ERR_MODULE_NOT_FOUND。吵，但不危险 —— 不需要本断言。
+		//   · 写全扩展名（`import … from "./ziwei/constants.ts"`）→ **照常跑通**，
+		//     因为那个文件恰好没有自己的依赖。实测此时 48/49：除本断言外全绿。
+		//     这是颗哑雷 —— 哪天该文件多一个 `@/` 或省略扩展名的 import，引导层就会在
+		//     钩子注册前崩掉，而崩因指向的是一次看似无关的改动。
+		// 本断言守的是后一种。
+		const src = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
+		const specs = [...src.matchAll(/^\s*import\s[^;]*?from\s+["']([^"']+)["']/gm)].map(m => m[1]);
+		// 先确认真的扫到了东西：正则写歪或文件被改名都会得到空数组，那样的「零违规」是假绿。
+		if (!specs.length) throw new Error("未扫到任何 import —— 正则或 boot-hooks.ts 的路径可能已失效");
+		const bad = specs.filter(s => !s.startsWith("node:"));
+		if (bad.length) {
+			throw new Error(
+				`boot-hooks.ts 不得依赖非 node: 模块（它要在解析钩子注册**之前**被加载），实得：${bad.join("、")}`
+			);
+		}
+		return `${specs.length} 条 import 全为 node: 内置`;
+	});
+
+	ok("参数面：拼错的旗标必须报错，并指向最接近的合法名", () => {
+		// 拼错旗标以前是**静默**的：parseArgs 任何 `--xxx` 都照单全收，buildBirthInfo
+		// 读不到就落回默认值 —— `--ctiy 喀什` 排出的是一张经度按默认 120°E 算的盘
+		// （错约 176 分钟 ≈ 3 个时辰），全程零提示。这类静默错盘正是本项目
+		// REQUIRED_EXPORTS 与 projectPalaceName 都在防的东西。
+		//
+		// 本断言锁的是**行为**（未知旗标必须抛错）而非文案 —— 文案可以改，
+		// 但一旦有人把 parseArgs 的校验摘掉，静默错盘就会原样回来，而别的断言全绿。
+		const probes: Array<[string, string]> = [
+			["--ctiy", "city"], // 换位
+			["--gendr", "gender"], // 漏字
+			["--lunnar", "lunar"], // 多字
+		];
+		for (const [bad, want] of probes) {
+			let msg = "";
+			try {
+				parseArgs([bad, "x"], "analyze");
+			} catch (e) {
+				msg = (e as Error).message;
+			}
+			if (!msg) throw new Error(`${bad} 未报错 —— 未知旗标又变成静默忽略了`);
+			if (!msg.includes(`--${want}`))
+				throw new Error(`${bad} 的提示应指向 --${want}，实得：${msg}`);
+		}
+		// 前缀旗标用在错的命令上同样要报错：analyze --a-city 会被整个忽略
+		//（buildBirthInfo 读的是不带前缀的 city），排出的还是默认经度的盘。
+		let prefixed = "";
+		try {
+			parseArgs(["--a-city", "北京"], "analyze");
+		} catch (e) {
+			prefixed = (e as Error).message;
+		}
+		if (!prefixed) throw new Error("--a-city 用在 analyze 上未报错 —— 该旗标会被静默忽略");
+		// 反向：heming 下必须放行。少了这条，上面那句就成了「一刀切禁掉前缀」也照样绿。
+		if (parseArgs(["--a-city", "北京"], "heming")["a-city"] !== "北京")
+			throw new Error("heming --a-city 应正常解析为字符串");
+		return `${probes.length} 个拼写错误均被拦下，前缀旗标按命令归属校验`;
+	});
+
+	ok("参数面：SKILL.md 提到的旗标都在 args.ts 的声明表里", () => {
+		// SKILL.md 是给 Claude 读的**行为规范**（见 .claude/CLAUDE.md：改它就等于改 skill
+		// 的行为）。它提到的旗标若在解析层不存在，Claude 会照着敲一个被拒的参数。
+		//
+		// 只查「SKILL.md → 声明表」这一个方向。反向（声明表里的旗标都要写进 SKILL.md）
+		// 刻意不查：SKILL.md 是使用指南不是穷举清单，`topic` 的 13 个 key、`classics` 的
+		// 位置参数这类细节本就不该塞进去。
+		const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
+		const mentioned = [...md.matchAll(/--([a-z][a-z0-9-]*)/g)].map(m => m[1]);
+		// 先确认真扫到了东西：正则写歪或文件挪了位置都会得到空数组，那样的「零违规」是假绿。
+		if (!mentioned.length) throw new Error("未从 SKILL.md 扫到任何旗标 —— 正则或路径可能已失效");
+		const names = [...new Set(mentioned)];
+		const unknown = names
+			.map(n => {
+				// 剥掉 heming 的 a- / b- 前缀再查表：`--a-late-zi` 声明的是 `late-zi`
+				const p = SIDE_PREFIXES.find(pre => n.startsWith(pre));
+				return p ? n.slice(p.length) : n;
+			})
+			.filter(n => !FLAG_NAMES.has(n));
+		if (unknown.length)
+			throw new Error(
+				`SKILL.md 提到但 args.ts 未声明的旗标：${unknown.map(n => "--" + n).join("、")}`
+			);
+		return `${names.length} 种旗标写法全部有声明`;
+	});
+
+	ok("参数面：SKILL.md 命令速查表提到的命令都在 commands.ts 的命令表里", () => {
+		// 与上一条同源：SKILL.md 是给 Claude 读的**行为规范**，它提到的命令若不存在，
+		// Claude 会照着敲一条必然失败的命令行。
+		//
+		// ⚠️ 这里读的是 commands.ts 的**源码文本**而非它的导出 —— `COMMAND_TABLE` 里挂着
+		// `cmdSelftest`，而本文件就是 selftest：静态 import 成环，动态 import 又要把
+		// `cmdSelftest` 改成 async（波及调用点）。正则抽键是这两者之外的第三条路，
+		// 与「读 SKILL.md 文本」正是同一手法。
+		const src = readFileSync(resolve(ctx.root, "cli", "commands.ts"), "utf8");
+		const table = src.match(/const COMMAND_TABLE = \{([\s\S]*?)\} satisfies/)?.[1];
+		if (!table) throw new Error("未从 commands.ts 抽到 COMMAND_TABLE —— 声明块形状已变");
+		const defined = [...table.matchAll(/^\t+([a-z][a-z0-9-]*):/gm)].map(m => m[1]);
+		if (!defined.length)
+			throw new Error("COMMAND_TABLE 里一个命令名都没抽到 —— 正则或路径可能已失效");
+
+		const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
+		const at = md.indexOf("## 命令速查");
+		if (at < 0) throw new Error("SKILL.md 里找不到「## 命令速查」小节");
+		// 只取该小节里的表格：正文提到命令名的散文（如「`analyze` 会自动输出两盘差异」）
+		// 不构成「速查表说这个命令存在」的声明，卷进来只会产生误报。
+		// 先跳过标题行与其后的空行，否则下面第一个 `\n\n` 就是标题后的空行，切出个空表。
+		const body = md.slice(at + md.slice(at).indexOf("\n\n") + 2);
+		const rows = body
+			.slice(0, body.indexOf("\n\n"))
+			.split("\n")
+			.filter(l => l.startsWith("|"));
+		// 字符类必须含数字与连字符：写成 `[a-z]+` 时 `` `heming2` `` 会被**截断**成 `heming`
+		// 而 heming 恰好是真实命令 —— 于是「真名 + 后缀」这类假命令全部溜过（实测踩过）。
+		const mentioned = rows
+			.map(l => l.match(/^\|\s*`([a-z][a-z0-9-]*)/)?.[1])
+			.filter(n => n !== undefined);
+		if (!mentioned.length) throw new Error("未从命令速查表扫到命令 —— 表格格式已变");
+
+		const unknown = mentioned.filter(n => !defined.includes(n));
+		if (unknown.length)
+			throw new Error(`SKILL.md 提到但 commands.ts 未定义的命令：${unknown.join("、")}`);
+		return `${mentioned.length} 个命令全部有实现`;
 	});
 
 	// ── 输出 ──
