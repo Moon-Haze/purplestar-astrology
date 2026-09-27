@@ -5,7 +5,7 @@
 // 故无 golden 基准可依，用手工基准 + 独立换算（lunar-typescript）互证。
 //
 // 本文件另有一条**防漂移断言**：内核直调结果必须等于 CLI --json 的输出。
-// 引导机制现已收敛到 scripts/boot-hooks.ts 一份实现（loader.ts 与 purple-star.ts 共用），
+// 引导机制现已收敛到 boot-hooks.ts 一份实现（loader.ts 与 purple-star.ts 共用），
 // 故这条断言守的不是「两份副本别分叉」，而是「进程内内核与真实 CLI 子进程排出同一张盘」。
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -15,13 +15,31 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
-import { loadAlgorithm, loadSihua, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
+import {
+	loadAlgorithm,
+	loadSihua,
+	load,
+	loadFromSkill,
+	ROOT,
+	ROOT_LABEL,
+} from "./lib/loader.ts";
 import { BRANCHES, chartSignature } from "./lib/compare.ts";
 
 const execFileAsync = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CLI = resolve(HERE, "../scripts/purple-star.ts");
 const SKILL_ROOT = resolve(HERE, "..");
+
+// ── 各 skill 的 CLI 入口 ──
+// 排盘解读是源，合盘与古籍检索是从它派生的自包含 skill（见 CLAUDE.md「skill 的布局」）。
+// 派生的 skill 各有自己的 purple-star.ts 与内核副本，因此必须**逐个入口**测到 ——
+// 只测源那份的话，「副本没同步」这类故障在测试里看不见。
+const CLI = {
+	astrology: resolve(SKILL_ROOT, "skills/purplestar-astrology/scripts/purple-star.ts"),
+	synastry: resolve(SKILL_ROOT, "skills/purplestar-synastry/scripts/purple-star.ts"),
+	classics: resolve(SKILL_ROOT, "skills/purplestar-classics/scripts/purple-star.ts"),
+} as const;
+/** 上面那张表的键。新增 skill 时这里会跟着报错，提醒把用例指过去。 */
+type Skill = keyof typeof CLI;
 
 // ── CLI --json 输出的形态 ──
 // chart 即 ZiweiChart 的 JSON 往返形态：值为 undefined 的可选键（如无四化的 Star.siHua）
@@ -73,7 +91,9 @@ function asCliFailure(msg: string): Error & { stderr: string } {
 	return e;
 }
 
-// 进程内复用的 COMMANDS 表（懒加载一次；含 iztro/analysis/classics，仅付一次冷启动税）。
+// 进程内复用的 COMMANDS 表（懒加载一次；含 iztro/analysis，仅付一次冷启动税）。
+// ⚠️ 这条快捷方式恒指向**排盘解读 skill**（loader 的 ROOT 只装一次钩子），故只服务于
+//    skill === "astrology" 的用例；其余 skill 见 cliCmd 的注释。
 let commandsMod: typeof import("@/cli/commands") | null = null;
 let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
 
@@ -98,7 +118,9 @@ async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 
 /** 永远走真子进程（防漂移冒烟用）：进程内路径替代不了它对子进程入口的覆盖。 */
 async function cliReal(args: string[]): Promise<string> {
-	const { stdout } = await execFileAsync("node", [CLI, "analyze", ...args], { cwd: SKILL_ROOT });
+	const { stdout } = await execFileAsync("node", [CLI.astrology, "analyze", ...args], {
+		cwd: SKILL_ROOT,
+	});
 	return stdout;
 }
 
@@ -109,10 +131,15 @@ async function cliReal(args: string[]): Promise<string> {
  * 从 ~150s 降到 ~5s）。语义等价已用「进程内输出 ≡ 真子进程 stdout（仅差 console.log 尾部换行）」
  * 逐字节验证。真子进程入口由「内核加载防漂移」断言（cliReal）持续冒烟。
  * 需要全量真子进程时设 CLI_SUBPROCESS=1。
+ *
+ * ⚠️ `skill` 不是 `"astrology"` 时**强制走子进程**，不是偷懒：进程内那条路经 loader 的 `load()`
+ * 取 `@/cli/commands`，而 loader 的 ROOT 唯一地钉在排盘解读 skill 上（解析钩子只装了一次）。
+ * 拿它去「进程内跑合盘/古籍」，实际执行的是**源那份**代码 —— 副本没同步、副本 CLI 入口写错，
+ * 两条都会显示成绿的。派生的 skill 只有真起子进程才测得到自己那一份。
  */
-async function cliCmd(sub: string, args: string[]): Promise<string> {
-	if (!process.env.CLI_SUBPROCESS) return cliCmdInProcess(sub, args);
-	const { stdout } = await execFileAsync("node", [CLI, sub, ...args], { cwd: SKILL_ROOT });
+async function cliCmd(sub: string, args: string[], skill: Skill = "astrology"): Promise<string> {
+	if (skill === "astrology" && !process.env.CLI_SUBPROCESS) return cliCmdInProcess(sub, args);
+	const { stdout } = await execFileAsync("node", [CLI[skill], sub, ...args], { cwd: SKILL_ROOT });
 	return stdout;
 }
 
@@ -407,7 +434,7 @@ describe("CLI 端到端", () => {
 
 	describe("heming 合盘", () => {
 		it("--json 的夫妻宫/福德宫派生字段与 chart 自洽", async () => {
-			const o = JSON.parse(await cliCmd("heming", [...HEMING_PAIR, "--json"])) as HemingJson;
+			const o = JSON.parse(await cliCmd("heming", [...HEMING_PAIR, "--json"], "synastry")) as HemingJson;
 			for (const side of ["a", "b"] as const) {
 				const chart = o[side].chart;
 				for (const [field, palaceName] of [
@@ -428,7 +455,7 @@ describe("CLI 端到端", () => {
 		});
 
 		it("文本路径同样跑通（宫名查找失败在此路径表现为崩溃）", async () => {
-			const text = await cliCmd("heming", HEMING_PAIR);
+			const text = await cliCmd("heming", HEMING_PAIR, "synastry");
 			assert.match(text, /【合盘/);
 			assert.match(text, /夫妻宫/);
 			assert.match(text, /福德宫/);
@@ -443,7 +470,7 @@ describe("CLI 端到端", () => {
 		// ⚠️ 断言的是**块标题字面量**而非「方法论」三个字：末尾那行指针本身就要说「方法论」，
 		// 盯前者才能既拦住重印、又允许指针存在。
 		it("不含已拆出的两段静态文本，且末尾指针指向真实存在的命令", async () => {
-			const text = await cliCmd("heming", HEMING_PAIR);
+			const text = await cliCmd("heming", HEMING_PAIR, "synastry");
 			assert.ok(!text.includes("【评分标准】"), "评分标准被重新塞回了 heming 输出");
 			assert.ok(!text.includes("【完整方法论】"), "完整方法论被重新塞回了 heming 输出");
 
@@ -455,8 +482,15 @@ describe("CLI 端到端", () => {
 			assert.ok(m, `末行不是指向 heming-guide 的指针：${pointer}`);
 
 			// 命令改名时红在这里，而不是红在用户面前的「未知命令」。
-			const { COMMANDS } = await load<typeof import("@/cli/commands")>("@/cli/commands");
-			assert.ok(COMMANDS[m[1]], `指针指向的命令「${m[1]}」不在 COMMANDS 表里`);
+			//
+			// ⚠️ 查的是**合盘 skill 自己的** COMMANDS 表，不是源的：上面那次 cliCmd 走的是
+			//    synastry 的 CLI 子进程（`skill !== "astrology"` 强制子进程），指针要指向的是
+			//    **分发它的那张表**。2026-09-27 拆 skill 前两张表是同一张，故这里曾写 `@/cli/commands`
+			//    —— 搬迁后源表已无 heming-guide，照旧写会让这条断言在「指针完全正确」时变红。
+			const { COMMANDS } = await loadFromSkill<
+				typeof import("../skills/purplestar-synastry/scripts/cli/commands")
+			>("purplestar-synastry", "cli/commands");
+			assert.ok(COMMANDS[m[1]], `指针指向的命令「${m[1]}」不在合盘 skill 的 COMMANDS 表里`);
 		});
 	});
 
@@ -514,11 +548,11 @@ describe("CLI 端到端", () => {
 			let v: T | undefined;
 			return () => (v ??= fn());
 		};
-		const pairJson = memo(async () => JSON.parse(await cliCmd("heming", [...argsOf(A, B), "--json"])) as HemingJson);
-		const swapJson = memo(async () => JSON.parse(await cliCmd("heming", [...argsOf(B, A), "--json"])) as HemingJson);
-		const pairText = memo(() => cliCmd("heming", argsOf(A, B)));
-		const crossText = memo(() => cliCmd("heming", argsOf(CROSS_A, CROSS_B)));
-		const emptyText = memo(() => cliCmd("heming", argsOf(EMPTY_A, B)));
+		const pairJson = memo(async () => JSON.parse(await cliCmd("heming", [...argsOf(A, B), "--json"], "synastry")) as HemingJson);
+		const swapJson = memo(async () => JSON.parse(await cliCmd("heming", [...argsOf(B, A), "--json"], "synastry")) as HemingJson);
+		const pairText = memo(() => cliCmd("heming", argsOf(A, B), "synastry"));
+		const crossText = memo(() => cliCmd("heming", argsOf(CROSS_A, CROSS_B), "synastry"));
+		const emptyText = memo(() => cliCmd("heming", argsOf(EMPTY_A, B), "synastry"));
 
 		it("交换 --a-* / --b-* 后，两方命盘精确互换", async () => {
 			const d = await pairJson();
@@ -631,7 +665,7 @@ describe("CLI 端到端", () => {
 
 		it("晚子时提醒只落在命中的一方，且参数前缀正确", async () => {
 			// 甲方钟表 23:30、东经 120°（校正量为 0），校正后仍是晚子时；乙方正常。
-			const t = await cliCmd("heming", argsOf({ ...A, time: "23:30" }, B));
+			const t = await cliCmd("heming", argsOf({ ...A, time: "23:30" }, B), "synastry");
 			assert.ok(t.includes("⚠️ 甲方出生时间落在 23:00–23:59"), "应提示甲方落在晚子时");
 			assert.ok(t.includes("--a-late-zi"), "应指明改用 --a-late-zi 复核");
 			assert.ok(!t.includes("⚠️ 乙方出生时间"), "乙方不在晚子时，不应被提示");
@@ -658,10 +692,10 @@ describe("CLI 端到端", () => {
 	// 需要同步的副本。它守的是「搬走了、搬全了、搬到位了」这三件事。
 	describe("heming-guide 合盘方法论", () => {
 		it("两段正文都在：评分标准按源序五档 + 方法论全文", async () => {
-			const { HEMING_METHODOLOGY, HEMING_SCORE_CRITERIA } = await load<
-				typeof import("@/ziwei/heming-knowledge")
-			>("@/ziwei/heming-knowledge");
-			const text = await cliCmd("heming-guide", []);
+			const { HEMING_METHODOLOGY, HEMING_SCORE_CRITERIA } = await loadFromSkill<
+				typeof import("../skills/purplestar-synastry/scripts/ziwei/heming-knowledge")
+			>("purplestar-synastry", "ziwei/heming-knowledge");
+			const text = await cliCmd("heming-guide", [], "synastry");
 
 			assert.match(text, /【评分标准】/);
 			assert.match(text, /【完整方法论】/);
@@ -682,10 +716,10 @@ describe("CLI 端到端", () => {
 		});
 
 		it("--json 的键名与 heming --json 的同名字段一致", async () => {
-			const guide = JSON.parse(await cliCmd("heming-guide", ["--json"])) as Record<string, unknown>;
+			const guide = JSON.parse(await cliCmd("heming-guide", ["--json"], "synastry")) as Record<string, unknown>;
 			assert.deepEqual(Object.keys(guide).sort(), ["methodology", "scoreCriteria"]);
 
-			const heming = JSON.parse(await cliCmd("heming", [...HEMING_PAIR, "--json"])) as Record<
+			const heming = JSON.parse(await cliCmd("heming", [...HEMING_PAIR, "--json"], "synastry")) as Record<
 				string,
 				unknown
 			>;
@@ -696,13 +730,13 @@ describe("CLI 端到端", () => {
 		// 这条才是「搬走了」与「删掉了」的分界：单测「heming-guide 有」或单测「heming 没有」，
 		// 两者各自都能靠「把常量删掉」通过。同一次比对两边的正文，才排得掉这种退化解。
 		it("同一份正文：在 heming-guide 里，且不在 heming 里", async () => {
-			const { HEMING_METHODOLOGY, HEMING_SCORE_CRITERIA } = await load<
-				typeof import("@/ziwei/heming-knowledge")
-			>("@/ziwei/heming-knowledge");
+			const { HEMING_METHODOLOGY, HEMING_SCORE_CRITERIA } = await loadFromSkill<
+				typeof import("../skills/purplestar-synastry/scripts/ziwei/heming-knowledge")
+			>("purplestar-synastry", "ziwei/heming-knowledge");
 			assert.ok(HEMING_METHODOLOGY.length > 200, "HEMING_METHODOLOGY 过短");
 
-			const guide = await cliCmd("heming-guide", []);
-			const heming = await cliCmd("heming", HEMING_PAIR);
+			const guide = await cliCmd("heming-guide", [], "synastry");
+			const heming = await cliCmd("heming", HEMING_PAIR, "synastry");
 
 			for (const [label, needle] of [
 				["方法论全文", HEMING_METHODOLOGY],
@@ -715,7 +749,7 @@ describe("CLI 端到端", () => {
 	});
 
 	describe("内核加载防漂移", () => {
-		// 引导机制已收敛到 scripts/boot-hooks.ts 一份实现（CLI 与 test/lib/loader.ts 共用），
+		// 引导机制已收敛到 skills/purplestar-astrology/scripts/boot-hooks.ts 一份实现（CLI 与 test/lib/loader.ts 共用），
 		// 故「两侧别名解析分叉」这类缺陷在结构上不再可能。这条断言守的是另一件事：
 		// 进程内内核（走 loader 的钩子）与**真实 CLI 子进程**（走 purple-star 的钩子）
 		// 是否仍排出同一张盘 —— 既覆盖内核本身被改坏，也覆盖两条引导路径的调用策略被改坏。
@@ -1047,7 +1081,14 @@ describe("CLI 端到端", () => {
 
 	// ── classics 古籍检索 ──
 	describe("classics 古籍检索（searchClassics 分支）", () => {
-		const loadClassics = () => load<typeof import("@/classics/index")>("@/classics/index");
+		// ⚠️ `classics/` 自 2026-09-27 起归 purplestar-classics，源的解析钩子够不到它 ——
+		//    故走 loadFromSkill 而非 load。本组测的是**古籍文本本身**（分词、limit 截断、
+		//    snippet 窗口），不是「源的内核」，换加载口径即可，不必删用例。
+		const loadClassics = () =>
+			loadFromSkill<typeof import("../skills/purplestar-classics/scripts/classics/index")>(
+				"purplestar-classics",
+				"classics/index"
+			);
 
 		it("空查询返回空数组（不把空白当关键词）", async () => {
 			const { searchClassics } = await loadClassics();
@@ -1169,17 +1210,17 @@ describe("CLI 端到端", () => {
 		});
 
 		it("无参数时列出全部书目；未命中给明确文案", async () => {
-			const t = await cliCmd("classics", []);
+			const t = await cliCmd("classics", [], "classics");
 			for (const b of ["gusuifu", "quanji", "quanshu"])
 				assert.ok(t.includes(b), `书目清单应含 ${b}`);
 			assert.ok(t.includes("用法：classics --search"), "应给出用法");
 
-			const miss = await cliCmd("classics", ["--search", "紫微星"]);
+			const miss = await cliCmd("classics", ["--search", "紫微星"], "classics");
 			assert.equal(miss.trim(), "古籍中未找到「紫微星」。", "未命中应有明确文案");
 		});
 
 		it("CLI 把 <mark> 高亮转成『』（不透出 HTML 标签）", async () => {
-			const t = await cliCmd("classics", ["--search", "紫微", "--limit", "2"]);
+			const t = await cliCmd("classics", ["--search", "紫微", "--limit", "2"], "classics");
 			assert.ok(t.includes("『紫微』"), `命中词应被『』裹住，实得：\n${t}`);
 			assert.ok(!t.includes("<mark>"), "不该把 <mark> 透给终端用户");
 		});
@@ -1188,7 +1229,7 @@ describe("CLI 端到端", () => {
 			// 内核把非法 limit 归成空结果后，若 CLI 不加区分，`--limit 0` 会输出
 			// 「古籍中未找到「星」。」—— 明明有 41 条命中，只是上限被设成了 0。
 			for (const bad of ["0", "-3", "abc"]) {
-				const t = await cliCmd("classics", ["--search", "星", "--limit", bad]);
+				const t = await cliCmd("classics", ["--search", "星", "--limit", bad], "classics");
 				assert.ok(!t.includes("未找到"), `--limit ${bad} 不该谎报未找到，实得：${t}`);
 				assert.ok(t.includes("--limit"), `--limit ${bad} 应指出是 limit 的问题，实得：${t}`);
 			}

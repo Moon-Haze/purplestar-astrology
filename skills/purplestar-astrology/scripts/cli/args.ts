@@ -43,6 +43,16 @@
 
 import { cac } from "cac";
 
+// ⚠️ 本文件是三份**逐字节相同**的副本，而 `./flag-scope` 是**各 skill 自己写**的
+//    （源 / 合盘 / 古籍各一份，内容不同）。二者必须分开：解析骨架编码的全是 cac/mri 的
+//    实测行为，抄三份等于把最危险的一段复制成三份无人看守的代码；而「本 skill 认哪些
+//    旗标」本来就因 skill 而异，正是该各写各的那部分。
+//    故：这份 `args.ts` 一字不改地同步，作用域文件不进同步清单（见 tools/skills.ts）。
+//
+// 运行期无环：本行是**值**导入，而 `flag-scope.ts` 只以 `import type` 取下面的
+// {@link FlagScope}（类型导入被完全擦除）。
+import { FLAG_SCOPE } from "./flag-scope";
+
 /**
  * CLI 参数表：`_` 收位置参数，其余键对应 `--key`。
  *
@@ -81,10 +91,60 @@ export interface FlagSpec {
 	desc: string;
 }
 
-/** 一组旗标；`title` 即 HELP 里的分组标题（可含口径提示，如「三选一」）。 */
+/**
+ * 一组旗标。
+ *
+ * @remarks
+ * ⚠️ `title` **不进 HELP**：cac 渲染的参数段是所有**已注册 option 的平铺列表**，不带分组。
+ * 它是给读声明表的人看的分类，外加承载一句只有此处可写的口径提示（「三选一」「二选一」）。
+ * 想改 help 里能看到的东西，只有 {@link FlagSpec.desc} 一条路（经 `cli.option` 交给 cac）。
+ */
 export interface FlagGroup {
 	title: string;
 	flags: readonly FlagSpec[];
+}
+
+/**
+ * 本 skill 的**旗标作用域** —— 声明「这三份 args.ts 里，本 skill 认其中哪些」。
+ *
+ * @remarks
+ * 各 skill 写在自己的 `scripts/cli/flag-scope.ts` 里，本文件静态 import 它。
+ * 声明是**裸旗标名的正面清单**，不按「本 skill 认哪些命令」派生 —— 那会重建本文件
+ * 刻意不维护的「旗标属于哪个命令」归属表（见 {@link checkFlagName} 的 ⚠️）。
+ * 正面清单还有个好处：**fail-closed** —— 往 {@link FLAG_GROUPS} 加一个新旗标，
+ * 它不会自动泄漏给没声明它的 skill，加的人必须决定它归谁。
+ *
+ * 收窄只发生在四个点上，全在本文件内：cac 的选项注册（HELP 的参数段由**已注册的
+ * option** 渲染，故过滤这里 = help 自动收窄）、{@link FLAG_NAMES}（校验基准与
+ * {@link suggestFlag} 的候选集）、{@link SIDE_PREFIXES}、{@link LEGAL_KEYS}。
+ *
+ * ⚠️ **收窄的粒度是 skill 级，不是命令级**：`stars --json` 这类「本 skill 有、
+ * 但当前命令不读」的参数仍会被收下不用。要修得把每条命令实际读的键也声明出来，
+ * 那正是 {@link checkFlagName} 拒绝维护的归属表，本仓不做。
+ */
+export interface FlagScope {
+	/** 本 skill 认的旗标名（不含 `--`）；每一项都必须是 {@link FLAG_GROUPS} 里的名字。 */
+	readonly flags: readonly string[];
+	/** 本 skill 认的出生方前缀（合盘用 `["a-", "b-"]`）；不认就给空数组。 */
+	readonly sidePrefixes: readonly string[];
+	/**
+	 * 哪些命令接受 {@link sidePrefixes} 前缀。空数组表示本 skill 没有这种命令。
+	 *
+	 * @remarks
+	 * ⚠️ 这一维**不能省**：它是「前缀写在别的命令上」这条静默失败的判据。若只看
+	 * `sidePrefixes` 非空就放行，`heming-guide --a-date` 会从「报错」变成「静默忽略」
+	 * —— 既违反「宁可报错，不静默」，又会让合盘 selftest 里那条断言变红。
+	 */
+	readonly prefixedCommands: readonly string[];
+	/**
+	 * 按旗标名覆盖 HELP 里的说明文案。
+	 *
+	 * @remarks
+	 * 声明表里的 desc 是**全集视角**写的（`--search` 写着「classics / stars / cities」），
+	 * 而各 skill 的命令集不同 —— 源删掉 `classics` 后，那句在源的 help 里就指着一个
+	 * 不存在的命令。作用域只管「列哪些旗标」管不到文案，故留这个口子。
+	 */
+	readonly descOverrides?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -199,10 +259,26 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 	},
 ];
 
-/** 全部合法旗标名（不含 `--`）。{@link parseArgs} 的校验基准。 */
-export const FLAG_NAMES: ReadonlySet<string> = new Set(
+/**
+ * 声明表里的**全部**旗标名（不含 `--`），跨所有 skill —— 这是全集，不是校验基准。
+ *
+ * @remarks
+ * 与 {@link FLAG_NAMES} 的区别就是作用域。仓库测试用它断言「各 skill 的作用域并起来
+ * = 全集」：**每个旗标都必须有归属**，加旗标的人要决定它归谁，否则没人认领的旗标
+ * 会静默地从所有 help 里消失（加了却谁也用不上，是比拼错更难发现的一类失败）。
+ */
+export const ALL_FLAG_NAMES: ReadonlySet<string> = new Set(
 	FLAG_GROUPS.flatMap(g => g.flags.map(f => f.name))
 );
+
+/**
+ * **本 skill** 认的旗标名（不含 `--`）—— {@link parseArgs} 的校验基准。
+ *
+ * @remarks
+ * 直接取自 {@link FLAG_SCOPE}，故它同时是 {@link suggestFlag} 的候选集：
+ * 「拼错了？最接近的是……」只会指向本 skill 真有的旗标，不会建议一个传了也没用的。
+ */
+export const FLAG_NAMES: ReadonlySet<string> = new Set(FLAG_SCOPE.flags);
 
 /**
  * kebab-case → camelCase：**键名换算的唯一一处**。
@@ -244,9 +320,13 @@ export function camelKey(name: string): string {
 const cli = cac("purple-star");
 for (const group of FLAG_GROUPS) {
 	for (const flag of group.flags) {
+		// ⚠️ 作用域外的旗标**不注册** —— 这一句就是「help 只列本 skill 认的旗标」的全部实现：
+		//    cac 渲染的参数段取自**已注册的 option**，不注册即不出现，不必去改 purple-star.ts
+		//    的 help 段（它只是往 cac 的输出上追加两段领域知识）。
+		if (!FLAG_NAMES.has(flag.name)) continue;
 		cli.option(
 			flag.kind === "value" ? `--${flag.name} [${flag.value ?? "值"}]` : `--${flag.name}`,
-			flag.desc
+			FLAG_SCOPE.descOverrides?.[flag.name] ?? flag.desc
 		);
 	}
 }
@@ -254,13 +334,17 @@ for (const group of FLAG_GROUPS) {
 export { cli };
 
 /**
- * `heming` 的两个出生方前缀。只有 `heming` 会读它们（`buildBirthInfo(args, "a-")`）。
+ * 本 skill 认的出生方前缀（合盘是 `a-` / `b-`，它要分别读两方出生信息）。
  *
  * @remarks
+ * 取自 {@link FLAG_SCOPE} —— 不排合盘的 skill 在这里是空数组，于是下面
+ * {@link checkFlagName} 的前缀分支与 {@link LEGAL_KEYS} 的前缀展开**整个不可达**，
+ * 「前缀」这个概念在那个 skill 里根本不存在。
+ *
  * 导出是给 `cli/selftest.ts` 用的：它扫 `SKILL.md` 里提到的旗标，要先剥掉这层前缀
  * 才能与 {@link FLAG_NAMES} 比对 —— 前缀表不该有第二份。
  */
-export const SIDE_PREFIXES = ["a-", "b-"] as const;
+export const SIDE_PREFIXES: readonly string[] = FLAG_SCOPE.sidePrefixes;
 
 /**
  * 编辑距离：把 `a` 改成 `b` 至少几步。只用于「拼错了？最接近的是……」这句提示，
@@ -306,27 +390,34 @@ export function suggestFlag(name: string): string | null {
  * 校验旗标名，不合法即抛错。
  *
  * @param key - 已剥掉 `--` 的旗标名
- * @param command - 当前命令名；只有 `heming` 接受 `a-` / `b-` 前缀
+ * @param command - 当前命令名；接受前缀的那几条由 {@link FlagScope.prefixedCommands} 声明
  *
  * @remarks
  * 三条规则各挡一种**静默失败**，都是本文件顶部注释里那两类错盘的入口：
  *
  * 1. 名字不在 {@link FLAG_NAMES}：拼错。以前照收不误，`buildBirthInfo` 读不到就读不到，
  *    直接落回默认值排出一张错盘。此处报错并给出最近的名字。
- * 2. `a-` / `b-` 前缀出现在 `heming` 之外：那里读的是不带前缀的名字，带前缀的写法会被
+ * 2. `a-` / `b-` 前缀出现在不收它的命令上：那里读的是不带前缀的名字，带前缀的写法会被
  *    整个忽略（`analyze --a-city 北京` 排的是默认经度的盘）。
  * 3. 前缀后面接的仍必须是声明过的名字：`--a-ctiy` 同样要抓。
  *
  * ⚠️ 刻意**不**校验「这个旗标属于这个命令」：`--json` 给 `classics` 是无害的多余参数，
  * 而把归属做成硬约束会让每条命令的合法集合成为第二个需要维护的真相 —— 拼错才是要挡的，
  * 归属错了顶多是没生效，不会排错盘。
+ *
+ * ⚠️ 但规则 2 **必须带「命令」这一维**（{@link FlagScope.prefixedCommands}），不能只按 skill
+ * 收窄：若只看「本 skill 认 `a-` 前缀」就放行，`heming-guide --a-date` 会从「报错」退化成
+ * 「静默忽略」—— 既违反「宁可报错，不静默」，又会让合盘 selftest 里那条断言直接变红。
  */
 function checkFlagName(key: string, command: string | undefined): void {
 	const prefix = SIDE_PREFIXES.find(p => key.startsWith(p));
 	if (prefix) {
-		if (command !== "heming") {
+		// 前缀只在作用域声明的那几条命令上合法（合盘是 heming）。判据取自 FLAG_SCOPE，
+		// 不写死命令名 —— 「哪条命令要分别读两方出生信息」本就是该 skill 自决的事。
+		if (command === undefined || !FLAG_SCOPE.prefixedCommands.includes(command)) {
 			throw new Error(
-				`--${key}：\`${prefix}\` 前缀只有 heming 命令认（它要分别读 a / b 两方出生信息）。` +
+				`--${key}：\`${prefix}\` 前缀只有 ${FLAG_SCOPE.prefixedCommands.join(" / ")} 命令认` +
+					`（它要分别读 ${SIDE_PREFIXES.join(" / ")} 两方出生信息）。` +
 					`${command ? `当前命令是 ${command}，` : ""}请改用 --${key.slice(prefix.length)}。`
 			);
 		}
@@ -345,9 +436,10 @@ function checkFlagName(key: string, command: string | undefined): void {
  * （见 {@link parseArgs}）。
  *
  * @remarks
- * 两部分：无前缀的键，以及 `heming` 的 `a-` / `b-` 前缀键（`--a-city` → `aCity`）。
+ * 两部分：无前缀的键，以及 {@link SIDE_PREFIXES} 声明的出生方前缀键（`--a-city` → `aCity`）。
  * 前缀键**一律收进集合**，不按命令过滤 —— 该不该用是 {@link checkFlagName} 按命令判的，
- * 这里只管「这个键的形状是不是我方声明表能产出的」。
+ * 这里只管「这个键的形状是不是我方声明表能产出的」。不收前缀的 skill 里
+ * {@link SIDE_PREFIXES} 是空数组，这一步自动退化成「只有无前缀键」。
  */
 const LEGAL_KEYS: ReadonlySet<string> = new Set([
 	...[...FLAG_NAMES].map(camelKey),

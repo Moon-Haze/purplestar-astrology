@@ -56,23 +56,32 @@ export interface RootMissing {
 export type RootPick = RootFound | RootMissing;
 
 /**
- * 按优先级定位排盘内核根目录。
+ * 按优先级定位内核根目录（`scripts/`）。
  *
  * @param candidates - `[目录, 来源描述]` 的有序候选；目录为 `undefined` 的项被跳过
+ * @param probe - 该 skill 的内核入口文件（相对内核根），如排盘解读的 `ziwei/algorithm.ts`、
+ *   古籍检索的 `classics/index.ts`
  * @returns 命中的第一个候选；`root` 为 `null` 表示全部不成立
  *
  * @remarks
- * 判定依据是「该目录下存在 `ziwei/algorithm.ts`」（内核的入口文件），
- * 而非目录本身是否存在 —— 拷贝时漏带内核的目录会走到失败分支。
+ * 判定依据是「该目录下存在 `probe`」（**该 skill 的**内核入口文件），而非目录本身是否存在
+ * —— 拷贝时漏带内核的目录会走到失败分支，且错误信息能点名缺的是哪一份内核。
  *
- * 候选**由调用方给出**是刻意的：CLI 的第一候选是脚本自身所在目录，
+ * `probe` 由调用方给出而非在此写死，是**各 skill 各有各的内核**带来的（2026-09-27 拆分）：
+ * 古籍检索 skill 里根本没有 `ziwei/`，拿排盘内核的入口去判定它，只会得到一句
+ * 「找不到排盘内核」的误导信息。判定规则（「入口在即命中」）仍然只有这一份实现。
+ *
+ * 候选**由调用方给出**同样是刻意的：CLI 的第一候选是脚本自身所在目录，
  * 测试则是 `<skill 根>/scripts`，两者的起点不同，而判定规则相同。
  */
-export function pickRoot(candidates: Array<[string | undefined, string]>): RootPick {
+export function pickRoot(
+	candidates: Array<[string | undefined, string]>,
+	probe: string
+): RootPick {
 	const tried: string[] = [];
 	for (const [dir, label] of candidates) {
 		if (!dir) continue;
-		if (existsSync(resolve(dir, "ziwei/algorithm.ts"))) return { root: dir, label, tried };
+		if (existsSync(resolve(dir, probe))) return { root: dir, label, tried };
 		tried.push(`${label}：${dir}`);
 	}
 	return { root: null, label: null, tried };

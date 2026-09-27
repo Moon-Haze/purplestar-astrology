@@ -1,0 +1,10 @@
+{
+  "name": "purplestar-classics",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "紫微斗数古籍原文检索 skill（骨髓赋 / 紫微斗数全集 / 紫微斗数全书）。自包含：内核只有 classics/，依赖只有 cac，不含排盘引擎 —— 可直接拷贝到 ~/.claude/skills/ 独立使用。",
+  "dependencies": {
+    "cac": "7.0.0"
+  }
+}

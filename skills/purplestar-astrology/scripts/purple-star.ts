@@ -1,25 +1,30 @@
 #!/usr/bin/env node
 /**
- * purple-star.ts — 紫微斗数排盘 / 合盘 / 知识检索 CLI（入口 / 引导层）
+ * purple-star.ts — 紫微斗数排盘与命盘解读 CLI（入口 / 引导层）
  *
  * 本文件只做四件事：**定位内核根 → 注册 TS 解析钩子 → 启动期内核自检 → 把命令分发出去**。
  * 命令实现、渲染、出生信息解析、自检都**不在**这里，见 scripts/cli/：
  *
  *   cli/args.ts        CLI 参数表与解析（纯函数，不依赖内核）
+ *   cli/flag-scope.ts  本 skill 认哪些旗标（⚠️ 各 skill 自写，不是副本）
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
  *   cli/commands.ts    各命令实现 + 命令表
  *   cli/selftest.ts    回归自检（留在 scripts/ 而非 test/，理由见该文件）
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
- *   scripts/ziwei/algorithm.ts        排盘主流程
- *   scripts/ziwei/patterns/           格局识别（含古籍出处与破格条件）
- *   scripts/ziwei/sihua.ts            四化（生年 / 流年 / 流月）
- *   scripts/ziwei/analysis/           分析数据库 v3（主题论断动态推算，topic 命令用）
- *   scripts/ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
- *   scripts/ziwei/cities.ts           中国城市经纬度（真太阳时校正）
- *   scripts/ziwei/constants.ts        天干地支 / 四化表 / 星曜释义
- *   scripts/classics/                 古籍原文全文检索
+ *   scripts/ziwei/algorithm.ts   排盘主流程
+ *   scripts/ziwei/patterns/      格局识别（含古籍出处与破格条件）
+ *   scripts/ziwei/sihua.ts       四化（生年 / 流年 / 流月）
+ *   scripts/ziwei/analysis/      分析数据库 v3（主题论断动态推算，topic 命令用）
+ *   scripts/ziwei/cities.ts      中国城市经纬度（真太阳时校正）
+ *   scripts/ziwei/constants.ts   天干地支 / 四化表 / 星曜释义
+ *
+ * ⚠️ 合盘与古籍检索的内核**不在本 skill 里**（2026-09-27 起源不再持有它们）：
+ *    `ziwei/heming-knowledge.ts` 归 `purplestar-synastry`，`classics/` 归
+ *    `purplestar-classics`。本 skill 的 CLI 相应地也只剩排盘解读相关的命令 ——
+ *    要合盘或查古籍原文，去调那两边的 CLI。解读需要引证古籍原句时同理
+ *    （见 `SKILL.md` 的知识源一节）。
  *
  * 依赖 Node ≥ 22.15（module.registerHooks + 原生 TS 类型擦除）。
  * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
@@ -68,7 +73,6 @@ type PatternsModule = typeof import("@/ziwei/patterns");
 type SihuaModule = typeof import("@/ziwei/sihua");
 type ConstantsModule = typeof import("@/ziwei/constants");
 type CitiesModule = typeof import("@/ziwei/cities");
-type ClassicsModule = typeof import("@/classics/index");
 type ArgsModule = typeof import("@/cli/args");
 type CommandsModule = typeof import("@/cli/commands");
 
@@ -89,26 +93,37 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  * 1. `ZIWEI_ROOT` 环境变量 —— 显式指定（想把内核指到别处时用）
  * 2. 技能自带内核 —— 就是本脚本所在目录 `<skill 根>/scripts/`
  *
- * 内核根 = `scripts/` **本身**：CLI（`purple-star.ts`、`cli/`）与两个内核目录（`ziwei/`、`classics/`）
+ * 内核根 = `scripts/` **本身**：CLI（`purple-star.ts`、`cli/`）与内核目录（`ziwei/`）
  * 同处一层。因此 `@/` 别名指向的是 `scripts/`，而**不是** skill 根。
  *
- * 这里刻意**没有**「宿主项目」候选：仓库内只有这一份内核，不存在副本漂移问题。
+ * 这里刻意**没有**「宿主项目」候选：每个 skill 自带内核，不存在「实时内核 vs 分发副本」
+ * 的双模式。（skill 之间的副本关系是另一回事 —— 那是 `tools/sync-skills.ts` 与
+ * `test/repo.test.ts` 的职责，不在运行期的候选表里。）
  */
 const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
 	[process.env.ZIWEI_ROOT && resolve(process.env.ZIWEI_ROOT), "ZIWEI_ROOT 环境变量"],
 	[HERE, "技能自带内核"],
 ];
 
-const picked = pickRoot(ROOT_CANDIDATES);
+/**
+ * 本 skill 的内核入口 —— `pickRoot` 拿它判定「这份内核在不在」。
+ *
+ * @remarks
+ * 由调用方传入而非写死在 `boot-hooks.ts`：各 skill 各有各的内核，古籍检索 skill 里
+ * 根本没有 `ziwei/`（见 `CLAUDE.md` 的「skill 的布局」）。
+ */
+const KERNEL_ENTRY = "ziwei/algorithm.ts";
+
+const picked = pickRoot(ROOT_CANDIDATES, KERNEL_ENTRY);
 
 if (!picked.root) {
 	console.error(
-		`[ziwei 启动失败] 找不到排盘内核（ziwei/algorithm.ts）\n` +
+		`[ziwei 启动失败] 找不到排盘内核（${KERNEL_ENTRY}）\n` +
 			`  已尝试：\n` +
 			picked.tried.map(t => `    - ${t}`).join("\n") +
 			"\n" +
 			`  处理：\n` +
-			`    ① 确认 skill 目录完整 —— scripts/ 下应同时有 purple-star.ts、cli/ 与 ziwei/、classics/ 两个内核目录（拷贝时漏带内核会走到这里）；或\n` +
+			`    ① 确认 skill 目录完整 —— scripts/ 下应同时有 purple-star.ts、cli/ 与 ziwei/ 内核目录（拷贝时漏带内核会走到这里）；或\n` +
 			`    ② 用 ZIWEI_ROOT=<含 ziwei/ 的目录> 显式指定内核位置。`
 	);
 	process.exit(1);
@@ -156,7 +171,6 @@ const { getSiHuaByStem, getYearStemIndex, getLiuNianSiHua, getLiuYueSiHua } =
 const { STEMS, BRANCHES, SHICHEN, STAR_DESCRIPTIONS } =
 	await load<ConstantsModule>("@/ziwei/constants");
 const { PROVINCES } = await load<CitiesModule>("@/ziwei/cities");
-const { searchClassics } = await load<ClassicsModule>("@/classics/index");
 const { Lunar } = await load<typeof import("lunar-typescript")>("lunar-typescript");
 
 const { parseArgs, cli } = await load<ArgsModule>("@/cli/args");
@@ -187,7 +201,6 @@ const REQUIRED_EXPORTS = [
 	["SHICHEN", SHICHEN],
 	["STAR_DESCRIPTIONS", STAR_DESCRIPTIONS],
 	["PROVINCES", PROVINCES],
-	["searchClassics", searchClassics],
 	["Lunar", Lunar],
 ];
 {
@@ -241,20 +254,14 @@ const HELP_EXAMPLES = `  # 单人解读（公历）
   # 23:00 后出生，复核晚子时口径
   node scripts/purple-star.ts analyze --date 1988-02-14 --time 23:40 --late-zi --city 北京 --gender male
 
-  # 合盘
-  node scripts/purple-star.ts heming \\
-    --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \\
-    --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海
-
-  # 古籍检索 / 回归自检
-  node scripts/purple-star.ts classics --search 机月同梁
+  # 回归自检
   node scripts/purple-star.ts selftest`;
 
 // 命令注册进 cac **只为让 help 列出命令**：分发仍由下面的 main() 查 COMMANDS 表 ——
 // cac 的 action 模型与「cmdXxx 一律**返回**字符串、console.log 只在 main() 一处发生」不合，
 // 用 action 会让输出点从 1 处变成每个命令各一处。
 for (const [name, desc] of Object.entries(COMMAND_DESC)) cli.command(name, desc);
-// 用法/命令/参数三段由 cac 自己渲染（分别来自名字、COMMAND_DESC、FLAG_GROUPS），
+// 用法/命令/参数三段由 cac 自己渲染（分别来自名字、COMMAND_DESC、**本 skill 作用域内**的旗标），
 // 这两段是它渲染不到的领域知识。
 cli.help(sections => [
 	// 无标题段渲染成最前面独立的一行，位置与原 HELP 的首行一致。
@@ -300,7 +307,7 @@ function main() {
 		process.exit(1);
 	}
 	try {
-		// 命令名一并交给 parseArgs：旗标面要按命令校验（如 a- / b- 前缀只有 heming 认）
+		// 命令名一并交给 parseArgs：旗标面要按命令校验（前缀旗标只有声明过的那几条命令认）
 		const args = parseArgs(argv.slice(1), cmd);
 		console.log(fn(args, { root: ROOT, rootLabel: ROOT_LABEL }));
 	} catch (err) {

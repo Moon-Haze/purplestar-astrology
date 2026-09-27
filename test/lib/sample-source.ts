@@ -63,7 +63,7 @@ export class SourceError extends Error {
  * `@duckdb/node-api` 未安装时的指引。
  *
  * 它是 devDependency，只有三个**手工执行**的构建/验收工具用到它 —— 运行 skill 本身
- * （`node scripts/purple-star.ts ...`）完全不需要。所以「没装」是正常状态，不是故障。
+ * （`node skills/purplestar-astrology/scripts/purple-star.ts ...`）完全不需要。所以「没装」是正常状态，不是故障。
  */
 export function missingDepHint(err: unknown): string {
 	return (

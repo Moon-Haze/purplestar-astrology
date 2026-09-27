@@ -1,0 +1,12 @@
+{
+  "name": "purplestar-synastry",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "紫微斗数合盘与合婚 skill（倪海夏《天纪》三合派）—— 双宫联参（夫妻宫 × 福德宫）。自包含：内核是排盘底座 + 合盘断语，依赖 cac / iztro / lunar-typescript —— 可直接拷贝到 ~/.claude/skills/ 独立使用。",
+  "dependencies": {
+    "cac": "7.0.0",
+    "iztro": "2.6.1",
+    "lunar-typescript": "1.8.6"
+  }
+}

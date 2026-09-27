@@ -134,7 +134,7 @@ const LAYERS = [
 	{
 		label: "层 6 仓库自洽",
 		file: "repo.test.ts",
-		suite: "仓库自洽（引文守卫 / 登记一致性）",
+		suite: "仓库自洽（引文守卫 / 登记一致性 / 副本一致性）",
 	},
 ] as const;
 const basename = (p: string | null): string => p?.split("/").pop() ?? "";

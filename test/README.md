@@ -1,7 +1,7 @@
 # 排盘基准测试
 
 本目录是本 skill 的回归测试，用 518,400 条紫微斗数样本作为 golden 基准，
-锁定 `scripts/ziwei/` 排盘内核的行为。
+锁定 `skills/purplestar-astrology/scripts/ziwei/` 排盘内核的行为。
 
 语料有**三个等价载体，并存且互为验证**（不是备份关系，也不是孤本）：
 
@@ -27,8 +27,10 @@ npm test -- --year 1953                   # 同上，但层 1 只跑 1953 年的
 npm run test:corpus -- --year 1960        # 全量核验：只跑 1960 年（8,640 条，约 2 分钟）
 npm run test:corpus                       # 全量核验：518,400 条，约 2.3 小时
 
-node scripts/purple-star.ts selftest     # CLI 自带的自检（与本套测试分工不同，见下）
+node skills/purplestar-astrology/scripts/purple-star.ts selftest     # CLI 自带的自检（与本套测试分工不同，见下）
 npm run typecheck                        # 类型检查：必须 0 错误（与本套测试也分工不同）
+
+npm run sync:skills -- --check           # 派生 skill 的内核副本 == 源（层 6 检查同一件事，见下）
 ```
 
 与 CLI 自带 `selftest` 的关系：`selftest` 固定在 CLI 里，测的是**代码逻辑自洽**（农历换算、
@@ -38,6 +40,17 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 `npm run typecheck`（`tsc --noEmit`）是第三类，且**最弱**：它只保证类型之间自洽，不保证类型
 **标得对**——把 `Star` 写成 `any` 它一样全绿。它能抓的是「改了内核签名、忘了改调用点」这类
 结构性失配，抓不到任何行为漂移。所以它不替代上面两者，只作为前置闸门。
+
+**本套测试测的排盘内核只有源这一份。** `skills/purplestar-astrology/scripts/` 是排盘内核的唯一来源，
+其余 skill 的排盘底座是它的**逐字节副本**（切片见 `tools/skills.ts`）。所以「改排盘内核」的循环是
+**改源 → `npm test` → `npm run sync:skills`**；副本漂移由层 6 抓，不必（也不该）为每个副本
+各跑一遍基准。
+
+⚠️ 但**两份自有内核不适用上面这句话**（2026-09-27 起）：`purplestar-synastry` 的
+`ziwei/heming-knowledge.ts` 与 `purplestar-classics` 的 `classics/` **只存在于各自 skill 里**，
+源里没有对应文件、也就没有基准可跑。层 2 里那几组 `heming-guide` / `classics` 用例因此
+**换加载口径**（`test/lib/loader.ts` 的 `loadFromSkill`）去直取那两个 skill 的模块——它们测的是
+那两份知识**本身**（古籍的段落计数单位与 snippet 窗口、方法论载荷的完整性），不是「源的内核」。
 
 > 本目录是**活文档**——描述测试**现在**怎么跑、效力边界在哪。历次测试的**报告存档**（某次测试
 > 做了什么、发现了什么 bug、怎么修的）在 [docs/test/](../docs/test/)。想知道「这个 bug 当初是
@@ -54,7 +67,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 | [invariants.test.ts](invariants.test.ts)       | 3         | ❌            | 排盘结构不变量：12 宫必齐、十四主星各一、大限区间连续……；另用 iztro 的 `horoscope()` 作外部预言机核对虚岁与大限，用**宫位偏移算术**核对宫名与合盘取宫入口，用**宫名路径的独立预言机**覆盖全部格局名与生年四化落宫，用**口诀表 / lunar 年柱 / 万年历向量**三条独立路径核对流年流月四化 |
 | [school.test.ts](school.test.ts)               | 4         | ✅            | 三合派体系约束：飞星派字段不得被回填                                                                                                                                                                                                                                                        |
 | [sample-source.test.ts](sample-source.test.ts) | 5         | ❌            | 数据源纯函数：DuckDB 行 → BaselineSample 的映射（**合成行**逐条覆盖规则 + **真实行**逐字节复现 charts.jsonl）、12 行完整性守卫、流式遍历语义、三条失败路径的指引（缺依赖 / 缺库文件 / 库被其他进程锁住）（不碰任何数据文件）                                                              |
-| [repo.test.ts](repo.test.ts)                   | 6         | ❌            | 仓库自洽：引文守卫的扫描范围与排除规则（喂构造的临时目录树）；test/ 的测试文件 ↔ README 层表 ↔ lib/run.ts 的 LAYERS 三处登记双向一致；解析钩子 `.` 与 `@/` 两条分支的候选序一致（用桩 nextResolve，含「`.ts` 优先于同名目录」的反向一条）                                                                                    |
+| [repo.test.ts](repo.test.ts)                   | 6         | ❌            | 仓库自洽：引文守卫的扫描范围与排除规则（喂构造的临时目录树）；test/ 的测试文件 ↔ README 层表 ↔ lib/run.ts 的 LAYERS 三处登记双向一致；解析钩子 `.` 与 `@/` 两条分支的候选序一致（用桩 nextResolve，含「`.ts` 优先于同名目录」的反向一条）；**派生 skill 的副本一致性**：切片清单 ↔ 各派生 skill 的 `scripts/` 实际文件（逐字节相同、无残留、自包含、`type: module`）；**排盘类 skill 的底座哨兵**：这类 skill 的 `SKILL.md` 必须含四条哨兵句，抓的是整节漏抄（见 `tools/skills.ts` 的 `chartLike`）；**旗标作用域双向一致**：各 skill 的 `cli/flag-scope.ts` ⊆ 声明表全集、全集 ⊆ 三作用域之并、`birth-info.ts` 的 `g()` 键 ⊆ 源 ∪ 合盘、`ownFiles` 每项与磁盘相符 |
 
 层 2、3 刻意**不依赖基准样本**，因此不受 iztro 升级影响 —— 层 1 变红时，它们能帮你区分
 「是 iztro 行为变了」还是「内核真的排出了坏盘」。**更高编号的层**同样不读基准样本，
@@ -76,7 +89,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 
 ### 1. 它是回归锁定，不是正确性证明
 
-基准样本由 toolkit 的 `lib/ziwei/algorithm.ts` 生成，与本项目 `scripts/ziwei/algorithm.ts`
+基准样本由 toolkit 的 `lib/ziwei/algorithm.ts` 生成，与本项目 `skills/purplestar-astrology/scripts/ziwei/algorithm.ts`
 **同源**（都调 iztro 的 `bySolar`）。所以这套测试能回答的是「行为有没有变」，
 **不能**回答「盘排得对不对」—— 两边一起错的地方（比如 iztro 自身某个安星算法有误）测不出来。
 
@@ -113,7 +126,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 
 ### 5. 随运行年份漂移的字段，测试自己重算
 
-`scripts/ziwei/algorithm.ts` 的 `currentAge` 是**虚岁**（农历年差 +1，以正月初一为界），
+`skills/purplestar-astrology/scripts/ziwei/algorithm.ts` 的 `currentAge` 是**虚岁**（农历年差 +1，以正月初一为界），
 影响 `chart.currentAge`、`chart.currentDaXianIndex`、`palace.isCurrentDaXian` 三处。
 
 样本生成于 2026 年，直接比对会在**跨过下一个正月初一后全线失败**。故比对器
@@ -357,7 +370,7 @@ node test/tools/export-raw-rows.ts
 
 ```bash
 npm install iztro@<新版本>
-node scripts/purple-star.ts selftest       # 1. 先过 CLI 自检
+node skills/purplestar-astrology/scripts/purple-star.ts selftest       # 1. 先过 CLI 自检
 npm test                                   # 2. 跑基准回归
 npm run typecheck                          # 3. 类型检查（升级 iztro 可能改到类型面）
 ```
@@ -384,9 +397,10 @@ test/
 ├── invariants.test.ts        层 3：排盘结构不变量
 ├── school.test.ts            层 4：三合派体系约束
 ├── sample-source.test.ts     层 5：数据源纯函数
-├── repo.test.ts              层 6：仓库自洽（引文守卫 / 登记一致性 / 解析钩子候选序）
+├── repo.test.ts              层 6：仓库自洽（引文守卫 / 登记一致性 / 解析钩子候选序 / 副本一致性 / 底座哨兵 / 旗标作用域双向一致）
 ├── lib/
-│   ├── loader.ts             加载 TS 内核（scripts/purple-star.ts 加载机制的副本）
+│   ├── loader.ts             加载 TS 内核（skills/purplestar-astrology/scripts/purple-star.ts 加载机制的副本）
+│   │                         另有 loadFromSkill()：跨 skill 取自有内核（@/ 够不到的那两份）
 │   ├── compare.ts            比对器 + 归一化 + 已知差异白名单
 │   ├── run.ts                npm test 入口：环境块 + node --test 包壳 + 分层汇总
 │   ├── sample-source.ts      DuckDB 数据源（open/close/rowsToSample/fetchSample/forEachSample）
@@ -403,9 +417,9 @@ test/
     └── year-scan.ts          1900–2100 恒等式扫描，约 87,000 条，数据集外年份段的自洽性（手动执行）
 ```
 
-### 四处需要留意的维护点
+### 需要留意的维护点
 
-1. **`lib/loader.ts` 是 `scripts/purple-star.ts` 加载机制的副本**，两者必须行为一致。
+1. **`lib/loader.ts` 是 `skills/purplestar-astrology/scripts/purple-star.ts` 加载机制的副本**，两者必须行为一致。
    刻意不抽成共享模块：CLI 的加载器带 CLI 特有的错误处理（`console.error` + `process.exit(1)`），
    测试需要**抛错**而非退进程。改任意一侧的 `registerHooks` 或 `pickRoot` 时请同步另一侧 ——
    `cli.test.ts` 里有一条断言（内核直调结果 ≡ CLI `--json` 子进程输出）专门盯着两侧不漂移。
@@ -422,3 +436,18 @@ test/
    实测 node 26 多文件并行下 `classname` / `nesting` / `parentId` 会部分丢失或错乱
    （单文件跑正常，全量跑就变），任何基于「测试树形状」的聚合在这里都不可靠。
    若要换 Node 大版本，先跑一次全量并核对分层合计与官方总计对账行。
+
+5. **`repo.test.ts` 的层 6 还守着派生 skill 的内核副本**（切片清单来自 `tools/skills.ts`）。
+   往 `skills/` 加一个 skill、或往内核加一个文件时，多半要动那份声明；漏了不会静默 ——
+   层 6 会指名是哪个文件。详见 `CLAUDE.md` 的「副本边界与同步流程」。
+   同一组里还有**底座哨兵**：排盘类 skill（`tools/skills.ts` 里 `chartLike: true` 的那些）
+   的 `SKILL.md` 必须含铁律 / 晚子时 / 体系硬约束 / 已知事实四节的探针句。它抓的是
+   **整节漏抄**，抓不住节内改一处 —— 这个强度是刻意选的，`SKILL.md` 改动低频且必过 review。
+
+6. **加旗标要动三处，层 6 有四条断言盯着**（2026-09-27 起）：往 `cli/args.ts` 的 `FLAG_GROUPS`
+   声明它、决定它归哪个 skill（写进那份 `cli/flag-scope.ts`）、若是出生信息旗标则**源与合盘都要写**。
+   四条断言分别是「各作用域 ⊆ 全集」（拼错的名字）／「全集 ⊆ 三作用域之并」（加了没人认领）／
+   「`birth-info.ts` 的 `g()` 键 ⊆ 源 ∪ 合盘」（只改源忘了合盘）／「`ownFiles` 与磁盘相符」
+   （目录形态的清单项写错一个字母 = 那个目录失去保护）。
+   ⚠️ 前两条的**反向注入**已验证：往作用域塞一个拼错的名字，红的恰好是第一条。
+   新增排盘类 skill 时别忘了声明 `chartLike`，否则哨兵对它空转。

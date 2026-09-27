@@ -35,10 +35,13 @@ import { fileURLToPath } from "node:url";
 
 import type { BirthInfo } from "@/ziwei/types"; // 仅参与 typecheck，运行时被擦除
 
-// HERE = <skill 根>/tools/bench，上溯两级即 skill 根（口径同 tools/db/*.ts）
+// HERE = <仓库根>/tools/bench，上溯两级即仓库根（口径同 tools/db/*.ts）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(HERE, "../..");
-const CLI = resolve(SKILL_ROOT, "scripts/purple-star.ts");
+// ⚠️ 字面路径，且 tools/ 不在 npm test 覆盖内 —— 内核 2026-09-27 搬进 skills/ 后这类行
+//    漏改不会变红，只会在实跑时报模块找不到。probe 里的 `@/…` 动态 import 不在此列：
+//    它们走 LOADER 装的解析钩子，跟着 loader 的 ROOT 走。
+const CLI = resolve(SKILL_ROOT, "skills/purplestar-astrology/scripts/purple-star.ts");
 const LOADER = resolve(SKILL_ROOT, "test/lib/loader.ts");
 
 const RULE = "─".repeat(78);
@@ -56,7 +59,13 @@ function ms(v: number, w = 10): string {
 
 // ── ① 端到端 ──
 
-/** 三条代表性命令：纯引导层 / 完整排盘 / 只查古籍。 */
+/**
+ * 三条代表性命令：纯引导层 / 完整排盘 / 主题论断（唯一用得上分析数据库的命令）。
+ *
+ * ⚠️ 原先的第三条是 `classics`，2026-09-27 拆 skill 后古籍检索归了 `purplestar-classics`，
+ *    本脚本量的是**排盘解读 skill 的 CLI**，故换成 `topic`。要量古籍那份，改 `CLI` 常量
+ *    指向另一个 skill —— 同一时刻只量一份，混在一起的中位数没有解释力。
+ */
 const E2E_CASES: Array<{ label: string; args: string[] }> = [
 	{ label: "help（纯引导层，不执行任何计算）", args: ["help"] },
 	{
@@ -73,7 +82,10 @@ const E2E_CASES: Array<{ label: string; args: string[] }> = [
 			"male",
 		],
 	},
-	{ label: "classics（古籍检索）", args: ["classics", "--search", "机月同梁"] },
+	{
+		label: "topic（排盘 + 分析数据库 v3）",
+		args: ["topic", "--topic", "career", "--date", "1990-05-15", "--time", "09:30", "--gender", "male"],
+	},
 ];
 
 interface E2ERow {
@@ -100,8 +112,14 @@ function benchE2E(runs: number): E2ERow[] {
 // ── ② 加载分组定义 ──
 
 /**
- * 顺序**必须**依赖先于依赖者：`cli/commands` 静态 import 了 classics /
- * heming-knowledge，放最后才能让它的边际值只反映自身代码量。
+ * 顺序**必须**依赖先于依赖者：`cli/commands` 静态 import 了分析数据库等，
+ * 放最后才能让它的边际值只反映自身与**尚未列入前面组**的那几份依赖。
+ *
+ * ⚠️ 2026-09-27 拆 skill 时删掉了 `+ classics` 与 `+ heming-knowledge` 两组：那两个模块
+ *    已随同名命令搬去 `purplestar-classics` / `purplestar-synastry`，源的内核根里**没有
+ *    这两个文件**，留着会让探针以 ERR_MODULE_NOT_FOUND 退出（tools/ 不在 npm test 覆盖内，
+ *    这类失效只会在实跑时暴露）。它们当年记的是「仅某条命令需要」的懒加载余地，
+ *    接手这个角色的现在是 `+ analysis`。
  */
 const LOAD_GROUPS: Array<{ label: string; specs: string[]; note: string }> = [
 	{
@@ -116,13 +134,12 @@ const LOAD_GROUPS: Array<{ label: string; specs: string[]; note: string }> = [
 		],
 		note: "analyze 必需（含 iztro / lunar-typescript）",
 	},
-	{ label: "+ classics", specs: ["@/classics/index"], note: "仅 classics 命令需要" },
-	{ label: "+ heming-knowledge", specs: ["@/ziwei/heming-knowledge"], note: "仅 heming 命令需要" },
+	{ label: "+ analysis", specs: ["@/ziwei/analysis"], note: "仅 topic 命令需要（v3 分析数据库）" },
 	{ label: "+ cli/commands", specs: ["@/cli/commands"], note: "命令表本体，analyze 必需" },
 ];
 
 /** 可懒加载的组（analyze 用不到）——用于算「懒加载收益上限」。 */
-const DEFERRABLE = new Set(["+ classics", "+ heming-knowledge"]);
+const DEFERRABLE = new Set(["+ analysis"]);
 
 /** 热路径样本。hour 是**时辰序号 0–12**，不是钟表时（见 types.ts 的 BirthInfo.hour）。 */
 const HOT_INFO: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male" };

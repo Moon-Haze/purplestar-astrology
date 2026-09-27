@@ -118,7 +118,7 @@ async function main(): Promise<void> {
 				`  处理：\n` +
 				`    · 若确为预期的版本行为变化 → 先在 test/lib/compare.ts 的 KNOWN_DIVERGENCES\n` +
 				`      登记根因（写清是哪一版改了什么），再重建\n` +
-				`    · 若不是预期变化 → 这是回归，先查 scripts/ziwei/ 下的内核改动\n`
+				`    · 若不是预期变化 → 这是回归，先查 skills/purplestar-astrology/scripts/ziwei/ 下的内核改动\n`
 		);
 		for (const { birth, diffs } of diverged.slice(0, 10)) {
 			console.error(`  ${birth.year}-${birth.month}-${birth.day} 时${birth.hour} ${birth.gender}`);

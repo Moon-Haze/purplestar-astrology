@@ -15,7 +15,15 @@ import { fileURLToPath } from "node:url";
 import { astro } from "iztro";
 
 import type { BirthInfo, Palace, ZiweiChart } from "@/ziwei/types";
-import { load, loadAlgorithm, loadConstants, loadPatterns, loadRender, loadSihua } from "./lib/loader.ts";
+import {
+	load,
+	loadAlgorithm,
+	loadConstants,
+	loadFromSkill,
+	loadPatterns,
+	loadRender,
+	loadSihua,
+} from "./lib/loader.ts";
 import { BRANCHES, type BaselineSample } from "./lib/compare.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -27,7 +35,12 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 const { generateChart } = await loadAlgorithm();
 const { PALACE_NAMES_ORDER, IZTRO_TO_PROJECT_PALACE, SI_HUA_TABLE, STEMS } = await loadConstants();
 const { detectPatterns, GEJU_NAME_ALIASES } = await loadPatterns();
-const { ALL_BOOKS } = await load<typeof import("@/classics/index")>("@/classics/index");
+// ⚠️ 跨 skill 加载：古籍内核自 2026-09-27 起归 `purplestar-classics`，源的内核根
+//    已够不到它（`@/` 只指向源）。用到的只是**古籍文本**，与排盘内核无关 —— 下面的
+//    「格局名词频」是排版不变量测试，不是古籍测试，故换加载口径而非删用例。
+const { ALL_BOOKS } = await loadFromSkill<
+	typeof import("../skills/purplestar-classics/scripts/classics/index")
+>("purplestar-classics", "classics/index");
 const { getSiHuaByStem, getYearStemIndex, getLiuNianSiHua, getLiuYueStemIndex } = await loadSihua();
 const { mustPalace, locateSihua } = await loadRender();
 

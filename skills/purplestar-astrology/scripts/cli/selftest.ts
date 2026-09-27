@@ -33,13 +33,6 @@ import { detectPatterns } from "@/ziwei/patterns";
 import { getSiHuaByStem, getYearStemIndex, getLiuYueSiHua } from "@/ziwei/sihua";
 import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
 import { STEMS, STAR_DESCRIPTIONS } from "@/ziwei/constants";
-import {
-	HEMING_METHODOLOGY,
-	HEMING_SCORE_CRITERIA,
-	STAR_IN_FUQI_GU,
-	SIHUA_IN_FUQI_GU,
-} from "@/ziwei/heming-knowledge";
-import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
 import { Lunar } from "lunar-typescript";
 
 /**
@@ -456,17 +449,10 @@ export function cmdSelftest(ctx: CliContext): string {
 		eq(g("male"), "male", "male ");
 		eq(g("m"), "male", "m ");
 	});
-	ok("性别：heming 缺 --a-gender 时，文案应指向 --a-gender", () => {
-		let msg: string | null = null;
-		try {
-			buildBirthInfo(parseArgs(["--a-date", "1990-05-15", "--a-branch", "0"]), "a-");
-		} catch (e) {
-			msg = (e as Error).message;
-		}
-		if (!msg) throw new Error("缺 --a-gender 时未报错");
-		if (!msg.includes("--a-gender")) throw new Error(`文案应含 --a-gender，实得：${msg}`);
-		return msg;
-	});
+	// ⚠️ 这里原有「性别：heming 缺 --a-gender 时文案应指向 --a-gender」一条，已随合盘命令
+	//    搬去 `purplestar-synastry` 的 selftest —— 本 skill 既无 `heming` 命令，也不认
+	//    `a-` / `b-` 前缀（`--a-date` 在这里是**未知参数**，直接报错），那条文案护栏
+	//    在本 skill 里没有可复现的入口。
 
 	// ── 5. 排盘不变量 ──
 	ok("排盘不变量：十二宫齐全 / 地支不重复 / 命宫唯一 / 五行局合法", () => {
@@ -548,26 +534,13 @@ export function cmdSelftest(ctx: CliContext): string {
 	});
 
 	// ── 8. 知识源可用性 ──
-	ok("知识源：古籍库非空", () => {
-		if (!ALL_BOOKS.length) throw new Error("ALL_BOOKS 为空");
-		if (!TOTAL_PARAGRAPHS) throw new Error("TOTAL_PARAGRAPHS 为 0");
-		return `${ALL_BOOKS.length} 部 / ${TOTAL_PARAGRAPHS} 段`;
-	});
-	ok("知识源：古籍检索可命中", () => {
-		const hits = searchClassics("紫微", 3);
-		if (!hits.length) throw new Error("检索「紫微」无命中");
-		return `命中 ${hits.length} 条`;
-	});
-	ok("知识源：合盘断语与四化断语非空", () => {
-		if (!Object.keys(STAR_IN_FUQI_GU).length) throw new Error("STAR_IN_FUQI_GU 为空");
-		if (!Object.keys(SIHUA_IN_FUQI_GU).length) throw new Error("SIHUA_IN_FUQI_GU 为空");
-		if (!HEMING_METHODOLOGY) throw new Error("HEMING_METHODOLOGY 为空");
-		// 这个常量原先是零断言覆盖（注释自己承认「清空它不会让任何断言变红」）。自它成为
-		// `heming-guide` 命令的主要载荷之一，空掉就不再是「少一段说明」而是「命令输出残缺」。
-		if (!Object.keys(HEMING_SCORE_CRITERIA).length)
-			throw new Error("HEMING_SCORE_CRITERIA 为空");
-		return `夫妻宫断语 ${Object.keys(STAR_IN_FUQI_GU).length} 星`;
-	});
+	//
+	// ⚠️ 这里原有一组「古籍库非空 / 古籍检索可命中 / 合盘断语非空」断言，2026-09-27 随
+	//    `classics/` 与 `heming-knowledge.ts` 一起**搬去了各自的 skill**：那两份内核
+	//    已不住在本 skill 里，扫不到的东西不该由本文件声明它可用。
+	//    覆盖没有丢 —— 古籍那两条的加强版在 `purplestar-classics` 的 selftest 里
+	//    （数据源加载 / 每部书有章节 / 检索命中 / limit 上限…共十余条），
+	//    合盘那条在 `purplestar-synastry` 的 selftest 里。
 	ok("知识源：星曜释义覆盖十四主星", () => {
 		const majorStars = [
 			"紫微",
@@ -677,20 +650,28 @@ export function cmdSelftest(ctx: CliContext): string {
 			if (!msg.includes(`--${want}`))
 				throw new Error(`${bad} 的提示应指向 --${want}，实得：${msg}`);
 		}
-		// 前缀旗标用在错的命令上同样要报错：analyze --a-city 会被整个忽略
-		//（buildBirthInfo 读的是不带前缀的 city），排出的还是默认经度的盘。
-		let prefixed = "";
-		try {
-			parseArgs(["--a-city", "北京"], "analyze");
-		} catch (e) {
-			prefixed = (e as Error).message;
+		// 作用域收窄探针：**本 skill 不认**的旗标必须报错，而不是静默收下。
+		// `--limit` 归古籍检索 skill、`a-` / `b-` 前缀归合盘 —— 二者都在本 skill 的
+		// cli/flag-scope.ts 之外。收窄之前 parseArgs 会照单全收（`analyze --limit 5` 静默无效，
+		// `--a-city` 被整个忽略、排出的还是默认经度的盘）。
+		//
+		// ⚠️ 少了这一条，哪天有人把 args.ts 的作用域过滤摘掉，源的 help 会重新列出这些
+		// 旗标，而**没有任何断言变红** —— 那正是本次收窄要防的回归。
+		const outOfScope: Array<[string, string]> = [
+			["--limit", "5"], // 古籍检索专有
+			["--a-city", "北京"], // 合盘的出生方前缀
+			["--b-date", "1990-01-01"],
+		];
+		for (const [flag, value] of outOfScope) {
+			let msg = "";
+			try {
+				parseArgs([flag, value], "analyze");
+			} catch (e) {
+				msg = (e as Error).message;
+			}
+			if (!msg) throw new Error(`${flag} 在 analyze 上未报错 —— 旗标作用域收窄失效`);
 		}
-		if (!prefixed) throw new Error("--a-city 用在 analyze 上未报错 —— 该旗标会被静默忽略");
-		// 反向：heming 下必须放行。少了这条，上面那句就成了「一刀切禁掉前缀」也照样绿。
-		// ⚠️ 下标键是 **camelCase**：`CliArgs` 的键由 cac 归一（`--a-city` → `aCity`）。
-		if (parseArgs(["--a-city", "北京"], "heming")["aCity"] !== "北京")
-			throw new Error("heming --a-city 应正常解析为字符串");
-		return `${probes.length} 个拼写错误均被拦下，前缀旗标按命令归属校验`;
+		return `${probes.length} 个拼写错误均被拦下，${outOfScope.length} 个作用域外旗标被拒`;
 	});
 
 	ok("参数面：SKILL.md 提到的旗标都在 args.ts 的声明表里", () => {
@@ -707,7 +688,9 @@ export function cmdSelftest(ctx: CliContext): string {
 		const names = [...new Set(mentioned)];
 		const unknown = names
 			.map(n => {
-				// 剥掉 heming 的 a- / b- 前缀再查表：`--a-late-zi` 声明的是 `late-zi`
+				// 剥掉出生方前缀再查表：`--a-late-zi` 声明的是 `late-zi`。前缀表取自
+				// 本 skill 的作用域（`SIDE_PREFIXES`）—— 本 skill 不认任何前缀，故这一步
+				// 目前恒为空转，但它是**从声明派生**的，哪天作用域变了会自动跟上。
 				const p = SIDE_PREFIXES.find(pre => n.startsWith(pre));
 				return p ? n.slice(p.length) : n;
 			})

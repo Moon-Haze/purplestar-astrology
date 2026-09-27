@@ -4,9 +4,11 @@
 // 代码与随它一起演化的文档、登记表是否还对得上。这类事实没有「行为」可断言，漂移了也不
 // 会有任何东西报错 —— 只能靠专门的守卫盯。本层三组：
 //
-//   一、引文守卫（scripts/ziwei/citation-guard.ts）
+//   一、引文守卫（ziwei/citation-guard.ts，位于排盘解读 skill 的内核里）
 //   二、登记一致性（test/ 下的测试文件 ↔ test/README.md 的层表 ↔ lib/run.ts 的 LAYERS）
-//   三、解析钩子的候选序（scripts/boot-hooks.ts 的 `.` 与 `@/` 两条分支）
+//   三、解析钩子的候选序（boot-hooks.ts 的 `.` 与 `@/` 两条分支）
+//   四、派生 skill 的副本一致性（切片清单 ↔ 各派生 skill 的实际文件）
+//   五、旗标作用域（各 skill 的 cli/flag-scope.ts ↔ 共用的 cli/args.ts 声明表）
 //
 // ## 为什么引文守卫要在这里再测一遍
 //
@@ -20,7 +22,7 @@
 //
 // ## 为什么登记一致性也要测
 //
-// 计数类事实（层数、项数、断言数）一律不写死在文档里，理由见 `.claude/CLAUDE.md` 的
+// 计数类事实（层数、项数、断言数）一律不写死在文档里，理由见 `CLAUDE.md` 的
 // 「SKILL.md 与 CLI 的耦合」一节。但**层表是内容不是计数**：新增一个测试文件，就该在
 // README 里有一行、在 LAYERS 里有一条。README 是文档不是构建产物，派不出单一来源，
 // 所以只能双向断言。
@@ -38,6 +40,7 @@ import {
 	readFileSync,
 	readdirSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -45,12 +48,26 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ResolveHookSync } from "node:module";
 
-import { load } from "./lib/loader.ts";
-// ⚠️ 带 `.ts` 扩展名，理由同 lib/loader.ts 的同一行：boot-hooks.ts 只依赖 `node:` 内置，
-//    故可在解析钩子注册之前被 Node 的原生类型擦除加载。
-import { makeResolveHook } from "../scripts/boot-hooks.ts";
+import { load, loadFromSkill } from "./lib/loader.ts";
+// ⚠️ 字面相对路径 + `.ts` 扩展名：`tools/skills.ts` 只 import `node:` 内置，故靠 Node 原生
+//    类型擦除即可加载（与下一行的 boot-hooks.ts 同理）。本模块是**切片声明的唯一源** ——
+//    同步器（`tools/sync-skills.ts`）与下面的副本断言都从它取清单，两边不会各存一份。
+import {
+	DERIVED_SKILLS,
+	SKILLS_DIR,
+	SOURCE_SKILL,
+	actualFiles,
+	isOwned,
+	skillDir,
+	sourcePathOf,
+	syncedFiles,
+} from "../tools/skills.ts";
+// ⚠️ 字面相对路径，带 `.ts` 扩展名，理由同 lib/loader.ts 的同一行：boot-hooks.ts 只依赖
+//    `node:` 内置，故可在解析钩子注册之前被 Node 的原生类型擦除加载。
+// ⚠️ 内核已移入 skills/purplestar-astrology/scripts/（2026-09-27），挪内核时本行会静默失效。
+import { makeResolveHook } from "../skills/purplestar-astrology/scripts/boot-hooks.ts";
 
-/** skill 根 —— 本文件在 `<skill 根>/test/` 下，故退一级。 */
+/** 仓库根 —— 本文件在 `<仓库根>/test/` 下，故退一级。 */
 const SKILL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** `test/` 下的测试文件名（已排序）。登记一致性的两侧都拿它当基准。 */
@@ -146,7 +163,7 @@ function resolveAttempts(specifier: string, files: Record<string, string>): stri
 	}
 }
 
-describe("仓库自洽（引文守卫 / 登记一致性）", () => {
+describe("仓库自洽（引文守卫 / 登记一致性 / 副本一致性）", () => {
 	it("核对表里确有可用的未核实引文样本 —— 否则黑名单为空，本守卫恒判零违例", () => {
 		// 黑名单 = suspect / fabricated 条目里**引号内的核心**。它为空时，守卫对任何源码都报
 		// 「零违例」—— 那不是通过，是没在工作。若某天这些条目真被清空（引文全部改归属），
@@ -296,5 +313,305 @@ describe("解析钩子候选序（boot-hooks）", () => {
 			"./data.json/index.ts",
 			"./data.json",
 		]);
+	});
+});
+
+// ── 四、派生 skill 的副本一致性 ──
+//
+// 本仓是各自包含 skill 的源：排盘解读（`purplestar-astrology`）是源，合盘与古籍检索由它
+// 派生 —— 其中「与 skill 无关的整文件」与源**逐字节一致**（清单与边界见 `tools/skills.ts`
+// 与 `CLAUDE.md` 的「副本边界与同步流程」）。
+//
+// 手工维护这种一致性必然漂移，故实际同步由 `npm run sync:skills` 执行；而**同步器本身也会
+// 忘了跑** —— 本组断言就是那个提醒。这与本仓「能派生的派生、不能派生的由断言盯双向一致」
+// 是同一路数：清单来自 `tools/skills.ts`（唯一源），断言据此逐字节比对，不另存一份。
+//
+// ⚠️ 本组只守**副本**。各 skill 手写的文件（`purple-star.ts` / `cli/commands.ts` /
+// `cli/selftest.ts` / `SKILL.md` / `package.json`）不在守卫范围 —— 它们按 skill 裁开，
+// 逐字节断言对它们是永远为假的守卫。那些的正确性由各自的 `selftest`（命令表 ↔ SKILL.md
+// 一致）与 `test/cli.test.ts`（子进程跑每个 CLI 入口）负责。
+describe("派生 skill 的副本一致性与底座哨兵", () => {
+	/** 每个派生 skill 的清单项，进程内算一次（describe 回调只跑一次）。 */
+	const plans = DERIVED_SKILLS.map(spec => ({ spec, wanted: syncedFiles(spec) }));
+
+	it("清单里的文件在源里都存在 —— 声明写错会让切片静默变小", () => {
+		// `importClosure` 对 `kernelEntries` 自己会抛错（入口不存在时），但 `sharedFiles`
+		// 不经过闭包 —— 名字写错时只有同步器在复制那一刻才崩，报的是 ENOENT 而非「声明写错了」。
+		const missing = plans.flatMap(({ spec, wanted }) =>
+			wanted.filter(f => !existsSync(sourcePathOf(f))).map(f => `${spec.name}: ${f}`)
+		);
+		assert.deepEqual(missing, [], `切片声明指向了源里不存在的文件：\n${missing.join("\n")}`);
+	});
+
+	it("每个副本都与源逐字节相同", () => {
+		const drifted = plans.flatMap(({ spec, wanted }) =>
+			wanted
+				.filter(f => {
+					const to = resolve(skillDir(spec), "scripts", f);
+					return (
+						!existsSync(to) || !readFileSync(to).equals(readFileSync(sourcePathOf(f)))
+					);
+				})
+				.map(f => `${spec.name}: ${f}`)
+		);
+		assert.deepEqual(
+			drifted,
+			[],
+			`以下副本与源不一致（跑 npm run sync:skills 修复）：\n${drifted.join("\n")}`
+		);
+	});
+
+	it("scripts/ 下没有清单外的 .ts 残留 —— 上面那条只看得见清单里的文件", () => {
+		// 清单缩小时（某个文件不再被入口引用），上一次同步留下的副本不会被任何逐字节断言发现：
+		// 断言只检查「清单里的都在且一致」，清单外的它不看。而残留的副本会**继续被解析钩子
+		// 加载** —— 「已经删掉的模块」于是在派生 skill 里阴魂不散。
+		const stale = plans.flatMap(({ spec, wanted }) =>
+			actualFiles(spec)
+				.filter(f => !wanted.includes(f) && !isOwned(spec, `scripts/${f}`))
+				.map(f => `${spec.name}: ${f}`)
+		);
+		assert.deepEqual(
+			stale,
+			[],
+			`以下文件既不在清单内也不是 skill 自有（跑 npm run sync:skills 清理）：\n${stale.join("\n")}`
+		);
+	});
+
+	it("每个 skill 都是自包含的：SKILL.md / package.json / CLI 入口齐备", () => {
+		// 缺 SKILL.md → 拷到 `~/.claude/skills/` 下根本不会被触发（skill 的入口就是它）；
+		// 缺 package.json → `npm install` 无依据，装到别人机器上跑不起来。
+		const missing: string[] = [];
+		for (const { spec } of plans) {
+			for (const f of ["SKILL.md", "package.json", "scripts/purple-star.ts"]) {
+				if (!existsSync(resolve(skillDir(spec), f))) missing.push(`${spec.name}: ${f}`);
+			}
+		}
+		assert.deepEqual(missing, [], `skill 目录不完整：\n${missing.join("\n")}`);
+	});
+
+	it("每个 skill 的 package.json 都声明 type: module —— 少了它 .ts 会按 CJS 解析", () => {
+		// 这是本仓一个**静默崩溃点**：Node 判定 `.ts` 的模块系统，看的是**最近的** package.json
+		// 的 type 字段。在 skill 目录下新建 package.json 而漏了这一行，会让该 skill 下所有
+		// `import` 语法当场报错 —— 而根 package.json 里明明写着 type: module，症状看起来像是
+		// 「根配置被忽略了」，排查方向会被整个带偏（源 skill 的 package.json 正是本次拆分新建的）。
+		const bad: string[] = [];
+		for (const name of [SOURCE_SKILL, ...DERIVED_SKILLS.map(s => s.name)]) {
+			const p = resolve(SKILLS_DIR, name, "package.json");
+			const pkg = JSON.parse(readFileSync(p, "utf8")) as { type?: string };
+			if (pkg.type !== "module") bad.push(`${name}: type=${String(pkg.type)}`);
+		}
+		assert.deepEqual(
+			bad,
+			[],
+			`以下 skill 的 package.json 未声明 "type": "module"：\n${bad.join("\n")}`
+		);
+	});
+
+	it("排盘类 skill 的 SKILL.md 都含底座哨兵句 —— 抓的是整节漏抄", () => {
+		// ## 为什么是哨兵而不是逐字节比对
+		//
+		// 排盘类 skill 的 `SKILL.md` 各有一份**手抄的底座**（路径约定 / 铁律 / 晚子时 /
+		// 体系硬约束 / 已知事实），它们**不能**逐字节相同 —— 合盘的性别栏是 `--a-gender` /
+		// `--b-gender`，出生地是 `--a-city`，正文里还多了一段「漏前缀会静默排出错盘」的警告。
+		// 硬套逐字节断言只会生产一条永远为假的守卫。
+		//
+		// 故改用**探针**：每个关键节各取一个句子，断言它还在。抓住的是「整节漏抄」，
+		// **抓不住「节内改了一处」** —— 这个强度是刻意选的：`SKILL.md` 改动低频且必过 review，
+		// 而漏抄整节（写新 skill 时最常犯的错）恰恰是人工 review 最容易滑过去的。
+		const SENTINELS: ReadonlyArray<[string, string]> = [
+			["不要猜", "铁律：缺失输入必须追问"],
+			["两张完全不同的盘", "晚子时：两种口径排出的是两张盘"],
+			["宫干自化", "体系硬约束：三合派，不用飞星派工具"],
+			["虚岁", "其他已知事实：年龄一律虚岁"],
+		];
+		// ⚠️ 先确认真有条目声明了 `chartLike`。少了这一步，下面的检查会在一份空清单上跑完
+		// 并全绿 —— 一条恒真的守卫比没有守卫更坏，它会被当成保障。
+		const chartLike = DERIVED_SKILLS.filter(s => s.chartLike === true);
+		assert.ok(
+			chartLike.length > 0,
+			"没有任何派生 skill 声明 chartLike: true —— 底座哨兵检查会空转（见 tools/skills.ts 的 SkillSpec.chartLike）"
+		);
+		// 源 skill 也排盘，一并检查：它是这份底座的**原始出处**，整节被删同样是事故。
+		const targets = [
+			{ name: SOURCE_SKILL, dir: resolve(SKILLS_DIR, SOURCE_SKILL) },
+			...chartLike.map(s => ({ name: s.name, dir: skillDir(s) })),
+		];
+		const missing: string[] = [];
+		for (const t of targets) {
+			const md = readFileSync(resolve(t.dir, "SKILL.md"), "utf8");
+			for (const [probe, what] of SENTINELS) {
+				if (!md.includes(probe)) missing.push(`${t.name}: 缺「${probe}」（${what}）`);
+			}
+		}
+		assert.deepEqual(
+			missing,
+			[],
+			`以下 SKILL.md 疑似整节漏抄（哨兵句是各节的探针，见本断言的注释）：\n${missing.join("\n")}`
+		);
+	});
+
+	it("SKILL.md 与 references/ 双向一致 —— 指路牌不能失效，也不能有孤儿", () => {
+		// ## 为什么这条必须双向
+		//
+		// `SKILL.md` 是骨架、细则进 `references/` 按需加载 —— 这套设计成立的前提是**骨架里
+		// 写了「何时读哪个文件」**。没有指路牌的 `references/` 等于不存在：文件躺在磁盘上，
+		// Claude 永远不知道它在那儿，那部分知识就等于没写。
+		//
+		// 两个方向都会静默出错，故两个方向都查：
+		// - 链接指向不存在的文件 → 还算可见（Claude 去读时会失败），但已白费一次往返
+		// - `references/` 下有文件没被链接 → **完全静默**，加文件的人以为写完了
+		//
+		// ⚠️ 本条守的只是「骨架与细则的**接线**」，与内容对不对无关 —— 链接过去了而内容写错了，
+		// 断言一无所知，那是 review 的事。
+		const problems: string[] = [];
+		for (const name of [SOURCE_SKILL, ...DERIVED_SKILLS.map(s => s.name)]) {
+			const dir = resolve(SKILLS_DIR, name);
+			const refDir = resolve(dir, "references");
+			const linked = new Set<string>();
+			const md = readFileSync(resolve(dir, "SKILL.md"), "utf8");
+			// 只认指向 `references/` 的相对链接。skill 之间互相转指用的是**技能名**
+			// （「用 purplestar-classics 技能」）而不是路径 —— 那种跨 skill 的相对路径在装到
+			// `~/.claude/skills/` 之后并不成立，本就不该写成链接。
+			for (const m of md.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+				const target = m[1];
+				if (!target.startsWith("references/")) continue;
+				linked.add(target.slice("references/".length));
+				if (!existsSync(resolve(dir, target))) {
+					problems.push(`${name}: SKILL.md 链接指向不存在的 ${target}`);
+				}
+			}
+			if (!existsSync(refDir)) continue;
+			for (const entry of readdirSync(refDir).filter(n => n.endsWith(".md"))) {
+				if (!linked.has(entry)) {
+					problems.push(`${name}: references/${entry} 没有被 SKILL.md 链接（等于不存在）`);
+				}
+			}
+		}
+		assert.deepEqual(problems, [], `骨架与 references/ 的接线有问题：\n${problems.join("\n")}`);
+	});
+});
+
+describe("旗标作用域：各 skill 的声明与共用声明表的双向一致", () => {
+	// ## 为什么这四条必须双向
+	//
+	// `cli/args.ts` 是三个 skill 共用的**逐字节副本**，它有一张全量旗标声明表（`FLAG_GROUPS`）；
+	// 「本 skill 认其中哪些」则由各 skill 自写的 `cli/flag-scope.ts` 声明。两层之间的错配
+	// **全部是静默的** —— 这正是本节存在的理由：
+	//
+	// - 作用域里写错一个名字 → 该旗标既不注册也不被认，而 `FLAG_NAMES` 是个 Set，
+	//   拼错只是「少了一个成员」，没有任何东西会报错。用户敲它才被拒。
+	// - 往声明表加了旗标却没人认领 → 三个 skill 全都不认它，等于加了个死参数。
+	//   加旗标的人以为自己加好了。
+	// - 出生信息旗标只改源、忘了合盘 → `heming --a-<新旗标>` 会被当作未知旗标**拒掉**
+	//   （好过静默），但那是在用户面前炸，不是在 CI 里炸。
+	//
+	// 第四条（`ownFiles` 落地）看似与旗标无关，其实同属「声明与磁盘对不对得上」：
+	// 目录形态的 `ownFiles` 项（`"scripts/classics/"`）写错一个字母，同步器会认为那个目录
+	// **不受保护**，于是把里面每个文件都当残留删掉 —— 而逐字节断言只检查清单内的文件，
+	// 清单一空，它也就全绿了。
+
+	/** 声明表全集（三份 `args.ts` 逐字节相同，取源那一份即可）。 */
+	const ALL_FLAG_NAMES = load<typeof import("@/cli/args")>("@/cli/args").then(
+		m => new Set(m.ALL_FLAG_NAMES)
+	);
+
+	/** 各 skill 的作用域。源走 `@/`，派生的内核不在源里，走 `loadFromSkill`。 */
+	const SCOPES: ReadonlyArray<{ skill: string; flags: Promise<ReadonlySet<string>> }> = [
+		{
+			skill: SOURCE_SKILL,
+			flags: load<typeof import("@/cli/flag-scope")>("@/cli/flag-scope").then(
+				m => new Set<string>(m.FLAG_SCOPE.flags)
+			),
+		},
+		{
+			skill: "purplestar-synastry",
+			flags: loadFromSkill<
+				typeof import("../skills/purplestar-synastry/scripts/cli/flag-scope")
+			>("purplestar-synastry", "cli/flag-scope").then(m => new Set<string>(m.FLAG_SCOPE.flags)),
+		},
+		{
+			skill: "purplestar-classics",
+			flags: loadFromSkill<
+				typeof import("../skills/purplestar-classics/scripts/cli/flag-scope")
+			>("purplestar-classics", "cli/flag-scope").then(m => new Set<string>(m.FLAG_SCOPE.flags)),
+		},
+	];
+
+	it("各 skill 的作用域都 ⊆ 声明表全集 —— 拼错的旗标名不会被任何东西拦下", async () => {
+		const all = await ALL_FLAG_NAMES;
+		const bogus: string[] = [];
+		for (const s of SCOPES) {
+			for (const f of await s.flags) {
+				if (!all.has(f)) bogus.push(`${s.skill}: ${f}`);
+			}
+		}
+		assert.deepEqual(
+			bogus,
+			[],
+			`以下作用域项不在 args.ts 的 FLAG_GROUPS 里（拼错？还是忘了往声明表加？）：\n${bogus.join("\n")}`
+		);
+	});
+
+	it("声明表全集 ⊆ 各作用域之并 —— 新加的旗标必须有人认领", async () => {
+		const all = await ALL_FLAG_NAMES;
+		const union = new Set<string>();
+		for (const s of SCOPES) for (const f of await s.flags) union.add(f);
+		const orphans = [...all].filter(f => !union.has(f)).sort();
+		assert.deepEqual(
+			orphans,
+			[],
+			`以下旗标在声明表里，却没有任何 skill 认领（加了等于没加），请决定它归谁：\n${orphans.join("\n")}`
+		);
+	});
+
+	it("出生信息旗标必须在源与合盘两边都被认领 —— 只改一处会让合盘拒掉它", async () => {
+		// 键取自 birth-info.ts 的**源码文本**（`g("…")` 的调用点）而不是手抄一份清单：
+		// 手抄的清单会与源码一起漂移，而漂移后这条断言正好失去意义。
+		const KEYS = [
+			...new Set(
+				[...readFileSync(sourcePathOf("cli/birth-info.ts"), "utf8").matchAll(/\bg\("([^"]+)"\)/g)].map(
+					m => m[1]
+				)
+			),
+		];
+		// ⚠️ 先确认抽出来的样本有份量，否则正则失效时下面的循环会在空数组上跑完全绿。
+		assert.ok(KEYS.length >= 10, `从 birth-info.ts 只抽到 ${KEYS.length} 个 g() 键，正则可能已失效`);
+
+		const all = await ALL_FLAG_NAMES;
+		// 古籍 skill 不排盘，出生信息旗标本就不该在它的作用域里 —— 只查排盘类的两个。
+		const chartLike = SCOPES.filter(s => s.skill !== "purplestar-classics");
+		const missing: string[] = [];
+		for (const key of KEYS) {
+			// 键来自源码，说明它被 `g()` 读了却不在此表 —— 那它根本不可能被解析出来
+			if (!all.has(key)) missing.push(`（不在声明表）${key}`);
+			for (const s of chartLike) {
+				if (!(await s.flags).has(key)) missing.push(`${s.skill}: ${key}`);
+			}
+		}
+		assert.deepEqual(
+			missing,
+			[],
+			`以下出生信息旗标没有被全部相关 skill 认领：\n${missing.join("\n")}`
+		);
+	});
+
+	it("ownFiles 的每一项都真实存在；目录形态的必须是目录 —— 写错即失去保护", () => {
+		const problems: string[] = [];
+		for (const spec of DERIVED_SKILLS) {
+			for (const f of spec.ownFiles) {
+				const abs = resolve(skillDir(spec), f);
+				if (!existsSync(abs)) {
+					problems.push(`${spec.name}: ${f} 不存在`);
+				} else if (f.endsWith("/") && !statSync(abs).isDirectory()) {
+					problems.push(`${spec.name}: ${f} 声明为目录，实际是文件`);
+				}
+			}
+		}
+		// 同上的空转防护：清单为空时这条断言什么都没测。
+		assert.ok(
+			DERIVED_SKILLS.some(s => s.ownFiles.length > 0),
+			"没有任何派生 skill 声明 ownFiles —— 本断言会空转"
+		);
+		assert.deepEqual(problems, [], `ownFiles 与磁盘不符：\n${problems.join("\n")}`);
 	});
 });

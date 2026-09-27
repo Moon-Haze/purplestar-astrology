@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "紫微斗数排盘与解读 skill 的运行时依赖。排盘内核是 ziwei-master 项目的私有源码（未发布到 npm），已直接置于 scripts/；本文件只声明内核所需的 npm 包。",
+  "description": "紫微斗数 skill 仓库的开发依赖与脚本。本仓是若干自包含 skill 的源（skills/ 下每个子目录一个），内核的唯来源是 skills/purplestar-astrology/scripts/（ziwei-master 的私有源码，未发布到 npm），其余 skill 由它派生；根 package.json 只服务于开发（测试 / 工具 / 类型检查），各 skill 的运行时依赖在各自的 package.json 里。",
   "scripts": {
     "test": "node test/lib/run.ts",
     "test:corpus": "tsx test/tools/full-corpus.ts",
@@ -11,6 +11,7 @@
     "verify:db": "tsx tools/db/verify-duckdb.ts",
     "query": "tsx tools/db/query.ts",
     "bench:startup": "tsx tools/bench/startup.ts",
+    "sync:skills": "tsx tools/sync-skills.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

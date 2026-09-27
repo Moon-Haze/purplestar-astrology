@@ -81,7 +81,7 @@ export interface ChartDiff {
 }
 
 // 宫名映射**从内核取**，不在此另抄一份。
-// 宫名是项目自己的词汇，`scripts/ziwei/constants.ts` 是它唯一的定义处；比对器只是要把
+// 宫名是项目自己的词汇，`skills/purplestar-astrology/scripts/ziwei/constants.ts` 是它唯一的定义处；比对器只是要把
 // 基准样本的 iztro 词汇翻译成项目词汇才比得起来，本身对宫名没有立场。
 // 另起一份转录只会制造第二个真相源 —— 认表错误的任务交给下面这条注释指向的预言机。
 //
@@ -428,7 +428,7 @@ export function formatDiffs(diffs: ChartDiff[], limit = 25): string {
  * 盘指纹：快速判定两张盘是否逐宫一致（用于 CLI 的 --branch 12 ≡ 次日 --branch 0 之类断言）。
  *
  * @remarks
- * **唯一实现在 `scripts/cli/render.ts`**，此处只是转出 —— 本模块与 CLI 走同一份代码，
+ * **唯一实现在 `skills/purplestar-astrology/scripts/cli/render.ts`**，此处只是转出 —— 本模块与 CLI 走同一份代码，
  * 不存在「改动其一时必须同步另一个」。此前这里另有一份逐行副本，两侧注释互相提醒却
  * **没有任何断言盯着**，只在一侧加排序就会静默分叉（指纹仍各不相同，断言照旧全绿）。
  *

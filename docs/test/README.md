@@ -21,6 +21,12 @@
 > commands / selftest），`purple-star.ts` 此后只剩引导层。报告里若提到 CLI 的某个函数
 > （如 `calcTrueSolar`、`renderPalace`），请到 `scripts/cli/` 下按**函数名**去找——
 > 这正是上一条「以符号名去搜」的用处。此项同样**只在此处备案，不回改报告**。
+>
+> ⚠️ **仓库又从「一个 skill」拆成了「三个 skill」。** 2026-09-27 起：仓库根不再是一个 skill，
+> 内核搬进 `skills/purplestar-astrology/scripts/`，另派生 `skills/purplestar-synastry`（合盘）与
+> `skills/purplestar-classics`（古籍检索）。上面两条通告里的 `scripts/...` 路径，现在一律
+> 是 `skills/purplestar-astrology/scripts/...`。**报告与下方的基线表都是时点快照，按存档惯例
+> 不回改**；要知道现在怎么跑，看 [test/README.md](../../test/README.md)。
 
 ---
 
