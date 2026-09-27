@@ -20,7 +20,7 @@
  *
  *   以「倪海夏/倪师说」开头的引号句，部分为 traditional 口诀的风格化转述，不一定是
  *   倪师《天纪》逐字原话。CLI 的 topic 命令在输出末尾固定披露此点。
- *   2026-09-27 拆分后，引文主体随 STAR_DB 移到了 ./analysis-content，本文件只余零星几处。
+ *   2026-09-27 拆分后，引文主体随 STAR_CONTENT_MAP 移到了 ./analysis-data，本文件只余零星几处。
  *
  * 架构：
  * - 十四主星各自的详细命理内容（12 宫语境）
@@ -39,10 +39,9 @@ import { detectPatterns, type Pattern } from "./patterns";
 // 生年四化必须用 chart.lunarInfo.yearStem —— 两口径在 1-2 月出生者身上分叉，
 // 见 sihua.ts 的口径说明与 test/cli.test.ts 的「生年四化的年干口径」）
 import { getYearStemIndex } from "./sihua";
-// 2026-09-27 拆分：本文件原先自带的元数据表与 STAR_DB 文案已移出——
-// 会持续增删的论断文案（含「倪师…说」引文）在 ./analysis-content，
-// 改结构才动的映射表与类型在 ./analysis-meta。公开面由文末 re-export 兜住。
-import { STAR_DB } from "./analysis-content";
+// 2026-09-27 拆分：本文件原先自带的元数据表与论断文案已移出到 ./analysis-data
+// （STAR_CONTENT_MAP，含「倪师…说」引文）。公开面由文末 re-export 兜住。
+import { STAR_CONTENT_MAP } from "./analysis-data";
 import {
 	KUI_YUE_GUIREN_MAP,
 	MINOR_STAR_PALACE_CONTENT,
@@ -61,7 +60,7 @@ import {
 	type StarSummaryGender,
 	type TopicKey,
 	type TopicMod,
-} from "./analysis-meta";
+} from "./analysis-data";
 
 // ─── 工具函数 ────────────────────────────────────────────────────────────────
 
@@ -176,7 +175,7 @@ function getPalaceSiHua(palace: Palace): { name: string; siHua: string }[] {
 
 /** 获取某颗星在某宫的四化modifier文字 */
 function getSiHuaNote(starName: string, siHua: string): string {
-	const profile = STAR_DB[starName];
+	const profile = STAR_CONTENT_MAP[starName];
 	if (!profile?.sihua) return "";
 	const map: Record<string, keyof SiHuaModifier> = { 禄: "lu", 权: "quan", 科: "ke", 忌: "ji" };
 	const key = map[siHua];
@@ -244,7 +243,7 @@ export function getTopicAnalysis(
 
 	const { palace: mainPalace, mainStars, isLoan } = result;
 	const primaryStar = mainStars[0];
-	const profile = primaryStar ? STAR_DB[primaryStar.name] : null;
+	const profile = primaryStar ? STAR_CONTENT_MAP[primaryStar.name] : null;
 
 	// 获取三方四正
 	const sanFang = getSanFangSiZheng(chart, palaceName);
@@ -433,7 +432,7 @@ export function getTopicAnalysis(
 
 		if (!isMain && mainStarsOfP.length > 0) {
 			mainStarsOfP.forEach(s => {
-				const starProfile = STAR_DB[s.name];
+				const starProfile = STAR_CONTENT_MAP[s.name];
 				const palaceContentKey = PALACE_TO_CONTENT_KEY[p.name];
 				const fullContent =
 					starProfile && palaceContentKey
@@ -906,7 +905,7 @@ export function getTopicAnalysis(
 
 // ─── 公开面 re-export ────────────────────────────────────────────────────────
 // 拆分前从本模块导出的 5 个名字，拆分后**逐名仍可从这里 import**。
-// `./analysis-meta` 是它们的实际归属地，此处只做转发，调用方一行不用改。
+// `./analysis-data` 是它们的实际归属地，此处只做转发，调用方一行不用改。
 // 这 5 个名字本文件的实现也要用，故上方已 import，这里再 export 一次。
 export { TOPIC_LABEL, TOPIC_PALACE_NAME };
 export type { AnalysisOptions, AnalysisView, TopicKey };

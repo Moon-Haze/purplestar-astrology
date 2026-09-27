@@ -29,12 +29,7 @@ import type { BirthInfo } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns } from "@/ziwei/patterns";
 import { getSiHuaByStem, getYearStemIndex, getLiuYueSiHua } from "@/ziwei/sihua";
-import {
-	getTopicAnalysis,
-	TOPIC_LABEL,
-	type TopicKey,
-	type AnalysisView,
-} from "@/ziwei/analysis";
+import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
 import { STEMS, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { HEMING_METHODOLOGY, STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU } from "@/ziwei/heming-knowledge";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
@@ -205,7 +200,10 @@ export function cmdSelftest(ctx: CliContext): string {
 		} catch (e) {
 			msg = (e as Error).message;
 		}
-		if (!msg) throw new Error("缺 month/day 时未报错 —— NaN 会静默污染 branch / dayOffset 整条结果链");
+		if (!msg)
+			throw new Error(
+				"缺 month/day 时未报错 —— NaN 会静默污染 branch / dayOffset 整条结果链"
+			);
 		return msg;
 	});
 	ok("真太阳时：均时差全年幅度落在 -15 ~ +17 分（实测 -14.6 ~ +16.5）", () => {
@@ -242,7 +240,11 @@ export function cmdSelftest(ctx: CliContext): string {
 		eq(calcTrueSolar(0, 30, 120).dayOffset, 0, "标准经线凌晨");
 		eq(calcTrueSolar(23, 30, 120).dayOffset, 0, "标准经线深夜");
 		// 北京 116.4°E 经度项仅 -14.4 分：只有 00:00–00:29 的窗口会回退，正午不会
-		eq(calcTrueSolar(12, 0, 116.4, { eot: true, year: 1990, month: 5, day: 15 }).dayOffset, 0, "北京正午");
+		eq(
+			calcTrueSolar(12, 0, 116.4, { eot: true, year: 1990, month: 5, day: 15 }).dayOffset,
+			0,
+			"北京正午"
+		);
 	});
 	ok("真太阳时：dayOffset 与 shiftDate 合起来指回出生时刻（自洽性）", () => {
 		// 不变量：校正后时刻 = 钟表时刻 + 校正量，跨天成日只改变日期标签，不改变连续时间轴上的位置
@@ -261,7 +263,7 @@ export function cmdSelftest(ctx: CliContext): string {
 			const back = t.dayOffset * 1440 + t.solarMinutes;
 			if (Math.abs(back - total) > 1.5)
 				throw new Error(
-					`${h}:${m} @${lng} → dayOffset=${t.dayOffset} solar=${t.solarMinutes}，还原得 ${back}，应为 ${total}`,
+					`${h}:${m} @${lng} → dayOffset=${t.dayOffset} solar=${t.solarMinutes}，还原得 ${back}，应为 ${total}`
 				);
 			// 日期确实跟着动了
 			const expectDay = t.dayOffset === 0 ? 15 : t.dayOffset > 0 ? 16 : 14;
@@ -375,10 +377,28 @@ export function cmdSelftest(ctx: CliContext): string {
 		eq(exactHit.exact, true, "原名 "); // 表里就是「石家庄」，无需提示
 		eq(suffixHit.exact, false, "带后缀 "); // 做了容错，需提示
 		const exact = buildBirthInfo(
-			parseArgs(["--date", "1990-05-15", "--branch", "0", "--city", "石家庄", "--gender", "male"])
+			parseArgs([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"0",
+				"--city",
+				"石家庄",
+				"--gender",
+				"male",
+			])
 		);
 		const fuzzy = buildBirthInfo(
-			parseArgs(["--date", "1990-05-15", "--branch", "0", "--city", "石家庄市", "--gender", "male"])
+			parseArgs([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"0",
+				"--city",
+				"石家庄市",
+				"--gender",
+				"male",
+			])
 		);
 		eq(exact.lngNote, "", "精确命中的 lngNote ");
 		if (!fuzzy.lngNote) throw new Error("容错命中应给出 lngNote");
@@ -592,6 +612,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		//    前者成了盲区 —— 而本断言**照旧变绿**。静默失效比变红危险得多：
 		//    往盲区文件里写一句未核实引文，没有任何东西会拦。
 		//    扫目录让「新增/拆分出的带引文模块」自动纳入覆盖，不再依赖有人记得改清单。
+		//    （同日稍后 analysis-content.ts 并入了 analysis-data.ts，扫描逻辑不受影响。）
 		const src = readdirSync(resolve(ctx.root, "ziwei"))
 			.filter(f => f.endsWith(".ts"))
 			.sort()
@@ -599,16 +620,20 @@ export function cmdSelftest(ctx: CliContext): string {
 			.join("\n");
 		// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
 		const banned = new Set(
-		 ann.entries
-			.filter(e => e.status === "suspect" || e.status === "fabricated")
-			.flatMap(e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1]))
+			ann.entries
+				.filter(e => e.status === "suspect" || e.status === "fabricated")
+				.flatMap(e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1]))
 		);
 		// 源码中所有「倪海夏/倪师…说/言/警示…：『引文』」的引文核心
 		const citeRe =
 			/倪(?:海夏|师)[^。\n]{0,10}(?:说|言|称|警示|警告|明言|强调|描述|提醒)[：:]?\s*[「"『]([^」"』]{4,})[」"』]/g;
-		const bad = [...src.matchAll(citeRe)].filter(m => banned.has(m[1])).map(m => m[1].slice(0, 40));
+		const bad = [...src.matchAll(citeRe)]
+			.filter(m => banned.has(m[1]))
+			.map(m => m[1].slice(0, 40));
 		if (bad.length)
-			throw new Error(`以下未核实引文仍冒充倪师原话（应改古诀云/紫微斗数有云/一说）：\n     ${bad.join("\n     ")}`);
+			throw new Error(
+				`以下未核实引文仍冒充倪师原话（应改古诀云/紫微斗数有云/一说）：\n     ${bad.join("\n     ")}`
+			);
 		return `核对 ${ann.entries.length} 条记录，suspect/fabricated 引文零强归属`;
 	});
 
