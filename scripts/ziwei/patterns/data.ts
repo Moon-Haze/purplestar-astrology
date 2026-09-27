@@ -2,20 +2,21 @@
  * 格局层的**数据**：常量、名字裁决表与判词表。
  *
  * @remarks
- * 本模块只放「有什么」，既不放形状也不放判定 —— 结构体与识别器入参在同层的
- * `patterns-types.ts`，51 个识别器与 `detectPatterns` 在 `patterns.ts`。
- * 三者的分工是形状 / **数据** / 判定，改哪一层就只需读哪个文件。
+ * 本模块只放「有什么」，既不放形状也不放判定 —— 结构体与识别器入参在同目录的
+ * `types.ts`，识别器按分组散在 `shang-ge.ts` / `zhong-ge.ts` / `zhu-li-ge.ts` / `e-ge.ts` /
+ * `ji-chu-ge.ts` / `shou-lian-ge.ts`，装配在 `index.ts`。
+ * 分工是形状 / **数据** / 判定，改哪一层就只需读哪个文件。
  *
  * 判词表（{@link PATTERN_VERDICTS}）住在本文末尾，表键口径见该分区上方的注释。
- * 判词里 `{星}` / `{宫}` 这类占位符，由 `patterns.ts` 的 `fillVerdict` 在调用点填。
+ * 判词里 `{星}` / `{宫}` 这类占位符，由 `helpers.ts` 的 `fillVerdict` 在调用点填。
  *
  * ⚠️ 本文件里的 `{@link}` 只指向**本文档内**的符号 —— 跨文件 TSDoc 解析不到，
- * 提到 `patterns.ts` 的函数（`hasShaInPalace` 等）时直呼其名，不加链接。
+ * 提到 `helpers.ts` 的函数（`hasShaInPalace` 等）时直呼其名，不加链接。
  *
  * @packageDocumentation
  */
 
-import type { GejuNameAlias, PatternVerdict } from "./patterns-types";
+import type { GejuNameAlias, PatternVerdict } from "./types";
 
 export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
 	// ────────── 古籍词频裁决（真异名，两个不同的词）──────────
@@ -179,7 +180,7 @@ export const CHANG_QU = ["文昌", "文曲"];
  * 格局层的**判词**：analyze 短判词 / topic 倪师口吻长判词 / 古籍出处。
  *
  * @remarks
- * 本分区只放「说什么」，不放「怎么判」—— 判定与名字都在同层的 `patterns.ts`。
+ * 本分区只放「说什么」，不放「怎么判」—— 判定在各 `<分组>-ge.ts`，名字与装配在 `index.ts`。
  *
  * ## 表键是什么
  * 表键是**判词条目名**，多数就等于格局名，识别器直接 `PATTERN_VERDICTS[name]` 取用。
@@ -188,7 +189,7 @@ export const CHANG_QU = ["文昌", "文曲"];
  * - **判词自身分叉**（坐命/照命、满格/不全格、男/女、守命/守身…）→ 按变体各写一条，
  *   键写成 `格局名·变体`；名字本身已含变体的（如 `禄存守命` / `禄存守身`）则键即名字。
  * - **判词只嵌一个盘上取到的名字**（星名、宫名、杂曜名…）→ 一族只写一条，
- *   用 `{星}` / `{宫}` / `{煞}` / `{会}` 占位，由 `patterns.ts` 的 `fillVerdict` 在调用点填。
+ *   用 `{星}` / `{宫}` / `{煞}` / `{会}` 占位，由 `helpers.ts` 的 `fillVerdict` 在调用点填。
  *   这不是「判词变体」：同一句话里换个星名而已，写成 N 条会复制 N 份同样的长句。
  *
  * ## 为什么 level / palaces / conditions 不在这里

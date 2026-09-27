@@ -94,10 +94,10 @@ export interface LunarInfo {
 export type SiHua = "禄" | "权" | "科" | "忌";
 
 /**
- * 一颗星曜在某宫的状态 —— 由 `algorithm.ts` 组装，是格局判定（`patterns.ts`）的输入。
+ * 一颗星曜在某宫的状态 —— 由 `algorithm.ts` 组装，是格局判定（`patterns/`）的输入。
  */
 export interface Star {
-	/** 星曜中文名（如「紫微」「擎羊」）。`algorithm.ts` 的吉煞名单与 `patterns.ts` 的格局表都按名索引 */
+	/** 星曜中文名（如「紫微」「擎羊」）。`algorithm.ts` 的吉煞名单与 `patterns/` 的格局表都按名索引 */
 	name: string;
 	/**
 	 * 星曜类型，四选一：

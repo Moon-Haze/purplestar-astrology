@@ -525,7 +525,7 @@ describe("排盘结构不变量", () => {
 
 	// ── 格局识别：两个「静默失效」点 ──
 	//
-	// patterns.ts 的 detectHuaLuRuCai / detectHuaQuanRuGuan 按**宫名**查找
+	// 格局层的 detectHuaLuRuCai / detectHuaQuanRuGuan（`patterns/ji-chu-ge.ts`）按**宫名**查找
 	// （原先写 `p.name === "财帛"`）。宫名口径改为项目本位后，若不跟着改，这类失效
 	// **不报错** —— 两个函数都带 `if (!cai) return` 守卫，格局只是从此永不触发，
 	// 输出里静悄悄地少两条判词。
@@ -629,7 +629,7 @@ describe("排盘结构不变量", () => {
 
 		// ── 格局识别：82 个格局名的独立预言机 ──
 		//
-		// patterns.ts（51 个 detect 函数）产出 **82 个**格局名，此前零基准。
+		// 格局层（`patterns/`，51 个 detect 函数）产出 **82 个**格局名，此前零基准。
 		// （2026-09-26 起「机月同梁三星会」并入「机月同梁」，故比原先少 1 名、少 1 个识别器；
 		//   2026-09-27 起 db-analysis 侧的 12 个格局判定也收敛进来，故比原先多 13 名、多 11 个识别器
 		//   —— 「文昌守命 / 文曲守命」由同一个识别器产出。）
@@ -775,7 +775,7 @@ describe("排盘结构不变量", () => {
 				紫府同宫: c => sharePalace(c, "紫微", "天府") && ziFuInMingOrQianYi(c),
 
 				// 名取古籍简称「廉相格」（全集·卷四「廉贞与天相同宫为『廉相格』」），
-				// 见 patterns.ts 的 GEJU_NAME_ALIASES。
+				// 见 patterns/data.ts 的 GEJU_NAME_ALIASES。
 				廉相格: c => sharePalace(c, "廉贞", "天相"),
 				武曲七杀: c => sharePalace(c, "武曲", "七杀"),
 				天同天梁格: c => sharePalace(c, "天同", "天梁"),
@@ -1008,7 +1008,7 @@ describe("排盘结构不变量", () => {
 // ── 层 3（续）：格局名的「同现象异名」裁决 ──
 //
 // 判定早已收敛到一处，但历史上 analyze 与 topic 各叫各的（实测星名集合 0/300
-// 不一致，纯命名差异）。2026-09-27 统一显示名，裁决结果记在 patterns.ts 的
+// 不一致，纯命名差异）。2026-09-27 统一显示名，裁决结果记在 patterns/data.ts 的
 // GEJU_NAME_ALIASES。
 //
 // 裁决依据分两种，**本组按 basis 分别设防**：

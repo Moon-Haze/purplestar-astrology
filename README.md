@@ -77,7 +77,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 
 | 内容                                         | 位置                                |
 | -------------------------------------------- | ----------------------------------- |
-| 排盘算法、格局库（含古籍出处与破格条件）     | `scripts/ziwei/patterns.ts`         |
+| 排盘算法、格局库（含古籍出处与破格条件）     | `scripts/ziwei/patterns/`         |
 | 四化体系、流年流月推法                       | `scripts/ziwei/sihua.ts`            |
 | 合盘方法论、十四主星在夫妻宫断语             | `scripts/ziwei/heming-knowledge.ts` |
 | 中国城市经纬度（真太阳时校正）               | `scripts/ziwei/cities.ts`           |

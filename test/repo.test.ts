@@ -243,8 +243,9 @@ describe("仓库自洽（引文守卫 / 登记一致性）", () => {
 // ── 三、解析钩子的候选序 ──
 //
 // 内核里出现**文件夹模块**（`ziwei/patterns/`、`classics/`）之后，`./patterns` 这类说明符
-// 就有两种合法落点：`patterns.ts` 与 `patterns/index.ts`。两条分支必须给出**同一条候选序**，
-// 否则会出现「类型绿、运行崩」——
+// 就有两种合法落点：`patterns.ts` 与 `patterns/index.ts` —— 同名文件与目录**并存时**才是
+// 真的二选一（把 `patterns.ts` 拆成 `patterns/` 的那个当口正是如此，故删除必须原子完成）。
+// 两条分支必须给出**同一条候选序**，否则会出现「类型绿、运行崩」——
 //
 //   - `moduleResolution: "bundler"` 会把 `./patterns` 解析到 `patterns/index.ts`，故 tsc 全绿；
 //   - 而运行时只有 `@/` 分支有 `/index.ts` 兜底，`./patterns` 直接 ERR_UNSUPPORTED_DIR_IMPORT。

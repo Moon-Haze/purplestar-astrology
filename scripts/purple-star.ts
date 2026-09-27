@@ -13,7 +13,7 @@
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
  *   scripts/ziwei/algorithm.ts        排盘主流程
- *   scripts/ziwei/patterns.ts         格局识别（含古籍出处与破格条件）
+ *   scripts/ziwei/patterns/           格局识别（含古籍出处与破格条件）
  *   scripts/ziwei/sihua.ts            四化（生年 / 流年 / 流月）
  *   scripts/ziwei/analysis.ts         分析数据库 v3（主题论断动态推算，topic 命令用）
  *   scripts/ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语

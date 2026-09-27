@@ -85,7 +85,7 @@ export function getLunarInfo(year: number, month: number, day: number): LunarInf
  * @returns `bright`（庙 / 旺）、`dim`（陷 / 不），其余一切（含缺省）归 `normal`
  *
  * @remarks
- * 只归三档，是因为下游只问「够不够亮」这一个问题（`patterns.ts` 的 `isBright` / `isDim`）；
+ * 只归三档，是因为下游只问「够不够亮」这一个问题（`patterns/helpers.ts` 的 `isBright` / `isDim`）；
  * 「得 / 利 / 平」的细分差异在倪师体系里不进格局条件。
  *
  * ⚠️ 缺省值走 `normal` 而非 `dim` —— 拿不到亮度时不做负面假设。
@@ -105,7 +105,7 @@ function mapBrightness(b?: string): "bright" | "normal" | "dim" {
  * 与 {@link LUCKY_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**：名字在表内
  * 就先定类型，不再看 iztro 的 `type` 字段（判定顺序见该函数）。
  *
- * ⚠️ 改这张表会改变 `Star.type`，进而改变 `patterns.ts` 的格局命中 ——
+ * ⚠️ 改这张表会改变 `Star.type`，进而改变 `patterns/` 的格局命中 ——
  * `npm test` 的语料回归盯着这条链路，别顺手加星。
  */
 const SHA_STARS = new Set([

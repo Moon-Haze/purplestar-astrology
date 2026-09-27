@@ -1,18 +1,19 @@
 /**
- * 格局层的**类型**：结构体与识别器入参。
+ * 格局层的**类型**：结构体、识别器入参、识别器签名。
  *
  * @remarks
- * 本模块只放「是什么形状」，既不放数据也不放判定 —— 常量、名字裁决表与判词表在同层的
- * `patterns-data.ts`，51 个识别器与 `detectPatterns` 在 `patterns.ts`。
- * 三者的分工是**形状 / 数据 / 判定**，改哪一层就只需读哪个文件。
+ * 本模块只放「是什么形状」，既不放数据也不放判定 —— 常量、名字裁决表与判词表在同目录的
+ * `data.ts`，识别器按分组散在 `shang-ge.ts` / `zhong-ge.ts` / `zhu-li-ge.ts` / `e-ge.ts` /
+ * `ji-chu-ge.ts` / `shou-lian-ge.ts`，装配在 `index.ts`。
+ * 分工是**形状 / 数据 / 判定**，改哪一层就只需读哪个文件。
  *
  * 本文件里的 `{@link}` 一律只指向**本文档内**的符号 —— 跨文件 TSDoc 解析不到，
- * 指向另两个模块的符号时直呼其名，不加链接。
+ * 指向其他模块的符号时直呼其名，不加链接。
  *
  * @packageDocumentation
  */
 
-import type { ZiweiChart, Palace } from "./types";
+import type { ZiweiChart, Palace } from "../types";
 
 // ────────────────── 类型 ──────────────────
 /**
@@ -63,7 +64,7 @@ export interface Pattern {
  *
  * @remarks
  * 各识别器**按需解构** —— `{ chart }` / `{ chart, ming }` / `{ ming }`。
- * 这样既让注册表能是一张同签名函数数组（见 `patterns.ts` 的 `DETECTORS`），又保住
+ * 这样既让注册表能是一张同签名函数数组（见 {@link Detector}），又保住
  * 「这个识别器依不依赖命宫」在签名处一眼可见。
  *
  * ⚠️ `ming` 由 `detectPatterns` 保证非空：无命宫时它已提前 `return`，
@@ -77,10 +78,23 @@ export interface DetectContext {
 }
 
 /**
+ * 识别器签名 —— 一个格局一支判定函数。
+ *
+ * @remarks
+ * 命中返回 `[one]`（多数识别器只可能产出一条），未命中返回 `[]`。
+ * **返回数组而非 `Pattern | null`** 是为了让少数筛两个宫位的识别器
+ * （如化忌入命 / 化忌冲命）能一次报两条，而不必把「我知道最多两条」写进类型。
+ *
+ * 各分组文件末尾的 `SHANG_GE` / `ZHONG_GE` / … 都是本类型的数组，
+ * `index.ts` 按序拼接成总表 —— **拼接顺序即 `detectPatterns` 的输出顺序**。
+ */
+export type Detector = (ctx: DetectContext) => Pattern[];
+
+/**
  * 格局名的「同现象异名」裁决表 —— 同一现象只留一个**显示名**。
  *
  * @remarks
- * 判定早已收敛到一处（`patterns.ts` 的 `detectPatterns`），但历史上两侧各叫各的：
+ * 判定早已收敛到一处（`index.ts` 的 `detectPatterns`），但历史上两侧各叫各的：
  * `analyze` 用 A 名、`topic` 的 `detectGeJu` 用 B 名。2026-09-27 起做统一，两侧共用显示名；
  * 落选的名字留在本表备查，不再用于显示。
  *
@@ -121,8 +135,8 @@ export interface GejuNameAlias {
  *
  * @remarks
  * `description` / `topicDescription` 里可含 `{星}` / `{宫}` / `{煞}` / `{会}` 占位符，
- * 由 `patterns.ts` 的 `fillVerdict` 在调用点填。判词表的键口径、以及「为什么
- * level / palaces / conditions 不在这里」，见 `patterns-data.ts` 的「判词」分区注释。
+ * 由 `helpers.ts` 的 `fillVerdict` 在调用点填。判词表的键口径、以及「为什么
+ * level / palaces / conditions 不在这里」，见 `data.ts` 的「判词」分区注释。
  */
 export interface PatternVerdict {
 	/** analyze 侧短判词，一到两句 + 等级由 `level` 单独承载 */

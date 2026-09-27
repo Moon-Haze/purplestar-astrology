@@ -32,7 +32,7 @@ import type { ZiweiChart, Palace, Star } from "./types";
 import { BRANCHES, STEMS } from "./constants";
 // 对宫与三方四正的偏移：全仓单点在 ./palace-relations，本文件原先自写了 6 处
 import { duiGongBranch, sanFangBranches } from "./palace-relations";
-// 格局的**命中判定**统一由 patterns.ts 负责（本文件只写判词），故这里引它的产出。
+// 格局的**命中判定**统一由 patterns/ 负责（本文件只写判词），故这里引它的产出。
 // 2026-09-26 先对齐了 4 个口径分歧的格局（紫府同宫 / 火贪格 / 铃贪格 / 机月同梁）；
 // 2026-09-27 把剩下 ~30 段手写判定**全部**收敛过去（含 12 个原先只在本文件存在的格局，
 // 判定搬进 patterns.ts 的「收敛自 db-analysis 的格局」一组）。至此 `detectGeJu` 不含任何判定。
@@ -201,7 +201,7 @@ function getMinorStarNote(starName: string, palaceName: string): string {
 
 /** 识别命盘中的重要格局 */
 function detectGeJu(chart: ZiweiChart): { name: string; description: string }[] {
-	// 格局的**命中事实层 + 两套判词**如今都归 `patterns.ts`：
+	// 格局的**命中事实层 + 两套判词**如今都归 `patterns/`：
 	//   - 判定（唯一一处）：`detectPatterns`，82 个格局各有独立预言机盯着
 	//   - analyze 侧短判词 + 等级：`Pattern.description` / `Pattern.level`
 	//   - topic 侧倪师口吻长判词：`Pattern.topicDescription`
@@ -209,7 +209,7 @@ function detectGeJu(chart: ZiweiChart): { name: string; description: string }[] 
 	// 本函数只是**投影**：把填了长判词的命中挑出来，供 `overview` / `personality` 展示。
 	// 2026-09-27 之前，25 段长判词散在本文件里、按名字二次查表（`hasAny` / `bySuffix` /
 	// `starOf` 三个 helper 就是为此而生）；现已搬进各识别器。**新增格局只要在
-	// patterns.ts 的识别器里填 `topicDescription`，这边自动就能展示**，不会再有
+	// patterns/ 的识别器里填 `topicDescription`，这边自动就能展示**，不会再有
 	// 「判定加了、判词忘了补、topic 静默不显示」的漏。
 	//
 	// 展示顺序**按 level 降序**（同级保持识别器注册序）—— 不再维护一张 25 元素的手写

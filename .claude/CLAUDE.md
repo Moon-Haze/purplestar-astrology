@@ -55,10 +55,11 @@ npm run typecheck
     ├── cli/commands.ts           七个命令实现 + COMMANDS 表
     ├── cli/selftest.ts           回归断言（项数由末行自报）
     ├── ziwei/algorithm.ts        iztro 排盘主流程
-    ├── ziwei/patterns.ts         格局识别器与格局名（含古籍出处与破格条件）
-    ├── ziwei/patterns-types.ts   格局层的类型：结构体 / 识别器入参
-    ├── ziwei/patterns-data.ts    格局层的数据：常量 / 名字裁决表
-    │                             + 两套判词：description（analyze 短判词）/ topicDescription（topic 倪师口吻）
+    ├── ziwei/patterns/           格局层（文件夹模块）：装配 + 形状 / 数据 / 底座 / 各分组识别器
+    │                             index.ts 装配 detectPatterns；types.ts 形状；data.ts 常量与
+    │                             名字裁决表 + 两套判词（description / topicDescription）；
+    │                             helpers.ts 宫位星曜查询；<分组>-ge.ts 各分组识别器；
+    │                             ming-gong-summary.ts 命宫摘要（与判定零耦合）
     ├── ziwei/sihua.ts            四化（生年 / 流年 / 流月）
     ├── ziwei/analysis.ts         分析数据库 v3 的推算（getTopicAnalysis，topic 命令用）
     │                             格局部分只是薄壳：从 detectPatterns 挑出有 topicDescription 的命中
