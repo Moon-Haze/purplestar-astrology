@@ -209,8 +209,8 @@ export function findLongitude(cityName: string): LongitudeHit | null {
 /**
  * 从参数构造 BirthInfo。
  *
- * @param args - CLI 参数表；heming 的甲/乙两方各传一次本函数
- * @param p - 参数前缀；heming 传 `"a-"` / `"b-"`，其余命令传空串（默认）
+ * @param args - CLI 参数表；synastry 的甲/乙两方各传一次本函数
+ * @param p - 参数前缀；synastry 传 `"a-"` / `"b-"`，其余命令传空串（默认）
  * @returns 排盘用的 `info` 加上供渲染提示的说明字段，见 {@link BirthInfoResult}
  * @throws 日期缺失 / 格式非法 / 农历换算失败、性别缺失或非法、出生地未收录、
  *   时辰缺失或非法，以及 `--lunar` 与 `--date` 同用、`--late-zi` 未配合 `--time`

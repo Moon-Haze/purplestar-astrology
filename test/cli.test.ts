@@ -10,6 +10,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { promisify } from "node:util";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,8 +50,8 @@ type Skill = keyof typeof CLI;
 interface AnalyzeJson {
 	chart: ZiweiChart;
 }
-/** heming --json 里一方（a / b）的输出。 */
-interface HemingSide {
+/** synastry --json 里一方（a / b）的输出。 */
+interface synastrySide {
 	chart: ZiweiChart;
 	fuQiGong: string[];
 	fuDeGong: string[];
@@ -71,14 +72,14 @@ interface DynamicSihua {
 	transforms: Record<string, string>;
 	located: LocatedSihuaItem[];
 }
-/** heming --json 的输出。 */
-interface HemingJson {
-	a: HemingSide;
-	b: HemingSide;
+/** synastry --json 的输出。 */
+interface synastryJson {
+	a: synastrySide;
+	b: synastrySide;
 }
 
 /** 独立预言机组里一方的出生信息（合盘样本，只取 CLI `--a-*` / `--b-*` 需要的字段）。 */
-interface HemingCase {
+interface synastryCase {
 	date: string;
 	time: string;
 	gender: "male" | "female";
@@ -101,7 +102,7 @@ let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
  * 进程内执行子命令：直接调 COMMANDS[sub](parseArgs(args, sub), ctx)，与 purple-star.ts main() 同路径。
  * parseArgs / buildBirthInfo / 业务逻辑全部仍被测，只省掉「每个用例起一个 node 子进程」的冷启动税。
  *
- * ⚠️ `sub` 要传给 parseArgs —— 旗标面是按命令校验的（如 a- / b- 前缀只有 heming 认）。
+ * ⚠️ `sub` 要传给 parseArgs —— 旗标面是按命令校验的（如 a- / b- 前缀只有 synastry 认）。
  * 漏传就等于绕开校验，本文件里那些「未知旗标必须报错」的用例会静默变成空跑。
  */
 async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
@@ -170,10 +171,11 @@ const { getSiHuaByStem } = await loadSihua();
  * 合盘用的那一对出生信息。
  *
  * @remarks
- * 提到文件级是因为它被两组共用：「heming 合盘」与「heming-guide 合盘方法论」。
- * 后者那条「两段正文在前者、不在后者」的断言必须真的跑一次 `heming`，用的就是这一对。
+ * 提到文件级是因为它被两组共用：「synastry 合盘」（宫名查找）与「合盘方法论参考文档」。
+ * 后者那条「同一份正文在 md 里、不在 synastry 输出里」的断言必须真的跑一次 `synastry`，
+ * 用的就是这一对。
  */
-const HEMING_PAIR = [
+const synastry_PAIR = [
 	"--a-date", "1990-05-15", "--a-time", "09:30", "--a-gender", "male",
 	"--b-date", "1992-08-20", "--b-time", "14:00", "--b-gender", "female",
 ];
@@ -383,9 +385,9 @@ describe("CLI 端到端", () => {
 
 	// ── 宫名口径在 CLI 层的行为 ──
 	//
-	// 这两组是本仓**唯一**覆盖 `--focus` 与 `heming` 的断言（此前零覆盖），
+	// 这两组是本仓**唯一**覆盖 `--focus` 与 `synastry` 的断言（此前零覆盖），
 	// 而它们恰是宫名从 iztro 口径切到项目口径时最容易静默失效的两个点：
-	// `--focus` 靠宫名字符串查找，`heming` 靠宫名字符串取宫后立刻读 `.branch`
+	// `--focus` 靠宫名字符串查找，`synastry` 靠宫名字符串取宫后立刻读 `.branch`
 	// （旧名会返回 undefined → TypeError，且 `--json` 分支更早 return，会**静默输出空数组**）。
 	describe("--focus 的宫名写法", () => {
 		const BIRTH = ["--date", "1990-05-15", "--time", "09:30", "--gender", "male"];
@@ -432,9 +434,9 @@ describe("CLI 端到端", () => {
 		});
 	});
 
-	describe("heming 合盘", () => {
+	describe("synastry 合盘", () => {
 		it("--json 的夫妻宫/福德宫派生字段与 chart 自洽", async () => {
-			const o = JSON.parse(await cliCmd("heming", [...HEMING_PAIR, "--json"], "synastry")) as HemingJson;
+			const o = JSON.parse(await cliCmd("synastry", [...synastry_PAIR, "--json"], "synastry")) as synastryJson;
 			for (const side of ["a", "b"] as const) {
 				const chart = o[side].chart;
 				for (const [field, palaceName] of [
@@ -455,42 +457,36 @@ describe("CLI 端到端", () => {
 		});
 
 		it("文本路径同样跑通（宫名查找失败在此路径表现为崩溃）", async () => {
-			const text = await cliCmd("heming", HEMING_PAIR, "synastry");
+			const text = await cliCmd("synastry", synastry_PAIR, "synastry");
 			assert.match(text, /【合盘/);
 			assert.match(text, /夫妻宫/);
 			assert.match(text, /福德宫/);
 		});
 
-		// ── 绊线：恒定静态文本不得回到 heming 的输出里 ──
+		// ── 绊线：恒定静态文本不得回到 synastry 的输出里 ──
 		//
 		// `【评分标准】` 与【完整方法论】两段（170 行，实测占本命令输出 78%）与「这一对是谁」
-		// 无关，排谁的盘都是同一份，已拆到 `heming-guide`。今天全仓没有别的断言盯着这两段文本
-		// —— 把 170 行塞回 cmdHeming 除了这条，不会有任何东西变红。
+		// 无关，排谁的盘都是同一份，2026-09-27 起住在 `references/synastry-guide.md`。这两段
+		// 回到 `synastry` 里时，除了这条不会有任何东西变红（md 那边有它自己的守卫，见下面那组）。
 		//
 		// ⚠️ 断言的是**块标题字面量**而非「方法论」三个字：末尾那行指针本身就要说「方法论」，
 		// 盯前者才能既拦住重印、又允许指针存在。
-		it("不含已拆出的两段静态文本，且末尾指针指向真实存在的命令", async () => {
-			const text = await cliCmd("heming", HEMING_PAIR, "synastry");
-			assert.ok(!text.includes("【评分标准】"), "评分标准被重新塞回了 heming 输出");
-			assert.ok(!text.includes("【完整方法论】"), "完整方法论被重新塞回了 heming 输出");
+		it("不含已拆出的两段静态文本，且末尾指针指向真实存在的参考文档", async () => {
+			const text = await cliCmd("synastry", synastry_PAIR, "synastry");
+			assert.ok(!text.includes("【评分标准】"), "评分标准被重新塞回了 synastry 输出");
+			assert.ok(!text.includes("【完整方法论】"), "完整方法论被重新塞回了 synastry 输出");
 
 			// 指针若是最后一行，就没人能在它后面又追加内容而不被发现。
 			const lines = text.split("\n").filter(l => l.trim());
 			const pointer = lines[lines.length - 1];
 
-			const m = pointer.match(/见\s*`([a-z][a-z0-9-]*)`/);
-			assert.ok(m, `末行不是指向 heming-guide 的指针：${pointer}`);
+			// 指针里要出现一条**相对 skill 根**的参考文档路径（`references/*.md`）。
+			const m = pointer.match(/references\/[a-z0-9-]+\.md/);
+			assert.ok(m, `末行不是指向 references/*.md 的指针：${pointer}`);
 
-			// 命令改名时红在这里，而不是红在用户面前的「未知命令」。
-			//
-			// ⚠️ 查的是**合盘 skill 自己的** COMMANDS 表，不是源的：上面那次 cliCmd 走的是
-			//    synastry 的 CLI 子进程（`skill !== "astrology"` 强制子进程），指针要指向的是
-			//    **分发它的那张表**。2026-09-27 拆 skill 前两张表是同一张，故这里曾写 `@/cli/commands`
-			//    —— 搬迁后源表已无 heming-guide，照旧写会让这条断言在「指针完全正确」时变红。
-			const { COMMANDS } = await loadFromSkill<
-				typeof import("../skills/purplestar-synastry/scripts/cli/commands")
-			>("purplestar-synastry", "cli/commands");
-			assert.ok(COMMANDS[m[1]], `指针指向的命令「${m[1]}」不在合盘 skill 的 COMMANDS 表里`);
+			// 文件改名或删掉时红在这里，而不是红在 Claude 打开一个不存在的文件时。
+			const mdPath = resolve(SKILL_ROOT, "skills/purplestar-synastry", m[0]);
+			assert.ok(existsSync(mdPath), `指针指向的参考文档不存在：${m[0]}`);
 		});
 	});
 
@@ -502,23 +498,23 @@ describe("CLI 端到端", () => {
 	//
 	// 独立性来自两条分岔的路径：
 	//   1. **期望值**一律由本进程用 `generateChart` 独立排盘、再按安星法恒等式复算，
-	//      或取「交换 `--a-*` / `--b-*` 后的另一次运行」—— 都不读 `cmdHeming` 的中间量；
+	//      或取「交换 `--a-*` / `--b-*` 后的另一次运行」—— 都不读 `cmdsynastry` 的中间量；
 	//   2. **被测值**只取 CLI 子进程的文本 / JSON 输出，从不反过来拿它算期望值。
-	describe("heming 合盘：独立预言机", () => {
+	describe("synastry 合盘：独立预言机", () => {
 		// 刻意与上一组用**不同**的一对出生信息，两组合起来覆盖更多盘。
 		// 这一对是挑过的：甲乙**都**有生年四化入夫妻宫，且乙方夫妻宫主星与甲方命宫主星相交
 		// （两向交集若都为空，「交集列表为空」与「方向写反」都会通过，断言就空转了）。
-		const A: HemingCase = { date: "1980-02-03", time: "18:30", gender: "male" };
-		const B: HemingCase = { date: "1992-08-20", time: "14:00", gender: "female" };
+		const A: synastryCase = { date: "1980-02-03", time: "18:30", gender: "male" };
+		const B: synastryCase = { date: "1992-08-20", time: "14:00", gender: "female" };
 		// 第二对：专为「天作之合」的**方向**而挑。要求 `甲夫 ∩ 乙命` 非空、而
 		// `甲夫 ∩ 甲命` 为空 —— 否则交叉判定写反成「甲夫 ∩ 甲命」时结论不变，注入测试
 		// 验证过：在原本那一对上，方向写反**不会**让任何断言变红。
-		const CROSS_A: HemingCase = { date: "1975-01-04", time: "00:30", gender: "male" };
-		const CROSS_B: HemingCase = { date: "1976-09-13", time: "12:30", gender: "female" };
+		const CROSS_A: synastryCase = { date: "1975-01-04", time: "00:30", gender: "male" };
+		const CROSS_B: synastryCase = { date: "1976-09-13", time: "12:30", gender: "female" };
 		// 第三对：甲方夫妻宫**空宫**、须借对宫主星论 —— 那是合盘断语的常见路径，单独覆盖。
-		const EMPTY_A: HemingCase = { date: "1985-01-10", time: "06:30", gender: "male" };
+		const EMPTY_A: synastryCase = { date: "1985-01-10", time: "06:30", gender: "male" };
 
-		const argsOf = (a: HemingCase, b: HemingCase): string[] => [
+		const argsOf = (a: synastryCase, b: synastryCase): string[] => [
 			"--a-date", a.date, "--a-time", a.time, "--a-lng", "120", "--a-gender", a.gender,
 			"--b-date", b.date, "--b-time", b.time, "--b-lng", "120", "--b-gender", b.gender,
 		];
@@ -527,7 +523,7 @@ describe("CLI 端到端", () => {
 		const toHour = (t: string): number => Math.floor((Number(String(t).split(":")[0]) + 1) / 2) % 12;
 
 		/** 用内核按同一出生信息独立排一张盘 —— 本 describe 里所有期望值的唯一来源。 */
-		const chartOf = (cfg: HemingCase): ZiweiChart => {
+		const chartOf = (cfg: synastryCase): ZiweiChart => {
 			const [year, month, day] = cfg.date.split("-").map(Number);
 			return generateChart({ year, month, day, hour: toHour(cfg.time), gender: cfg.gender, longitude: 120 });
 		};
@@ -548,11 +544,11 @@ describe("CLI 端到端", () => {
 			let v: T | undefined;
 			return () => (v ??= fn());
 		};
-		const pairJson = memo(async () => JSON.parse(await cliCmd("heming", [...argsOf(A, B), "--json"], "synastry")) as HemingJson);
-		const swapJson = memo(async () => JSON.parse(await cliCmd("heming", [...argsOf(B, A), "--json"], "synastry")) as HemingJson);
-		const pairText = memo(() => cliCmd("heming", argsOf(A, B), "synastry"));
-		const crossText = memo(() => cliCmd("heming", argsOf(CROSS_A, CROSS_B), "synastry"));
-		const emptyText = memo(() => cliCmd("heming", argsOf(EMPTY_A, B), "synastry"));
+		const pairJson = memo(async () => JSON.parse(await cliCmd("synastry", [...argsOf(A, B), "--json"], "synastry")) as synastryJson);
+		const swapJson = memo(async () => JSON.parse(await cliCmd("synastry", [...argsOf(B, A), "--json"], "synastry")) as synastryJson);
+		const pairText = memo(() => cliCmd("synastry", argsOf(A, B), "synastry"));
+		const crossText = memo(() => cliCmd("synastry", argsOf(CROSS_A, CROSS_B), "synastry"));
+		const emptyText = memo(() => cliCmd("synastry", argsOf(EMPTY_A, B), "synastry"));
 
 		it("交换 --a-* / --b-* 后，两方命盘精确互换", async () => {
 			const d = await pairJson();
@@ -665,7 +661,7 @@ describe("CLI 端到端", () => {
 
 		it("晚子时提醒只落在命中的一方，且参数前缀正确", async () => {
 			// 甲方钟表 23:30、东经 120°（校正量为 0），校正后仍是晚子时；乙方正常。
-			const t = await cliCmd("heming", argsOf({ ...A, time: "23:30" }, B), "synastry");
+			const t = await cliCmd("synastry", argsOf({ ...A, time: "23:30" }, B), "synastry");
 			assert.ok(t.includes("⚠️ 甲方出生时间落在 23:00–23:59"), "应提示甲方落在晚子时");
 			assert.ok(t.includes("--a-late-zi"), "应指明改用 --a-late-zi 复核");
 			assert.ok(!t.includes("⚠️ 乙方出生时间"), "乙方不在晚子时，不应被提示");
@@ -686,64 +682,58 @@ describe("CLI 端到端", () => {
 		});
 	});
 
-	// ── heming-guide：从 heming 拆出的恒定静态文本 ──
+	// ── 合盘方法论参考文档：从 synastry 拆出的恒定静态文本 ──
 	//
-	// 这一组**刻意不造独立预言机**：载荷是两份常量，不存在第二条独立路径，硬造只会生产一份
+	// 这两段原在 `synastry` 文本输出末尾无条件重印（实测占其输出 78%），2026-09-27 拆成
+	// `synastry-guide` 命令，同日改为 `references/synastry-guide.md` —— 静态参考按需读文件，
+	// 不必 spawnSync 起一个 node 进程走完引导层才拿到一段恒定的文本。
+	//
+	// 这一组**刻意不造独立预言机**：载荷就是那份 md，不存在第二条独立路径，硬造只会生产一份
 	// 需要同步的副本。它守的是「搬走了、搬全了、搬到位了」这三件事。
-	describe("heming-guide 合盘方法论", () => {
-		it("两段正文都在：评分标准按源序五档 + 方法论全文", async () => {
-			const { HEMING_METHODOLOGY, HEMING_SCORE_CRITERIA } = await loadFromSkill<
-				typeof import("../skills/purplestar-synastry/scripts/ziwei/heming-knowledge")
-			>("purplestar-synastry", "ziwei/heming-knowledge");
-			const text = await cliCmd("heming-guide", [], "synastry");
+	//
+	// ⚠️ 该 md **不被任何运行时路径读取** —— 读它的只有本组用例与 synastry 的 `selftest`。
+	describe("合盘方法论参考文档", () => {
+		const GUIDE = resolve(SKILL_ROOT, "skills/purplestar-synastry/references/synastry-guide.md");
 
-			assert.match(text, /【评分标准】/);
-			assert.match(text, /【完整方法论】/);
+		it("评分标准五档按源序齐全，方法论正文完整", () => {
+			const md = readFileSync(GUIDE, "utf8");
 
-			// 先守档位表非空，否则下面的循环会空转通过。
-			const tiers = Object.entries(HEMING_SCORE_CRITERIA);
-			assert.ok(tiers.length > 0, "HEMING_SCORE_CRITERIA 为空");
-			let cursor = -1;
-			for (const [tier, desc] of tiers) {
-				const at = text.indexOf(`${tier}：${desc}`, cursor + 1);
-				assert.ok(at > cursor, `档位「${tier}」缺失，或未按源序出现`);
-				cursor = at;
-			}
+			// ⚠️ 不复刻正文：这份 md 就是正文的唯一副本，把五档判词再抄进测试等于生产第二份
+			// 需要手工同步的副本。故这里守**结构**（档位、源序、非空、章节数）与**内容锚点**，
+			// 改判词不会红，删档位 / 截断正文才会。
+			const tiers = ["五星", "四星", "三星", "二星", "一星"];
+			const rows = [...md.matchAll(/^\|\s*(五星|四星|三星|二星|一星)\s*\|\s*(.+?)\s*\|/gm)];
+			assert.deepEqual(
+				rows.map(r => r[1]),
+				tiers,
+				"评分标准五档缺失，或未按源序（五星 → 一星）排列 —— 顺序本身是这套标准的一部分"
+			);
+			for (const r of rows) assert.ok(r[2].length > 0, `「${r[1]}」的判据是空的`);
 
-			// includes("") 恒真 —— 先守原文确实有份量，否则这条断言什么都没测。
-			assert.ok(HEMING_METHODOLOGY.length > 200, "HEMING_METHODOLOGY 过短，包含性断言会空转");
-			assert.ok(text.includes(HEMING_METHODOLOGY), "方法论全文未原样输出（被 trim 或改写？）");
+			// 下面两个锚点同时被 synastry 的 selftest 用着（同一对字面量，各守各的扫描根）。
+			for (const anchor of [
+				"## 合盘分析核心框架（倪海夏体系 + 《紫微斗数全书》综合）",
+				"双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉",
+			])
+				assert.ok(md.includes(anchor), `正文缺少锚点：${anchor}`);
+
+			// 章节数用下限而非等号：日后补一节不该让守卫变红，被截断才该。
+			const sections = [...md.matchAll(/^### [一二三四五六七八九十]+、/gm)].length;
+			assert.ok(sections >= 10, `方法论章节只有 ${sections} 节，疑似被截断`);
 		});
 
-		it("--json 的键名与 heming --json 的同名字段一致", async () => {
-			const guide = JSON.parse(await cliCmd("heming-guide", ["--json"], "synastry")) as Record<string, unknown>;
-			assert.deepEqual(Object.keys(guide).sort(), ["methodology", "scoreCriteria"]);
-
-			const heming = JSON.parse(await cliCmd("heming", [...HEMING_PAIR, "--json"], "synastry")) as Record<
-				string,
-				unknown
-			>;
-			for (const k of ["methodology", "scoreCriteria"])
-				assert.deepEqual(guide[k], heming[k], `${k} 在两条命令下不一致`);
-		});
-
-		// 这条才是「搬走了」与「删掉了」的分界：单测「heming-guide 有」或单测「heming 没有」，
-		// 两者各自都能靠「把常量删掉」通过。同一次比对两边的正文，才排得掉这种退化解。
-		it("同一份正文：在 heming-guide 里，且不在 heming 里", async () => {
-			const { HEMING_METHODOLOGY, HEMING_SCORE_CRITERIA } = await loadFromSkill<
-				typeof import("../skills/purplestar-synastry/scripts/ziwei/heming-knowledge")
-			>("purplestar-synastry", "ziwei/heming-knowledge");
-			assert.ok(HEMING_METHODOLOGY.length > 200, "HEMING_METHODOLOGY 过短");
-
-			const guide = await cliCmd("heming-guide", [], "synastry");
-			const heming = await cliCmd("heming", HEMING_PAIR, "synastry");
+		// 这条才是「搬走了」与「删掉了」的分界：单测「md 里有」或单测「synastry 没有」，
+		// 两者各自都能靠「把正文删光」通过。同一次比对两边的正文，才排得掉这种退化解。
+		it("同一份正文：在参考文档里，且不在 synastry 输出里", async () => {
+			const md = readFileSync(GUIDE, "utf8");
+			const synastry = await cliCmd("synastry", synastry_PAIR, "synastry");
 
 			for (const [label, needle] of [
-				["方法论全文", HEMING_METHODOLOGY],
-				["评分标准首档", HEMING_SCORE_CRITERIA.五星],
+				["方法论首章标题", "## 合盘分析核心框架（倪海夏体系 + 《紫微斗数全书》综合）"],
+				["评分标准首档判词", "双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉"],
 			] as const) {
-				assert.ok(guide.includes(needle), `${label}不在 heming-guide 输出里`);
-				assert.ok(!heming.includes(needle), `${label}仍留在 heming 输出里`);
+				assert.ok(md.includes(needle), `${label}不在 references/synastry-guide.md 里`);
+				assert.ok(!synastry.includes(needle), `${label}仍留在 synastry 输出里`);
 			}
 		});
 	});
@@ -775,7 +765,7 @@ describe("CLI 端到端", () => {
 	});
 
 	describe("生年四化的年干口径", () => {
-		// iztro 落在 Star.siHua 上的 mutagen 按农历年干标注；analyze / heming 的
+		// iztro 落在 Star.siHua 上的 mutagen 按农历年干标注；analyze / synastry 的
 		// 【生年四化】区块若改按公历年取模（getYearStemIndex），1-2 月出生（农历仍在
 		// 上一年）者两口径分叉：同屏出现「武曲化禄」（宫详表，农历口径）与「化权武曲」
 		// （区块，公历口径）互相矛盾。区块必须与盘面同源 —— 即 chart.lunarInfo.yearStem。

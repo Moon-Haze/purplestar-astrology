@@ -18,17 +18,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### skill 的布局
 
-| skill                  | 定位                   | 内核                                                 |
-| ---------------------- | ---------------------- | ---------------------------------------------------- |
-| `purplestar-astrology` | 排盘与命盘解读，**源** | CLI + `ziwei/`（含排盘引擎、格局库、分析数据库）     |
-| `purplestar-synastry`  | 合盘与合婚，派生       | 排盘底座（副本）+ `heming-knowledge.ts`（**自有**）  |
-| `purplestar-classics`  | 古籍原文检索，派生     | `classics/`（**自有**），**零排盘引擎**              |
+| skill                  | 定位                   | 内核                                                  |
+| ---------------------- | ---------------------- | ----------------------------------------------------- |
+| `purplestar-astrology` | 排盘与命盘解读，**源** | CLI + `ziwei/`（含排盘引擎、格局库、分析数据库）      |
+| `purplestar-synastry`  | 合盘与合婚，派生       | 排盘底座（副本）+ `synastry-knowledge.ts`（**自有**） |
+| `purplestar-classics`  | 古籍原文检索，派生     | `classics/`（**自有**），**零排盘引擎**               |
 
 **源与派生**：`purplestar-astrology` 是排盘内核的唯一来源，派生 skill 的内核**大部分**是它的
 **逐字节副本**，切片由 `tools/skills.ts` 声明、`npm run sync:skills` 执行、`test/repo.test.ts` 的层 6 守卫。
 **改排盘内核一律改源。**
 
-**但有两份内核是「自有」的，不属于上面这条规则**（2026-09-27 起）：`ziwei/heming-knowledge.ts`
+**但有两份内核是「自有」的，不属于上面这条规则**（2026-09-27 起）：`ziwei/synastry-knowledge.ts`
 只住在 `purplestar-synastry` 里，`classics/` 只住在 `purplestar-classics` 里 —— 源里**没有**这两个文件，
 连「副本」这层关系都不存在。**改它们就在各自 skill 里改，没有同步这回事。**
 边界与流程见下面的「副本边界与同步流程」。
@@ -55,7 +55,7 @@ node skills/purplestar-astrology/scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
 # 合盘 —— 只有 purplestar-synastry 有这条命令，源的 CLI 里没有（2026-09-27 拆 skill 时移走）
-node skills/purplestar-synastry/scripts/purple-star.ts heming --a-date <...> --b-date <...>
+node skills/purplestar-synastry/scripts/purple-star.ts synastry --a-date <...> --b-date <...>
 # 古籍原文检索 —— 同理，只有 purplestar-classics 有
 node skills/purplestar-classics/scripts/purple-star.ts classics --search 机月同梁
 node skills/purplestar-astrology/scripts/purple-star.ts help   # 本技能的命令与参数
@@ -120,10 +120,14 @@ npm run sync:skills -- --check
     └── ziwei/types.ts            内核类型；含两条刻意保留的「绊线」字段（见「体系硬约束」）
 ```
 
-⚠️ **树里没有 `ziwei/heming-knowledge.ts` 与 `classics/`** —— 它们 2026-09-27 随
-`heming` / `heming-guide` / `classics` 三条命令一并移去了 `purplestar-synastry` 与
+⚠️ **树里没有 `ziwei/synastry-knowledge.ts` 与 `classics/`** —— 它们 2026-09-27 随
+`synastry` / `synastry-guide` / `classics` 三条命令一并移去了 `purplestar-synastry` 与
 `purplestar-classics`，**源里不再持有**。别照着旧记忆去源里找，也别以为它们是「漏了同步的副本」：
 那是两份**自有内核**，见下节。
+
+同日稍后，`synastry-guide` 这条命令**又被取消**：它的载荷是恒定静态文本（与「这一对是谁」无关），
+改为合盘 skill 的参考文档 `skills/purplestar-synastry/references/synastry-guide.md`，按需读取、
+不经 CLI 输出。合盘的命令因此只剩 `synastry` 与 `selftest`。
 
 `cli/` 之间是**单向依赖**，没有环：`args` ← `render`（仅取 `fmtDate`）← `birth-info` ← `commands` → `selftest`。要动哪一层，往上找它的消费者即可。
 
@@ -213,21 +217,21 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 
 三部分各管一段，缺一不可：
 
-| 部分                    | 职责                                                               |
-| ----------------------- | ------------------------------------------------------------------ |
-| `tools/skills.ts`       | **切片声明（唯一源）**：各 skill 的入口清单 / 额外整份副本 / 自有文件 |
-| `tools/sync-skills.ts`  | 按声明复制、清理清单外的残留；`--check` 只比对不写                   |
-| `test/repo.test.ts` 层 6 | 逐字节守卫：副本 == 源、无残留、skill 自包含、`type: module`        |
+| 部分                     | 职责                                                                  |
+| ------------------------ | --------------------------------------------------------------------- |
+| `tools/skills.ts`        | **切片声明（唯一源）**：各 skill 的入口清单 / 额外整份副本 / 自有文件 |
+| `tools/sync-skills.ts`   | 按声明复制、清理清单外的残留；`--check` 只比对不写                    |
+| `test/repo.test.ts` 层 6 | 逐字节守卫：副本 == 源、无残留、skill 自包含、`type: module`          |
 
 **切片是算出来的，不是写死的**：每个 skill 的内核切片 = 它入口清单的 **import 闭包**。日后往 `patterns/` 加一个识别器、往 `analysis/views/` 加一个小节，那份文件会自动落进正确的 skill——不需要谁记得回来补一行。闭包**按「类型检查需要什么」算**（连 `import type` 一起收），因为 `tsconfig` 的 `include` 会把副本真的类型检查一遍，缺文件就报模块找不到。
 
 **「逐字节副本」只适用于与 skill 无关的整文件。** 三类文件，三套守卫：
 
-| 类别       | 文件                                                          | 守卫                                       |
-| ---------- | ------------------------------------------------------------- | ------------------------------------------ |
-| 逐字节副本 | 内核切片 + `boot-hooks.ts` / `cli/args.ts`                     | 同步器 + 层 6 的逐字节断言                 |
-| 各 skill 自写 | `purple-star.ts` 引导层、`cli/commands.ts`、`cli/selftest.ts`、`cli/flag-scope.ts`、`SKILL.md`、`references/`、`package.json` | 各自的 `selftest` + 仓库 `test/cli.test.ts` |
-| **自有内核** | `purplestar-synastry` 的 `ziwei/heming-knowledge.ts`、`purplestar-classics` 的 `classics/` | 各自 skill 的 `selftest`（**没有逐字节断言可比**） |
+| 类别          | 文件                                                                                                                          | 守卫                                               |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 逐字节副本    | 内核切片 + `boot-hooks.ts` / `cli/args.ts`                                                                                    | 同步器 + 层 6 的逐字节断言                         |
+| 各 skill 自写 | `purple-star.ts` 引导层、`cli/commands.ts`、`cli/selftest.ts`、`cli/flag-scope.ts`、`SKILL.md`、`references/`、`package.json` | 各自的 `selftest` + 仓库 `test/cli.test.ts`        |
+| **自有内核**  | `purplestar-synastry` 的 `ziwei/synastry-knowledge.ts`、`purplestar-classics` 的 `classics/`                                  | 各自 skill 的 `selftest`（**没有逐字节断言可比**） |
 
 ⚠️ `commands.ts` 与 `selftest.ts` **必须按 skill 裁开**（`analyze` 不该出现在古籍检索 skill 里）。裁过的文件无法逐字节守卫，这是拆 skill 的**固有代价**，不是疏漏——硬套断言只会生产一条永远为假的守卫。
 
@@ -237,17 +241,17 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 
 **新加旗标要动三处**：`FLAG_GROUPS` 声明它、决定它归哪个 skill（写进那份 `flag-scope.ts`）、若它是出生信息旗标则**源与合盘都要写**。层 6 有四条断言双向盯着这件事（各作用域 ⊆ 全集、全集 ⊆ 三作用域之并、`birth-info.ts` 的 `g()` 键 ⊆ 源 ∪ 合盘、`ownFiles` 与磁盘一致）。
 
-⚠️ **源不再保留全量命令**（2026-09-27 二次判定，**推翻了此前那一轮的结论**）。此前判定「源保留全量命令」，理由是切片一律以 `SOURCE_SCRIPTS` 为基准，源删掉引用它们的命令后那两个模块在源内就没有调用点了。二次判定改判：那恰恰说明它们**本就不该住在源里**——于是 `ziwei/heming-knowledge.ts` 与 `classics/` 整个目录**移出源**，只存在于使用它们的那个 skill 里，连带 `heming` / `heming-guide` / `classics` 三条命令也从源的 CLI 消失。
+⚠️ **源不再保留全量命令**（2026-09-27 二次判定，**推翻了此前那一轮的结论**）。此前判定「源保留全量命令」，理由是切片一律以 `SOURCE_SCRIPTS` 为基准，源删掉引用它们的命令后那两个模块在源内就没有调用点了。二次判定改判：那恰恰说明它们**本就不该住在源里**——于是 `ziwei/synastry-knowledge.ts` 与 `classics/` 整个目录**移出源**，只存在于使用它们的那个 skill 里，连带 `synastry` / `synastry-guide` / `classics` 三条命令也从源的 CLI 消失。（`synastry-guide` 其后更进一步：改为合盘 skill 的参考文档 `references/synastry-guide.md`，命令本身取消。）
 
 改判的支点是**判据本身**：旧结论为了让声明文件成为「唯一知道那个模块还活着的地方」而保留源里的死代码，代价是源背 1,259 行它不用的内核；新结论让**归属唯一**——一份内核只住在一个 skill 里，读代码的人不必先问「这是源还是副本」。代价是这两份内核**失去了逐字节守卫**（没有可比的对象），由各自 skill 的 `selftest` 接手。
 
 **归属规则（三句话）**：
 
-1. 排盘内核（`ziwei/` 下除 `heming-knowledge.ts` 外的全部 + `cli/` 的共用件）——**归源**，改源再同步。
-2. 合盘内核（`heming-knowledge.ts`）——**归 `purplestar-synastry`**，就地改。
+1. 排盘内核（`ziwei/` 下除 `synastry-knowledge.ts` 外的全部 + `cli/` 的共用件）——**归源**，改源再同步。
+2. 合盘内核（`synastry-knowledge.ts`）——**归 `purplestar-synastry`**，就地改。
 3. 古籍内核（`classics/`）——**归 `purplestar-classics`**，就地改。
 
-一个**容易静默失效的连带影响**：引文守卫（`ziwei/citation-guard.ts`）扫的是**内核全树**。`heming-knowledge.ts` 里那十几处「倪师说」引文，此前靠源的 `selftest` 扫源内核树时顺带扫到；它一离开源的 `scripts/` 就脱离了那个扫描根。故 `citation-guard.ts` + `annotations.ts` 进了 synastry 的 `kernelEntries`（两份逐字节副本，口令表仍只有一份），**synastry 的 `selftest` 扫自己的根**。这道守卫当初正是为「拆分把引文挪进新文件而清单没跟上」建的，同一个故障类别不该在它自己身上重演。
+一个**容易静默失效的连带影响**：引文守卫（`ziwei/citation-guard.ts`）扫的是**内核全树**。`synastry-knowledge.ts` 里那十几处「倪师说」引文，此前靠源的 `selftest` 扫源内核树时顺带扫到；它一离开源的 `scripts/` 就脱离了那个扫描根。故 `citation-guard.ts` + `annotations.ts` 进了 synastry 的 `kernelEntries`（两份逐字节副本，口令表仍只有一份），**synastry 的 `selftest` 扫自己的根**。这道守卫当初正是为「拆分把引文挪进新文件而清单没跟上」建的，同一个故障类别不该在它自己身上重演。
 
 ## 内核回归的主场
 
@@ -255,7 +259,7 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 
 理由：派生的**排盘底座**是副本，没人会就地改它——开发循环是「改源 → `npm test` → `npm run sync:skills`」。把断言复制过去只会生产两份需要手工同步的副本，而漏同步的那一份会静默失效。**别以为派生 skill 缺了自检**，它本来就不该有。
 
-⚠️ **但两份自有内核是例外，它们的内核断言只能在各自 skill 里跑**：`heming-knowledge.ts` 的断语与引文（归 synastry）、`classics/` 的检索与排版不变量（归 classics）。这些不是「副本断言的复制」，而是**只此一份**的断言——源里没有对应物可比。故「回归只跑源这一份」这句话的作用域是**排盘内核**，不是全部内核。
+⚠️ **但两份自有内核是例外，它们的内核断言只能在各自 skill 里跑**：`synastry-knowledge.ts` 的断语与引文（归 synastry）、`classics/` 的检索与排版不变量（归 classics）。这些不是「副本断言的复制」，而是**只此一份**的断言——源里没有对应物可比。故「回归只跑源这一份」这句话的作用域是**排盘内核**，不是全部内核。
 
 ## 依赖变更的后果
 
@@ -277,7 +281,7 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 
 **参数面单点声明**：`cli/args.ts` 的 `FLAG_GROUPS` 是「有哪些旗标」的唯一来源——cac 据它注册选项并渲染 help 的参数段，`parseArgs` 据它拒绝未知旗标，命令段由 `commands.ts` 的 `COMMAND_DESC` 逐个交给 cac 的 `cli.command()`，`selftest` 再断言 `SKILL.md` 提到的旗标都有声明。此前这三处各有一份手写副本，漂移代价不对称：拼错旗标（`--ctiy 喀什`）不报错，直接落回默认经度 120°E，排出一张错约 3 个时辰的盘而全程无提示。「有哪些旗标」自此仍是单点，但「**本 skill 认其中哪些**」自 2026-09-27 起是第二层声明（各 skill 的 `cli/flag-scope.ts`），故加旗标要动的是那三处，见上「副本边界与同步流程」。
 
-**旗标作用域收窄后的一条行为变更**：作用域外的旗标由**静默忽略**改为**报错**（`analyze --limit 5`、`classics --city 北京` 现在都会拒绝）。这与「宁可启动失败，也不静默产出错盘」一致。⚠️ **诚实边界**：收窄粒度是 **skill 级**而非命令级，`stars --json` 这类「本 skill 有、当前命令不读」的参数仍被收下不用——要修就得建那张被明确拒绝的归属表。`a-` / `b-` 前缀是唯一带**命令维**的收窄（`flag-scope.ts` 的 `prefixedCommands`），因为 synastry 的 `selftest` 钉着「`heming-guide --a-date` 必须报错」。
+**旗标作用域收窄后的一条行为变更**：作用域外的旗标由**静默忽略**改为**报错**（`analyze --limit 5`、`classics --city 北京` 现在都会拒绝）。这与「宁可启动失败，也不静默产出错盘」一致。⚠️ **诚实边界**：收窄粒度是 **skill 级**而非命令级，`stars --json` 这类「本 skill 有、当前命令不读」的参数仍被收下不用——要修就得建那张被明确拒绝的归属表。`a-` / `b-` 前缀是唯一带**命令维**的收窄（`flag-scope.ts` 的 `prefixedCommands`），因为 synastry 的 `selftest` 钉着「`selftest --a-date` 必须报错」。
 
 **分词交给 cac，校验仍自己做**（2026-09-27）：`parseArgs` 是「前置扫描 → `cac` 分词 → 归一」三步。之所以不能只留中间那步——cac 对**未注册的选项静默收下**（连 `run: false` 也不校验），而上面那个错盘入口正是「拼错旗标不报错」。另外三条约束，改动时别踩：
 

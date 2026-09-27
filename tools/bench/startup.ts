@@ -84,7 +84,17 @@ const E2E_CASES: Array<{ label: string; args: string[] }> = [
 	},
 	{
 		label: "topic（排盘 + 分析数据库 v3）",
-		args: ["topic", "--topic", "career", "--date", "1990-05-15", "--time", "09:30", "--gender", "male"],
+		args: [
+			"topic",
+			"--topic",
+			"career",
+			"--date",
+			"1990-05-15",
+			"--time",
+			"09:30",
+			"--gender",
+			"male",
+		],
 	},
 ];
 
@@ -115,7 +125,7 @@ function benchE2E(runs: number): E2ERow[] {
  * 顺序**必须**依赖先于依赖者：`cli/commands` 静态 import 了分析数据库等，
  * 放最后才能让它的边际值只反映自身与**尚未列入前面组**的那几份依赖。
  *
- * ⚠️ 2026-09-27 拆 skill 时删掉了 `+ classics` 与 `+ heming-knowledge` 两组：那两个模块
+ * ⚠️ 2026-09-27 拆 skill 时删掉了 `+ classics` 与 `+ synastry-knowledge` 两组：那两个模块
  *    已随同名命令搬去 `purplestar-classics` / `purplestar-synastry`，源的内核根里**没有
  *    这两个文件**，留着会让探针以 ERR_MODULE_NOT_FOUND 退出（tools/ 不在 npm test 覆盖内，
  *    这类失效只会在实跑时暴露）。它们当年记的是「仅某条命令需要」的懒加载余地，
@@ -134,7 +144,11 @@ const LOAD_GROUPS: Array<{ label: string; specs: string[]; note: string }> = [
 		],
 		note: "analyze 必需（含 iztro / lunar-typescript）",
 	},
-	{ label: "+ analysis", specs: ["@/ziwei/analysis"], note: "仅 topic 命令需要（v3 分析数据库）" },
+	{
+		label: "+ analysis",
+		specs: ["@/ziwei/analysis"],
+		note: "仅 topic 命令需要（v3 分析数据库）",
+	},
 	{ label: "+ cli/commands", specs: ["@/cli/commands"], note: "命令表本体，analyze 必需" },
 ];
 
@@ -251,20 +265,22 @@ async function main(): Promise<void> {
 		return { ...r, note, cumulative: cum };
 	});
 	const loadTotal = cum;
-	const deferrable = loads.filter(r => DEFERRABLE.has(r.label)).reduce((s, r) => s + r.marginal, 0);
+	const deferrable = loads
+		.filter(r => DEFERRABLE.has(r.label))
+		.reduce((s, r) => s + r.marginal, 0);
 
 	console.log("\n【② 模块加载拆解（真实 node 口径）】");
 	console.log(`  ${"阶段".padEnd(22)}${"边际".padStart(11)}${"累计".padStart(12)}  说明`);
 	for (const r of loads) {
-		console.log(`  ${r.label.padEnd(22)}${ms(r.marginal, 11)}${ms(r.cumulative, 12)}  ${r.note}`);
+		console.log(
+			`  ${r.label.padEnd(22)}${ms(r.marginal, 11)}${ms(r.cumulative, 12)}  ${r.note}`
+		);
 	}
 	console.log(`  ${"加载合计".padEnd(22)}${ms(loadTotal, 11)}`);
 	console.log(`  （另：registerHooks 一次性开销 ${ms(hookMs)}，不归属任何分组）`);
 
 	console.log("\n【③ 热路径】");
-	console.log(
-		`  ${"调用".padEnd(38)}${"首次".padStart(11)}${"暖机均摊".padStart(13)}`
-	);
+	console.log(`  ${"调用".padEnd(38)}${"首次".padStart(11)}${"暖机均摊".padStart(13)}`);
 	for (const r of hot) console.log(`  ${r.label.padEnd(38)}${ms(r.first, 11)}${ms(r.avg, 13)}`);
 
 	const analyze = e2e.find(r => r.label.startsWith("analyze"));

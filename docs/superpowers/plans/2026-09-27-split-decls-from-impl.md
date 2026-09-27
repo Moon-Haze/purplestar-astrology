@@ -87,15 +87,15 @@ wc -c "$BASE"/topic-*.txt
 
 Expected: 两份，各数千字节。长判词**只在这两个主题产出**，`getTopicAnalysis` 是唯一入口。
 
-- [ ] **Step 4: 存 `heming` 基线（合盘走 `buildBirthInfo`）**
+- [ ] **Step 4: 存 `synastry` 基线（合盘走 `buildBirthInfo`）**
 
 ```bash
 BASE=/tmp/ziwei-split-baseline
-node scripts/purple-star.ts heming \
+node scripts/purple-star.ts synastry \
   --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \
   --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海 \
-  > "$BASE/heming.txt"
-wc -c "$BASE/heming.txt"
+  > "$BASE/synastry.txt"
+wc -c "$BASE/synastry.txt"
 ```
 
 Expected: 非空。
@@ -679,10 +679,10 @@ for t in overview personality; do
   node scripts/purple-star.ts topic --date 1990-05-15 --time 09:30 --city 北京 --gender male --topic "$t" \
     | diff -q "$BASE/topic-$t.txt" - >/dev/null || { echo "❌ topic-$t"; fail=1; }
 done
-node scripts/purple-star.ts heming \
+node scripts/purple-star.ts synastry \
   --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \
   --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海 \
-  | diff -q "$BASE/heming.txt" - >/dev/null || { echo "❌ heming"; fail=1; }
+  | diff -q "$BASE/synastry.txt" - >/dev/null || { echo "❌ synastry"; fail=1; }
 node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male --eot \
   | diff -q "$BASE/analyze-eot.txt" - >/dev/null || { echo "❌ analyze-eot"; fail=1; }
 for c in 石家庄 石家庄市 石家庄地区; do
@@ -852,10 +852,10 @@ node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 北京
   | diff -q "$BASE/analyze-eot.txt" - && echo "✅ --eot 分支一致"
 node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 石家庄地区 --gender male \
   | diff -q "$BASE/city-石家庄地区.txt" - && echo "✅ 城市容错分支一致"
-node scripts/purple-star.ts heming \
+node scripts/purple-star.ts synastry \
   --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \
   --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海 \
-  | diff -q "$BASE/heming.txt" - && echo "✅ heming 一致"
+  | diff -q "$BASE/synastry.txt" - && echo "✅ synastry 一致"
 ```
 
 Expected: typecheck 0 错误；三个 `✅`；`diff` 全部静默。
@@ -873,7 +873,7 @@ refactor(cli): birth-info.ts 拆出声明层 birth-info-defs.ts
 函数体内的局部表（buildBirthInfo 的）留在原处——搬移判据是「只搬
 模块级声明」，那些表的读者是函数本身，不是翻文件的人。
 
-证据：公开导出名单拆前后逐名相等；--eot / 城市容错 / heming 三条
+证据：公开导出名单拆前后逐名相等；--eot / 城市容错 / synastry 三条
 路径的输出与基线逐字节一致。
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>
@@ -951,12 +951,12 @@ Expected: 四个新文件都出现在目录树里。
 
 **证据**（均为一次性，非常驻防线）：
 
-| 手段                                  | 结果                                                             |
-| ------------------------------------- | ---------------------------------------------------------------- |
-| 公开导出名单拆前后比对                | `analysis.ts` 5 个、`birth-info.ts` 4 个，逐名相等               |
-| 14 份命令输出逐字节 diff              | 全部一致（analyze × 10、topic × 2、heming、--eot、城市容错 × 3） |
-| 引文扫描命中数                        | 26 → 26                                                          |
-| `typecheck` / `selftest` / `npm test` | 0 错误 / 49-49 / 300 条全绿                                      |
+| 手段                                  | 结果                                                               |
+| ------------------------------------- | ------------------------------------------------------------------ |
+| 公开导出名单拆前后比对                | `analysis.ts` 5 个、`birth-info.ts` 4 个，逐名相等                 |
+| 14 份命令输出逐字节 diff              | 全部一致（analyze × 10、topic × 2、synastry、--eot、城市容错 × 3） |
+| 引文扫描命中数                        | 26 → 26                                                            |
+| `typecheck` / `selftest` / `npm test` | 0 错误 / 49-49 / 300 条全绿                                        |
 
 **更名后有意残留的旧名**：仓库里仍有若干处写着 `db-analysis`，它们分别是历史陈述
 （如「收敛自 db-analysis 的格局」）或指向**上游 toolkit 的同名文件**（如 `README.md`
@@ -1045,9 +1045,9 @@ for t in overview personality; do
   node scripts/purple-star.ts topic --date 1990-05-15 --time 09:30 --city 北京 --gender male --topic "$t" \
     | diff -q "$BASE/topic-$t.txt" - >/dev/null || { echo "❌ topic-$t"; fail=1; }
 done
-node scripts/purple-star.ts heming --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \
+node scripts/purple-star.ts synastry --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \
   --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海 \
-  | diff -q "$BASE/heming.txt" - >/dev/null || { echo "❌ heming"; fail=1; }
+  | diff -q "$BASE/synastry.txt" - >/dev/null || { echo "❌ synastry"; fail=1; }
 node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male --eot \
   | diff -q "$BASE/analyze-eot.txt" - >/dev/null || { echo "❌ analyze-eot"; fail=1; }
 for c in 石家庄 石家庄市 石家庄地区; do

@@ -7,9 +7,9 @@
  * ## 本 skill 的切面
  *
  * 内核是从排盘解读 skill（`purplestar-astrology`）**按 import 闭包切出来的副本**：合盘要排
- * 两张盘，故 `ziwei/algorithm.ts` 是根；再挂合盘断语（`heming-knowledge.ts`）与四化
+ * 两张盘，故 `ziwei/algorithm.ts` 是根；再挂合盘断语（`synastry-knowledge.ts`）与四化
  * （`sihua.ts`）。格局库（`patterns/`）与主题论断库（`analysis/`）**不在其中** ——
- * 实测 `heming` 一个都不碰，切走它们省下二十来个文件。
+ * 实测 `synastry` 一个都不碰，切走它们省下二十来个文件。
  *
  * ⚠️ **改内核一律改源**，然后 `npm run sync:skills`。就地改本目录的副本会被同步器覆盖，
  * 且 `test/repo.test.ts` 的层 6 会先变红。切片清单见 `<仓库根>/tools/skills.ts`。
@@ -41,10 +41,10 @@ import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hook
 //    凡是要用的值，一律走下面的 load<T>()。这是本文件最容易被改坏的一处。
 type AlgorithmModule = typeof import("@/ziwei/algorithm");
 // ⚠️ 合盘内核用**相对路径**而非 `@/`：`@/` 在 tsc 眼里只映到**源** skill 的内核根
-//    （见 tsconfig 的 paths），而 heming-knowledge.ts 已不住在源里（2026-09-27 起归本 skill），
+//    （见 tsconfig 的 paths），而 synastry-knowledge.ts 已不住在源里（2026-09-27 起归本 skill），
 //    写 `@/` 会让 `npm run typecheck` 报「找不到模块」。相对路径在两侧都对：运行期由钩子的
 //    `.` 分支按**本文件**所在目录补 `.ts`，tsc 也按文件位置解析。
-type HemingModule = typeof import("./ziwei/heming-knowledge");
+type synastryModule = typeof import("./ziwei/synastry-knowledge");
 type SihuaModule = typeof import("@/ziwei/sihua");
 type ArgsModule = typeof import("@/cli/args");
 type CommandsModule = typeof import("@/cli/commands");
@@ -76,7 +76,7 @@ const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
  * 由调用方传入而非写死在 `boot-hooks.ts`：各 skill 各有各的内核，本 skill 里没有
  * `classics/`，古籍检索 skill 里也没有 `ziwei/`，拿别人的入口来判定只会得到误导信息。
  *
- * 取 `ziwei/algorithm.ts`（而不是 `heming-knowledge.ts`）：排盘是合盘的**前置**，
+ * 取 `ziwei/algorithm.ts`（而不是 `synastry-knowledge.ts`）：排盘是合盘的**前置**，
  * 算法模块缺了则什么都做不了；断语模块缺了只影响输出的丰富度。
  */
 const KERNEL_ENTRY = "ziwei/algorithm.ts";
@@ -119,14 +119,17 @@ installHooks(ROOT);
  * `process.exit(1)`，故调用点拿到的返回值必然非空，不必再写 try/catch。
  */
 const load = makeLoader(ROOT, ROOT_LABEL, f => {
-	console.error(`[ziwei 启动失败] 无法加载 ${f.spec}\n  ${f.error.message}\n${loadFailureHint(f)}`);
+	console.error(
+		`[ziwei 启动失败] 无法加载 ${f.spec}\n  ${f.error.message}\n${loadFailureHint(f)}`
+	);
 	process.exit(1);
 });
 
 // 钩子已就绪，从这里开始才能安全地加载任何 .ts。
 const { generateChart } = await load<AlgorithmModule>("@/ziwei/algorithm");
-const { HEMING_METHODOLOGY, HEMING_SCORE_CRITERIA, STAR_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } =
-	await load<HemingModule>("./ziwei/heming-knowledge");
+const { STAR_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } = await load<synastryModule>(
+	"./ziwei/synastry-knowledge"
+);
 const { getSiHuaByStem } = await load<SihuaModule>("@/ziwei/sihua");
 
 const { parseArgs, cli } = await load<ArgsModule>("@/cli/args");
@@ -147,8 +150,6 @@ const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
  */
 const REQUIRED_EXPORTS = [
 	["generateChart", generateChart],
-	["HEMING_METHODOLOGY", HEMING_METHODOLOGY],
-	["HEMING_SCORE_CRITERIA", HEMING_SCORE_CRITERIA],
 	["STAR_IN_FUQI_GU", STAR_IN_FUQI_GU],
 	["MARRIAGE_STARS_BRIEF", MARRIAGE_STARS_BRIEF],
 	["getSiHuaByStem", getSiHuaByStem],
@@ -178,15 +179,12 @@ const REQUIRED_EXPORTS = [
  * `SKILL.md` 里的旗标写法，示例里的旗标因此也落在它的覆盖范围内。
  */
 const HELP_EXAMPLES = `  # 合盘：双方出生信息各带 a- / b- 前缀
-  node scripts/purple-star.ts heming \\
+  node scripts/purple-star.ts synastry \\
     --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \\
     --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海
 
-  # 评分标准与完整方法论（静态参考，不排盘）
-  node scripts/purple-star.ts heming-guide
-
-  # 同上，取 JSON（键名与 heming --json 的两个同名字段一致）
-  node scripts/purple-star.ts heming-guide --json
+  # 方法论与评分标准是静态参考，住在 skill 内的 references/synastry-guide.md
+  # （按需读文件，不经 CLI 输出）
 
   # 回归自检
   node scripts/purple-star.ts selftest`;
@@ -243,7 +241,7 @@ function main() {
 		process.exit(1);
 	}
 	try {
-		// 命令名一并交给 parseArgs：旗标面要按命令校验（如 a- / b- 前缀只有 heming 认）
+		// 命令名一并交给 parseArgs：旗标面要按命令校验（如 a- / b- 前缀只有 synastry 认）
 		const args = parseArgs(argv.slice(1), cmd);
 		console.log(fn(args, { root: ROOT, rootLabel: ROOT_LABEL }));
 	} catch (err) {

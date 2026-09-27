@@ -24,7 +24,7 @@
  *   读不到就落回默认经度 120°E —— 排出的是一张经度错约 176 分钟（≈3 个时辰）的盘，
  *   全程没有任何提示。这类静默错盘正是本项目 `REQUIRED_EXPORTS` 与 `algorithm.ts`
  *   的 `projectPalaceName` 都在防的东西，参数面却是敞开的。
- * - `--a-city` 写在 `analyze` 上同理：`a-` 前缀只有 `heming` 会去读，别处完全忽略。
+ * - `--a-city` 写在 `analyze` 上同理：`a-` 前缀只有 `synastry` 会去读，别处完全忽略。
  *
  * 现在 {@link FLAG_GROUPS} 是唯一来源：{@link parseArgs} 据它拒绝未知旗标、
  * cac 据它注册选项并渲染 help 参数段、`SKILL.md` 则由 `selftest` 断言兜底。
@@ -81,7 +81,7 @@ export interface CliArgs {
  * 免得「加旗标」变成一件要读文档才敢做的事（那正是这份声明想消灭的成本）。
  */
 export interface FlagSpec {
-	/** 旗标名，不含 `--`。`heming` 可用 `a-` / `b-` 前缀叠在它前面（如 `--a-date`） */
+	/** 旗标名，不含 `--`。`synastry` 可用 `a-` / `b-` 前缀叠在它前面（如 `--a-date`） */
 	name: string;
 	/** `"value"` 取值、`"switch"` 纯开关（HELP 据此决定写不写值域占位） */
 	kind: "value" | "switch";
@@ -132,7 +132,7 @@ export interface FlagScope {
 	 *
 	 * @remarks
 	 * ⚠️ 这一维**不能省**：它是「前缀写在别的命令上」这条静默失败的判据。若只看
-	 * `sidePrefixes` 非空就放行，`heming-guide --a-date` 会从「报错」变成「静默忽略」
+	 * `sidePrefixes` 非空就放行，`selftest --a-date` 会从「报错」变成「静默忽略」
 	 * —— 既违反「宁可报错，不静默」，又会让合盘 selftest 里那条断言变红。
 	 */
 	readonly prefixedCommands: readonly string[];
@@ -157,7 +157,7 @@ export interface FlagScope {
  */
 export const FLAG_GROUPS: readonly FlagGroup[] = [
 	{
-		title: "出生日期（三选一；heming 加 a- / b- 前缀）",
+		title: "出生日期（三选一；synastry 加 a- / b- 前缀）",
 		flags: [
 			{ name: "date", kind: "value", value: "YYYY-MM-DD", desc: "公历生日" },
 			{
@@ -167,7 +167,12 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 				desc: "农历生日（脚本自动换算，勿与 --date 同用）",
 			},
 			{ name: "leap", kind: "switch", desc: "配合 --lunar，表示闰月" },
-			{ name: "year", kind: "value", value: "1990", desc: "公历出生年（与 --month / --day 分写）" },
+			{
+				name: "year",
+				kind: "value",
+				value: "1990",
+				desc: "公历出生年（与 --month / --day 分写）",
+			},
 			{ name: "month", kind: "value", value: "1-12", desc: "公历出生月（分写）" },
 			{ name: "day", kind: "value", value: "1-31", desc: "公历出生日（分写）" },
 		],
@@ -215,7 +220,12 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 				value: "北京",
 				desc: "用城市名代替 --lng（容错「石家庄市」「石家庄地区」等写法）",
 			},
-			{ name: "province", kind: "value", value: "山东", desc: "用省份代替 --lng（按省会计）" },
+			{
+				name: "province",
+				kind: "value",
+				value: "山东",
+				desc: "用省份代替 --lng（按省会计）",
+			},
 			{ name: "name", kind: "value", value: "张三", desc: "可选，只影响输出抬头" },
 		],
 	},
@@ -283,7 +293,7 @@ export const FLAG_NAMES: ReadonlySet<string> = new Set(FLAG_SCOPE.flags);
 /**
  * kebab-case → camelCase：**键名换算的唯一一处**。
  *
- * @param name - 旗标名，可带 `heming` 的 `a-` / `b-` 前缀（如 `"a-late-zi"`）
+ * @param name - 旗标名，可带 `synastry` 的 `a-` / `b-` 前缀（如 `"a-late-zi"`）
  * @returns camelCase 形式（`"aLateZi"`）
  *
  * @remarks
@@ -406,13 +416,13 @@ export function suggestFlag(name: string): string | null {
  * 归属错了顶多是没生效，不会排错盘。
  *
  * ⚠️ 但规则 2 **必须带「命令」这一维**（{@link FlagScope.prefixedCommands}），不能只按 skill
- * 收窄：若只看「本 skill 认 `a-` 前缀」就放行，`heming-guide --a-date` 会从「报错」退化成
+ * 收窄：若只看「本 skill 认 `a-` 前缀」就放行，`selftest --a-date` 会从「报错」退化成
  * 「静默忽略」—— 既违反「宁可报错，不静默」，又会让合盘 selftest 里那条断言直接变红。
  */
 function checkFlagName(key: string, command: string | undefined): void {
 	const prefix = SIDE_PREFIXES.find(p => key.startsWith(p));
 	if (prefix) {
-		// 前缀只在作用域声明的那几条命令上合法（合盘是 heming）。判据取自 FLAG_SCOPE，
+		// 前缀只在作用域声明的那几条命令上合法（合盘是 synastry）。判据取自 FLAG_SCOPE，
 		// 不写死命令名 —— 「哪条命令要分别读两方出生信息」本就是该 skill 自决的事。
 		if (command === undefined || !FLAG_SCOPE.prefixedCommands.includes(command)) {
 			throw new Error(

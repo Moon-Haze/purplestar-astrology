@@ -450,7 +450,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		eq(g("m"), "male", "m ");
 	});
 	// ⚠️ 这里原有「性别：heming 缺 --a-gender 时文案应指向 --a-gender」一条，已随合盘命令
-	//    搬去 `purplestar-synastry` 的 selftest —— 本 skill 既无 `heming` 命令，也不认
+	//    搬去 `purplestar-synastry` 的 selftest —— 本 skill 既无 `synastry` 命令，也不认
 	//    `a-` / `b-` 前缀（`--a-date` 在这里是**未知参数**，直接报错），那条文案护栏
 	//    在本 skill 里没有可复现的入口。
 
@@ -713,7 +713,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		const src = readFileSync(resolve(ctx.root, "cli", "commands.ts"), "utf8");
 		const table = src.match(/const COMMAND_TABLE = \{([\s\S]*?)\} satisfies/)?.[1];
 		if (!table) throw new Error("未从 commands.ts 抽到 COMMAND_TABLE —— 声明块形状已变");
-		// ⚠️ 键上的双引号是**可选**的，别把它从正则里省掉：命令名含连字符时（`heming-guide`）
+		// ⚠️ 键上的双引号是**可选**的，别把它从正则里省掉：命令名含连字符时
 		// 不是合法标识符，对象字面量里**必须**加引号。只认裸键的写法会静默漏抽这一项，
 		// 于是「表里有、扫描器看不见」→ 反向误报成「SKILL.md 提到但未定义」，
 		// 而且报的方向正好与真相相反（实测踩过）。

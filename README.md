@@ -21,11 +21,11 @@
 
 ## skills/ 一览
 
-| skill                                                | 做什么                                 | 内核                                        |
-| ---------------------------------------------------- | -------------------------------------- | ------------------------------------------- |
-| [purplestar-astrology](skills/purplestar-astrology/) | 排盘与命盘解读（**源**）               | CLI + `ziwei/`，含排盘引擎                  |
-| [purplestar-synastry](skills/purplestar-synastry/)   | 合盘与合婚（双宫联参）                 | 排盘底座（副本）+ 合盘断语（自有）          |
-| [purplestar-classics](skills/purplestar-classics/)   | 古籍原文检索（骨髓赋 / 全集 / 全书）   | `classics/`（自有），零排盘引擎             |
+| skill                                                | 做什么                               | 内核                               |
+| ---------------------------------------------------- | ------------------------------------ | ---------------------------------- |
+| [purplestar-astrology](skills/purplestar-astrology/) | 排盘与命盘解读（**源**）             | CLI + `ziwei/`，含排盘引擎         |
+| [purplestar-synastry](skills/purplestar-synastry/)   | 合盘与合婚（双宫联参）               | 排盘底座（副本）+ 合盘断语（自有） |
+| [purplestar-classics](skills/purplestar-classics/)   | 古籍原文检索（骨髓赋 / 全集 / 全书） | `classics/`（自有），零排盘引擎    |
 
 「自有」= 那份内核**只住在这一个 skill 里**，源仓库里没有第二份，因此没有「改源再同步」这回事。
 
@@ -58,11 +58,10 @@ node skills/purplestar-astrology/scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
 # 合盘（注意 a- / b- 前缀：漏了不会报错，会静默排出错盘）
-node skills/purplestar-synastry/scripts/purple-star.ts heming \
+node skills/purplestar-synastry/scripts/purple-star.ts synastry \
      --a-date 1990-05-15 --a-time 09:30 --a-gender male \
      --b-date 1993-08-22 --b-time 14:00 --b-gender female
-# 合盘方法论与评分标准（静态参考，不排盘）
-node skills/purplestar-synastry/scripts/purple-star.ts heming-guide
+# 合盘方法论与评分标准：读 skills/purplestar-synastry/references/synastry-guide.md（静态参考，不排盘）
 
 node skills/purplestar-classics/scripts/purple-star.ts classics --search 机月同梁
 node skills/purplestar-astrology/scripts/purple-star.ts help        # 本技能的命令与参数
@@ -87,7 +86,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 │   │       ├── purple-star.ts  引导层：定位内核根 → 注册 TS 钩子 → 分发命令
 │   │       ├── cli/            参数解析 / 旗标作用域 / 渲染 / 出生信息 / 命令 / 自检
 │   │       └── ziwei/          排盘算法、格局库、四化、城市经纬度
-│   ├── purplestar-synastry/    合盘：排盘底座由上面派生，合盘断语（含 heming 命令）自有
+│   ├── purplestar-synastry/    合盘：排盘底座由上面派生，合盘断语与 references/ 自有
 │   └── purplestar-classics/    古籍检索：`classics/` 与该命令自有，零排盘内核
 ├── tools/skills.ts       # 派生 skill 的切片声明（唯一源）
 ├── tools/sync-skills.ts  # 按声明同步副本
@@ -108,13 +107,14 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 下表列的是每份知识的**归属地**（权威那一份）——归属已唯一化，不再用 `skills/*/` 通配：
 合盘与古籍的内核各只住在一个 skill 里，排盘内核则源是权威、派生 skill 里的是副本。
 
-| 内容                                     | 位置                                                        |
-| ---------------------------------------- | ----------------------------------------------------------- |
-| 排盘算法、格局库（含古籍出处与破格条件） | `skills/purplestar-astrology/scripts/ziwei/patterns/`       |
-| 四化体系、流年流月推法                   | `skills/purplestar-astrology/scripts/ziwei/sihua.ts`        |
-| 合盘方法论、十四主星在夫妻宫断语         | `skills/purplestar-synastry/scripts/ziwei/heming-knowledge.ts` |
-| 中国城市经纬度（真太阳时校正）           | `skills/purplestar-astrology/scripts/ziwei/cities.ts`       |
-| 三部古籍原文                             | `skills/purplestar-classics/scripts/classics/data/`         |
+| 内容                                     | 位置                                                             |
+| ---------------------------------------- | ---------------------------------------------------------------- |
+| 排盘算法、格局库（含古籍出处与破格条件） | `skills/purplestar-astrology/scripts/ziwei/patterns/`            |
+| 四化体系、流年流月推法                   | `skills/purplestar-astrology/scripts/ziwei/sihua.ts`             |
+| 十四主星在夫妻宫断语、四化入夫妻宫       | `skills/purplestar-synastry/scripts/ziwei/synastry-knowledge.ts` |
+| 合盘方法论与评分标准                     | `skills/purplestar-synastry/references/synastry-guide.md`        |
+| 中国城市经纬度（真太阳时校正）           | `skills/purplestar-astrology/scripts/ziwei/cities.ts`            |
+| 三部古籍原文                             | `skills/purplestar-classics/scripts/classics/data/`              |
 
 **不含**线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/`——它们未随 skill 分发，解读请依赖上表知识源。
 
@@ -145,8 +145,10 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 
 - **各 skill 自写**：`purple-star.ts` / `cli/commands.ts` / `cli/selftest.ts` / `cli/flag-scope.ts` /
   `SKILL.md` / `references/`——按 skill 裁开，无法逐字节比对。
-- **自有内核**：`purplestar-synastry` 的 `ziwei/heming-knowledge.ts`、`purplestar-classics` 的
+- **自有内核**：`purplestar-synastry` 的 `ziwei/synastry-knowledge.ts`、`purplestar-classics` 的
   `classics/`——源里根本没有对应文件，也就没有可比的对象，由各自 skill 的 `selftest` 接手。
+  合盘的方法论正文 `purplestar-synastry/references/synastry-guide.md` 同属这一类（它是文档而非
+  模块，同样只在合盘 skill 里、由该 skill 的 `selftest` 与层 2 读文件核对）。
 - **旗标作用域**：`cli/flag-scope.ts` 声明本 skill 认哪些旗标，决定 `help` 里列出哪些——
   加了新旗标要记得决定它归谁，层 6 有四条双向断言盯着这件事。
 

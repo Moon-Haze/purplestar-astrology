@@ -128,13 +128,13 @@ export const DERIVED_SKILLS: readonly SkillSpec[] = [
 		name: "purplestar-synastry",
 		summary: "合盘与合婚 —— 双宫联参（夫妻宫 × 福德宫），带排盘底座",
 		// 合盘要排两张盘，故 ziwei/algorithm.ts 是根；再挂上四化与城市。
-		// 刻意**不**列 patterns/ 与 analysis/ —— 实测 cmdHeming 一个都不碰
+		// 刻意**不**列 patterns/ 与 analysis/ —— 实测 cmdsynastry 一个都不碰
 		// （格局与主题论断是 `analyze` / `topic` 的事），少切 20 个文件。
 		//
-		// ⚠️ `ziwei/heming-knowledge.ts` 不在此列：它是本 skill 的**自有**文件
+		// ⚠️ `ziwei/synastry-knowledge.ts` 不在此列：它是本 skill 的**自有**文件
 		// （2026-09-27 源删去该文件，只剩这一份），见 ownFiles。
 		//
-		// `citation-guard.ts` 是为了**引文守卫的覆盖面不静默收缩**：heming-knowledge
+		// `citation-guard.ts` 是为了**引文守卫的覆盖面不静默收缩**：synastry-knowledge
 		// 里那些「倪师说」引文，此前靠源的 selftest 扫源内核树时顺带扫到；它一旦离开
 		// 源的 scripts/，就脱离了那个扫描根。本 skill 的 selftest 因此要扫自己的根。
 		// 这道守卫当初正是为「拆分把引文挪进新文件而清单没跟上」建的 —— 同一个故障
@@ -161,7 +161,7 @@ export const DERIVED_SKILLS: readonly SkillSpec[] = [
 			"SKILL.md",
 			"package.json",
 			"scripts/purple-star.ts",
-			"scripts/ziwei/heming-knowledge.ts",
+			"scripts/ziwei/synastry-knowledge.ts",
 			"scripts/cli/commands.ts",
 			"scripts/cli/flag-scope.ts",
 			"scripts/cli/selftest.ts",

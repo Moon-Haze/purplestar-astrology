@@ -110,7 +110,9 @@ installHooks(ROOT);
  * `process.exit(1)`，故调用点拿到的返回值必然非空，不必再写 try/catch。
  */
 const load = makeLoader(ROOT, ROOT_LABEL, f => {
-	console.error(`[ziwei 启动失败] 无法加载 ${f.spec}\n  ${f.error.message}\n${loadFailureHint(f)}`);
+	console.error(
+		`[ziwei 启动失败] 无法加载 ${f.spec}\n  ${f.error.message}\n${loadFailureHint(f)}`
+	);
 	process.exit(1);
 });
 
@@ -224,7 +226,7 @@ function main() {
 		process.exit(1);
 	}
 	try {
-		// 命令名一并交给 parseArgs：旗标面要按命令校验（如 a- / b- 前缀只有 heming 认）
+		// 命令名一并交给 parseArgs：旗标面要按命令校验（如 a- / b- 前缀只有 synastry 认）
 		const args = parseArgs(argv.slice(1), cmd);
 		console.log(fn(args, { root: ROOT, rootLabel: ROOT_LABEL }));
 	} catch (err) {

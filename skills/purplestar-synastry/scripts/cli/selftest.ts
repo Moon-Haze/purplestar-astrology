@@ -9,11 +9,13 @@
  * `npm run sync:skills`」。把排盘内核的断言复制过来，只会生产两份需要手工同步的副本，
  * 而漏同步的那一份会静默失效。内核回归的主场是源 skill 的 `selftest` 与仓库的 `npm test`。
  *
- * 本文件只负责**本 skill 自己的**事，四类：
+ * 本文件只负责**本 skill 自己的**事，三类：
  *   1. 命令冒烟 —— 引导层 → 解析钩子 → 命令表 → 渲染这条链真的跑得通
  *   2. 参数面 —— 拼错旗标要报错、`a-` 前缀不得越界、SKILL.md 与实现双向一致
- *   3. 契约 —— `heming --json ⊇ heming-guide --json`（SKILL.md 里陈述的关系）
- *   4. 引导层豁免有界
+ *   3. 引导层豁免有界
+ *
+ * 外加一条**参考文档守卫**：`references/synastry-guide.md`（评分标准与方法论全文）不被任何
+ * 运行时路径读取，删空或改名不会让别的断言变红，故由本条盯着（见文件内的对应断言）。
  *
  * ⚠️ 它留在 `scripts/` 而非 `test/`，与源 skill 同理：分发时只带走
  * `SKILL.md + scripts/ + package.json`，自检必须在交付包内，否则装到别人机器上就没法自证。
@@ -28,12 +30,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { buildBirthInfo } from "./birth-info";
 // ⚠️ 相对路径而非 `@/`：合盘内核已不住在源 skill 里（见 ./commands.ts 同一处注释）。
-import {
-	HEMING_METHODOLOGY,
-	HEMING_SCORE_CRITERIA,
-	STAR_IN_FUQI_GU,
-	SIHUA_IN_FUQI_GU,
-} from "../ziwei/heming-knowledge";
+import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU } from "../ziwei/synastry-knowledge";
 
 /**
  * `selftest` 命令：跑一组命令冒烟与一致性断言，返回逐项报告。
@@ -55,11 +52,6 @@ export function cmdSelftest(ctx: CliContext): string {
 		detail: string;
 	}
 	const results: Assertion[] = [];
-	/** 相等断言，不等即抛错。 */
-	const eq = (actual: unknown, expected: unknown, msg = "") => {
-		if (actual !== expected)
-			throw new Error(`${msg}期望 ${JSON.stringify(expected)}，实得 ${JSON.stringify(actual)}`);
-	};
 	/** 跑一条断言并登记结果；抛错即判失败，一条失败不影响其余断言继续跑。 */
 	const ok = (name: string, fn: () => unknown) => {
 		try {
@@ -82,36 +74,55 @@ export function cmdSelftest(ctx: CliContext): string {
 	};
 	/** 一对固定的出生信息（含 `a-` / `b-` 前缀），冒烟与契约断言共用。 */
 	const PAIR = [
-		"--a-date", "1990-05-15", "--a-time", "09:30", "--a-gender", "male",
-		"--b-date", "1993-08-22", "--b-time", "14:00", "--b-gender", "female",
+		"--a-date",
+		"1990-05-15",
+		"--a-time",
+		"09:30",
+		"--a-gender",
+		"male",
+		"--b-date",
+		"1993-08-22",
+		"--b-time",
+		"14:00",
+		"--b-gender",
+		"female",
 	];
 
-	ok("冒烟：heming 跑得通，且输出含双宫联参与夫妻宫断语两节", () => {
-		const r = run(["heming", ...PAIR]);
+	ok("冒烟：synastry 跑得通，且输出含双宫联参与夫妻宫断语两节", () => {
+		const r = run(["synastry", ...PAIR]);
 		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 		// 两个块标题各盯一件事：「双宫联参」是倪师口径的标志（缺了它本 skill 就没有立场），
-		// 「夫妻宫断语」是那段唯一依赖 heming-knowledge.ts 的输出（缺了它说明断语表没被切进来）。
+		// 「夫妻宫断语」是那段唯一依赖 synastry-knowledge.ts 的输出（缺了它说明断语表没被切进来）。
 		for (const sec of ["【合盘 · 双宫联参】", "【夫妻宫断语】"]) {
 			if (!r.out.includes(sec)) throw new Error(`输出缺少「${sec}」`);
 		}
 		return `${r.out.split("\n").length} 行`;
 	});
 
-	ok("冒烟：heming-guide 跑得通，且两段静态参考都在", () => {
-		const r = run(["heming-guide"]);
-		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
-		for (const sec of ["【评分标准】", "【完整方法论】"]) {
-			if (!r.out.includes(sec)) throw new Error(`输出缺少「${sec}」`);
+	ok("参考文档：references/synastry-guide.md 在，评分标准与方法论两节都有内容", () => {
+		// 评分标准与完整方法论是**恒定静态文本**（与「这一对是谁」无关）。2026-09-27 起从
+		// `synastry-guide` 命令改为本 skill 的参考文档 —— `synastry` 只在末尾留一行指针。
+		// ⚠️ 它**不被任何运行时路径读取**（不引入「内核读 md」这种新模式），所以删空它、
+		// 改名它、把两节之一删掉，都不会让别的断言变红 —— 本断言是唯一的提示。
+		const p = resolve(ctx.root, "..", "references", "synastry-guide.md");
+		const md = readFileSync(p, "utf8");
+		// 两个锚点各盯一节：评分标准取首档（五星）判词，方法论取首章标题。
+		for (const anchor of [
+			"双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉",
+			"## 合盘分析核心框架（倪海夏体系 + 《紫微斗数全书》综合）",
+		]) {
+			if (!md.includes(anchor))
+				throw new Error(`references/synastry-guide.md 缺少锚点：${anchor}`);
 		}
-		return `${r.out.split("\n").length} 行`;
+		return `${md.split("\n").length} 行`;
 	});
 
-	ok("护栏：heming 缺一方性别必须报错，不替用户猜", () => {
+	ok("护栏：synastry 缺一方性别必须报错，不替用户猜", () => {
 		// 性别决定大限顺逆（男女可差 80 年），缺了它是**排不出对的盘**，不是少个字段。
 		// 这里从 PAIR 里摘掉 `--b-gender female` 与它的值。
 		const i = PAIR.indexOf("--b-gender");
 		const noGender = [...PAIR.slice(0, i), ...PAIR.slice(i + 2)];
-		const r = run(["heming", ...noGender]);
+		const r = run(["synastry", ...noGender]);
 		if (r.code === 0) throw new Error("缺 --b-gender 却退出码为 0 —— 性别护栏失效");
 		if (!/gender|性别/.test(r.err)) throw new Error(`报错未提到性别，实得：${r.err.trim()}`);
 		return "缺性别被拦下";
@@ -119,20 +130,16 @@ export function cmdSelftest(ctx: CliContext): string {
 
 	ok("知识源：合盘断语与四化断语非空", () => {
 		// 这条 2026-09-27 从排盘解读 skill 的 selftest 搬来 —— 那几个常量随
-		// `ziwei/heming-knowledge.ts` 一起归了本 skill，源那边的扫描根已够不到它们
+		// `ziwei/synastry-knowledge.ts` 一起归了本 skill，源那边的扫描根已够不到它们
 		// （源扫不到的东西不该由源声明它可用）。搬过来不是抄一份：源里那条**已删除**。
+		// ⚠️ 方法论与评分标准**不在本文件核对的范围内** —— 它们已搬去
+		// `references/synastry-guide.md`，由上面那条参考文档守卫盯着。
 		if (!Object.keys(STAR_IN_FUQI_GU).length) throw new Error("STAR_IN_FUQI_GU 为空");
 		if (!Object.keys(SIHUA_IN_FUQI_GU).length) throw new Error("SIHUA_IN_FUQI_GU 为空");
-		if (!HEMING_METHODOLOGY) throw new Error("HEMING_METHODOLOGY 为空");
-		// 这个常量原先是零断言覆盖（源那边的注释自己承认「清空它不会让任何断言变红」）。
-		// 自它成为 `heming-guide` 命令的主要载荷之一，空掉就不再是「少一段说明」而是
-		// 「命令输出残缺」。
-		if (!Object.keys(HEMING_SCORE_CRITERIA).length)
-			throw new Error("HEMING_SCORE_CRITERIA 为空");
 		return `夫妻宫断语 ${Object.keys(STAR_IN_FUQI_GU).length} 星`;
 	});
 
-	ok("性别：heming 缺 --a-gender 时，文案应指向 --a-gender", () => {
+	ok("性别：synastry 缺 --a-gender 时，文案应指向 --a-gender", () => {
 		// 与上面那条护栏互补：护栏测的是**命令**退出码非 0（子进程端到端），这条测的是
 		// **文案**能不能指出缺的是哪一个（`--a-gender` 而不是笼统的 `--gender`）。
 		// 同样搬自排盘解读 skill 的 selftest（那里已无 `a-` 前缀可用）。
@@ -147,32 +154,15 @@ export function cmdSelftest(ctx: CliContext): string {
 		return msg;
 	});
 
-	ok("契约：heming --json 的 methodology / scoreCriteria 与 heming-guide --json 相等", () => {
-		// SKILL.md 里陈述了 `heming --json ⊇ heming-guide --json` 这一关系（两个字段保留为
-		// 兼容，键名一致）。这条断言把它锁住 —— 否则两边各改一处，谁也不会红。
-		const pick = (text: string): Record<string, unknown> => {
-			const o = JSON.parse(text) as Record<string, unknown>;
-			return { methodology: o.methodology, scoreCriteria: o.scoreCriteria };
-		};
-		const h = run(["heming", ...PAIR, "--json"]);
-		if (h.code !== 0) throw new Error(`heming --json 退出码 ${h.code}：${h.err.trim()}`);
-		const g = run(["heming-guide", "--json"]);
-		if (g.code !== 0) throw new Error(`heming-guide --json 退出码 ${g.code}：${g.err.trim()}`);
-		const a = pick(h.out);
-		if (a.methodology === undefined || a.scoreCriteria === undefined)
-			throw new Error("heming --json 缺 methodology / scoreCriteria —— 兼容字段被删了？");
-		eq(JSON.stringify(a), JSON.stringify(pick(g.out)), "两处的静态文本应完全相同，");
-		return "两处静态文本逐字相同";
-	});
-
 	// ── 参数面 ──
 
 	ok("参数面：a- / b- 前缀旗标不得用在别的命令上", () => {
-		// `heming-guide` 不排盘，给它一个 `--a-date` 是**用户搞错了命令**；静默忽略会让人以为
-		// 「带了出生信息却只拿到静态文本」，排查方向被整个带偏。
+		// 只有 `synastry` 读前缀；别的命令给它一个 `--a-date` 是**用户搞错了命令**，静默忽略
+		// 会让人以为「带了出生信息却没生效」，排查方向被整个带偏。本 skill 除 `synastry` 外
+		// 只剩 `selftest` 一条命令，故靶子都用它，靠**旗标**不同来覆盖几种写法。
 		const probes: Array<[string, string]> = [
-			["--a-date", "heming-guide"],
-			["--b-gender", "heming-guide"],
+			["--a-date", "selftest"],
+			["--b-gender", "selftest"],
 			["--a-lunar", "selftest"],
 		];
 		for (const [flag, cmd] of probes) {
@@ -187,12 +177,12 @@ export function cmdSelftest(ctx: CliContext): string {
 		return `${probes.length} 种越界写法均被拦下`;
 	});
 
-	ok("参数面：heming 上无前缀的出生信息旗标被**静默接受**（已知现状）", () => {
+	ok("参数面：synastry 上无前缀的出生信息旗标被**静默接受**（已知现状）", () => {
 		// ⚠️ 这条断言锁的是一个**已知缺陷**，不是期望行为 —— 它的存在是为了「有记录、被盯住」，
 		// 而不是为了让人以为这里没问题。
 		//
-		// 现状：`checkFlagName` 只拦「`a-` / `b-` 前缀用在非 heming 命令上」，**不拦反方向**。
-		// 于是 `heming --a-date ... --city 喀什`（`--city` 漏了 `a-`）既不报错也不生效，
+		// 现状：`checkFlagName` 只拦「`a-` / `b-` 前缀用在非 synastry 命令上」，**不拦反方向**。
+		// 于是 `synastry --a-date ... --city 喀什`（`--city` 漏了 `a-`）既不报错也不生效，
 		// 脚本按默认东经 120° 排盘 —— 实测甲方整盘从「巳时·火六局·命宫子破军」变成
 		// 「卯时·土五局·命宫寅廉贞」，而输出里一个字都没说。这是本 skill 最危险的入口。
 		//
@@ -210,26 +200,26 @@ export function cmdSelftest(ctx: CliContext): string {
 		for (const [flag, value] of probes) {
 			let threw = "";
 			try {
-				parseArgs([flag, value], "heming");
+				parseArgs([flag, value], "synastry");
 			} catch (e) {
 				threw = (e as Error).message;
 			}
 			if (threw)
 				throw new Error(
-					`${flag} 在 heming 上开始报错了（${threw}）—— 缺口已被修复，` +
+					`${flag} 在 synastry 上开始报错了（${threw}）—— 缺口已被修复，` +
 						`请同步更新 SKILL.md 的「漏前缀」警告段并删除本条断言`
 				);
 		}
 		return `${probes.length} 个漏前缀旗标仍被静默接受`;
 	});
 
-	ok("参数面：heming 上漏前缀的 --gender 由性别护栏兜住", () => {
+	ok("参数面：synastry 上漏前缀的 --gender 由性别护栏兜住", () => {
 		// 上一条说漏前缀普遍静默，**唯独性别例外** —— 因为 `--gender` 是必填的，
 		// 读不到 `aGender` 就直接抛错。这条是那个「唯一兜底」的证据，也是上一条的对照：
 		// 两者一起说明「为什么偏偏是性别救了我们」，免得后人以为漏前缀整体无害。
 		const a = parseArgs(
 			["--a-date", "1990-05-15", "--a-time", "09:30", "--gender", "male"],
-			"heming"
+			"synastry"
 		);
 		if (a.aGender !== undefined)
 			throw new Error("`--gender` 竟被当成了 aGender —— 前缀规则变了，上一条的结论已失效");
@@ -252,7 +242,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		for (const [bad, want] of probes) {
 			let msg = "";
 			try {
-				parseArgs([bad, "x"], "heming");
+				parseArgs([bad, "x"], "synastry");
 			} catch (e) {
 				msg = (e as Error).message;
 			}
@@ -276,7 +266,8 @@ export function cmdSelftest(ctx: CliContext): string {
 		const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
 		const mentioned = [...md.matchAll(/--([a-z][a-z0-9-]*)/g)].map(m => m[1]);
 		// 先确认真扫到了东西：正则写歪或文件挪了位置都会得到空数组，那样的「零违规」是假绿。
-		if (!mentioned.length) throw new Error("未从 SKILL.md 扫到任何旗标 —— 正则或路径可能已失效");
+		if (!mentioned.length)
+			throw new Error("未从 SKILL.md 扫到任何旗标 —— 正则或路径可能已失效");
 		const unknown: string[] = [];
 		let prefixed = 0;
 		for (const n of new Set(mentioned)) {
@@ -302,8 +293,8 @@ export function cmdSelftest(ctx: CliContext): string {
 		const src = readFileSync(resolve(ctx.root, "cli", "commands.ts"), "utf8");
 		const table = src.match(/const COMMAND_TABLE = \{([\s\S]*?)\} satisfies/)?.[1];
 		if (!table) throw new Error("未从 commands.ts 抽到 COMMAND_TABLE —— 声明块形状已变");
-		// ⚠️ 键上的双引号是**可选**的：命令名含连字符时（`heming-guide`）不是合法标识符，
-		// 必须加引号。只认裸键的写法会静默漏抽这一项。
+		// ⚠️ 键上的双引号是**可选**的：命令名含连字符时不是合法标识符，必须加引号。
+		// 本 skill 现存命令名都无连字符，但正则保留这条兼容 —— 只认裸键的写法会静默漏抽。
 		const defined = [...table.matchAll(/^\t+"?([a-z][a-z0-9-]*)"?:/gm)].map(m => m[1]);
 		if (!defined.length)
 			throw new Error("COMMAND_TABLE 里一个命令名都没抽到 —— 正则或路径可能已失效");
@@ -343,7 +334,9 @@ export function cmdSelftest(ctx: CliContext): string {
 		//     哪天它多一个 `@/` 依赖，引导层就会在钩子注册前崩掉，而崩因指向一次看似无关的改动。
 		// 本断言守的是后一种。
 		const src = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
-		const specs = [...src.matchAll(/^\s*import\s[^;]*?from\s+["']([^"']+)["']/gm)].map(m => m[1]);
+		const specs = [...src.matchAll(/^\s*import\s[^;]*?from\s+["']([^"']+)["']/gm)].map(
+			m => m[1]
+		);
 		// 先确认真的扫到了东西：正则写歪或文件被改名都会得到空数组，那样的「零违规」是假绿。
 		if (!specs.length)
 			throw new Error("未扫到任何 import —— 正则或 boot-hooks.ts 的路径可能已失效");

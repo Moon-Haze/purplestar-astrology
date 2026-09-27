@@ -12,15 +12,15 @@
  * {@link checkFlagName} 明确拒绝维护的归属表（见那里的 ⚠️）。正面清单还天然 fail-closed：
  * 往声明表加一个新旗标，它不会自动泄漏给没声明它的 skill，加的人必须决定它归谁。
  *
- * ⚠️ **粒度是 skill 级**：`heming-guide --json` 这类「本 skill 有、但当前命令不读」的
+ * ⚠️ **粒度是 skill 级**：`selftest --json` 这类「本 skill 有、但当前命令不读」的
  * 参数仍会被收下不用。要修就得把每条命令实际读的键也声明出来，本仓不做。
  *
  * ## 本 skill 是唯一认 `a-` / `b-` 前缀的
  *
  * 合盘要同时读**两方**出生信息，故 15 个出生信息旗标都能叠前缀。`prefixedCommands`
- * 这一维**不能省**：它声明只有 `heming` 读前缀，`heming-guide` 是纯静态参考、不排盘，
- * 给它 `--a-date` 是**用户搞错了命令** —— 静默忽略会让人以为「带了出生信息却只拿到
- * 静态文本」，排查方向被整个带偏。本 skill 的 `selftest` 有一条断言钉着这件事。
+ * 这一维**不能省**：它声明只有 `synastry` 读前缀，别的命令（如 `selftest`）不排盘，
+ * 给它 `--a-date` 是**用户搞错了命令** —— 静默忽略会让人以为「带了出生信息却没生效」，
+ * 排查方向被整个带偏。本 skill 的 `selftest` 有一条断言钉着这件事。
  */
 import type { FlagScope } from "./args";
 
@@ -29,11 +29,11 @@ import type { FlagScope } from "./args";
  * 后者会把 `FLAG_SCOPE` 的类型钉成这里**字面量写出来的那个对象类型** —— 本文件没写
  * `descOverrides`，`args.ts` 里 `FLAG_SCOPE.descOverrides?.[...]` 便成了「访问一个
  * 不存在的属性」而编译不过；`prefixedCommands.includes(command)` 同理，会被要求参数
- * 必须是字面量 `"heming"`。可选字段的「可选」在那一侧整个失效。
+ * 必须是字面量 `"synastry"`。可选字段的「可选」在那一侧整个失效。
  */
 export const FLAG_SCOPE: FlagScope = {
 	/**
-	 * 15 个出生信息旗标（`heming` 上各自还能叠 `a-` / `b-`）+ `--json`。
+	 * 15 个出生信息旗标（`synastry` 上各自还能叠 `a-` / `b-`）+ `--json`。
 	 *
 	 * ⚠️ 这里的每一项都必须是 `args.ts` 的 `FLAG_GROUPS` 里真有的名字：拼错不会报错，
 	 * 只会让那个旗标在**本 skill 里失效**（用户在 help 里看不到它，用了则报「未知参数」）。
@@ -66,6 +66,6 @@ export const FLAG_SCOPE: FlagScope = {
 	],
 	/** 两方出生信息的前缀 —— 全仓只有本 skill 认它们。 */
 	sidePrefixes: ["a-", "b-"],
-	/** 只有 `heming` 排盘，故只有它读前缀。`heming-guide` 是静态参考，给它前缀要报错。 */
-	prefixedCommands: ["heming"],
+	/** 只有 `synastry` 排盘，故只有它读前缀；其余命令给了前缀要报错。 */
+	prefixedCommands: ["synastry"],
 };

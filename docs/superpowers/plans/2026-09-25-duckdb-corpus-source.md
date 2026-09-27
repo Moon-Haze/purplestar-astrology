@@ -2180,13 +2180,13 @@ grep -n "reference/ziwei-samples-toolkit\|5\.5\|1\.8\|符号链接\|jsonl" test/
 **（a）第 4 行**：
 
 ```markdown
-**被测对象：** `reference/ziwei-samples-toolkit` 全量语料 + `patterns.ts`（格局）+ `heming`（合盘）+ SKILL.md ↔ CLI 一致性
+**被测对象：** `reference/ziwei-samples-toolkit` 全量语料 + `patterns.ts`（格局）+ `synastry`（合盘）+ SKILL.md ↔ CLI 一致性
 ```
 
 改为（只补载体，被测对象不变）：
 
 ```markdown
-**被测对象：** 518,400 条全量语料（载体：`db/ziwei.duckdb`，等价于 `reference/ziwei-samples-toolkit`）+ `patterns.ts`（格局）+ `heming`（合盘）+ SKILL.md ↔ CLI 一致性
+**被测对象：** 518,400 条全量语料（载体：`db/ziwei.duckdb`，等价于 `reference/ziwei-samples-toolkit`）+ `patterns.ts`（格局）+ `synastry`（合盘）+ SKILL.md ↔ CLI 一致性
 ```
 
 **（b）第 16 行的数据集一行**：

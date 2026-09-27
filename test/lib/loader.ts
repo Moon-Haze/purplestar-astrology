@@ -106,10 +106,10 @@ const SKILLS_DIR = resolve(HERE, "../../skills");
  *
  * @remarks
  * **为什么需要它**：`@/` 在运行期解析到**当前运行中 CLI 的内核根**（这里是源 skill 的
- * `scripts/`），而 `classics/` 与 `ziwei/heming-knowledge.ts` 自 2026-09-27 起归了
- * `purplestar-classics` / `purplestar-synastry` —— 源的钩子**够不到**它们了。
- * 这几条用例测的不是「源的内核」而是「那两份知识本身」（古籍文本的排版不变量、
- * heming-guide 的载荷完整性），所以换口径加载，而不是删用例。
+ * `scripts/`），而 `classics/`（归 `purplestar-classics`）与各 skill 自写的
+ * `cli/flag-scope.ts` 自 2026-09-27 起都不住在源里 —— 源的钩子**够不到**它们了。
+ * 这几条用例测的不是「源的内核」而是「那些模块本身」（古籍文本的排版不变量与检索行为、
+ * 各 skill 的旗标作用域），所以换口径加载，而不是删用例。
  *
  * **为什么不在 `boot-hooks.ts` 加第二个 `@/` 基准**：`@/` == 当前 CLI 的内核根是
  * 文档化的不变量，且多个解析钩子之间**不会互相兜底**（前一个抛 `ERR_MODULE_NOT_FOUND`

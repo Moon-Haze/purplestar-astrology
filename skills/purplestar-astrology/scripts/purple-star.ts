@@ -21,7 +21,7 @@
  *   scripts/ziwei/constants.ts   天干地支 / 四化表 / 星曜释义
  *
  * ⚠️ 合盘与古籍检索的内核**不在本 skill 里**（2026-09-27 起源不再持有它们）：
- *    `ziwei/heming-knowledge.ts` 归 `purplestar-synastry`，`classics/` 归
+ *    `ziwei/synastry-knowledge.ts` 归 `purplestar-synastry`，`classics/` 归
  *    `purplestar-classics`。本 skill 的 CLI 相应地也只剩排盘解读相关的命令 ——
  *    要合盘或查古籍原文，去调那两边的 CLI。解读需要引证古籍原句时同理
  *    （见 `SKILL.md` 的知识源一节）。

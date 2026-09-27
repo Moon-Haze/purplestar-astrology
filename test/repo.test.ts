@@ -77,9 +77,8 @@ function testFiles(): string[] {
 		.sort();
 }
 
-const { scanCitations } = await load<typeof import("@/ziwei/citation-guard")>(
-	"@/ziwei/citation-guard"
-);
+const { scanCitations } =
+	await load<typeof import("@/ziwei/citation-guard")>("@/ziwei/citation-guard");
 const { ANNOTATIONS } = await load<typeof import("@/ziwei/annotations")>("@/ziwei/annotations");
 
 /**
@@ -240,7 +239,9 @@ describe("仓库自洽（引文守卫 / 登记一致性 / 副本一致性）", (
 		// 两者都是同一个失效的两面 —— 文档与文件系统脱钩。
 		const readme = readFileSync(resolve(SKILL_ROOT, "test/README.md"), "utf8");
 		const files = testFiles();
-		const mentioned = [...new Set([...readme.matchAll(/[a-z-]+\.test\.ts/g)].map(m => m[0]))].sort();
+		const mentioned = [
+			...new Set([...readme.matchAll(/[a-z-]+\.test\.ts/g)].map(m => m[0])),
+		].sort();
 		assert.deepEqual(
 			mentioned.filter(f => !files.includes(f)),
 			[],
@@ -294,7 +295,10 @@ describe("解析钩子候选序（boot-hooks）", () => {
 		const aliased = resolveAttempts("@/sub", tree);
 		assert.equal(rel.at(-1), "./sub/index.ts");
 		assert.ok(
-			aliased.at(-1)?.replace(/^file:\/\//, "").endsWith("/sub/index.ts"),
+			aliased
+				.at(-1)
+				?.replace(/^file:\/\//, "")
+				.endsWith("/sub/index.ts"),
 			`@/ 分支没落到 sub/index.ts，实际：${aliased.at(-1)}`
 		);
 	});
@@ -483,7 +487,9 @@ describe("派生 skill 的副本一致性与底座哨兵", () => {
 			if (!existsSync(refDir)) continue;
 			for (const entry of readdirSync(refDir).filter(n => n.endsWith(".md"))) {
 				if (!linked.has(entry)) {
-					problems.push(`${name}: references/${entry} 没有被 SKILL.md 链接（等于不存在）`);
+					problems.push(
+						`${name}: references/${entry} 没有被 SKILL.md 链接（等于不存在）`
+					);
 				}
 			}
 		}
@@ -502,7 +508,7 @@ describe("旗标作用域：各 skill 的声明与共用声明表的双向一致
 	//   拼错只是「少了一个成员」，没有任何东西会报错。用户敲它才被拒。
 	// - 往声明表加了旗标却没人认领 → 三个 skill 全都不认它，等于加了个死参数。
 	//   加旗标的人以为自己加好了。
-	// - 出生信息旗标只改源、忘了合盘 → `heming --a-<新旗标>` 会被当作未知旗标**拒掉**
+	// - 出生信息旗标只改源、忘了合盘 → `synastry --a-<新旗标>` 会被当作未知旗标**拒掉**
 	//   （好过静默），但那是在用户面前炸，不是在 CI 里炸。
 	//
 	// 第四条（`ownFiles` 落地）看似与旗标无关，其实同属「声明与磁盘对不对得上」：
@@ -527,13 +533,17 @@ describe("旗标作用域：各 skill 的声明与共用声明表的双向一致
 			skill: "purplestar-synastry",
 			flags: loadFromSkill<
 				typeof import("../skills/purplestar-synastry/scripts/cli/flag-scope")
-			>("purplestar-synastry", "cli/flag-scope").then(m => new Set<string>(m.FLAG_SCOPE.flags)),
+			>("purplestar-synastry", "cli/flag-scope").then(
+				m => new Set<string>(m.FLAG_SCOPE.flags)
+			),
 		},
 		{
 			skill: "purplestar-classics",
 			flags: loadFromSkill<
 				typeof import("../skills/purplestar-classics/scripts/cli/flag-scope")
-			>("purplestar-classics", "cli/flag-scope").then(m => new Set<string>(m.FLAG_SCOPE.flags)),
+			>("purplestar-classics", "cli/flag-scope").then(
+				m => new Set<string>(m.FLAG_SCOPE.flags)
+			),
 		},
 	];
 
@@ -569,13 +579,18 @@ describe("旗标作用域：各 skill 的声明与共用声明表的双向一致
 		// 手抄的清单会与源码一起漂移，而漂移后这条断言正好失去意义。
 		const KEYS = [
 			...new Set(
-				[...readFileSync(sourcePathOf("cli/birth-info.ts"), "utf8").matchAll(/\bg\("([^"]+)"\)/g)].map(
-					m => m[1]
-				)
+				[
+					...readFileSync(sourcePathOf("cli/birth-info.ts"), "utf8").matchAll(
+						/\bg\("([^"]+)"\)/g
+					),
+				].map(m => m[1])
 			),
 		];
 		// ⚠️ 先确认抽出来的样本有份量，否则正则失效时下面的循环会在空数组上跑完全绿。
-		assert.ok(KEYS.length >= 10, `从 birth-info.ts 只抽到 ${KEYS.length} 个 g() 键，正则可能已失效`);
+		assert.ok(
+			KEYS.length >= 10,
+			`从 birth-info.ts 只抽到 ${KEYS.length} 个 g() 键，正则可能已失效`
+		);
 
 		const all = await ALL_FLAG_NAMES;
 		// 古籍 skill 不排盘，出生信息旗标本就不该在它的作用域里 —— 只查排盘类的两个。

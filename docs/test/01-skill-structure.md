@@ -151,12 +151,12 @@ SKILL.md 第 186 行说「同时使用会**撞车**」——实测**不撞车，
 
 `purple-star.mjs:357` 原来把**任何**非 `female` 输入都兜底成 `male`，包括缺失和拼错的值。现改为显式校验：缺失 → 报错，非法 → 报错，`male/f/男/m/female/女` 归一化。
 
-报错文案用 `${p}gender` 插值，因此 `heming` 自动得到 `--a-gender` / `--b-gender`，无需分支：
+报错文案用 `${p}gender` 插值，因此 `synastry` 自动得到 `--a-gender` / `--b-gender`，无需分支：
 
 ```text
 错误：缺少性别：需 --gender male|female（性别决定大限顺逆，缺失会排出错盘）
 错误：--gender 应为 male 或 female，收到：xyz
-错误：缺少性别：需 --a-gender male|female（…）      ← heming
+错误：缺少性别：需 --a-gender male|female（…）      ← synastry
 ```
 
 **TDD 过程实测：** 先写断言 → `34/37`（恰好 3 条如期失败，证明断言有效）→ 改实现 → `37/37`。

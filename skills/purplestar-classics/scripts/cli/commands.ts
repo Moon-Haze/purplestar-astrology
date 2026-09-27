@@ -3,7 +3,7 @@
  *
  * ⚠️ **本文件是手写的，不是副本**（见 `CLAUDE.md` 的「副本边界与同步流程」）。
  * 排盘解读 skill 的 `cli/commands.ts` 里有 9 个命令，本 skill 只该有 2 个 ——
- * `analyze` / `heming` 之类出现在这里，只会让 Claude 照着一个跑不通的命令名去敲。
+ * `analyze` / `synastry` 之类出现在这里，只会让 Claude 照着一个跑不通的命令名去敲。
  * 裁过的文件无法逐字节守卫，这是拆 skill 的固有代价；它的正确性由
  * `cli/selftest.ts`（命令表 ↔ SKILL.md 双向一致）与仓库的 `test/cli.test.ts` 负责。
  *

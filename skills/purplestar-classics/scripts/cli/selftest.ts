@@ -192,7 +192,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		const src = readFileSync(resolve(ctx.root, "cli", "commands.ts"), "utf8");
 		const table = src.match(/const COMMAND_TABLE = \{([\s\S]*?)\} satisfies/)?.[1];
 		if (!table) throw new Error("未从 commands.ts 抽到 COMMAND_TABLE —— 声明块形状已变");
-		// ⚠️ 键上的双引号是**可选**的：命令名含连字符时（`heming-guide`）不是合法标识符，
+		// ⚠️ 键上的双引号是**可选**的：命令名含连字符时不是合法标识符，
 		// 必须加引号。只认裸键的写法会静默漏抽这一项。
 		const defined = [...table.matchAll(/^\t+"?([a-z][a-z0-9-]*)"?:/gm)].map(m => m[1]);
 		if (!defined.length)
