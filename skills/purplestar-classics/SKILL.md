@@ -11,7 +11,7 @@ description: 紫微斗数古籍原文检索 —— 在骨髓赋、紫微斗数�
 
 ## 路径约定
 
-本 skill 的根目录就是 **SKILL.md 所在目录**，其下是 `scripts/`（CLI + 古籍数据）、`package.json`（依赖，只有 `cac` 一个）。
+本 skill 的根目录就是 **SKILL.md 所在目录**，其下是 `scripts/`（CLI + 古籍数据）、`package.json`。**它零依赖**：参数解析用的是 Node 内置的 `node:util` 的 `parseArgs`，故拷进 `~/.claude/skills/` 直接就能跑，**不需要 `npm install`**。
 
 古籍内核（`scripts/classics/`）**只住在本 skill 里**：2026-09-27 拆 skill 时随 `classics` 命令从 `purplestar-astrology` 搬来，源里已没有这个目录。所以它没有「改源再同步」这回事——要补录古籍、修检索逻辑，就在本 skill 里改。
 
@@ -71,6 +71,5 @@ node scripts/purple-star.ts classics
 ## 若脚本报错
 
 - `[ziwei 启动失败] 找不到古籍内核` → skill 目录不完整，`scripts/classics/` 缺失（拷贝时漏带）。从源仓库补回该目录，或用 `ZIWEI_ROOT=<含 classics/ 的目录>` 指定。
-- `Cannot find module 'cac'` → 依赖未装。**看报错里的「当前内核根」**，在该 skill 根目录下 `npm install`。
 - `registerHooks is not a function` 或 TS 语法报错 → Node 版本过低，需 ≥ 22.15。
 - 搜不到你以为该有的句子 → 先按上表逐条排查：**是不是繁体？是不是只搜了原文？** 再确认该书确实收录（`classics` 无参数运行看一遍）。

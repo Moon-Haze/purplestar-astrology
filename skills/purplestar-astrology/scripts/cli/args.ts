@@ -43,11 +43,14 @@
 
 import { cac } from "cac";
 
-// ⚠️ 本文件是三份**逐字节相同**的副本，而 `./flag-scope` 是**各 skill 自己写**的
-//    （源 / 合盘 / 古籍各一份，内容不同）。二者必须分开：解析骨架编码的全是 cac/mri 的
-//    实测行为，抄三份等于把最危险的一段复制成三份无人看守的代码；而「本 skill 认哪些
-//    旗标」本来就因 skill 而异，正是该各写各的那部分。
-//    故：这份 `args.ts` 一字不改地同步，作用域文件不进同步清单（见 tools/skills.ts）。
+// ⚠️ 本文件是**源**这一份（`cac` 引擎）。它曾经同步给两个派生 skill，2026-09-27 起**不再同步**
+//    —— 那两个改用 Node 内置的 `node:util` 的 `parseArgs`，两边不可能逐字节相同。它们各存一份
+//    util.parseArgs 版（两份之间逐字节相同，以 `purplestar-classics` 为准），**声明表与本文
+//    deep-equal**，两块都由 `test/repo.test.ts` 层 6 的断言盯着。
+//    而 `./flag-scope` 始终是**各 skill 自己写**的（源 / 合盘 / 古籍各一份，内容不同），
+//    它不进同步清单（见 tools/skills.ts）。二者必须分开：解析骨架编码的全是解析器的实测行为，
+//    抄多份等于把最危险的一段复制成多份无人看守的代码；而「本 skill 认哪些旗标」本来就因
+//    skill 而异，正是该各写各的那部分。
 //
 // 运行期无环：本行是**值**导入，而 `flag-scope.ts` 只以 `import type` 取下面的
 // {@link FlagScope}（类型导入被完全擦除）。
@@ -105,7 +108,7 @@ export interface FlagGroup {
 }
 
 /**
- * 本 skill 的**旗标作用域** —— 声明「这三份 args.ts 里，本 skill 认其中哪些」。
+ * 本 skill 的**旗标作用域** —— 声明「声明表里那些旗标中，本 skill 认哪些」。
  *
  * @remarks
  * 各 skill 写在自己的 `scripts/cli/flag-scope.ts` 里，本文件静态 import 它。

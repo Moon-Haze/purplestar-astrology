@@ -6,8 +6,9 @@
  * ## 为什么这里**不复制**排盘解读 skill 的那几百行断言
  *
  * 本 skill 的排盘内核**已不存在**（2026-09-27 起命盘由 purplestar-astrology 产出），
- * 剩下的逐字节副本是 `boot-hooks.ts` / `cli/args.ts` 这类基础设施 —— 没人会就地改它们，
- * 开发循环是「改源 → `npm test` → `npm run sync:skills`」。把排盘内核的断言复制过来，
+ * 剩下的逐字节副本只剩 `boot-hooks.ts` —— 没人会就地改它，开发循环是
+ * 「改源 → `npm test` → `npm run sync:skills`」。（`cli/args.ts` 已不是源的副本：源仍用
+ * `cac`，两个派生用内置 `parseArgs`，两份派生副本之间逐字节相同。）把排盘内核的断言复制过来，
  * 只会生产两份需要手工同步的副本，而漏同步的那一份会静默失效。
  * 排盘内核回归的主场是源 skill 的 `selftest` 与仓库的 `npm test`。
  *

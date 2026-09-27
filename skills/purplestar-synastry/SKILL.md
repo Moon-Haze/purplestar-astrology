@@ -12,7 +12,9 @@ description: 紫微斗数合盘与合婚（倪海夏《天纪》三合派体系�
 - 夫妻宫断语与四化断语的**权威文件** `scripts/ziwei/synastry-knowledge.ts`；
 - **合盘方法论与评分标准** [references/synastry-guide.md](references/synastry-guide.md)。
 
-**改这两份就在本技能里改，没有「同步」这回事。**反过来，`scripts/boot-hooks.ts` 与 `scripts/cli/args.ts` 是 `purplestar-astrology` 的逐字节副本（`ziwei/types.ts` 与 `ziwei/citation-guard.ts` 也是），改它们一律改源再 `npm run sync:skills`——就地改会被同步器覆盖，仓库的层 6 断言也会先变红。
+**改这两份就在本技能里改，没有「同步」这回事。**反过来，`scripts/boot-hooks.ts` 是 `purplestar-astrology` 的逐字节副本（`ziwei/types.ts` 与 `ziwei/citation-guard.ts` 也是），改它们一律改源再 `npm run sync:skills`——就地改会被同步器覆盖，仓库的层 6 断言也会先变红。
+
+⚠️ **`scripts/cli/args.ts` 不在此列**（2026-09-27 换解析引擎）：它不再是源的副本——源那份仍由 `cac` 驱动，本技能与 `purplestar-classics` 用的是 Node 内置的 `node:util` 的 `parseArgs` 版，**两份派生副本逐字节相同，以 `purplestar-classics` 那份为准**。就地改本技能这份会被层 6 的断言当场抓住。**本技能与古籍检索 skill 因此都是零依赖**，不需要 `npm install`。
 
 **本技能只做双人合盘。**用户要的是「排一张盘」「解读我的命盘」→ 那是 `purplestar-astrology`（排盘解读）的活；「查一句古诀的原文」→ `purplestar-classics`（古籍检索）。**单人解读用本技能是错的**——本技能的命令不输出格局、主题论断与分宫详表，硬做只会得到一张残缺的解读。
 

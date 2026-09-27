@@ -35,7 +35,7 @@
 | `[ziwei 启动自检失败]`                           | 合盘断语库被重构、关键导出（`STAR_IN_FUQI_GU` / `MARRIAGE_STARS_BRIEF`）改名或删除。核对 `scripts/ziwei/synastry-knowledge.ts` 的实际导出。               |
 | `registerHooks is not a function` 或 TS 语法报错 | Node 版本过低，需 ≥ 22.15（本项目开发环境为 v26）。                                                                                                       |
 
-⚠️ 这里**不会**出现 `Cannot find module 'iztro'` —— 本技能已无排盘依赖，`package.json` 里只剩 `cac`。若真见到它，说明跑的不是本 skill 的脚本。
+⚠️ 这里**不会**出现 `Cannot find module 'iztro'`，也不会出现 `Cannot find module 'cac'` —— 本技能已无排盘依赖，参数解析改用 Node 内置的 `node:util` 的 `parseArgs`，`package.json` 里**一条依赖都没有**，连 `npm install` 都不需要。若真见到这两个报错之一，说明跑的不是本 skill 的脚本。
 
 ## 确认跑的是哪一份内核
 
@@ -51,6 +51,7 @@ node scripts/purple-star.ts selftest   # 命令冒烟 / 命盘护栏 / 参数面
 
 ⚠️ **本 skill 的内核里有一半是从源仓库同步来的副本，`npm test` 不在本 skill 内。**
 
-- **逐字节副本**（`scripts/boot-hooks.ts`、`scripts/cli/args.ts`、`scripts/ziwei/types.ts`、`scripts/ziwei/citation-guard.ts` 及其带出的 `annotations.ts`）→ **改源仓库那份**，再 `npm run sync:skills`。就地改会被同步器覆盖，仓库的层 6 一致性断言也会先变红。
+- **逐字节副本**（`scripts/boot-hooks.ts`、`scripts/ziwei/types.ts`、`scripts/ziwei/citation-guard.ts` 及其带出的 `annotations.ts`）→ **改源仓库那份**，再 `npm run sync:skills`。就地改会被同步器覆盖，仓库的层 6 一致性断言也会先变红。
+- **两份派生 skill 之间的副本**（`scripts/cli/args.ts`）→ **以 `purplestar-classics` 那份为准**，改完拷过来。它已不是源的副本（源仍用 `cac`，本 skill 用内置的 `parseArgs`），故同步器不管它；两份不一致时层 6 会当场变红。
 - **自有内核，反方向**（`scripts/ziwei/synastry-knowledge.ts`、`references/`）→ **就在本 skill 里改**，源仓库里没有对应物，**没有同步这回事**。
 - **手写件**（`scripts/cli/commands.ts`、`scripts/cli/chart-view.ts`、`scripts/cli/flag-scope.ts`、`scripts/cli/selftest.ts`、`scripts/purple-star.ts`）→ 可以就地改，不必同步。

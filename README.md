@@ -148,14 +148,21 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 指名是哪个文件。
 
 ⚠️ **合盘 skill 已于 2026-09-27 撤出排盘底座**：它不再排盘，改为消费源的 `analyze --json`
-输出（数据解耦，两个 skill 之间的契约只有那份 JSON）。因此它的 `package.json` 里只剩 `cac`，
-`iztro` / `lunar-typescript` 不再出现在它那里；它与源共用的副本也收缩到
-`boot-hooks.ts` / `cli/args.ts` / `ziwei/types.ts` / `ziwei/citation-guard.ts`（带出 `annotations.ts`）。
+输出（数据解耦，两个 skill 之间的契约只有那份 JSON）。因此它的 `package.json` 里不再有
+`iztro` / `lunar-typescript`；它与源共用的副本也收缩到
+`boot-hooks.ts` / `ziwei/types.ts` / `ziwei/citation-guard.ts`（带出 `annotations.ts`）。
+
+⚠️ **两个派生 skill 的 `cli/args.ts` 不再是源的副本**（2026-09-27 换解析引擎）：源那份仍由
+`cac` 驱动，两个派生改用了 Node 内置的 `node:util` 的 `parseArgs`，两边**不可能逐字节相同**，
+硬留在同步清单里只会让层 6 永远变红。它们因此改由两条断言接手：两份派生副本之间逐字节相同
+（以 `purplestar-classics` 那份为准），声明表 `FLAG_GROUPS` 与源 deep-equal。**连带的收益是两个
+派生 skill 依赖清零**，`npm install` 都不再需要。
 
 下面几类不在此列，各有各的守卫：
 
-- **各 skill 自写**：`purple-star.ts` / `cli/commands.ts` / `cli/selftest.ts` / `cli/flag-scope.ts` /
-  `SKILL.md` / `references/`——按 skill 裁开，无法逐字节比对。
+- **各 skill 自写**：`purple-star.ts` / `cli/args.ts` / `cli/commands.ts` / `cli/selftest.ts` /
+  `cli/flag-scope.ts` / `SKILL.md` / `references/`——按 skill 裁开或各存一份，无法逐字节比对
+  （`cli/args.ts` 那份由上面那条「两份派生之间逐字节相同」盯着）。
 - **自有内核**：`purplestar-synastry` 的 `ziwei/synastry-knowledge.ts`、`purplestar-classics` 的
   `classics/`——源里根本没有对应文件，也就没有可比的对象，由各自 skill 的 `selftest` 接手。
   合盘的方法论正文 `purplestar-synastry/references/synastry-guide.md` 同属这一类（它是文档而非

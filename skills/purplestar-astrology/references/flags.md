@@ -47,7 +47,8 @@ node scripts/purple-star.ts help
 `help` 渲染的参数段由 `scripts/cli/args.ts` 的 `FLAG_GROUPS` 派生，与解析器同源——
 **它列出的就是本技能的全部合法旗标**，本文件不重复维护一份清单。
 
-⚠️ 「本技能的」不是废话：`FLAG_GROUPS` 是三个 skill 共用的**逐字节副本**，而每个 skill 实际认哪些
-旗标由各自的 `scripts/cli/flag-scope.ts` 声明。表里那些**不在本技能作用域内**的旗标
+⚠️ 「本技能的」不是废话：`FLAG_GROUPS` 三个 skill 各有一份（本技能与两个派生那份**声明表内容相同**，
+但**解析引擎不同**——本技能仍是 `cac`，两个派生已换成 Node 内置的 `util.parseArgs`），而每个 skill
+实际认哪些旗标由各自的 `scripts/cli/flag-scope.ts` 声明。表里那些**不在本技能作用域内**的旗标
 （如合盘的 `--a-*` / `--b-*`、古籍检索的 `--limit`）既不注册进 `help`，写出来也会被**直接拒掉**，
 不是静默忽略。
