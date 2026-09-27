@@ -111,14 +111,21 @@ export const DERIVED_SKILLS: readonly SkillSpec[] = [
 		// `@/classics/index`，而手写文件不在闭包根里。守卫交给它自己的 selftest
 		// 与仓库的 test/cli.test.ts（见 test/repo.test.ts 的分工表）。
 		kernelEntries: [],
-		// args.ts 只依赖 `cac`（实测），故古籍 skill 不需要 render.ts / birth-info.ts，
-		// 更不需要 ziwei/ —— 这是唯一真正零排盘内核的一个。不排盘，故无 chartLike。
-		sharedFiles: ["boot-hooks.ts", "cli/args.ts"],
+		// args.ts 只依赖 `node:util` 与 `./flag-scope`（实测），故古籍 skill 不需要
+		// render.ts / birth-info.ts，更不需要 ziwei/ —— 这是唯一真正零排盘内核的一个。
+		// 不排盘，故无 chartLike。
+		//
+		// ⚠️ `cli/args.ts` **不在 sharedFiles 里**（2026-09-27 换引擎）：源那份仍是 `cac` 版，
+		// 与两个派生的 `util.parseArgs` 版**不可能逐字节相同**，硬留在同步清单里只会让层 6
+		// 永远变红。它改列进下面各 skill 的 ownFiles，两份派生副本之间的逐字节一致由
+		// 层 6 的旗标作用域 describe 接手（那条断言会写明「以 purplestar-classics 那份为准」）。
+		sharedFiles: ["boot-hooks.ts"],
 		ownFiles: [
 			"SKILL.md",
 			"package.json",
 			"scripts/purple-star.ts",
 			"scripts/classics/",
+			"scripts/cli/args.ts",
 			"scripts/cli/commands.ts",
 			"scripts/cli/flag-scope.ts",
 			"scripts/cli/selftest.ts",
@@ -146,15 +153,20 @@ export const DERIVED_SKILLS: readonly SkillSpec[] = [
 		// **不会被遍历到**（与 classics 的 `@/classics/index` 同一种情况）。所以它进不了
 		// wanted，除非在这里点名。它是零依赖的纯 interface 文件，带一份的代价只是 294 行文本。
 		kernelEntries: ["ziwei/types.ts", "ziwei/citation-guard.ts"],
-		// ⚠️ 只剩解析骨架与引导机制。`cli/render.ts` / `cli/birth-info*.ts` 已随排盘职责
-		// 一并移出（它们自己 import `@/ziwei/algorithm`，留着会把整个排盘内核拖回闭包）；
+		// ⚠️ 只剩引导机制。`cli/render.ts` / `cli/birth-info*.ts` 已随排盘职责一并移出
+		// （它们自己 import `@/ziwei/algorithm`，留着会把整个排盘内核拖回闭包）；
 		// 合盘真正用到的那几个格式化与查宫函数改住在自写的 `cli/chart-view.ts` 里。
-		sharedFiles: ["boot-hooks.ts", "cli/args.ts"],
+		//
+		// ⚠️ `cli/args.ts` 同理**不在 sharedFiles 里**（2026-09-27 换引擎）：源那份是 `cac` 版，
+		// 两个派生用的是 `util.parseArgs` 版。它改列进下面的 ownFiles —— 那份声明表与源
+		// deep-equal、与 classics 那份逐字节相同，两条都由层 6 的断言守着。
+		sharedFiles: ["boot-hooks.ts"],
 		ownFiles: [
 			"SKILL.md",
 			"package.json",
 			"scripts/purple-star.ts",
 			"scripts/ziwei/synastry-knowledge.ts",
+			"scripts/cli/args.ts",
 			"scripts/cli/chart-view.ts",
 			"scripts/cli/commands.ts",
 			"scripts/cli/flag-scope.ts",
@@ -255,12 +267,17 @@ export function importClosure(entries: readonly string[]): string[] {
  * `sharedFiles` 与 `kernelEntries` 一起进闭包（而非直接并入结果）：基础设施自己也会
  * import 内核（`cli/render.ts` → `ziwei/algorithm.ts`），只复制它本身而不遍历，
  * 副本会在运行时崩在「找不到模块」—— 而那时的报错指向的是派生 skill，不是这份声明。
- * 遍历对它们无害：裸包名（`cac`）与 `node:` 内置由 {@link resolveSpec} 直接滤掉。
+ * 遍历对它们无害：裸包名（源那边仍有 `cac` / `iztro`）与 `node:` 内置由 {@link resolveSpec}
+ * 直接滤掉。（两个派生 skill 自 2026-09-27 起已无裸包名依赖，`args.ts` 引的是 `node:util`。）
  */
 export function syncedFiles(spec: SkillSpec): string[] {
-	// ⚠️ 必须减去自有文件。`sharedFiles` 里的 `cli/args.ts` 静态 import 了 `./flag-scope`，
-	// 于是闭包会顺着它把**源**的 `cli/flag-scope.ts` 算进来 —— 而那一份是排盘解读的作用域。
-	// 不滤掉，同步器就会拿它覆盖合盘 / 古籍自己的那份，且事后没有任何断言看得出。
+	// ⚠️ 必须减去自有文件。眼下这一句是**防御性的**，没有实际命中：`sharedFiles` 只剩
+	// `boot-hooks.ts`（只 import `node:` 内置，闭包到此为止），而内核切片里不含自有文件。
+	//
+	// 但**别删** —— 它防的是一类真发生过的静默故障：某个 `sharedFiles` 项静态 import 了
+	// 一份「各 skill 自写」的同名文件（`cli/args.ts` → `./flag-scope` 正是当初那一例），
+	// 闭包于是把**源**的那份算进来，同步器拿它覆盖掉派生自己的那份，
+	// 且事后没有任何断言看得出。
 	return importClosure([...spec.kernelEntries, ...spec.sharedFiles]).filter(
 		f => !isOwned(spec, `scripts/${f}`)
 	);

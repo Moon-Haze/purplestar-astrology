@@ -2,13 +2,13 @@
 //
 // 前五层测的是**排盘行为**：给定出生信息，排出的盘对不对。本层测的是**仓库自身的状态**：
 // 代码与随它一起演化的文档、登记表是否还对得上。这类事实没有「行为」可断言，漂移了也不
-// 会有任何东西报错 —— 只能靠专门的守卫盯。本层三组：
+// 会有任何东西报错 —— 只能靠专门的守卫盯。本层的分组：
 //
 //   一、引文守卫（ziwei/citation-guard.ts，位于排盘解读 skill 的内核里）
 //   二、登记一致性（test/ 下的测试文件 ↔ test/README.md 的层表 ↔ lib/run.ts 的 LAYERS）
 //   三、解析钩子的候选序（boot-hooks.ts 的 `.` 与 `@/` 两条分支）
 //   四、派生 skill 的副本一致性（切片清单 ↔ 各派生 skill 的实际文件）
-//   五、旗标作用域（各 skill 的 cli/flag-scope.ts ↔ 共用的 cli/args.ts 声明表）
+//   五、旗标作用域（各 skill 的 cli/flag-scope.ts ↔ 各 skill 的 cli/args.ts 声明表）
 //
 // ## 为什么引文守卫要在这里再测一遍
 //
@@ -498,9 +498,9 @@ describe("派生 skill 的副本一致性与底座哨兵", () => {
 });
 
 describe("旗标作用域：各 skill 的声明与共用声明表的双向一致", () => {
-	// ## 为什么这四条必须双向
+	// ## 为什么这几条必须双向
 	//
-	// `cli/args.ts` 是三个 skill 共用的**逐字节副本**，它有一张全量旗标声明表（`FLAG_GROUPS`）；
+	// 每个 skill 的 `cli/args.ts` 里都有一张全量旗标声明表（`FLAG_GROUPS`）；
 	// 「本 skill 认其中哪些」则由各 skill 自写的 `cli/flag-scope.ts` 声明。两层之间的错配
 	// **全部是静默的** —— 这正是本节存在的理由：
 	//
@@ -515,8 +515,14 @@ describe("旗标作用域：各 skill 的声明与共用声明表的双向一致
 	// 目录形态的 `ownFiles` 项（`"scripts/classics/"`）写错一个字母，同步器会认为那个目录
 	// **不受保护**，于是把里面每个文件都当残留删掉 —— 而逐字节断言只检查清单内的文件，
 	// 清单一空，它也就全绿了。
+	//
+	// ⚠️ **2026-09-27 换解析引擎后，`cli/args.ts` 不再是与源逐字节相同的副本**：源那份仍由
+	// `cac` 驱动，两个派生改用了 Node 内置的 `util.parseArgs`，两边不可能相同。于是「副本 == 源」
+	// 那条逐字节守卫在这里**失效**（硬套只会生产一条永远为假的断言）。本节补回的是它原本
+	// 要防的两半，各一条：声明表 `FLAG_GROUPS` 与源 deep-equal（旗标名漂移是本节最重的后果），
+	// 以及两份派生副本之间逐字节相同（把「两份手工维护」压回「一份 + 一次复制」）。
 
-	/** 声明表全集（三份 `args.ts` 逐字节相同，取源那一份即可）。 */
+	/** 声明表全集。取源那一份 —— 派生那两份与它 deep-equal，下面有断言盯着。 */
 	const ALL_FLAG_NAMES = load<typeof import("@/cli/args")>("@/cli/args").then(
 		m => new Set(m.ALL_FLAG_NAMES)
 	);
@@ -610,6 +616,54 @@ describe("旗标作用域：各 skill 的声明与共用声明表的双向一致
 			missing,
 			[],
 			`以下出生信息旗标没有被源的 flag-scope 认领：\n${missing.join("\n")}`
+		);
+	});
+
+	it("派生的 FLAG_GROUPS 与源 deep-equal —— 声明表漂移是静默错盘的入口", async () => {
+		// 声明表是「有哪些旗标」的唯一来源，而它的漂移**没有任何运行时症状**：本 skill 认的
+		// 那几项照常工作，只是拼错的那个名字让旗标静默落回默认值（`--ctiy 喀什` 落回默认经度
+		// 120°E，排出一张错约 3 个时辰的盘而全程无提示）。
+		//
+		// ⚠️ 换引擎之后，这条断言是**唯一**盯住派生声明表的东西：从前它靠「派生副本 == 源
+		// 逐字节」顺带守住，而那条路径已不存在（两个引擎不同）。三份声明表必须一起改。
+		const src = await load<typeof import("@/cli/args")>("@/cli/args");
+		for (const spec of DERIVED_SKILLS) {
+			// 两份派生 args.ts 逐字节相同（下一条断言），故取哪一份的类型都一样。
+			const mod = await loadFromSkill<
+				typeof import("../skills/purplestar-classics/scripts/cli/args")
+			>(spec.name, "cli/args");
+			assert.deepStrictEqual(
+				mod.FLAG_GROUPS,
+				src.FLAG_GROUPS,
+				`${spec.name} 的 FLAG_GROUPS 与源不一致 —— 改声明表要三个 skill 一起改`
+			);
+		}
+	});
+
+	it("两份派生的 cli/args.ts 逐字节相同 —— 改哪份，以 purplestar-classics 那份为准", () => {
+		// 源那份是 `cac` 版，与这两份不可能逐字节相同，故「副本 == 源」那条断言对它们不适用。
+		// 而这对副本**没有任何其它守卫** —— `args.ts` 已移出 `sharedFiles`（不在同步器的
+		// `wanted` 里），层 4 的逐字节断言因此不再覆盖它。
+		//
+		// ⚠️ 两份若内容不同，同一个旗标会在两个 skill 里有两种行为，而两边的 selftest 各测各的
+		// 那一份，谁也发现不了。**以 `purplestar-classics` 那份为准**（两个派生里它的内核更简单，
+		// 是 args.ts 能自洽运行的最小环境），改完拷给 `purplestar-synastry`。
+		const REFERENCE = "purplestar-classics";
+		const readArgs = (skill: string) =>
+			readFileSync(resolve(SKILLS_DIR, skill, "scripts", "cli", "args.ts"), "utf8");
+		const ref = readArgs(REFERENCE);
+		const names = DERIVED_SKILLS.map(s => s.name);
+		// 空转防护：基准不在派生清单里时，下面的循环会跑完却什么都没比。
+		assert.ok(
+			names.includes(REFERENCE),
+			`基准 ${REFERENCE} 不在 DERIVED_SKILLS 里 —— 本断言会空转`
+		);
+		const drifted = names.filter(n => readArgs(n) !== ref);
+		assert.deepEqual(
+			drifted,
+			[],
+			`以下 skill 的 cli/args.ts 与 ${REFERENCE} 那份不同：\n${drifted.join("\n")}\n` +
+				`两份必须逐字节相同 —— 改 ${REFERENCE} 那份，改完拷给另一个。`
 		);
 	});
 
