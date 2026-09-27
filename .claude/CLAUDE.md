@@ -22,7 +22,7 @@ node scripts/purple-star.ts heming --a-date <...> --b-date <...>   # 合盘
 node scripts/purple-star.ts classics --search 机月同梁              # 古籍原文检索
 node scripts/purple-star.ts help                                   # 全部命令与参数
 
-# 第一层：CLI 自带自检，48 项断言，整体执行，不支持筛选单项
+# 第一层：CLI 自带自检，整体执行，不支持筛选单项（项数由末行自报）
 node scripts/purple-star.ts selftest
 
 # 第二层：基准回归，用 toolkit 的 518,400 条样本对标排盘结果（默认跑 300 条抽样，约 8 秒）
@@ -45,15 +45,19 @@ npm run typecheck
 <skill 根>/
 └── scripts/                       ← 内核根：CLI 与内核同处一层
     ├── purple-star.ts            引导层：定位内核根 → 注册 TS 钩子 → 启动自检 → 分发命令
-    ├── cli/args.ts               参数解析（纯函数，唯一不依赖内核的 CLI 模块）
+    ├── boot-hooks.ts             引导**机制**（内核根定位 / 解析钩子 / 动态加载），CLI 与 test/ 共用
+    │                             只 import node: 内置 —— 故可在钩子注册前被静态 import
+    ├── cli/args.ts               参数面：旗标声明表 FLAG_GROUPS + 校验 + 解析 + HELP 参数段渲染
+    │                             （纯函数，唯一不依赖内核的 CLI 模块）
     ├── cli/birth-info.ts         出生信息（真太阳时 / 农历 / 城市容错）
     ├── cli/birth-info-defs.ts    出生信息层的声明：接口与常量（公开面由上层 re-export）
     ├── cli/render.ts             命盘渲染（宫位 / 星曜 / 四化 / 宫名口径）
     ├── cli/commands.ts           七个命令实现 + COMMANDS 表
-    ├── cli/selftest.ts           48 项回归断言
+    ├── cli/selftest.ts           回归断言（项数由末行自报）
     ├── ziwei/algorithm.ts        iztro 排盘主流程
-    ├── ziwei/patterns.ts         51 个格局识别器 / 82 个格局名（含古籍出处与破格条件）
-    ├── ziwei/patterns-defs.ts    格局层的声明：结构体 / 常量 / 名字裁决表
+    ├── ziwei/patterns.ts         格局识别器与格局名（含古籍出处与破格条件）
+    ├── ziwei/patterns-types.ts   格局层的类型：结构体 / 识别器入参
+    ├── ziwei/patterns-data.ts    格局层的数据：常量 / 名字裁决表
     │                             + 两套判词：description（analyze 短判词）/ topicDescription（topic 倪师口吻）
     ├── ziwei/sihua.ts            四化（生年 / 流年 / 流月）
     ├── ziwei/analysis.ts         分析数据库 v3 的推算（getTopicAnalysis，topic 命令用）
@@ -61,7 +65,11 @@ npm run typecheck
     ├── ziwei/analysis-data.ts    分析数据库 v3 的数据层：类型 + 映射表 + 论断文案
     │                             （STAR_CONTENT_MAP：十四主星 × 12 宫语境）
     ├── ziwei/annotations.ts      「倪师引用」文献核对记录（selftest 锁 suspect 零强归属）
+    ├── ziwei/citation-guard.ts   引文守卫：扫内核全树核对「倪师说」引文（selftest 与层 6 共用）
     ├── ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
+    ├── ziwei/constants.ts        天干地支 / 四化表 / 星曜释义
+    ├── ziwei/cities.ts           中国城市经纬度（真太阳时校正用）
+    ├── ziwei/types.ts            内核类型；含两条刻意保留的「绊线」字段（见「体系硬约束」）
     └── classics/                 三部古籍原文检索
 ```
 
@@ -93,11 +101,13 @@ npm run typecheck
 - `import type { ZiweiChart, Palace, Star } from "@/ziwei/types"` —— `import type` 与 `typeof import("...")` 在运行时被**完全擦除**，不产生任何静态依赖，故可以安全地写在文件顶部
 - 所有内核模块用 `await load<XxxModule>("@/ziwei/...")` 动态导入（`load<T>(spec): Promise<T>` 把 `await import()` 的 `any` 收窄回内核真实签名）
 
-**⚠️ 拆分之后，这条约束的作用域扩到了子模块**：`scripts/cli/*` 自己静态 import 内核，所以从引导层静态 import 它们，等于绕道提前加载内核，一样会崩。**引导层里除了 `node:` 内置模块，不允许出现任何普通静态 import**——要分发命令就走 `await load<CommandsModule>("@/cli/commands")`。
+**⚠️ 拆分之后，这条约束的作用域扩到了子模块**：`scripts/cli/*` 自己静态 import 内核，所以从引导层静态 import 它们，等于绕道提前加载内核，一样会崩。**引导层里除 `node:` 内置模块与 `boot-hooks.ts` 外，不允许出现任何普通静态 import**——要分发命令就走 `await load<CommandsModule>("@/cli/commands")`。
+
+**唯一的例外是 `scripts/boot-hooks.ts`**（内核根定位 / 解析钩子 / 动态加载的共享实现，CLI 与 `test/lib/loader.ts` 共用同一份）。它成立的理由不是「我们信任它」，而是**可证的**：它只 import `node:` 内置，调用点又写全了 `.ts` 扩展名，于是 Node 的原生类型擦除就能加载它，全程不触碰钩子。`selftest` 有一条断言盯着这条约束——越界有两种形态，**只有省略扩展名的那种会自己崩**（ERR_MODULE_NOT_FOUND），写全扩展名的会照常跑通，那条断言守的正是后者。
 
 反过来说，`scripts/cli/` **内部**用普通静态 `import` 是对的、也是推荐的：它们只在 `registerHooks` 跑完之后才被加载，静态 import 反而是最清晰的写法。别把两层的规则搞反。
 
-**因此：给内核加类型只需加 `import type`，绝不要为了「省事」把某个内核模块或 `cli/` 子模块改成引导层的普通静态 `import`** —— 那会让 CLI 在注册钩子前就崩掉。同理，`ROOT` 在模块顶层用 `const ROOT: string = rootFound` 显式收窄：CFA 的收窄不跨函数边界，`load()` 的错误分支里要用 `ROOT`。
+**因此：给内核加类型只需加 `import type`，绝不要为了「省事」把某个内核模块或 `cli/` 子模块改成引导层的普通静态 `import`** —— 那会让 CLI 在注册钩子前就崩掉。同理，`ROOT` 在模块顶层用 `const ROOT: string = picked.root` 显式收窄：CFA 的收窄不跨函数边界，`load()` 的错误分支里要用 `ROOT`。
 
 ### selftest 怎么拿到内核根
 
@@ -105,14 +115,16 @@ npm run typecheck
 
 ### ROOT 如何确定
 
-`pickRoot()` 两级优先级：`ZIWEI_ROOT` 环境变量 → 脚本自身所在目录（即 `scripts/`）。
+`pickRoot()`（在 `scripts/boot-hooks.ts`，CLI 与 `test/lib/loader.ts` 共用）两级优先级：`ZIWEI_ROOT` 环境变量 → 脚本自身所在目录（即 `scripts/`）。判定依据是「该目录下存在 `ziwei/algorithm.ts`」，而非目录本身是否存在。
 
 刻意**没有**「宿主项目」候选——仓库内只有一份内核（就在 `scripts/` 下），不存在「实时内核 vs 分发副本」的双模式。
+
+**候选表由调用方给，判定规则在共享模块**：CLI 的起点是脚本自身所在目录，测试的起点是 `<skill 根>/scripts`，两者不同；而「怎样算命中」只有一份实现。同一个 seam 上还挂着加载失败的处理策略（CLI 渲染指引后退出进程、测试抛错），也由调用方以 `onFailure` 传入——这正是「机制共用、策略各异」的分界，也是这份实现不必再存副本的理由。
 
 ### 三处启动期防御
 
 1. **`REQUIRED_EXPORTS` 自检**：模块加载后立刻校验 14 个关键导出，缺任何一个直接退出。设计意图是**宁可启动失败，也不静默产出错盘**——所以在内核里重命名或删除导出会让 CLI 立刻报错，这是有意的，不是脆弱。
-2. **`selftest`**：CLI 自带的 48 项断言，整体执行。
+2. **`selftest`**：CLI 自带的回归断言，整体执行。
 3. **`npm test`**：`test/` 下的基准回归，用 toolkit 样本对标排盘结果（默认 300 条抽样，约 8 秒）。失效的基准是负债而非保障 —— 见 [test/README.md](../test/README.md) 的「升级 iztro 的流程」。
 
 ## 体系硬约束：三合派，不是飞星派
@@ -123,7 +135,9 @@ npm run typecheck
 - ❌ **大限四化取宫干** —— 已停止生成 `daXians[].siHua` / `stemIndex`
 - ❌ **来因宫**
 
-⚠️ **最容易踩的坑**：`scripts/ziwei/sihua.ts` 里**仍然导出** `detectSelfSihua` / `findIncomingPalaces` / `getDaXianSiHua`。它们是历史遗留与前端展示兼容代码——**存在不等于该用**，用它们解读就是背离本项目的体系立场。`selftest` 里有断言专门盯着这些字段不被重新填回。
+⚠️ **最容易踩的坑**：`scripts/ziwei/sihua.ts` 现只导出三层四化（`getSiHuaByStem` / `getYearStemIndex` / `getLiuNianSiHua` / `getLiuYueStemIndex` / `getLiuYueSiHua`）。飞星派的 `detectSelfSihua` / `findIncomingPalaces` / `getDaXianSiHua` / `buildAllSelfSihua` / `buildOverlayForStar` 等函数已于 2026-09-27 删除——全仓（含 `cli/`、`test/`、`tools/`）零调用点，按删除测试该消失。删除后红线不再靠「存在不等于该用」的自律维持，而是**不存在**。
+
+⚠️ **但 `types.ts` 的绊线刻意保留**：`Palace.selfSihua` / `DaXian.siHua` 字段与 `SelfSihuaMark` / `DaXianSiHua` 类型仍在，因为断言要盯的正是「有没有被填回」——字段删了就无从盯起。`selftest` 与 `test/school.test.ts` 各有一条断言守着。**要删这两个字段，先读 `types.ts` 里紧挨着它们的说明。**
 
 ## 内核的来源
 
@@ -139,9 +153,13 @@ npm run typecheck
 
 `SKILL.md` 描述的命令、参数、输出结构必须与 CLI 的实际行为一致，否则 Claude 会照着过时的说明调用。改 CLI 的参数名或输出格式时，同步改 `SKILL.md`。
 
-容易漂移的几处：命令路径（文档统一写 `node scripts/purple-star.ts`，相对 skill 根）、`selftest` 声称的断言数、`scripts/` 下内核与 `scripts/cli/` 的文件数与体积。**文档里引用 CLI 代码位置时优先写模块名而非行号**——`cli/` 拆过一次，行号是漂移最快的东西（`test/lib/loader.ts` 的注释已按此改）。
+容易漂移的几处：命令路径（文档统一写 `node scripts/purple-star.ts`，相对 skill 根）、`scripts/` 下内核与 `scripts/cli/` 的文件数与体积。**文档里引用 CLI 代码位置时优先写模块名而非行号**——`cli/` 拆过一次，行号是漂移最快的东西（`test/lib/loader.ts` 的注释已按此改）。
+
+**计数类事实一律不写死**（2026-09-27）：`selftest` 的断言数、`npm test` 的项数、测试层数，这类「可核对但随时会变」的数字**不得出现在任何文档里**——它们改一次要人工同步八处，而漂移了没有任何东西会发现（`docs/test/README.md` 里那行「断言数变动史：33 → … → 493」就是这套做法的成本账单）。改为三种处置：**能自报的自报**（`selftest` 首行打印「通过 N/N」，文档写「跑一次看输出」）、**能派生的派生**（HELP 的参数段与命令段）、**既不能自报也不能派生的，由断言盯双向一致**（`test/repo.test.ts` 断言 `test/` 下的测试文件与 `test/README.md` 的层表双向一致）。要写「层数」「项数」时，改写这句本身，而不是改数字。
 
 参数解析在 `cli/args.ts`，出生信息在 `cli/birth-info.ts`，输出格式在 `cli/render.ts`——下面这些「非常规设计」多数落在 `birth-info.ts` 与 `commands.ts`：
+
+**参数面单点声明**：`cli/args.ts` 的 `FLAG_GROUPS` 是「有哪些旗标」的唯一来源——`parseArgs` 据它拒绝未知旗标，`HELP` 的参数段由 `renderFlagHelp()` 派生，命令段由 `commands.ts` 的 `renderCommandHelp()`（源自 `COMMAND_TABLE` + `COMMAND_DESC`）派生，`selftest` 再断言 `SKILL.md` 提到的旗标都有声明。**加旗标只改声明表一处**。此前这三处各有一份手写副本，漂移代价不对称：拼错旗标（`--ctiy 喀什`）不报错，直接落回默认经度 120°E，排出一张错约 3 个时辰的盘而全程无提示。同理，`a-` / `b-` 前缀旗标只有 `heming` 认，写在别的命令上会被整个忽略——现在也会报错。
 
 CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 

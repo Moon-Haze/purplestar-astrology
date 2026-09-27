@@ -42,7 +42,7 @@ node scripts/purple-star.ts heming --a-date 1990-05-15 --a-time 09:30 --a-gender
                             --b-date 1993-08-22 --b-time 14:00 --b-gender female
 node scripts/purple-star.ts classics --search 机月同梁
 node scripts/purple-star.ts help        # 全部命令与参数
-node scripts/purple-star.ts selftest    # 回归自检（48 项断言）
+node scripts/purple-star.ts selftest    # 回归自检
 
 npm test                                 # 排盘基准回归（300 条样本，约 8 秒）
 npm run typecheck                        # 类型检查（必须 0 错误）
@@ -77,7 +77,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 
 | 内容                                         | 位置                                |
 | -------------------------------------------- | ----------------------------------- |
-| 排盘算法、40+ 格局库（含古籍出处与破格条件） | `scripts/ziwei/patterns.ts`         |
+| 排盘算法、格局库（含古籍出处与破格条件）     | `scripts/ziwei/patterns.ts`         |
 | 四化体系、流年流月推法                       | `scripts/ziwei/sihua.ts`            |
 | 合盘方法论、十四主星在夫妻宫断语             | `scripts/ziwei/heming-knowledge.ts` |
 | 中国城市经纬度（真太阳时校正）               | `scripts/ziwei/cities.ts`           |
@@ -100,7 +100,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 改完内核或升级依赖后，两层测试都要跑：
 
 ```bash
-node scripts/purple-star.ts selftest    # 第一层：代码逻辑自洽（48 项断言）
+node scripts/purple-star.ts selftest    # 第一层：代码逻辑自洽
 npm test                                 # 第二层：与 toolkit 样本的基准比对（约 8 秒）
 
 npm run test:corpus -- --year 1960       # 可选：全量核验（8,640 条，约 2 分钟）
