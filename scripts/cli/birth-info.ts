@@ -11,9 +11,8 @@
 
 import type { CliArgs } from "./args";
 import { fmtDate } from "./render";
-import type { BirthInfo } from "@/ziwei/types";
 import { BRANCHES, SHICHEN } from "@/ziwei/constants";
-import { PROVINCES, type CityInfo } from "@/ziwei/cities";
+import { PROVINCES } from "@/ziwei/cities";
 import { Lunar, type Solar } from "lunar-typescript";
 // 2026-09-27 拆分：四个接口与两个模块级常量搬到了 ./birth-info-defs，
 // 这里只为函数实现服务；公开面由文末 re-export 兜住，调用方一行未改。
@@ -63,8 +62,7 @@ const signed = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
  */
 export function equationOfTime(year: number, month: number, day: number): number {
 	const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-	const doy =
-		Math.floor((Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86400000) + 1;
+	const doy = Math.floor((Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86400000) + 1;
 	const b = (2 * Math.PI * (doy - 81)) / (isLeap ? 366 : 365);
 	return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
 }
@@ -101,9 +99,13 @@ export function calcTrueSolar(
 	const clockMins = clockHour * 60 + clockMinute;
 	if (
 		opts.eot &&
-		(!Number.isInteger(opts.year) || !Number.isInteger(opts.month) || !Number.isInteger(opts.day))
+		(!Number.isInteger(opts.year) ||
+			!Number.isInteger(opts.month) ||
+			!Number.isInteger(opts.day))
 	)
-		throw new Error("calcTrueSolar：开启 eot 时必须提供 year/month/day 三项（缺项会静默算出 NaN）");
+		throw new Error(
+			"calcTrueSolar：开启 eot 时必须提供 year/month/day 三项（缺项会静默算出 NaN）"
+		);
 	const longitudeRaw = (longitude - 120) * 4;
 	// 三项日期已由上一行校验为整数（as 断言只影响类型层），可安全下传
 	const eotRaw = opts.eot
