@@ -10,7 +10,7 @@
  * @packageDocumentation
  */
 
-import { PALACE_BRANCH_ORGAN, ZIWU_LIUZHU } from "../../analysis-data";
+import { PALACE_BRANCH_ORGAN, ZIWU_LIUZHU } from "../data";
 import { BRANCHES } from "../../constants";
 import type { AnalysisContext } from "../context";
 
@@ -26,7 +26,7 @@ import type { AnalysisContext } from "../context";
  * 这与「按星曜五行对应脏腑」的做法不同——后者是传统三合派用法。
  *
  * @remarks
- * 该映射表本身在 `../../analysis-data` 的 `PALACE_BRANCH_ORGAN`，本函数是它的
+ * 该映射表本身在 `../data` 的 `PALACE_BRANCH_ORGAN`，本函数是它的
  * **唯一使用点** —— 这段注释原先夹在 `analysis.ts` 的 `getSiHuaNote` 与
  * `getMinorStarNote` 之间（与两者都无关），2026-09-27 拆分时归位到这里。
  */

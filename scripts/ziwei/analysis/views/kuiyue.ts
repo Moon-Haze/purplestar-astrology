@@ -10,7 +10,7 @@
  * @packageDocumentation
  */
 
-import { KUI_YUE_GUIREN_MAP } from "../../analysis-data";
+import { KUI_YUE_GUIREN_MAP } from "../data";
 import type { AnalysisContext } from "../context";
 
 /** 渲染「五点六、魁钺贵人倾向细分」整节（主题不符或无命中时返回空数组）。 */

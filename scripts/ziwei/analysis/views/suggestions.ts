@@ -9,7 +9,7 @@
  * @packageDocumentation
  */
 
-import { TOPIC_LABEL, TOPIC_SUGGESTIONS } from "../../analysis-data";
+import { TOPIC_LABEL, TOPIC_SUGGESTIONS } from "../data";
 import type { AnalysisContext } from "../context";
 
 /** 渲染「六、综合建议」整节。 */

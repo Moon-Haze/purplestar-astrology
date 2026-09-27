@@ -21,7 +21,7 @@ import {
 	TOPIC_CONTENT_KEY,
 	TOPIC_SUMMARY_KEY,
 	type StarContent,
-} from "../../analysis-data";
+} from "../data";
 import type { AnalysisContext } from "../context";
 import { detectGeJu } from "../lookups";
 

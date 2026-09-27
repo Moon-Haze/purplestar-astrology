@@ -2,7 +2,7 @@
  * 文案查表与两条过滤器 —— 把「星 × 宫 × 四化」翻成文案，另加性别过滤与格局投影。
  *
  * @remarks
- * 本文件与 `palace-query.ts` 同层，区别在于**它读的是 `../analysis-data` 的表**：
+ * 本文件与 `palace-query.ts` 同层，区别在于**它读的是 `./data` 的表**：
  * `getSiHuaNote` 查四化语义、`getMinorStarNote` 查次星宫位文案、`detectGeJu` 取格局判词。
  * 都不产生输出行，被 `views/` 各节调用。
  *
@@ -13,7 +13,7 @@
  */
 
 import type { ZiweiChart } from "../types";
-import { MINOR_STAR_PALACE_CONTENT, SIHUA_CHAR_TO_KEY, STAR_CONTENT_MAP } from "../analysis-data";
+import { MINOR_STAR_PALACE_CONTENT, SIHUA_CHAR_TO_KEY, STAR_CONTENT_MAP } from "./data";
 // 格局的**命中判定**统一由 patterns/ 负责（本文件只写判词），故这里引它的产出。
 // 2026-09-26 先对齐了 4 个口径分歧的格局（紫府同宫 / 火贪格 / 铃贪格 / 机月同梁）；
 // 2026-09-27 把剩下 ~30 段手写判定**全部**收敛过去（含 12 个原先只在本文件存在的格局，

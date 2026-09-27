@@ -9,7 +9,7 @@
  * @packageDocumentation
  */
 
-import { siHuaSymbol } from "../../analysis-data";
+import { siHuaSymbol } from "../data";
 import type { AnalysisContext } from "../context";
 
 /** 渲染「三、本命四化会照」整节。 */

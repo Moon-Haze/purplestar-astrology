@@ -13,7 +13,7 @@
  * @packageDocumentation
  */
 
-import { SIHUA_CHAR_TO_KEY, TOPIC_KEY_PALACES, siHuaSymbol } from "../../analysis-data";
+import { SIHUA_CHAR_TO_KEY, TOPIC_KEY_PALACES, siHuaSymbol } from "../data";
 import type { AnalysisContext } from "../context";
 
 /** 渲染「三点五、年干四化·全局关键宫位影响」整节（无命中时返回空数组）。 */

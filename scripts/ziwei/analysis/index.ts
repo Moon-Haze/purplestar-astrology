@@ -26,7 +26,7 @@
  *
  *   以「倪海夏/倪师说」开头的引号句，部分为 traditional 口诀的风格化转述，不一定是
  *   倪师《天纪》逐字原话。CLI 的 topic 命令在输出末尾固定披露此点。
- *   2026-09-27 拆分后，引文主体随 STAR_CONTENT_MAP 移到了 `../analysis-data`，
+ *   2026-09-27 拆分后，引文主体随 STAR_CONTENT_MAP 移到了 `./data`，
  *   余下零星几处散在 `views/` 各节（如 `views/health.ts` 的疾厄论断）。
  *
  * 架构：
@@ -52,14 +52,14 @@
 
 import type { ZiweiChart } from "../types";
 // 2026-09-27 拆分：本目录的前身 analysis.ts 原先自带的元数据表与论断文案已移出到
-// ../analysis-data（STAR_CONTENT_MAP，含「倪师…说」引文）。公开面由文末 re-export 兜住。
+// ./data（STAR_CONTENT_MAP，含「倪师…说」引文）。公开面由文末 re-export 兜住。
 import {
 	TOPIC_LABEL,
 	TOPIC_PALACE_NAME,
 	type AnalysisOptions,
 	type AnalysisView,
 	type TopicKey,
-} from "../analysis-data";
+} from "./data";
 import { makeContext } from "./context";
 import { filterGenderContent } from "./lookups";
 import { renderDaXian } from "./views/daxian";
@@ -79,7 +79,7 @@ import { renderYearStem } from "./views/year-stem";
  * 生成某个主题的完整论断报告。
  *
  * @param chart - 已排好的命盘
- * @param topic - 主题键（13 个之一，见 `../analysis-data` 的 `TOPIC_KEYS`）
+ * @param topic - 主题键（13 个之一，见 `./data` 的 `TOPIC_KEYS`）
  * @param options - 视角 / 流年年月 / 大限下标
  * @returns 报告全文（已按出生性别过滤掉无关性别的句子）
  *
@@ -121,7 +121,7 @@ export function getTopicAnalysis(
 
 // ─── 公开面 re-export ────────────────────────────────────────────────────────
 // 拆分前从本模块导出的 5 个名字，拆分后**逐名仍可从这里 import**。
-// `../analysis-data` 是它们的实际归属地，此处只做转发，调用方一行不用改。
+// `./data` 是它们的实际归属地，此处只做转发，调用方一行不用改。
 // 这 5 个名字本文件的实现也要用，故上方已 import，这里再 export 一次。
 export { TOPIC_LABEL, TOPIC_PALACE_NAME };
 export type { AnalysisOptions, AnalysisView, TopicKey };

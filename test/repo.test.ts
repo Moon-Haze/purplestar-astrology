@@ -289,7 +289,7 @@ describe("解析钩子候选序（boot-hooks）", () => {
 	});
 
 	it("非 TS 目标只多两次失败的尝试，最终仍落到字面路径（`./data.json` 行为不变）", () => {
-		// 这是「补兜底有没有副作用」的答案：`tools/db/db.ts` 那类按字面相对路径引 `analysis-data`
+		// 这是「补兜底有没有副作用」的答案：`tools/db/db.ts` 那类按字面相对路径引 `analysis/data`
 		// 的调用点，解析目标一字不改，只是路上多两次 existsSync。
 		assert.deepEqual(resolveAttempts("./data.json", { "data.json": "{}\n" }), [
 			"./data.json.ts",

@@ -20,7 +20,7 @@ import { sanFangBranches } from "../../palace-relations";
 // 生年四化必须用 chart.lunarInfo.yearStem —— 两口径在 1-2 月出生者身上分叉，
 // 见 sihua.ts 的口径说明与 test/cli.test.ts 的「生年四化的年干口径」）
 import { getYearStemIndex } from "../../sihua";
-import { siHuaSymbol } from "../../analysis-data";
+import { siHuaSymbol } from "../data";
 import type { AnalysisContext } from "../context";
 import { descPalaceStars } from "../palace-query";
 

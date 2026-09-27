@@ -25,7 +25,7 @@ import {
 	type AnalysisView,
 	type StarContent,
 	type TopicKey,
-} from "../analysis-data";
+} from "./data";
 import { getPalaceSiHua, getPalaceStars, getSanFangSiZheng } from "./palace-query";
 import { getSiHuaNote } from "./lookups";
 

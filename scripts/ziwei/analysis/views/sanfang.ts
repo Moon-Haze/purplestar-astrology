@@ -12,7 +12,7 @@
  * @packageDocumentation
  */
 
-import { PALACE_TO_CONTENT_KEY, STAR_BRIEF, STAR_CONTENT_MAP } from "../../analysis-data";
+import { PALACE_TO_CONTENT_KEY, STAR_BRIEF, STAR_CONTENT_MAP } from "../data";
 import { duiGongBranch } from "../../palace-relations";
 import type { AnalysisContext } from "../context";
 import { getMinorStarNote, getSiHuaNote } from "../lookups";

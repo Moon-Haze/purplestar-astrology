@@ -12,7 +12,7 @@
  * @packageDocumentation
  */
 
-import { siHuaSymbol } from "../../analysis-data";
+import { siHuaSymbol } from "../data";
 import { duiGongBranch, sanFangBranches } from "../../palace-relations";
 import type { AnalysisContext } from "../context";
 import { descPalaceStars } from "../palace-query";
