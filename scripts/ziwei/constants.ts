@@ -49,8 +49,8 @@ export const SHICHEN = [
 /**
  * 十二宫名的**有序序列**，自命宫起按顺时针排列（命宫 → 兄弟宫 → … → 父母宫）。
  *
- * 口径说明：第 8 宫写作「**交友宫**」（下标 7），这是倪师《天纪》体系与 `nihai/tianji.ts`
- * 的用词；iztro 的原始名是「仆役」，换算见 {@link IZTRO_TO_PROJECT_PALACE}。
+ * 口径说明：第 8 宫写作「**交友宫**」（下标 7），这是本项目既定口径（用词承自倪师《天纪》
+ * 体系）；iztro 的原始名是「仆役」，换算见 {@link IZTRO_TO_PROJECT_PALACE}。
  *
  * ⚠️ 与 {@link IZTRO_TO_PROJECT_PALACE} 的分工：这里是**有序序列**，那里是**无序词典**，
  * 两者必须**同集合**。`test/invariants.test.ts` 用本数组验证那张映射表，正是为了防
@@ -79,8 +79,8 @@ export const PALACE_NAMES_ORDER = [
  * iztro 宫名 → 本项目宫名（倪师《天纪》体系）。
  *
  * 为什么需要这张表：`algorithm.ts` 原先写的是 `name: p.name`，宫名**直通 iztro**，
- * 于是 iztro 的第 8 宫「仆役」直接漏进了本项目的输出。而倪师《天纪》原文
- * （`nihai/tianji.ts`）与本文件上方的 `PALACE_NAMES_ORDER` 用的都是「交友」——
+ * 于是 iztro 的第 8 宫「仆役」直接漏进了本项目的输出。而本文件上方的
+ * `PALACE_NAMES_ORDER`（沿承倪师《天纪》体系的用词）用的是「交友」——
  * 项目自己的口径早就定好了，只是从未生效。经这张表映射，等于把宫名收回项目手里。
  *
  * 与 `PALACE_NAMES_ORDER` 的分工：这里是**无序的词典**（按 iztro 的原始名索引），

@@ -8,8 +8,8 @@
  *   cli/args.ts        CLI 参数表与解析（纯函数，不依赖内核）
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
- *   cli/commands.ts    八个命令实现 + 命令表
- *   cli/selftest.ts    回归自检（49 项断言；留在 scripts/ 而非 test/，理由见该文件）
+ *   cli/commands.ts    七个命令实现 + 命令表
+ *   cli/selftest.ts    回归自检（48 项断言；留在 scripts/ 而非 test/，理由见该文件）
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
  *   scripts/ziwei/algorithm.ts        排盘主流程
@@ -20,7 +20,6 @@
  *   scripts/ziwei/cities.ts           中国城市经纬度（真太阳时校正）
  *   scripts/ziwei/constants.ts        天干地支 / 四化表 / 星曜释义
  *   scripts/classics/                 古籍原文全文检索
- *   scripts/nihai/                    倪海厦天纪/地纪/人纪知识
  *
  * 依赖 Node ≥ 22.15（module.registerHooks + 原生 TS 类型擦除）。
  * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
@@ -85,7 +84,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  *
  * 判定依据是「该目录下存在 `ziwei/algorithm.ts`」，而非目录本身是否存在。
  *
- * 内核根 = `scripts/` **本身**：CLI（`purple-star.ts`、`cli/`）与三个内核目录（`ziwei/`、`classics/`、`nihai/`）
+ * 内核根 = `scripts/` **本身**：CLI（`purple-star.ts`、`cli/`）与两个内核目录（`ziwei/`、`classics/`）
  * 同处一层。因此 `@/` 别名指向的是 `scripts/`，而**不是** skill 根。
  *
  * 这里刻意**没有**「宿主项目」候选：仓库内只有这一份内核，不存在副本漂移问题。
@@ -116,7 +115,7 @@ if (!rootFound) {
 			ROOT_TRIED.map(t => `    - ${t}`).join("\n") +
 			"\n" +
 			`  处理：\n` +
-			`    ① 确认 skill 目录完整 —— scripts/ 下应同时有 purple-star.ts、cli/ 与 ziwei/、classics/、nihai/ 三个内核目录（拷贝时漏带内核会走到这里）；或\n` +
+			`    ① 确认 skill 目录完整 —— scripts/ 下应同时有 purple-star.ts、cli/ 与 ziwei/、classics/ 两个内核目录（拷贝时漏带内核会走到这里）；或\n` +
 			`    ② 用 ZIWEI_ROOT=<含 ziwei/ 的目录> 显式指定内核位置。`
 	);
 	process.exit(1);
@@ -308,7 +307,6 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
   topic      主题论断（13 主题动态推算：主宫 + 三方四正 + 四化会照 + 大限/流年）
   heming     合盘（双宫联参 + 夫妻宫断语 + 方法论）
   classics   古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）
-  nihai      倪海厦天纪 / 地纪 / 人纪知识
   stars      星曜释义
   cities     城市经纬度查询（真太阳时校正用）
   selftest   回归自检（农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）
@@ -370,7 +368,7 @@ const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知�
  * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
  *
  * @remarks
- * `console.log` 只在这一处发生 —— 八个 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
+ * `console.log` 只在这一处发生 —— 七个 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
  *
  * 无参数、`help`、`--help`、`-h` 都打印 {@link HELP}；未知命令与命令内部抛出的错误都以非零码退出
  * （只打印 `err.message`，不打印栈）。传给命令的第二个参数是 `CliContext`（内核根及其来源），

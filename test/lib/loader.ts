@@ -49,7 +49,7 @@ if (!picked.root) {
 		`找不到排盘内核（ziwei/algorithm.ts）\n` +
 			`  已尝试：\n` +
 			picked.tried.map(t => `    - ${t}`).join("\n") +
-			`\n  处理：确认 <skill 根>/scripts/ 下同时有 purple-star.ts 与 ziwei/、classics/、nihai/，` +
+			`\n  处理：确认 <skill 根>/scripts/ 下同时有 purple-star.ts 与 ziwei/、classics/，` +
 			`或用 ZIWEI_ROOT=<含 ziwei/ 的目录> 指定内核位置。`
 	);
 }

@@ -72,7 +72,7 @@ function asCliFailure(msg: string): Error & { stderr: string } {
 	return e;
 }
 
-// 进程内复用的 COMMANDS 表（懒加载一次；含 iztro/analysis/classics/nihai，仅付一次冷启动税）。
+// 进程内复用的 COMMANDS 表（懒加载一次；含 iztro/analysis/classics，仅付一次冷启动税）。
 let commandsMod: typeof import("@/cli/commands") | null = null;
 let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
 

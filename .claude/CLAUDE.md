@@ -20,10 +20,9 @@ node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 北京
 
 node scripts/purple-star.ts heming --a-date <...> --b-date <...>   # 合盘
 node scripts/purple-star.ts classics --search 机月同梁              # 古籍原文检索
-node scripts/purple-star.ts nihai --category tianji                # 倪海夏三纪
 node scripts/purple-star.ts help                                   # 全部命令与参数
 
-# 第一层：CLI 自带自检，49 项断言，整体执行，不支持筛选单项
+# 第一层：CLI 自带自检，48 项断言，整体执行，不支持筛选单项
 node scripts/purple-star.ts selftest
 
 # 第二层：基准回归，用 toolkit 的 518,400 条样本对标排盘结果（默认跑 300 条抽样，约 8 秒）
@@ -50,8 +49,8 @@ npm run typecheck
     ├── cli/birth-info.ts         出生信息（真太阳时 / 农历 / 城市容错）
     ├── cli/birth-info-defs.ts    出生信息层的声明：接口与常量（公开面由上层 re-export）
     ├── cli/render.ts             命盘渲染（宫位 / 星曜 / 四化 / 宫名口径）
-    ├── cli/commands.ts           八个命令实现 + COMMANDS 表
-    ├── cli/selftest.ts           49 项回归断言
+    ├── cli/commands.ts           七个命令实现 + COMMANDS 表
+    ├── cli/selftest.ts           48 项回归断言
     ├── ziwei/algorithm.ts        iztro 排盘主流程
     ├── ziwei/patterns.ts         51 个格局识别器 / 82 个格局名（含古籍出处与破格条件）
     ├── ziwei/patterns-defs.ts    格局层的声明：结构体 / 常量 / 名字裁决表
@@ -63,8 +62,7 @@ npm run typecheck
     ├── ziwei/analysis-meta.ts    分析数据库 v3 的类型与映射表（主题键 / 宫位脏腑 / 紫微诸星安放）
     ├── ziwei/annotations.json    「倪师引用」文献核对记录（selftest 锁 suspect 零强归属）
     ├── ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
-    ├── classics/                 三部古籍原文检索
-    └── nihai/                    倪海夏天纪 / 地纪 / 人纪
+    └── classics/                 三部古籍原文检索
 ```
 
 `cli/` 之间是**单向依赖**，没有环：`args` ← `render`（仅取 `fmtDate`）← `birth-info` ← `commands` → `selftest`。要动哪一层，往上找它的消费者即可。
@@ -114,7 +112,7 @@ npm run typecheck
 ### 三处启动期防御
 
 1. **`REQUIRED_EXPORTS` 自检**：模块加载后立刻校验 14 个关键导出，缺任何一个直接退出。设计意图是**宁可启动失败，也不静默产出错盘**——所以在内核里重命名或删除导出会让 CLI 立刻报错，这是有意的，不是脆弱。
-2. **`selftest`**：CLI 自带的 49 项断言，整体执行。
+2. **`selftest`**：CLI 自带的 48 项断言，整体执行。
 3. **`npm test`**：`test/` 下的基准回归，用 toolkit 样本对标排盘结果（默认 300 条抽样，约 8 秒）。失效的基准是负债而非保障 —— 见 [test/README.md](../test/README.md) 的「升级 iztro 的流程」。
 
 ## 体系硬约束：三合派，不是飞星派

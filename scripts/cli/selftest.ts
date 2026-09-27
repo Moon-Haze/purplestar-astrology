@@ -38,7 +38,6 @@ import {
 import { STEMS, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { HEMING_METHODOLOGY, STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU } from "@/ziwei/heming-knowledge";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
-import { TIANJI_MODULES, RENJI_MODULES, DIJI_MODULES } from "@/nihai/index";
 import { Lunar } from "lunar-typescript";
 
 /**
@@ -49,7 +48,7 @@ import { Lunar } from "lunar-typescript";
  *
  * @remarks
  * 覆盖：农历换算、真太阳时、晚子时等价性、城市容错、性别护栏、排盘不变量、三合派约束、
- * 格局与知识源可用性（当前共 **49 项**）。
+ * 格局与知识源可用性（当前共 **48 项**）。
  *
  * 内核根从 `ctx` 取而非自己推导：那是引导层 `pickRoot()` 的职责，自检只负责把它交代出来。
  *
@@ -531,11 +530,6 @@ export function cmdSelftest(ctx: CliContext): string {
 		const hits = searchClassics("紫微", 3);
 		if (!hits.length) throw new Error("检索「紫微」无命中");
 		return `命中 ${hits.length} 条`;
-	});
-	ok("知识源：倪海夏三纪模块非空", () => {
-		if (!TIANJI_MODULES.length || !RENJI_MODULES.length || !DIJI_MODULES.length)
-			throw new Error("三纪模块存在空数组");
-		return `天纪 ${TIANJI_MODULES.length} / 人纪 ${RENJI_MODULES.length} / 地纪 ${DIJI_MODULES.length}`;
 	});
 	ok("知识源：合盘断语与四化断语非空", () => {
 		if (!Object.keys(STAR_IN_FUQI_GU).length) throw new Error("STAR_IN_FUQI_GU 为空");

@@ -106,13 +106,10 @@ CLI 已给出命盘数据与格局结论。需要展开论证时，**直接读�
 | 星曜释义（关键词/星性/五行）                         | `scripts/ziwei/constants.ts` 的 `STAR_DESCRIPTIONS`；或 `stars` 命令 |
 | **某主题（感情/事业/财运…）的整段论断**              | `topic` 命令（动态推算：主宫主星 + 三方四正 + 四化会照 + 大限流年）；数据在 `scripts/ziwei/analysis-content.ts`（论断文案）+ `analysis.ts`（动态推算） |
 | 古籍原文引证                                         | `classics` 命令；数据在 `scripts/classics/data/`                     |
-| 倪海夏体系论述、讲义原文                             | `nihai` 命令；数据在 `scripts/nihai/`                                |
 
 ```bash
 # 古籍检索（解读要引经据典时用，比凭记忆引用可靠）
 node scripts/purple-star.ts classics --search 机月同梁
-# 倪海夏天纪知识（紫微斗数模块的要点与讲义原话）
-node scripts/purple-star.ts nihai --category tianji
 # 城市经度（用户只给城市名时）
 node scripts/purple-star.ts cities --search 成都
 ```
@@ -177,7 +174,7 @@ node scripts/purple-star.ts cities --search 成都
 
 可用的是：**生年四化**（出生年干）、**流年四化**（当年年干）、**流月四化**（`--liuyue 6`）。CLI 的 `analyze` 已按此口径输出。
 
-倪师核心立场（摘自 `scripts/nihai/`）：
+倪师核心立场（权威声明见 `scripts/ziwei/sihua.ts` 的「体系基准」节）：
 
 > 大道至简——飞星飞来飞去太复杂，不搞这个。
 > 命宫为本，三方为用。
@@ -185,7 +182,7 @@ node scripts/purple-star.ts cities --search 成都
 
 ## 其他已知事实
 
-- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis.ts` 推算 + `analysis-content.ts` 论断文案 + `analysis-meta.ts` 类型与映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `topic` 命令使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是第 2 步列出的七个：`patterns.ts`、`sihua.ts`、`analysis.ts`（或 `topic` 命令）、`heming-knowledge.ts`、`constants.ts` 的 `STAR_DESCRIPTIONS`（或 `stars` 命令）、`classics`、`nihai`。
+- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis.ts` 推算 + `analysis-content.ts` 论断文案 + `analysis-meta.ts` 类型与映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `topic` 命令使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是第 2 步列出的六个：`patterns.ts`、`sihua.ts`、`analysis.ts`（或 `topic` 命令）、`heming-knowledge.ts`、`constants.ts` 的 `STAR_DESCRIPTIONS`（或 `stars` 命令）、`classics`。
 - **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `sha` / `lucky`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键），只有 `type === "major"` 的那 14 颗带 `brightness`，其余三类不带（信息比 iztro 原始输出少，是口径选择不是缺漏）。
 - **年龄一律是虚岁**：`currentAge`（当前年龄）、`daXians[].startAge/endAge`、`palace.daXianAge` 三者**同为虚岁**，以**农历年（正月初一）为界** —— 不是生日，也不是立春。数据来自 iztro 的 `decadal.range`。解读时报给用户的年龄就用这个虚岁，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
 - **童限**：`currentDaXianIndex === -1` 表示此人**尚未起运**（虚岁小于五行局数，如土五局要 5 岁才起运），此时 CLI 的「当前大限」显示 `—`。这是正常的，不是数据缺失——此时按命宫论，不要硬套一个大限。
@@ -246,10 +243,9 @@ node scripts/purple-star.ts heming \
 | `heming`                                 | 合盘                                                                     |
 | `topic --topic <key> [--view …]`         | 主题论断（13 主题动态推算，含知识来源分级提示）                          |
 | `classics --search <词>`                 | 古籍原文检索                                                             |
-| `nihai [--category tianji\|diji\|renji]` | 倪海夏三纪知识                                                           |
 | `stars [--search <星名>]`                | 星曜释义                                                                 |
 | `cities --search <城市>`                 | 城市经度                                                                 |
-| `selftest`                               | 回归自检（49 项断言）。改动本技能或升级 `iztro` 后跑一次                 |
+| `selftest`                               | 回归自检（48 项断言）。改动本技能或升级 `iztro` 后跑一次                 |
 
 **出生信息参数**：`--date` / `--lunar`（+`--leap`）/ `--year·--month·--day`；`--time` 或 `--branch 0-12`、`--late-zi`、`--eot`；`--gender`（**必填**）；`--lng` / `--city` / `--province`；`--name`。
 
@@ -297,8 +293,7 @@ node scripts/purple-star.ts heming \
 │   ├── purple-star.ts      ← CLI 入口（引导层：定位内核根 → 注册 TS 钩子 → 分发命令）
 │   ├── cli/                ← CLI 实现：参数解析 / 渲染 / 出生信息 / 命令 / 自检
 │   ├── ziwei/              ← 排盘算法、格局库、四化、合盘、城市经纬度
-│   ├── classics/           ← 三部古籍原文
-│   └── nihai/              ← 倪海夏天纪 / 地纪 / 人纪
+│   └── classics/           ← 三部古籍原文
 ├── test/                   ← 回归测试（npm test）。怎么跑与效力边界见 test/README.md
 │   ├── fixtures/           ← 300 条基准样本（已入库，跑 npm test 不需要 reference/）
 │   └── tools/              ← 手动脚本：重建基准、全量语料核验（需 db/；互验另需 reference/）
@@ -331,7 +326,7 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 
 `package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-typescript 1.8.6），排盘结果不会因环境不同而分叉。
 
-**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 `scripts/ziwei`、`classics`、`nihai` 下的 `.ts` 全是本仓自有的内核代码（不含 CLI 的 `scripts/purple-star.ts` 与 `scripts/cli/`）——格局库（`patterns.ts`，含判定 + 两套判词）、分析数据库 v3（`analysis.ts`，拷自 `reference/ziwei-samples-toolkit/`）、合盘断语、中国城市经纬度、三部古籍原文、倪海夏三纪知识——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
+**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 `scripts/ziwei`、`classics` 下的 `.ts` 全是本仓自有的内核代码（不含 CLI 的 `scripts/purple-star.ts` 与 `scripts/cli/`）——格局库（`patterns.ts`，含判定 + 两套判词）、分析数据库 v3（`analysis.ts`，拷自 `reference/ziwei-samples-toolkit/`）、合盘断语、中国城市经纬度、三部古籍原文——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
 
 > 此处有意不登记内核行数：内核在本仓库持续演化，写死的数字改一次代码就失效一次。
 
@@ -347,7 +342,7 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 
 ## 若脚本报错
 
-- `[ziwei 启动失败] 找不到排盘内核` → skill 目录不完整，`<skill>/scripts/` 下的内核缺失（拷贝时漏带）。从本仓库补回 `ziwei/`、`classics/`、`nihai/` 三个内核目录，或用 `ZIWEI_ROOT=<含 ziwei/ 的目录>` 指定内核位置。
+- `[ziwei 启动失败] 找不到排盘内核` → skill 目录不完整，`<skill>/scripts/` 下的内核缺失（拷贝时漏带）。从本仓库补回 `ziwei/`、`classics/` 两个内核目录，或用 `ZIWEI_ROOT=<含 ziwei/ 的目录>` 指定内核位置。
 - `Cannot find module 'iztro'` / `'lunar-typescript'` → 依赖未装。**看报错里的「当前内核根」**，在该目录下 `npm install`。
 - `registerHooks is not a function` 或 TS 语法报错 → Node 版本过低，需 ≥ 22.15（本项目开发环境为 v26）。
 - `[ziwei 启动自检失败]` → 内核被重构、关键导出改名或删除。核对 `scripts/cli/` 各模块的 import 列表与 `scripts/` 下内核的实际导出是否对得上。

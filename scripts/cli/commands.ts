@@ -1,7 +1,7 @@
 /**
- * 命令实现 —— 八个 `cmdXxx` 与命令表。
+ * 命令实现 —— 七个 `cmdXxx` 与命令表。
  *
- * 拆自 purple-star.ts。八个命令互不调用，故集中在一处反而好对照；
+ * 拆自 purple-star.ts。七个命令互不调用，故集中在一处反而好对照；
  * 只有 `selftest` 另立门户（见 ./selftest.ts 的说明）。
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
@@ -44,7 +44,6 @@ import {
 	HEMING_SCORE_CRITERIA,
 } from "@/ziwei/heming-knowledge";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
-import { TIANJI_MODULES, RENJI_MODULES, DIJI_MODULES, NI_HAIXIA_BIO } from "@/nihai/index";
 
 /**
  * `--liunian` 的年份校验（`analyze` 的流年四化与 `topic` 的流年论断共用）。
@@ -538,52 +537,6 @@ function cmdClassics(args: CliArgs) {
 }
 
 /**
- * `nihai` 命令：倪海厦天纪 / 地纪 / 人纪知识。
- *
- * @param args - CLI 参数表；`--category` 限 `tianji` / `diji` / `renji`（大小写不敏感），
- *   `--bio` 改出倪师生平
- * @returns 已渲染好的文本；带 `--bio` 时返回生平 JSON 字符串
- *
- * @remarks
- * 不传 `--category` 时三纪全列。逐模块输出中文名（英文名）与状态、副标题、简介、关键词，
- * 再逐章输出标题、描述、要点与原文引用。
- */
-function cmdNihai(args: CliArgs) {
-	const cat = String(args.category ?? "").toLowerCase();
-	if (args.bio) {
-		return JSON.stringify(NI_HAIXIA_BIO, null, 2);
-	}
-	const groups = [
-		["tianji", "天纪 —— 上知天文（紫微斗数、易经、堪舆、推命、面相、测字）", TIANJI_MODULES],
-		["diji", "地纪 —— 下知地理（国家地理志、风水与国运）", DIJI_MODULES],
-		[
-			"renji",
-			"人纪 —— 中知人事（针灸、黄帝内经、神农本草经、伤寒论、金匮要略）",
-			RENJI_MODULES,
-		],
-	] as const;
-	const out: string[] = [];
-	for (const [key, title, mods] of groups) {
-		if (cat && cat !== key) continue;
-		out.push(`【${title}】共 ${mods.length} 个模块`, "");
-		for (const m of mods) {
-			out.push(`  ▸ ${m.name}（${m.nameEn}）[${m.status}]`);
-			out.push(`    ${m.subtitle}`);
-			out.push(`    ${m.description}`);
-			if (m.keywords?.length) out.push(`    关键词：${m.keywords.join("、")}`);
-			for (const ch of m.chapters ?? []) {
-				out.push(`      · ${ch.title}${ch.subtitle ? "｜" + ch.subtitle : ""}`);
-				out.push(`        ${ch.description}`);
-				if (ch.keyPoints?.length) out.push(`        要点：${ch.keyPoints.join("；")}`);
-				for (const q of ch.quotes ?? []) out.push(`        原文：「${q}」`);
-			}
-			out.push("");
-		}
-	}
-	return out.join("\n");
-}
-
-/**
  * `cities` 命令：城市经纬度查询（真太阳时校正用）。
  *
  * @param args - CLI 参数表；`--search` 为关键词（也可用位置参数代替）
@@ -741,7 +694,7 @@ function cmdTopic(args: CliArgs) {
  * 值类型显式写出 `| undefined`：命令名来自 argv，查表必然未命中，
  * 这里让「未命中」在类型上就成立，而不是靠断言把 undefined 抹掉。
  *
- * 多数命令（含八个 `cmdXxx`）只需要 args，签名里少的那个参数 TS 允许省略；
+ * 多数命令（含七个 `cmdXxx`）只需要 args，签名里少的那个参数 TS 允许省略；
  * 只有 selftest 用得上 ctx（它要在输出里交代内核根是哪一份）。
  *
  * `help` 不在表内 —— 引导层单独处理，见 `purple-star.ts` 的 `main()`。
@@ -755,7 +708,6 @@ export const COMMANDS: Record<
 	topic: cmdTopic,
 	heming: cmdHeming,
 	classics: cmdClassics,
-	nihai: cmdNihai,
 	stars: cmdStars,
 	cities: cmdCities,
 	selftest: (_args, ctx) => cmdSelftest(ctx),

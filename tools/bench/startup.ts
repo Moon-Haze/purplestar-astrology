@@ -12,7 +12,8 @@
 //
 // ②③ 均在**真实 node 子进程**中测，不在本进程内。原因：本编排脚本跑在 tsx 下，
 // 而 tsx 的 esbuild 转换成本与源文件大小成正比 —— 实测把 nihai 的加载成本从 5ms
-// 抬到 14ms、cli/commands 从 13ms 抬到 38ms，大源文件被高估约 2–3 倍。子进程探针
+// 抬到 14ms、cli/commands 从 13ms 抬到 38ms，大源文件被高估约 2–3 倍（nihai 模块已于
+// 2026-09-27 随同名命令一并移除，此处数据留作 tsx 高估幅度的例证）。子进程探针
 // 复用 test/lib/loader.ts 的 registerHooks（该文件是 CLI 引导层的既定副本，且有一条
 // 漂移断言盯着），因此**不需要**在这里再写第三份 hook 逻辑。
 //
@@ -99,7 +100,7 @@ function benchE2E(runs: number): E2ERow[] {
 // ── ② 加载分组定义 ──
 
 /**
- * 顺序**必须**依赖先于依赖者：`cli/commands` 静态 import 了 classics / nihai /
+ * 顺序**必须**依赖先于依赖者：`cli/commands` 静态 import 了 classics /
  * heming-knowledge，放最后才能让它的边际值只反映自身代码量。
  */
 const LOAD_GROUPS: Array<{ label: string; specs: string[]; note: string }> = [
@@ -116,13 +117,12 @@ const LOAD_GROUPS: Array<{ label: string; specs: string[]; note: string }> = [
 		note: "analyze 必需（含 iztro / lunar-typescript）",
 	},
 	{ label: "+ classics", specs: ["@/classics/index"], note: "仅 classics 命令需要" },
-	{ label: "+ nihai", specs: ["@/nihai/index"], note: "仅 nihai 命令需要" },
 	{ label: "+ heming-knowledge", specs: ["@/ziwei/heming-knowledge"], note: "仅 heming 命令需要" },
 	{ label: "+ cli/commands", specs: ["@/cli/commands"], note: "命令表本体，analyze 必需" },
 ];
 
 /** 可懒加载的组（analyze 用不到）——用于算「懒加载收益上限」。 */
-const DEFERRABLE = new Set(["+ classics", "+ nihai", "+ heming-knowledge"]);
+const DEFERRABLE = new Set(["+ classics", "+ heming-knowledge"]);
 
 /** 热路径样本。hour 是**时辰序号 0–12**，不是钟表时（见 types.ts 的 BirthInfo.hour）。 */
 const HOT_INFO: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male" };

@@ -41,9 +41,8 @@ node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 北京
 node scripts/purple-star.ts heming --a-date 1990-05-15 --a-time 09:30 --a-gender male \
                             --b-date 1993-08-22 --b-time 14:00 --b-gender female
 node scripts/purple-star.ts classics --search 机月同梁
-node scripts/purple-star.ts nihai --category tianji
 node scripts/purple-star.ts help        # 全部命令与参数
-node scripts/purple-star.ts selftest    # 回归自检（44 项断言）
+node scripts/purple-star.ts selftest    # 回归自检（48 项断言）
 
 npm test                                 # 排盘基准回归（300 条样本，约 8 秒）
 npm run typecheck                        # 类型检查（必须 0 错误）
@@ -63,8 +62,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 │   ├── purple-star.ts    # CLI 入口（引导层：定位内核根 → 注册 TS 钩子 → 分发命令）
 │   ├── cli/              # CLI 实现：参数解析 / 渲染 / 出生信息 / 命令 / 自检
 │   ├── ziwei/            # 排盘算法、格局库、四化、合盘、城市经纬度
-│   ├── classics/         # 骨髓赋 / 紫微斗数全集 / 全书
-│   └── nihai/            # 倪海夏天纪 / 地纪 / 人纪
+│   └── classics/         # 骨髓赋 / 紫微斗数全集 / 全书
 ├── test/                 # 排盘基准测试（见 test/README.md）
 └── node_modules/         # npm install 生成（已 gitignore）
 ```
@@ -84,7 +82,6 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 | 合盘方法论、十四主星在夫妻宫断语             | `scripts/ziwei/heming-knowledge.ts` |
 | 中国城市经纬度（真太阳时校正）               | `scripts/ziwei/cities.ts`           |
 | 三部古籍原文                                 | `scripts/classics/data/`            |
-| 倪海夏三纪知识                               | `scripts/nihai/`                    |
 
 **不含**线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/`——它们未随 skill 分发，解读请依赖上表知识源。
 
@@ -103,7 +100,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 改完内核或升级依赖后，两层测试都要跑：
 
 ```bash
-node scripts/purple-star.ts selftest    # 第一层：代码逻辑自洽（44 项断言）
+node scripts/purple-star.ts selftest    # 第一层：代码逻辑自洽（48 项断言）
 npm test                                 # 第二层：与 toolkit 样本的基准比对（约 8 秒）
 
 npm run test:corpus -- --year 1960       # 可选：全量核验（8,640 条，约 2 分钟）
