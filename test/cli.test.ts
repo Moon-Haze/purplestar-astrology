@@ -139,6 +139,18 @@ async function cliFails(args: string[]): Promise<string> {
 const { generateChart } = await loadAlgorithm();
 const { getSiHuaByStem } = await loadSihua();
 
+/**
+ * 合盘用的那一对出生信息。
+ *
+ * @remarks
+ * 提到文件级是因为它被两组共用：「heming 合盘」与「heming-guide 合盘方法论」。
+ * 后者那条「两段正文在前者、不在后者」的断言必须真的跑一次 `heming`，用的就是这一对。
+ */
+const HEMING_PAIR = [
+	"--a-date", "1990-05-15", "--a-time", "09:30", "--a-gender", "male",
+	"--b-date", "1992-08-20", "--b-time", "14:00", "--b-gender", "female",
+];
+
 describe("CLI 端到端", () => {
 	describe("真太阳时校正", () => {
 		// 样本 longitude 恒为 120，无法覆盖这段逻辑，故手工构造。
@@ -394,13 +406,8 @@ describe("CLI 端到端", () => {
 	});
 
 	describe("heming 合盘", () => {
-		const PAIR = [
-			"--a-date", "1990-05-15", "--a-time", "09:30", "--a-gender", "male",
-			"--b-date", "1992-08-20", "--b-time", "14:00", "--b-gender", "female",
-		];
-
 		it("--json 的夫妻宫/福德宫派生字段与 chart 自洽", async () => {
-			const o = JSON.parse(await cliCmd("heming", [...PAIR, "--json"])) as HemingJson;
+			const o = JSON.parse(await cliCmd("heming", [...HEMING_PAIR, "--json"])) as HemingJson;
 			for (const side of ["a", "b"] as const) {
 				const chart = o[side].chart;
 				for (const [field, palaceName] of [
@@ -421,10 +428,35 @@ describe("CLI 端到端", () => {
 		});
 
 		it("文本路径同样跑通（宫名查找失败在此路径表现为崩溃）", async () => {
-			const text = await cliCmd("heming", PAIR);
+			const text = await cliCmd("heming", HEMING_PAIR);
 			assert.match(text, /【合盘/);
 			assert.match(text, /夫妻宫/);
 			assert.match(text, /福德宫/);
+		});
+
+		// ── 绊线：恒定静态文本不得回到 heming 的输出里 ──
+		//
+		// `【评分标准】` 与【完整方法论】两段（170 行，实测占本命令输出 78%）与「这一对是谁」
+		// 无关，排谁的盘都是同一份，已拆到 `heming-guide`。今天全仓没有别的断言盯着这两段文本
+		// —— 把 170 行塞回 cmdHeming 除了这条，不会有任何东西变红。
+		//
+		// ⚠️ 断言的是**块标题字面量**而非「方法论」三个字：末尾那行指针本身就要说「方法论」，
+		// 盯前者才能既拦住重印、又允许指针存在。
+		it("不含已拆出的两段静态文本，且末尾指针指向真实存在的命令", async () => {
+			const text = await cliCmd("heming", HEMING_PAIR);
+			assert.ok(!text.includes("【评分标准】"), "评分标准被重新塞回了 heming 输出");
+			assert.ok(!text.includes("【完整方法论】"), "完整方法论被重新塞回了 heming 输出");
+
+			// 指针若是最后一行，就没人能在它后面又追加内容而不被发现。
+			const lines = text.split("\n").filter(l => l.trim());
+			const pointer = lines[lines.length - 1];
+
+			const m = pointer.match(/见\s*`([a-z][a-z0-9-]*)`/);
+			assert.ok(m, `末行不是指向 heming-guide 的指针：${pointer}`);
+
+			// 命令改名时红在这里，而不是红在用户面前的「未知命令」。
+			const { COMMANDS } = await load<typeof import("@/cli/commands")>("@/cli/commands");
+			assert.ok(COMMANDS[m[1]], `指针指向的命令「${m[1]}」不在 COMMANDS 表里`);
 		});
 	});
 
@@ -617,6 +649,68 @@ describe("CLI 端到端", () => {
 			);
 			for (const s of fuqi.borrowedStars ?? [])
 				assert.ok(t.includes(`    ${s}：`), `借来的主星 ${s} 没有出断语`);
+		});
+	});
+
+	// ── heming-guide：从 heming 拆出的恒定静态文本 ──
+	//
+	// 这一组**刻意不造独立预言机**：载荷是两份常量，不存在第二条独立路径，硬造只会生产一份
+	// 需要同步的副本。它守的是「搬走了、搬全了、搬到位了」这三件事。
+	describe("heming-guide 合盘方法论", () => {
+		it("两段正文都在：评分标准按源序五档 + 方法论全文", async () => {
+			const { HEMING_METHODOLOGY, HEMING_SCORE_CRITERIA } = await load<
+				typeof import("@/ziwei/heming-knowledge")
+			>("@/ziwei/heming-knowledge");
+			const text = await cliCmd("heming-guide", []);
+
+			assert.match(text, /【评分标准】/);
+			assert.match(text, /【完整方法论】/);
+
+			// 先守档位表非空，否则下面的循环会空转通过。
+			const tiers = Object.entries(HEMING_SCORE_CRITERIA);
+			assert.ok(tiers.length > 0, "HEMING_SCORE_CRITERIA 为空");
+			let cursor = -1;
+			for (const [tier, desc] of tiers) {
+				const at = text.indexOf(`${tier}：${desc}`, cursor + 1);
+				assert.ok(at > cursor, `档位「${tier}」缺失，或未按源序出现`);
+				cursor = at;
+			}
+
+			// includes("") 恒真 —— 先守原文确实有份量，否则这条断言什么都没测。
+			assert.ok(HEMING_METHODOLOGY.length > 200, "HEMING_METHODOLOGY 过短，包含性断言会空转");
+			assert.ok(text.includes(HEMING_METHODOLOGY), "方法论全文未原样输出（被 trim 或改写？）");
+		});
+
+		it("--json 的键名与 heming --json 的同名字段一致", async () => {
+			const guide = JSON.parse(await cliCmd("heming-guide", ["--json"])) as Record<string, unknown>;
+			assert.deepEqual(Object.keys(guide).sort(), ["methodology", "scoreCriteria"]);
+
+			const heming = JSON.parse(await cliCmd("heming", [...HEMING_PAIR, "--json"])) as Record<
+				string,
+				unknown
+			>;
+			for (const k of ["methodology", "scoreCriteria"])
+				assert.deepEqual(guide[k], heming[k], `${k} 在两条命令下不一致`);
+		});
+
+		// 这条才是「搬走了」与「删掉了」的分界：单测「heming-guide 有」或单测「heming 没有」，
+		// 两者各自都能靠「把常量删掉」通过。同一次比对两边的正文，才排得掉这种退化解。
+		it("同一份正文：在 heming-guide 里，且不在 heming 里", async () => {
+			const { HEMING_METHODOLOGY, HEMING_SCORE_CRITERIA } = await load<
+				typeof import("@/ziwei/heming-knowledge")
+			>("@/ziwei/heming-knowledge");
+			assert.ok(HEMING_METHODOLOGY.length > 200, "HEMING_METHODOLOGY 过短");
+
+			const guide = await cliCmd("heming-guide", []);
+			const heming = await cliCmd("heming", HEMING_PAIR);
+
+			for (const [label, needle] of [
+				["方法论全文", HEMING_METHODOLOGY],
+				["评分标准首档", HEMING_SCORE_CRITERIA.五星],
+			] as const) {
+				assert.ok(guide.includes(needle), `${label}不在 heming-guide 输出里`);
+				assert.ok(!heming.includes(needle), `${label}仍留在 heming 输出里`);
+			}
 		});
 	});
 

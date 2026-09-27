@@ -33,7 +33,12 @@ import { detectPatterns } from "@/ziwei/patterns";
 import { getSiHuaByStem, getYearStemIndex, getLiuYueSiHua } from "@/ziwei/sihua";
 import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
 import { STEMS, STAR_DESCRIPTIONS } from "@/ziwei/constants";
-import { HEMING_METHODOLOGY, STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU } from "@/ziwei/heming-knowledge";
+import {
+	HEMING_METHODOLOGY,
+	HEMING_SCORE_CRITERIA,
+	STAR_IN_FUQI_GU,
+	SIHUA_IN_FUQI_GU,
+} from "@/ziwei/heming-knowledge";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
 import { Lunar } from "lunar-typescript";
 
@@ -557,6 +562,10 @@ export function cmdSelftest(ctx: CliContext): string {
 		if (!Object.keys(STAR_IN_FUQI_GU).length) throw new Error("STAR_IN_FUQI_GU 为空");
 		if (!Object.keys(SIHUA_IN_FUQI_GU).length) throw new Error("SIHUA_IN_FUQI_GU 为空");
 		if (!HEMING_METHODOLOGY) throw new Error("HEMING_METHODOLOGY 为空");
+		// 这个常量原先是零断言覆盖（注释自己承认「清空它不会让任何断言变红」）。自它成为
+		// `heming-guide` 命令的主要载荷之一，空掉就不再是「少一段说明」而是「命令输出残缺」。
+		if (!Object.keys(HEMING_SCORE_CRITERIA).length)
+			throw new Error("HEMING_SCORE_CRITERIA 为空");
 		return `夫妻宫断语 ${Object.keys(STAR_IN_FUQI_GU).length} 星`;
 	});
 	ok("知识源：星曜释义覆盖十四主星", () => {
@@ -721,7 +730,11 @@ export function cmdSelftest(ctx: CliContext): string {
 		const src = readFileSync(resolve(ctx.root, "cli", "commands.ts"), "utf8");
 		const table = src.match(/const COMMAND_TABLE = \{([\s\S]*?)\} satisfies/)?.[1];
 		if (!table) throw new Error("未从 commands.ts 抽到 COMMAND_TABLE —— 声明块形状已变");
-		const defined = [...table.matchAll(/^\t+([a-z][a-z0-9-]*):/gm)].map(m => m[1]);
+		// ⚠️ 键上的双引号是**可选**的，别把它从正则里省掉：命令名含连字符时（`heming-guide`）
+		// 不是合法标识符，对象字面量里**必须**加引号。只认裸键的写法会静默漏抽这一项，
+		// 于是「表里有、扫描器看不见」→ 反向误报成「SKILL.md 提到但未定义」，
+		// 而且报的方向正好与真相相反（实测踩过）。
+		const defined = [...table.matchAll(/^\t+"?([a-z][a-z0-9-]*)"?:/gm)].map(m => m[1]);
 		if (!defined.length)
 			throw new Error("COMMAND_TABLE 里一个命令名都没抽到 —— 正则或路径可能已失效");
 

@@ -8,7 +8,7 @@
  *   cli/args.ts        CLI 参数表与解析（纯函数，不依赖内核）
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
- *   cli/commands.ts    七个命令实现 + 命令表
+ *   cli/commands.ts    各命令实现 + 命令表
  *   cli/selftest.ts    回归自检（留在 scripts/ 而非 test/，理由见该文件）
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
@@ -252,7 +252,7 @@ const HELP_EXAMPLES = `  # 单人解读（公历）
 
 // 命令注册进 cac **只为让 help 列出命令**：分发仍由下面的 main() 查 COMMANDS 表 ——
 // cac 的 action 模型与「cmdXxx 一律**返回**字符串、console.log 只在 main() 一处发生」不合，
-// 用 action 会让输出点从 1 处变成 8 处。
+// 用 action 会让输出点从 1 处变成每个命令各一处。
 for (const [name, desc] of Object.entries(COMMAND_DESC)) cli.command(name, desc);
 // 用法/命令/参数三段由 cac 自己渲染（分别来自名字、COMMAND_DESC、FLAG_GROUPS），
 // 这两段是它渲染不到的领域知识。
@@ -270,7 +270,7 @@ cli.help(sections => [
  * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
  *
  * @remarks
- * `console.log` 只在这一处发生 —— 七个 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
+ * `console.log` 只在这一处发生 —— 各 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
  *
  * 无参数、`help`、`--help`、`-h` 都走 `cli.outputHelp()`（用法 / 命令 / 参数三段由 cac 渲染，
  * 两条口径警告与示例由上面注册的 help 回调追加）；未知命令与命令内部抛出的错误都以非零码退出

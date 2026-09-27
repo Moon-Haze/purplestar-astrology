@@ -6,9 +6,8 @@
  * **性质**：这是**纯文本知识库**，五个导出全是常量数据，不含任何逻辑 —— 断语怎么用、
  * 用在哪一步，由 `cli/commands.ts` 的合盘命令决定，不在这里。
  *
- * **消费者**：`cli/commands.ts`（合盘命令的断语与方法论输出、`--json` 的
- * `methodology` / `scoreCriteria` 字段）、`cli/selftest.ts`（三条非空断言，
- * 防知识库被搬空却不报错）。
+ * **消费者**：`cli/commands.ts`（`heming` 的断语输出与 `--json`；`heming-guide` 命令的
+ * 方法论与评分标准）、`cli/selftest.ts`（非空断言，防知识库被搬空却不报错）。
  *
  * ⚠️ 与本项目体系的边界：本文件里的断语是**文案素材**，不是判定逻辑 ——
  * 格局命中由 `patterns/` 负责，四化只看**生年干**。文件内出现的「飞化互参」「大限
@@ -186,7 +185,7 @@ export const SIHUA_IN_FUQI_GU = {
  * 缘分类型、婚期判断三层法、各宫位结婚情形、克夫/克妻标志、事业合作合盘、
  * 感情相位类型速判表、倪师合盘名言汇总。
  *
- * **用途**：原样交给上层（合盘命令的文本输出末尾，以及 `--json` 的 `methodology` 字段），
+ * **用途**：原样交给上层（`heming-guide` 命令的文本输出，以及 `--json` 的 `methodology` 字段），
  * 由解读方（Claude）照此组织分析。⚠️ 本常量**不含可执行逻辑**，改它只改文案，
  * 不影响任何判定分支。
  *
@@ -393,10 +392,10 @@ export const MARRIAGE_STARS_BRIEF: Record<string, string> = {
 /**
  * 合盘评级的判定标准：星级（`一星`–`五星`）→ 该星级对应的判据描述。
  *
- * **用途**：作为「怎么打这个星级」的说明交给上层 —— `cli/commands.ts` 只把它放进
- * `--json` 输出的 `scoreCriteria` 字段（与 `methodology` 并列），**它本身不计算分数**，
- * 也不含任何评分逻辑。清空它不会让任何断言变红（`selftest` 只断言
- * `STAR_IN_FUQI_GU` / `SIHUA_IN_FUQI_GU` / `HEMING_METHODOLOGY` 非空）。
+ * **用途**：作为「怎么打这个星级」的说明交给上层 —— `cli/commands.ts` 的 `heming-guide`
+ * 命令（文本按星级逐行渲染，`--json` 输出同名字段），以及 `heming --json` 的
+ * `scoreCriteria` 字段（保留为兼容）。**它本身不计算分数**，也不含任何评分逻辑。
+ * `selftest` 有一条非空断言盯着它 —— 空掉即报错。
  *
  * 键是五个星级，值为文本；顺序为从高到低排列。
  */

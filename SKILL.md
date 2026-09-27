@@ -204,7 +204,14 @@ node scripts/purple-star.ts heming \
   --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海
 ```
 
-合盘参数在单人参数前加 `a-` / `b-` 前缀（农历用 `--a-lunar` / `--b-lunar`，晚子时用 `--a-late-zi`）。输出已含：双方命宫/夫妻宫/福德宫、天作之合对应关系判定、夫妻宫完整断语、生年四化入夫妻宫、桃花孤克星、评分标准与方法论全文。
+合盘参数在单人参数前加 `a-` / `b-` 前缀（农历用 `--a-lunar` / `--b-lunar`，晚子时用 `--a-late-zi`）。输出已含：双方命宫/夫妻宫/福德宫、天作之合对应关系判定、夫妻宫完整断语、生年四化入夫妻宫、桃花孤克星。
+
+**评分标准与完整方法论不在这里**——它们是恒定静态文本（与「这一对是谁」无关，排谁的盘都是同一份），已拆到 `heming-guide` 命令按需取用，`heming` 末尾只留一行指针。因此：
+
+- 要在解读里给这段关系**定档（几星）**时，先跑 `node scripts/purple-star.ts heming-guide` 取评分标准；
+- 要展开夫妻宫断语之外的方法论（五步法、缘分类型、婚期三层法等）时，同样从那里取。
+
+`heming --json` 仍带 `methodology` / `scoreCriteria` 两个字段（保留为兼容，键名与 `heming-guide --json` 一致）。
 
 任一方出生时间落在 23:00–23:59 时，脚本会提示该方口径问题——**该方命盘会整体改变，合盘结论需重跑**，不要忽略。
 
@@ -252,6 +259,7 @@ node scripts/purple-star.ts heming \
 | `analyze`                        | **主力命令**。十二宫一览 + 命身宫 + 格局 + 四化 + 大限，解读所需一次给全 |
 | `chart`                          | 纯排盘十二宫（要逐宫详表时用）                                           |
 | `heming`                         | 合盘                                                                     |
+| `heming-guide`                   | 合盘方法论与评分标准（静态参考，不排盘）                                 |
 | `topic --topic <key> [--view …]` | 主题论断（13 主题动态推算，含知识来源分级提示）                          |
 | `classics --search <词>`         | 古籍原文检索                                                             |
 | `stars [--search <星名>]`        | 星曜释义                                                                 |
@@ -261,6 +269,8 @@ node scripts/purple-star.ts heming \
 **出生信息参数**：`--date` / `--lunar`（+`--leap`）/ `--year·--month·--day`；`--time` 或 `--branch 0-12`、`--late-zi`、`--eot`；`--gender`（**必填**）；`--lng` / `--city` / `--province`；`--name`。
 
 **输出选项**：`--json`、`--liunian <年>`、`--liuyue <农历月>`、`--focus <宫名>`。
+
+**检索选项**：`--limit <条数>` —— 仅 `classics` 认，控制命中上限，默认 15。
 
 > **`--focus` 的宫名**用本项目口径（倪师《天纪》），十二宫统一带「宫」字：
 > 命宫、兄弟宫、夫妻宫、子女宫、财帛宫、疾厄宫、迁移宫、**交友宫**、官禄宫、田宅宫、福德宫、父母宫。
@@ -276,84 +286,10 @@ node scripts/purple-star.ts heming \
 
 完整帮助：`node scripts/purple-star.ts help`
 
-## 分发与安装
-
-本 skill 是**自包含**的：`scripts/`（CLI + 内核）+ `package.json`（依赖）都在 skill 目录内，拷到任何地方都能直接跑，不需要宿主项目配合。
-
-`purple-star.ts` 按**两级优先级**定位内核，取第一个命中者：
-
-| 优先级 | 来源                        | 何时命中                             |
-| ------ | --------------------------- | ------------------------------------ |
-| 1      | `ZIWEI_ROOT` 环境变量       | 显式把内核指到别处（多项目共享一份） |
-| 2      | 技能自带 `<skill>/scripts/` | 默认。与 purple-star.ts 同级         |
-
-`selftest` 会打印当前生效的内核根（标题行 `紫微斗数 skill 回归自检 —— 通过 N/N` 之下的**第二行**，
-形如 `内核根：<路径>`），交付解读前可据此确认跑的是哪一份内核。
-
-### 目录结构
-
-```text
-<skill 根>/                 ← SKILL.md 所在目录
-├── SKILL.md                ← 技能定义（Claude Code 入口）
-├── README.md               ← 人类可读的项目说明
-├── LICENSE                 ← MIT
-├── package.json            ← 声明 iztro / lunar-typescript
-├── package-lock.json       ← 锁定精确版本（iztro 2.6.1 / lunar-typescript 1.8.6）
-├── tsconfig.json           ← 仅供 IDE / tsc 用（含 @/* → scripts/* 映射），运行时不依赖
-├── scripts/                ← CLI 与排盘内核同处一层（内核根）★ 排盘只需这一层
-│   ├── purple-star.ts      ← CLI 入口（引导层：定位内核根 → 注册 TS 钩子 → 分发命令）
-│   ├── cli/                ← CLI 实现：参数解析 / 渲染 / 出生信息 / 命令 / 自检
-│   ├── ziwei/              ← 排盘算法、格局库、四化、合盘、城市经纬度
-│   └── classics/           ← 三部古籍原文
-├── test/                   ← 回归测试（npm test）。怎么跑与效力边界见 test/README.md
-│   ├── fixtures/           ← 300 条基准样本（已入库，跑 npm test 不需要 reference/）
-│   └── tools/              ← 手动脚本：重建基准、全量语料核验（需 db/；互验另需 reference/）
-├── docs/test/              ← 历次测试报告存档
-├── db/                     ← 样本语料库（DuckDB 单文件，未入版本控制；基准工具的数据源）
-├── reference/              ← 外部数据集，未入版本控制（缺了不影响排盘与 npm test）
-└── node_modules/           ← npm install 生成，已被 gitignore
-```
-
-> 交付解读只需 `SKILL.md` + `scripts/` + `package.json` + `package-lock.json`；
-> `test/`、`docs/`、`reference/` 是开发期资产，安装到 Claude Code 时不必带走。
-
-### 安装到 Claude Code
-
-```bash
-# 项目级：只在该项目内可用
-cp -r <本仓库> <项目>/.claude/skills/purplestar-astrology
-
-# 个人级：所有项目可用
-cp -r <本仓库> ~/.claude/skills/purplestar-astrology
-```
-
-目标目录名必须是 `purplestar-astrology`（与 frontmatter 的 `name` 一致），Claude Code 据此发现技能。
-
-`node_modules/` 不必拷（已被 gitignore），落位后补一次依赖即可，实测约 0.7 秒：
-
-```bash
-cd ~/.claude/skills/purplestar-astrology && npm install
-```
-
-`package-lock.json` 已锁定版本（iztro 2.6.1 / lunar-typescript 1.8.6），排盘结果不会因环境不同而分叉。
-
-**内核为什么是拷贝而不是装包**：排盘内核（`scripts/`）来自上游 `ziwei-master` 项目，**未发布到 npm**，其中 `scripts/ziwei`、`classics` 下的 `.ts` 全是本仓自有的内核代码（不含 CLI 的 `scripts/purple-star.ts` 与 `scripts/cli/`）——格局库（`patterns/`，判定与两套判词同处一个文件夹）、分析数据库 v3（`analysis/`，推算与 `data.ts` 论断文案同处一个文件夹，拷自 `reference/ziwei-samples-toolkit/`）、合盘断语、中国城市经纬度、三部古籍原文——npm 上没有任何包提供它们。所以按「能装就装、不能装就拷」处理：**依赖装包，内核随 skill 走**。
-
-> 此处有意不登记内核行数：内核在本仓库持续演化，写死的数字改一次代码就失效一次。
-
-### 内核来源
-
-本 skill 的 `scripts/` 提取自所参考的上游开源项目 `ziwei-master`（Next.js 站点 + 完整 `lib/`）。
-
-抽取时只保留了排盘与解读必需的部分——未含站点侧的 `db-analysis.ts`（线上论断库）、`famous.ts`、`history.ts`、`share.ts` 与 `lib/seo/`。
-
-上游曾一并带上手写的 `lunar-javascript.d.ts` 类型声明（`lunar-javascript` 包自身不带类型，缺了它 `tsc` 会报 TS7016）。本项目现已改用同作者的 TypeScript 移植版 `lunar-typescript`，该声明随之删除——`lunar-typescript` 自带 `dist/index.d.ts`，`tsc` 直接取得到类型，无需手写。
-
-内核在本 skill 内独立演化，改内核直接改 `scripts/` 下的对应文件，不存在需要同步的副本。
-
 ## 若脚本报错
 
 - `[ziwei 启动失败] 找不到排盘内核` → skill 目录不完整，`<skill>/scripts/` 下的内核缺失（拷贝时漏带）。从本仓库补回 `ziwei/`、`classics/` 两个内核目录，或用 `ZIWEI_ROOT=<含 ziwei/ 的目录>` 指定内核位置。
+- **确认跑的是哪一份内核**：`purple-star.ts` 按**两级优先级**定位内核 —— `ZIWEI_ROOT` 环境变量优先，未设则用技能自带的 `<skill>/scripts/`。`selftest` 输出的**第二行**（形如 `内核根：<路径>`）就是当前生效的那一份，交付解读前据此核对。
 - `Cannot find module 'iztro'` / `'lunar-typescript'` → 依赖未装。**看报错里的「当前内核根」**，在该目录下 `npm install`。
 - `registerHooks is not a function` 或 TS 语法报错 → Node 版本过低，需 ≥ 22.15（本项目开发环境为 v26）。
 - `[ziwei 启动自检失败]` → 内核被重构、关键导出改名或删除。核对 `scripts/cli/` 各模块的 import 列表与 `scripts/` 下内核的实际导出是否对得上。

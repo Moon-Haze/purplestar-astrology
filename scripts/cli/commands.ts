@@ -1,7 +1,7 @@
 /**
- * 命令实现 —— 七个 `cmdXxx` 与命令表。
+ * 命令实现 —— 各 `cmdXxx` 与命令表。
  *
- * 拆自 purple-star.ts。七个命令互不调用，故集中在一处反而好对照；
+ * 拆自 purple-star.ts。各命令互不调用，故集中在一处反而好对照；
  * 只有 `selftest` 另立门户（见 ./selftest.ts 的说明）。
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
@@ -323,7 +323,7 @@ function cmdAnalyze(args: CliArgs) {
 }
 
 /**
- * `heming` 命令：合盘（双宫联参 + 夫妻宫断语 + 方法论）。
+ * `heming` 命令：合盘（双宫联参 + 夫妻宫断语）。
  *
  * @param args - CLI 参数表；甲乙两方各一套出生信息参数，分别带 `a-` / `b-` 前缀
  * @returns 已渲染好的文本；带 `--json` 时返回两方命盘摘要 + 方法论 + 评分标准的原始 JSON 字符串
@@ -331,7 +331,7 @@ function cmdAnalyze(args: CliArgs) {
  * @remarks
  * 遵循倪海夏的双宫联参口径：看婚姻不能只看夫妻宫，必须同时看福德宫。输出两方命宫 / 夫妻宫 /
  * 福德宫主星、天作之合对应关系判定、夫妻宫断语（空宫借对宫主星论）、生年四化入夫妻宫、
- * 夫妻宫桃花孤克星，最后附评分标准与完整方法论。
+ * 夫妻宫桃花孤克星，末尾留一行指针指向 `heming-guide`（方法论与评分标准的静态全文）。
  *
  * ⚠️ 任一方校正后的出生时刻落在 23:00–23:59 时单独提示：本次按**当日早子时**口径排，
  * 若改用 `--a-late-zi` / `--b-late-zi`（晚子时算次日），该方命盘会整体改变，合盘结论需重跑。
@@ -361,6 +361,10 @@ function cmdHeming(args: CliArgs) {
 			{
 				a: { chart: ca, mingGong: mA, fuQiGong: fA, fuDeGong: majors(fudeA) },
 				b: { chart: cb, mingGong: mB, fuQiGong: fB, fuDeGong: majors(fudeB) },
+				// 保留为兼容：文本分支已不再输出这两段（移到 `heming-guide`），JSON 保持原样，
+				// 免得仓外消费者被静默破坏。键名与 `heming-guide --json` 一致，故两者构成
+				// `heming --json ⊇ heming-guide --json`。
+				// ⚠️ 删掉这两个字段**不会有任何断言变红** —— 要删请连同本注释一起删，别默默移除。
 				methodology: HEMING_METHODOLOGY,
 				scoreCriteria: HEMING_SCORE_CRITERIA,
 			},
@@ -483,16 +487,46 @@ function cmdHeming(args: CliArgs) {
 	}
 	if (!marriageHit) out.push("  双方夫妻宫无收录的桃花/孤克星。");
 	out.push("");
+	// 评分标准与完整方法论是**恒定静态文本** —— 与「这一对是谁」无关，排谁的盘都是同一份，
+	// 曾在此处无条件重印（实测占本命令输出 78%）。已拆到 `heming-guide` 按需取用，此处只留指针。
+	// ⚠️ 指针文案**不得**出现「【评分标准】」/「【完整方法论】」这两个块标题：test/cli.test.ts
+	// 的绊线正是盯这两个字面量，引用了就是自己踩自己。
+	out.push("评分标准与方法论全文已拆出，见 `heming-guide` 命令。");
+
+	return out.join("\n");
+}
+
+/**
+ * `heming-guide` 命令：合盘方法论与评分标准（静态参考）。
+ *
+ * @param args - CLI 参数表；只认 `--json`，不接受任何出生信息参数
+ * @returns 已渲染好的文本；带 `--json` 时返回 `{ methodology, scoreCriteria }`
+ *
+ * @remarks
+ * 载荷全部是 `heming-knowledge.ts` 里的**恒定常量**，与输入无关，故不调 `buildBirthInfo`。
+ * 这两段原在 `heming` 文本输出末尾无条件重印，实测占其输出 78%（170/218 行）——
+ * 拆出来的理由是「与这一对无关的文本不该每次都重发」，不是它们没有价值。
+ *
+ * `--json` 的键名与 `heming --json` 的同名字段**完全一致**，于是两者构成
+ * `heming --json ⊇ heming-guide --json` 这一可陈述关系（也是日后若要从 `heming --json`
+ * 移除这两个字段时的迁移出口）。
+ */
+function cmdHemingGuide(args: CliArgs) {
+	if (args.json)
+		return JSON.stringify(
+			{ methodology: HEMING_METHODOLOGY, scoreCriteria: HEMING_SCORE_CRITERIA },
+			null,
+			2
+		);
+
+	const out: string[] = [];
 	out.push("【评分标准】");
-	out.push(
-		typeof HEMING_SCORE_CRITERIA === "string"
-			? HEMING_SCORE_CRITERIA
-			: JSON.stringify(HEMING_SCORE_CRITERIA, null, 2)
-	);
+	for (const [tier, text] of Object.entries(HEMING_SCORE_CRITERIA))
+		out.push(`  ${tier}：${text}`);
 	out.push("");
 	out.push("【完整方法论】");
+	// 原样 push（不 trim）：HEMING_METHODOLOGY 首尾自带换行，测试按原值比对
 	out.push(HEMING_METHODOLOGY);
-
 	return out.join("\n");
 }
 
@@ -710,6 +744,7 @@ const COMMAND_TABLE = {
 	chart: cmdChart,
 	topic: cmdTopic,
 	heming: cmdHeming,
+	"heming-guide": cmdHemingGuide,
 	classics: cmdClassics,
 	stars: cmdStars,
 	cities: cmdCities,
@@ -726,7 +761,7 @@ export type CommandName = keyof typeof COMMAND_TABLE;
  * 值类型显式写出 `| undefined`：命令名来自 argv，查表必然未命中，
  * 这里让「未命中」在类型上就成立，而不是靠断言把 undefined 抹掉。
  *
- * 多数命令（含七个 `cmdXxx`）只需要 args，签名里少的那个参数 TS 允许省略；
+ * 多数命令（含各 `cmdXxx`）只需要 args，签名里少的那个参数 TS 允许省略；
  * 只有 selftest 用得上 ctx（它要在输出里交代内核根是哪一份）。
  *
  * `help` 不在表内 —— 引导层单独处理，见 `purple-star.ts` 的 `main()`。
@@ -747,7 +782,8 @@ export const COMMAND_DESC: Record<CommandName, string> = {
 	analyze: "解读用完整输入包（命盘 + 十二宫一览 + 格局 + 四化 + 大限）★ 最常用",
 	chart: "纯排盘十二宫",
 	topic: "主题论断（13 主题动态推算：主宫 + 三方四正 + 四化会照 + 大限/流年）",
-	heming: "合盘（双宫联参 + 夫妻宫断语 + 方法论）",
+	heming: "合盘（双宫联参 + 夫妻宫断语）",
+	"heming-guide": "合盘方法论与评分标准（静态参考，不排盘）",
 	classics: "古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）",
 	stars: "星曜释义",
 	cities: "城市经纬度查询（真太阳时校正用）",
