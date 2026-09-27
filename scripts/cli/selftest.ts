@@ -678,7 +678,8 @@ export function cmdSelftest(ctx: CliContext): string {
 		}
 		if (!prefixed) throw new Error("--a-city 用在 analyze 上未报错 —— 该旗标会被静默忽略");
 		// 反向：heming 下必须放行。少了这条，上面那句就成了「一刀切禁掉前缀」也照样绿。
-		if (parseArgs(["--a-city", "北京"], "heming")["a-city"] !== "北京")
+		// ⚠️ 下标键是 **camelCase**：`CliArgs` 的键由 cac 归一（`--a-city` → `aCity`）。
+		if (parseArgs(["--a-city", "北京"], "heming")["aCity"] !== "北京")
 			throw new Error("heming --a-city 应正常解析为字符串");
 		return `${probes.length} 个拼写错误均被拦下，前缀旗标按命令归属校验`;
 	});

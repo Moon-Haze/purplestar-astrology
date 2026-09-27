@@ -9,7 +9,7 @@
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
  */
 
-import type { CliArgs } from "./args";
+import { camelKey, type CliArgs } from "./args";
 import { fmtDate } from "./render";
 import { BRANCHES, SHICHEN } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
@@ -234,7 +234,10 @@ export function findLongitude(cityName: string): LongitudeHit | null {
  * `note` —— 日期是单点流入 `info` 的，改在这里，下游（农历、排盘、合盘、流年）自动跟随。
  */
 export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
-	const g = (k: string) => args[p + k];
+	// `CliArgs` 的键是 camelCase（cac 的归一），而这里的 `k` 与 `p` 都按 kebab 写
+	//（`p` 是 `"a-"` / `"b-"`，`k` 是 `"late-zi"` 这类声明表里的名字），
+	// 故**在拼键时**过一道 camelKey —— 15 个键的读取都从 `g` 走，换算只需一处。
+	const g = (k: string) => args[camelKey(p + k)];
 
 	// ── 出生日期 ──
 	let year: number | undefined,

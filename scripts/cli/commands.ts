@@ -521,7 +521,11 @@ function cmdClassics(args: CliArgs) {
 	const limit = Number(args.limit ?? 15);
 	// 非法上限必须在这里拦下：内核把 NaN / <1 一律归成空结果，若不区分就会掉进
 	// 下面那条「未找到」——明明有命中，只是把上限设成了 0 或写成了非数字。
-	if (Number.isNaN(limit) || limit < 1)
+	//
+	// `typeof ... === "boolean"` 挡的是「给了 --limit 却没跟值」：此时 parseArgs 存的是
+	// 布尔 `true`，`Number(true)` 会得到 1 而蒙混过关（`--limit -3` 也落在这里 ——
+	// 负值会被 cac 当短选项吃掉，取值校验是它唯一的兜底）。
+	if (typeof args.limit === "boolean" || Number.isNaN(limit) || limit < 1)
 		return `--limit 需为正整数，实得 ${String(args.limit)}。`;
 	const hits = searchClassics(q, limit);
 	if (!hits.length) return `古籍中未找到「${q}」。`;
@@ -748,14 +752,3 @@ export const COMMAND_DESC: Record<CommandName, string> = {
 	cities: "城市经纬度查询（真太阳时校正用）",
 	selftest: "回归自检（农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",
 };
-
-/**
- * 渲染 HELP 的命令段。
- *
- * @returns 每行「  命令名  说明」，顺序即 {@link COMMAND_TABLE} 的声明顺序
- */
-export function renderCommandHelp(): string {
-	return (Object.keys(COMMAND_TABLE) as CommandName[])
-		.map(n => `  ${n.padEnd(11)} ${COMMAND_DESC[n]}`)
-		.join("\n");
-}

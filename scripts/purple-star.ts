@@ -159,8 +159,8 @@ const { PROVINCES } = await load<CitiesModule>("@/ziwei/cities");
 const { searchClassics } = await load<ClassicsModule>("@/classics/index");
 const { Lunar } = await load<typeof import("lunar-typescript")>("lunar-typescript");
 
-const { parseArgs, renderFlagHelp } = await load<ArgsModule>("@/cli/args");
-const { COMMANDS, renderCommandHelp } = await load<CommandsModule>("@/cli/commands");
+const { parseArgs, cli } = await load<ArgsModule>("@/cli/args");
+const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
 
 // ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默产出错盘 ──
 /**
@@ -208,37 +208,28 @@ const REQUIRED_EXPORTS = [
 // ══════════════════════ 入口 ══════════════════════
 
 /**
- * 帮助文本（无参数、`help`、`--help`、`-h` 时打印）。
+ * 两条最容易排出错盘的口径，作为 help 的追加段。
  *
  * @remarks
- * 命令段与参数段**不是手写的**：分别由 `commands.ts` 的 `renderCommandHelp()`（源自
- * `COMMAND_TABLE` + `COMMAND_DESC`）与 `cli/args.ts` 的 `renderFlagHelp()`（源自
- * `FLAG_GROUPS`）派生。此处只保留「用法 + 两条口径警告 + 示例」这几段散文，
- * 它们是 HELP 里唯一无法从声明推出的部分。
- *
- * ⚠️ 示例段仍在手写，改参数名时要一并改（`selftest` 有一条断言扫 `SKILL.md` 的旗标面，
- * 示例里的旗标因此也被覆盖到）。
+ * 刻意留在 help 里而不是别处：这两条各自都能排出一张**不同的盘**，而排盘本身不会报错
+ * —— 复核时先看它们，是这个项目唯一能给的提示。（`cli/args.ts` 的旗标声明表能防
+ * 「拼错旗标静默落回默认值」，防不了「口径选错」。）
  */
-const HELP = `紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知识库
-
-用法：node scripts/purple-star.ts <command> [options]
-
-命令：
-${renderCommandHelp()}
-
-${renderFlagHelp()}
-
-⚠️ 两个容易排出错盘的口径，复核时先看这两条：
-
-  · 晚子时：23:00–23:59 出生时，子时横跨两日，【当日早子时】与【晚子时算次日】
+const HELP_CAUTION = `  · 晚子时：23:00–23:59 出生时，子时横跨两日，【当日早子时】与【晚子时算次日】
     排出的是两张不同的盘。复核请加 --late-zi 或 --branch 12。
 
   · 真太阳时跨过午夜：出生日期会自动回退/顺延一天，输出里会写明「已跨过午夜，
     出生日期…」。这是正确行为 —— 只换时辰不换日期，排出的「日 + 时」指向的
-    就不是出生时刻（喀什 00:30 的真太阳时是前一日 21:34，农历日会错一天）。
+    就不是出生时刻（喀什 00:30 的真太阳时是前一日 21:34，农历日会错一天）。`;
 
-示例：
-  # 单人解读（公历）
+/**
+ * 常用调用示例，作为 help 的追加段。
+ *
+ * @remarks
+ * ⚠️ 这段仍在手写（cac 渲染不到），改参数名时要一并改 —— `selftest` 有一条断言扫
+ * `SKILL.md` 里的旗标写法，示例里的旗标因此也落在它的覆盖范围内。
+ */
+const HELP_EXAMPLES = `  # 单人解读（公历）
   node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
   # 用户只给农历生日
@@ -257,8 +248,23 @@ ${renderFlagHelp()}
 
   # 古籍检索 / 回归自检
   node scripts/purple-star.ts classics --search 机月同梁
-  node scripts/purple-star.ts selftest
-`;
+  node scripts/purple-star.ts selftest`;
+
+// 命令注册进 cac **只为让 help 列出命令**：分发仍由下面的 main() 查 COMMANDS 表 ——
+// cac 的 action 模型与「cmdXxx 一律**返回**字符串、console.log 只在 main() 一处发生」不合，
+// 用 action 会让输出点从 1 处变成 8 处。
+for (const [name, desc] of Object.entries(COMMAND_DESC)) cli.command(name, desc);
+// 用法/命令/参数三段由 cac 自己渲染（分别来自名字、COMMAND_DESC、FLAG_GROUPS），
+// 这两段是它渲染不到的领域知识。
+cli.help(sections => [
+	// 无标题段渲染成最前面独立的一行，位置与原 HELP 的首行一致。
+	// （不要改用 `cli.usage()` 放这句：它会把文本拼在 `$ purple-star ` **同一行**后面，
+	//   还会顶掉 cac 自带的 `<command> [options]`，读起来像一条命令。）
+	{ body: "紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知识库" },
+	...sections,
+	{ title: "⚠️ 两个容易排出错盘的口径（复核时先看这两条）", body: HELP_CAUTION },
+	{ title: "示例", body: HELP_EXAMPLES },
+]);
 
 /**
  * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
@@ -266,21 +272,24 @@ ${renderFlagHelp()}
  * @remarks
  * `console.log` 只在这一处发生 —— 七个 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
  *
- * 无参数、`help`、`--help`、`-h` 都打印 {@link HELP}；未知命令与命令内部抛出的错误都以非零码退出
+ * 无参数、`help`、`--help`、`-h` 都走 `cli.outputHelp()`（用法 / 命令 / 参数三段由 cac 渲染，
+ * 两条口径警告与示例由上面注册的 help 回调追加）；未知命令与命令内部抛出的错误都以非零码退出
  * （只打印 `err.message`，不打印栈）。传给命令的第二个参数是 `CliContext`（内核根及其来源），
  * 目前只有 `selftest` 用得上。
  *
  * ⚠️ 命令名直接来自 `argv`，故查表必然可能未命中 —— `COMMANDS` 的值类型显式带 `| undefined`。
  *
- * `--help` 出现在**任何位置**都打印 HELP，包括 `analyze --help` 这种。这是刻意的：
+ * `--help` 出现在**任何位置**都打印 help，包括 `analyze --help` 这种。这是刻意的：
  * `--help` 不在旗标声明表里，放它走到 `parseArgs` 只会得到一句「未知参数 --help」，
  * 而用户此刻想要的显然是用法。判定提前到分发之前，`parseArgs` 因此永远见不到它。
  */
 function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];
-	if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h" || argv.includes("--help")) {
-		console.log(HELP);
+	if (!cmd || cmd === "help" || argv.includes("--help") || argv.includes("-h")) {
+		// 警告走的是上面那个 help 回调而非在这里事后补打：`outputHelp()` 直接打印、
+		// 取不回文本，接不上任何后处理。
+		cli.outputHelp();
 		return;
 	}
 	const fn = COMMANDS[cmd];

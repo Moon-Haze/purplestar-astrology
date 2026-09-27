@@ -47,7 +47,7 @@ npm run typecheck
     ├── purple-star.ts            引导层：定位内核根 → 注册 TS 钩子 → 启动自检 → 分发命令
     ├── boot-hooks.ts             引导**机制**（内核根定位 / 解析钩子 / 动态加载），CLI 与 test/ 共用
     │                             只 import node: 内置 —— 故可在钩子注册前被静态 import
-    ├── cli/args.ts               参数面：旗标声明表 FLAG_GROUPS + 校验 + 解析 + HELP 参数段渲染
+    ├── cli/args.ts               参数面：旗标声明表 FLAG_GROUPS + 校验 + cac 驱动的解析
     │                             （纯函数，唯一不依赖内核的 CLI 模块）
     ├── cli/birth-info.ts         出生信息（真太阳时 / 农历 / 城市容错）
     ├── cli/birth-info-defs.ts    出生信息层的声明：接口与常量（公开面由上层 re-export）
@@ -159,7 +159,13 @@ npm run typecheck
 
 参数解析在 `cli/args.ts`，出生信息在 `cli/birth-info.ts`，输出格式在 `cli/render.ts`——下面这些「非常规设计」多数落在 `birth-info.ts` 与 `commands.ts`：
 
-**参数面单点声明**：`cli/args.ts` 的 `FLAG_GROUPS` 是「有哪些旗标」的唯一来源——`parseArgs` 据它拒绝未知旗标，`HELP` 的参数段由 `renderFlagHelp()` 派生，命令段由 `commands.ts` 的 `renderCommandHelp()`（源自 `COMMAND_TABLE` + `COMMAND_DESC`）派生，`selftest` 再断言 `SKILL.md` 提到的旗标都有声明。**加旗标只改声明表一处**。此前这三处各有一份手写副本，漂移代价不对称：拼错旗标（`--ctiy 喀什`）不报错，直接落回默认经度 120°E，排出一张错约 3 个时辰的盘而全程无提示。同理，`a-` / `b-` 前缀旗标只有 `heming` 认，写在别的命令上会被整个忽略——现在也会报错。
+**参数面单点声明**：`cli/args.ts` 的 `FLAG_GROUPS` 是「有哪些旗标」的唯一来源——cac 据它注册选项并渲染 help 的参数段，`parseArgs` 据它拒绝未知旗标，命令段由 `commands.ts` 的 `COMMAND_DESC` 逐个交给 cac 的 `cli.command()`，`selftest` 再断言 `SKILL.md` 提到的旗标都有声明。**加旗标只改声明表一处**。此前这三处各有一份手写副本，漂移代价不对称：拼错旗标（`--ctiy 喀什`）不报错，直接落回默认经度 120°E，排出一张错约 3 个时辰的盘而全程无提示。同理，`a-` / `b-` 前缀旗标只有 `heming` 认，写在别的命令上会被整个忽略——现在也会报错。
+
+**分词交给 cac，校验仍自己做**（2026-09-27）：`parseArgs` 是「前置扫描 → `cac` 分词 → 归一」三步。之所以不能只留中间那步——cac 对**未注册的选项静默收下**（连 `run: false` 也不校验），而上面那个错盘入口正是「拼错旗标不报错」。另外三条约束，改动时别踩：
+
+- **键名是 camelCase**（`--late-zi` → `lateZi`、`--a-date` → `aDate`），换算是 `camelKey()` 一处；`FLAG_GROUPS` 里的 `name` 仍写 kebab（它同时是用户敲的名字、help 显示名、`SKILL.md` 写的名字）。按 camelCase 错的键读不到值会**静默落回默认值**，与拼错旗标同一种失败。
+- **不能用 cac 的 `default`**：设了之后未出现的参数也会进 `options`，破坏调用方「`undefined` 即未给出」的判空（`cmdClassics` 的 `--limit` 就靠它取默认 15）。
+- **`cac` 的静态 import 只能待在 `cli/` 层**（现在在 `args.ts`）：引导层除 `node:` 与 `boot-hooks.ts` 外不允许普通静态 import，把 cac 搬过去会让 CLI 在注册钩子前就崩。
 
 CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 
