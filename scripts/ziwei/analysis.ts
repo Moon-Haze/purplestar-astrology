@@ -28,7 +28,7 @@
  * - getTopicAnalysis：动态推算三方四正、本命四化会照、大限、流年、流月
  */
 
-import type { ZiweiChart, Palace, Star, SiHua } from "./types";
+import type { ZiweiChart, Palace, Star } from "./types";
 import { BRANCHES, STEMS } from "./constants";
 // 格局的**命中判定**统一由 patterns.ts 负责（本文件只写判词），故这里引它的产出。
 // 2026-09-26 先对齐了 4 个口径分歧的格局（紫府同宫 / 火贪格 / 铃贪格 / 机月同梁）；
@@ -47,19 +47,22 @@ import {
 	MINOR_STAR_PALACE_CONTENT,
 	PALACE_BRANCH_ORGAN,
 	PALACE_TO_CONTENT_KEY,
+	SIHUA_CHAR_TO_KEY,
 	STAR_BRIEF,
+	SUMMARY_TOPICS,
+	TOPIC_CONTENT_KEY,
 	TOPIC_KEY_PALACES,
 	TOPIC_LABEL,
 	TOPIC_PALACE_NAME,
 	TOPIC_SANFANG_LABELS,
+	TOPIC_SUGGESTIONS,
+	TOPIC_SUMMARY_KEY,
 	ZIWU_LIUZHU,
+	siHuaSymbol,
 	type AnalysisOptions,
 	type AnalysisView,
-	type SiHuaModifier,
 	type StarContent,
-	type StarSummaryGender,
 	type TopicKey,
-	type TopicMod,
 } from "./analysis-data";
 
 // ─── 工具函数 ────────────────────────────────────────────────────────────────
@@ -177,8 +180,7 @@ function getPalaceSiHua(palace: Palace): { name: string; siHua: string }[] {
 function getSiHuaNote(starName: string, siHua: string): string {
 	const profile = STAR_CONTENT_MAP[starName];
 	if (!profile?.sihua) return "";
-	const map: Record<string, keyof SiHuaModifier> = { 禄: "lu", 权: "quan", 科: "ke", 忌: "ji" };
-	const key = map[siHua];
+	const key = SIHUA_CHAR_TO_KEY[siHua];
 	if (!key) return "";
 	return profile.sihua[key] ?? "";
 }
@@ -199,7 +201,6 @@ function getMinorStarNote(starName: string, palaceName: string): string {
 	return MINOR_STAR_PALACE_CONTENT[starName]?.[palaceName] ?? "";
 }
 
-/** 宫位名 → StarContent 字段，用于三方四正调取完整段落 */
 /** 识别命盘中的重要格局 */
 function detectGeJu(chart: ZiweiChart): { name: string; description: string }[] {
 	// 格局的**命中事实层 + 两套判词**如今都归 `patterns.ts`：
@@ -261,52 +262,10 @@ export function getTopicAnalysis(
 	lines.push("");
 
 	if (primaryStar && profile) {
-		// 完整 topic → StarContent 字段映射（12 宫全覆盖）
-		const contentKeyMap: Record<TopicKey, keyof StarContent> = {
-			overview: "mingGong",
-			personality: "personality",
-			love: "fuQi",
-			career: "guanLu",
-			wealth: "caiBo",
-			health: "jiE",
-			family: "xiongDi" as keyof StarContent,
-			children: "ziNv" as keyof StarContent,
-			move: "qianYi" as keyof StarContent,
-			friends: "jiaoYou" as keyof StarContent,
-			home: "tianZhai" as keyof StarContent,
-			spirit: "fuDe" as keyof StarContent,
-			parents: "fuMu" as keyof StarContent,
-		};
-		const contentKey = contentKeyMap[topic];
-
-		// summaryKey 映射：7 个辅助宫回落到 overview 做整体描述
-		const summaryKeyMap: Record<TopicKey, keyof StarSummaryGender> = {
-			overview: "overview",
-			personality: "overview",
-			love: "love",
-			career: "career",
-			wealth: "wealth",
-			health: "health",
-			family: "overview",
-			children: "overview",
-			move: "overview",
-			friends: "overview",
-			home: "overview",
-			spirit: "overview",
-			parents: "overview",
-		};
-		const summaryKey = summaryKeyMap[topic];
+		const contentKey = TOPIC_CONTENT_KEY[topic];
+		const summaryKey = TOPIC_SUMMARY_KEY[topic];
 		const gender: "male" | "female" = chart.birthInfo?.gender === "female" ? "female" : "male";
 
-		// 核心 5 主题（不含 personality）输出【星曜深层特质 = summary】
-		// personality 单独走 contentKey='personality' + 末尾的【性格深描】，避免与 overview 雷同
-		const SUMMARY_TOPICS = new Set<TopicKey>([
-			"overview",
-			"love",
-			"career",
-			"wealth",
-			"health",
-		]);
 		const isCoreTopic = SUMMARY_TOPICS.has(topic) || topic === "personality";
 		const showSummarySection = SUMMARY_TOPICS.has(topic); // personality 不展示 summary 段
 
@@ -321,13 +280,7 @@ export function getTopicAnalysis(
 					: primaryStar.brightness === "dim"
 						? "dim"
 						: null;
-			const sihuaKeyMap: Record<string, keyof TopicMod> = {
-				禄: "lu",
-				权: "quan",
-				科: "ke",
-				忌: "ji",
-			};
-			const sihuaKey = primaryStar.siHua ? (sihuaKeyMap[primaryStar.siHua] ?? null) : null;
+			const sihuaKey = primaryStar.siHua ? (SIHUA_CHAR_TO_KEY[primaryStar.siHua] ?? null) : null;
 
 			const dynamicParts: string[] = [];
 			if (brightnessKey && topicMod?.[brightnessKey]) {
@@ -510,9 +463,7 @@ export function getTopicAnalysis(
 		lines.push(`**【本命四化会照】**`);
 		lines.push("");
 		siHuaInSanFang.forEach(({ palaceName: pn, starName, siHua, note }) => {
-			const symbol =
-				siHua === "禄" ? "🟢" : siHua === "权" ? "🔵" : siHua === "科" ? "🟡" : "🔴";
-			lines.push(`${symbol} **${starName}化${siHua}**（落${pn}）`);
+			lines.push(`${siHuaSymbol(siHua)} **${starName}化${siHua}**（落${pn}）`);
 			if (note) lines.push(`   ${note}`);
 		});
 		lines.push("");
@@ -554,13 +505,7 @@ export function getTopicAnalysis(
 			.forEach(sh => {
 				const key = `${sh.star}-${sh.siHua}-${sh.palace}`;
 				if (alreadyShown.has(key)) return; // 三方四正已展示，跳过
-				const sihuaKeyMap: Record<string, "lu" | "quan" | "ke" | "ji"> = {
-					禄: "lu",
-					权: "quan",
-					科: "ke",
-					忌: "ji",
-				};
-				const ruleKey = sihuaKeyMap[sh.siHua];
+				const ruleKey = SIHUA_CHAR_TO_KEY[sh.siHua];
 				const meaning = ruleKey ? rule[ruleKey] : undefined;
 				if (meaning) {
 					globalKeyFindings.push({
@@ -577,9 +522,7 @@ export function getTopicAnalysis(
 		lines.push(`**【年干四化·关键宫位影响】**`);
 		lines.push("");
 		globalKeyFindings.forEach(({ palace, star, siHua, meaning }) => {
-			const symbol =
-				siHua === "禄" ? "🟢" : siHua === "权" ? "🔵" : siHua === "科" ? "🟡" : "🔴";
-			lines.push(`${symbol} **${star}化${siHua}**（落${palace}）→ ${meaning}`);
+			lines.push(`${siHuaSymbol(siHua)} **${star}化${siHua}**（落${palace}）→ ${meaning}`);
 		});
 		lines.push("");
 	}
@@ -628,13 +571,12 @@ export function getTopicAnalysis(
 				dxSanFangBranches.includes(p.branch)
 			);
 			const sihuaInDxSanFang: string[] = [];
-			const symbol: Record<SiHua, string> = { 禄: "🟢", 权: "🔵", 科: "🟡", 忌: "🔴" };
 			dxSanFangPalaces.forEach(p => {
 				p.stars
 					.filter(s => s.siHua && s.type === "major")
 					.forEach(s => {
 						sihuaInDxSanFang.push(
-							`${symbol[s.siHua!]} **本命${s.name}化${s.siHua}** 落${p.name} ${p.branch === dxPalace.branch ? "（大限本宫）" : "（大限三方四正）"}`
+							`${siHuaSymbol(s.siHua!)} **本命${s.name}化${s.siHua}** 落${p.name} ${p.branch === dxPalace.branch ? "（大限本宫）" : "（大限三方四正）"}`
 						);
 					});
 			});
@@ -678,14 +620,13 @@ export function getTopicAnalysis(
 			const lnSanFangPalaces = chart.palaces.filter(p =>
 				lnSanFangBranches.includes(p.branch)
 			);
-			const symbol: Record<SiHua, string> = { 禄: "🟢", 权: "🔵", 科: "🟡", 忌: "🔴" };
 			const lnHits: string[] = [];
 			lnSanFangPalaces.forEach(p => {
 				p.stars
 					.filter(s => s.siHua && s.type === "major")
 					.forEach(s => {
 						lnHits.push(
-							`${symbol[s.siHua!]} **本命${s.name}化${s.siHua}** 在${p.name}${p.branch === lnPalace.branch ? "（流年本宫）" : "（流年三方四正）"}`
+							`${siHuaSymbol(s.siHua!)} **本命${s.name}化${s.siHua}** 在${p.name}${p.branch === lnPalace.branch ? "（流年本宫）" : "（流年三方四正）"}`
 						);
 					});
 			});
@@ -823,75 +764,7 @@ export function getTopicAnalysis(
 	lines.push(`**【综合建议】**`);
 	lines.push("");
 
-	const suggestions: Record<TopicKey, string[]> = {
-		overview: [
-			"重点关注三方四正的星曜组合与本命四化会照，格局好坏由此决定。",
-			"当前大限所行宫位与本命四化会照处，是此十年最重要的机遇与风险节点。",
-			"倪师提醒：「命运不是人生的全部，加上地理位置和人念，才是」——本命盘是静态基础，大限流年是动态走势，仍要结合环境与人的选择。",
-		],
-		personality: [
-			"了解自身性格优势，在适合的环境中最大化发挥特长。",
-			"关注性格弱点，针对性地进行调适与成长。",
-			"命宫三方四正的组合决定了性格的深层驱动力，建议综合三方分析。",
-		],
-		love: [
-			"感情问题需看夫妻宫主星、本命四化与三方四正综合判断，不可只看一宫。",
-			"大限行至夫妻宫或会照夫妻三方，则此十年感情有重大变动或进展。",
-			"若流年红鸾天喜到，则该年婚恋动态明显，可重点关注。",
-		],
-		career: [
-			"官禄宫是事业格局的核心，但命宫与迁移宫亦是三方四正中的重要组成。",
-			"大限若走官禄宫，则此十年是事业发展的关键期，宜主动出击争取机遇。",
-			"四化落官禄宫尤为重要：化禄则财从职业来，化权则掌握权位，化忌则职场波折。",
-		],
-		wealth: [
-			"财帛宫主星是财运的核心，但命宫与官禄宫三方联动决定财的来路。",
-			"本命化禄所在宫位即是财源所在，重点经营该宫位代表的领域。",
-			"大限行至财帛或财帛三方且会照本命化禄，则此十年财运较旺，是积累财富的重要阶段。",
-		],
-		health: [
-			"倪师《天纪 05》：疾厄论以宫位地支为主轴（丑宫肝、酉宫肾…），星曜五行为辅。",
-			"化忌若落疾厄宫或冲照疾厄，则该年健康风险增加，宜主动体检。",
-			"煞星（擎羊陀罗火铃）入疾厄，倪师明言「开刀见血光」，流年逢化忌时尤须防手术。",
-		],
-		family: [
-			"兄弟宫代表兄弟姐妹与合伙人运，三方四正需综合看。",
-			"合伙前请看兄弟宫是否化忌——化忌则合伙大忌。",
-			"大限走兄弟宫时，合伙机会或兄弟关系变动加大。",
-		],
-		children: [
-			"子女宫主星决定与子女缘分和生育运。",
-			"夫妻宫与子女宫联动——感情问题常牵连子女宫。",
-			"化忌入子女宫宜关注下腹部健康与亲子相处方式。",
-		],
-		move: [
-			"迁移宫是命宫的对宫，外出运与命运整体息息相关。",
-			"倪师《天纪 06》原话：迁移化忌「半空折翅」——三十前后需特别注意交通与意外。",
-			"大限走迁移宫，适合主动出外发展或异地机遇。",
-		],
-		friends: [
-			"交友（仆役）宫映照兄弟宫，人脉质量决定事业副线。",
-			"化禄入仆役则朋友带财；化忌入仆役则防下属或朋友背叛。",
-			"大限走仆役宫，注意人际圈层的洗牌。",
-		],
-		home: [
-			"田宅宫是命盘的财库，正财能不能留得住看这里。",
-			"古诀云「田宅化忌，家破财散」——化忌入田宅需防房产纠纷。",
-			"大限行至田宅宫且会照本命化禄，是买房或家业扩张的好时机。",
-		],
-		spirit: [
-			"福德宫决定一个人的精神福分与享受能力。",
-			"古诀云「福德宫化忌，夫妻宫未见生离，必定死别」——此句来源需审慎标注，精神问题会反噬感情与健康。",
-			"大限行至福德宫且会照本命化禄，精神生活充实，心力最旺。",
-		],
-		parents: [
-			"父母宫映照与父母、上司、长辈的关系，也主文书合约。",
-			"化忌入父母宫宜避免签重要合约的关键时间点。",
-			"父母宫化科则考试运佳，文书文教方面有喜。",
-		],
-	};
-
-	suggestions[topic].forEach(s => lines.push(`→ ${s}`));
+	TOPIC_SUGGESTIONS[topic].forEach(s => lines.push(`→ ${s}`));
 	lines.push("");
 	lines.push(`**【继续深度追问】**`);
 	lines.push(

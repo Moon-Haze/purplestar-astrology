@@ -2,8 +2,9 @@
  * 分析数据库的数据层 —— 类型、映射表与论断文案。
  *
  * 本模块只放「是什么」，不放「怎么算」：主题键与标签、星曜简述、宫位与脏腑的对应、
- * 紫微诸星安放表、魁钺贵人表、十四主星以外的星曜落宫文案、主题与宫位的对应关系，
- * 以及 STAR_CONTENT_MAP（十四主星 × 12 宫语境的论断文案）。推算逻辑在 `./analysis`。
+ * 紫微诸星安放表、魁钺贵人表、十四主星以外的星曜落宫文案、主题与宫位的对应关系、
+ * topic 报告的展示映射与【综合建议】文案，以及 STAR_CONTENT_MAP（十四主星 × 12 宫语境的
+ * 论断文案）。推算逻辑在 `./analysis`。
  *
  * 依赖：无（内部不引用 BRANCHES / STEMS，故本模块可独立成型）
  */
@@ -1549,3 +1550,198 @@ export interface AnalysisOptions {
 	/** 大限索引；默认 chart.currentDaXianIndex */
 	daXianIndex?: number;
 }
+
+// ─── topic 报告：展示映射与综合建议 ──────────────────────────────────────────
+// 以下常量原为 `./analysis` 的 `getTopicAnalysis` **函数体内联字面量** —— 一次调用重建
+// 一份。其中 `SIHUA_SYMBOL` 与 `SIHUA_CHAR_TO_KEY` 更各有一处**逐字相同的副本**
+// （大限段与流年段各写一遍），改了其中一处不会有任何东西发现。按本模块「类型 + 映射表
+// + 论断文案」的定位收归于此，`./analysis` 只留推算。
+//
+// ⚠️ 四化键一律写成**字面量联合**而非引 `./types` 的 `SiHua`：本模块开篇声明的
+// 「依赖：无」是条被人依赖的约束（可独立成型、可单测），为一张映射表破例不值当。
+
+/** 四化字 → 展示用色点符号表。本模块私有，对外只经 {@link siHuaSymbol}。 */
+const SIHUA_SYMBOL: Record<string, string> = {
+	禄: "🟢",
+	权: "🔵",
+	科: "🟡",
+	忌: "🔴",
+};
+
+/**
+ * 取四化字的展示用色点符号。
+ *
+ * @param siHua - 四化字（`禄` / `权` / `科` / `忌`）
+ * @returns 对应的色点；**未知四化字回退到化忌的 🔴**
+ *
+ * @remarks
+ * 收归本模块前，这张映射在 `./analysis` 里是**四份副本、两种写法**：两处 `Record` 字面量
+ * （大限段 / 流年段，彼此逐字相同）与两处三元表达式链（本命四化会照段 / 关键宫位段，亦
+ * 逐字相同）。四份都得跟着四化字一起改，改了其中一份则不会有任何东西发现。
+ *
+ * 之所以导出**函数**而非裸表：调用点手里有两种类型 —— 一类是收窄过的 `Star["siHua"]`，
+ * 另一类是解构出来的 `string`。裸表若标 `Record<SiHua, string>`，后者索引不过编译；若标
+ * `Record<string, string>`，前者的拼写错误又没人拦。函数把类型收在这一处。
+ *
+ * 兜底取 🔴 是**收紧**：原先三元链那两处正是此行为，而 `Record` 那两处对未知字给出
+ * `undefined`，会被模板串渲染成字面量 "undefined"。
+ */
+export function siHuaSymbol(siHua: string): string {
+	return SIHUA_SYMBOL[siHua] ?? SIHUA_SYMBOL.忌;
+}
+
+/**
+ * 四化字 → 四化字段键。
+ *
+ * @remarks
+ * 键取 `keyof SiHuaModifier`（恰为 lu/quan/ke/ji 四项）而非 `keyof TopicMod` ——
+ * 后者还含 `bright` / `dim`，拿来当四化映射过宽。三处共用本表：`getSiHuaNote`、
+ * 大限段、流年段。
+ */
+export const SIHUA_CHAR_TO_KEY: Record<string, keyof SiHuaModifier> = {
+	禄: "lu",
+	权: "quan",
+	科: "ke",
+	忌: "ji",
+};
+
+/**
+ * 主题 → {@link StarContent} 的字段名（12 宫全覆盖）。
+ *
+ * @remarks
+ * 值**一律不写 `as keyof StarContent`**。那 7 个辅助宫字段（`xiongDi` / `ziNv` / `qianYi` /
+ * `jiaoYou` / `tianZhai` / `fuDe` / `fuMu`）在 {@link StarContent} 里都是显式声明过的，
+ * 断言并不「补」任何类型，它只是**挡在类型检查前面**：实测把某个键写错成 `"xiongDiX"`，
+ * 带 `as` 时一个错都不报，去掉后立刻 TS2322 并提示正确拼写。所以断言在这里的作用**纯粹
+ * 是遮蔽**，删掉它才让这张表真正受检。
+ */
+export const TOPIC_CONTENT_KEY: Record<TopicKey, keyof StarContent> = {
+	overview: "mingGong",
+	personality: "personality",
+	love: "fuQi",
+	career: "guanLu",
+	wealth: "caiBo",
+	health: "jiE",
+	family: "xiongDi",
+	children: "ziNv",
+	move: "qianYi",
+	friends: "jiaoYou",
+	home: "tianZhai",
+	spirit: "fuDe",
+	parents: "fuMu",
+};
+
+/**
+ * 主题 → {@link StarSummaryGender} 的字段名。
+ *
+ * @remarks
+ * `StarSummaryGender` 只覆盖核心 5 主题（overview / love / career / wealth / health），
+ * 故其余 7 个辅助宫与 personality 一律**回落到 `overview`** 做整体描述 —— 这是有意的
+ * 降级，不是漏配。
+ */
+export const TOPIC_SUMMARY_KEY: Record<TopicKey, keyof StarSummaryGender> = {
+	overview: "overview",
+	personality: "overview",
+	love: "love",
+	career: "career",
+	wealth: "wealth",
+	health: "health",
+	family: "overview",
+	children: "overview",
+	move: "overview",
+	friends: "overview",
+	home: "overview",
+	spirit: "overview",
+	parents: "overview",
+};
+
+/**
+ * 输出【星曜深层特质 = summary】段的主题。
+ *
+ * @remarks
+ * 核心 5 主题（不含 `personality`）。`personality` 另走 `contentKey='personality'`
+ * 加末尾的【性格深描】，避免与 `overview` 雷同 —— 故它不在本集合内，判定时单独补。
+ */
+export const SUMMARY_TOPICS: ReadonlySet<TopicKey> = new Set<TopicKey>([
+	"overview",
+	"love",
+	"career",
+	"wealth",
+	"health",
+]);
+
+/**
+ * 主题 → 【综合建议】的三条文案。
+ *
+ * @remarks
+ * ⚠️ 内含 `倪师《天纪 NN》` 引文，受 `citation-guard.ts` 的全树扫描盯着 ——
+ * 搬动本表不影响判定（守卫按**内容**比对、范围是推导出来的全树），但**改归属或新增
+ * 未核实引文会被拦下**。处置办法见 `annotations.ts`。
+ */
+export const TOPIC_SUGGESTIONS: Record<TopicKey, string[]> = {
+	overview: [
+		"重点关注三方四正的星曜组合与本命四化会照，格局好坏由此决定。",
+		"当前大限所行宫位与本命四化会照处，是此十年最重要的机遇与风险节点。",
+		"倪师提醒：「命运不是人生的全部，加上地理位置和人念，才是」——本命盘是静态基础，大限流年是动态走势，仍要结合环境与人的选择。",
+	],
+	personality: [
+		"了解自身性格优势，在适合的环境中最大化发挥特长。",
+		"关注性格弱点，针对性地进行调适与成长。",
+		"命宫三方四正的组合决定了性格的深层驱动力，建议综合三方分析。",
+	],
+	love: [
+		"感情问题需看夫妻宫主星、本命四化与三方四正综合判断，不可只看一宫。",
+		"大限行至夫妻宫或会照夫妻三方，则此十年感情有重大变动或进展。",
+		"若流年红鸾天喜到，则该年婚恋动态明显，可重点关注。",
+	],
+	career: [
+		"官禄宫是事业格局的核心，但命宫与迁移宫亦是三方四正中的重要组成。",
+		"大限若走官禄宫，则此十年是事业发展的关键期，宜主动出击争取机遇。",
+		"四化落官禄宫尤为重要：化禄则财从职业来，化权则掌握权位，化忌则职场波折。",
+	],
+	wealth: [
+		"财帛宫主星是财运的核心，但命宫与官禄宫三方联动决定财的来路。",
+		"本命化禄所在宫位即是财源所在，重点经营该宫位代表的领域。",
+		"大限行至财帛或财帛三方且会照本命化禄，则此十年财运较旺，是积累财富的重要阶段。",
+	],
+	health: [
+		"倪师《天纪 05》：疾厄论以宫位地支为主轴（丑宫肝、酉宫肾…），星曜五行为辅。",
+		"化忌若落疾厄宫或冲照疾厄，则该年健康风险增加，宜主动体检。",
+		"煞星（擎羊陀罗火铃）入疾厄，倪师明言「开刀见血光」，流年逢化忌时尤须防手术。",
+	],
+	family: [
+		"兄弟宫代表兄弟姐妹与合伙人运，三方四正需综合看。",
+		"合伙前请看兄弟宫是否化忌——化忌则合伙大忌。",
+		"大限走兄弟宫时，合伙机会或兄弟关系变动加大。",
+	],
+	children: [
+		"子女宫主星决定与子女缘分和生育运。",
+		"夫妻宫与子女宫联动——感情问题常牵连子女宫。",
+		"化忌入子女宫宜关注下腹部健康与亲子相处方式。",
+	],
+	move: [
+		"迁移宫是命宫的对宫，外出运与命运整体息息相关。",
+		"倪师《天纪 06》原话：迁移化忌「半空折翅」——三十前后需特别注意交通与意外。",
+		"大限走迁移宫，适合主动出外发展或异地机遇。",
+	],
+	friends: [
+		"交友（仆役）宫映照兄弟宫，人脉质量决定事业副线。",
+		"化禄入仆役则朋友带财；化忌入仆役则防下属或朋友背叛。",
+		"大限走仆役宫，注意人际圈层的洗牌。",
+	],
+	home: [
+		"田宅宫是命盘的财库，正财能不能留得住看这里。",
+		"古诀云「田宅化忌，家破财散」——化忌入田宅需防房产纠纷。",
+		"大限行至田宅宫且会照本命化禄，是买房或家业扩张的好时机。",
+	],
+	spirit: [
+		"福德宫决定一个人的精神福分与享受能力。",
+		"古诀云「福德宫化忌，夫妻宫未见生离，必定死别」——此句来源需审慎标注，精神问题会反噬感情与健康。",
+		"大限行至福德宫且会照本命化禄，精神生活充实，心力最旺。",
+	],
+	parents: [
+		"父母宫映照与父母、上司、长辈的关系，也主文书合约。",
+		"化忌入父母宫宜避免签重要合约的关键时间点。",
+		"父母宫化科则考试运佳，文书文教方面有喜。",
+	],
+};
