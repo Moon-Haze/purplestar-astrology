@@ -508,8 +508,8 @@ describe("旗标作用域：各 skill 的声明与共用声明表的双向一致
 	//   拼错只是「少了一个成员」，没有任何东西会报错。用户敲它才被拒。
 	// - 往声明表加了旗标却没人认领 → 三个 skill 全都不认它，等于加了个死参数。
 	//   加旗标的人以为自己加好了。
-	// - 出生信息旗标只改源、忘了合盘 → `synastry --a-<新旗标>` 会被当作未知旗标**拒掉**
-	//   （好过静默），但那是在用户面前炸，不是在 CI 里炸。
+	// - 出生信息旗标加了却忘了写进**源的**声明表 → `analyze --<新旗标>` 会被当作未知旗标
+	//   **拒掉**（好过从前那样静默落回默认经度），但那是在用户面前炸，不是在 CI 里炸。
 	//
 	// 第四条（`ownFiles` 落地）看似与旗标无关，其实同属「声明与磁盘对不对得上」：
 	// 目录形态的 `ownFiles` 项（`"scripts/classics/"`）写错一个字母，同步器会认为那个目录
@@ -574,7 +574,7 @@ describe("旗标作用域：各 skill 的声明与共用声明表的双向一致
 		);
 	});
 
-	it("出生信息旗标必须在源与合盘两边都被认领 —— 只改一处会让合盘拒掉它", async () => {
+	it("出生信息旗标必须被源全部认领 —— 它是唯一还排盘的 skill", async () => {
 		// 键取自 birth-info.ts 的**源码文本**（`g("…")` 的调用点）而不是手抄一份清单：
 		// 手抄的清单会与源码一起漂移，而漂移后这条断言正好失去意义。
 		const KEYS = [
@@ -593,20 +593,23 @@ describe("旗标作用域：各 skill 的声明与共用声明表的双向一致
 		);
 
 		const all = await ALL_FLAG_NAMES;
-		// 古籍 skill 不排盘，出生信息旗标本就不该在它的作用域里 —— 只查排盘类的两个。
-		const chartLike = SCOPES.filter(s => s.skill !== "purplestar-classics");
+		// ⚠️ 2026-09-27 起**只查源这一个 skill**。这条断言原本要求「源与合盘两边都认领」，
+		// 理由是「合盘也要排盘」—— 而合盘已改为消费源排好的命盘，那个理由随改造消失了。
+		// 若继续要求合盘认领，只会逼它的 flag-scope 保留 15 个用不上的旗标，而那恰好复活了
+		// 本次要消灭的缺口：旗标在作用域里、命令却不读，用户漏写 `a-` 前缀时静默排出错盘。
+		// **排盘只有一处实现，故只有一处认领。** 古籍 skill 同理不在此列（它也不排盘）。
+		const source = SCOPES.find(s => s.skill === SOURCE_SKILL);
+		assert.ok(source, `SCOPES 里没有源 skill（${SOURCE_SKILL}）—— 断言会空转`);
 		const missing: string[] = [];
 		for (const key of KEYS) {
 			// 键来自源码，说明它被 `g()` 读了却不在此表 —— 那它根本不可能被解析出来
 			if (!all.has(key)) missing.push(`（不在声明表）${key}`);
-			for (const s of chartLike) {
-				if (!(await s.flags).has(key)) missing.push(`${s.skill}: ${key}`);
-			}
+			if (!(await source.flags).has(key)) missing.push(`${SOURCE_SKILL}: ${key}`);
 		}
 		assert.deepEqual(
 			missing,
 			[],
-			`以下出生信息旗标没有被全部相关 skill 认领：\n${missing.join("\n")}`
+			`以下出生信息旗标没有被源的 flag-scope 认领：\n${missing.join("\n")}`
 		);
 	});
 

@@ -24,7 +24,7 @@
  *   读不到就落回默认经度 120°E —— 排出的是一张经度错约 176 分钟（≈3 个时辰）的盘，
  *   全程没有任何提示。这类静默错盘正是本项目 `REQUIRED_EXPORTS` 与 `algorithm.ts`
  *   的 `projectPalaceName` 都在防的东西，参数面却是敞开的。
- * - `--a-city` 写在 `analyze` 上同理：`a-` 前缀只有 `synastry` 会去读，别处完全忽略。
+ * - `--a-chart` 写在 `analyze` 上同理：`a-` 前缀只有 `synastry` 会去读，别处直接报错。
  *
  * 现在 {@link FLAG_GROUPS} 是唯一来源：{@link parseArgs} 据它拒绝未知旗标、
  * cac 据它注册选项并渲染 help 参数段、`SKILL.md` 则由 `selftest` 断言兜底。
@@ -60,7 +60,7 @@ import { FLAG_SCOPE } from "./flag-scope";
  * 带值的参数存 `string`，纯开关存 `boolean` 的 `true`（见 {@link parseArgs}），
  * 因此取值前通常要先收窄类型。
  *
- * ⚠️ **键是 camelCase**（`late-zi` → `lateZi`、`a-date` → `aDate`）—— 这是 cac 的归一规则。
+ * ⚠️ **键是 camelCase**（`late-zi` → `lateZi`、`a-chart` → `aChart`）—— 这是 cac 的归一规则。
  * 换算只有 {@link camelKey} 一处；按下标读参数的地方（`birth-info.ts` 的 `g()`）必须经它拼键。
  *
  * 索引签名里保留 `string[]` 是为了与 `_` 的写入同域 —— TS 要求索引签名涵盖所有具名属性。
@@ -81,7 +81,7 @@ export interface CliArgs {
  * 免得「加旗标」变成一件要读文档才敢做的事（那正是这份声明想消灭的成本）。
  */
 export interface FlagSpec {
-	/** 旗标名，不含 `--`。`synastry` 可用 `a-` / `b-` 前缀叠在它前面（如 `--a-date`） */
+	/** 旗标名，不含 `--`。`synastry` 可用 `a-` / `b-` 前缀叠在它前面（如 `--a-chart`） */
 	name: string;
 	/** `"value"` 取值、`"switch"` 纯开关（HELP 据此决定写不写值域占位） */
 	kind: "value" | "switch";
@@ -132,7 +132,7 @@ export interface FlagScope {
 	 *
 	 * @remarks
 	 * ⚠️ 这一维**不能省**：它是「前缀写在别的命令上」这条静默失败的判据。若只看
-	 * `sidePrefixes` 非空就放行，`selftest --a-date` 会从「报错」变成「静默忽略」
+	 * `sidePrefixes` 非空就放行，`selftest --a-chart` 会从「报错」变成「静默忽略」
 	 * —— 既违反「宁可报错，不静默」，又会让合盘 selftest 里那条断言变红。
 	 */
 	readonly prefixedCommands: readonly string[];
@@ -227,6 +227,17 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 				desc: "用省份代替 --lng（按省会计）",
 			},
 			{ name: "name", kind: "value", value: "张三", desc: "可选，只影响输出抬头" },
+		],
+	},
+	{
+		title: "命盘输入（替代整组出生信息；synastry 加 a- / b- 前缀）",
+		flags: [
+			{
+				name: "chart",
+				kind: "value",
+				value: "/tmp/a.json",
+				desc: "读 purplestar-astrology 的 analyze --json 输出，代替该方出生信息",
+			},
 		],
 	},
 	{
@@ -416,18 +427,18 @@ export function suggestFlag(name: string): string | null {
  * 归属错了顶多是没生效，不会排错盘。
  *
  * ⚠️ 但规则 2 **必须带「命令」这一维**（{@link FlagScope.prefixedCommands}），不能只按 skill
- * 收窄：若只看「本 skill 认 `a-` 前缀」就放行，`selftest --a-date` 会从「报错」退化成
+ * 收窄：若只看「本 skill 认 `a-` 前缀」就放行，`selftest --a-chart` 会从「报错」退化成
  * 「静默忽略」—— 既违反「宁可报错，不静默」，又会让合盘 selftest 里那条断言直接变红。
  */
 function checkFlagName(key: string, command: string | undefined): void {
 	const prefix = SIDE_PREFIXES.find(p => key.startsWith(p));
 	if (prefix) {
 		// 前缀只在作用域声明的那几条命令上合法（合盘是 synastry）。判据取自 FLAG_SCOPE，
-		// 不写死命令名 —— 「哪条命令要分别读两方出生信息」本就是该 skill 自决的事。
+		// 不写死命令名 —— 「哪条命令要分别读两方」本就是该 skill 自决的事。
 		if (command === undefined || !FLAG_SCOPE.prefixedCommands.includes(command)) {
 			throw new Error(
 				`--${key}：\`${prefix}\` 前缀只有 ${FLAG_SCOPE.prefixedCommands.join(" / ")} 命令认` +
-					`（它要分别读 ${SIDE_PREFIXES.join(" / ")} 两方出生信息）。` +
+					`（它要分别读 ${SIDE_PREFIXES.join(" / ")} 两方）。` +
 					`${command ? `当前命令是 ${command}，` : ""}请改用 --${key.slice(prefix.length)}。`
 			);
 		}

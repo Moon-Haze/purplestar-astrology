@@ -4,6 +4,7 @@
 
 本仓是这些 skill 的**源仓库**：`skills/` 下每个子目录就是一个自包含 skill，各有自己的
 `SKILL.md`、内核与 `package.json`，**可单独拷走安装**——只查古籍原文的人不必连排盘引擎一起装。
+⚠️ 唯一的例外是合盘 skill：它不排盘，命盘由排盘 skill 产出，故两者要装在一起才能跑通。
 
 ## 这是什么
 
@@ -21,11 +22,11 @@
 
 ## skills/ 一览
 
-| skill                                                | 做什么                               | 内核                               |
-| ---------------------------------------------------- | ------------------------------------ | ---------------------------------- |
-| [purplestar-astrology](skills/purplestar-astrology/) | 排盘与命盘解读（**源**）             | CLI + `ziwei/`，含排盘引擎         |
-| [purplestar-synastry](skills/purplestar-synastry/)   | 合盘与合婚（双宫联参）               | 排盘底座（副本）+ 合盘断语（自有） |
-| [purplestar-classics](skills/purplestar-classics/)   | 古籍原文检索（骨髓赋 / 全集 / 全书） | `classics/`（自有），零排盘引擎    |
+| skill                                                | 做什么                               | 内核                            |
+| ---------------------------------------------------- | ------------------------------------ | ------------------------------- |
+| [purplestar-astrology](skills/purplestar-astrology/) | 排盘与命盘解读（**源**）             | CLI + `ziwei/`，含排盘引擎      |
+| [purplestar-synastry](skills/purplestar-synastry/)   | 合盘与合婚（双宫联参）               | 合盘断语（自有），零排盘引擎    |
+| [purplestar-classics](skills/purplestar-classics/)   | 古籍原文检索（骨髓赋 / 全集 / 全书） | `classics/`（自有），零排盘引擎 |
 
 「自有」= 那份内核**只住在这一个 skill 里**，源仓库里没有第二份，因此没有「改源再同步」这回事。
 
@@ -57,11 +58,15 @@ cd ~/.claude/skills/<skill-name> && npm install
 node skills/purplestar-astrology/scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
-# 合盘（注意 a- / b- 前缀：漏了不会报错，会静默排出错盘）
+# 合盘：本 skill 不排盘，命盘先由上面那个 skill 各排一张（数据解耦，契约只有 JSON）
+node skills/purplestar-astrology/scripts/purple-star.ts analyze \
+     --date 1990-05-15 --time 09:30 --city 北京 --gender male --json > /tmp/a.json
+node skills/purplestar-astrology/scripts/purple-star.ts analyze \
+     --date 1993-08-22 --time 14:00 --city 上海 --gender female --json > /tmp/b.json
+# 再把两份 JSON 交给合盘 skill（必须来自 analyze 而非 chart：后者没有四化落宫与排盘依据）
 node skills/purplestar-synastry/scripts/purple-star.ts synastry \
-     --a-date 1990-05-15 --a-time 09:30 --a-gender male \
-     --b-date 1993-08-22 --b-time 14:00 --b-gender female
-# 合盘方法论与评分标准：读 skills/purplestar-synastry/references/synastry-guide.md（静态参考，不排盘）
+     --a-chart /tmp/a.json --b-chart /tmp/b.json
+# 合盘方法论与评分标准：读 skills/purplestar-synastry/references/synastry-guide.md（静态参考）
 
 node skills/purplestar-classics/scripts/purple-star.ts classics --search 机月同梁
 node skills/purplestar-astrology/scripts/purple-star.ts help        # 本技能的命令与参数
@@ -86,7 +91,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 │   │       ├── purple-star.ts  引导层：定位内核根 → 注册 TS 钩子 → 分发命令
 │   │       ├── cli/            参数解析 / 旗标作用域 / 渲染 / 出生信息 / 命令 / 自检
 │   │       └── ziwei/          排盘算法、格局库、四化、城市经纬度
-│   ├── purplestar-synastry/    合盘：排盘底座由上面派生，合盘断语与 references/ 自有
+│   ├── purplestar-synastry/    合盘：断语库与 references/ 自有，零排盘引擎（命盘读自源）
 │   └── purplestar-classics/    古籍检索：`classics/` 与该命令自有，零排盘内核
 ├── tools/skills.ts       # 派生 skill 的切片声明（唯一源）
 ├── tools/sync-skills.ts  # 按声明同步副本
@@ -105,7 +110,8 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 ## 数据来源
 
 下表列的是每份知识的**归属地**（权威那一份）——归属已唯一化，不再用 `skills/*/` 通配：
-合盘与古籍的内核各只住在一个 skill 里，排盘内核则源是权威、派生 skill 里的是副本。
+一份内核只住在一个 skill 里，排盘归 `purplestar-astrology`，合盘断语归 `purplestar-synastry`，
+古籍归 `purplestar-classics`。
 
 | 内容                                     | 位置                                                             |
 | ---------------------------------------- | ---------------------------------------------------------------- |
@@ -141,7 +147,12 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 副本与源**逐字节相同**，由 `test/repo.test.ts` 的层 6 断言守卫；不一致时 `npm test` 变红并
 指名是哪个文件。
 
-三类文件不在此列，各有各的守卫：
+⚠️ **合盘 skill 已于 2026-09-27 撤出排盘底座**：它不再排盘，改为消费源的 `analyze --json`
+输出（数据解耦，两个 skill 之间的契约只有那份 JSON）。因此它的 `package.json` 里只剩 `cac`，
+`iztro` / `lunar-typescript` 不再出现在它那里；它与源共用的副本也收缩到
+`boot-hooks.ts` / `cli/args.ts` / `ziwei/types.ts` / `ziwei/citation-guard.ts`（带出 `annotations.ts`）。
+
+下面几类不在此列，各有各的守卫：
 
 - **各 skill 自写**：`purple-star.ts` / `cli/commands.ts` / `cli/selftest.ts` / `cli/flag-scope.ts` /
   `SKILL.md` / `references/`——按 skill 裁开，无法逐字节比对。

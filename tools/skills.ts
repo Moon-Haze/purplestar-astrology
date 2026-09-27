@@ -126,46 +126,43 @@ export const DERIVED_SKILLS: readonly SkillSpec[] = [
 	},
 	{
 		name: "purplestar-synastry",
-		summary: "合盘与合婚 —— 双宫联参（夫妻宫 × 福德宫），带排盘底座",
-		// 合盘要排两张盘，故 ziwei/algorithm.ts 是根；再挂上四化与城市。
-		// 刻意**不**列 patterns/ 与 analysis/ —— 实测 cmdsynastry 一个都不碰
-		// （格局与主题论断是 `analyze` / `topic` 的事），少切 20 个文件。
+		summary: "合盘与合婚 —— 双宫联参（夫妻宫 × 福德宫），零排盘引擎",
+		// ⚠️ 本 skill **不排盘**（2026-09-27 起）：命盘由源 skill 产出，它只读
+		// `analyze --json` 的输出。故 `ziwei/algorithm.ts` 等六个排盘模块**整个不在切片里**
+		// —— 它们不是被裁掉，是这里根本不需要（与 classics 同构的「零排盘引擎」形态）。
 		//
-		// ⚠️ `ziwei/synastry-knowledge.ts` 不在此列：它是本 skill 的**自有**文件
-		// （2026-09-27 源删去该文件，只剩这一份），见 ownFiles。
+		// 只剩两个闭包根，各管一件事：
 		//
 		// `citation-guard.ts` 是为了**引文守卫的覆盖面不静默收缩**：synastry-knowledge
 		// 里那些「倪师说」引文，此前靠源的 selftest 扫源内核树时顺带扫到；它一旦离开
 		// 源的 scripts/，就脱离了那个扫描根。本 skill 的 selftest 因此要扫自己的根。
 		// 这道守卫当初正是为「拆分把引文挪进新文件而清单没跟上」建的 —— 同一个故障
-		// 类别不该在它自己身上重演。
-		kernelEntries: [
-			"ziwei/algorithm.ts",
-			"ziwei/sihua.ts",
-			"ziwei/constants.ts",
-			"ziwei/palace-relations.ts",
-			"ziwei/cities.ts",
-			"ziwei/types.ts",
-			"ziwei/citation-guard.ts",
-			"ziwei/annotations.ts",
-		],
-		// 合盘的 CLI 层要 fmtDate / genderCN（render）与 buildBirthInfo（birth-info）。
-		sharedFiles: [
-			"boot-hooks.ts",
-			"cli/args.ts",
-			"cli/render.ts",
-			"cli/birth-info.ts",
-			"cli/birth-info-defs.ts",
-		],
+		// 类别不该在它自己身上重演。（`ziwei/annotations.ts` 由它的闭包自动带出，
+		// 不显式列 —— 显式列等于多维护一份真相。）
+		//
+		// ⚠️ `ziwei/types.ts` 是**唯一一个不靠闭包也得显式列**的条目，删它之前请读完这段：
+		// 本 skill 的纯类型导入（`cli/chart-view.ts` 的 `import type { ZiweiChart }`）指向
+		// 它，而 `chart-view.ts` 住在 **ownFiles** 里 —— ownFiles 不是闭包根，那条 import
+		// **不会被遍历到**（与 classics 的 `@/classics/index` 同一种情况）。所以它进不了
+		// wanted，除非在这里点名。它是零依赖的纯 interface 文件，带一份的代价只是 294 行文本。
+		kernelEntries: ["ziwei/types.ts", "ziwei/citation-guard.ts"],
+		// ⚠️ 只剩解析骨架与引导机制。`cli/render.ts` / `cli/birth-info*.ts` 已随排盘职责
+		// 一并移出（它们自己 import `@/ziwei/algorithm`，留着会把整个排盘内核拖回闭包）；
+		// 合盘真正用到的那几个格式化与查宫函数改住在自写的 `cli/chart-view.ts` 里。
+		sharedFiles: ["boot-hooks.ts", "cli/args.ts"],
 		ownFiles: [
 			"SKILL.md",
 			"package.json",
 			"scripts/purple-star.ts",
 			"scripts/ziwei/synastry-knowledge.ts",
+			"scripts/cli/chart-view.ts",
 			"scripts/cli/commands.ts",
 			"scripts/cli/flag-scope.ts",
 			"scripts/cli/selftest.ts",
 		],
+		// 仍为 `true`：本 skill 输出的是一张**盘**（借源 skill 排的），`SKILL.md` 里那几条
+		// 底座哨兵（铁律不猜 / 晚子时 / 三合派 / 虚岁）照样成立。拿掉它会触发
+		// `test/repo.test.ts` 层 6 内嵌的「必须真有 chartLike 条目」保护而变红。
 		chartLike: true,
 	},
 ];

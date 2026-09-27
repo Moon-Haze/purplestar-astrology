@@ -18,17 +18,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### skill 的布局
 
-| skill                  | 定位                   | 内核                                                  |
-| ---------------------- | ---------------------- | ----------------------------------------------------- |
-| `purplestar-astrology` | 排盘与命盘解读，**源** | CLI + `ziwei/`（含排盘引擎、格局库、分析数据库）      |
-| `purplestar-synastry`  | 合盘与合婚，派生       | 排盘底座（副本）+ `synastry-knowledge.ts`（**自有**） |
-| `purplestar-classics`  | 古籍原文检索，派生     | `classics/`（**自有**），**零排盘引擎**               |
+| skill                  | 定位                   | 内核                                                |
+| ---------------------- | ---------------------- | --------------------------------------------------- |
+| `purplestar-astrology` | 排盘与命盘解读，**源** | CLI + `ziwei/`（含排盘引擎、格局库、分析数据库）    |
+| `purplestar-synastry`  | 合盘与合婚，派生       | `synastry-knowledge.ts`（**自有**），**零排盘引擎** |
+| `purplestar-classics`  | 古籍原文检索，派生     | `classics/`（**自有**），**零排盘引擎**             |
 
-**源与派生**：`purplestar-astrology` 是排盘内核的唯一来源，派生 skill 的内核**大部分**是它的
-**逐字节副本**，切片由 `tools/skills.ts` 声明、`npm run sync:skills` 执行、`test/repo.test.ts` 的层 6 守卫。
+**源与派生**：`purplestar-astrology` 是排盘内核的唯一来源，派生 skill 与它共用的**与 skill 无关的
+整文件**是它的**逐字节副本**（`boot-hooks.ts` 引导机制、`cli/args.ts` 参数面，以及各 skill 真的读得到的
+那部分内核），切片由 `tools/skills.ts` 声明、`npm run sync:skills` 执行、`test/repo.test.ts` 的层 6 守卫。
 **改排盘内核一律改源。**
 
-**但有两份内核是「自有」的，不属于上面这条规则**（2026-09-27 起）：`ziwei/synastry-knowledge.ts`
+⚠️ **但排盘引擎本身不再有副本**（2026-09-27 合盘改造）：`purplestar-synastry` 已撤出整个排盘底座
+（`ziwei/algorithm.ts`、`cli/birth-info*.ts`、`cli/render.ts` 等），改为消费源的 `analyze --json` 输出 ——
+它与 `purplestar-classics` 同构，是两个**零排盘引擎**的 skill。故「派生 skill 的内核大部分是副本」
+这句话自那时起**不再成立**，只剩上面那两类共用整文件。
+
+**另有两份内核是「自有」的，不属于上面这条规则**（2026-09-27 起）：`ziwei/synastry-knowledge.ts`
 只住在 `purplestar-synastry` 里，`classics/` 只住在 `purplestar-classics` 里 —— 源里**没有**这两个文件，
 连「副本」这层关系都不存在。**改它们就在各自 skill 里改，没有同步这回事。**
 边界与流程见下面的「副本边界与同步流程」。
@@ -55,7 +61,8 @@ node skills/purplestar-astrology/scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
 # 合盘 —— 只有 purplestar-synastry 有这条命令，源的 CLI 里没有（2026-09-27 拆 skill 时移走）
-node skills/purplestar-synastry/scripts/purple-star.ts synastry --a-date <...> --b-date <...>
+# 它不排盘：命盘先由上面那条 analyze --json 各排一张，再把两份 JSON 交给它
+node skills/purplestar-synastry/scripts/purple-star.ts synastry --a-chart <a.json> --b-chart <b.json>
 # 古籍原文检索 —— 同理，只有 purplestar-classics 有
 node skills/purplestar-classics/scripts/purple-star.ts classics --search 机月同梁
 node skills/purplestar-astrology/scripts/purple-star.ts help   # 本技能的命令与参数
@@ -233,13 +240,15 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 | 各 skill 自写 | `purple-star.ts` 引导层、`cli/commands.ts`、`cli/selftest.ts`、`cli/flag-scope.ts`、`SKILL.md`、`references/`、`package.json` | 各自的 `selftest` + 仓库 `test/cli.test.ts`        |
 | **自有内核**  | `purplestar-synastry` 的 `ziwei/synastry-knowledge.ts`、`purplestar-classics` 的 `classics/`                                  | 各自 skill 的 `selftest`（**没有逐字节断言可比**） |
 
+⚠️ **合盘的切片自 2026-09-27 起只剩四个文件**（`boot-hooks.ts` / `cli/args.ts` / `ziwei/types.ts` / `ziwei/citation-guard.ts`，最后一项带出 `annotations.ts`）—— 排盘引擎撤出后，它对内核的需要只剩**类型契约**（`import type`，运行期擦除）与**引文守卫**。`ziwei/types.ts` 之所以要**显式**列进 `kernelEntries`，是因为读它的 `cli/chart-view.ts` 住在 `ownFiles` 里，而 **`ownFiles` 不是闭包根** —— 写在自有文件里的 `@/` 导入不会被遍历到（与古籍 skill 的 `@/classics/index` 同一种情况）。
+
 ⚠️ `commands.ts` 与 `selftest.ts` **必须按 skill 裁开**（`analyze` 不该出现在古籍检索 skill 里）。裁过的文件无法逐字节守卫，这是拆 skill 的**固有代价**，不是疏漏——硬套断言只会生产一条永远为假的守卫。
 
 ⚠️ **`cli/args.ts` 仍整份复制，不裁；「认哪些旗标」另立一份各 skill 自写的 `cli/flag-scope.ts`。** `args.ts` 里约 350 行是 `cac` / `mri` 的**实测行为**（`--` 键、单字符串残留键、number→string 归一、前置扫描吃值），手抄三份等于把最危险的一段复制成三份无人看守的代码；而变化的那一维只是「本 skill 认声明表里的哪些旗标」，一张正面清单就够。故：`FlagScope` 接口声明在 `args.ts`，`flag-scope.ts` 以 `import type` 取它（类型导入运行期被擦除，**不构成环**），收窄点全在 `args.ts` 内部——**cac 的注册循环**（不注册即不进 `help`，不必去改 `purple-star.ts` 的 help 段）、`FLAG_NAMES`（校验基准 + `suggestFlag` 候选集）、前缀判定、`LEGAL_KEYS`。
 
 ⚠️ 配套的一条**必须记住**：`args.ts` 现在静态 import `./flag-scope`，而 `args.ts` 在 `sharedFiles` 里——闭包会顺着它把**源**的 `flag-scope.ts` 算进每个派生 skill 的 `wanted`。所以 `syncedFiles()` 有一句 `.filter(f => !isOwned(spec, "scripts/" + f))`，否则同步器会用排盘的作用域覆盖合盘 / 古籍自己的那份，**且事后没有任何断言看得出**。
 
-**新加旗标要动三处**：`FLAG_GROUPS` 声明它、决定它归哪个 skill（写进那份 `flag-scope.ts`）、若它是出生信息旗标则**源与合盘都要写**。层 6 有四条断言双向盯着这件事（各作用域 ⊆ 全集、全集 ⊆ 三作用域之并、`birth-info.ts` 的 `g()` 键 ⊆ 源 ∪ 合盘、`ownFiles` 与磁盘一致）。
+**新加旗标要动三处**：`FLAG_GROUPS` 声明它、决定它归哪个 skill（写进那份 `flag-scope.ts`）、若它是出生信息旗标则**只有源要写**（2026-09-27 起：合盘不再排盘，也就不再认出生信息旗标；这条断言原本要求「源与合盘都认领」，那条理由随改造消失了——继续要求只会逼合盘的 `flag-scope` 保留十几个用不上的旗标，而那恰好复活了本次要消灭的缺口：旗标在作用域里、命令却不读）。层 6 有四条断言双向盯着这件事（各作用域 ⊆ 全集、全集 ⊆ 三作用域之并、`birth-info.ts` 的 `g()` 键 ⊆ 源、`ownFiles` 与磁盘一致）。
 
 ⚠️ **源不再保留全量命令**（2026-09-27 二次判定，**推翻了此前那一轮的结论**）。此前判定「源保留全量命令」，理由是切片一律以 `SOURCE_SCRIPTS` 为基准，源删掉引用它们的命令后那两个模块在源内就没有调用点了。二次判定改判：那恰恰说明它们**本就不该住在源里**——于是 `ziwei/synastry-knowledge.ts` 与 `classics/` 整个目录**移出源**，只存在于使用它们的那个 skill 里，连带 `synastry` / `synastry-guide` / `classics` 三条命令也从源的 CLI 消失。（`synastry-guide` 其后更进一步：改为合盘 skill 的参考文档 `references/synastry-guide.md`，命令本身取消。）
 
@@ -253,11 +262,13 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 
 一个**容易静默失效的连带影响**：引文守卫（`ziwei/citation-guard.ts`）扫的是**内核全树**。`synastry-knowledge.ts` 里那十几处「倪师说」引文，此前靠源的 `selftest` 扫源内核树时顺带扫到；它一离开源的 `scripts/` 就脱离了那个扫描根。故 `citation-guard.ts` + `annotations.ts` 进了 synastry 的 `kernelEntries`（两份逐字节副本，口令表仍只有一份），**synastry 的 `selftest` 扫自己的根**。这道守卫当初正是为「拆分把引文挪进新文件而清单没跟上」建的，同一个故障类别不该在它自己身上重演。
 
+⚠️ **而它一度正是这样失效的**：两份副本切了过去、理由也写进了 `tools/skills.ts`，但 synastry 的 `selftest` 里**从来没有调用点** —— 文件在、理由在、扫描没跑，那批引文实际处于零覆盖（而本文件当时已声称这道守卫在 synastry 生效）。2026-09-27 合盘改造时一并补上：那正是它最危险的时刻，因为合盘删掉排盘内核后，这批引文只剩这一个可能的扫描根。补上后反向注入验证过一次 —— 往 `synastry-knowledge.ts` 塞一条 `annotations.ts` 里 status 为 suspect 的引文，该断言当场变红。
+
 ## 内核回归的主场
 
 **内核回归只跑源这一份。** `npm test`（6 层）与源 skill 的 `selftest` 是内核行为的唯一权威；派生 skill 的 `selftest` 只做**命令冒烟 + 自身 SKILL.md 一致**，**不复制内核断言**。
 
-理由：派生的**排盘底座**是副本，没人会就地改它——开发循环是「改源 → `npm test` → `npm run sync:skills`」。把断言复制过去只会生产两份需要手工同步的副本，而漏同步的那一份会静默失效。**别以为派生 skill 缺了自检**，它本来就不该有。
+理由：派生 skill 与源共用的那些**与 skill 无关的整文件**是副本，没人会就地改它——开发循环是「改源 → `npm test` → `npm run sync:skills`」。把断言复制过去只会生产两份需要手工同步的副本，而漏同步的那一份会静默失效。**别以为派生 skill 缺了自检**，它本来就不该有。
 
 ⚠️ **但两份自有内核是例外，它们的内核断言只能在各自 skill 里跑**：`synastry-knowledge.ts` 的断语与引文（归 synastry）、`classics/` 的检索与排版不变量（归 classics）。这些不是「副本断言的复制」，而是**只此一份**的断言——源里没有对应物可比。故「回归只跑源这一份」这句话的作用域是**排盘内核**，不是全部内核。
 
@@ -281,11 +292,11 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 
 **参数面单点声明**：`cli/args.ts` 的 `FLAG_GROUPS` 是「有哪些旗标」的唯一来源——cac 据它注册选项并渲染 help 的参数段，`parseArgs` 据它拒绝未知旗标，命令段由 `commands.ts` 的 `COMMAND_DESC` 逐个交给 cac 的 `cli.command()`，`selftest` 再断言 `SKILL.md` 提到的旗标都有声明。此前这三处各有一份手写副本，漂移代价不对称：拼错旗标（`--ctiy 喀什`）不报错，直接落回默认经度 120°E，排出一张错约 3 个时辰的盘而全程无提示。「有哪些旗标」自此仍是单点，但「**本 skill 认其中哪些**」自 2026-09-27 起是第二层声明（各 skill 的 `cli/flag-scope.ts`），故加旗标要动的是那三处，见上「副本边界与同步流程」。
 
-**旗标作用域收窄后的一条行为变更**：作用域外的旗标由**静默忽略**改为**报错**（`analyze --limit 5`、`classics --city 北京` 现在都会拒绝）。这与「宁可启动失败，也不静默产出错盘」一致。⚠️ **诚实边界**：收窄粒度是 **skill 级**而非命令级，`stars --json` 这类「本 skill 有、当前命令不读」的参数仍被收下不用——要修就得建那张被明确拒绝的归属表。`a-` / `b-` 前缀是唯一带**命令维**的收窄（`flag-scope.ts` 的 `prefixedCommands`），因为 synastry 的 `selftest` 钉着「`selftest --a-date` 必须报错」。
+**旗标作用域收窄后的一条行为变更**：作用域外的旗标由**静默忽略**改为**报错**（`analyze --limit 5`、`classics --city 北京` 现在都会拒绝）。这与「宁可启动失败，也不静默产出错盘」一致。⚠️ **诚实边界**：收窄粒度是 **skill 级**而非命令级，`stars --json` 这类「本 skill 有、当前命令不读」的参数仍被收下不用——要修就得建那张被明确拒绝的归属表。`a-` / `b-` 前缀是唯一带**命令维**的收窄（`flag-scope.ts` 的 `prefixedCommands`），叠在 `--chart` 上（`--a-chart` / `--b-chart`），因为 synastry 的 `selftest` 钉着「`selftest --a-chart` 必须报错」。
 
 **分词交给 cac，校验仍自己做**（2026-09-27）：`parseArgs` 是「前置扫描 → `cac` 分词 → 归一」三步。之所以不能只留中间那步——cac 对**未注册的选项静默收下**（连 `run: false` 也不校验），而上面那个错盘入口正是「拼错旗标不报错」。另外三条约束，改动时别踩：
 
-- **键名是 camelCase**（`--late-zi` → `lateZi`、`--a-date` → `aDate`），换算是 `camelKey()` 一处；`FLAG_GROUPS` 里的 `name` 仍写 kebab（它同时是用户敲的名字、help 显示名、`SKILL.md` 写的名字）。按 camelCase 错的键读不到值会**静默落回默认值**，与拼错旗标同一种失败。
+- **键名是 camelCase**（`--late-zi` → `lateZi`、`--a-chart` → `aChart`），换算是 `camelKey()` 一处；`FLAG_GROUPS` 里的 `name` 仍写 kebab（它同时是用户敲的名字、help 显示名、`SKILL.md` 写的名字）。按 camelCase 错的键读不到值会**静默落回默认值**，与拼错旗标同一种失败。
 - **不能用 cac 的 `default`**：设了之后未出现的参数也会进 `options`，破坏调用方「`undefined` 即未给出」的判空（古籍 skill 的 `cmdClassics` 就靠它给 `--limit` 取默认 15）。
 - **`cac` 的静态 import 只能待在 `cli/` 层**（现在在 `args.ts`）：引导层除 `node:` 与 `boot-hooks.ts` 外不允许普通静态 import，把 cac 搬过去会让 CLI 在注册钩子前就崩。
 

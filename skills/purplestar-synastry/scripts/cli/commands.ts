@@ -2,26 +2,32 @@
  * 命令实现 —— 合盘 skill 的命令表。
  *
  * ⚠️ **本文件是手写的，不是副本**（见 `CLAUDE.md` 的「副本边界与同步流程」）。
- * 排盘解读 skill 的 `cli/commands.ts` 里有 9 个命令，本 skill 只该有 3 个 ——
+ * 排盘解读 skill 的 `cli/commands.ts` 里有 9 个命令，本 skill 只该有 2 个 ——
  * `analyze` / `topic` 之类出现在这里，只会让 Claude 照着一个跑不通的命令名去敲。
  * 裁过的文件无法逐字节守卫，这是拆 skill 的固有代价；它的正确性由
  * `cli/selftest.ts`（命令表 ↔ SKILL.md 双向一致）与仓库的 `test/cli.test.ts` 负责。
  *
- * 下面两个 `cmdXxx` 的函数体与源 skill 的同名函数**逐行相同**（本次拆分时用脚本整段搬过来，
- * 只改了 import 列表）。它们不是同步来的，**改源时要记得同步改这里** —— 或更好的做法：
- * 把共用的渲染逻辑下沉到内核，两个 skill 各自只留命令壳。
+ * ## 本 skill **不排盘**（2026-09-27 起）
  *
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
+ * `synastry` 不再接受出生信息旗标（`--a-date` / `--b-city` 等已整个移除），改为读两份
+ * `purplestar-astrology … analyze --json` 的输出。排盘只有一处实现，合盘只做合盘 ——
+ * 从前那套「两方各自出生信息 → 就地排两张盘」的写法连同它带进来的
+ * `ziwei/algorithm.ts` / `cli/birth-info*.ts` / `cli/render.ts` 一并删掉了。
+ *
+ * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import。
  */
 
 import type { CliArgs, CliContext } from "./args";
-import { buildBirthInfo } from "./birth-info";
-import { fmtDate, genderCN, locateSihua, mustPalace, palaceAtBranch } from "./render";
+import {
+	branchName,
+	fmtDate,
+	genderCN,
+	majorsOf,
+	mustPalace,
+	palaceAtBranch,
+	readAnalyzeJson,
+} from "./chart-view";
 import { cmdSelftest } from "./selftest";
-import type { Palace } from "@/ziwei/types";
-import { generateChart } from "@/ziwei/algorithm";
-import { getSiHuaByStem } from "@/ziwei/sihua";
-import { STEMS, BRANCHES } from "@/ziwei/constants";
 import {
 	STAR_IN_FUQI_GU,
 	SIHUA_IN_FUQI_GU,
@@ -35,8 +41,8 @@ import {
 /**
  * `synastry` 命令：合盘（双宫联参 + 夫妻宫断语）。
  *
- * @param args - CLI 参数表；甲乙两方各一套出生信息参数，分别带 `a-` / `b-` 前缀
- * @returns 已渲染好的文本；带 `--json` 时返回两方命盘摘要 + 方法论 + 评分标准的原始 JSON 字符串
+ * @param args - CLI 参数表；`--a-chart` / `--b-chart` 各指一份 `analyze --json` 的输出文件
+ * @returns 已渲染好的文本；带 `--json` 时返回两方命盘摘要的原始 JSON 字符串
  *
  * @remarks
  * 遵循倪海夏的双宫联参口径：看婚姻不能只看夫妻宫，必须同时看福德宫。输出两方命宫 / 夫妻宫 /
@@ -44,14 +50,40 @@ import {
  * 夫妻宫桃花孤克星；方法论与评分标准**不在本命令输出里**，末尾留一行指针指向
  * `references/synastry-guide.md`（恒定静态文本，按需读取）。
  *
- * ⚠️ 任一方校正后的出生时刻落在 23:00–23:59 时单独提示：本次按**当日早子时**口径排，
- * 若改用 `--a-late-zi` / `--b-late-zi`（晚子时算次日），该方命盘会整体改变，合盘结论需重跑。
+ * ⚠️ 任一方 `lateZi.candidate` 为真且 `applied` 为假时单独提示：那份盘按**当日早子时**
+ * 口径排，若改用晚子时（算次日）重排，该方命盘会整体改变，合盘结论需重跑。本 skill
+ * 只**转述**排盘方给的这两个标记，不自己重算真太阳时。
+ *
+ * ⚠️ 真实出生日期取自 `chart.birthInfo`（排盘方按真太阳时跨午夜调整过的那一份），
+ * 真太阳时校正说明取自 `basis.note` —— 两者都来自那份 JSON，本 skill 一个字都不重算。
  */
 function cmdsynastry(args: CliArgs) {
-	const a = buildBirthInfo(args, "a-");
-	const b = buildBirthInfo(args, "b-");
-	const ca = generateChart(a.info);
-	const cb = generateChart(b.info);
+	// 两个旗标都必填：本 skill 不排盘，没有它们什么都做不了。
+	// ⚠️ 缺失时报错，而**不是**回退去读出生信息旗标 —— 那种回退会让本 skill 悄悄又变成
+	//    排盘方，本次改造就白做了（且回退路径无人测，必然腐坏）。
+	if (typeof args.aChart !== "string" || typeof args.bChart !== "string") {
+		const missing = [
+			...(typeof args.aChart === "string" ? [] : ["--a-chart"]),
+			...(typeof args.bChart === "string" ? [] : ["--b-chart"]),
+		];
+		throw new Error(
+			`缺少 ${missing.join(" / ")}：本 skill 不排盘，两方命盘都得由 purplestar-astrology 给出。\n` +
+				`  ① 先各排一张盘（注意是 analyze，不是 chart —— 后者没有四化落宫与排盘依据）：\n` +
+				`     node <purplestar-astrology>/scripts/purple-star.ts analyze \\\n` +
+				`       --date 1990-05-15 --time 09:30 --city 北京 --gender male --json > /tmp/a.json\n` +
+				`     node <purplestar-astrology>/scripts/purple-star.ts analyze \\\n` +
+				`       --date 1993-08-22 --time 14:00 --city 上海 --gender female --json > /tmp/b.json\n` +
+				`  ② 再交给本命令：\n` +
+				`     node scripts/purple-star.ts synastry --a-chart /tmp/a.json --b-chart /tmp/b.json`
+		);
+	}
+
+	const A = readAnalyzeJson(args.aChart, "甲");
+	const B = readAnalyzeJson(args.bChart, "乙");
+	const ca = A.chart;
+	const cb = B.chart;
+	const biA = ca.birthInfo;
+	const biB = cb.birthInfo;
 
 	const mingA = palaceAtBranch(ca, ca.mingGongBranch, "甲方命宫");
 	const mingB = palaceAtBranch(cb, cb.mingGongBranch, "乙方命宫");
@@ -60,18 +92,16 @@ function cmdsynastry(args: CliArgs) {
 	const fudeA = mustPalace(ca, "福德宫");
 	const fudeB = mustPalace(cb, "福德宫");
 
-	const majors = (p: Palace): string[] =>
-		p.stars.filter(s => s.type === "major").map(s => s.name);
-	const mA = majors(mingA),
-		mB = majors(mingB);
-	const fA = majors(fuqiA),
-		fB = majors(fuqiB);
+	const mA = majorsOf(mingA),
+		mB = majorsOf(mingB);
+	const fA = majorsOf(fuqiA),
+		fB = majorsOf(fuqiB);
 
 	if (args.json) {
 		return JSON.stringify(
 			{
-				a: { chart: ca, mingGong: mA, fuQiGong: fA, fuDeGong: majors(fudeA) },
-				b: { chart: cb, mingGong: mB, fuQiGong: fB, fuDeGong: majors(fudeB) },
+				a: { chart: ca, mingGong: mA, fuQiGong: fA, fuDeGong: majorsOf(fudeA) },
+				b: { chart: cb, mingGong: mB, fuQiGong: fB, fuDeGong: majorsOf(fudeB) },
 			},
 			null,
 			2
@@ -82,29 +112,34 @@ function cmdsynastry(args: CliArgs) {
 	out.push("【合盘 · 双宫联参】倪海夏：看婚姻不能只看夫妻宫，必须同时看福德宫");
 	out.push("");
 	out.push(
-		`甲方 ${a.info.name ?? ""} ${fmtDate(a.info)} ${a.note} · ${genderCN(a.info.gender)} · ${ca.wuxingJuName}`
+		`甲方 ${biA.name ?? ""} ${fmtDate(biA)} ${A.basis.note} · ${genderCN(biA.gender)} · ${ca.wuxingJuName}`
 	);
-	out.push(`  命宫 ${BRANCHES[ca.mingGongBranch]}：${mA.join("、") || "（空宫借对宫）"}`);
-	out.push(`  夫妻宫 ${BRANCHES[fuqiA.branch]}：${fA.join("、") || "（空宫借对宫）"}`);
-	out.push(`  福德宫 ${BRANCHES[fudeA.branch]}：${majors(fudeA).join("、") || "（空宫借对宫）"}`);
+	out.push(`  命宫 ${branchName(ca.mingGongBranch)}：${mA.join("、") || "（空宫借对宫）"}`);
+	out.push(`  夫妻宫 ${branchName(fuqiA.branch)}：${fA.join("、") || "（空宫借对宫）"}`);
+	out.push(
+		`  福德宫 ${branchName(fudeA.branch)}：${majorsOf(fudeA).join("、") || "（空宫借对宫）"}`
+	);
 	out.push("");
 	out.push(
-		`乙方 ${b.info.name ?? ""} ${fmtDate(b.info)} ${b.note} · ${genderCN(b.info.gender)} · ${cb.wuxingJuName}`
+		`乙方 ${biB.name ?? ""} ${fmtDate(biB)} ${B.basis.note} · ${genderCN(biB.gender)} · ${cb.wuxingJuName}`
 	);
-	out.push(`  命宫 ${BRANCHES[cb.mingGongBranch]}：${mB.join("、") || "（空宫借对宫）"}`);
-	out.push(`  夫妻宫 ${BRANCHES[fuqiB.branch]}：${fB.join("、") || "（空宫借对宫）"}`);
-	out.push(`  福德宫 ${BRANCHES[fudeB.branch]}：${majors(fudeB).join("、") || "（空宫借对宫）"}`);
+	out.push(`  命宫 ${branchName(cb.mingGongBranch)}：${mB.join("、") || "（空宫借对宫）"}`);
+	out.push(`  夫妻宫 ${branchName(fuqiB.branch)}：${fB.join("、") || "（空宫借对宫）"}`);
+	out.push(
+		`  福德宫 ${branchName(fudeB.branch)}：${majorsOf(fudeB).join("、") || "（空宫借对宫）"}`
+	);
 	out.push("");
 
 	// 晚子时提醒（任一方命中都要提示，否则合盘基准可能是错的）
 	for (const [label, side] of [
-		["甲", a],
-		["乙", b],
+		["甲", A],
+		["乙", B],
 	] as const) {
-		if (side.lateZiCandidate && !side.isLateZi) {
-			out.push(`⚠️ ${label}方出生时间落在 23:00–23:59（晚子时），本次按当日早子时口径排盘。`);
+		if (side.lateZi.candidate && !side.lateZi.applied) {
+			out.push(`⚠️ ${label}方出生时间落在 23:00–23:59（晚子时），这份盘按当日早子时口径排。`);
 			out.push(
-				`   若改用 --${label === "甲" ? "a" : "b"}-late-zi（晚子时算次日），该方命盘会整体改变，合盘结论需重跑。`
+				`   若该方确为 23:00 后出生、需按晚子时（算次日）口径，请回 purplestar-astrology` +
+					`重排${label}方 —— 该方命盘会整体改变，合盘结论随之作废，须重跑本命令。`
 			);
 		}
 	}
@@ -132,7 +167,7 @@ function cmdsynastry(args: CliArgs) {
 		["甲", fuqiA],
 		["乙", fuqiB],
 	] as const) {
-		const stars = majors(fuqi);
+		const stars = majorsOf(fuqi);
 		const borrowed = stars.length ? stars : (fuqi.borrowedStars ?? []);
 		if (!borrowed.length) {
 			out.push(`  ${label}方夫妻宫空宫且对宫亦无主星 —— 婚姻之事全看四化与大限引动`);
@@ -156,19 +191,20 @@ function cmdsynastry(args: CliArgs) {
 	}
 	out.push("");
 
-	// 四化入夫妻宫：SIHUA_IN_FUQI_GU 的键是「化禄/化权/化科/化忌」，需先定位生年四化落宫
+	// 四化入夫妻宫：SIHUA_IN_FUQI_GU 的键是「化禄/化权/化科/化忌」，落宫由排盘方给
+	// （`nativeSiHua.located`，与盘面宫名同源，本 skill 不重算）
 	out.push("【生年四化入夫妻宫】");
 	let sihuaHit = 0;
-	for (const [label, chart, fuqi] of [
-		["甲", ca, fuqiA],
-		["乙", cb, fuqiB],
+	for (const [label, side, fuqi] of [
+		["甲", A, fuqiA],
+		["乙", B, fuqiB],
 	] as const) {
-		// 生年四化取农历年干（与盘面 Star.siHua 的 mutagen 同源），不用公历取模 —— 理由见 cmdAnalyze
-		const stem = chart.lunarInfo.yearStem;
-		for (const x of locateSihua(chart, getSiHuaByStem(stem))) {
+		for (const x of side.nativeSiHua.located) {
 			if (x.palace !== fuqi.name) continue;
 			sihuaHit++;
-			out.push(`  ${label}方 生年${STEMS[stem]}干 化${x.hua}（${x.star}）入夫妻宫：`);
+			out.push(
+				`  ${label}方 生年${side.nativeSiHua.stem}干 化${x.hua}（${x.star}）入夫妻宫：`
+			);
 			out.push(`    ${SIHUA_IN_FUQI_GU[`化${x.hua}`] ?? ""}`);
 		}
 	}

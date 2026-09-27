@@ -451,7 +451,7 @@ export function cmdSelftest(ctx: CliContext): string {
 	});
 	// ⚠️ 这里原有「性别：heming 缺 --a-gender 时文案应指向 --a-gender」一条，已随合盘命令
 	//    搬去 `purplestar-synastry` 的 selftest —— 本 skill 既无 `synastry` 命令，也不认
-	//    `a-` / `b-` 前缀（`--a-date` 在这里是**未知参数**，直接报错），那条文案护栏
+	//    `a-` / `b-` 前缀（`--a-chart` 在这里是**未知参数**，直接报错），那条文案护栏
 	//    在本 skill 里没有可复现的入口。
 
 	// ── 5. 排盘不变量 ──
@@ -659,8 +659,12 @@ export function cmdSelftest(ctx: CliContext): string {
 		// 旗标，而**没有任何断言变红** —— 那正是本次收窄要防的回归。
 		const outOfScope: Array<[string, string]> = [
 			["--limit", "5"], // 古籍检索专有
-			["--a-city", "北京"], // 合盘的出生方前缀
-			["--b-date", "1990-01-01"],
+			// 合盘的命盘前缀（2026-09-27 起合盘不排盘，前缀叠在 --chart 上而不在出生信息旗标上）。
+			// ⚠️ 探针必须挑**真实存在、只是归别处**的旗标：`--a-city` 一类自合盘撤出排盘后
+			// 已从声明表整个消失，拿它当探针会退化成「不存在的旗标当然报错」，与上面那组
+			// 拼写错误探针重叠 —— 跨 skill 越界这个真正的故障模式就测不出来了。
+			["--a-chart", "/tmp/a.json"],
+			["--b-chart", "/tmp/b.json"],
 		];
 		for (const [flag, value] of outOfScope) {
 			let msg = "";
@@ -732,8 +736,8 @@ export function cmdSelftest(ctx: CliContext): string {
 			.slice(0, body.indexOf("\n\n"))
 			.split("\n")
 			.filter(l => l.startsWith("|"));
-		// 字符类必须含数字与连字符：写成 `[a-z]+` 时 `` `heming2` `` 会被**截断**成 `heming`
-		// 而 heming 恰好是真实命令 —— 于是「真名 + 后缀」这类假命令全部溜过（实测踩过）。
+		// 字符类必须含数字与连字符：写成 `[a-z]+` 时 `` `synastry2` `` 会被**截断**成 `synastry`
+		// 而 synastry 恰好是真实命令 —— 于是「真名 + 后缀」这类假命令全部溜过（实测踩过）。
 		const mentioned = rows
 			.map(l => l.match(/^\|\s*`([a-z][a-z0-9-]*)/)?.[1])
 			.filter(n => n !== undefined);

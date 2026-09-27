@@ -7,12 +7,13 @@
 // 本文件另有一条**防漂移断言**：内核直调结果必须等于 CLI --json 的输出。
 // 引导机制现已收敛到 boot-hooks.ts 一份实现（loader.ts 与 purple-star.ts 共用），
 // 故这条断言守的不是「两份副本别分叉」，而是「进程内内核与真实 CLI 子进程排出同一张盘」。
-import { describe, it } from "node:test";
+import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { promisify } from "node:util";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
@@ -78,7 +79,7 @@ interface synastryJson {
 	b: synastrySide;
 }
 
-/** 独立预言机组里一方的出生信息（合盘样本，只取 CLI `--a-*` / `--b-*` 需要的字段）。 */
+/** 合盘样本里一方的出生信息 —— 用来在**源 skill** 排一张盘，再把盘文件喂给 synastry。 */
 interface synastryCase {
 	date: string;
 	time: string;
@@ -167,18 +168,45 @@ async function cliFails(args: string[]): Promise<string> {
 const { generateChart } = await loadAlgorithm();
 const { getSiHuaByStem } = await loadSihua();
 
+// ── synastry 的输入：两份 `analyze --json` 的输出文件 ──
+//
+// 合盘 skill **不排盘**（2026-09-27 起）：`synastry` 只吃 `purplestar-astrology` 排好的盘。
+// 故测试也必须走同一条两步路 —— 先用**源 skill 的 CLI** 真排一张（`cli()` 走进程内路径，
+// 免掉每个用例起两个 node 子进程的冷启动税），把 stdout 写进临时文件，再把**文件路径**
+// 交给 synastry 子进程。
+//
+// ⚠️ 这条路径正是 Claude 按 SKILL.md 编排的那条。若哪天 `analyze --json` 少了一个
+// synastry 依赖的字段（`chart` / `nativeSiHua.located` / `lateZi` / `basis`），红的是这里；
+// 而假盘的形状对不对由 synastry 自己的 `selftest` 冒烟，两者分工不同。
+const SYN_TMP = mkdtempSync(join(tmpdir(), "synastry-cli-"));
+after(() => rmSync(SYN_TMP, { recursive: true, force: true }));
+
+let chartSeq = 0;
+/** 在源 skill 里排一张盘，写成临时 JSON 文件，返回其路径。 */
+async function analyzeFile(args: string[]): Promise<string> {
+	const f = join(SYN_TMP, `chart-${chartSeq++}.json`);
+	writeFileSync(f, await cli([...args, "--json"]));
+	return f;
+}
+
+/** 两方的排盘参数 → `synastry` 的两份命盘参数（各排一张盘、落成文件）。 */
+async function pairArgs(a: string[], b: string[]): Promise<string[]> {
+	const [fa, fb] = await Promise.all([analyzeFile(a), analyzeFile(b)]);
+	return ["--a-chart", fa, "--b-chart", fb];
+}
+
 /**
- * 合盘用的那一对出生信息。
+ * 合盘用的那一对出生信息 —— 排成两份盘文件后交给 `synastry`。
  *
  * @remarks
  * 提到文件级是因为它被两组共用：「synastry 合盘」（宫名查找）与「合盘方法论参考文档」。
  * 后者那条「同一份正文在 md 里、不在 synastry 输出里」的断言必须真的跑一次 `synastry`，
  * 用的就是这一对。
  */
-const synastry_PAIR = [
-	"--a-date", "1990-05-15", "--a-time", "09:30", "--a-gender", "male",
-	"--b-date", "1992-08-20", "--b-time", "14:00", "--b-gender", "female",
-];
+const synastry_PAIR = await pairArgs(
+	["--date", "1990-05-15", "--time", "09:30", "--gender", "male"],
+	["--date", "1992-08-20", "--time", "14:00", "--gender", "female"]
+);
 
 describe("CLI 端到端", () => {
 	describe("真太阳时校正", () => {
@@ -514,10 +542,18 @@ describe("CLI 端到端", () => {
 		// 第三对：甲方夫妻宫**空宫**、须借对宫主星论 —— 那是合盘断语的常见路径，单独覆盖。
 		const EMPTY_A: synastryCase = { date: "1985-01-10", time: "06:30", gender: "male" };
 
-		const argsOf = (a: synastryCase, b: synastryCase): string[] => [
-			"--a-date", a.date, "--a-time", a.time, "--a-lng", "120", "--a-gender", a.gender,
-			"--b-date", b.date, "--b-time", b.time, "--b-lng", "120", "--b-gender", b.gender,
+		/** 一方在源 skill 的排盘参数 —— 经度固定 120（校正量 0），使期望值可由 `toHour` 直接复算。 */
+		const argsOne = (c: synastryCase): string[] => [
+			"--date", c.date, "--time", c.time, "--lng", "120", "--gender", c.gender,
 		];
+
+		/**
+		 * 两份出生信息 → `synastry` 的两份命盘参数（各在源 skill 排一张盘、落成文件）。
+		 *
+		 * ⚠️ 是 async：排盘那一步要跑 CLI。调用点本就都在 `memo(async () => …)` 里，故顺手。
+		 */
+		const argsOf = async (a: synastryCase, b: synastryCase): Promise<string[]> =>
+			pairArgs(argsOne(a), argsOne(b));
 
 		/** 时刻 → 时辰支（东经 120° 校正量为 0 时）。用的是安星法的时辰划分，独立于 CLI 实现。 */
 		const toHour = (t: string): number => Math.floor((Number(String(t).split(":")[0]) + 1) / 2) % 12;
@@ -544,13 +580,13 @@ describe("CLI 端到端", () => {
 			let v: T | undefined;
 			return () => (v ??= fn());
 		};
-		const pairJson = memo(async () => JSON.parse(await cliCmd("synastry", [...argsOf(A, B), "--json"], "synastry")) as synastryJson);
-		const swapJson = memo(async () => JSON.parse(await cliCmd("synastry", [...argsOf(B, A), "--json"], "synastry")) as synastryJson);
-		const pairText = memo(() => cliCmd("synastry", argsOf(A, B), "synastry"));
-		const crossText = memo(() => cliCmd("synastry", argsOf(CROSS_A, CROSS_B), "synastry"));
-		const emptyText = memo(() => cliCmd("synastry", argsOf(EMPTY_A, B), "synastry"));
+		const pairJson = memo(async () => JSON.parse(await cliCmd("synastry", [...(await argsOf(A, B)), "--json"], "synastry")) as synastryJson);
+		const swapJson = memo(async () => JSON.parse(await cliCmd("synastry", [...(await argsOf(B, A)), "--json"], "synastry")) as synastryJson);
+		const pairText = memo(async () => cliCmd("synastry", await argsOf(A, B), "synastry"));
+		const crossText = memo(async () => cliCmd("synastry", await argsOf(CROSS_A, CROSS_B), "synastry"));
+		const emptyText = memo(async () => cliCmd("synastry", await argsOf(EMPTY_A, B), "synastry"));
 
-		it("交换 --a-* / --b-* 后，两方命盘精确互换", async () => {
+		it("交换 --a-chart / --b-chart 后，两方命盘精确互换", async () => {
 			const d = await pairJson();
 			const s = await swapJson();
 			assert.notDeepEqual(
@@ -659,11 +695,15 @@ describe("CLI 端到端", () => {
 			assert.ok(crossA.length || crossB.length, "这对样本两向交集皆空，本条断言在空转 —— 请换样本");
 		});
 
-		it("晚子时提醒只落在命中的一方，且参数前缀正确", async () => {
+		it("晚子时提醒只落在命中的一方，且把用户送回排盘方", async () => {
 			// 甲方钟表 23:30、东经 120°（校正量为 0），校正后仍是晚子时；乙方正常。
-			const t = await cliCmd("synastry", argsOf({ ...A, time: "23:30" }, B), "synastry");
+			//
+			// ⚠️ 口径**不在本 skill 里选**：提醒必须指向 `purplestar-astrology` 重排。
+			// 从前这里断言的是 `--a-late-zi`；那个旗标自 2026-09-27 起归排盘方，写在本 skill
+			// 的输出里等于让用户去敲一个必然被拒的参数 —— 断言跟着实现一起改，才不会两边都错。
+			const t = await cliCmd("synastry", await argsOf({ ...A, time: "23:30" }, B), "synastry");
 			assert.ok(t.includes("⚠️ 甲方出生时间落在 23:00–23:59"), "应提示甲方落在晚子时");
-			assert.ok(t.includes("--a-late-zi"), "应指明改用 --a-late-zi 复核");
+			assert.ok(t.includes("purplestar-astrology"), "应把用户送回排盘 skill 用晚子时口径重排");
 			assert.ok(!t.includes("⚠️ 乙方出生时间"), "乙方不在晚子时，不应被提示");
 		});
 

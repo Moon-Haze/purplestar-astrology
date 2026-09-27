@@ -4,15 +4,22 @@
  *
  * 本文件只做四件事：**定位内核根 → 注册 TS 解析钩子 → 启动期内核自检 → 把命令分发出去**。
  *
- * ## 本 skill 的切面
+ * ## 本 skill 的切面：零排盘引擎
  *
- * 内核是从排盘解读 skill（`purplestar-astrology`）**按 import 闭包切出来的副本**：合盘要排
- * 两张盘，故 `ziwei/algorithm.ts` 是根；再挂合盘断语（`synastry-knowledge.ts`）与四化
- * （`sihua.ts`）。格局库（`patterns/`）与主题论断库（`analysis/`）**不在其中** ——
- * 实测 `synastry` 一个都不碰，切走它们省下二十来个文件。
+ * ⚠️ **本 skill 不排盘**（2026-09-27 起）。命盘由排盘解读 skill（`purplestar-astrology`）
+ * 产出，本 skill 读它 `analyze --json` 的输出做合盘。故这里既没有 `ziwei/algorithm.ts`，
+ * 也没有 `iztro` 之类的排盘依赖 —— 与 `purplestar-classics` 同构，是第二个「零排盘内核」
+ * 的 skill。
  *
- * ⚠️ **改内核一律改源**，然后 `npm run sync:skills`。就地改本目录的副本会被同步器覆盖，
- * 且 `test/repo.test.ts` 的层 6 会先变红。切片清单见 `<仓库根>/tools/skills.ts`。
+ * 切片里只剩三类东西：
+ *   · **自有内核** —— `ziwei/synastry-knowledge.ts`（合盘断语库，源里没有对应物）
+ *   · **类型契约** —— `ziwei/types.ts`（纯 interface，运行期被完全擦除）
+ *   · **引文守卫** —— `ziwei/citation-guard.ts` ＋ 它带出的 `annotations.ts`，
+ *     扫 `synastry-knowledge.ts` 里那些「倪师说」引文有没有被强归属
+ *
+ * ⚠️ **逐字节副本仍归源**：`boot-hooks.ts` / `cli/args.ts` 改源再 `npm run sync:skills`。
+ * 就地改本目录的副本会被同步器覆盖，且 `test/repo.test.ts` 的层 6 会先变红。
+ * 切片清单见 `<仓库根>/tools/skills.ts`。
  *
  * 依赖 Node ≥ 22.15（module.registerHooks + 原生 TS 类型擦除）。
  * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
@@ -39,13 +46,11 @@ import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hook
 // ⚠️ 因此：**本文件里除 `node:` 内置模块与 ./boot-hooks.ts 外，不允许出现任何普通静态 import**
 //    —— `scripts/cli/` 下的自家子模块也不行（它们静态 import 内核，同样会触发提前加载）。
 //    凡是要用的值，一律走下面的 load<T>()。这是本文件最容易被改坏的一处。
-type AlgorithmModule = typeof import("@/ziwei/algorithm");
-// ⚠️ 合盘内核用**相对路径**而非 `@/`：`@/` 在 tsc 眼里只映到**源** skill 的内核根
-//    （见 tsconfig 的 paths），而 synastry-knowledge.ts 已不住在源里（2026-09-27 起归本 skill），
-//    写 `@/` 会让 `npm run typecheck` 报「找不到模块」。相对路径在两侧都对：运行期由钩子的
-//    `.` 分支按**本文件**所在目录补 `.ts`，tsc 也按文件位置解析。
+// ⚠️ 自有内核用**相对路径**而非 `@/`：`@/` 在 tsc 眼里只映到**源** skill 的内核根
+//    （见 tsconfig 的 paths），而 `synastry-knowledge.ts` 已不住在源里（2026-09-27 起归本
+//    skill），写 `@/` 会让 `npm run typecheck` 报「找不到模块」。相对路径在两侧都对：
+//    运行期由钩子的 `.` 分支按**本文件**所在目录补 `.ts`，tsc 也按文件位置解析。
 type synastryModule = typeof import("./ziwei/synastry-knowledge");
-type SihuaModule = typeof import("@/ziwei/sihua");
 type ArgsModule = typeof import("@/cli/args");
 type CommandsModule = typeof import("@/cli/commands");
 
@@ -76,16 +81,18 @@ const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
  * 由调用方传入而非写死在 `boot-hooks.ts`：各 skill 各有各的内核，本 skill 里没有
  * `classics/`，古籍检索 skill 里也没有 `ziwei/`，拿别人的入口来判定只会得到误导信息。
  *
- * 取 `ziwei/algorithm.ts`（而不是 `synastry-knowledge.ts`）：排盘是合盘的**前置**，
- * 算法模块缺了则什么都做不了；断语模块缺了只影响输出的丰富度。
+ * 取 `ziwei/synastry-knowledge.ts` —— 它是本 skill 的**自有内核**（合盘断语库），
+ * 缺了它这个 skill 就没有存在意义。排盘内核已不住在这里（命盘由 purplestar-astrology
+ * 产出），故不再拿 `ziwei/algorithm.ts` 当判据：那个文件在本 skill 里根本不存在，
+ * 拿它判定只会得到一句「找不到排盘内核」的误导信息。
  */
-const KERNEL_ENTRY = "ziwei/algorithm.ts";
+const KERNEL_ENTRY = "ziwei/synastry-knowledge.ts";
 
 const picked = pickRoot(ROOT_CANDIDATES, KERNEL_ENTRY);
 
 if (!picked.root) {
 	console.error(
-		`[ziwei 启动失败] 找不到排盘内核（${KERNEL_ENTRY}）\n` +
+		`[ziwei 启动失败] 找不到内核入口（${KERNEL_ENTRY}）\n` +
 			`  已尝试：\n` +
 			picked.tried.map(t => `    - ${t}`).join("\n") +
 			"\n" +
@@ -126,11 +133,9 @@ const load = makeLoader(ROOT, ROOT_LABEL, f => {
 });
 
 // 钩子已就绪，从这里开始才能安全地加载任何 .ts。
-const { generateChart } = await load<AlgorithmModule>("@/ziwei/algorithm");
 const { STAR_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } = await load<synastryModule>(
 	"./ziwei/synastry-knowledge"
 );
-const { getSiHuaByStem } = await load<SihuaModule>("@/ziwei/sihua");
 
 const { parseArgs, cli } = await load<ArgsModule>("@/cli/args");
 const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
@@ -145,14 +150,13 @@ const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
  * 并逐项点名，把「哪个导出没了、当前内核根在哪、接下来怎么办」一次说清。
  *
  * ⚠️ 也因此：在内核里重命名或删除导出会让 CLI 立刻报错 —— **这是有意的，不是脆弱**。
- * 清单**按本 skill 的实际用量**列，不是排盘解读那份的全集：`patterns` / `analysis` 的导出
- * 在本 skill 的内核里根本不存在，照抄那份只会让启动必然失败。
+ * 清单**按本 skill 的实际用量**列，不是排盘解读那份的全集：`generateChart` / `patterns` /
+ * `analysis` 的导出在本 skill 的内核里根本不存在（本 skill 不排盘），照抄那份只会让启动
+ * 必然失败。清单因此很短 —— 短是事实，不是漏写。
  */
 const REQUIRED_EXPORTS = [
-	["generateChart", generateChart],
 	["STAR_IN_FUQI_GU", STAR_IN_FUQI_GU],
 	["MARRIAGE_STARS_BRIEF", MARRIAGE_STARS_BRIEF],
-	["getSiHuaByStem", getSiHuaByStem],
 ];
 {
 	const missing = REQUIRED_EXPORTS.filter(([, v]) => v === undefined || v === null).map(
@@ -175,13 +179,20 @@ const REQUIRED_EXPORTS = [
  * 常用调用示例，作为 help 的追加段。
  *
  * @remarks
- * ⚠️ 这段仍在手写（cac 渲染不到），改参数名时要一并改 —— `selftest` 有一条断言扫
- * `SKILL.md` 里的旗标写法，示例里的旗标因此也落在它的覆盖范围内。
+ * ⚠️ 这段仍在手写（cac 渲染不到），改参数名时要一并改 —— 且**没有断言盯着它**：
+ * `selftest` 那条旗标断言扫的是 `SKILL.md` 的正文，本文件的示例不在它的覆盖范围内。
+ * 示例里的排盘命令属于 `purplestar-astrology`，那几个参数以那个 skill 为准，本 skill
+ * 不复述它的参数面（复述就是第二份需要手工同步的真相）。
  */
-const HELP_EXAMPLES = `  # 合盘：双方出生信息各带 a- / b- 前缀
-  node scripts/purple-star.ts synastry \\
-    --a-date 1990-05-15 --a-time 09:30 --a-gender male --a-city 北京 \\
-    --b-date 1993-08-22 --b-time 14:00 --b-gender female --b-city 上海
+const HELP_EXAMPLES = `  # ① 先在 purplestar-astrology skill 里各排一张盘
+  #    （必须是 analyze，不是 chart —— 后者没有四化落宫与排盘依据）
+  node <purplestar-astrology>/scripts/purple-star.ts analyze \\
+    --date 1990-05-15 --time 09:30 --city 北京 --gender male --json > /tmp/a.json
+  node <purplestar-astrology>/scripts/purple-star.ts analyze \\
+    --date 1993-08-22 --time 14:00 --city 上海 --gender female --json > /tmp/b.json
+
+  # ② 把两份 JSON 交给本命令（两方各一份，前缀 a- / b-）
+  node scripts/purple-star.ts synastry --a-chart /tmp/a.json --b-chart /tmp/b.json
 
   # 方法论与评分标准是静态参考，住在 skill 内的 references/synastry-guide.md
   # （按需读文件，不经 CLI 输出）
@@ -190,19 +201,20 @@ const HELP_EXAMPLES = `  # 合盘：双方出生信息各带 a- / b- 前缀
   node scripts/purple-star.ts selftest`;
 
 /**
- * 关于「参数段里为什么有一堆用不上的旗标」的说明，作为 help 的追加段。
+ * 关于「命盘从哪来、前缀怎么加」的说明，作为 help 的追加段。
  *
  * @remarks
- * `cli/args.ts` 是与另两个 skill **逐字节一致**的副本（见 `CLAUDE.md` 的「副本边界与同步流程」），
- * 它声明的是各 skill 的**全集**旗标。裁成按 skill 的旗标表会让它失去逐字节守卫，换来的
- * 只是 help 里少几行 —— 故保留全集，在这里说明白。
+ * 从前这里写的是「参数段里有一堆用不上的旗标」—— 自 2026-09-27 收窄作用域后
+ * **不再成立**：`cli/flag-scope.ts` 只认 `--chart` / `--json`，cac 就只注册这两个，
+ * help 的参数段里已经没有别的旗标了。那段说明若留着，会把用户引向一个不存在的问题。
  *
- * 本例还要多一句：`--focus` / `--liunian` / `--liuyue` 属于 `analyze` / `topic`，
- * 本 skill 的两个命令都不认。
+ * 现在要说清的是另一件事：`--chart` 是本 skill 独有的一维，**必须写成两份并各加前缀**
+ * （`--a-chart` / `--b-chart`），而 `analyze --json` 要到另一个 skill 里去跑。
  */
-const HELP_FLAGS_NOTE = `本 skill 只认 a- / b- 前缀的出生信息旗标（--a-date / --b-gender 等）。
-上面参数段里的其余旗标（--gender / --focus / --liunian 等）来自各 skill 共享的参数表，
-传了不会生效，也不会报错。`;
+const HELP_FLAGS_NOTE = `本 skill **不排盘**：命盘由 purplestar-astrology 的 \`analyze --json\` 产出，
+本命令只读它的输出。故 --chart 要写两次并各加前缀：
+  --a-chart /tmp/a.json --b-chart /tmp/b.json
+两个文件都必须来自 analyze（不是 chart）—— 后者没有四化落宫与排盘依据。`;
 
 // 命令注册进 cac **只为让 help 列出命令**：分发仍由下面的 main() 查 COMMANDS 表 ——
 // cac 的 action 模型与「cmdXxx 一律**返回**字符串、console.log 只在 main() 一处发生」不合。

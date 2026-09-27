@@ -127,7 +127,7 @@ function cmdChart(args: CliArgs) {
  * 两者都取不到时星性落成「无主星亦无对宫可借，全看三方四正会照」。
  */
 function cmdAnalyze(args: CliArgs) {
-	const { info, note, longitude, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } =
+	const { info, note, notes, longitude, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } =
 		buildBirthInfo(args);
 	const chart = generateChart(info);
 
@@ -172,6 +172,11 @@ function cmdAnalyze(args: CliArgs) {
 						}
 					: null,
 				lateZi: { candidate: lateZiCandidate, applied: isLateZi },
+				// 排盘依据：日期换算 / 出生地解析 / 时辰校正三类说明，让这份 JSON 自描述
+				// 「这张盘是怎么来的」，下游（合盘 skill）据此复述真太阳时与晚子时提示，
+				// 而不必自己重做一遍出生信息解析。
+				// 键名刻意不叫 trueSolar —— notes 里还含农历换算与出生地解析，与真太阳时无关。
+				basis: { note, notes },
 			},
 			null,
 			2

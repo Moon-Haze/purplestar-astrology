@@ -69,7 +69,7 @@ npm run sync:skills -- --check           # 派生 skill 的内核副本 == 源�
 | [invariants.test.ts](invariants.test.ts)       | 3         | ❌            | 排盘结构不变量：12 宫必齐、十四主星各一、大限区间连续……；另用 iztro 的 `horoscope()` 作外部预言机核对虚岁与大限，用**宫位偏移算术**核对宫名与合盘取宫入口，用**宫名路径的独立预言机**覆盖全部格局名与生年四化落宫，用**口诀表 / lunar 年柱 / 万年历向量**三条独立路径核对流年流月四化                                                                                                                                                                                                                                                                                                                                                                              |
 | [school.test.ts](school.test.ts)               | 4         | ✅            | 三合派体系约束：飞星派字段不得被回填                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | [sample-source.test.ts](sample-source.test.ts) | 5         | ❌            | 数据源纯函数：DuckDB 行 → BaselineSample 的映射（**合成行**逐条覆盖规则 + **真实行**逐字节复现 charts.jsonl）、12 行完整性守卫、流式遍历语义、三条失败路径的指引（缺依赖 / 缺库文件 / 库被其他进程锁住）（不碰任何数据文件）                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| [repo.test.ts](repo.test.ts)                   | 6         | ❌            | 仓库自洽：引文守卫的扫描范围与排除规则（喂构造的临时目录树）；test/ 的测试文件 ↔ README 层表 ↔ lib/run.ts 的 LAYERS 三处登记双向一致；解析钩子 `.` 与 `@/` 两条分支的候选序一致（用桩 nextResolve，含「`.ts` 优先于同名目录」的反向一条）；**派生 skill 的副本一致性**：切片清单 ↔ 各派生 skill 的 `scripts/` 实际文件（逐字节相同、无残留、自包含、`type: module`）；**排盘类 skill 的底座哨兵**：这类 skill 的 `SKILL.md` 必须含四条哨兵句，抓的是整节漏抄（见 `tools/skills.ts` 的 `chartLike`）；**旗标作用域双向一致**：各 skill 的 `cli/flag-scope.ts` ⊆ 声明表全集、全集 ⊆ 三作用域之并、`birth-info.ts` 的 `g()` 键 ⊆ 源 ∪ 合盘、`ownFiles` 每项与磁盘相符 |
+| [repo.test.ts](repo.test.ts)                   | 6         | ❌            | 仓库自洽：引文守卫的扫描范围与排除规则（喂构造的临时目录树）；test/ 的测试文件 ↔ README 层表 ↔ lib/run.ts 的 LAYERS 三处登记双向一致；解析钩子 `.` 与 `@/` 两条分支的候选序一致（用桩 nextResolve，含「`.ts` 优先于同名目录」的反向一条）；**派生 skill 的副本一致性**：切片清单 ↔ 各派生 skill 的 `scripts/` 实际文件（逐字节相同、无残留、自包含、`type: module`）；**排盘类 skill 的底座哨兵**：这类 skill 的 `SKILL.md` 必须含四条哨兵句，抓的是整节漏抄（见 `tools/skills.ts` 的 `chartLike`）；**旗标作用域双向一致**：各 skill 的 `cli/flag-scope.ts` ⊆ 声明表全集、全集 ⊆ 三作用域之并、`birth-info.ts` 的 `g()` 键 ⊆ 源、`ownFiles` 每项与磁盘相符 |
 
 层 2、3 刻意**不依赖基准样本**，因此不受 iztro 升级影响 —— 层 1 变红时，它们能帮你区分
 「是 iztro 行为变了」还是「内核真的排出了坏盘」。**更高编号的层**同样不读基准样本，
@@ -448,9 +448,10 @@ test/
    **整节漏抄**，抓不住节内改一处 —— 这个强度是刻意选的，`SKILL.md` 改动低频且必过 review。
 
 6. **加旗标要动三处，层 6 有四条断言盯着**（2026-09-27 起）：往 `cli/args.ts` 的 `FLAG_GROUPS`
-   声明它、决定它归哪个 skill（写进那份 `cli/flag-scope.ts`）、若是出生信息旗标则**源与合盘都要写**。
+   声明它、决定它归哪个 skill（写进那份 `cli/flag-scope.ts`）、若是出生信息旗标则**只有源要写**
+   （合盘自 2026-09-27 起不再排盘，也就不再认出生信息旗标）。
    四条断言分别是「各作用域 ⊆ 全集」（拼错的名字）／「全集 ⊆ 三作用域之并」（加了没人认领）／
-   「`birth-info.ts` 的 `g()` 键 ⊆ 源 ∪ 合盘」（只改源忘了合盘）／「`ownFiles` 与磁盘相符」
+   「`birth-info.ts` 的 `g()` 键 ⊆ 源」（排盘只有一处实现，故只有一处认领）／「`ownFiles` 与磁盘相符」
    （目录形态的清单项写错一个字母 = 那个目录失去保护）。
    ⚠️ 前两条的**反向注入**已验证：往作用域塞一个拼错的名字，红的恰好是第一条。
    新增排盘类 skill 时别忘了声明 `chartLike`，否则哨兵对它空转。
