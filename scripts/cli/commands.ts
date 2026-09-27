@@ -24,6 +24,7 @@ import {
 } from "./render";
 import { cmdSelftest } from "./selftest";
 import type { Palace } from "@/ziwei/types";
+import { duiGongBranch } from "@/ziwei/palace-relations";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
 import { getSiHuaByStem, getLiuNianSiHua, getLiuYueSiHua } from "@/ziwei/sihua";
@@ -313,7 +314,7 @@ function cmdAnalyze(args: CliArgs) {
 			out.push("", `【聚焦：${target.name}】`);
 			out.push(renderPalace(target, chart));
 			out.push(
-				`  对宫：${chart.palaces.find(p => p.branch === (target.branch + 6) % 12)?.name}`
+				`  对宫：${chart.palaces.find(p => p.branch === duiGongBranch(target.branch))?.name}`
 			);
 		}
 	}

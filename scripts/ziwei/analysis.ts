@@ -30,6 +30,8 @@
 
 import type { ZiweiChart, Palace, Star } from "./types";
 import { BRANCHES, STEMS } from "./constants";
+// 对宫与三方四正的偏移：全仓单点在 ./palace-relations，本文件原先自写了 6 处
+import { duiGongBranch, sanFangBranches } from "./palace-relations";
 // 格局的**命中判定**统一由 patterns.ts 负责（本文件只写判词），故这里引它的产出。
 // 2026-09-26 先对齐了 4 个口径分歧的格局（紫府同宫 / 火贪格 / 铃贪格 / 机月同梁）；
 // 2026-09-27 把剩下 ~30 段手写判定**全部**收敛过去（含 12 个原先只在本文件存在的格局，
@@ -137,7 +139,7 @@ function getPalaceStars(
 	if (mainStars.length > 0) return { palace, mainStars, isLoan: false };
 
 	// 空宫：借对宫
-	const oppBranch = (palace.branch + 6) % 12;
+	const oppBranch = duiGongBranch(palace.branch);
 	const oppPalace = chart.palaces.find(p => p.branch === oppBranch);
 	if (!oppPalace) return { palace, mainStars: [], isLoan: false };
 
@@ -150,13 +152,9 @@ function getSanFangSiZheng(chart: ZiweiChart, palaceName: string): Palace[] {
 	const main = chart.palaces.find(p => p.name === palaceName);
 	if (!main) return [];
 
-	const branches = [
-		main.branch,
-		(main.branch + 4) % 12,
-		(main.branch + 8) % 12,
-		(main.branch + 6) % 12,
-	];
-	return branches.map(b => chart.palaces.find(p => p.branch === b)).filter(Boolean) as Palace[];
+	return sanFangBranches(main.branch)
+		.map(b => chart.palaces.find(p => p.branch === b))
+		.filter(Boolean) as Palace[];
 }
 
 /** 描述一个宫位的星曜（带四化） */
@@ -419,7 +417,7 @@ export function getTopicAnalysis(
 				lines.push("");
 			});
 		} else if (!isMain && mainStarsOfP.length === 0) {
-			const oppBranch = (p.branch + 6) % 12;
+			const oppBranch = duiGongBranch(p.branch);
 			const oppP = chart.palaces.find(q => q.branch === oppBranch);
 			const oppStars = oppP?.stars.filter(s => s.type === "major") ?? [];
 			if (oppStars.length > 0) {
@@ -548,7 +546,7 @@ export function getTopicAnalysis(
 
 		// ── 大限宫为空宫时借对宫 ──
 		if (dxPalace && dxPalace.stars.filter(s => s.type === "major").length === 0) {
-			const oppBranch = (dxPalace.branch + 6) % 12;
+			const oppBranch = duiGongBranch(dxPalace.branch);
 			const oppP = chart.palaces.find(q => q.branch === oppBranch);
 			const oppStars = oppP?.stars.filter(s => s.type === "major").map(s => s.name) ?? [];
 			if (oppStars.length > 0) {
@@ -561,12 +559,7 @@ export function getTopicAnalysis(
 
 		// ── 大限宫与本命四化的会照（倪师正统）──
 		if (dxPalace) {
-			const dxSanFangBranches = [
-				dxPalace.branch,
-				(dxPalace.branch + 4) % 12,
-				(dxPalace.branch + 8) % 12,
-				(dxPalace.branch + 6) % 12,
-			];
+			const dxSanFangBranches = sanFangBranches(dxPalace.branch);
 			const dxSanFangPalaces = chart.palaces.filter(p =>
 				dxSanFangBranches.includes(p.branch)
 			);
@@ -611,12 +604,7 @@ export function getTopicAnalysis(
 		lines.push("");
 
 		if (lnPalace) {
-			const lnSanFangBranches = [
-				lnPalace.branch,
-				(lnPalace.branch + 4) % 12,
-				(lnPalace.branch + 8) % 12,
-				(lnPalace.branch + 6) % 12,
-			];
+			const lnSanFangBranches = sanFangBranches(lnPalace.branch);
 			const lnSanFangPalaces = chart.palaces.filter(p =>
 				lnSanFangBranches.includes(p.branch)
 			);

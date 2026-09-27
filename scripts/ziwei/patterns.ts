@@ -90,6 +90,7 @@ import {
 } from "./patterns-data";
 
 import { BRANCHES } from "./constants";
+import { duiGongBranch, sanFangBranches } from "./palace-relations";
 
 // 静态层已拆成 `patterns-types.ts`（形状）与 `patterns-data.ts`（数据）两个文件；
 // 本模块只留函数。
@@ -101,64 +102,12 @@ export { GEJU_NAME_ALIASES } from "./patterns-data";
 
 // ────────────────── 辅助函数 ──────────────────
 
-// ── 宫位地支偏移：两组算式的单点声明 ──
+// ── 本模块用到的宫位关系，全部取自 `./palace-relations` ──
 //
-// 这些算式原先**在本模块内联散落**：对宫的 `(x + 6) % 12` 出现 6 处，三方四正的偏移表
-// 在 `getSanFangPalaces` 与 `isInSanFang` 里各写一遍。两处的 TSDoc 都**声明**了「与某处
-// 同源」（`getDuiGong` 说与 `algorithm.ts` 的 `Palace.oppositeBranch` 同源、`isInSanFang`
-// 说与 `getSanFangPalaces` 同源）—— 靠注释维持的一致，改一处不会有任何东西发现。
-//
-// ⚠️ 本次收敛的边界是**本模块**，不是全仓。同一个对宫算式在 `algorithm.ts`（填
-// `Palace.oppositeBranch` 字段处，是该字段的真相源）、`analysis.ts`（6 处）、
-// `cli/commands.ts`、`cli/render.ts` 里仍各有一份。跨模块单点需要把偏移提到
-// `constants.ts` 一类的共享位置，未做 —— 别把本模块的单点误读成全仓已收敛。
-//
-// 收敛的动机不是「少写几个字符」，是给算式**一个名字**：读到 `(x + 6) % 12` 要先在脑子里
-// 翻成「对宫」，而 `duiGongBranch(x)` 直接可读。
-
-/**
- * 取对宫地支。
- *
- * @param branch - 基准地支索引（0–11）
- * @returns 相隔六个地支的那一个（子↔午、丑↔未 …）
- *
- * @remarks
- * ⚠️ 与 `algorithm.ts` 填 `Palace.oppositeBranch` 的是**同一个算式**。之所以仍以函数而非
- * 字段的形式存在：本模块多处手里只有地支值（`chart.mingGongBranch`）或要跨宫比较
- * `branch`，取不到 `Palace` 对象；且 `oppositeBranch` 是可选字段，用前要判空。
- *
- * ⚠️ 入参恒为 0–11（`Palace.branch` 与 `chart.mingGongBranch` 的定义域），故**不做**
- * {@link getPalaceByBranch} 那样的两步取模 —— 越界入参会返回越界值，由调用方负责。
- */
-function duiGongBranch(branch: number): number {
-	return (branch + 6) % 12;
-}
-
-/**
- * 命宫三方四正相对命宫的地支偏移：命宫、官禄宫、财帛宫、迁移宫。
- *
- * @remarks
- * 十二宫由命宫**逆行**排布，故官禄在 `m + 4`、财帛在 `m + 8`、迁移在 `m + 6`（**不是**顺行）。
- * 校验见 `test/invariants.test.ts` 的「宫名与相对命宫的逆行偏移一致」。
- */
-const SAN_FANG_OFFSETS: readonly number[] = [0, 4, 8, 6];
-
-/**
- * 取命宫三方四正的四个地支。
- *
- * @param chart - 命盘
- * @returns 命宫、官禄宫、财帛宫、迁移宫的地支索引，顺序即 {@link SAN_FANG_OFFSETS} 的偏移序
- *
- * @remarks
- * {@link getSanFangPalaces} 与 {@link isInSanFang} 的共同来源，两者不再各写一遍偏移表。
- * 代价是每次调用构造一个四元素数组 —— 原 `isInSanFang` 为省这一次构造而内联了偏移表，
- * 但那使「改偏移要改两处、且只靠注释声明一致」成了唯一保障。本模块以单点为准：这点构造
- * 开销在 `npm test` 的量级上不可测量，而漂移的代价不对称。
- */
-function sanFangBranches(chart: ZiweiChart): number[] {
-	const m = chart.mingGongBranch;
-	return SAN_FANG_OFFSETS.map(o => (m + o) % 12);
-}
+// 对宫与三方四正的偏移算式原先在**全仓多处各写一遍**（本模块内对宫 6 处、三方四正 2 处，
+// 另有 `algorithm.ts` / `analysis.ts` / `cli/` 各处），且多数副本没有名字、只靠注释声明
+// 「与某处同源」维持一致。现统一由 `./palace-relations` 单点提供，本模块只负责把
+// 「命宫」这一上下文代入 —— 格局判定看的恒是**命宫**的三方四正。
 
 /**
  * 取一宫的主星名列表。
@@ -265,15 +214,16 @@ function hasShaInPalace(palace: Palace, list: string[] = SHA_NAMES): boolean {
  * @returns 命宫、官禄宫、财帛宫、迁移宫四个宫位
  *
  * @remarks
- * 偏移表见 {@link SAN_FANG_OFFSETS}，本函数是其「取宫位」视图（{@link sanFangBranches}
- * 取地支，本函数再映射成 `Palace`）。偏移方向以 `test/invariants.test.ts` 的
+ * 偏移表见 `./palace-relations` 的 `SAN_FANG_OFFSETS`，本函数是其「取宫位」视图
+ * （{@link sanFangBranches} 取地支，本函数再映射成 `Palace`，基准一律是**命宫**）。
+ * 偏移方向以 `test/invariants.test.ts` 的
  * 「宫名与相对命宫的逆行偏移一致」为准 —— 十二宫由命宫**逆行**排布，别想当然写成顺行。
  *
  * ⚠️ 返回顺序是 **`chart.palaces` 的地支序**（`filter` 保持原数组序），不是偏移表的偏移序，
  * 也不是宫位顺序；需要稳定顺序时请自行排序。正常命盘恒返回 4 个宫位。
  */
 function getSanFangPalaces(chart: ZiweiChart): Palace[] {
-	const branches = sanFangBranches(chart);
+	const branches = sanFangBranches(chart.mingGongBranch);
 	return chart.palaces.filter(p => branches.includes(p.branch));
 }
 /**
@@ -291,7 +241,7 @@ function getSanFangPalaces(chart: ZiweiChart): Palace[] {
  * 不会误命中。
  */
 function isInSanFang(chart: ZiweiChart, branch: number): boolean {
-	return sanFangBranches(chart).includes(branch);
+	return sanFangBranches(chart.mingGongBranch).includes(branch);
 }
 /**
  * 取对宫。
@@ -507,7 +457,7 @@ function detectZiFu({ chart }: DetectContext): Pattern[] {
 	// 它只认 `hasStar('命宫'|'迁移', …)`。旧口径下紫府同宫在任何宫都成格（只把未坐命的降为 75），
 	// 与 topic 侧实测 44/300 盘判定相反（如紫府坐财帛：这边报格、那边不报）。
 	// 代价：紫微天府同宫于它宫时不再产出「紫府同宫」，那类盘在这两处都不再有此格局。
-	// ✓ 迁移宫即命宫对宫（见 `duiGongBranch`），与 `SAN_FANG_OFFSETS` 的第 4 个偏移同源。
+	// ✓ 迁移宫即命宫对宫 —— 与 `palace-relations.ts` 的三方四正偏移表第 4 项同源。
 	const inMing = ziwei.branch === chart.mingGongBranch;
 	const inQianYi = ziwei.branch === duiGongBranch(chart.mingGongBranch);
 	if (!inMing && !inQianYi) return [];

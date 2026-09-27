@@ -68,6 +68,7 @@ npm run typecheck
     ├── ziwei/citation-guard.ts   引文守卫：扫内核全树核对「倪师说」引文（selftest 与层 6 共用）
     ├── ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
     ├── ziwei/constants.ts        天干地支 / 四化表 / 星曜释义
+    ├── ziwei/palace-relations.ts 宫位关系（对宫 / 三方四正）的偏移单点，零依赖
     ├── ziwei/cities.ts           中国城市经纬度（真太阳时校正用）
     ├── ziwei/types.ts            内核类型；含两条刻意保留的「绊线」字段（见「体系硬约束」）
     └── classics/                 三部古籍原文检索

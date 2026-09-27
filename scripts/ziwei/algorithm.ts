@@ -11,6 +11,7 @@ import { astro } from "iztro";
 import { Solar } from "lunar-typescript";
 import type { BirthInfo, LunarInfo, Star, Palace, DaXian, ZiweiChart } from "./types";
 import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE, ELEMENT_TO_JU } from "./constants";
+import { duiGongBranch } from "./palace-relations";
 // 飞星派工具仅供导出，不再在排盘时调用（倪师《天纪 03》：四化星永远固定不动）
 // import { detectSelfSihua, getSiHuaByStem } from './sihua';
 
@@ -310,8 +311,9 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	});
 
 	// ── 借对宫结构化字段（codex P0：避免文案层从自然语言反查借宫信息）──
+	// 对宫算式取自 `./palace-relations` —— 全仓对宫偏移的单点，本字段与它同源。
 	palaces.forEach(p => {
-		p.oppositeBranch = (p.branch + 6) % 12;
+		p.oppositeBranch = duiGongBranch(p.branch);
 		const mainStars = p.stars.filter(s => s.type === "major");
 		p.isEmpty = mainStars.length === 0;
 		if (p.isEmpty) {

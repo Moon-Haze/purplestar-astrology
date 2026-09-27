@@ -184,7 +184,7 @@ export interface Palace {
 	 * `cli/selftest.ts` 与 `test/school.test.ts` 有断言盯着它不被重新填回。
 	 */
 	selfSihua?: SelfSihuaMark[];
-	/** 对宫地支索引，恒等于 `(branch + 6) % 12` */
+	/** 对宫地支索引，由 `./palace-relations` 的 `duiGongBranch` 算出（该式为全仓单点） */
 	oppositeBranch?: number;
 	/** 是否空宫（本宫**无主星**，即 `stars` 里没有 `major`） */
 	isEmpty?: boolean;

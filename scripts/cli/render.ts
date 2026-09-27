@@ -10,6 +10,7 @@
 
 import type { BirthInfo, Palace, Star, ZiweiChart, SiHua } from "@/ziwei/types";
 import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/ziwei/constants";
+import { sanFangBranches } from "@/ziwei/palace-relations";
 import { generateChart } from "@/ziwei/algorithm";
 
 // ══════════════════════ 共用格式化 ══════════════════════
@@ -167,8 +168,7 @@ export function locateSihua(chart: ZiweiChart, transforms: Record<SiHua, string>
  * @returns 四个宫名，顺序为 `[本宫, 三合(+4), 三合(+8), 对宫(+6)]`；查不到的宫位退化为 `"?"`
  */
 export function sanFangSiZheng(chart: ZiweiChart, branch: number): string[] {
-	const idx = [branch, (branch + 4) % 12, (branch + 8) % 12, (branch + 6) % 12];
-	return idx.map(b => chart.palaces.find(p => p.branch === b)?.name ?? "?");
+	return sanFangBranches(branch).map(b => chart.palaces.find(p => p.branch === b)?.name ?? "?");
 }
 
 /**
