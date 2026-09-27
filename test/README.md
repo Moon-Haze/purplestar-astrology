@@ -54,7 +54,7 @@ npm run typecheck                        # 类型检查：必须 0 错误（与�
 | [invariants.test.ts](invariants.test.ts)       | 3         | ❌            | 排盘结构不变量：12 宫必齐、十四主星各一、大限区间连续……；另用 iztro 的 `horoscope()` 作外部预言机核对虚岁与大限，用**宫位偏移算术**核对宫名与合盘取宫入口，用**宫名路径的独立预言机**覆盖全部格局名与生年四化落宫，用**口诀表 / lunar 年柱 / 万年历向量**三条独立路径核对流年流月四化 |
 | [school.test.ts](school.test.ts)               | 4         | ✅            | 三合派体系约束：飞星派字段不得被回填                                                                                                                                                                                                                                                        |
 | [sample-source.test.ts](sample-source.test.ts) | 5         | ❌            | 数据源纯函数：DuckDB 行 → BaselineSample 的映射（**合成行**逐条覆盖规则 + **真实行**逐字节复现 charts.jsonl）、12 行完整性守卫、流式遍历语义、三条失败路径的指引（缺依赖 / 缺库文件 / 库被其他进程锁住）（不碰任何数据文件）                                                              |
-| [repo.test.ts](repo.test.ts)                   | 6         | ❌            | 仓库自洽：引文守卫的扫描范围与排除规则（喂构造的临时目录树）；test/ 的测试文件 ↔ README 层表 ↔ lib/run.ts 的 LAYERS 三处登记双向一致                                                                                                                                                                                     |
+| [repo.test.ts](repo.test.ts)                   | 6         | ❌            | 仓库自洽：引文守卫的扫描范围与排除规则（喂构造的临时目录树）；test/ 的测试文件 ↔ README 层表 ↔ lib/run.ts 的 LAYERS 三处登记双向一致；解析钩子 `.` 与 `@/` 两条分支的候选序一致（用桩 nextResolve，含「`.ts` 优先于同名目录」的反向一条）                                                                                    |
 
 层 2、3 刻意**不依赖基准样本**，因此不受 iztro 升级影响 —— 层 1 变红时，它们能帮你区分
 「是 iztro 行为变了」还是「内核真的排出了坏盘」。**更高编号的层**同样不读基准样本，
@@ -384,7 +384,7 @@ test/
 ├── invariants.test.ts        层 3：排盘结构不变量
 ├── school.test.ts            层 4：三合派体系约束
 ├── sample-source.test.ts     层 5：数据源纯函数
-├── repo.test.ts              层 6：仓库自洽（引文守卫 / 登记一致性）
+├── repo.test.ts              层 6：仓库自洽（引文守卫 / 登记一致性 / 解析钩子候选序）
 ├── lib/
 │   ├── loader.ts             加载 TS 内核（scripts/purple-star.ts 加载机制的副本）
 │   ├── compare.ts            比对器 + 归一化 + 已知差异白名单

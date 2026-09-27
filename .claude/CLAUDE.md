@@ -81,7 +81,10 @@ npm run typecheck
 `scripts/purple-star.ts` 用 Node ≥ 22.15 的 `module.registerHooks` 注册了解析钩子（见文件开头的 `registerHooks({...})`）：
 
 - `@/xxx` → 解析到 `<内核根>/xxx`，自动补 `.ts` 或 `/index.ts`。**内核根是 `scripts/` 而非 skill 根**，所以 `@/ziwei/algorithm` = `scripts/ziwei/algorithm.ts`
+- **`.` 相对说明符** → 同一条候选序：先补 `.ts`，再兜底 `<spec>/index.ts`。故内核里引**文件夹模块**时 `./patterns` 与 `@/ziwei/patterns` 等价，不必写显式 `/index`
 - **裸包名**（`iztro`、`lunar-typescript`）→ 自内核根向上查找 `node_modules` 解析，而非 cwd 或文件所在位置
+
+⚠️ 两条分支的候选序**必须一致**，这不是洁癖：它们分叉过一次，症状是 **`npm run typecheck` 全绿而运行时崩**——`tsconfig.json` 的 `moduleResolution: "bundler"` 会把 `./patterns` 正常解析到 `patterns/index.ts`，只有真的跑起来才会 `ERR_UNSUPPORTED_DIR_IMPORT`。`test/repo.test.ts` 的层 6 有一组断言用桩 `nextResolve` 钉死这条候选序（含「`.ts` 优先于同名目录」的反向一条）。
 
 因此脚本可从**任意 cwd** 运行，**运行**既不需要构建步骤，也不需要 `tsconfig.json`。
 

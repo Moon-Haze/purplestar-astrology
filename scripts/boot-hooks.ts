@@ -90,6 +90,13 @@ export function pickRoot(candidates: Array<[string | undefined, string]>): RootP
  * `@/xxx` 的 `@` 是**内核根**（`scripts/`）而非 skill 根：
  * `@/ziwei/algorithm` → `scripts/ziwei/algorithm.ts`。
  *
+ * ⚠️ **两条分支的候选序必须一致**：`<spec>.ts` 优先，`<spec>/index.ts` 兜底。
+ * 相对分支原先只有前半条，于是「文件夹模块」在两条路径上行为分叉 ——
+ * `@/ziwei/patterns` 能解析到 `patterns/index.ts`，而 `./patterns` 会在运行时
+ * `ERR_UNSUPPORTED_DIR_IMPORT`。**且 tsc 抓不住**：`moduleResolution: "bundler"`
+ * 会把 `./patterns` 正常解析到 `patterns/index.ts`，于是类型全绿、只有真跑才崩。
+ * 补上兜底后，`.ts` 文件仍优先于同名目录，故既有引用一条都不会改变解析目标。
+ *
  * 裸包名重定向的意义：脱离项目运行时从文件位置向上找不到 `node_modules`，
  * 必须显式把 iztro / lunar-typescript 指到内核根去解析。
  *
@@ -113,10 +120,19 @@ export function makeResolveHook(root: string): ResolveHookSync {
 		}
 		if (specifier.startsWith(".")) {
 			if (!/\.[cm]?[jt]s$/.test(specifier)) {
+				// 与上面 `@/` 分支**同一条候选序**：`<spec>.ts` 优先，`<spec>/index.ts` 兜底
+				// （目录导入兜底，同样为了避免 ERR_UNSUPPORTED_DIR_IMPORT）。
+				// ⚠️ 顺序不可颠倒：`./x.ts` 必须胜过 `./x/index.ts`。
+				const base = specifier.replace(/\/+$/, "");
 				try {
 					return nextResolve(specifier + ".ts", context);
 				} catch {
-					/* 非 TS 目标，落回默认解析 */
+					/* 不是 TS 文件 */
+				}
+				try {
+					return nextResolve(`${base}/index.ts`, context);
+				} catch {
+					/* 也不是目录模块，落回默认解析 */
 				}
 			}
 			return nextResolve(specifier, context);

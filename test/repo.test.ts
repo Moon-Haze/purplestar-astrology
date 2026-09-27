@@ -2,10 +2,11 @@
 //
 // 前五层测的是**排盘行为**：给定出生信息，排出的盘对不对。本层测的是**仓库自身的状态**：
 // 代码与随它一起演化的文档、登记表是否还对得上。这类事实没有「行为」可断言，漂移了也不
-// 会有任何东西报错 —— 只能靠专门的守卫盯。本层两组：
+// 会有任何东西报错 —— 只能靠专门的守卫盯。本层三组：
 //
 //   一、引文守卫（scripts/ziwei/citation-guard.ts）
 //   二、登记一致性（test/ 下的测试文件 ↔ test/README.md 的层表 ↔ lib/run.ts 的 LAYERS）
+//   三、解析钩子的候选序（scripts/boot-hooks.ts 的 `.` 与 `@/` 两条分支）
 //
 // ## 为什么引文守卫要在这里再测一遍
 //
@@ -30,12 +31,24 @@
 // ⚠️ 本文件只写 mkdtemp 造的临时树，对本仓只读不写（读 README 与 run.ts 的源码文本）。
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import type { ResolveHookSync } from "node:module";
 
 import { load } from "./lib/loader.ts";
+// ⚠️ 带 `.ts` 扩展名，理由同 lib/loader.ts 的同一行：boot-hooks.ts 只依赖 `node:` 内置，
+//    故可在解析钩子注册之前被 Node 的原生类型擦除加载。
+import { makeResolveHook } from "../scripts/boot-hooks.ts";
 
 /** skill 根 —— 本文件在 `<skill 根>/test/` 下，故退一级。 */
 const SKILL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -88,6 +101,46 @@ function scanTree(files: Record<string, string>) {
 	const root = makeTree(files);
 	try {
 		return scanCitations(root);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+}
+
+/**
+ * 直接跑一次解析钩子，返回它**依次交给 `nextResolve` 的说明符**。
+ *
+ * @param specifier - 待解析的说明符（`./sub`、`@/sub`、`./data.json` …）
+ * @param files - 临时树的文件表，作用同 {@link makeTree}
+ * @returns 钩子在解析过程中依次尝试的说明符，顺序即候选序
+ *
+ * @remarks
+ * 刻意用**桩** `nextResolve`，而不是真的 `registerHooks`：后者是**进程级且无法撤销**的，
+ * 在测试中途注册会渗到本文件之后的用例上，把一条局部断言变成全局副作用。
+ *
+ * 桩的行为与 Node 一致 —— 说明符相对 `parentURL` 解析，文件不存在即抛错，
+ * 于是钩子的 try/catch 兜底链被真实地走一遍，而不是只断言源码里有某段正则。
+ * 这正是不把这条断言放进 `cli/selftest.ts` 的原因：那里是同步函数，`await import()` 放不下。
+ */
+function resolveAttempts(specifier: string, files: Record<string, string>): string[] {
+	const root = makeTree(files);
+	try {
+		const parentURL = pathToFileURL(resolve(root, "anchor.ts")).href;
+		const context: Parameters<ResolveHookSync>[1] = {
+			parentURL,
+			conditions: [],
+			importAttributes: {},
+		};
+		const attempts: string[] = [];
+		const nextResolve: Parameters<ResolveHookSync>[2] = (spec, ctx) => {
+			attempts.push(spec);
+			const url = new URL(spec, ctx?.parentURL ?? parentURL);
+			if (!existsSync(fileURLToPath(url))) {
+				throw new Error(`Cannot find module '${spec}'`);
+			}
+			return { url: url.href, shortCircuit: true };
+		};
+		makeResolveHook(root)(specifier, context, nextResolve);
+		return attempts;
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
@@ -184,5 +237,63 @@ describe("仓库自洽（引文守卫 / 登记一致性）", () => {
 		const src = readFileSync(resolve(SKILL_ROOT, "test/lib/run.ts"), "utf8");
 		const missing = testFiles().filter(f => !src.includes(`"${f}"`));
 		assert.deepEqual(missing, [], `lib/run.ts 的 LAYERS 漏登记：${missing.join("、")}`);
+	});
+});
+
+// ── 三、解析钩子的候选序 ──
+//
+// 内核里出现**文件夹模块**（`ziwei/patterns/`、`classics/`）之后，`./patterns` 这类说明符
+// 就有两种合法落点：`patterns.ts` 与 `patterns/index.ts`。两条分支必须给出**同一条候选序**，
+// 否则会出现「类型绿、运行崩」——
+//
+//   - `moduleResolution: "bundler"` 会把 `./patterns` 解析到 `patterns/index.ts`，故 tsc 全绿；
+//   - 而运行时只有 `@/` 分支有 `/index.ts` 兜底，`./patterns` 直接 ERR_UNSUPPORTED_DIR_IMPORT。
+//
+// 这类分叉不会让 `npm run typecheck` 变红，只在真跑时炸，故必须由本组钉死。
+describe("解析钩子候选序（boot-hooks）", () => {
+	it("`.` 分支：文件夹模块兜底到 `<spec>/index.ts`", () => {
+		assert.deepEqual(resolveAttempts("./sub", { "sub/index.ts": "export const v = 1;\n" }), [
+			"./sub.ts",
+			"./sub/index.ts",
+		]);
+	});
+
+	it("`.` 分支：同名 `.ts` 文件优先于目录 —— 候选序颠倒会改变既有引用的解析目标", () => {
+		// 反向的一条。若把 `/index.ts` 提到 `.ts` 之前，`./foo` 会在 `foo.ts` 与 `foo/index.ts`
+		// 并存时静默改判到后者 —— 而本仓此刻正有这种并存期（拆分时旧文件与新目录短暂共存）。
+		assert.deepEqual(
+			resolveAttempts("./sub", {
+				"sub.ts": "export const v = 1;\n",
+				"sub/index.ts": "export const v = 2;\n",
+			}),
+			["./sub.ts"]
+		);
+	});
+
+	it("`.` 与 `@/` 两条分支对同一个文件夹模块给出一致的落点", () => {
+		const tree = { "sub/index.ts": "export const v = 1;\n" };
+		const rel = resolveAttempts("./sub", tree);
+		const aliased = resolveAttempts("@/sub", tree);
+		assert.equal(rel.at(-1), "./sub/index.ts");
+		assert.ok(
+			aliased.at(-1)?.replace(/^file:\/\//, "").endsWith("/sub/index.ts"),
+			`@/ 分支没落到 sub/index.ts，实际：${aliased.at(-1)}`
+		);
+	});
+
+	it("已有 `.ts` 扩展名的说明符不被改写 —— 不凭空多出候选", () => {
+		assert.deepEqual(resolveAttempts("./sub.ts", { "sub.ts": "export const v = 1;\n" }), [
+			"./sub.ts",
+		]);
+	});
+
+	it("非 TS 目标只多两次失败的尝试，最终仍落到字面路径（`./data.json` 行为不变）", () => {
+		// 这是「补兜底有没有副作用」的答案：`tools/db/db.ts` 那类按字面相对路径引 `analysis-data`
+		// 的调用点，解析目标一字不改，只是路上多两次 existsSync。
+		assert.deepEqual(resolveAttempts("./data.json", { "data.json": "{}\n" }), [
+			"./data.json.ts",
+			"./data.json/index.ts",
+			"./data.json",
+		]);
 	});
 });
