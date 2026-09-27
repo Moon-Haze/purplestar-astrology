@@ -27,6 +27,7 @@ import {
 import { chartSignature, fmtDate } from "./render";
 import type { BirthInfo } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
+import { ANNOTATIONS } from "@/ziwei/annotations";
 import { detectPatterns } from "@/ziwei/patterns";
 import { getSiHuaByStem, getYearStemIndex, getLiuYueSiHua } from "@/ziwei/sihua";
 import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
@@ -597,15 +598,12 @@ export function cmdSelftest(ctx: CliContext): string {
 		}
 		return "mingpan / daxian / liunian / liuyue";
 	});
-	ok("论断引用核对：未核实引文不得冒充倪师原话（对照 annotations.json）", () => {
-		// annotations.json 是对本仓内核中「倪师/倪海夏」引用的文献核对记录
+	ok("论断引用核对：未核实引文不得冒充倪师原话（对照 annotations.ts）", () => {
+		// annotations.ts 是对本仓内核中「倪师/倪海夏」引用的文献核对记录
 		//（拷自 reference/ziwei-samples-toolkit/corpus/，针对 v2 核对，v3 已清掉全部
 		// fabricated）。此断言锁住清修成果：源码中所有「倪海夏/倪师…说」带出的引文，
 		// 不得出现在 suspect / fabricated 清单里 —— 改归属保留引文（如「古诀云」）是
 		// 合法处置，不算违规。
-		const ann = JSON.parse(
-			readFileSync(resolve(ctx.root, "ziwei/annotations.json"), "utf8")
-		) as { entries: { status: string; text: string }[] };
 		// ⚠️ 扫描范围必须覆盖**所有**带倪师引文的源码，故这里**扫目录**而非硬编码文件清单。
 		//    硬编码清单踩过坑：2026-09-27 的声明分离拆分把引文拆进了新文件
 		//    （patterns-defs.ts 16 处、analysis-content.ts 24 处），清单只跟上了后者，
@@ -613,16 +611,20 @@ export function cmdSelftest(ctx: CliContext): string {
 		//    往盲区文件里写一句未核实引文，没有任何东西会拦。
 		//    扫目录让「新增/拆分出的带引文模块」自动纳入覆盖，不再依赖有人记得改清单。
 		//    （同日稍后 analysis-content.ts 并入了 analysis-data.ts，扫描逻辑不受影响。）
+		//    ⚠️ 唯一要排除的是核对记录自身：annotations.ts 存的就是 suspect 引文的原文，
+		//    扫进去必然自我命中（实测 11~14 条误报）。这不重蹈硬编码清单的覆辙 ——
+		//    排除的是唯一一个语义上不该被扫的文件（它是核对表，不是被核对的对象），
+		//    新增/拆分出的带引文模块仍自动纳入。
 		const src = readdirSync(resolve(ctx.root, "ziwei"))
-			.filter(f => f.endsWith(".ts"))
+			.filter(f => f.endsWith(".ts") && f !== "annotations.ts")
 			.sort()
 			.map(f => readFileSync(resolve(ctx.root, "ziwei", f), "utf8"))
 			.join("\n");
 		// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
 		const banned = new Set(
-			ann.entries
-				.filter(e => e.status === "suspect" || e.status === "fabricated")
-				.flatMap(e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1]))
+			ANNOTATIONS.filter(e => e.status === "suspect" || e.status === "fabricated").flatMap(
+				e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1])
+			)
 		);
 		// 源码中所有「倪海夏/倪师…说/言/警示…：『引文』」的引文核心
 		const citeRe =
@@ -634,7 +636,7 @@ export function cmdSelftest(ctx: CliContext): string {
 			throw new Error(
 				`以下未核实引文仍冒充倪师原话（应改古诀云/紫微斗数有云/一说）：\n     ${bad.join("\n     ")}`
 			);
-		return `核对 ${ann.entries.length} 条记录，suspect/fabricated 引文零强归属`;
+		return `核对 ${ANNOTATIONS.length} 条记录，suspect/fabricated 引文零强归属`;
 	});
 
 	// ── 输出 ──

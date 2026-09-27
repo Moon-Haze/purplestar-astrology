@@ -12,7 +12,7 @@
  *   3. 删除了未使用的 getYearStemIndex 导入（那是公历取模口径，仅流年可用；
  *      生年四化必须用 chart.lunarInfo.yearStem，见 sihua.ts 的口径说明）。
  *
- * ⚠️ 知识来源分级（toolkit 原注释，annotations.json 未随拷贝）：
+ * ⚠️ 知识来源分级：
  *   - [verified]    倪师《天纪》讲稿原话（天纪 02-13 集已核对）
  *   - [traditional] 紫微斗数传统口诀（《紫微斗数全书》等古书，非倪师独创）
  *   - [methodology] 倪师体系的方法论概念（非原话摘录）

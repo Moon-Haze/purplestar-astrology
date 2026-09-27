@@ -60,7 +60,7 @@ npm run typecheck
     │                             格局部分只是薄壳：从 detectPatterns 挑出有 topicDescription 的命中
     ├── ziwei/analysis-data.ts    分析数据库 v3 的数据层：类型 + 映射表 + 论断文案
     │                             （STAR_CONTENT_MAP：十四主星 × 12 宫语境）
-    ├── ziwei/annotations.json    「倪师引用」文献核对记录（selftest 锁 suspect 零强归属）
+    ├── ziwei/annotations.ts      「倪师引用」文献核对记录（selftest 锁 suspect 零强归属）
     ├── ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
     └── classics/                 三部古籍原文检索
 ```
