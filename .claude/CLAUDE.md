@@ -58,8 +58,8 @@ npm run typecheck
     ├── ziwei/sihua.ts            四化（生年 / 流年 / 流月）
     ├── ziwei/analysis.ts         分析数据库 v3 的推算（getTopicAnalysis，topic 命令用）
     │                             格局部分只是薄壳：从 detectPatterns 挑出有 topicDescription 的命中
-    ├── ziwei/analysis-content.ts 分析数据库 v3 的论断文案（STAR_DB：十四主星 × 12 宫语境）
-    ├── ziwei/analysis-meta.ts    分析数据库 v3 的类型与映射表（主题键 / 宫位脏腑 / 紫微诸星安放）
+    ├── ziwei/analysis-data.ts    分析数据库 v3 的数据层：类型 + 映射表 + 论断文案
+    │                             （STAR_CONTENT_MAP：十四主星 × 12 宫语境）
     ├── ziwei/annotations.json    「倪师引用」文献核对记录（selftest 锁 suspect 零强归属）
     ├── ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
     └── classics/                 三部古籍原文检索
