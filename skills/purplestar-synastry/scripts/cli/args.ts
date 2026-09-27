@@ -1,5 +1,5 @@
 /**
- * CLI 参数面 —— 旗标声明表 + 校验 + 解析（cac 驱动）+ 帮助渲染。不依赖任何内核模块，
+ * CLI 参数面 —— 旗标声明表 + 校验 + 解析 + 帮助渲染。不依赖任何内核模块，
  * 也不使用 `@/` 别名。
  *
  * 拆自 purple-star.ts。依赖图的最底层（args / render 并列底层，
@@ -10,9 +10,8 @@
  *   render┘        ↑____________|
  *
  * ⚠️ 本文件由引导层（purple-star.ts）在 `registerHooks` **之后**动态加载。
- *    不要在 purple-star.ts 顶部用静态 `import` 引它 —— 钩子未注册时解析会失败。
- *    也正因如此，`cac` 这个裸包名的静态 `import` 落在**本文件**（此处静态 import 是允许的），
- *    引导层只通过 `load<ArgsModule>()` 拿 {@link cli} 引用。
+ *    不要在 purple-star.ts 顶部用静态 `import` 引它 —— 它静态 import 了本地的
+ *    `./flag-scope`（一个 `.ts` 文件），钩子未注册时那一步解析会失败。
  *
  * ## 为什么旗标要有声明表
  *
@@ -27,27 +26,51 @@
  * - `--a-chart` 写在 `analyze` 上同理：`a-` 前缀只有 `synastry` 会去读，别处直接报错。
  *
  * 现在 {@link FLAG_GROUPS} 是唯一来源：{@link parseArgs} 据它拒绝未知旗标、
- * cac 据它注册选项并渲染 help 参数段、`SKILL.md` 则由 `selftest` 断言兜底。
+ * 据它算出交给 `parseArgs` 的选项表、{@link renderHelp} 据它渲染 help 的参数段、
+ * `SKILL.md` 则由 `selftest` 断言兜底。
  *
- * ## 解析为什么是 cac 驱动、而校验为什么还得自己做
+ * ## 解析引擎：Node 内置的 `node:util` 的 `parseArgs`（零依赖）
  *
- * 分词（`--key value` / `--flag` / `--` 分隔符 / 重复选项归并）交给 `cac`；
- * 但 **cac 对未注册的选项是静默收下的**（连 `run: false` 也不校验），
- * 而「拼错旗标不报错」恰恰就是上面那个错盘入口 —— 所以 {@link checkFlagName}
- * 那套校验一个字都不能少，只是执行时机挪到了 cac 之前（见 {@link parseArgs}）。
+ * ⚠️ **本文件不再是源 skill 的副本**。2026-09-27 起，两个**派生** skill（本 skill 与
+ * `purplestar-synastry`）改用 Node 内置的 `parseArgs`，源（`purplestar-astrology`）
+ * 仍用 `cac`。故这里有两个后果，改文件前先读：
  *
- * ⚠️ **键名是 camelCase**：cac 把 `--late-zi` 归一成 `lateZi`、`--a-late-zi` 归一成 `aLateZi`。
- *    换算只有 {@link camelKey} 一处，`FLAG_GROUPS` 里的 `name` 仍写 kebab
- *    （它同时是用户敲的名字、help 的显示名、`SKILL.md` 写的名字）。
+ * - 本文件在**两个派生 skill 之间**仍是逐字节相同的**一对**副本（仓库测试守着），
+ *   但与源那一份**不再相同** —— 引擎不同，逐字节断言无从成立，故改为
+ *   「`FLAG_GROUPS` 与源 deep-equal」（声明表才是真正不能漂移的东西）。
+ * - **两个派生 skill 从此零依赖**：不必 `npm install`，`package.json` 里没有
+ *   `dependencies`，拷进 `~/.claude/skills/` 即可运行。这是选内置模块最直接的收益。
+ *
+ * ### 实测（Node v26.10.0）—— 下面每条都是量出来的，不是照 `cac` 的印象推的
+ *
+ * - **键名原样返回**：`--late-zi` 的键就是 `"late-zi"`，**不做 camelCase**。
+ *   故 kebab → camel 的换算成了**本项目自己的约定**（{@link camelKey}），
+ *   而不是「抵消引擎的归一」。
+ * - **未给出的选项根本不进 `values`**（空参数时 `values` 是 `{}`）——
+ *   「`undefined` 即未给出」的判空天然成立，归一化时无须过滤。
+ * - **不认 `default` 也就罢了**，本文件刻意不给：给了之后未出现的参数也会进结果，
+ *   同样会破坏上面那条判空。
+ * - **重复选项取末值**（`--limit 5 --limit 2` → `"2"`），不必自己归并。
+ * - **值一律是 `string`**：`--limit 007` 保持 `"007"`，不会被转成数字（`cac`/`mri`
+ *   会转，前导零在那里就丢了）。
+ * - **`--` 之后的内容全进 `positionals`** —— 故无需再处理引擎吐出的 `"--"` 键。
+ * - **单独的 `-` 是位置参数**（stdin 的传统写法），而 `-x` 在 `strict` 下抛
+ *   `ERR_PARSE_ARGS_UNKNOWN_OPTION`。
+ * - ⚠️ **`--key value` 里的值若以 `-` 开头会被判「歧义」而丢弃**
+ *   （`--limit -3` 抛 `ERR_PARSE_ARGS_INVALID_OPTION_VALUE`，`allowNegative`
+ *   实测毫无效果）。故前置扫描把取值类旗标**改写成等号式**再交给引擎，
+ *   见 {@link parseArgs} 的 ②。
+ * - **`strict: true`（默认）下未知选项抛错**，但抛的是**英文且无最近邻建议**
+ *   —— 「拼错旗标」这件事仍只有前置扫描能给出中文与 {@link suggestFlag}。
  */
 
-import { cac } from "cac";
+import { parseArgs as parseNodeArgs } from "node:util";
 
-// ⚠️ 本文件是三份**逐字节相同**的副本，而 `./flag-scope` 是**各 skill 自己写**的
-//    （源 / 合盘 / 古籍各一份，内容不同）。二者必须分开：解析骨架编码的全是 cac/mri 的
-//    实测行为，抄三份等于把最危险的一段复制成三份无人看守的代码；而「本 skill 认哪些
+// ⚠️ 本文件是两个派生 skill 之间**逐字节相同**的一对副本，而 `./flag-scope` 是
+//    **各 skill 自己写**的（源 / 合盘 / 古籍各一份，内容不同）。二者必须分开：
+//    解析骨架抄两份已经是不得已（源那一份是 cac 版，见文件头），而「本 skill 认哪些
 //    旗标」本来就因 skill 而异，正是该各写各的那部分。
-//    故：这份 `args.ts` 一字不改地同步，作用域文件不进同步清单（见 tools/skills.ts）。
+//    故：本文件**不进**同步清单，作用域文件同样不进（见 tools/skills.ts）。
 //
 // 运行期无环：本行是**值**导入，而 `flag-scope.ts` 只以 `import type` 取下面的
 // {@link FlagScope}（类型导入被完全擦除）。
@@ -60,8 +83,10 @@ import { FLAG_SCOPE } from "./flag-scope";
  * 带值的参数存 `string`，纯开关存 `boolean` 的 `true`（见 {@link parseArgs}），
  * 因此取值前通常要先收窄类型。
  *
- * ⚠️ **键是 camelCase**（`late-zi` → `lateZi`、`a-chart` → `aChart`）—— 这是 cac 的归一规则。
- * 换算只有 {@link camelKey} 一处；按下标读参数的地方（`birth-info.ts` 的 `g()`）必须经它拼键。
+ * ⚠️ **键是 camelCase**（`late-zi` → `lateZi`、`a-chart` → `aChart`）。
+ * 这是**本项目自己的键名约定**，由 {@link camelKey} 在归一化那一步做 ——
+ * 引擎（`parseArgs`）返回的键是原样的 kebab。换算只有 {@link camelKey} 一处；
+ * 按下标读参数的地方（`birth-info.ts` 的 `g()`）必须经它拼键。
  *
  * 索引签名里保留 `string[]` 是为了与 `_` 的写入同域 —— TS 要求索引签名涵盖所有具名属性。
  */
@@ -95,9 +120,14 @@ export interface FlagSpec {
  * 一组旗标。
  *
  * @remarks
- * ⚠️ `title` **不进 HELP**：cac 渲染的参数段是所有**已注册 option 的平铺列表**，不带分组。
- * 它是给读声明表的人看的分类，外加承载一句只有此处可写的口径提示（「三选一」「二选一」）。
- * 想改 help 里能看到的东西，只有 {@link FlagSpec.desc} 一条路（经 `cli.option` 交给 cac）。
+ * `title` **进 HELP**：参数段由 {@link renderHelp} 自己渲染（引擎不再提供 help 设施），
+ * 故这里的分组第一次真的显示出来。它同时承载一句只有此处可写的口径提示
+ * （「三选一」「二选一」）—— 那句是**口径**而非装饰：`buildBirthInfo` 对
+ * `--date` / `--lunar` / `--year+--month+--day` 与 `--time` / `--branch` 各取其一，
+ * 同时给出时按该处的优先级静默择一。
+ *
+ * ⚠️ 改造前这里写着「`title` 不进 HELP：cac 渲染的参数段是平铺列表，不带分组」。
+ *    换成内置引擎后那句不再成立 —— help 由本仓渲染，分组自然可见。
  */
 export interface FlagGroup {
 	title: string;
@@ -105,7 +135,7 @@ export interface FlagGroup {
 }
 
 /**
- * 本 skill 的**旗标作用域** —— 声明「这三份 args.ts 里，本 skill 认其中哪些」。
+ * 本 skill 的**旗标作用域** —— 声明「这份声明表里，本 skill 认其中哪些」。
  *
  * @remarks
  * 各 skill 写在自己的 `scripts/cli/flag-scope.ts` 里，本文件静态 import 它。
@@ -114,9 +144,10 @@ export interface FlagGroup {
  * 正面清单还有个好处：**fail-closed** —— 往 {@link FLAG_GROUPS} 加一个新旗标，
  * 它不会自动泄漏给没声明它的 skill，加的人必须决定它归谁。
  *
- * 收窄只发生在四个点上，全在本文件内：cac 的选项注册（HELP 的参数段由**已注册的
- * option** 渲染，故过滤这里 = help 自动收窄）、{@link FLAG_NAMES}（校验基准与
- * {@link suggestFlag} 的候选集）、{@link SIDE_PREFIXES}、{@link LEGAL_KEYS}。
+ * 收窄发生在四个点上，全在本文件内：交给引擎的 {@link OPTIONS} 选项表、
+ * {@link renderHelp} 渲染的参数段（二者都只遍历 {@link FLAG_NAMES}，故 help 里的
+ * 可见性与引擎的接受面自动一致）、{@link FLAG_NAMES} 本身（校验基准与
+ * {@link suggestFlag} 的候选集）、{@link LEGAL_KEYS}。
  *
  * ⚠️ **收窄的粒度是 skill 级，不是命令级**：`stars --json` 这类「本 skill 有、
  * 但当前命令不读」的参数仍会被收下不用。要修得把每条命令实际读的键也声明出来，
@@ -151,9 +182,9 @@ export interface FlagScope {
  * 全部旗标，按 HELP 的展示顺序分组。
  *
  * @remarks
- * 分组标题里的「三选一」「二选一」是**口径**而非装饰：`buildBirthInfo` 对
- * `--date` / `--lunar` / `--year+--month+--day` 与 `--time` / `--branch` 各取其一，
- * 同时给出时按该处的优先级静默择一 —— 这条规则只有写在这里才有人看得见。
+ * ⚠️ **这张表必须与源 skill 的那份 `deepStrictEqual`**（仓库测试守着）：
+ * 它是「有哪些旗标」的唯一来源，而漂移的代价是静默的 —— 见文件头那两类错盘。
+ * 两个派生 skill 换了引擎，但**声明表与源共用同一份内容**，改这里就要同步改源。
  */
 export const FLAG_GROUPS: readonly FlagGroup[] = [
 	{
@@ -308,51 +339,19 @@ export const FLAG_NAMES: ReadonlySet<string> = new Set(FLAG_SCOPE.flags);
  * @returns camelCase 形式（`"aLateZi"`）
  *
  * @remarks
- * 规则来自 cac 的归一行为（实测）：它把 `--late-zi` 变成 `lateZi`、`--a-late-zi` 变成
- * `aLateZi` —— **连前缀段一并处理**，所以调用方只要拼出完整 kebab 名再交给本函数即可。
+ * ⚠️ 这条规则的**来源变了，行为没变**：以前它是「抵消 cac 的归一」（cac 自己就把
+ * `--late-zi` 变成 `lateZi`），现在是**本项目自己的约定** —— `parseArgs` 原样返回
+ * kebab 键（实测），把 `CliArgs` 的键统一成 camelCase 是本文件主动做的一步。
+ * 所以这条注释以前说的是「规则来自引擎」，现在说的是「规则由本仓定义」；
+ * 好处是它不再随引擎变动而漂移。
  *
+ * 连前缀段一并处理，故调用方只要拼出完整 kebab 名再交给本函数即可。
  * `birth-info.ts` 的 `g(k)` 是全项目唯一按下标读参数的地方（15 个键都从它过），
  * 那边因此只需在拼键时套上本函数，不必逐个改键名。
  */
 export function camelKey(name: string): string {
 	return name.replace(/-([a-z0-9])/g, (_m: string, c: string) => c.toUpperCase());
 }
-
-/**
- * cac 实例 —— 分词与 help 的引擎。
- *
- * @remarks
- * 全部旗标注册为**全局选项**（而非逐命令注册）：本项目刻意不校验「旗标属于哪个命令」
- * （见 {@link checkFlagName} 的 ⚠️），全局注册正与之同构，`a-` / `b-` 前缀旗标也只需声明一次。
- *
- * 注册形态**按 {@link FlagSpec.kind} 分两种**，与声明表的语义对齐：
- * - `"value"` → `--name [值域]`：可选值形态，实测无值时给布尔 `true`
- *   （必填的 `<值域>` 形态会让 cac 抢在自己报错前退出，绕开本文件的中文提示）。
- * - `"switch"` → `--name`：纯布尔，实测**不吃**后面的位置参数。
- *   此前手写解析器不区分 kind、一律吃值，`classics --json 机月同梁` 会把检索词吃进
- *   `json` 而让 `_` 空掉 —— 那是静默失败，不是需要保住的行为。
- *
- * ⚠️ 刻意**不**给 `default`：给了之后未出现的参数也会进 options，
- * 破坏调用方「`undefined` 即未给出」的判空（`cmdClassics` 的 `--limit` 等就靠它取默认值）。
- *
- * 引导层拿它注册命令与 help（见 `purple-star.ts` 的 `main()`）——
- * `cac` 的静态 import 必须留在本文件，理由见文件头注释。
- */
-const cli = cac("purple-star");
-for (const group of FLAG_GROUPS) {
-	for (const flag of group.flags) {
-		// ⚠️ 作用域外的旗标**不注册** —— 这一句就是「help 只列本 skill 认的旗标」的全部实现：
-		//    cac 渲染的参数段取自**已注册的 option**，不注册即不出现，不必去改 purple-star.ts
-		//    的 help 段（它只是往 cac 的输出上追加两段领域知识）。
-		if (!FLAG_NAMES.has(flag.name)) continue;
-		cli.option(
-			flag.kind === "value" ? `--${flag.name} [${flag.value ?? "值"}]` : `--${flag.name}`,
-			FLAG_SCOPE.descOverrides?.[flag.name] ?? flag.desc
-		);
-	}
-}
-
-export { cli };
 
 /**
  * 本 skill 认的出生方前缀（合盘是 `a-` / `b-`，它要分别读两方出生信息）。
@@ -366,6 +365,52 @@ export { cli };
  * 才能与 {@link FLAG_NAMES} 比对 —— 前缀表不该有第二份。
  */
 export const SIDE_PREFIXES: readonly string[] = FLAG_SCOPE.sidePrefixes;
+
+/**
+ * 旗标名 → 声明（**全集**，未按作用域过滤）。
+ *
+ * @remarks
+ * 前置扫描要用它区分「这个旗标吃不吃值」（见 {@link parseArgs} 的 ②）。
+ * 查表必然命中：调用点只在前置扫描里，而那里在此之前已经过 {@link checkFlagName}，
+ * 拿到的是 {@link FLAG_NAMES} 里的名字，必是全集的一员。
+ */
+const FLAG_BY_NAME: ReadonlyMap<string, FlagSpec> = new Map(
+	FLAG_GROUPS.flatMap(g => g.flags.map(f => [f.name, f] as const))
+);
+
+/**
+ * 交给 `parseArgs` 的选项表 —— 从 {@link FLAG_GROUPS} **算出来**，不手写第二份。
+ *
+ * @remarks
+ * 这是作用域收窄在**引擎**这一侧的实现：不在 {@link FLAG_NAMES} 里的旗标不声明，
+ * 于是 `strict: true` 下它们会被引擎拒绝 —— 与 {@link checkFlagName} 的结论一致，
+ * 只是兜底的第二道门（第一道在前置扫描，它给的是中文 + 最近邻建议）。
+ *
+ * ⚠️ **`kind: "value"` 一律映射成 `type: "string"`，即值必填**。`parseArgs` 只有
+ * 「必填值」与「不吃值」两态，没有 cac 那种「可选值」（裸写给布尔 `true`）的形态。
+ * 裸写的取值旗标因此由**前置扫描**给中文报错，见 {@link parseArgs} 的 ② ——
+ * 这不是行为变更：`SKILL.md` 早就承诺「写了 `--limit` 却没跟值会被明确拒绝」，
+ * 以前由各命令自己的取值校验兑现，现在提前到解析层，两处都保留。
+ *
+ * ⚠️ **刻意不给 `default`**：给了之后未出现的选项也会进 `values`，
+ * 破坏调用方「`undefined` 即未给出」的判空（`cmdClassics` 的 `--limit` 就靠它取默认值）。
+ */
+const OPTIONS: Readonly<Record<string, { type: "string" | "boolean" }>> = (() => {
+	const table: Record<string, { type: "string" | "boolean" }> = {};
+	for (const group of FLAG_GROUPS) {
+		for (const flag of group.flags) {
+			// ⚠️ 作用域外的旗标**不声明**。这一句同时管两件事：help 的参数段只列本 skill
+			//    认的旗标（{@link renderHelp} 遍历的是同一份 FLAG_NAMES），引擎也只接受它们。
+			if (!FLAG_NAMES.has(flag.name)) continue;
+			const type = flag.kind === "value" ? "string" : "boolean";
+			table[flag.name] = { type };
+			// 前缀旗标同样声明（合盘的 `--a-chart`）；不收前缀的 skill 里 SIDE_PREFIXES
+			// 是空数组，这一步自然什么都不做。
+			for (const prefix of SIDE_PREFIXES) table[prefix + flag.name] = { type };
+		}
+	}
+	return table;
+})();
 
 /**
  * 编辑距离：把 `a` 改成 `b` 至少几步。只用于「拼错了？最接近的是……」这句提示，
@@ -412,6 +457,8 @@ export function suggestFlag(name: string): string | null {
  *
  * @param key - 已剥掉 `--` 的旗标名
  * @param command - 当前命令名；接受前缀的那几条由 {@link FlagScope.prefixedCommands} 声明
+ * @returns 剥掉出生方前缀后的**裸旗标名**（无前缀时即 `key` 本身）。调用方靠它查
+ *   {@link FLAG_BY_NAME}，免得前缀剥法有第二份
  *
  * @remarks
  * 三条规则各挡一种**静默失败**，都是本文件顶部注释里那两类错盘的入口：
@@ -430,7 +477,7 @@ export function suggestFlag(name: string): string | null {
  * 收窄：若只看「本 skill 认 `a-` 前缀」就放行，`selftest --a-chart` 会从「报错」退化成
  * 「静默忽略」—— 既违反「宁可报错，不静默」，又会让合盘 selftest 里那条断言直接变红。
  */
-function checkFlagName(key: string, command: string | undefined): void {
+function checkFlagName(key: string, command: string | undefined): string {
 	const prefix = SIDE_PREFIXES.find(p => key.startsWith(p));
 	if (prefix) {
 		// 前缀只在作用域声明的那几条命令上合法（合盘是 synastry）。判据取自 FLAG_SCOPE，
@@ -442,10 +489,9 @@ function checkFlagName(key: string, command: string | undefined): void {
 					`${command ? `当前命令是 ${command}，` : ""}请改用 --${key.slice(prefix.length)}。`
 			);
 		}
-		checkFlagName(key.slice(prefix.length), command);
-		return;
+		return checkFlagName(key.slice(prefix.length), command);
 	}
-	if (FLAG_NAMES.has(key)) return;
+	if (FLAG_NAMES.has(key)) return key;
 	const hint = suggestFlag(key);
 	throw new Error(
 		`未知参数 --${key}。${hint ? `最接近的是 --${hint}。` : ""}运行 help 查看全部参数。`
@@ -453,8 +499,168 @@ function checkFlagName(key: string, command: string | undefined): void {
 }
 
 /**
- * cac 归一后**可能出现的全部合法键**（camelCase），归一化时充当键名规则的看门人
- * （见 {@link parseArgs}）。
+ * 把引擎抛出的英文错误翻成中文。
+ *
+ * @param err - `parseArgs` 抛出的错误
+ * @returns 中文提示（不含栈）
+ *
+ * @remarks
+ * 前置扫描是第一道门，正常情况下引擎不会抛 —— 但它仍是**必须有的兜底**：
+ * `--json=true`（开关带等号）这类写法前置扫描没有理由拦，而 `strict: true` 下引擎
+ * 会以英文抛错。放一句英文到用户面前不符合本仓口径。
+ *
+ * 判据是 `err.code` 而**不是**去解析英文 message 取旗标名 —— 文案会变，错误码是 API。
+ * 取不到旗标名就不要猜，给一句能指路的话即可。
+ */
+function translateParseError(err: unknown): string {
+	const code = (err as { code?: string }).code;
+	if (code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") return "未知参数。运行 help 查看全部参数。";
+	if (code === "ERR_PARSE_ARGS_INVALID_OPTION_VALUE")
+		return "某个参数的值不合法（取值旗标要写值，开关旗标不能带值）。运行 help 查看全部参数。";
+	return `参数解析失败：${(err as Error).message}`;
+}
+
+/**
+ * 参数解析：`--key value` / `--flag`。
+ *
+ * @param argv - 待解析的参数数组（引导层传入的是 `process.argv.slice(2)` 去掉命令名之后的部分）
+ * @param command - 当前命令名。给了就**校验旗标名**（见 {@link checkFlagName}），
+ *   未知或错位的前缀旗标一律抛错而非静默忽略
+ * @returns 参数表；`--flag` 后无值时存为布尔 `true`
+ *
+ * @remarks
+ * 三步：**前置扫描 → 引擎分词 → 归一**。
+ *
+ * ### ① 前置扫描：中文报错 + 最近邻建议 + 等号式归一
+ *
+ * 引擎在 `strict: true` 下也会拒绝未知选项，但它抛的是**英文且无最近邻建议**（实测），
+ * 而「拼错旗标不报错」正是文件头那类静默错盘的入口 —— 故这道中文门一个字都不能少。
+ * 它**不修改**传入的 `argv`，而是另建一份归一后的数组交给引擎。
+ *
+ * 扫描途中做两件引擎做不到的事：
+ *
+ * - **取值旗标后没有值** → 抛中文错并点名该旗标。引擎会抛「argument missing」的英文；
+ *   而本仓的 `SKILL.md` 早就承诺「写了 `--limit` 却没跟值会被明确拒绝」，见
+ *   {@link OPTIONS} 的 ⚠️。
+ * - **把 `--key value` 改写成 `--key=value`**。这不是洁癖：实测 `--limit -3` 直接喂给
+ *   引擎会被判「argument is ambiguous」而**丢掉值**（`cac` 那边同样丢，只是方式不同），
+ *   于是 `--limit -3` 到不了命令层的中文取值校验，用户看到的是英文错。改写之后
+ *   `-3` 原样到达，由命令层给出「`--limit` 需为正整数」。顺带修掉「以 `-` 开头的值
+ *   拿不到」（`--search -foo`）这个固有缺陷。
+ *
+ * 判据一律取自 {@link FLAG_BY_NAME} 的 `kind`，不按「下一个 token 长什么样」猜。
+ *
+ * ### ② 引擎分词
+ *
+ * `--key=value` / `--key value` / `--flag` / `--` 分隔符 / 重复选项取末值，全部交给
+ * `node:util` 的 `parseArgs`。`allowPositionals: true` **必须显式开** —— 本 skill 的
+ * `classics` 接受位置参数形式的检索词，默认 `false` 会让它抛错。
+ *
+ * ### ③ 归一
+ *
+ * 引擎原样返回 kebab 键，这里用 {@link camelKey} 换成本项目的 camelCase 约定，
+ * 并用 {@link LEGAL_KEYS} 看门。未给出的选项根本不进 `values`（实测），
+ * 故无须过滤 —— 「`undefined` 即未给出」的判空天然成立。
+ *
+ * `command` 省略即退回「照单全收」的宽松解析 —— 供不关心旗标面、只想拿个参数表的
+ * 调用方（如 `test/` 里构造输入的小工具）使用。宽松模式下前置扫描与键名看门人都不生效，
+ * 但键名归一（camelCase）仍在，键名形态与严格模式一致。
+ */
+export function parseArgs(argv: string[], command?: string): CliArgs {
+	// ① 前置扫描：中文报错 + 最近邻建议 + 把 `--key value` 归一成 `--key=value`
+	const normalized: string[] = [...argv];
+	if (command !== undefined) {
+		const out: string[] = [];
+		for (let i = 0; i < argv.length; i++) {
+			const a = argv[i];
+			// `--` 是位置参数分隔符：它之后的一切都原样交给引擎（引擎会全放进 positionals），
+			// 不再当旗标校验，也不做等号式改写。
+			if (a === "--") {
+				out.push(a, ...argv.slice(i + 1));
+				break;
+			}
+			if (!a.startsWith("--")) {
+				// `-` 单独出现是「stdin」的传统写法，不当短选项；其余 `-x` 一律拒绝：
+				// 本项目没有任何短选项，而引擎会把 `-x` 报成「未知选项」的英文。
+				if (a.startsWith("-") && a !== "-")
+					throw new Error(
+						`未知参数 ${a}。本项目只有 --xxx 长旗标形式。运行 help 查看全部参数。`
+					);
+				out.push(a);
+				continue;
+			}
+			// `--key=value` 等号式：旗标名只到 `=` 为止，值在同一 token 内
+			const eq = a.indexOf("=");
+			const key = eq < 0 ? a.slice(2) : a.slice(2, eq);
+			const bare = checkFlagName(key, command);
+			if (eq >= 0) {
+				out.push(a);
+				continue;
+			}
+			// 开关不吃值，下一个 token 是它自己的事（可能正是位置参数）。
+			const spec = FLAG_BY_NAME.get(bare);
+			if (spec?.kind !== "value") {
+				out.push(a);
+				continue;
+			}
+			const next: string | undefined = argv[i + 1];
+			// 值不会以 `--` 开头（`--limit --json` 里的 `--json` 是另一个旗标，不是值）。
+			// `-3` 这类以单 `-` 开头的**是**合法值，故只挡双横线。
+			if (next === undefined || next.startsWith("--"))
+				throw new Error(
+					`--${key} 需要一个值${spec.value ? `（如 --${key} ${spec.value}）` : ""}。` +
+						`运行 help 查看全部参数。`
+				);
+			out.push(`${a}=${next}`);
+			i++;
+		}
+		normalized.length = 0;
+		normalized.push(...out);
+	}
+
+	// ② 分词交给引擎。`args` 直接给 argv —— 不像 cac 那样需要补 `[node, 脚本名]` 的假前缀。
+	let values: Readonly<Record<string, string | boolean | (string | boolean)[] | undefined>>;
+	let positionals: readonly string[];
+	try {
+		const parsed = parseNodeArgs({
+			args: normalized,
+			options: OPTIONS,
+			allowPositionals: true,
+			strict: true,
+		});
+		values = parsed.values;
+		positionals = parsed.positionals;
+	} catch (err) {
+		throw new Error(translateParseError(err));
+	}
+
+	// ③ 归一：把引擎的形状搬回 CliArgs 的形状
+	const args: CliArgs = { _: [...positionals] };
+	for (const [key, raw] of Object.entries(values)) {
+		// 未给出的选项根本不进 values（实测）；`undefined` 分支是类型上的可能性，不是运行时的。
+		if (raw === undefined) continue;
+		// 本项目没有任何旗标声明 `multiple`，故数组分支不可达。真出现了说明 OPTIONS 被人
+		// 加了 `multiple` —— 那是静默丢值，宁可在这里炸掉。
+		if (Array.isArray(raw))
+			throw new Error(`参数 --${key} 被解析成多个值（声明表不该有 multiple）。`);
+		const camel = camelKey(key);
+		// 看门人：`LEGAL_KEYS` 由 camelKey 从声明表派生。`strict: true` 下引擎返回的键
+		// 必然是声明过的，但 kebab→camel 的换算仍是本文件自己的约定 —— 换算写错
+		// （规则变了、键名对不上）在这里抛错，否则 `birth-info.ts` 会读不到值、
+		// 静默落回默认经度排出错盘，正是文件头那类失败。
+		if (command !== undefined && !LEGAL_KEYS.has(camel))
+			throw new Error(
+				`参数 --${key} 归一后得到键名 \`${camel}\`，不在声明表里。` +
+					`若键名约定有变，需同步 camelKey。运行 help 查看全部参数。`
+			);
+		args[camel] = raw;
+	}
+	return args;
+}
+
+/**
+ * 引擎归一后**可能出现的全部合法键**（camelCase），归一化时充当键名规则的看门人
+ * （见 {@link parseArgs} 的 ③）。
  *
  * @remarks
  * 两部分：无前缀的键，以及 {@link SIDE_PREFIXES} 声明的出生方前缀键（`--a-city` → `aCity`）。
@@ -467,98 +673,92 @@ const LEGAL_KEYS: ReadonlySet<string> = new Set([
 	...SIDE_PREFIXES.flatMap(p => [...FLAG_NAMES].map(n => camelKey(p + n))),
 ]);
 
+// ── HELP 渲染：引擎不提供帮助设施，故由本文件从声明表渲染 ──────────
+
 /**
- * 把 cac 给出的值归一成 {@link CliArgs} 的两种形态。
+ * 字符串在等宽终端里占的列数：CJK / 全角字符算 2 列，其余算 1 列。
  *
  * @remarks
- * cac 的值有三种形态，与原手写解析器都不同，逐个搬回来：
- * - **数组**：同一选项重复给出时 cac 会累积。取**末值**，与原实现的「后值覆盖」一致。
- * - **数字**：cac 会把纯数字转成 `number`。一律 `String()` 还原 —— 本项目所有取值方
- *   （`buildBirthInfo` 的 `g()`）都按字符串走，给个数字会让 `=== true` 之类的判断错位。
- *   ⚠️ 这一步**不可逆**：`--search 007` 到不了这里就已经是数字 `7`，前导零丢了。
- * - **布尔** `true`：开关无值时的形态，原样保留（调用方判空时要考虑它）。
+ * 只为 help 的对齐服务。用 `String.length` 会在含中文的旗标名
+ * （`--search <机月同梁>`）上把描述列推歪 —— 那是**看得见**的排版缺陷，
+ * 故值得这几行。区间取常见的几段（CJK 部首 / 假名 / 统一表意文字 / 全角形式 /
+ * 谚文），不求 Unicode 宽度表的完整实现：本文件的旗标名与值域占位只可能出现这些字符。
  */
-function normalizeValue(raw: unknown): string | boolean {
-	if (Array.isArray(raw)) return String(raw[raw.length - 1]);
-	if (typeof raw === "boolean") return raw;
-	return String(raw);
+function displayWidth(s: string): number {
+	let width = 0;
+	for (const ch of s) {
+		const c = ch.codePointAt(0) ?? 0;
+		const wide =
+			(c >= 0x1100 && c <= 0x115f) ||
+			(c >= 0x2e80 && c <= 0xa4cf) ||
+			(c >= 0xac00 && c <= 0xd7a3) ||
+			(c >= 0xf900 && c <= 0xfaff) ||
+			(c >= 0xfe30 && c <= 0xfe6f) ||
+			(c >= 0xff00 && c <= 0xff60) ||
+			(c >= 0xffe0 && c <= 0xffe6);
+		width += wide ? 2 : 1;
+	}
+	return width;
 }
 
 /**
- * 参数解析：`--key value` / `--flag`。
+ * 渲染整份 HELP 文本（`Usage:` / `Commands:` / `Options:` 三段 + 调用方给的追加段）。
  *
- * @param argv - 待解析的参数数组（引导层传入的是 `process.argv.slice(2)` 去掉命令名之后的部分）
- * @param command - 当前命令名。给了就**校验旗标名**（见 {@link checkFlagName}），
- *   未知或错位的前缀旗标一律抛错而非静默忽略
- * @returns 参数表；`--flag` 后无值时存为布尔 `true`
+ * @param opts - 首行说明、命令表（`COMMAND_DESC`）、追加段
+ * @returns 已排好版的完整帮助文本（不含尾随换行）
  *
  * @remarks
- * 三步：**前置校验 → cac 分词 → 归一**。分词（`--key value` / `--flag` / `--` 分隔符 /
- * 重复选项归并 / `--key=value` 等号式）全部交给 cac，本函数只负责它不管的那两件事。
+ * ⚠️ **引擎不提供任何 help 设施**（`cac` 有 `cli.help` / `cli.outputHelp`，
+ * `parseArgs` 没有对应物），故版式由本仓负责。这换来一件好事：整份 help 是
+ * {@link FLAG_GROUPS} 与 `COMMAND_DESC` 的**纯函数** —— 参数段与命令段各只有一个真相，
+ * 且都自动继承作用域收窄（参数段只遍历 {@link FLAG_NAMES}）。
  *
- * ⚠️ **校验必须在 cac 之前自己做**：cac 对未注册的选项是**静默收下**的（实测连
- * `run: false` 也不校验），而「拼错旗标不报错」正是文件头那类静默错盘的入口。
- * 扫描会连带吃掉 `--key value` 里的 value（判据同原来：值不会以 `--` 开头），
- * 免得把值误当成旗标名；等号式 `--key=value` 的值在同一 token 内，另行切分。
+ * 命令表**作为入参**传入而不是 import 进来：`commands.ts` 依赖本文件，反向 import 会成环。
  *
- * ⚠️ 同一参数重复给出时取**末值**（cac 给数组，{@link normalizeValue} 取最后一项），
- * 与原实现的「后值覆盖」一致；不带值的开关存布尔 `true`。两者都是调用方判空时
- * 需要考虑的形态。
- *
- * `command` 省略即退回「照单全收」的宽松解析 —— 供不关心旗标面、只想拿个参数表的
- * 调用方（如 `test/` 里构造输入的小工具）使用。宽松模式下前置校验与键名看门人都不生效，
- * 但 cac 的归一（camelCase 键、数字转字符串、重复取末值）仍在，键名形态与严格模式一致。
+ * `-h, --help` 那一行由本函数统一给出 —— 每个 skill 的引导层都在解析之前拦下
+ * `-h` / `--help`（它们到不了 {@link parseArgs}），故这行与各 skill 的命令集无关。
  */
-export function parseArgs(argv: string[], command?: string): CliArgs {
-	// ① 前置校验：cac 静默收下未知选项，只有这里能拦住拼错
-	if (command !== undefined) {
-		for (let i = 0; i < argv.length; i++) {
-			const a = argv[i];
-			if (a.startsWith("--")) {
-				// `--key=value` 等号式：旗标名只到 `=` 为止，值在同一 token 内
-				const eq = a.indexOf("=");
-				const key = eq < 0 ? a.slice(2) : a.slice(2, eq);
-				checkFlagName(key, command);
-				if (eq >= 0) continue;
-				// 与 cac 一样吃掉「--key value」里的 value（判据同原解析器：值不会以 `--` 开头）。
-				// ⚠️ `-3` 这类也在此被吃掉，但它到了 cac 手里会被当成短选项，取值反而丢掉
-				//（mri 的固有行为，注册方式规避不了）。取值丢失由各命令自己的取值校验兜住
-				//（如 `cmdClassics` 把布尔 `true` 判为非法），残影键则在归一化时滤掉。
-				const next: string | undefined = argv[i + 1];
-				if (next !== undefined && !next.startsWith("--")) i++;
-			}
-			// `-` 单独出现是「stdin」的传统写法，不当短选项；其余 `-x` 一律拒绝：
-			// cac 会把它收成 `options.x` 这种凭空多出来的键，而本项目没有任何短选项。
-			else if (a.startsWith("-") && a !== "-")
-				throw new Error(
-					`未知参数 ${a}。本项目只有 --xxx 长旗标形式。运行 help 查看全部参数。`
-				);
-		}
+export function renderHelp(opts: {
+	head: string;
+	commands: Readonly<Record<string, string>>;
+	notes?: readonly { title: string; body: string }[];
+}): string {
+	const lines: string[] = [opts.head, "", "Usage:", "  $ purple-star <command> [options]"];
+	const names = Object.keys(opts.commands);
+
+	if (names.length) {
+		lines.push("", "Commands:");
+		const w = Math.max(...names.map(displayWidth)) + 2;
+		for (const n of names) lines.push(`  ${n.padEnd(w)}${opts.commands[n]}`);
+		lines.push(
+			"",
+			"For more info, run any command with the `--help` flag:",
+			...names.map(n => `  $ purple-star ${n} --help`)
+		);
 	}
 
-	// ② 分词交给 cac：首两元素是它期望的 [node, 脚本名]（它内部 argv.slice(2)）
-	const parsed = cli.parse(["node", "purple-star", ...argv], { run: false });
+	// 参数段：只列本 skill 认的旗标（作用域收窄），并按声明表的分组显示标题。
+	// 先算出描述列的绝对位置，再让分组内的缩进与 `-h, --help` 那一行对齐。
+	const flagLines = FLAG_GROUPS.map(group => ({
+		title: group.title,
+		flags: group.flags.filter(f => FLAG_NAMES.has(f.name)),
+	})).filter(g => g.flags.length);
+	const label = (f: FlagSpec) => (f.kind === "value" ? `--${f.name} <${f.value ?? "值"}>` : `--${f.name}`);
+	const HELP_OPTION = "-h, --help";
+	const column =
+		4 + Math.max(displayWidth(HELP_OPTION), ...flagLines.flatMap(g => g.flags.map(f => displayWidth(label(f))))) + 2;
+	const row = (indent: number, name: string, desc: string) =>
+		" ".repeat(indent) + name + " ".repeat(Math.max(1, column - indent - displayWidth(name))) + desc;
 
-	// ③ 归一：把 cac 的形状搬回 CliArgs 的形状
-	const args: CliArgs = { _: [...parsed.args] };
-	for (const [key, raw] of Object.entries(parsed.options)) {
-		// cac 恒带一个 `"--"` 键（`--` 分隔符之后的内容；没写 `--` 时是空数组）。
-		// 真写了 `--` 的输入在前置校验里已被 `checkFlagName("")` 挡下，此处只需跳过它。
-		if (key === "--") continue;
-		// 短选项残影：cac/mri 把 `--limit -3` 的 `-3` 收成键 `3`（`-abc` 则拆成 a/b/c）。
-		// 本项目既无短选项也无单字符旗标（见 {@link FLAG_GROUPS}），故单字符键必然是这类残影。
-		if (key.length === 1) continue;
-		// 看门人：`LEGAL_KEYS` 由 camelKey 从声明表派生，cac 的归一结果若与它不符
-		// （规则变了、键名对不上），在这里抛错 —— 否则 `birth-info.ts` 会读不到值、
-		// 静默落回默认经度排出错盘，正是文件头那类失败。它也顺手挡下短选项造出的键。
-		if (command !== undefined && !LEGAL_KEYS.has(key))
-			throw new Error(
-				`参数 --${key} 的键名不在声明表里（cac 归一后为 \`${key}\`）。` +
-					`若 cac 的键名规则有变，需同步 camelKey。运行 help 查看全部参数。`
-			);
-		args[key] = normalizeValue(raw);
+	lines.push("", "Options:");
+	for (const g of flagLines) {
+		lines.push(`  ${g.title}`);
+		for (const f of g.flags) lines.push(row(4, label(f), FLAG_SCOPE.descOverrides?.[f.name] ?? f.desc));
 	}
-	return args;
+	lines.push(row(2, HELP_OPTION, "Display this message"));
+
+	for (const note of opts.notes ?? []) lines.push("", `${note.title}:`, note.body);
+	return lines.join("\n");
 }
 
 /**

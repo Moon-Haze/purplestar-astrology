@@ -6,9 +6,10 @@
  *
  * ## 这是唯一不排盘的 skill
  *
- * 内核只有 `classics/`（三部古籍的原文数据 + 全文检索），**零排盘内核、零重依赖** ——
- * 只装 `cac` 即可运行，不需要 `iztro` / `lunar-typescript`。合盘与排盘解读在本仓的
- * 另两个 skill 里（`purplestar-synastry` / `purplestar-astrology`）。
+ * 内核只有 `classics/`（三部古籍的原文数据 + 全文检索），**零排盘内核、零依赖** ——
+ * 参数解析用的是 Node 内置的 `node:util` 的 `parseArgs`，故本 skill 连 `npm install`
+ * 都不需要，拷进 `~/.claude/skills/` 即可运行。合盘与排盘解读在本仓的另两个 skill 里
+ * （`purplestar-synastry` / `purplestar-astrology`）。
  *
  * 依赖 Node ≥ 22.15（module.registerHooks + 原生 TS 类型擦除）。
  * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
@@ -40,8 +41,14 @@ import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hook
 //    写 `@/` 会让 `npm run typecheck` 报「找不到模块」。相对路径在两侧都对：运行期由钩子的
 //    `.` 分支按**本文件**所在目录补 `.ts`，tsc 也按文件位置解析。
 type ClassicsModule = typeof import("./classics/index");
-type ArgsModule = typeof import("@/cli/args");
-type CommandsModule = typeof import("@/cli/commands");
+// ⚠️ `cli/*` 同样走**相对路径**，不用 `@/` —— 2026-09-27 换引擎后本 skill 的 `cli/args.ts`
+//    与源那份**不再相同**（源仍是 `cac` 版），而 `@/` 在 tsc 眼里只映到**源**的内核根，
+//    于是 `typeof import("@/cli/args")` 描述的是**另一个文件**：源那边没有 `renderHelp`、
+//    却有本 skill 已删掉的 `cli`。类型写对了、指向错了，`npm run typecheck` 会报属性不存在。
+//    相对路径在两侧都对：运行期由钩子的 `.` 分支按 boot-hooks.ts 所在目录补 `.ts`（它与本
+//    文件同目录），tsc 也按文件位置解析。
+type ArgsModule = typeof import("./cli/args");
+type CommandsModule = typeof import("./cli/commands");
 
 /** 本脚本所在目录，即 `<skill 根>/scripts`（内核根的第一个候选，见 {@link pickRoot}） */
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -120,8 +127,8 @@ const load = makeLoader(ROOT, ROOT_LABEL, f => {
 const { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } =
 	await load<ClassicsModule>("./classics/index");
 
-const { parseArgs, cli } = await load<ArgsModule>("@/cli/args");
-const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
+const { parseArgs, renderHelp } = await load<ArgsModule>("./cli/args");
+const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("./cli/commands");
 
 // ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默给出空结果 ──
 /**
@@ -163,8 +170,8 @@ const REQUIRED_EXPORTS = [
  * 常用调用示例，作为 help 的追加段。
  *
  * @remarks
- * ⚠️ 这段仍在手写（cac 渲染不到），改参数名时要一并改 —— `selftest` 有一条断言扫
- * `SKILL.md` 里的旗标写法，示例里的旗标因此也落在它的覆盖范围内。
+ * ⚠️ 这段是**手写的领域知识**（`renderHelp` 渲染不到它），改参数名时要一并改 ——
+ * `selftest` 有一条断言扫 `SKILL.md` 里的旗标写法，示例里的旗标因此也落在它的覆盖范围内。
  */
 const HELP_EXAMPLES = `  # 检索一部古籍里的原文（按段落匹配，不分词）
   node scripts/purple-star.ts classics --search 机月同梁
@@ -179,25 +186,37 @@ const HELP_EXAMPLES = `  # 检索一部古籍里的原文（按段落匹配，�
   node scripts/purple-star.ts selftest`;
 
 /**
- * 关于「参数段里为什么有一堆用不上的旗标」的说明，作为 help 的追加段。
+ * 关于「本 skill 认哪些旗标」的说明，作为 help 的追加段。
  *
  * @remarks
- * `cli/args.ts` 是与另两个 skill **逐字节一致**的副本（见 `CLAUDE.md` 的「副本边界与同步流程」），
- * 它声明的是各 skill 的**全集**旗标。裁成按 skill 的旗标表会让它失去逐字节守卫，换来的
- * 只是 help 里少几行 —— 故保留全集，在这里说明白。
+ * ⚠️ 这段曾经写的是「上面参数段里的其余旗标（`--date` / `--gender` / `--city` 等）
+ * 来自各 skill 共享的参数表，传了不会生效，**也不会报错**」—— 那句在旗标作用域收窄
+ * （2026-09-27）之后就已经是错的，只是当时没人回头改：作用域外的旗标现在会**报错**，
+ * 实跑 `classics --date 1990-05-15` 得到的是「未知参数 --date」、退出码 1。
+ * 换成自渲染 help 时一并订正。
  */
-const HELP_FLAGS_NOTE = `本 skill 只认 --search 与 --limit；上面参数段里的其余旗标（--date / --gender /
---city 等）来自各 skill 共享的参数表，传了不会生效，也不会报错。`;
+const HELP_FLAGS_NOTE = `本 skill **不排盘**：内核只有三部古籍的原文，故只认 --search 与 --limit。
+其余旗标（--date / --gender / --city 等）在这里既不显示也不接受 —— 传了会报「未知参数」，
+而不是静默忽略。要排盘用 purplestar-astrology，要合盘用 purplestar-synastry。`;
 
-// 命令注册进 cac **只为让 help 列出命令**：分发仍由下面的 main() 查 COMMANDS 表 ——
-// cac 的 action 模型与「cmdXxx 一律**返回**字符串、console.log 只在 main() 一处发生」不合。
-for (const [name, desc] of Object.entries(COMMAND_DESC)) cli.command(name, desc);
-cli.help(sections => [
-	{ body: "紫微斗数古籍原文检索 —— 三部古籍全文，零排盘内核" },
-	...sections,
-	{ title: "说明", body: HELP_FLAGS_NOTE },
-	{ title: "示例", body: HELP_EXAMPLES },
-]);
+/**
+ * 整份帮助文本。
+ *
+ * @remarks
+ * 由 `cli/args.ts` 的 `renderHelp` 从**声明表**渲染（参数段）+ `COMMAND_DESC` 渲染
+ * （命令段）+ 本文件的两段领域知识拼成。故 help 与 CLI 的实际行为同源，不会各说各话。
+ *
+ * ⚠️ 命令表**作为入参**交给 `renderHelp`，而不是让它 import `commands.ts` ——
+ * 后者依赖 `args.ts`，反向 import 会成环。
+ */
+const HELP_TEXT = renderHelp({
+	head: "紫微斗数古籍原文检索 —— 三部古籍全文，零排盘内核",
+	commands: COMMAND_DESC,
+	notes: [
+		{ title: "说明", body: HELP_FLAGS_NOTE },
+		{ title: "示例", body: HELP_EXAMPLES },
+	],
+});
 
 /**
  * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
@@ -205,9 +224,13 @@ cli.help(sections => [
  * @remarks
  * `console.log` 只在这一处发生 —— 各 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
  *
- * 无参数、`help`、`--help`、`-h` 都走 `cli.outputHelp()`；未知命令与命令内部抛出的错误都以
+ * 无参数、`help`、`--help`、`-h` 都打印 {@link HELP_TEXT}；未知命令与命令内部抛出的错误都以
  * 非零码退出（只打印 `err.message`，不打印栈）。传给命令的第二个参数是 `CliContext`
  * （内核根及其来源），目前只有 `selftest` 用得上。
+ *
+ * ⚠️ 这一段的判定必须留在 `parseArgs` **之前**：`--help` / `-h` 不是本 skill 声明的旗标，
+ * 交给解析器只会得到一句「未知参数」。留在前面还有个副作用 —— `--help` 出现在任何位置
+ * （含 `classics --search x --help`）都会走帮助，这是刻意保留的宽松。
  *
  * ⚠️ 命令名直接来自 `argv`，故查表必然可能未命中 —— `COMMANDS` 的值类型显式带 `| undefined`。
  */
@@ -215,7 +238,7 @@ function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];
 	if (!cmd || cmd === "help" || argv.includes("--help") || argv.includes("-h")) {
-		cli.outputHelp();
+		console.log(HELP_TEXT);
 		return;
 	}
 	const fn = COMMANDS[cmd];

@@ -4,7 +4,7 @@
  *
  * 本文件只做四件事：**定位内核根 → 注册 TS 解析钩子 → 启动期内核自检 → 把命令分发出去**。
  *
- * ## 本 skill 的切面：零排盘引擎
+ * ## 本 skill 的切面：零排盘引擎、零依赖
  *
  * ⚠️ **本 skill 不排盘**（2026-09-27 起）。命盘由排盘解读 skill（`purplestar-astrology`）
  * 产出，本 skill 读它 `analyze --json` 的输出做合盘。故这里既没有 `ziwei/algorithm.ts`，
@@ -17,9 +17,13 @@
  *   · **引文守卫** —— `ziwei/citation-guard.ts` ＋ 它带出的 `annotations.ts`，
  *     扫 `synastry-knowledge.ts` 里那些「倪师说」引文有没有被强归属
  *
- * ⚠️ **逐字节副本仍归源**：`boot-hooks.ts` / `cli/args.ts` 改源再 `npm run sync:skills`。
- * 就地改本目录的副本会被同步器覆盖，且 `test/repo.test.ts` 的层 6 会先变红。
- * 切片清单见 `<仓库根>/tools/skills.ts`。
+ * ⚠️ **依赖已清零**：参数解析用的是 Node 内置的 `node:util` 的 `parseArgs`，故本 skill
+ * 连 `npm install` 都不需要，拷进 `~/.claude/skills/` 即可运行。
+ *
+ * ⚠️ **仍在同步清单里的只剩 `boot-hooks.ts`**：改源再 `npm run sync:skills`，就地改本目录
+ * 的副本会被同步器覆盖，且 `test/repo.test.ts` 的层 6 会先变红。
+ * 而 `cli/args.ts` **不再是源那边的副本** —— 两个派生各存一份、两份逐字节相同，以
+ * `purplestar-classics` 那份为准（层 6 有断言钉着）。切片清单见 `<仓库根>/tools/skills.ts`。
  *
  * 依赖 Node ≥ 22.15（module.registerHooks + 原生 TS 类型擦除）。
  * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
@@ -51,8 +55,14 @@ import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hook
 //    skill），写 `@/` 会让 `npm run typecheck` 报「找不到模块」。相对路径在两侧都对：
 //    运行期由钩子的 `.` 分支按**本文件**所在目录补 `.ts`，tsc 也按文件位置解析。
 type synastryModule = typeof import("./ziwei/synastry-knowledge");
-type ArgsModule = typeof import("@/cli/args");
-type CommandsModule = typeof import("@/cli/commands");
+// ⚠️ `cli/*` 同样走**相对路径**，不用 `@/` —— 2026-09-27 换引擎后本 skill 的 `cli/args.ts`
+//    与源那份**不再相同**（源仍是 `cac` 版），而 `@/` 在 tsc 眼里只映到**源**的内核根，
+//    于是 `typeof import("@/cli/args")` 描述的是**另一个文件**：源那边没有 `renderHelp`、
+//    却有本 skill 已删掉的 `cli`。类型写对了、指向错了，`npm run typecheck` 会报属性不存在。
+//    相对路径在两侧都对：运行期由钩子的 `.` 分支按 boot-hooks.ts 所在目录补 `.ts`（它与本
+//    文件同目录），tsc 也按文件位置解析。
+type ArgsModule = typeof import("./cli/args");
+type CommandsModule = typeof import("./cli/commands");
 
 /** 本脚本所在目录，即 `<skill 根>/scripts`（内核根的第一个候选，见 {@link pickRoot}） */
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -137,8 +147,8 @@ const { STAR_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } = await load<synastryModule>(
 	"./ziwei/synastry-knowledge"
 );
 
-const { parseArgs, cli } = await load<ArgsModule>("@/cli/args");
-const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
+const { parseArgs, renderHelp } = await load<ArgsModule>("./cli/args");
+const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("./cli/commands");
 
 // ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默给出空结果 ──
 /**
@@ -179,7 +189,8 @@ const REQUIRED_EXPORTS = [
  * 常用调用示例，作为 help 的追加段。
  *
  * @remarks
- * ⚠️ 这段仍在手写（cac 渲染不到），改参数名时要一并改 —— 且**没有断言盯着它**：
+ * ⚠️ 这段是**手写的领域知识**（`renderHelp` 渲染不到它），改参数名时要一并改 ——
+ * 且**没有断言盯着它**：
  * `selftest` 那条旗标断言扫的是 `SKILL.md` 的正文，本文件的示例不在它的覆盖范围内。
  * 示例里的排盘命令属于 `purplestar-astrology`，那几个参数以那个 skill 为准，本 skill
  * 不复述它的参数面（复述就是第二份需要手工同步的真相）。
@@ -205,8 +216,9 @@ const HELP_EXAMPLES = `  # ① 先在 purplestar-astrology skill 里各排一张
  *
  * @remarks
  * 从前这里写的是「参数段里有一堆用不上的旗标」—— 自 2026-09-27 收窄作用域后
- * **不再成立**：`cli/flag-scope.ts` 只认 `--chart` / `--json`，cac 就只注册这两个，
- * help 的参数段里已经没有别的旗标了。那段说明若留着，会把用户引向一个不存在的问题。
+ * **不再成立**：`cli/flag-scope.ts` 只认 `--chart` / `--json`，help 的参数段只遍历
+ * 本 skill 认的那几个（`args.ts` 的 `renderHelp` 按 `FLAG_NAMES` 过滤），
+ * 参数段里已经没有别的旗标了。那段说明若留着，会把用户引向一个不存在的问题。
  *
  * 现在要说清的是另一件事：`--chart` 是本 skill 独有的一维，**必须写成两份并各加前缀**
  * （`--a-chart` / `--b-chart`），而 `analyze --json` 要到另一个 skill 里去跑。
@@ -216,15 +228,24 @@ const HELP_FLAGS_NOTE = `本 skill **不排盘**：命盘由 purplestar-astrolog
   --a-chart /tmp/a.json --b-chart /tmp/b.json
 两个文件都必须来自 analyze（不是 chart）—— 后者没有四化落宫与排盘依据。`;
 
-// 命令注册进 cac **只为让 help 列出命令**：分发仍由下面的 main() 查 COMMANDS 表 ——
-// cac 的 action 模型与「cmdXxx 一律**返回**字符串、console.log 只在 main() 一处发生」不合。
-for (const [name, desc] of Object.entries(COMMAND_DESC)) cli.command(name, desc);
-cli.help(sections => [
-	{ body: "紫微斗数合盘与合婚 —— 双宫联参（夫妻宫 × 福德宫）" },
-	...sections,
-	{ title: "说明", body: HELP_FLAGS_NOTE },
-	{ title: "示例", body: HELP_EXAMPLES },
-]);
+/**
+ * 整份帮助文本。
+ *
+ * @remarks
+ * 由 `cli/args.ts` 的 `renderHelp` 从**声明表**渲染（参数段）+ `COMMAND_DESC` 渲染
+ * （命令段）+ 本文件的两段领域知识拼成。故 help 与 CLI 的实际行为同源，不会各说各话。
+ *
+ * ⚠️ 命令表**作为入参**交给 `renderHelp`，而不是让它 import `commands.ts` ——
+ * 后者依赖 `args.ts`，反向 import 会成环。
+ */
+const HELP_TEXT = renderHelp({
+	head: "紫微斗数合盘与合婚 —— 双宫联参（夫妻宫 × 福德宫）",
+	commands: COMMAND_DESC,
+	notes: [
+		{ title: "说明", body: HELP_FLAGS_NOTE },
+		{ title: "示例", body: HELP_EXAMPLES },
+	],
+});
 
 /**
  * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
@@ -232,9 +253,13 @@ cli.help(sections => [
  * @remarks
  * `console.log` 只在这一处发生 —— 各 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
  *
- * 无参数、`help`、`--help`、`-h` 都走 `cli.outputHelp()`；未知命令与命令内部抛出的错误都以
+ * 无参数、`help`、`--help`、`-h` 都打印 {@link HELP_TEXT}；未知命令与命令内部抛出的错误都以
  * 非零码退出（只打印 `err.message`，不打印栈）。传给命令的第二个参数是 `CliContext`
  * （内核根及其来源），目前只有 `selftest` 用得上。
+ *
+ * ⚠️ 这一段的判定必须留在 `parseArgs` **之前**：`--help` / `-h` 不是本 skill 声明的旗标，
+ * 交给解析器只会得到一句「未知参数」。留在前面还有个副作用 —— `--help` 出现在任何位置
+ * （含 `synastry --a-chart x --help`）都会走帮助，这是刻意保留的宽松。
  *
  * ⚠️ 命令名直接来自 `argv`，故查表必然可能未命中 —— `COMMANDS` 的值类型显式带 `| undefined`。
  */
@@ -242,7 +267,7 @@ function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];
 	if (!cmd || cmd === "help" || argv.includes("--help") || argv.includes("-h")) {
-		cli.outputHelp();
+		console.log(HELP_TEXT);
 		return;
 	}
 	const fn = COMMANDS[cmd];

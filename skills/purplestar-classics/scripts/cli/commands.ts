@@ -49,9 +49,15 @@ function cmdClassics(args: CliArgs) {
 	// 非法上限必须在这里拦下：内核把 NaN / <1 一律归成空结果，若不区分就会掉进
 	// 下面那条「未找到」——明明有命中，只是把上限设成了 0 或写成了非数字。
 	//
-	// `typeof ... === "boolean"` 挡的是「给了 --limit 却没跟值」：此时 parseArgs 存的是
-	// 布尔 `true`，`Number(true)` 会得到 1 而蒙混过关（`--limit -3` 也落在这里 ——
-	// 负值会被 cac 当短选项吃掉，取值校验是它唯一的兜底）。
+	// ⚠️ 换解析引擎之后，这条校验的触发路径变了：`--limit -3` 不再被解析层丢掉，
+	// 而是**原样到达**（前置扫描把它归一成 `--limit=-3`，见 `args.ts` 的 `parseArgs` ②），
+	// 在这里被 `limit < 1` 拦下 —— 报错里因此带着 `--limit`，正是 `test/cli.test.ts`
+	// 要求的那条（它拿 `0` / `-3` / `abc` 三个输入断言这点）。
+	//
+	// `typeof ... === "boolean"` 那一支如今是**第二道防线**：裸写 `--limit`（没跟值）
+	// 已被前置扫描在解析层拒掉（`SKILL.md` 承诺过「会被明确拒绝」），走不到这里。
+	// 留着它是为了宽松模式的调用方（`parseArgs` 省略 command 时照单全收）——
+	// 那时 `Number(true)` 会得到 1 而蒙混过关。
 	if (typeof args.limit === "boolean" || Number.isNaN(limit) || limit < 1)
 		return `--limit 需为正整数，实得 ${String(args.limit)}。`;
 	const hits = searchClassics(q, limit);
