@@ -70,11 +70,12 @@ import {
 	SHA_HARD,
 	SHA_KONG,
 	CHANG_QU,
-	BRANCH_NAMES,
 	PATTERN_VERDICTS,
 	PATTERN_ASIDES,
 	fillVerdict,
 } from "./patterns-defs";
+
+import { BRANCHES } from "./constants";
 
 // 静态层（结构体 / 识别器入参 / 常量 / 名字裁决表 / 判词表）已拆到 `patterns-defs.ts`；
 // 本模块只留函数。
@@ -539,7 +540,9 @@ function detectHuoTanLingTan({ chart }: DetectContext, patterns: Pattern[]) {
 		level: breaking.length ? 75 : 90,
 		palaces: [tan.name],
 		conditions: { required, bonus, breaking },
-		...fillVerdict(PATTERN_VERDICTS[name], { 破格: breaking.length ? "本盘破格条件已触发，发力打折。" : "" }),
+		...fillVerdict(PATTERN_VERDICTS[name], {
+			破格: breaking.length ? "本盘破格条件已触发，发力打折。" : "",
+		}),
 	});
 }
 
@@ -616,7 +619,9 @@ function detectJiYueTongLiang({ chart, ming }: DetectContext, patterns: Pattern[
 	// 也就说那 55 张三星盘本来就是 analyze 独有的降级覆盖，topic 从不报它们、无矛盾可消；
 	// 照 topic 的域收窄只会让这 55 盘彻底没有机月同梁。此处取并集（26 + 55 = 81 盘）。
 	const full = has.length === 4;
-	const required = [`${has.join("、")}会入命宫三方四正${full ? "（四星齐）" : `（四星中 ${has.length} 星）`}`];
+	const required = [
+		`${has.join("、")}会入命宫三方四正${full ? "（四星齐）" : `（四星中 ${has.length} 星）`}`,
+	];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (sanFangSet.has("文昌") || sanFangSet.has("文曲")) bonus.push("再会昌曲");
@@ -633,7 +638,9 @@ function detectJiYueTongLiang({ chart, ming }: DetectContext, patterns: Pattern[
 			.filter(p => has.some(s => getMajorStarNames(p).includes(s)))
 			.map(p => p.name),
 		conditions: { required, bonus, breaking },
-		...fillVerdict(PATTERN_VERDICTS[full ? "机月同梁·满格" : "机月同梁·不全格"], { 星: has.join("、") }),
+		...fillVerdict(PATTERN_VERDICTS[full ? "机月同梁·满格" : "机月同梁·不全格"], {
+			星: has.join("、"),
+		}),
 	});
 }
 
@@ -653,8 +660,8 @@ function detectLianXiang({ chart }: DetectContext, patterns: Pattern[]) {
 	if (hasShaInPalace(lian, ["擎羊"])) breaking.push("廉相宫坐擎羊（廉杀羊倾向）");
 	if (getStarSiHua(lian, "廉贞") === "忌") breaking.push("廉贞化忌");
 
-		// 名字取古籍用语：全集·卷四「廉贞与天相同宫为『廉相格』」。全称「廉贞天相格」
-		// 古籍零见，2026-09-27 按「古文优先」裁决为简称（见 GEJU_NAME_ALIASES）。
+	// 名字取古籍用语：全集·卷四「廉贞与天相同宫为『廉相格』」。全称「廉贞天相格」
+	// 古籍零见，2026-09-27 按「古文优先」裁决为简称（见 GEJU_NAME_ALIASES）。
 	const name = "廉相格";
 	patterns.push({
 		name,
@@ -721,7 +728,7 @@ function detectRiYueTongGong({ chart }: DetectContext, patterns: Pattern[]) {
 	if (sun.branch !== 1 && sun.branch !== 7) return; // 必须丑(1) 或 未(7)
 
 	const inMing = sun.branch === chart.mingGongBranch;
-	const required = [`太阳太阴同入${BRANCH_NAMES[sun.branch]}宫`];
+	const required = [`太阳太阴同入${BRANCHES[sun.branch]}宫`];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (sun.branch === 7) bonus.push("未宫日月同辉（古书云未宫日月双美）");
@@ -778,7 +785,7 @@ function detectJuRiTongGong({ chart }: DetectContext, patterns: Pattern[]) {
 	if (ju.branch !== 2 && ju.branch !== 8) return; // 必须寅(2) 或 申(8)
 
 	const inMing = ju.branch === chart.mingGongBranch;
-	const required = [`巨门太阳同入${BRANCH_NAMES[ju.branch]}宫`];
+	const required = [`巨门太阳同入${BRANCHES[ju.branch]}宫`];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (ju.branch === 2) bonus.push("寅宫太阳庙旺，巨门得日光化解是非");
@@ -793,7 +800,7 @@ function detectJuRiTongGong({ chart }: DetectContext, patterns: Pattern[]) {
 		level: breaking.length ? 40 : inMing && ju.branch === 2 ? 90 : 75,
 		palaces: [ju.name],
 		conditions: { required, bonus, breaking },
-		...fillVerdict(PATTERN_VERDICTS[name], { 宫: BRANCH_NAMES[ju.branch] }),
+		...fillVerdict(PATTERN_VERDICTS[name], { 宫: BRANCHES[ju.branch] }),
 	});
 }
 
@@ -802,7 +809,7 @@ function detectShiZhongYinYu({ chart, ming }: DetectContext, patterns: Pattern[]
 	if (!hasStar(ming, "巨门")) return;
 	if (ming.branch !== 0 && ming.branch !== 6) return; // 子(0) 或 午(6)
 
-	const required = [`巨门入命于${BRANCH_NAMES[ming.branch]}宫`];
+	const required = [`巨门入命于${BRANCHES[ming.branch]}宫`];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (getStarSiHua(ming, "巨门") === "禄" || getStarSiHua(ming, "巨门") === "权")
@@ -954,9 +961,9 @@ function detectShuangLuChaoYuan({ chart, ming }: DetectContext, patterns: Patter
 		conditions: {
 			required: ["化禄会照三方四正", "禄存会照三方四正"],
 			breaking: hasShaInPalace(ming, SHA_KONG)
-			? ["命坐空劫（双禄遇空，财来财去）"]
-			: undefined,
-			},
+				? ["命坐空劫（双禄遇空，财来财去）"]
+				: undefined,
+		},
 		...PATTERN_VERDICTS[name],
 	});
 }
@@ -997,7 +1004,10 @@ function detectHuaLuRuMing({ chart, ming }: DetectContext, patterns: Pattern[]) 
 		level: 75,
 		palaces: ["命宫"],
 		conditions: { required: [`${huaLuStar.name}化禄坐命宫`] },
-		...fillVerdict(PATTERN_VERDICTS["化禄入命"], { 星: huaLuStar.name, 注: PATTERN_ASIDES["化禄入命"]?.[huaLuStar.name] ?? "" }),
+		...fillVerdict(PATTERN_VERDICTS["化禄入命"], {
+			星: huaLuStar.name,
+			注: PATTERN_ASIDES["化禄入命"]?.[huaLuStar.name] ?? "",
+		}),
 	});
 }
 
@@ -1012,8 +1022,8 @@ function detectHuaJiRuMingQian({ chart }: DetectContext, patterns: Pattern[]) {
 		if (!jiStar) continue;
 
 		const inMing = palace.branch === chart.mingGongBranch;
-			// 迁移分支取名「冲命」而**不是**「入迁」：后者在本仓古籍库零见，前者有 1 处
-			// （《紫微斗数全书·十二宫论·夫妻宫》）。裁决依据见 {@link GEJU_NAME_ALIASES}。
+		// 迁移分支取名「冲命」而**不是**「入迁」：后者在本仓古籍库零见，前者有 1 处
+		// （《紫微斗数全书·十二宫论·夫妻宫》）。裁决依据见 {@link GEJU_NAME_ALIASES}。
 		const name = `${jiStar.name}化忌${inMing ? "入命" : "冲命"}`;
 		patterns.push({
 			name,
@@ -1119,12 +1129,14 @@ function detectJuHuoYang({ chart }: DetectContext, patterns: Pattern[]) {
 /** 铃昌陀武：铃星、文昌、陀罗、武曲会照（限至投河） */
 function detectLingChangTuoWu({ chart }: DetectContext, patterns: Pattern[]) {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!(
-		sanFangSet.has("铃星") &&
-		sanFangSet.has("文昌") &&
-		sanFangSet.has("陀罗") &&
-		sanFangSet.has("武曲")
-	))
+	if (
+		!(
+			sanFangSet.has("铃星") &&
+			sanFangSet.has("文昌") &&
+			sanFangSet.has("陀罗") &&
+			sanFangSet.has("武曲")
+		)
+	)
 		return;
 
 	const name = "铃昌陀武";
@@ -1249,7 +1261,6 @@ function detectHuaKeRuMingShen({ chart, ming }: DetectContext, patterns: Pattern
 		return; // 命和身重复时只识别一次
 	}
 }
-
 
 /** 昌曲同会：文昌+文曲都在命三方四正 */
 function detectChangQuTongHui({ chart, ming }: DetectContext, patterns: Pattern[]) {
@@ -1439,7 +1450,9 @@ function detectLuMaJiaoChi({ chart }: DetectContext, patterns: Pattern[]) {
 		level: 90,
 		palaces: samePalace ? [lu.name] : [lu.name, ma.name],
 		conditions: { required: [samePalace ? "禄存与天马同宫" : "禄存与天马同会命宫三方四正"] },
-		...fillVerdict(PATTERN_VERDICTS[name], { 会: samePalace ? "禄存与天马同宫" : "禄存与天马同会命宫三方四正" }),
+		...fillVerdict(PATTERN_VERDICTS[name], {
+			会: samePalace ? "禄存与天马同宫" : "禄存与天马同会命宫三方四正",
+		}),
 	});
 }
 

@@ -15,7 +15,6 @@
  */
 
 import type { ZiweiChart, Palace } from "./types";
-import { BRANCHES } from "./constants";
 
 // ────────────────── 类型 ──────────────────
 /**
@@ -284,17 +283,6 @@ export const CHANG_QU = ["文昌", "文曲"];
  * ⚠️ `patterns.ts` 内**无任何引用**，同 {@link ZUO_YOU}：魁钺判定在调用点直接写字面量。
  */
 export const KUI_YUE = ["天魁", "天钺"];
-
-/**
- * 地支索引 → 地支名。
- *
- * @remarks
- * 索引口径与 `types.ts` 的 `Palace.branch` 一致：0=子 … 11=亥。仅用于拼判词
- * （如"太阳太阴同入**未**宫"、"巨门入命于**子**宫"）与 `PatternCondition` 的文案。
- */
-// 判词用的地支名直接取 constants 的 BRANCHES（原先此处有一份内容相同的本地副本，
-// 两份相同数据表是漂移隐患 —— 已删除，见 .claude/CLAUDE.md 的架构说明）；
-export const BRANCH_NAMES = BRANCHES;
 
 // ────────────────── 判词 ──────────────────
 
