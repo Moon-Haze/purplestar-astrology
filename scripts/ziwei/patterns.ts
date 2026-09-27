@@ -78,7 +78,7 @@ import {
 
 // 静态层（结构体 / 识别器入参 / 常量 / 名字裁决表 / 判词表）已拆到 `patterns-defs.ts`；
 // 本模块只留函数。
-// **原处 re-export** 拆分前就对外公开的三个类型与裁决表，使 `db-analysis.ts`（`type Pattern`）、
+// **原处 re-export** 拆分前就对外公开的三个类型与裁决表，使 `analysis.ts`（`type Pattern`）、
 // `test/invariants.test.ts`（`GEJU_NAME_ALIASES`）的既有 import 一行都不用改 ——
 // 本模块的公开面与拆分前**逐名一致**（原先 module-private 的 `DetectContext` 不在此列）。
 export type { Pattern, PatternCondition, GejuNameAlias } from "./patterns-defs";
@@ -416,7 +416,7 @@ function detectZiFu({ chart }: DetectContext, patterns: Pattern[]) {
 
 	// 判定域：同宫的那一宫必须是命宫或迁移宫。
 	//
-	// ⚠️ 2026-09-26 由「任一同宫皆可」收窄，取 topic 侧（db-analysis.ts 的 detectGeJu）口径 ——
+	// ⚠️ 2026-09-26 由「任一同宫皆可」收窄，取 topic 侧（analysis.ts 的 detectGeJu）口径 ——
 	// 它只认 `hasStar('命宫'|'迁移', …)`。旧口径下紫府同宫在任何宫都成格（只把未坐命的降为 75），
 	// 与 topic 侧实测 44/300 盘判定相反（如紫府坐财帛：这边报格、那边不报）。
 	// 代价：紫微天府同宫于它宫时不再产出「紫府同宫」，那类盘在这两处都不再有此格局。
@@ -511,7 +511,7 @@ function detectHuoTanLingTan({ chart }: DetectContext, patterns: Pattern[]) {
 	// 判定域：火/铃与贪狼**同宫**。
 	//
 	// ⚠️ 2026-09-26 由「同宫或三方四正会照 + 贪狼须会照命宫三方」收窄，取 topic 侧
-	// （db-analysis.ts 的 detectGeJu）口径 —— 它只要求 `贪狼宫内有火铃`。
+	// （analysis.ts 的 detectGeJu）口径 —— 它只要求 `贪狼宫内有火铃`。
 	// 旧口径的两个毛病：① 三方四正**不可传递**，`sameOrTrine` 比的是**贪狼的**三方，
 	// 而 `isInSanFang` 只约束贪狼本身，于是命中盘里有一部分煞星其实照不到命宫
 	// （旧断言实测 32 次命中里 12 次如此）；② 判词写「主突发横财」，但贪狼在命宫三方
@@ -1393,7 +1393,7 @@ function detectRiLiZhongTian({ ming }: DetectContext, patterns: Pattern[]) {
 	});
 }
 
-/** 昌曲守命：文昌或文曲坐命宫（两星俱在时只出「文昌守命」，与 db-analysis 的取值一致） */
+/** 昌曲守命：文昌或文曲坐命宫（两星俱在时只出「文昌守命」，与 analysis.ts 的取值一致） */
 function detectChangQuShouMing({ ming }: DetectContext, patterns: Pattern[]) {
 	const hasChang = hasStar(ming, "文昌");
 	const hasQu = hasStar(ming, "文曲");

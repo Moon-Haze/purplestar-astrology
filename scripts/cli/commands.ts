@@ -33,7 +33,7 @@ import {
 	TOPIC_PALACE_NAME,
 	type TopicKey,
 	type AnalysisView,
-} from "@/ziwei/db-analysis";
+} from "@/ziwei/analysis";
 import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
 import {

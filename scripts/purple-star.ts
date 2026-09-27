@@ -15,7 +15,7 @@
  *   scripts/ziwei/algorithm.ts        排盘主流程
  *   scripts/ziwei/patterns.ts         格局识别（40+ 格局，含古籍出处与破格条件）
  *   scripts/ziwei/sihua.ts            四化（生年 / 流年 / 流月）
- *   scripts/ziwei/db-analysis.ts      分析数据库 v3（主题论断动态推算，topic 命令用）
+ *   scripts/ziwei/analysis.ts         分析数据库 v3（主题论断动态推算，topic 命令用）
  *   scripts/ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
  *   scripts/ziwei/cities.ts           中国城市经纬度（真太阳时校正）
  *   scripts/ziwei/constants.ts        天干地支 / 四化表 / 星曜释义

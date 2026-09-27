@@ -34,7 +34,7 @@ import {
 	TOPIC_LABEL,
 	type TopicKey,
 	type AnalysisView,
-} from "@/ziwei/db-analysis";
+} from "@/ziwei/analysis";
 import { STEMS, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { HEMING_METHODOLOGY, STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU } from "@/ziwei/heming-knowledge";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics/index";
@@ -584,7 +584,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		return "mingpan / daxian / liunian / liuyue";
 	});
 	ok("论断引用核对：未核实引文不得冒充倪师原话（对照 annotations.json）", () => {
-		// annotations.json 是对 db-analysis 中「倪师/倪海夏」引用的文献核对记录
+		// annotations.json 是对 analysis.ts 中「倪师/倪海夏」引用的文献核对记录
 		//（拷自 reference/ziwei-samples-toolkit/corpus/，针对 v2 核对，v3 已清掉全部
 		// fabricated）。此断言锁住清修成果：源码中所有「倪海夏/倪师…说」带出的引文，
 		// 不得出现在 suspect / fabricated 清单里 —— 改归属保留引文（如「古诀云」）是
@@ -596,7 +596,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		//    2026-09-27 起 25 段倪师口吻长判词搬到了 patterns.ts（各识别器的
 		//    `topicDescription`），只读一个文件会让本断言**静默失效**——它仍会绿，
 		//    却再扫不到判词所在的文件。新增带引文的模块时，记得加进这个列表。
-		const src = ["ziwei/db-analysis.ts", "ziwei/patterns.ts"]
+		const src = ["ziwei/analysis.ts", "ziwei/patterns.ts"]
 			.map(f => readFileSync(resolve(ctx.root, f), "utf8"))
 			.join("\n");
 		// suspect/fabricated 条目的引文核心（书名号/引号内的部分）

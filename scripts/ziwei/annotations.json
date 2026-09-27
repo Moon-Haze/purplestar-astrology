@@ -1,5 +1,5 @@
 {
-  "_repo_note": "本仓用途（勿删）：此文件是 scripts/cli/selftest.ts「未核实引文不得冒充倪师原话」断言的数据源 —— entries 里 status 为 suspect/fabricated 的引文，不得以「倪海夏/倪师…说」的强归属形式出现在 db-analysis.ts 中，违者 selftest 变红。删除本文件会令该项断言直接 ENOENT 崩溃。来源：reference/ziwei-samples-toolkit/corpus/annotations.json（针对 v2 核对；本仓的 v3 已清掉全部 fabricated，存活 suspect 的强归属也已清修为「古诀云 / 紫微斗数有云 / 一说」—— 此文件转为防回流禁语清单）",
+  "_repo_note": "本仓用途（勿删）：此文件是 scripts/cli/selftest.ts「未核实引文不得冒充倪师原话」断言的数据源 —— entries 里 status 为 suspect/fabricated 的引文，不得以「倪海夏/倪师…说」的强归属形式出现在 analysis.ts 中，违者 selftest 变红。删除本文件会令该项断言直接 ENOENT 崩溃。来源：reference/ziwei-samples-toolkit/corpus/annotations.json（针对 v2 核对；本仓的 v3 已清掉全部 fabricated，存活 suspect 的强归属也已清修为「古诀云 / 紫微斗数有云 / 一说」—— 此文件转为防回流禁语清单）",
   "_legend": {
     "verified": "倪师《天纪》讲稿中确实出现，已对照来源",
     "traditional": "紫微斗数传统口诀（古书/共识），倪师可能引用过但非独创",
