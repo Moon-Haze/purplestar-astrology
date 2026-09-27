@@ -10,7 +10,7 @@
 //
 // 失败时尾部汇总照常打印并透传退出码 —— 红的时候更需要分层定位。
 // 额外参数：--year <N> 只跑层 1 该年基准（经 ZIWEI_TEST_YEAR 环境变量传给
-// chart.test.ts，层 2-4 不读它、照常全跑）；其余参数原样透传给 node --test。
+// chart.test.ts；其余各层都不读它、照常全跑）；其余参数原样透传给 node --test。
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -94,7 +94,7 @@ console.log(
 			`· 覆盖 ${manifest.coverage.months.length}/12 月 · ${manifest.coverage.hours.length}/12 时辰 · ${manifest.coverage.leapYears.length} 闰月年`
 	)
 );
-if (year !== null) console.log(line("筛选", `${year} 年（层 1 仅该年基准，层 2-4 照常全跑）`));
+if (year !== null) console.log(line("筛选", `${year} 年（层 1 仅该年基准，其余各层照常全跑）`));
 console.log(RULE);
 
 // ── 跑：spec → stdout 照旧，聚合事件流 → 临时文件 ──
@@ -131,6 +131,11 @@ const LAYERS = [
 	{ label: "层 3 排盘结构不变量", file: "invariants.test.ts", suite: "排盘结构不变量" },
 	{ label: "层 4 三合派约束", file: "school.test.ts", suite: "三合派体系约束" },
 	{ label: "层 5 数据源纯函数", file: "sample-source.test.ts", suite: "基准数据源（纯函数与错误指引）" },
+	{
+		label: "层 6 仓库自洽",
+		file: "repo.test.ts",
+		suite: "仓库自洽（引文守卫 / 登记一致性）",
+	},
 ] as const;
 const basename = (p: string | null): string => p?.split("/").pop() ?? "";
 const layerOf = (file: string | null): string => LAYERS.find(l => l.file === basename(file))?.label ?? "其他";

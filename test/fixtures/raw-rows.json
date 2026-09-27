@@ -1,0 +1,2273 @@
+[
+	{
+		"why": "首条：兜底，保证产物永不为空",
+		"rows": [
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 2,
+				"stem": 0,
+				"palace_name": "福德",
+				"major_stars": [
+					"太阳",
+					"巨门"
+				],
+				"lucky_stars": [
+					"左辅"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"三台",
+					"封诰",
+					"天巫",
+					"孤辰"
+				],
+				"major_brightness": [
+					"bright",
+					"bright"
+				],
+				"sihua_stars": [
+					"巨门:权"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 104,
+				"daxian_end": 113
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 3,
+				"stem": 1,
+				"palace_name": "田宅",
+				"major_stars": [
+					"天相"
+				],
+				"lucky_stars": [
+					"天魁"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"天贵",
+					"龙池"
+				],
+				"major_brightness": [
+					"dim"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": true,
+				"daxian_start": 94,
+				"daxian_end": 103
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 4,
+				"stem": 2,
+				"palace_name": "官禄",
+				"major_stars": [
+					"天机",
+					"天梁"
+				],
+				"lucky_stars": [
+					"文曲"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"红鸾",
+					"月德"
+				],
+				"major_brightness": [
+					"normal",
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 84,
+				"daxian_end": 93
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 5,
+				"stem": 3,
+				"palace_name": "仆役",
+				"major_stars": [
+					"紫微",
+					"七杀"
+				],
+				"lucky_stars": [
+					"天钺",
+					"天马"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"天福",
+					"天虚",
+					"天伤"
+				],
+				"major_brightness": [
+					"bright",
+					"normal"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 74,
+				"daxian_end": 83
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 6,
+				"stem": 4,
+				"palace_name": "迁移",
+				"major_stars": [],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"解神",
+					"台辅",
+					"天官",
+					"阴煞"
+				],
+				"major_brightness": [],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 64,
+				"daxian_end": 73
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 7,
+				"stem": 5,
+				"palace_name": "疾厄",
+				"major_stars": [],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"华盖",
+					"天刑",
+					"天哭",
+					"天使"
+				],
+				"major_brightness": [],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 54,
+				"daxian_end": 63
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 8,
+				"stem": 6,
+				"palace_name": "财帛",
+				"major_stars": [],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"天德"
+				],
+				"major_brightness": [],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 44,
+				"daxian_end": 53
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 9,
+				"stem": 7,
+				"palace_name": "子女",
+				"major_stars": [
+					"廉贞",
+					"破军"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"火星"
+				],
+				"minor_stars": [
+					"恩光",
+					"破碎"
+				],
+				"major_brightness": [
+					"normal",
+					"dim"
+				],
+				"sihua_stars": [
+					"破军:禄"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 34,
+				"daxian_end": 43
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 10,
+				"stem": 8,
+				"palace_name": "夫妻",
+				"major_stars": [],
+				"lucky_stars": [
+					"文昌"
+				],
+				"sha_stars": [
+					"铃星"
+				],
+				"minor_stars": [
+					"天喜",
+					"天月",
+					"寡宿"
+				],
+				"major_brightness": [],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 24,
+				"daxian_end": 33
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 11,
+				"stem": 9,
+				"palace_name": "兄弟",
+				"major_stars": [
+					"天府"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"地空",
+					"地劫",
+					"陀罗"
+				],
+				"minor_stars": [
+					"天姚",
+					"凤阁",
+					"天才",
+					"天寿",
+					"天厨",
+					"年解"
+				],
+				"major_brightness": [
+					"normal"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 14,
+				"daxian_end": 23
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 0,
+				"stem": 0,
+				"palace_name": "命宫",
+				"major_stars": [
+					"天同",
+					"太阴"
+				],
+				"lucky_stars": [
+					"右弼",
+					"禄存"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"咸池",
+					"八座",
+					"天空",
+					"截路"
+				],
+				"major_brightness": [
+					"bright",
+					"bright"
+				],
+				"sihua_stars": [
+					"太阴:科"
+				],
+				"is_ming_gong": true,
+				"is_shen_gong": true,
+				"is_current_daxian": false,
+				"daxian_start": 4,
+				"daxian_end": 13
+			},
+			{
+				"sample_id": 1,
+				"year": 1924,
+				"month": 1,
+				"day": 1,
+				"hour": 0,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1923,
+				"lunar_month": 11,
+				"lunar_day": 25,
+				"year_stem": 9,
+				"year_branch": 11,
+				"is_leap_month": false,
+				"ming_gong_branch": 0,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 4,
+				"wuxing_ju_name": "金四局",
+				"ziwei_pos": 5,
+				"current_age": 102,
+				"current_daxian_index": 9,
+				"branch": 1,
+				"stem": 1,
+				"palace_name": "父母",
+				"major_stars": [
+					"武曲",
+					"贪狼"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"擎羊"
+				],
+				"minor_stars": [
+					"旬空",
+					"空亡",
+					"蜚廉"
+				],
+				"major_brightness": [
+					"bright",
+					"bright"
+				],
+				"sihua_stars": [
+					"贪狼:忌"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 114,
+				"daxian_end": 123
+			}
+		]
+	},
+	{
+		"why": "闰月：is_leap_month 为 true，农历月序与常规不同",
+		"rows": [
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 2,
+				"stem": 4,
+				"palace_name": "官禄",
+				"major_stars": [
+					"七杀"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"陀罗"
+				],
+				"minor_stars": [
+					"红鸾",
+					"天月",
+					"天空",
+					"孤辰"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 85,
+				"daxian_end": 94
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 3,
+				"stem": 5,
+				"palace_name": "仆役",
+				"major_stars": [
+					"天同"
+				],
+				"lucky_stars": [
+					"文昌",
+					"禄存"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"天伤"
+				],
+				"major_brightness": [
+					"normal"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 75,
+				"daxian_end": 84
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 4,
+				"stem": 6,
+				"palace_name": "迁移",
+				"major_stars": [
+					"武曲"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"地空",
+					"擎羊"
+				],
+				"minor_stars": [
+					"天姚",
+					"天官"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 65,
+				"daxian_end": 74
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 5,
+				"stem": 7,
+				"palace_name": "疾厄",
+				"major_stars": [
+					"太阳"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"铃星"
+				],
+				"minor_stars": [
+					"三台",
+					"龙池",
+					"天哭",
+					"天使"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 55,
+				"daxian_end": 64
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 6,
+				"stem": 8,
+				"palace_name": "财帛",
+				"major_stars": [
+					"破军"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"地劫"
+				],
+				"minor_stars": [
+					"咸池",
+					"天厨",
+					"月德",
+					"截路"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 45,
+				"daxian_end": 54
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 7,
+				"stem": 9,
+				"palace_name": "子女",
+				"major_stars": [
+					"天机"
+				],
+				"lucky_stars": [
+					"左辅",
+					"右弼"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"空亡",
+					"天虚"
+				],
+				"major_brightness": [
+					"dim"
+				],
+				"sihua_stars": [
+					"天机:禄"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 35,
+				"daxian_end": 44
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 8,
+				"stem": 0,
+				"palace_name": "夫妻",
+				"major_stars": [
+					"紫微",
+					"天府"
+				],
+				"lucky_stars": [
+					"天钺"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"天喜",
+					"天贵",
+					"天福",
+					"阴煞"
+				],
+				"major_brightness": [
+					"bright",
+					"normal"
+				],
+				"sihua_stars": [
+					"紫微:科"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 25,
+				"daxian_end": 34
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 9,
+				"stem": 1,
+				"palace_name": "兄弟",
+				"major_stars": [
+					"太阴"
+				],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"八座",
+					"凤阁",
+					"封诰",
+					"蜚廉",
+					"年解"
+				],
+				"major_brightness": [
+					"dim"
+				],
+				"sihua_stars": [
+					"太阴:忌"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 15,
+				"daxian_end": 24
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 10,
+				"stem": 2,
+				"palace_name": "命宫",
+				"major_stars": [
+					"贪狼"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"火星"
+				],
+				"minor_stars": [
+					"解神",
+					"天德",
+					"寡宿"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": true,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 5,
+				"daxian_end": 14
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 11,
+				"stem": 3,
+				"palace_name": "父母",
+				"major_stars": [
+					"巨门"
+				],
+				"lucky_stars": [
+					"文曲",
+					"天马"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"天才",
+					"天巫",
+					"旬空"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 115,
+				"daxian_end": 124
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 0,
+				"stem": 4,
+				"palace_name": "福德",
+				"major_stars": [
+					"廉贞",
+					"天相"
+				],
+				"lucky_stars": [
+					"天魁"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"恩光",
+					"天刑"
+				],
+				"major_brightness": [
+					"normal",
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": true,
+				"is_current_daxian": false,
+				"daxian_start": 105,
+				"daxian_end": 114
+			},
+			{
+				"sample_id": 12255,
+				"year": 1925,
+				"month": 6,
+				"day": 1,
+				"hour": 7,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1925,
+				"lunar_month": 4,
+				"lunar_day": 11,
+				"year_stem": 1,
+				"year_branch": 1,
+				"is_leap_month": true,
+				"ming_gong_branch": 10,
+				"shen_gong_branch": 0,
+				"wuxing_ju": 5,
+				"wuxing_ju_name": "土五局",
+				"ziwei_pos": 8,
+				"current_age": 101,
+				"current_daxian_index": 9,
+				"branch": 1,
+				"stem": 5,
+				"palace_name": "田宅",
+				"major_stars": [
+					"天梁"
+				],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"天寿",
+					"台辅",
+					"华盖",
+					"破碎"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [
+					"天梁:权"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": true,
+				"daxian_start": 95,
+				"daxian_end": 104
+			}
+		]
+	},
+	{
+		"why": "天钺：恒无 siHua 键的辅星，盯 hasSiHuaKey 的「整键缺失」一侧",
+		"rows": [
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 2,
+				"stem": 2,
+				"palace_name": "父母",
+				"major_stars": [
+					"天机",
+					"太阴"
+				],
+				"lucky_stars": [
+					"禄存",
+					"天马"
+				],
+				"sha_stars": [
+					"地劫"
+				],
+				"minor_stars": [
+					"天巫",
+					"孤辰"
+				],
+				"major_brightness": [
+					"normal",
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 112,
+				"daxian_end": 121
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 3,
+				"stem": 3,
+				"palace_name": "福德",
+				"major_stars": [
+					"紫微",
+					"贪狼"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"擎羊"
+				],
+				"minor_stars": [
+					"红鸾",
+					"天姚"
+				],
+				"major_brightness": [
+					"bright",
+					"normal"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": true,
+				"daxian_start": 102,
+				"daxian_end": 111
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 4,
+				"stem": 4,
+				"palace_name": "田宅",
+				"major_stars": [
+					"巨门"
+				],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"八座",
+					"龙池",
+					"华盖",
+					"天月"
+				],
+				"major_brightness": [
+					"dim"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 92,
+				"daxian_end": 101
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 5,
+				"stem": 5,
+				"palace_name": "官禄",
+				"major_stars": [
+					"天相"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"火星"
+				],
+				"minor_stars": [
+					"封诰",
+					"天厨",
+					"月德",
+					"破碎"
+				],
+				"major_brightness": [
+					"normal"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 82,
+				"daxian_end": 91
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 6,
+				"stem": 6,
+				"palace_name": "仆役",
+				"major_stars": [
+					"天梁"
+				],
+				"lucky_stars": [
+					"左辅"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"天哭",
+					"天虚",
+					"天伤"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 72,
+				"daxian_end": 81
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 7,
+				"stem": 7,
+				"palace_name": "迁移",
+				"major_stars": [
+					"廉贞",
+					"七杀"
+				],
+				"lucky_stars": [
+					"文昌",
+					"文曲",
+					"天钺"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"天寿",
+					"天官"
+				],
+				"major_brightness": [
+					"normal",
+					"bright"
+				],
+				"sihua_stars": [
+					"廉贞:禄"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": true,
+				"is_current_daxian": false,
+				"daxian_start": 62,
+				"daxian_end": 71
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 8,
+				"stem": 8,
+				"palace_name": "疾厄",
+				"major_stars": [],
+				"lucky_stars": [
+					"右弼"
+				],
+				"sha_stars": [
+					"地空"
+				],
+				"minor_stars": [
+					"截路",
+					"蜚廉",
+					"天使"
+				],
+				"major_brightness": [],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 52,
+				"daxian_end": 61
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 9,
+				"stem": 9,
+				"palace_name": "财帛",
+				"major_stars": [],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"天喜",
+					"咸池",
+					"台辅",
+					"天福",
+					"天德",
+					"空亡"
+				],
+				"major_brightness": [],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 42,
+				"daxian_end": 51
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 10,
+				"stem": 0,
+				"palace_name": "子女",
+				"major_stars": [
+					"天同"
+				],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"解神",
+					"三台",
+					"恩光",
+					"天贵",
+					"凤阁",
+					"旬空",
+					"寡宿",
+					"阴煞",
+					"年解"
+				],
+				"major_brightness": [
+					"normal"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 32,
+				"daxian_end": 41
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 11,
+				"stem": 1,
+				"palace_name": "夫妻",
+				"major_stars": [
+					"武曲",
+					"破军"
+				],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"天刑"
+				],
+				"major_brightness": [
+					"normal",
+					"normal"
+				],
+				"sihua_stars": [
+					"武曲:科",
+					"破军:权"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 22,
+				"daxian_end": 31
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 0,
+				"stem": 2,
+				"palace_name": "兄弟",
+				"major_stars": [
+					"太阳"
+				],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [],
+				"major_brightness": [
+					"dim"
+				],
+				"sihua_stars": [
+					"太阳:忌"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 12,
+				"daxian_end": 21
+			},
+			{
+				"sample_id": 2336,
+				"year": 1924,
+				"month": 4,
+				"day": 8,
+				"hour": 3,
+				"gender": "female",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 3,
+				"lunar_day": 5,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 7,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 3,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 1,
+				"stem": 3,
+				"palace_name": "命宫",
+				"major_stars": [
+					"天府"
+				],
+				"lucky_stars": [
+					"天魁"
+				],
+				"sha_stars": [
+					"铃星",
+					"陀罗"
+				],
+				"minor_stars": [
+					"天才",
+					"天空"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": true,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 2,
+				"daxian_end": 11
+			}
+		]
+	},
+	{
+		"why": "真四化：有星曜带非空 siHua，盯同一规则的另一侧",
+		"rows": [
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 2,
+				"stem": 2,
+				"palace_name": "父母",
+				"major_stars": [
+					"七杀"
+				],
+				"lucky_stars": [
+					"禄存",
+					"天马"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"孤辰",
+					"天刑"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 12,
+				"daxian_end": 21
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 3,
+				"stem": 3,
+				"palace_name": "福德",
+				"major_stars": [
+					"天同"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"擎羊"
+				],
+				"minor_stars": [
+					"红鸾",
+					"天月"
+				],
+				"major_brightness": [
+					"normal"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 22,
+				"daxian_end": 31
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 4,
+				"stem": 4,
+				"palace_name": "田宅",
+				"major_stars": [
+					"武曲"
+				],
+				"lucky_stars": [
+					"文昌"
+				],
+				"sha_stars": [
+					"铃星"
+				],
+				"minor_stars": [
+					"八座",
+					"恩光",
+					"龙池",
+					"华盖",
+					"阴煞"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [
+					"武曲:科"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 32,
+				"daxian_end": 41
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 5,
+				"stem": 5,
+				"palace_name": "官禄",
+				"major_stars": [
+					"太阳"
+				],
+				"lucky_stars": [
+					"右弼"
+				],
+				"sha_stars": [
+					"地空",
+					"地劫"
+				],
+				"minor_stars": [
+					"天厨",
+					"月德",
+					"破碎"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [
+					"太阳:忌"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 42,
+				"daxian_end": 51
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 6,
+				"stem": 6,
+				"palace_name": "仆役",
+				"major_stars": [
+					"破军"
+				],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"天姚",
+					"天哭",
+					"天虚",
+					"天伤"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [
+					"破军:权"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 52,
+				"daxian_end": 61
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 7,
+				"stem": 7,
+				"palace_name": "迁移",
+				"major_stars": [
+					"天机"
+				],
+				"lucky_stars": [
+					"天钺"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"天官"
+				],
+				"major_brightness": [
+					"dim"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 62,
+				"daxian_end": 71
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 8,
+				"stem": 8,
+				"palace_name": "疾厄",
+				"major_stars": [
+					"紫微",
+					"天府"
+				],
+				"lucky_stars": [],
+				"sha_stars": [
+					"火星"
+				],
+				"minor_stars": [
+					"封诰",
+					"天巫",
+					"截路",
+					"蜚廉",
+					"天使"
+				],
+				"major_brightness": [
+					"bright",
+					"normal"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 72,
+				"daxian_end": 81
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 9,
+				"stem": 9,
+				"palace_name": "财帛",
+				"major_stars": [
+					"太阴"
+				],
+				"lucky_stars": [
+					"左辅"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"天喜",
+					"咸池",
+					"天福",
+					"天德",
+					"空亡"
+				],
+				"major_brightness": [
+					"dim"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 82,
+				"daxian_end": 91
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 10,
+				"stem": 0,
+				"palace_name": "子女",
+				"major_stars": [
+					"贪狼"
+				],
+				"lucky_stars": [
+					"文曲"
+				],
+				"sha_stars": [],
+				"minor_stars": [
+					"三台",
+					"天贵",
+					"凤阁",
+					"旬空",
+					"寡宿",
+					"年解"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 92,
+				"daxian_end": 101
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 11,
+				"stem": 1,
+				"palace_name": "夫妻",
+				"major_stars": [
+					"巨门"
+				],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": true,
+				"daxian_start": 102,
+				"daxian_end": 111
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 0,
+				"stem": 2,
+				"palace_name": "兄弟",
+				"major_stars": [
+					"廉贞",
+					"天相"
+				],
+				"lucky_stars": [],
+				"sha_stars": [],
+				"minor_stars": [
+					"解神",
+					"台辅"
+				],
+				"major_brightness": [
+					"normal",
+					"bright"
+				],
+				"sihua_stars": [
+					"廉贞:禄"
+				],
+				"is_ming_gong": false,
+				"is_shen_gong": false,
+				"is_current_daxian": false,
+				"daxian_start": 112,
+				"daxian_end": 121
+			},
+			{
+				"sample_id": 4669,
+				"year": 1924,
+				"month": 7,
+				"day": 15,
+				"hour": 6,
+				"gender": "male",
+				"longitude": 120,
+				"lunar_year": 1924,
+				"lunar_month": 6,
+				"lunar_day": 14,
+				"year_stem": 0,
+				"year_branch": 0,
+				"is_leap_month": false,
+				"ming_gong_branch": 1,
+				"shen_gong_branch": 1,
+				"wuxing_ju": 2,
+				"wuxing_ju_name": "水二局",
+				"ziwei_pos": 8,
+				"current_age": 102,
+				"current_daxian_index": 10,
+				"branch": 1,
+				"stem": 3,
+				"palace_name": "命宫",
+				"major_stars": [
+					"天梁"
+				],
+				"lucky_stars": [
+					"天魁"
+				],
+				"sha_stars": [
+					"陀罗"
+				],
+				"minor_stars": [
+					"天才",
+					"天寿",
+					"天空"
+				],
+				"major_brightness": [
+					"bright"
+				],
+				"sihua_stars": [],
+				"is_ming_gong": true,
+				"is_shen_gong": true,
+				"is_current_daxian": false,
+				"daxian_start": 2,
+				"daxian_end": 11
+			}
+		]
+	}
+]

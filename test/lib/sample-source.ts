@@ -399,8 +399,14 @@ type JoinedRow = SampleRow & PalaceRow & { sample_id: bigint };
  *
  * ⚠️ 刻意**不** `SELECT *`：库里有 8 个本模块不用的 `sihua_*_star` / `sihua_*_palace` 列，
  *    还有 `topics` 那套论断文本。只取要用的，622 万行的流式读取才不会被无用列拖慢。
+ *
+ * ⚠️ 列名带 `s.` / `p.` 前缀，**必须配 `FROM samples s JOIN palaces p USING (sample_id)`** 使用。
+ *
+ * 导出给 `test/tools/export-raw-rows.ts`（一次性导出真实行做基准）：它是「哪些列参与映射」
+ * 的唯一定义处，工具自己再抄一份列表，就又是一处会静默漂移的副本 —— 抄漏一列，导出的
+ * 「原始行」就缺字段，而那正是要被验的东西。
  */
-const COLUMNS = `
+export const COLUMNS = `
 	s.sample_id,
 	s.year, s.month, s.day, s.hour, s.gender, s.longitude,
 	s.lunar_year, s.lunar_month, s.lunar_day, s.year_stem, s.year_branch, s.is_leap_month,

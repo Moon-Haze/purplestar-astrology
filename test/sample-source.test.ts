@@ -2,8 +2,19 @@
 //
 // ⚠️ 本文件**不得触碰任何数据文件**。`npm test` 必须在「无 db/ 数据集、
 //    无 DuckDB 依赖、无 jsonl 语料」的环境下跑通（见 test/README.md）。
-//    所以这里只测两样东西：错误指引的文本、以及**用不存在的路径**触发的失败分支。
-//    真正的映射正确性由 test/tools/verify-source.ts 拿真实语料逐字节证明。
+//    所以这里测三样东西，没有一样需要 db/：
+//      1. 错误指引的文本、以及**用不存在的路径**触发的失败分支
+//      2. `rowsToSample` 用**合成行**逐条覆盖映射规则
+//      3. `rowsToSample` 用 `fixtures/raw-rows.json` 里的**真实行**逐字节复现 charts.jsonl
+//
+// 第 3 条是 2026-09-27 补上的，补的是一条真实的缝：第 2 条的合成行编码的是
+// 「**我以为**真实行长什么样」—— 列名、类型、数组形状一变，合成行照旧全绿。
+// 更隐晦的是 `hasSiHuaKey`（键的存在性 vs 值为 `""`），sample-source.ts 的文件头自己
+// 就写着「搞错了 npm test 也不会红」。真实行固化进 fixtures 后这条才第一次可测。
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
@@ -18,6 +29,9 @@ import {
 } from "./lib/sample-source.ts";
 import type { PalaceRow, SampleRow } from "./lib/sample-source.ts";
 import type { BaselineChart } from "./lib/compare.ts";
+
+const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test
+const FIXTURES = resolve(HERE, "fixtures");
 
 describe("基准数据源（纯函数与错误指引）", () => {
 	it("DB_DIR 指向 <skill 根>/db/dataset", () => {
@@ -216,5 +230,68 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 			() => assertTwelveRows(palaces.slice(0, 11), sampleRow()),
 			(err: unknown) => err instanceof SourceError && /预期 12 行，实际 11 行/.test((err as Error).message)
 		);
+	});
+});
+
+/** 产物 `raw-rows.json` 的一个条目：挑选理由 + 12 行真实 JOIN 行。 */
+interface RawEntry {
+	why: string;
+	rows: Array<Record<string, unknown>>;
+}
+
+/**
+ * 出生五元组 —— 库中唯一确定一条样本，也是与 charts.jsonl 对表的键。
+ *
+ * ⚠️ 比的是**五元组字符串**而非 JSON 片段：`JSON.parse` 出来的对象键序与原文无关，
+ *    拿它拼字符串会引入原文根本没写过的键序假设。
+ */
+const keyOf = (r: { year: number; month: number; day: number; hour: number; gender: string }): string =>
+	`${r.year}-${r.month}-${r.day}-${r.hour}-${r.gender}`;
+
+describe("真实行 → fixtures：逐字节复现（输入取自 fixtures/raw-rows.json）", () => {
+	it("每条真实行都逐字节重现 charts.jsonl 里那一条的原文", () => {
+		// ## 这条断言为什么不是「自己验自己」
+		//
+		// charts.jsonl 是 **toolkit 用 iztro 2.5.8 + toolkit 自己的行→样本映射**写出来的；
+		// `rowsToSample` 是本项目**重新实现**的同一映射。两者**不同源**，所以这是外部预言机
+		// —— 验的是「我们的映射 ≡ 上游的映射」，不是「我们等于我们」。
+		// （而同源的比对器在 compare.ts，那里同源同错的风险另由层 3 的外部预言机堵。）
+		//
+		// 真实行由 test/tools/export-raw-rows.ts 一次性导出并提交；`npm test` 不碰 db/。
+		const raw = JSON.parse(readFileSync(resolve(FIXTURES, "raw-rows.json"), "utf8")) as RawEntry[];
+		// 产物为空时下面的循环一次都不跑 —— 那是标准的假绿，先挡住。
+		assert.ok(raw.length > 0, "raw-rows.json 为空，跑 node test/tools/export-raw-rows.ts 重建");
+
+		// 答案侧**保留原文行**，不做 JSON.parse 再 stringify：要验的就是「逐字节相同」，
+		// 中间过一道序列化会把键序差异抹平，等于把要验的性质消掉。
+		const answers = new Map<string, string>();
+		for (const line of readFileSync(resolve(FIXTURES, "charts.jsonl"), "utf8").trim().split("\n")) {
+			const { birthInfo } = JSON.parse(line) as { birthInfo: Parameters<typeof keyOf>[0] };
+			answers.set(keyOf(birthInfo), line);
+		}
+		assert.ok(answers.size > 0, "charts.jsonl 解析出 0 条 —— 路径或格式已变");
+
+		for (const entry of raw) {
+			assert.equal(entry.rows.length, 12, `${entry.why}：宫位行数应为 12`);
+			// 类型断言：JSON.parse 的产物是 unknown 边界，接口在 sample-source.ts 里。
+			// 断言什么列名、什么形状，正是这条断言要验的东西 —— 它若不成立，下面的比对会红。
+			const [first] = entry.rows;
+			const key = keyOf(first as unknown as SampleRow);
+			const answer = answers.get(key);
+			assert.ok(answer !== undefined, `${entry.why}：charts.jsonl 里没有 ${key} —— 产物与基准不同源`);
+
+			const rebuilt = JSON.stringify(
+				rowsToSample(first as unknown as SampleRow, entry.rows as unknown as PalaceRow[])
+			);
+			if (rebuilt !== answer) {
+				// 逐字节比对失败时给**首处差异的位置与上下文**，而不是两坨 5 KB 的 JSON
+				const at = [...rebuilt].findIndex((c, i) => c !== answer[i]);
+				assert.fail(
+					`${entry.why}（${key}）重建结果与基准不逐字节相同：首处差异在第 ${at} 个字符\n` +
+						`  基准：…${answer.slice(Math.max(0, at - 40), at + 40)}…\n` +
+						`  重建：…${rebuilt.slice(Math.max(0, at - 40), at + 40)}…`
+				);
+			}
+		}
 	});
 });
