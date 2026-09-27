@@ -2,7 +2,7 @@
 
 **日期**：2026-09-27
 **状态**：设计已批准，待写实现计划
-**范围**：`scripts/ziwei/db-analysis.ts`（2407 行）、`scripts/cli/birth-info.ts`（532 行）
+**范围**：`scripts/ziwei/db-analysis.ts`（2407 行，拆分后更名 `analysis.ts`）、`scripts/cli/birth-info.ts`（532 行）
 **先例**：`scripts/ziwei/patterns.ts` + `patterns-defs.ts`（2026-09-27 完成，同一套分法的首次落地）
 
 ---
@@ -44,9 +44,9 @@
 
 ```text
 scripts/ziwei/
-├── star-db.ts            🆕 ~830 行   只放 STAR_DB
-├── analysis-meta.ts   🆕 ~700 行   类型 + 元数据表
-└── db-analysis.ts        ✏️  ~880 行   只剩函数 + 公开名 re-export
+├── analysis-content.ts   🆕 ~830 行   只放 STAR_DB
+├── analysis-meta.ts      🆕 ~700 行   类型 + 元数据表
+└── analysis.ts           ✏️  ~880 行   只剩函数 + 公开名 re-export
 
 scripts/cli/
 ├── birth-info-defs.ts    🆕 ~170 行   4 个 interface + 2 个常量
@@ -55,51 +55,61 @@ scripts/cli/
 
 `STAR_DB` 单独成文件（而非并入 `analysis-meta.ts`）的理由：它与其余声明**性质不同**——`STAR_DB` 是**会持续增删的论断文案**（14 主星 × 13 主题的内容库），其余是**改结构才动的映射表与类型**。两者增长曲线不同，改动半径也应分开。
 
-**为什么叫这两个名字**：两个拆出的文件按上面那条「内容 / 元数据」之分**对仗**命名，且都不带 `db-` 前缀（`ziwei/` 整个目录就是一个库，前缀不提供信息）：
+**为什么叫这三个名字**：三个文件共享同一词根 `analysis-`，后缀各表其职——**内容 / 元数据 / 实现**：
 
-- `star-db.ts` —— `-db`（库），与它唯一导出的常量 `STAR_DB` 同名
-- `analysis-meta.ts` —— `-meta`（元信息），装 10 张映射表与 7 个类型
+| 文件                   | 后缀               | 装什么                                 |
+| ---------------------- | ------------------ | -------------------------------------- |
+| `analysis-content.ts`  | `-content`（内容） | `STAR_DB`，14 主星 × 13 主题的论断文案 |
+| `analysis-meta.ts`     | `-meta`（元信息）  | 10 张映射表与 7 个类型                 |
+| `analysis.ts`          | 无（主文件）       | 函数实现与公开面                       |
 
-原拟的 `db-analysis-defs.ts` 弃用：`-defs` 是从 `patterns-defs.ts` 借的，但那边装的是判词、成立条件、名字裁决——确实是「格局的定义」；这边装的是**查找表**，叫「定义」名不副实，且与 `star-db.ts` 一个带前缀、一个不带，风格不齐。
+后缀取 `-content` / `-meta` 而非 `-defs`：`patterns-defs.ts` 的 `-defs` 装的是判词、成立条件与名字裁决——确实是「格局的定义」；这边装的是**查找表与文案**，叫「定义」名不副实。共享词根也让三者在一堆文件名里自成一组。
 
-主文件 `db-analysis.ts` **保持原名**：它的名字是既有约定的一部分，`SKILL.md`、`.claude/CLAUDE.md`、`docs/` 三处都按此名指代它。
+主文件去掉 `db-` 前缀后语义反而更准：数据库已搬进 `analysis-content.ts`，剩下的就是分析逻辑本身。这也是它**必须更名**的原因——旧名 `db-analysis.ts` 承诺了一个它不再包含的数据库。
 
-### 3.2 `db-analysis.ts` 逐条归属
+⚠️ **改名会牵出一批「历史陈述」，它们一律不改**：`patterns.ts` 的 4 处注释（如「收敛自 db-analysis 的格局」「原先只存在于 `db-analysis.ts` 的 `detectGeJu` 里」）、`patterns-defs.ts:735`（「旧实现在 db-analysis 里」）、`annotations.json:339`（上游 v2 核对笔记）、`docs/test/01~05`、`docs/superpowers/{plans,specs}/2026-09-25-*`。这些陈述的是**当时的事实**，改了就是伪造记录。因此改名后代码库里会**有意残留** `db-analysis` 字样，见到不必当漏改——同 `docs/test/05` 只追加不回改的规矩。
 
-| 原行 | 符号                        | 原可见性          | 去向                                                                        |
-| ---- | --------------------------- | ----------------- | --------------------------------------------------------------------------- |
-| 42   | `TopicKey`                  | export type       | `analysis-meta.ts`                                                          |
-| 58   | `TOPIC_PALACE_NAME`         | export const      | `analysis-meta.ts`                                                          |
-| 74   | `TOPIC_LABEL`               | export const      | `analysis-meta.ts`                                                          |
-| 91   | `TOPIC_SANFANG_LABELS`      | private           | `analysis-meta.ts`                                                          |
-| 108  | `STAR_BRIEF`                | private           | `analysis-meta.ts`                                                          |
-| 134  | `StarSummaryGender`         | private interface | `analysis-meta.ts`                                                          |
-| 141  | `StarSummary`               | private interface | `analysis-meta.ts`                                                          |
-| 146  | `TopicMod`                  | private interface | `analysis-meta.ts`                                                          |
-| 155  | `StarContent`               | private interface | `analysis-meta.ts`，**须改为 export**（`star-db.ts` 与实现文件都要引用）    |
-| 196  | `STAR_DB`                   | private const     | **`star-db.ts`**，**须改为 export**                                         |
-| 1011 | `filterGenderContent`       | private fn        | 留在 `db-analysis.ts`                                                       |
-| 1064 | `getPalaceStars`            | private fn        | 留                                                                          |
-| 1084 | `getSanFangSiZheng`         | private fn        | 留                                                                          |
-| 1098 | `descPalaceStars`           | private fn        | 留                                                                          |
-| 1110 | `getPalaceSiHua`            | private fn        | 留                                                                          |
-| 1115 | `getSiHuaNote`              | private fn        | 留                                                                          |
-| 1135 | `PALACE_BRANCH_ORGAN`       | private           | `analysis-meta.ts`                                                          |
-| 1223 | `ZIWU_LIUZHU`               | private           | `analysis-meta.ts`                                                          |
-| 1336 | `KUI_YUE_GUIREN_MAP`        | private           | `analysis-meta.ts`                                                          |
-| 1361 | `MINOR_STAR_PALACE_CONTENT` | private           | `analysis-meta.ts`                                                          |
-| 1477 | `getMinorStarNote`          | private fn        | 留                                                                          |
-| 1482 | `PALACE_TO_CONTENT_KEY`     | private           | `analysis-meta.ts`                                                          |
-| 1498 | `TOPIC_KEY_PALACES`         | private           | `analysis-meta.ts`                                                          |
-| 1695 | `detectGeJu`                | private fn        | 留                                                                          |
-| 1718 | `AnalysisView`              | export type       | `analysis-meta.ts`                                                          |
-| 1720 | `AnalysisOptions`           | export interface  | `analysis-meta.ts`                                                          |
-| 1730 | `getTopicAnalysis`          | export fn         | 留                                                                          |
+⚠️ **但「指代当前文件」的引用必须同批改，漏改会静默失效**，两处最危险：
 
-**`db-analysis.ts` 的 re-export 清单（5 个，即原公开面）**：
+- `scripts/cli/selftest.ts` 的引文扫描清单（见 §5。这是全次拆分最危险的一处）
+- `annotations.json` 第 2 行 `_repo_note`：「status 为 suspect/fabricated 的引文不得以强归属形式出现在 `db-analysis.ts` 中」——`STAR_DB` 搬进 `analysis-content.ts` 后，这句话的**适用范围必须跟着扩到三个文件**，否则防回流禁语清单只盯住一个空壳
+
+### 3.2 `analysis.ts` 逐条归属
+
+| 原行 | 符号                        | 原可见性          | 去向                                                                              |
+| ---- | --------------------------- | ----------------- | --------------------------------------------------------------------------------- |
+| 42   | `TopicKey`                  | export type       | `analysis-meta.ts`                                                                |
+| 58   | `TOPIC_PALACE_NAME`         | export const      | `analysis-meta.ts`                                                                |
+| 74   | `TOPIC_LABEL`               | export const      | `analysis-meta.ts`                                                                |
+| 91   | `TOPIC_SANFANG_LABELS`      | private           | `analysis-meta.ts`                                                                |
+| 108  | `STAR_BRIEF`                | private           | `analysis-meta.ts`                                                                |
+| 134  | `StarSummaryGender`         | private interface | `analysis-meta.ts`                                                                |
+| 141  | `StarSummary`               | private interface | `analysis-meta.ts`                                                                |
+| 146  | `TopicMod`                  | private interface | `analysis-meta.ts`                                                                |
+| 155  | `StarContent`               | private interface | `analysis-meta.ts`，**须改为 export**（`analysis-content.ts` 与实现文件都要引用） |
+| 196  | `STAR_DB`                   | private const     | **`analysis-content.ts`**，**须改为 export**                                      |
+| 1011 | `filterGenderContent`       | private fn        | 留在 `analysis.ts`                                                                |
+| 1064 | `getPalaceStars`            | private fn        | 留                                                                                |
+| 1084 | `getSanFangSiZheng`         | private fn        | 留                                                                                |
+| 1098 | `descPalaceStars`           | private fn        | 留                                                                                |
+| 1110 | `getPalaceSiHua`            | private fn        | 留                                                                                |
+| 1115 | `getSiHuaNote`              | private fn        | 留                                                                                |
+| 1135 | `PALACE_BRANCH_ORGAN`       | private           | `analysis-meta.ts`                                                                |
+| 1223 | `ZIWU_LIUZHU`               | private           | `analysis-meta.ts`                                                                |
+| 1336 | `KUI_YUE_GUIREN_MAP`        | private           | `analysis-meta.ts`                                                                |
+| 1361 | `MINOR_STAR_PALACE_CONTENT` | private           | `analysis-meta.ts`                                                                |
+| 1477 | `getMinorStarNote`          | private fn        | 留                                                                                |
+| 1482 | `PALACE_TO_CONTENT_KEY`     | private           | `analysis-meta.ts`                                                                |
+| 1498 | `TOPIC_KEY_PALACES`         | private           | `analysis-meta.ts`                                                                |
+| 1695 | `detectGeJu`                | private fn        | 留                                                                                |
+| 1718 | `AnalysisView`              | export type       | `analysis-meta.ts`                                                                |
+| 1720 | `AnalysisOptions`           | export interface  | `analysis-meta.ts`                                                                |
+| 1730 | `getTopicAnalysis`          | export fn         | 留                                                                                |
+
+**`analysis.ts` 的 re-export 清单（5 个，即原公开面）**：
 `TopicKey`、`TOPIC_PALACE_NAME`、`TOPIC_LABEL`、`AnalysisView`、`AnalysisOptions`。
 
-其余 13 个符号原本就是 module-private，**不在公开面上**，因此只需从新文件 export（供跨文件引用），**不需要**在 `db-analysis.ts` re-export。
+其余 13 个符号原本就是 module-private，**不在公开面上**，因此只需从新文件 export（供跨文件引用），**不需要**在 `analysis.ts` re-export。
 
 ### 3.3 `birth-info.ts` 逐条归属
 
@@ -136,10 +146,10 @@ scripts/cli/
 ### 4.1 依赖图（恒为单向，defs 绝不 import 实现）
 
 ```text
-db-analysis.ts ──→ analysis-meta.ts
-      │                    ▲
-      └──→ star-db.ts ─────┘        （star-db 只为取 StarContent 类型）
-birth-info.ts  ──→ birth-info-defs.ts
+analysis.ts ──→ analysis-meta.ts
+      │                               ▲
+      └──→ analysis-content.ts ───────┘   （analysis-content 只为取 StarContent 类型）
+birth-info.ts ──→ birth-info-defs.ts
 ```
 
 ### 4.2 import 写法（照 `.claude/CLAUDE.md` 的既有约定）
@@ -153,7 +163,7 @@ birth-info.ts  ──→ birth-info-defs.ts
 
 | 新文件                | 需要的 import                                                                                       | 依据                                                                |
 | --------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `star-db.ts`          | `import type { StarContent } from "./analysis-meta"`                                                | 实测声明区唯一外部引用                                              |
+| `analysis-content.ts` | `import type { StarContent } from "./analysis-meta"`                                                | 实测声明区唯一外部引用                                              |
 | `analysis-meta.ts`    | 预计无外部依赖                                                                                      | 实测声明区**不引用** `BRANCHES` / `STEMS`                           |
 | `birth-info-defs.ts`  | `CliArgs`（`./args`）、`BirthInfo`（`@/ziwei/types`）、`CityInfo` + `PROVINCES`（`@/ziwei/cities`） | `BirthInfoResult` 引用前三者；`ALL_CITIES = PROVINCES.flatMap(...)` |
 
@@ -161,7 +171,7 @@ birth-info.ts  ──→ birth-info-defs.ts
 
 **只给跨文件引用的符号加 `export`，其余保持原可见性。**
 
-- **确定要加 export 的两个**：`StarContent`（被 `star-db.ts` 与实现文件引用）、`STAR_DB`（被实现文件引用）
+- **确定要加 export 的两个**：`StarContent`（被 `analysis-content.ts` 与实现文件引用）、`STAR_DB`（被实现文件引用）
 - **其余符号**：搬进 defs 后是否 export，取决于实现文件用不用它；实现时按 `npm run typecheck` 的报错逐个补齐
 
 `npm run typecheck` 是这条规则的**兜底闸门**：漏了 `export` 会立刻是编译错误，不会静默通过；反之给用不到的符号加了 `export` 只是略微扩大内部可见性，不产生行为影响。
@@ -184,13 +194,13 @@ const src = ["ziwei/db-analysis.ts", "ziwei/patterns.ts"]
 
 | 文件                                                         | 现有扫描命中数 |
 | ------------------------------------------------------------ | -------------- |
-| `db-analysis.ts`                                             | **26 处**      |
+| `db-analysis.ts`（拆分前）                                   | **26 处**      |
 | ├─ 落在 `STAR_DB`（行 198–975）                              | **23 处**      |
 | └─ 落在 `getTopicAnalysis` 函数体内（行 2117 / 2333 / 2358） | 3 处           |
 | `patterns.ts`                                                | 0 处           |
 | `birth-info.ts`                                              | 0 处           |
 
-**`STAR_DB` 搬进 `star-db.ts` 后，若不同步改这一行，该断言会漏掉 23/26 的扫描面却照旧变绿。** 这是静默的安全退化——比测试变红危险得多。
+**`STAR_DB` 搬进 `analysis-content.ts` 后，若不同步改这一行，该断言会漏掉 23/26 的扫描面却照旧变绿。** 这是静默的安全退化——比测试变红危险得多。
 
 该断言自己的注释（595–598 行）已写明这个教训：
 
@@ -203,7 +213,7 @@ const src = ["ziwei/db-analysis.ts", "ziwei/patterns.ts"]
 清单改为三个元素：
 
 ```ts
-const src = ["ziwei/db-analysis.ts", "ziwei/star-db.ts", "ziwei/patterns.ts"]
+const src = ["ziwei/analysis.ts", "ziwei/analysis-content.ts", "ziwei/patterns.ts"]
 ```
 
 `analysis-meta.ts`、`birth-info-defs.ts` 实测 0 处引文，**不进清单**。
@@ -216,15 +226,16 @@ const src = ["ziwei/db-analysis.ts", "ziwei/star-db.ts", "ziwei/patterns.ts"]
 
 ### 6.1 判据
 
-| #   | 手段                                                                        | 通过判据                                              |
-| --- | --------------------------------------------------------------------------- | ----------------------------------------------------- |
-| 1   | **搬前存基线**：跑 `analyze` / `topic` / `heming` / `help` 等命令，输出存盘 | 基线文件生成成功                                      |
-| 2   | **搬后逐字节 diff**                                                         | 与基线**完全一致**（这是本次改动正确性的要害）        |
-| 3   | **导出名单比对**：拆前后各 dump 一次模块的公开导出名                        | `db-analysis` 5 个、`birth-info` 4 个，**逐一相等**   |
-| 4   | **引文扫描命中数**                                                          | 拆前 26 处 → 拆后**仍 26 处**（证明 §5 的清单改对了） |
-| 5   | `npm run typecheck`                                                         | 0 错误                                                |
-| 6   | `node scripts/purple-star.ts selftest`                                      | 49/49                                                 |
-| 7   | `npm test`                                                                  | 300 条基准全绿                                        |
+| #   | 手段                                                                        | 通过判据                                                  |
+| --- | --------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1   | **搬前存基线**：跑 `analyze` / `topic` / `heming` / `help` 等命令，输出存盘 | 基线文件生成成功                                          |
+| 2   | **搬后逐字节 diff**                                                         | 与基线**完全一致**（这是本次改动正确性的要害）            |
+| 3   | **导出名单比对**：拆前后各 dump 一次模块的公开导出名                        | `db-analysis.ts` 5 个、`birth-info.ts` 4 个，**逐一相等** |
+| 4   | **引文扫描命中数**                                                          | 拆前 26 处 → 拆后**仍 26 处**（证明 §5 的清单改对了）     |
+| 5   | `npm run typecheck`                                                         | 0 错误                                                    |
+| 6   | `node scripts/purple-star.ts selftest`                                      | 49/49                                                     |
+| 7   | `npm test`                                                                  | 300 条基准全绿                                            |
+| 8   | **更名引用复查**：全仓 grep 两个旧名（`db-analysis` / `star-db`）           | 剩余命中**逐条**落在 §7.1.1「不改」清单内，无一条例外     |
 
 ### 6.2 基线怎么取（沿用先例）
 
@@ -233,7 +244,7 @@ const src = ["ziwei/db-analysis.ts", "ziwei/star-db.ts", "ziwei/patterns.ts"]
 | 覆盖路径                                  | 为什么必须覆盖            | 它走哪个被拆的模块                     |
 | ----------------------------------------- | ------------------------- | -------------------------------------- |
 | `analyze`（固定日期 × 5 个时辰支 × 男女） | 排盘 + 格局短判词的主路径 | 两个模块都走                           |
-| `topic`（`overview` / `personality`）     | 长判词只在这两个主题产出  | `db-analysis.ts` 的 `getTopicAnalysis` |
+| `topic`（`overview` / `personality`）     | 长判词只在这两个主题产出  | `analysis.ts` 的 `getTopicAnalysis`    |
 | `heming`                                  | 合盘                      | `birth-info.ts` 的 `buildBirthInfo`    |
 | 带 `--eot` 的 `analyze`                   | 均时差分支                | `birth-info.ts` 的 `equationOfTime`    |
 | 城市名容错（同一城市的不同写法）          | 名称归一分支              | `birth-info.ts` 的 `findLongitude`     |
@@ -246,19 +257,53 @@ const src = ["ziwei/db-analysis.ts", "ziwei/star-db.ts", "ziwei/patterns.ts"]
 
 ### 7.1 要改（活文档）
 
-| 文件                                    | 改什么                                                                                                                                                                                      |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SKILL.md`                              | ①第 103 行表格：格局判定规则与两套判词现在分处 `patterns.ts`（判定）与 `patterns-defs.ts`（判词表）②第 107 行、第 188 行：分析数据库 v3 的位置描述，补 `analysis-meta.ts` / `star-db.ts`    |
-| `.claude/CLAUDE.md`                     | 「数据流」目录树补 4 个新文件（`patterns-defs.ts` 上次拆分后**就已经漏了**，一并补上）                                                                                                      |
-| `docs/test/05-corpus-and-blindspots.md` | 按体例**仅在末尾追加**一节「后续修正（十三）（2026-09-27）：…」，记本次拆分与 §5 那处守卫的修复；历史节一律不动                                                                             |
+| 文件                                    | 改什么                                                                                                                                                                                                                                                                |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SKILL.md`                              | ①第 103 行表格：格局判定规则与两套判词现在分处 `patterns.ts`（判定）与 `patterns-defs.ts`（判词表）②第 107、188、334 行：分析数据库 v3 的位置描述，补 `analysis-meta.ts` / `analysis-content.ts`（第 342 行的「未含站点侧 `db-analysis.ts`」指上游，不改，见 §7.1.1） |
+| `.claude/CLAUDE.md`                     | 「数据流」目录树补 4 个新文件（`patterns-defs.ts` 上次拆分后**就已经漏了**，一并补上）                                                                                                                                                                                |
+| `docs/test/05-corpus-and-blindspots.md` | 按体例**仅在末尾追加**一节「后续修正（十三）（2026-09-27）：…」，记本次拆分与 §5 那处守卫的修复；历史节一律不动                                                                                                                                                       |
+
+### 7.1.1 更名波及的引用（逐处判定）
+
+除两个文件自身的更名外，仓库里现有 **20 个文件**提到 `db-analysis`。**不能整文件替换**——其中相当一部分是在陈述历史事实，改了就是伪造记录。逐处判定如下。
+
+**要改**（指代本仓当前文件，读者会照着去找）：
+
+| 文件                                       | 处数      | 说明                                                                    |
+| ------------------------------------------ | --------- | ----------------------------------------------------------------------- |
+| `scripts/cli/commands.ts`                  | 1         | 第 36 行 `from "@/ziwei/db-analysis"`——**实际 import 语句**，漏改直接崩 |
+| `scripts/cli/selftest.ts`                  | 4         | 含引文扫描清单（§5.3），漏改即静默失效                                  |
+| `scripts/ziwei/patterns.ts`                | 4         | 第 81 / 419 / 514 / 1396 行                                             |
+| `scripts/ziwei/annotations.json`           | 1         | 第 2 行 `_repo_note`，适用范围须扩到三个文件                            |
+| `test/invariants.test.ts`                  | 1         | 第 721 行「取 topic 侧（`db-analysis.ts` 的 `detectGeJu`）」            |
+| `test/cli.test.ts`                         | 1         | 第 75 行模块列举注释                                                    |
+| `scripts/purple-star.ts`                   | 1         | 顶部注释里的目录树                                                      |
+| `SKILL.md`                                 | 3 行 4 处 | 第 107、188（2 处）、334 行                                             |
+| `.claude/CLAUDE.md`                        | 1         | 架构图的目录树                                                          |
+
+**不改**（历史陈述，或指上游同名文件）：
+
+| 文件                                                                            | 处数 | 为什么                                                                                      |
+| ------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------- |
+| `scripts/ziwei/patterns.ts`                                                     | 3    | 第 1319 / 1320 / 1616 行：「收敛自 db-analysis」「原先只存在于…」——记录 2026-09-27 那次收敛 |
+| `scripts/ziwei/patterns-defs.ts`                                                | 1    | 第 735 行「旧实现在 db-analysis 里」                                                        |
+| `scripts/ziwei/annotations.json`                                                | 1    | 第 339 行是**上游 v2 的核对笔记**，描述当时状态                                             |
+| `test/invariants.test.ts`                                                       | 3    | 第 634 / 847 / 1091 行，均为记录历史事件                                                    |
+| `README.md`、`SKILL.md`                                                         | 各 1 | 第 95 / 342 行「未含站点侧的 `db-analysis.ts`」——指**上游**同名文件                         |
+| `test/README.md`、`test/tools/verify-source.ts`、`test/tools/build-fixtures.ts` | 各 1 | 同上，均指上游 toolkit                                                                      |
+| `docs/test/01~05`、`docs/superpowers/{plans,specs}/2026-09-25-*`                | —    | 快照 / 变更日志 / 历史文档                                                                  |
+
+⚠️ `patterns.ts` 与 `annotations.json` **同一个文件里既有要改的也有不改的**，必须逐行判断——这是本次更名最容易出错的地方。
+
+**一个附带收益**：`README.md:95` 与 `SKILL.md:342` 说的「未含 `db-analysis.ts`」指的是**上游**那个同名文件，而本仓曾有一个同名文件，读者无从分辨。本仓文件更名后这层歧义**自动消解**——仓库里再没有 `db-analysis.ts`，那两处就明确指向上游了。
 
 ### 7.2 不改
 
-| 文件                                                                        | 理由                                                                  |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `docs/test/01~04-*.md`                                                      | **带日期的快照**，里面的行数记录的是当时状态，去同步就是伪造记录      |
-| `test/README.md` 里「toolkit 私有的 `db-analysis.ts`（2254 行 `STAR_DB`）」 | 那是**上游 toolkit 文件**的行数，不是本仓代码，本仓改代码不会使它漂移 |
-| `docs/superpowers/specs/2026-09-25-*.md`、`plans/2026-09-25-*.md`           | 历史设计/计划文档                                                     |
+| 文件                                                                        | 理由                                                                                                                             |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/test/01~04-*.md`                                                      | **带日期的快照**，里面的行数记录的是当时状态，去同步就是伪造记录                                                                 |
+| `test/README.md` 里「toolkit 私有的 `db-analysis.ts`（2254 行 `STAR_DB`）」 | 那是**上游 toolkit 文件**的行数，**同名不同物**——本仓同名文件已并入 `analysis.ts` 三件套，此处**仍写旧名**，因为它指的是上游那个 |
+| `docs/superpowers/specs/2026-09-25-*.md`、`plans/2026-09-25-*.md`           | 历史设计/计划文档                                                                                                                |
 
 ### 7.3 不登记行数
 
@@ -285,4 +330,4 @@ const src = ["ziwei/db-analysis.ts", "ziwei/star-db.ts", "ziwei/patterns.ts"]
 
 ### 8.3 落地后的预期状态
 
-`db-analysis.ts` 从 2407 行降到约 880 行，改判定的人不再需要翻过 1530 行声明；改论断文案的人只在 `star-db.ts`（约 830 行）里工作，无需接触任何判定逻辑。`birth-info.ts` 同理减半。
+`analysis.ts` 从 2407 行降到约 880 行，改判定的人不再需要翻过 1530 行声明；改论断文案的人只在 `analysis-content.ts`（约 830 行）里工作，无需接触任何判定逻辑。`birth-info.ts` 同理减半。
