@@ -5,9 +5,6 @@
  * 该快照未随仓库分发）。本仓的 v3 已清掉全部 fabricated，存活 suspect 的强归属也已
  * 清修为「古诀云 / 紫微斗数有云 / 一说」—— 本模块因此转为**防回流禁语清单**，
  * 由 `scripts/cli/selftest.ts` 的「未核实引文不得冒充倪师原话」断言消费。
- *
- * ⚠️ 行号是**上游核对时的坐标**（v2 的 db-analysis.ts），不是本仓当前行号 ——
- *    它是历史记录，不随本仓重构而更新。
  */
 
 export type AnnotationStatus =
