@@ -15,7 +15,7 @@
 
 import type { CliContext } from "./args";
 import { parseArgs } from "./args";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import {
 	buildBirthInfo,
@@ -584,7 +584,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		return "mingpan / daxian / liunian / liuyue";
 	});
 	ok("论断引用核对：未核实引文不得冒充倪师原话（对照 annotations.json）", () => {
-		// annotations.json 是对 analysis.ts 中「倪师/倪海夏」引用的文献核对记录
+		// annotations.json 是对本仓内核中「倪师/倪海夏」引用的文献核对记录
 		//（拷自 reference/ziwei-samples-toolkit/corpus/，针对 v2 核对，v3 已清掉全部
 		// fabricated）。此断言锁住清修成果：源码中所有「倪海夏/倪师…说」带出的引文，
 		// 不得出现在 suspect / fabricated 清单里 —— 改归属保留引文（如「古诀云」）是
@@ -592,13 +592,16 @@ export function cmdSelftest(ctx: CliContext): string {
 		const ann = JSON.parse(
 			readFileSync(resolve(ctx.root, "ziwei/annotations.json"), "utf8")
 		) as { entries: { status: string; text: string }[] };
-		// ⚠️ 扫描范围必须覆盖**所有**带倪师引文的源码。判词原先全在 db-analysis.ts，
-		//    2026-09-27 起 25 段倪师口吻长判词搬到了 patterns.ts（各识别器的
-		//    `topicDescription`），另 24 处引文随 STAR_DB 搬到了 analysis-content.ts。
-		//    只读一个文件会让本断言**静默失效**——它仍会绿，却再扫不到判词所在的文件。
-		//    新增带引文的模块时，记得加进这个列表。
-		const src = ["ziwei/analysis.ts", "ziwei/analysis-content.ts", "ziwei/patterns.ts"]
-			.map(f => readFileSync(resolve(ctx.root, f), "utf8"))
+		// ⚠️ 扫描范围必须覆盖**所有**带倪师引文的源码，故这里**扫目录**而非硬编码文件清单。
+		//    硬编码清单踩过坑：2026-09-27 的声明分离拆分把引文拆进了新文件
+		//    （patterns-defs.ts 16 处、analysis-content.ts 24 处），清单只跟上了后者，
+		//    前者成了盲区 —— 而本断言**照旧变绿**。静默失效比变红危险得多：
+		//    往盲区文件里写一句未核实引文，没有任何东西会拦。
+		//    扫目录让「新增/拆分出的带引文模块」自动纳入覆盖，不再依赖有人记得改清单。
+		const src = readdirSync(resolve(ctx.root, "ziwei"))
+			.filter(f => f.endsWith(".ts"))
+			.sort()
+			.map(f => readFileSync(resolve(ctx.root, "ziwei", f), "utf8"))
 			.join("\n");
 		// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
 		const banned = new Set(
