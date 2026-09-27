@@ -3,12 +3,12 @@
  *
  * @remarks
  * 与 `./args.ts` 的分工：那份是**声明表 + 解析骨架**（本 skill 这份由 `cac` 驱动），
- * 本文件则是**各 skill 自己写**的那一层差异。故它不进同步清单（见 `tools/skills.ts`），
- * 派生 skill 里各有一份内容不同的同名文件。
+ * 本文件则是「本 skill 认声明表里的哪些旗标」那一层。
  *
- * ⚠️ `args.ts` 与两个派生那份**不再逐字节相同**（2026-09-27 换引擎）：两个派生改用了
- * Node 内置的 `node:util` 的 `parseArgs`，源这一份仍是 `cac`。三份的**声明表**
- * （{@link FLAG_GROUPS}）内容相同，由层 6 的断言锁住。
+ * ⚠️ **本仓现在只剩这一份**（2026-09-27 断派生关系后）：`purplestar-classics` 与
+ * `purplestar-synastry` 各写各的声明表，那张表本身就是它们的作用域，这层适配器在它们那里
+ * 整个消失。而本 skill 这份写的是**全量** —— 于是收窄机制仍在（`args.ts` 的四个收窄点都还
+ * 生效），只是当下没有第二个 skill 需要被收窄。这是一处**已知的遗留冗余**，不是漏改。
  *
  * ## 正面清单，且刻意不按命令派生
  *
@@ -21,11 +21,14 @@
  *
  * ## 本 skill 为什么两串前缀都是空的
  *
- * `a-` / `b-` 是**合盘**的写法（`synastry` 要分别读两方出生信息），本 skill 的单人命盘
+ * `a-` / `b-` 是**合盘**的写法（`synastry` 要分别读两方的命盘），本 skill 的单人命盘
  * 没有第二个出生方，故 `sidePrefixes` 为空。空数组不是省略：它让 `args.ts` 里的前缀分支
  * 与 `LEGAL_KEYS` 的前缀展开**整个不可达**——「前缀」这个概念在本 skill 里不存在。
  * 随之而来的一条行为变更：`analyze --a-city 北京` 由**静默忽略**变为**报错**
  * （以前它会排出一张默认经度的盘，全程无提示）。
+ *
+ * ⚠️ 合盘那份前缀实现**不在本文件里**（它的 `flag-scope.ts` 已随断派生关系删除）：现在在
+ * `purplestar-synastry/scripts/purple-star.ts` 的 `SIDE_PREFIXES` / `PREFIXED_COMMANDS`。
  */
 import type { FlagScope } from "./args";
 
@@ -42,7 +45,6 @@ export const FLAG_SCOPE: FlagScope = {
 	 *
 	 * ⚠️ 这里的每一项都必须是 `args.ts` 的 `FLAG_GROUPS` 里真有的名字：拼错不会报错，
 	 * 只会让那个旗标在**本 skill 里失效**（用户在 help 里看不到它，用了则报「未知参数」）。
-	 * 仓库测试盯这条：各作用域 ⊆ 全集，且全集 ⊆ 三作用域之并。
 	 */
 	flags: [
 		// 出生日期（三选一）

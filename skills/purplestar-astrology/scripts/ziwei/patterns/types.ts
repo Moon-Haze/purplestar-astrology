@@ -102,7 +102,7 @@ export type Detector = (ctx: DetectContext) => Pattern[];
  *
  * - `corpus` —— **古籍词频裁决**：逐名统计三部古籍的出现次数，取高者。这几组是
  *   **真异名**（两个不同的词，如 `化禄入命` / `化禄守命`）。语料本体在
- *   `purplestar-classics` 技能里（`scripts/classics/`），2026-09-27 拆 skill 时从本
+ *   `purplestar-classics` 技能里（`scripts/`），2026-09-27 拆 skill 时从本
  *   skill 移出 —— **口径没变，只是换了个 skill 住**。
  * - `convention` —— **古籍不足以裁决**：两组都零见，或者两种写法古籍并用且样本量
  *   只有个位数（如 `紫府同宫` / `紫府同宫格` 实为一个词差一个「格」字，古籍里

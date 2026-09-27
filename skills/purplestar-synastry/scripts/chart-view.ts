@@ -8,26 +8,38 @@
  * `analyze --json` 的输出。故本文件里没有一行排盘逻辑、也没有 `iztro` 依赖 ——
  * 它做三件事：解析那份 JSON、按宫名 / 地支查宫、把宫位里的主星取出来。
  *
+ * ## 为什么类型契约是**本文件自带的**，而不是 import 源的 `ziwei/types.ts`
+ *
+ * 2026-09-27 前这里 `import type` 的是源的一份 294 行类型副本。那份副本有两个问题：
+ *
+ * 1. **它是内核的全量类型**（含 `DaXian` / `SelfSihuaMark` / `LunarInfo` 等本 skill
+ *    一个字段都不读的类型），却要靠「与源逐字节相同」来维持 —— 而本 skill 只是**消费方**，
+ *    消费方该声明的是「我依赖什么」，不是「上游有什么」。
+ * 2. 内核里 `Palace.selfSihua` / `DaXian.siHua` 是**三合派硬约束的绊线字段**
+ *    （刻意保留、由源与 `test/school.test.ts` 的断言盯着有没有被填回）。本 skill
+ *    不排盘、不会填这两个字段，把绊线抄进来只会让「这里是消费方还是内核」变得含糊。
+ *
+ * 故现在按**实际读到的字段**重述一份子集，见 {@link ZiweiChart} 一组定义。
+ * 这份契约窄而明确：上游若改了某个被读字段的名字或形状，`npm run typecheck` 会当场报错；
+ * 上游若只是新增字段，这里**什么都不用改**（以前那份副本要跟着同步）。
+ *
  * ## 为什么不去 import 源的 `cli/render.ts`
  *
  * `render.ts` 是排盘 CLI 的渲染层，它 import `@/ziwei/algorithm`（真排盘）。本 skill
  * 一旦引它，排盘内核就得整份跟过来 —— 那正是本次改造要消灭的东西。这里只重建合盘真正
- * 用到的几个小函数，且与内核**只有类型上的往来**（`import type`，运行期被完全擦除）。
+ * 用到的几个小函数。
  *
  * ## 为什么地支名在这里自写一份
  *
  * 源的 `ziwei/constants.ts` 也有 `BRANCHES`，但那是**运行期**导入（值是数组）——
- * 引它会把 500 多行的常量表（四化表、星曜释义、时辰对照）整份拖进本 skill 的切片。
+ * 引它会把 500 多行的常量表（四化表、星曜释义、时辰对照）整份拖进本 skill。
  * 地支名是**永不变化的宇宙常量**（子丑寅卯…），不是会漂移的排盘逻辑，故自带 12 个字
  * 比拖一整份内核划算。⚠️ 这是**自有的常量**，不是「漏了同步的副本」——
  * 改 `ziwei/constants.ts` 的 `BRANCHES` 时**不需要**同步这里（两者不会同时被读到：
  * 本 skill 的盘是从 JSON 来的，地支索引与名字的对应关系由排盘方保证）。
- *
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心用静态 import。
  */
 
 import { readFileSync } from "node:fs";
-import type { Palace, SiHua, ZiweiChart } from "@/ziwei/types";
 
 /**
  * 十二地支，数组下标即全项目的**地支索引**（0=子、1=丑 … 11=亥）。
@@ -45,6 +57,61 @@ const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申",
  * @returns 地支名；索引越界时退化成索引本身的字符串（渲染层不该因一个坏索引整个崩掉）
  */
 export const branchName = (branch: number): string => BRANCHES[branch] ?? String(branch);
+
+// ══════════════════════ 命盘类型契约 ══════════════════════
+// ⚠️ 下面这组 interface 是**消费方声明**：只列本 skill 真的读到的字段。
+//    它们由 `purplestar-astrology` 的 `analyze --json` 产出（源头是 `ziwei/types.ts`），
+//    但不是那份内核类型的副本 —— 见文件头「为什么类型契约是本文件自带的」。
+
+/** 四化名。 */
+export type SiHua = "禄" | "权" | "科" | "忌";
+
+/**
+ * 出生信息 —— 只列本 skill 渲染抬头用得到的几项。
+ *
+ * @remarks
+ * 这是排盘方**按真太阳时跨午夜调整过**的那一份（`chart.birthInfo`），不是用户敲进去的
+ * 原始日期；本 skill 一个字都不重算，原样转述。
+ */
+export interface BirthInfo {
+	year: number;
+	month: number;
+	day: number;
+	/** 内核口径的性别 */
+	gender: "male" | "female";
+	/** 可选，只影响输出抬头 */
+	name?: string;
+}
+
+/** 一颗星 —— 本 skill 只看名字与类别。 */
+export interface Star {
+	name: string;
+	/** `"major"` 即十四主星；其余三类（minor / lucky / sha）本 skill 不区分 */
+	type: "major" | "minor" | "lucky" | "sha";
+}
+
+/** 一个宫位 —— 只列本 skill 用得到的字段。 */
+export interface Palace {
+	/** 项目口径的宫名，如 `"夫妻宫"` */
+	name: string;
+	/** 地支索引 0–11 */
+	branch: number;
+	stars: Star[];
+	/** 空宫借对宫时，对宫的宫名 */
+	borrowedFromName?: string;
+	/** 空宫借对宫时，借来的主星名 */
+	borrowedStars?: string[];
+}
+
+/** 命盘 —— 只列本 skill 用得到的字段。 */
+export interface ZiweiChart {
+	birthInfo: BirthInfo;
+	/** 命宫所在地支索引 */
+	mingGongBranch: number;
+	/** 五行局名，如 `"水二局"` */
+	wuxingJuName: string;
+	palaces: Palace[];
+}
 
 // ══════════════════════ 格式化 ══════════════════════
 
@@ -152,7 +219,7 @@ export interface SihuaLocation {
  * 消费方声明自己依赖什么，契约才看得出边界。
  */
 export interface AnalyzeJson {
-	/** 完整命盘（12 宫 + 大限 + 农历信息 + 五行局） */
+	/** 完整命盘（12 宫 + 农历信息 + 五行局；本 skill 只读 {@link ZiweiChart} 列出的字段） */
 	chart: ZiweiChart;
 	/** 生年四化 —— 只要 `located`（四化落宫），`transforms` 由 `located[].star` 覆盖 */
 	nativeSiHua: { stem: string; located: SihuaLocation[] };

@@ -1,7 +1,7 @@
 {
-  "name": "purplestar-classics",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "紫微斗数古籍原文检索 skill（骨髓赋 / 紫微斗数全集 / 紫微斗数全书）。自包含且零依赖：内核只有 classics/，参数解析用 Node 内置的 util.parseArgs，不含排盘引擎，连 npm install 都不需要 —— 可直接拷贝到 ~/.claude/skills/ 独立使用。"
+	"name": "purplestar-classics",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "紫微斗数古籍原文检索 skill（骨髓赋 / 紫微斗数全集 / 紫微斗数全书）。自包含且零依赖：参数面（声明表 + 解析 + help）内联在 scripts/purple-star.ts 里，不含排盘引擎，连 npm install 都不需要 —— 可直接拷贝到 ~/.claude/skills/ 独立使用。"
 }

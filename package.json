@@ -1,31 +1,30 @@
 {
-  "name": "purplestar-astrology-skill",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "紫微斗数 skill 仓库的开发依赖与脚本。本仓是若干自包含 skill 的源（skills/ 下每个子目录一个），内核的唯来源是 skills/purplestar-astrology/scripts/（ziwei-master 的私有源码，未发布到 npm），其余 skill 由它派生；根 package.json 只服务于开发（测试 / 工具 / 类型检查），各 skill 的运行时依赖在各自的 package.json 里。",
-  "scripts": {
-    "test": "node test/lib/run.ts",
-    "test:corpus": "tsx test/tools/full-corpus.ts",
-    "build:db": "tsx tools/db/build-duckdb.ts",
-    "verify:db": "tsx tools/db/verify-duckdb.ts",
-    "query": "tsx tools/db/query.ts",
-    "bench:startup": "tsx tools/bench/startup.ts",
-    "sync:skills": "tsx tools/sync-skills.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
-  },
-  "dependencies": {
-    "cac": "7.0.0",
-    "iztro": "2.6.1",
-    "lunar-typescript": "1.8.6"
-  },
-  "devDependencies": {
-    "@duckdb/node-api": "1.5.5-r.5",
-    "@types/node": "^26.6.2",
-    "tsx": "^4.19.1",
-    "typescript": "^7.0.2"
-  },
-  "allowScripts": {
-    "esbuild@0.28.2": true
-  }
+	"name": "purplestar-astrology-skill",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "紫微斗数 skill 仓库的开发依赖与脚本。本仓是若干**自包含** skill 的集合（skills/ 下每个子目录一个，各自可单独拷进 ~/.claude/skills/）。排盘内核只有一处实现，在 skills/purplestar-astrology/scripts/（ziwei-master 的私有源码，未发布到 npm）；其余 skill 不排盘，与它没有派生关系（2026-09-27 起）。根 package.json 只服务于开发（测试 / 工具 / 类型检查），各 skill 的运行时依赖在各自的 package.json 里。",
+	"scripts": {
+		"test": "node test/lib/run.ts",
+		"test:corpus": "tsx test/tools/full-corpus.ts",
+		"build:db": "tsx tools/db/build-duckdb.ts",
+		"verify:db": "tsx tools/db/verify-duckdb.ts",
+		"query": "tsx tools/db/query.ts",
+		"bench:startup": "tsx tools/bench/startup.ts",
+		"typecheck": "tsc --noEmit -p tsconfig.json"
+	},
+	"dependencies": {
+		"cac": "7.0.0",
+		"iztro": "2.6.1",
+		"lunar-typescript": "1.8.6"
+	},
+	"devDependencies": {
+		"@duckdb/node-api": "1.5.5-r.5",
+		"@types/node": "^26.6.2",
+		"tsx": "^4.19.1",
+		"typescript": "^7.0.2"
+	},
+	"allowScripts": {
+		"esbuild@0.28.2": true
+	}
 }

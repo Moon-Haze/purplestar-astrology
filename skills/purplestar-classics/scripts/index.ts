@@ -7,10 +7,10 @@
  * @packageDocumentation
  */
 
-import type { Book, Paragraph, SearchHit } from "./types";
-import { guSuiFu } from "./data/gusuifu";
-import { ziWeiQuanJi } from "./data/quanji";
-import { ziWeiQuanShu } from "./data/quanshu";
+import type { Book, Paragraph, SearchHit } from "./types.ts";
+import { guSuiFu } from "./data/gusuifu.ts";
+import { ziWeiQuanJi } from "./data/quanji.ts";
+import { ziWeiQuanShu } from "./data/quanshu.ts";
 
 /**
  * 所有已收录古籍 —— 骨髓赋、紫微斗数全集、紫微斗数全书。
@@ -165,4 +165,4 @@ function escapeHtml(s: string): string {
 }
 
 /** 类型转出：调用方从入口一处即可拿到全部公开类型，无需深入 `./types` */
-export type { Book, Chapter, Paragraph, SearchHit } from "./types";
+export type { Book, Chapter, Paragraph, SearchHit } from "./types.ts";

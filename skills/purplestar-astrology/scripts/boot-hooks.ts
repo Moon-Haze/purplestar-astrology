@@ -60,7 +60,7 @@ export type RootPick = RootFound | RootMissing;
  *
  * @param candidates - `[目录, 来源描述]` 的有序候选；目录为 `undefined` 的项被跳过
  * @param probe - 该 skill 的内核入口文件（相对内核根），如排盘解读的 `ziwei/algorithm.ts`、
- *   古籍检索的 `classics/index.ts`
+ *   古籍检索的 `index.ts`
  * @returns 命中的第一个候选；`root` 为 `null` 表示全部不成立
  *
  * @remarks
@@ -74,10 +74,7 @@ export type RootPick = RootFound | RootMissing;
  * 候选**由调用方给出**同样是刻意的：CLI 的第一候选是脚本自身所在目录，
  * 测试则是 `<skill 根>/scripts`，两者的起点不同，而判定规则相同。
  */
-export function pickRoot(
-	candidates: Array<[string | undefined, string]>,
-	probe: string
-): RootPick {
+export function pickRoot(candidates: Array<[string | undefined, string]>, probe: string): RootPick {
 	const tried: string[] = [];
 	for (const [dir, label] of candidates) {
 		if (!dir) continue;

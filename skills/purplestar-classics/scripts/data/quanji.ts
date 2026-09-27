@@ -6,7 +6,7 @@
  * 此处精选核心论述，未来可补全。
  */
 
-import type { Book } from "../types";
+import type { Book } from "../types.ts";
 
 /**
  * 《紫微斗数全集》数据 —— 精选章节。

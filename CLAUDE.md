@@ -241,14 +241,14 @@ npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没�
 
 **「逐字节副本」只适用于与 skill 无关的整文件。** 三类文件，三套守卫：
 
-| 类别              | 文件                                                                                                                          | 守卫                                                                     |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| 逐字节副本（源）  | 内核切片 + `boot-hooks.ts`                                                                                                    | 同步器 + 层 6 的逐字节断言                                               |
-| 逐字节副本（派生之间） | 两个派生的 `cli/args.ts`                                                                                                  | 层 6：「两份逐字节相同」+「`FLAG_GROUPS` 与源 deep-equal」（**没有可比的是源那一份**） |
-| 各 skill 自写     | `purple-star.ts` 引导层、`cli/commands.ts`、`cli/selftest.ts`、`cli/flag-scope.ts`、`SKILL.md`、`references/`、`package.json` | 各自的 `selftest` + 仓库 `test/cli.test.ts`                              |
-| **自有内核**      | `purplestar-synastry` 的 `ziwei/synastry-knowledge.ts`、`purplestar-classics` 的 `classics/`                                  | 各自 skill 的 `selftest`（**没有逐字节断言可比**）                       |
+| 类别                   | 文件                                                                                                                          | 守卫                                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 逐字节副本（源）       | 内核切片 + `boot-hooks.ts`                                                                                                    | 同步器 + 层 6 的逐字节断言                                                             |
+| 逐字节副本（派生之间） | 两个派生的 `cli/args.ts`                                                                                                      | 层 6：「两份逐字节相同」+「`FLAG_GROUPS` 与源 deep-equal」（**没有可比的是源那一份**） |
+| 各 skill 自写          | `purple-star.ts` 引导层、`cli/commands.ts`、`cli/selftest.ts`、`cli/flag-scope.ts`、`SKILL.md`、`references/`、`package.json` | 各自的 `selftest` + 仓库 `test/cli.test.ts`                                            |
+| **自有内核**           | `purplestar-synastry` 的 `ziwei/synastry-knowledge.ts`、`purplestar-classics` 的 `classics/`                                  | 各自 skill 的 `selftest`（**没有逐字节断言可比**）                                     |
 
-⚠️ **合盘的切片自 2026-09-27 起只剩引导机制与两个内核条目**（`boot-hooks.ts` / `ziwei/types.ts` / `ziwei/citation-guard.ts`，最后一项带出 `annotations.ts`）—— 排盘引擎撤出后，它对内核的需要只剩**类型契约**（`import type`，运行期擦除）与**引文守卫**。`ziwei/types.ts` 之所以要**显式**列进 `kernelEntries`，是因为读它的 `cli/chart-view.ts` 住在 `ownFiles` 里，而 **`ownFiles` 不是闭包根** —— 写在自有文件里的 `@/` 导入不会被遍历到（与古籍 skill 的 `@/classics/index` 同一种情况）。
+⚠️ **合盘的切片自 2026-09-27 起只剩引导机制与两个内核条目**（`boot-hooks.ts` / `ziwei/types.ts` / `ziwei/citation-guard.ts`，最后一项带出 `annotations.ts`）—— 排盘引擎撤出后，它对内核的需要只剩**类型契约**（`import type`，运行期擦除）与**引文守卫**。`ziwei/types.ts` 之所以要**显式**列进 `kernelEntries`，是因为读它的 `cli/chart-view.ts` 住在 `ownFiles` 里，而 **`ownFiles` 不是闭包根** —— 写在自有文件里的 `@/` 导入不会被遍历到（与古籍 skill 的 `@/index` 同一种情况）。
 
 ⚠️ `commands.ts` 与 `selftest.ts` **必须按 skill 裁开**（`analyze` 不该出现在古籍检索 skill 里）。裁过的文件无法逐字节守卫，这是拆 skill 的**固有代价**，不是疏漏——硬套断言只会生产一条永远为假的守卫。
 

@@ -27,8 +27,6 @@ import {
 import { chartSignature, fmtDate } from "./render";
 import type { BirthInfo } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
-import { ANNOTATIONS } from "@/ziwei/annotations";
-import { scanCitations } from "@/ziwei/citation-guard";
 import { detectPatterns } from "@/ziwei/patterns";
 import { getSiHuaByStem, getYearStemIndex, getLiuYueSiHua } from "@/ziwei/sihua";
 import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
@@ -535,12 +533,6 @@ export function cmdSelftest(ctx: CliContext): string {
 
 	// ── 8. 知识源可用性 ──
 	//
-	// ⚠️ 这里原有一组「古籍库非空 / 古籍检索可命中 / 合盘断语非空」断言，2026-09-27 随
-	//    `classics/` 与 `heming-knowledge.ts` 一起**搬去了各自的 skill**：那两份内核
-	//    已不住在本 skill 里，扫不到的东西不该由本文件声明它可用。
-	//    覆盖没有丢 —— 古籍那两条的加强版在 `purplestar-classics` 的 selftest 里
-	//    （数据源加载 / 每部书有章节 / 检索命中 / limit 上限…共十余条），
-	//    合盘那条在 `purplestar-synastry` 的 selftest 里。
 	ok("知识源：星曜释义覆盖十四主星", () => {
 		const majorStars = [
 			"紫微",
@@ -581,24 +573,6 @@ export function cmdSelftest(ctx: CliContext): string {
 		}
 		return "mingpan / daxian / liunian / liuyue";
 	});
-	ok("论断引用核对：未核实引文不得冒充倪师原话（对照 annotations.ts）", () => {
-		// 扫描与比对全在 `ziwei/citation-guard.ts`，本断言只负责把结果翻译成人话。
-		// 守卫的失效模式（扫了个空却一片绿）由 test/citation-guard.test.ts 用构造的目录树测，
-		// 那里能造出违例文件；这里造不出来，只能信它 —— 故下面两条「扫到了没有」的检查是必需的。
-		const { violations, checked, skipped } = scanCitations(ctx.root);
-		if (!checked.length)
-			throw new Error(`未扫到任何源码文件 —— 内核根 ${ctx.root} 或递归逻辑可能已失效`);
-		if (!skipped.length)
-			throw new Error(
-				"未跳过任何核对表 —— 扫描范围可能已把 annotations.ts 卷进来（其内容会自我命中）"
-			);
-		if (violations.length)
-			throw new Error(
-				`以下未核实引文仍冒充倪师原话（应改古诀云/紫微斗数有云/一说）：\n     ${violations.join("\n     ")}`
-			);
-		return `核对 ${ANNOTATIONS.length} 条记录，扫 ${checked.length} 个文件，suspect/fabricated 引文零强归属`;
-	});
-
 	ok("引导层豁免有界：boot-hooks.ts 只依赖 node: 内置", () => {
 		// scripts/boot-hooks.ts 是引导层**唯一**被允许静态 import 的非 node: 模块。
 		// 「引导层不得出现普通静态 import」那条规则的实质是「禁止在钩子注册前触发 .ts 解析」，
@@ -614,9 +588,12 @@ export function cmdSelftest(ctx: CliContext): string {
 		//     钩子注册前崩掉，而崩因指向的是一次看似无关的改动。
 		// 本断言守的是后一种。
 		const src = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
-		const specs = [...src.matchAll(/^\s*import\s[^;]*?from\s+["']([^"']+)["']/gm)].map(m => m[1]);
+		const specs = [...src.matchAll(/^\s*import\s[^;]*?from\s+["']([^"']+)["']/gm)].map(
+			m => m[1]
+		);
 		// 先确认真的扫到了东西：正则写歪或文件被改名都会得到空数组，那样的「零违规」是假绿。
-		if (!specs.length) throw new Error("未扫到任何 import —— 正则或 boot-hooks.ts 的路径可能已失效");
+		if (!specs.length)
+			throw new Error("未扫到任何 import —— 正则或 boot-hooks.ts 的路径可能已失效");
 		const bad = specs.filter(s => !s.startsWith("node:"));
 		if (bad.length) {
 			throw new Error(
@@ -688,7 +665,8 @@ export function cmdSelftest(ctx: CliContext): string {
 		const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
 		const mentioned = [...md.matchAll(/--([a-z][a-z0-9-]*)/g)].map(m => m[1]);
 		// 先确认真扫到了东西：正则写歪或文件挪了位置都会得到空数组，那样的「零违规」是假绿。
-		if (!mentioned.length) throw new Error("未从 SKILL.md 扫到任何旗标 —— 正则或路径可能已失效");
+		if (!mentioned.length)
+			throw new Error("未从 SKILL.md 扫到任何旗标 —— 正则或路径可能已失效");
 		const names = [...new Set(mentioned)];
 		const unknown = names
 			.map(n => {

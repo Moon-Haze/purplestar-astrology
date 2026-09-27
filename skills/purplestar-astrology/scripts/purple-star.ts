@@ -6,7 +6,7 @@
  * 命令实现、渲染、出生信息解析、自检都**不在**这里，见 scripts/cli/：
  *
  *   cli/args.ts        CLI 参数表与解析（纯函数，不依赖内核）
- *   cli/flag-scope.ts  本 skill 认哪些旗标（⚠️ 各 skill 自写，不是副本）
+ *   cli/flag-scope.ts  本 skill 认哪些旗标（⚠️ 收窄层的遗留物，全仓只剩这一份，见该文件）
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
  *   cli/commands.ts    各命令实现 + 命令表
@@ -97,8 +97,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  * 同处一层。因此 `@/` 别名指向的是 `scripts/`，而**不是** skill 根。
  *
  * 这里刻意**没有**「宿主项目」候选：每个 skill 自带内核，不存在「实时内核 vs 分发副本」
- * 的双模式。（skill 之间的副本关系是另一回事 —— 那是 `tools/sync-skills.ts` 与
- * `test/repo.test.ts` 的职责，不在运行期的候选表里。）
+ * 的双模式。（本仓已无 skill 间的副本关系 —— 见 `CLAUDE.md`「三个 skill 之间没有关系」。）
  */
 const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
 	[process.env.ZIWEI_ROOT && resolve(process.env.ZIWEI_ROOT), "ZIWEI_ROOT 环境变量"],
@@ -159,7 +158,9 @@ installHooks(ROOT);
  * 「抛错」策略，让 node:test 把失败归到具体用例；两者共用 `loadFailureHint()` 的排查知识。
  */
 const load = makeLoader(ROOT, ROOT_LABEL, f => {
-	console.error(`[ziwei 启动失败] 无法加载 ${f.spec}\n  ${f.error.message}\n${loadFailureHint(f)}`);
+	console.error(
+		`[ziwei 启动失败] 无法加载 ${f.spec}\n  ${f.error.message}\n${loadFailureHint(f)}`
+	);
 	process.exit(1);
 });
 

@@ -1,12 +1,12 @@
 {
-  "name": "purplestar-astrology",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "紫微斗数排盘与解读 skill（倪海夏《天纪》三合派）。本仓各 skill 的**源**：其余 skill 的内核副本由 tools/sync-skills.ts 从本目录同步（派生清单见 tools/skills.ts），故改内核一律改这里。",
-  "dependencies": {
-    "cac": "7.0.0",
-    "iztro": "2.6.1",
-    "lunar-typescript": "1.8.6"
-  }
+	"name": "purplestar-astrology",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "紫微斗数排盘与解读 skill（倪海夏《天纪》三合派）。本仓**唯一排盘**的 skill —— 排盘内核只有这一份实现，其余 skill 不排盘、与它没有派生关系（2026-09-27 起），故改排盘逻辑一律改这里。",
+	"dependencies": {
+		"cac": "7.0.0",
+		"iztro": "2.6.1",
+		"lunar-typescript": "1.8.6"
+	}
 }

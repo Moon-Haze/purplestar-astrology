@@ -46,7 +46,9 @@ for (let i = 0; i < argv.length; i++) {
 // ── 环境块的取数（各处失败都兜底成 "?" / "n/a"，环境块永远不该把测试跑挂） ──
 function pkgVersion(name: string): string {
 	try {
-		const p = JSON.parse(readFileSync(resolve(SKILL_ROOT, "node_modules", name, "package.json"), "utf8")) as {
+		const p = JSON.parse(
+			readFileSync(resolve(SKILL_ROOT, "node_modules", name, "package.json"), "utf8")
+		) as {
 			version?: string;
 		};
 		return p.version ?? "?";
@@ -79,11 +81,16 @@ const line = (k: string, v: string): string => `${k.padEnd(4, "　")}: ${v}`;
 console.log(RULE);
 console.log("紫微斗数排盘基准回归");
 console.log(
-	line("时间", `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`) +
-		`    ${line("Node", process.version)}`
+	line(
+		"时间",
+		`${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`
+	) + `    ${line("Node", process.version)}`
 );
 console.log(
-	line("Git", `${git.head}${git.dirty > 0 ? ` (dirty: ${git.dirty})` : git.dirty === 0 ? " (clean)" : ""}`) +
+	line(
+		"Git",
+		`${git.head}${git.dirty > 0 ? ` (dirty: ${git.dirty})` : git.dirty === 0 ? " (clean)" : ""}`
+	) +
 		`    ${line("引擎", `iztro ${pkgVersion("iztro")} / lunar-typescript ${pkgVersion("lunar-typescript")}`)}`
 );
 console.log(line("内核根", `${ROOT}（${ROOT_LABEL}）`));
@@ -105,12 +112,22 @@ const testRun = spawnSync(
 	"node",
 	[
 		"--test",
-		"--test-reporter", "spec", "--test-reporter-destination", "stdout",
-		"--test-reporter", resolve(HERE, "reporter.ts"), "--test-reporter-destination", aggFile,
+		"--test-reporter",
+		"spec",
+		"--test-reporter-destination",
+		"stdout",
+		"--test-reporter",
+		resolve(HERE, "reporter.ts"),
+		"--test-reporter-destination",
+		aggFile,
 		...passthrough,
 		"test/**/*.test.ts",
 	],
-	{ stdio: "inherit", cwd: SKILL_ROOT, env: { ...process.env, ZIWEI_TEST_YEAR: year === null ? "" : String(year) } }
+	{
+		stdio: "inherit",
+		cwd: SKILL_ROOT,
+		env: { ...process.env, ZIWEI_TEST_YEAR: year === null ? "" : String(year) },
+	}
 );
 const wallMs = Date.now() - t0;
 
@@ -125,20 +142,44 @@ const records: TestEventRecord[] = existsSync(aggFile)
 // 分层依据 = 测试文件（与 test/README.md 的层定义一一对应）。
 // 项数与层耗时取每个文件的 test:summary（官方口径，多文件并行下依然可靠）；
 // 事件流的 classname / nesting / parentId 在并行下会丢字段，一律不用。
+// ⚠️ `suites` 是该文件**全部顶层 describe 的名字**，用于把套件级的聚合耗时从「最慢 5 项」
+// 里排除掉（一个套件的 duration 是它所有子项之和，不排除就会霸榜）。写漏一个不会报错 ——
+// 症状只是最慢榜里混进一行套件名，而 describe 名只存在于运行时输出里，**没有断言盯得住
+// 这处脱钩**。故改 describe 标题时，顺手改这里；`repo.test.ts` 有一条断言只盯得住 file 字段。
 const LAYERS = [
-	{ label: "层 1 排盘对标", file: "chart.test.ts", suite: "排盘对标（基准：iztro 2.5.8 样本）" },
-	{ label: "层 2 CLI 端到端", file: "cli.test.ts", suite: "CLI 端到端" },
-	{ label: "层 3 排盘结构不变量", file: "invariants.test.ts", suite: "排盘结构不变量" },
-	{ label: "层 4 三合派约束", file: "school.test.ts", suite: "三合派体系约束" },
-	{ label: "层 5 数据源纯函数", file: "sample-source.test.ts", suite: "基准数据源（纯函数与错误指引）" },
+	{
+		label: "层 1 排盘对标",
+		file: "chart.test.ts",
+		suites: ["排盘对标（基准：iztro 2.5.8 样本）"],
+	},
+	{ label: "层 2 CLI 端到端", file: "cli.test.ts", suites: ["CLI 端到端"] },
+	{ label: "层 3 排盘结构不变量", file: "invariants.test.ts", suites: ["排盘结构不变量"] },
+	{ label: "层 4 三合派约束", file: "school.test.ts", suites: ["三合派体系约束"] },
+	{
+		label: "层 5 数据源纯函数",
+		file: "sample-source.test.ts",
+		suites: ["基准数据源（纯函数与错误指引）"],
+	},
 	{
 		label: "层 6 仓库自洽",
 		file: "repo.test.ts",
-		suite: "仓库自洽（引文守卫 / 登记一致性 / 副本一致性）",
+		suites: [
+			"仓库自洽（登记一致性 / skill 自包含 / 骨架接线）",
+			"解析钩子候选序（boot-hooks）",
+		],
+	},
+	{
+		label: "层 7 引文守卫",
+		file: "citations.test.ts",
+		suites: [
+			"引文守卫：扫描逻辑（喂构造的临时目录树）",
+			"引文守卫：扫全仓每个 skill 的 scripts/",
+		],
 	},
 ] as const;
 const basename = (p: string | null): string => p?.split("/").pop() ?? "";
-const layerOf = (file: string | null): string => LAYERS.find(l => l.file === basename(file))?.label ?? "其他";
+const layerOf = (file: string | null): string =>
+	LAYERS.find(l => l.file === basename(file))?.label ?? "其他";
 
 interface LayerStat {
 	total: number;
@@ -171,18 +212,24 @@ for (const r of records) {
 	for (const m of r.message.matchAll(/白名单(\d+)/g)) whitelisted += Number(m[1]);
 }
 
-const fmtMs = (ms: number): string => (ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`);
+const fmtMs = (ms: number): string =>
+	ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
 // 失败明细与最慢项来自逐测试事件（name / duration / error 均为单事件字段，可靠）。
 // 套件也会发 fail 事件（errorMessage 形如「N subtests failed」），与逐项明细重复，滤掉：
 // it 失败的 errorMessage 是断言详情，以此为判据（覆盖 assert 抛错与断言消息两种形态）。
-const failed = records.filter(r => r.type === "fail" && r.errorMessage && !/subtests failed/.test(r.errorMessage));
-// 最慢榜排除与分层汇总重复的聚合值：四个顶层套件（= 层耗时）与「YYYY 年」年份套件。
+const failed = records.filter(
+	r => r.type === "fail" && r.errorMessage && !/subtests failed/.test(r.errorMessage)
+);
+// 最慢榜排除与分层汇总重复的聚合值：各层的顶层套件（= 层耗时）与「YYYY 年」年份套件。
 // 中间套件（如「大限」）保留 —— 它指向具体的慢块，名字自说明。
-const SUITE_LAYER_NAMES = new Set<string>(LAYERS.map(l => l.suite));
+const SUITE_LAYER_NAMES = new Set<string>(LAYERS.flatMap(l => l.suites));
 const isAggSuite = (name: string): boolean =>
 	SUITE_LAYER_NAMES.has(name) || /^(19|20)\d{2} 年$/.test(name);
 const slowest = [...records]
-	.filter(r => (r.type === "pass" || r.type === "fail") && r.durationMs !== null && !isAggSuite(r.name))
+	.filter(
+		r =>
+			(r.type === "pass" || r.type === "fail") && r.durationMs !== null && !isAggSuite(r.name)
+	)
 	.sort((a, b) => (b.durationMs ?? 0) - (a.durationMs ?? 0))
 	.slice(0, 5);
 const total = [...bucket.values()].reduce((s, b) => s + b.total, 0);
@@ -193,26 +240,34 @@ console.log("分层汇总（层耗时 = 该文件墙钟）");
 for (const { label } of LAYERS) {
 	const b = bucket.get(label);
 	if (!b) continue;
-	console.log(`  ${label.padEnd(10, "　")} ${b.total} 项 ${b.failed ? `✗${b.failed}` : "✓"}   ${fmtMs(b.ms)}`);
+	console.log(
+		`  ${label.padEnd(10, "　")} ${b.total} 项 ${b.failed ? `✗${b.failed}` : "✓"}   ${fmtMs(b.ms)}`
+	);
 }
-console.log(`  总计 ${total} 项：${total - totalFailed} 通过${totalFailed ? ` / ${totalFailed} 失败` : ""} · 墙钟 ${fmtMs(wallMs)}`);
+console.log(
+	`  总计 ${total} 项：${total - totalFailed} 通过${totalFailed ? ` / ${totalFailed} 失败` : ""} · 墙钟 ${fmtMs(wallMs)}`
+);
 // 对账：分层合计应等于 node:test 全局 summary。不等说明聚合漏了事件（比如新增了测试文件
 // 而没登记进 LAYERS）—— 显式报出来，而不是静默少计。
 if (globalSummary && globalSummary.total !== total) {
-	console.log(`  ⚠ 分层合计 ${total} ≠ node:test 官方总计 ${globalSummary.total}（test/ 下有未映射到层的文件？）`);
+	console.log(
+		`  ⚠ 分层合计 ${total} ≠ node:test 官方总计 ${globalSummary.total}（test/ 下有未映射到层的文件？）`
+	);
 }
 
 if (slowest.length) {
 	console.log("  最慢 5 项：");
 	for (const r of slowest) console.log(`    ${fmtMs(r.durationMs ?? 0).padStart(6)}  ${r.name}`);
 }
-if (whitelisted > 0) console.log(`  白名单命中 ${whitelisted} 处（太阳/太阴@酉的已知亮度差异，比对器在工作）`);
+if (whitelisted > 0)
+	console.log(`  白名单命中 ${whitelisted} 处（太阳/太阴@酉的已知亮度差异，比对器在工作）`);
 
 if (failed.length) {
 	console.log(`\n${RULE}\n失败明细（${failed.length} 项）`);
 	for (const r of failed) {
 		console.log(`  ✗ [${layerOf(r.file)}] ${r.name}`);
-		if (r.errorMessage) console.log(`      ${r.errorMessage.split("\n").slice(0, 3).join("\n      ")}`);
+		if (r.errorMessage)
+			console.log(`      ${r.errorMessage.split("\n").slice(0, 3).join("\n      ")}`);
 	}
 }
 console.log(RULE);

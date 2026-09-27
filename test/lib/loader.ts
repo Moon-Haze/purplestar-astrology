@@ -23,7 +23,12 @@ import { dirname, resolve } from "node:path";
 // ⚠️ 搬迁（2026-09-27）：内核已从仓库根 scripts/ 移入 skills/purplestar-astrology/scripts/。
 //    本行是**字面相对路径**，不受解析钩子照顾 —— 挪内核时它是会静默失效的方向之一
 //    （另一个是 tools/ 下同样写死路径的两处，见 CLAUDE.md「skill 的布局」）。
-import { installHooks, loadFailureHint, makeLoader, pickRoot } from "../../skills/purplestar-astrology/scripts/boot-hooks.ts";
+import {
+	installHooks,
+	loadFailureHint,
+	makeLoader,
+	pickRoot,
+} from "../../skills/purplestar-astrology/scripts/boot-hooks.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <仓库根>/test/lib
 
@@ -32,8 +37,8 @@ const HERE = dirname(fileURLToPath(import.meta.url)); // <仓库根>/test/lib
  * 本 skill 的内核入口 —— `pickRoot` 拿它判定「这份内核在不在」。
  *
  * @remarks
- * 回归测试只对标**源** skill（副本的正确性由 `test/repo.test.ts` 的逐字节断言与
- * `test/cli.test.ts` 的子进程用例负责，不在这里重复跑一遍排盘）。故这里写的是源的内核入口。
+ * 回归测试只对标**排盘** skill（另两个 skill 不排盘，由它们自己的 `selftest` 与
+ * `test/cli.test.ts` 的子进程用例负责，不在这里重复跑一遍）。故这里写的是排盘内核的入口。
  */
 const KERNEL_ENTRY = "ziwei/algorithm.ts";
 

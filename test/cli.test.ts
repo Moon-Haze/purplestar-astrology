@@ -17,14 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
-import {
-	loadAlgorithm,
-	loadSihua,
-	load,
-	loadFromSkill,
-	ROOT,
-	ROOT_LABEL,
-} from "./lib/loader.ts";
+import { loadAlgorithm, loadSihua, load, loadFromSkill, ROOT, ROOT_LABEL } from "./lib/loader.ts";
 import { BRANCHES, chartSignature } from "./lib/compare.ts";
 
 const execFileAsync = promisify(execFile);
@@ -32,9 +25,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(HERE, "..");
 
 // ── 各 skill 的 CLI 入口 ──
-// 排盘解读是源，合盘与古籍检索是从它派生的自包含 skill（见 CLAUDE.md「skill 的布局」）。
-// 派生的 skill 各有自己的 purple-star.ts 与内核副本，因此必须**逐个入口**测到 ——
-// 只测源那份的话，「副本没同步」这类故障在测试里看不见。
+// 三个 skill 互相独立、各有各的 purple-star.ts 与内核（见 CLAUDE.md「三个 skill 之间没有关系」），
+// 因此必须**逐个入口**测到 —— 只测排盘那份的话，另两个 skill 的 CLI 入口写错在测试里看不见。
 const CLI = {
 	astrology: resolve(SKILL_ROOT, "skills/purplestar-astrology/scripts/purple-star.ts"),
 	synastry: resolve(SKILL_ROOT, "skills/purplestar-synastry/scripts/purple-star.ts"),
@@ -108,7 +100,8 @@ let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
  */
 async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 	if (!commandsMod) commandsMod = await load<typeof import("@/cli/commands")>("@/cli/commands");
-	if (!parseArgsFn) ({ parseArgs: parseArgsFn } = await load<typeof import("@/cli/args")>("@/cli/args"));
+	if (!parseArgsFn)
+		({ parseArgs: parseArgsFn } = await load<typeof import("@/cli/args")>("@/cli/args"));
 	const fn = commandsMod.COMMANDS[sub];
 	if (!fn) throw asCliFailure(`未知命令「${sub}」`);
 	try {
@@ -135,9 +128,9 @@ async function cliReal(args: string[]): Promise<string> {
  * 需要全量真子进程时设 CLI_SUBPROCESS=1。
  *
  * ⚠️ `skill` 不是 `"astrology"` 时**强制走子进程**，不是偷懒：进程内那条路经 loader 的 `load()`
- * 取 `@/cli/commands`，而 loader 的 ROOT 唯一地钉在排盘解读 skill 上（解析钩子只装了一次）。
- * 拿它去「进程内跑合盘/古籍」，实际执行的是**源那份**代码 —— 副本没同步、副本 CLI 入口写错，
- * 两条都会显示成绿的。派生的 skill 只有真起子进程才测得到自己那一份。
+ * 取 `@/cli/commands`，而 loader 的 ROOT 唯一地钉在排盘 skill 上（解析钩子只装了一次）。
+ * 拿它去「进程内跑合盘/古籍」，实际执行的是**排盘那份**代码，另两个 skill 的入口写错也会显示成绿的。
+ * 它们只有真起子进程才测得到自己那一份代码。
  */
 async function cliCmd(sub: string, args: string[], skill: Skill = "astrology"): Promise<string> {
 	if (skill === "astrology" && !process.env.CLI_SUBPROCESS) return cliCmdInProcess(sub, args);
@@ -213,13 +206,31 @@ describe("CLI 端到端", () => {
 		// 样本 longitude 恒为 120，无法覆盖这段逻辑，故手工构造。
 		// 经度 120°E 处校正量为 0；北京 116.4°E 偏西 3.6°，钟表时间需减 14.4 分钟。
 		it("东经 120° 不做校正", async () => {
-			const o = await cliJson(["--date", "1990-05-15", "--time", "09:10", "--lng", "120", "--gender", "male"]);
+			const o = await cliJson([
+				"--date",
+				"1990-05-15",
+				"--time",
+				"09:10",
+				"--lng",
+				"120",
+				"--gender",
+				"male",
+			]);
 			assert.equal(o.chart.birthInfo.hour, 5, "09:10 应归巳时（branch 5）");
 		});
 
 		it("偏西经度把时辰推前一位（跨时辰边界）", async () => {
 			// 09:10 经北京校正后为 08:55.6 —— 跨过 09:00 的时辰边界，落回辰时
-			const o = await cliJson(["--date", "1990-05-15", "--time", "09:10", "--city", "北京", "--gender", "male"]);
+			const o = await cliJson([
+				"--date",
+				"1990-05-15",
+				"--time",
+				"09:10",
+				"--city",
+				"北京",
+				"--gender",
+				"male",
+			]);
 			assert.equal(o.chart.birthInfo.longitude, 116.4);
 			assert.equal(o.chart.birthInfo.hour, 4, "校正后应为辰时（branch 4），与不校正时差一位");
 		});
@@ -228,7 +239,16 @@ describe("CLI 端到端", () => {
 			// 1990-01-07 的均时差约 -6 分。北京经度校正 -14.4 分，09:20 只做经度校正时为 09:05.6，
 			// 仍是巳时(5)；再减 6 分掉到 08:59.3，跨过 09:00 边界退回辰时(4)。
 			// 这条同时钉住两件事：默认口径不变（第一段），以及两种口径的差别不是小数点级的（末段）。
-			const base = ["--date", "1990-01-07", "--time", "09:20", "--city", "北京", "--gender", "male"];
+			const base = [
+				"--date",
+				"1990-01-07",
+				"--time",
+				"09:20",
+				"--city",
+				"北京",
+				"--gender",
+				"male",
+			];
 			const mean = await cliJson(base);
 			assert.equal(mean.chart.birthInfo.hour, 5, "默认口径（不计均时差）应为巳时");
 
@@ -253,14 +273,27 @@ describe("CLI 端到端", () => {
 
 			it("西部凌晨：校正后退回前一日（喀什 00:30 → 前一日 21:38 亥时）", async () => {
 				const rolled = await cliJson([
-					"--date", "1990-05-15", "--time", "00:30", "--lng", "75.99", "--gender", "male", "--eot",
+					"--date",
+					"1990-05-15",
+					"--time",
+					"00:30",
+					"--lng",
+					"75.99",
+					"--gender",
+					"male",
+					"--eot",
 				]);
 				assert.equal(rolled.chart.birthInfo.day, 14, "真太阳时落到前一日，日期须回退");
 				assert.equal(rolled.chart.birthInfo.hour, 11, "21:38 属亥时");
 
 				// 手工输入校正后的日期与时辰，应得到同一张盘
 				const manual = await cliJson([
-					"--date", "1990-05-14", "--branch", "11", "--gender", "male",
+					"--date",
+					"1990-05-14",
+					"--branch",
+					"11",
+					"--gender",
+					"male",
 				]);
 				assert.equal(
 					chartSignature(rolled.chart),
@@ -271,13 +304,26 @@ describe("CLI 端到端", () => {
 
 			it("东部深夜：校正后前进到次日（哈尔滨 23:30 → 次日 00:00 子时）", async () => {
 				const rolled = await cliJson([
-					"--date", "1990-05-15", "--time", "23:30", "--lng", "126.6", "--gender", "male", "--eot",
+					"--date",
+					"1990-05-15",
+					"--time",
+					"23:30",
+					"--lng",
+					"126.6",
+					"--gender",
+					"male",
+					"--eot",
 				]);
 				assert.equal(rolled.chart.birthInfo.day, 16, "真太阳时落到次日，日期须顺延");
 				assert.equal(rolled.chart.birthInfo.hour, 0, "00:00 属子时");
 
 				const manual = await cliJson([
-					"--date", "1990-05-16", "--branch", "0", "--gender", "male",
+					"--date",
+					"1990-05-16",
+					"--branch",
+					"0",
+					"--gender",
+					"male",
 				]);
 				assert.equal(
 					chartSignature(rolled.chart),
@@ -289,7 +335,15 @@ describe("CLI 端到端", () => {
 			it("跨天才调日期：不跨天时日期一位不动", async () => {
 				// 同样是西部城市，正午不会跨天；日期若被无条件改动，这条会红
 				const o = await cliJson([
-					"--date", "1990-05-15", "--time", "12:00", "--lng", "75.99", "--gender", "male", "--eot",
+					"--date",
+					"1990-05-15",
+					"--time",
+					"12:00",
+					"--lng",
+					"75.99",
+					"--gender",
+					"male",
+					"--eot",
 				]);
 				assert.equal(o.chart.birthInfo.day, 15);
 			});
@@ -301,16 +355,39 @@ describe("CLI 端到端", () => {
 			const forms = ["杭州", "杭州市", "浙江省杭州市"];
 			const lngs: Array<number | undefined> = [];
 			for (const city of forms) {
-				const o = await cliJson(["--date", "1990-05-15", "--time", "09:30", "--city", city, "--gender", "male"]);
+				const o = await cliJson([
+					"--date",
+					"1990-05-15",
+					"--time",
+					"09:30",
+					"--city",
+					city,
+					"--gender",
+					"male",
+				]);
 				lngs.push(o.chart.birthInfo.longitude);
 			}
-			assert.equal(new Set(lngs).size, 1, `三种写法应给同一经度，实际 ${JSON.stringify(lngs)}`);
-			assert.ok(lngs[0]! > 119 && lngs[0]! < 121, `杭州经度应在 119-121 之间，实际 ${lngs[0]}`);
+			assert.equal(
+				new Set(lngs).size,
+				1,
+				`三种写法应给同一经度，实际 ${JSON.stringify(lngs)}`
+			);
+			assert.ok(
+				lngs[0]! > 119 && lngs[0]! < 121,
+				`杭州经度应在 119-121 之间，实际 ${lngs[0]}`
+			);
 		});
 
 		it("未收录城市报错而非静默取默认值", async () => {
 			const stderr = await cliFails([
-				"--date", "1990-05-15", "--time", "09:30", "--city", "不存在的地名", "--gender", "male",
+				"--date",
+				"1990-05-15",
+				"--time",
+				"09:30",
+				"--city",
+				"不存在的地名",
+				"--gender",
+				"male",
 			]);
 			assert.match(stderr, /城市|经度/, "应提示城市无法解析");
 		});
@@ -324,7 +401,14 @@ describe("CLI 端到端", () => {
 		});
 
 		it("性别取值非法时报错退出", async () => {
-			const stderr = await cliFails(["--date", "1990-05-15", "--time", "09:30", "--gender", "xyz"]);
+			const stderr = await cliFails([
+				"--date",
+				"1990-05-15",
+				"--time",
+				"09:30",
+				"--gender",
+				"xyz",
+			]);
 			assert.match(stderr, /性别|male|female/);
 		});
 
@@ -336,7 +420,14 @@ describe("CLI 端到端", () => {
 			}
 			assert.equal(new Set(males).size, 1, "三种 male 写法应给同一张大限表");
 
-			const a = await cliJson(["--date", "1990-05-15", "--branch", "5", "--gender", "female"]);
+			const a = await cliJson([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"female",
+			]);
 			// 字段名写死为 birthInfo.gender 并断言**确切值**，不用 `??` 兜底 ——
 			// 兜底写法（`a.chart.gender ?? a.chart.birthInfo.gender` 不等于 "male"）在字段
 			// 改名时会假通过：两边都取不到即 undefined，而 undefined !== "male" 恒成立。
@@ -363,7 +454,15 @@ describe("CLI 端到端", () => {
 			// 1960 年闰六月。用 lunar-typescript 独立算出该闰月首日的公历日期作为期望值。
 			const { Lunar } = await import("lunar-typescript");
 			const expected = Lunar.fromYmd(1960, -6, 1).getSolar();
-			const o = await cliJson(["--lunar", "1960-06-01", "--leap", "--branch", "5", "--gender", "male"]);
+			const o = await cliJson([
+				"--lunar",
+				"1960-06-01",
+				"--leap",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+			]);
 			assert.equal(o.chart.birthInfo.year, expected.getYear());
 			assert.equal(o.chart.birthInfo.month, expected.getMonth());
 			assert.equal(o.chart.birthInfo.day, expected.getDay());
@@ -372,12 +471,24 @@ describe("CLI 端到端", () => {
 		});
 
 		it("公历与等价农历排出同一张盘", async () => {
-			const viaSolar = await cliJson(["--date", "1988-08-08", "--branch", "5", "--gender", "male"]);
+			const viaSolar = await cliJson([
+				"--date",
+				"1988-08-08",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+			]);
 			const { Lunar } = await import("lunar-typescript");
 			const l = Lunar.fromYmd(1988, 6, 26);
 			const s = l.getSolar();
 			const viaLunar = await cliJson([
-				"--lunar", `1988-06-26`, "--branch", "5", "--gender", "male",
+				"--lunar",
+				`1988-06-26`,
+				"--branch",
+				"5",
+				"--gender",
+				"male",
 			]);
 			assert.equal(viaLunar.chart.birthInfo.year, s.getYear());
 			assert.equal(
@@ -391,8 +502,22 @@ describe("CLI 端到端", () => {
 	describe("晚子时", () => {
 		// 23:00-23:59 出生时两种口径排出的是两张不同的盘。--branch 12 即「算次日」口径。
 		it("--branch 12 ≡ 次日 --branch 0（逐宫一致）", async () => {
-			const lateZi = await cliJson(["--date", "1990-05-15", "--branch", "12", "--gender", "male"]);
-			const nextDay = await cliJson(["--date", "1990-05-16", "--branch", "0", "--gender", "male"]);
+			const lateZi = await cliJson([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"12",
+				"--gender",
+				"male",
+			]);
+			const nextDay = await cliJson([
+				"--date",
+				"1990-05-16",
+				"--branch",
+				"0",
+				"--gender",
+				"male",
+			]);
 			assert.equal(
 				chartSignature(lateZi.chart),
 				chartSignature(nextDay.chart),
@@ -401,8 +526,22 @@ describe("CLI 端到端", () => {
 		});
 
 		it("晚子时与当日早子时是两张不同的盘", async () => {
-			const early = await cliJson(["--date", "1990-05-15", "--branch", "0", "--gender", "male"]);
-			const late = await cliJson(["--date", "1990-05-15", "--branch", "12", "--gender", "male"]);
+			const early = await cliJson([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"0",
+				"--gender",
+				"male",
+			]);
+			const late = await cliJson([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"12",
+				"--gender",
+				"male",
+			]);
 			assert.notEqual(
 				chartSignature(early.chart),
 				chartSignature(late.chart),
@@ -464,7 +603,9 @@ describe("CLI 端到端", () => {
 
 	describe("synastry 合盘", () => {
 		it("--json 的夫妻宫/福德宫派生字段与 chart 自洽", async () => {
-			const o = JSON.parse(await cliCmd("synastry", [...synastry_PAIR, "--json"], "synastry")) as synastryJson;
+			const o = JSON.parse(
+				await cliCmd("synastry", [...synastry_PAIR, "--json"], "synastry")
+			) as synastryJson;
 			for (const side of ["a", "b"] as const) {
 				const chart = o[side].chart;
 				for (const [field, palaceName] of [
@@ -544,7 +685,14 @@ describe("CLI 端到端", () => {
 
 		/** 一方在源 skill 的排盘参数 —— 经度固定 120（校正量 0），使期望值可由 `toHour` 直接复算。 */
 		const argsOne = (c: synastryCase): string[] => [
-			"--date", c.date, "--time", c.time, "--lng", "120", "--gender", c.gender,
+			"--date",
+			c.date,
+			"--time",
+			c.time,
+			"--lng",
+			"120",
+			"--gender",
+			c.gender,
 		];
 
 		/**
@@ -556,12 +704,20 @@ describe("CLI 端到端", () => {
 			pairArgs(argsOne(a), argsOne(b));
 
 		/** 时刻 → 时辰支（东经 120° 校正量为 0 时）。用的是安星法的时辰划分，独立于 CLI 实现。 */
-		const toHour = (t: string): number => Math.floor((Number(String(t).split(":")[0]) + 1) / 2) % 12;
+		const toHour = (t: string): number =>
+			Math.floor((Number(String(t).split(":")[0]) + 1) / 2) % 12;
 
 		/** 用内核按同一出生信息独立排一张盘 —— 本 describe 里所有期望值的唯一来源。 */
 		const chartOf = (cfg: synastryCase): ZiweiChart => {
 			const [year, month, day] = cfg.date.split("-").map(Number);
-			return generateChart({ year, month, day, hour: toHour(cfg.time), gender: cfg.gender, longitude: 120 });
+			return generateChart({
+				year,
+				month,
+				day,
+				hour: toHour(cfg.time),
+				gender: cfg.gender,
+				longitude: 120,
+			});
 		};
 
 		/**
@@ -573,18 +729,35 @@ describe("CLI 端到端", () => {
 		const asJson = <T>(o: T): T => JSON.parse(JSON.stringify(o)) as T;
 
 		const majorsOf = (chart: ZiweiChart, name: string): string[] =>
-			chart.palaces.find(p => p.name === name)!.stars.filter(s => s.type === "major").map(s => s.name);
+			chart.palaces
+				.find(p => p.name === name)!
+				.stars.filter(s => s.type === "major")
+				.map(s => s.name);
 
 		// 起一次 CLI 子进程约 0.6 秒，故每个组合只跑一次，全 describe 共用（node:test 同文件内串行）。
 		const memo = <T>(fn: () => T): (() => T) => {
 			let v: T | undefined;
 			return () => (v ??= fn());
 		};
-		const pairJson = memo(async () => JSON.parse(await cliCmd("synastry", [...(await argsOf(A, B)), "--json"], "synastry")) as synastryJson);
-		const swapJson = memo(async () => JSON.parse(await cliCmd("synastry", [...(await argsOf(B, A)), "--json"], "synastry")) as synastryJson);
+		const pairJson = memo(
+			async () =>
+				JSON.parse(
+					await cliCmd("synastry", [...(await argsOf(A, B)), "--json"], "synastry")
+				) as synastryJson
+		);
+		const swapJson = memo(
+			async () =>
+				JSON.parse(
+					await cliCmd("synastry", [...(await argsOf(B, A)), "--json"], "synastry")
+				) as synastryJson
+		);
 		const pairText = memo(async () => cliCmd("synastry", await argsOf(A, B), "synastry"));
-		const crossText = memo(async () => cliCmd("synastry", await argsOf(CROSS_A, CROSS_B), "synastry"));
-		const emptyText = memo(async () => cliCmd("synastry", await argsOf(EMPTY_A, B), "synastry"));
+		const crossText = memo(async () =>
+			cliCmd("synastry", await argsOf(CROSS_A, CROSS_B), "synastry")
+		);
+		const emptyText = memo(async () =>
+			cliCmd("synastry", await argsOf(EMPTY_A, B), "synastry")
+		);
 
 		it("交换 --a-chart / --b-chart 后，两方命盘精确互换", async () => {
 			const d = await pairJson();
@@ -627,7 +800,11 @@ describe("CLI 端到端", () => {
 					palace: m[1],
 					branch: BRANCHES.indexOf(m[2]),
 				}));
-				assert.equal(rows.length, 6, `${tag}：应有甲乙两方 × 三宫共 6 行，实得 ${rows.length} 行`);
+				assert.equal(
+					rows.length,
+					6,
+					`${tag}：应有甲乙两方 × 三宫共 6 行，实得 ${rows.length} 行`
+				);
 				for (const s of [0, 1]) {
 					const who = `${tag}${s ? "乙" : "甲"}方`;
 					const [ming, fuqi, fude] = rows.slice(s * 3, s * 3 + 3);
@@ -635,8 +812,16 @@ describe("CLI 端到端", () => {
 					assert.equal(fuqi.palace, "夫妻宫", `${who}第 2 行应为夫妻宫`);
 					assert.equal(fude.palace, "福德宫", `${who}第 3 行应为福德宫`);
 					assert.ok(ming.branch >= 0, `${who}命宫地支解析失败：${ming.branch}`);
-					assert.equal((fuqi.branch - ming.branch + 12) % 12, 10, `${who}夫妻宫应在命宫地支 −2`);
-					assert.equal((fude.branch - ming.branch + 12) % 12, 2, `${who}福德宫应在命宫地支 +2`);
+					assert.equal(
+						(fuqi.branch - ming.branch + 12) % 12,
+						10,
+						`${who}夫妻宫应在命宫地支 −2`
+					);
+					assert.equal(
+						(fude.branch - ming.branch + 12) % 12,
+						2,
+						`${who}福德宫应在命宫地支 +2`
+					);
 				}
 			}
 		});
@@ -692,7 +877,10 @@ describe("CLI 端到端", () => {
 						: "无主星对应";
 			assert.ok(t.includes(`→ ${verdict}`), `对应关系判定应为「${verdict}」`);
 			// 样本守卫：两向交集皆空时，「列表为空」与「方向整个写反」输出完全一样。
-			assert.ok(crossA.length || crossB.length, "这对样本两向交集皆空，本条断言在空转 —— 请换样本");
+			assert.ok(
+				crossA.length || crossB.length,
+				"这对样本两向交集皆空，本条断言在空转 —— 请换样本"
+			);
 		});
 
 		it("晚子时提醒只落在命中的一方，且把用户送回排盘方", async () => {
@@ -701,9 +889,16 @@ describe("CLI 端到端", () => {
 			// ⚠️ 口径**不在本 skill 里选**：提醒必须指向 `purplestar-astrology` 重排。
 			// 从前这里断言的是 `--a-late-zi`；那个旗标自 2026-09-27 起归排盘方，写在本 skill
 			// 的输出里等于让用户去敲一个必然被拒的参数 —— 断言跟着实现一起改，才不会两边都错。
-			const t = await cliCmd("synastry", await argsOf({ ...A, time: "23:30" }, B), "synastry");
+			const t = await cliCmd(
+				"synastry",
+				await argsOf({ ...A, time: "23:30" }, B),
+				"synastry"
+			);
 			assert.ok(t.includes("⚠️ 甲方出生时间落在 23:00–23:59"), "应提示甲方落在晚子时");
-			assert.ok(t.includes("purplestar-astrology"), "应把用户送回排盘 skill 用晚子时口径重排");
+			assert.ok(
+				t.includes("purplestar-astrology"),
+				"应把用户送回排盘 skill 用晚子时口径重排"
+			);
 			assert.ok(!t.includes("⚠️ 乙方出生时间"), "乙方不在晚子时，不应被提示");
 		});
 
@@ -711,7 +906,11 @@ describe("CLI 端到端", () => {
 			const t = await emptyText();
 			const fuqi = chartOf(EMPTY_A).palaces.find(p => p.name === "夫妻宫")!;
 			// 样本前提先钉死，否则下面两条会退化成都市真（空数组、空字符串都不会报错）。
-			assert.equal(fuqi.stars.filter(s => s.type === "major").length, 0, "样本前提：甲方夫妻宫须为空宫");
+			assert.equal(
+				fuqi.stars.filter(s => s.type === "major").length,
+				0,
+				"样本前提：甲方夫妻宫须为空宫"
+			);
 			assert.ok(fuqi.borrowedStars?.length, "样本前提：该空宫须借得到对宫主星");
 			assert.ok(
 				t.includes(`甲方夫妻宫空宫，借对宫 ${fuqi.borrowedFromName} 主星论：`),
@@ -733,7 +932,10 @@ describe("CLI 端到端", () => {
 	//
 	// ⚠️ 该 md **不被任何运行时路径读取** —— 读它的只有本组用例与 synastry 的 `selftest`。
 	describe("合盘方法论参考文档", () => {
-		const GUIDE = resolve(SKILL_ROOT, "skills/purplestar-synastry/references/synastry-guide.md");
+		const GUIDE = resolve(
+			SKILL_ROOT,
+			"skills/purplestar-synastry/references/synastry-guide.md"
+		);
 
 		it("评分标准五档按源序齐全，方法论正文完整", () => {
 			const md = readFileSync(GUIDE, "utf8");
@@ -770,7 +972,10 @@ describe("CLI 端到端", () => {
 
 			for (const [label, needle] of [
 				["方法论首章标题", "## 合盘分析核心框架（倪海夏体系 + 《紫微斗数全书》综合）"],
-				["评分标准首档判词", "双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉"],
+				[
+					"评分标准首档判词",
+					"双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉",
+				],
 			] as const) {
 				assert.ok(md.includes(needle), `${label}不在 references/synastry-guide.md 里`);
 				assert.ok(!synastry.includes(needle), `${label}仍留在 synastry 输出里`);
@@ -784,13 +989,30 @@ describe("CLI 端到端", () => {
 		// 进程内内核（走 loader 的钩子）与**真实 CLI 子进程**（走 purple-star 的钩子）
 		// 是否仍排出同一张盘 —— 既覆盖内核本身被改坏，也覆盖两条引导路径的调用策略被改坏。
 		it("内核直调结果 ≡ CLI --json 输出", async () => {
-			const birth: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male", longitude: 120 };
+			const birth: BirthInfo = {
+				year: 1990,
+				month: 5,
+				day: 15,
+				hour: 5,
+				gender: "male",
+				longitude: 120,
+			};
 			const direct = generateChart({ ...birth });
 			// ⚠️ 这条必须走**真子进程**（cliReal）：它盯的是「测试进程内的内核」与「真实 CLI 子进程」不漂移。
 			//    走进程内 cliJson 会退化成「进程内 ≡ 进程内」，失去防漂移意义。
-			const viaCli = JSON.parse(await cliReal([
-				"--date", "1990-05-15", "--branch", "5", "--lng", "120", "--gender", "male", "--json",
-			])) as AnalyzeJson;
+			const viaCli = JSON.parse(
+				await cliReal([
+					"--date",
+					"1990-05-15",
+					"--branch",
+					"5",
+					"--lng",
+					"120",
+					"--gender",
+					"male",
+					"--json",
+				])
+			) as AnalyzeJson;
 			assert.equal(
 				chartSignature(direct),
 				chartSignature(viaCli.chart),
@@ -811,9 +1033,16 @@ describe("CLI 端到端", () => {
 		// （区块，公历口径）互相矛盾。区块必须与盘面同源 —— 即 chart.lunarInfo.yearStem。
 		it("跨年月出生按农历年干（1990-01-15 = 农历己巳年腊月，非公历取模的庚）", async () => {
 			const chart = generateChart({ year: 1990, month: 1, day: 15, hour: 5, gender: "male" });
-			assert.equal(chart.lunarInfo.yearStem, 5, "样本前提：1990-01-15 农历年干应为己（索引 5）");
+			assert.equal(
+				chart.lunarInfo.yearStem,
+				5,
+				"样本前提：1990-01-15 农历年干应为己（索引 5）"
+			);
 			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male"]);
-			assert.ok(t.includes("【生年四化】年干 己"), "年干应取农历年干「己」，而非公历取模的「庚」");
+			assert.ok(
+				t.includes("【生年四化】年干 己"),
+				"年干应取农历年干「己」，而非公历取模的「庚」"
+			);
 			for (const h of ["禄", "权", "科", "忌"] as const) {
 				const star = getSiHuaByStem(5)[h];
 				assert.ok(t.includes(`化${h} ${star}`), `化${h} 应为己干四化的「${star}」`);
@@ -835,7 +1064,11 @@ describe("CLI 端到端", () => {
 			const inBlock = [...block.matchAll(/化([禄权科忌]) (.+?) → /g)]
 				.map(m => `${m[1]}:${m[2]}`)
 				.sort();
-			assert.deepEqual(inBlock, onChart, "【生年四化】区块与盘面 mutagen 不一致 —— 双口径分叉");
+			assert.deepEqual(
+				inBlock,
+				onChart,
+				"【生年四化】区块与盘面 mutagen 不一致 —— 双口径分叉"
+			);
 		});
 	});
 
@@ -863,8 +1096,16 @@ describe("CLI 端到端", () => {
 			const chart = generateChart({ year: 1990, month: 5, day: 15, hour: 5, gender: "male" });
 			for (const m of rows) {
 				const [hua, star, palace] = [m[1]!, m[2]!, m[3]!];
-				assert.equal(transforms[hua as "禄"], star, `化${hua}应为该干四化的「${transforms[hua as "禄"]}」`);
-				assert.equal(palace, locateByStar(chart, star), `化${hua} ${star} 的落宫应与独立复算一致`);
+				assert.equal(
+					transforms[hua as "禄"],
+					star,
+					`化${hua}应为该干四化的「${transforms[hua as "禄"]}」`
+				);
+				assert.equal(
+					palace,
+					locateByStar(chart, star),
+					`化${hua} ${star} 的落宫应与独立复算一致`
+				);
 			}
 			return t;
 		};
@@ -880,7 +1121,18 @@ describe("CLI 端到端", () => {
 
 		it("--liuyue 走五虎遁：2027 丁年正月月干壬，落宫与独立复算一致", async () => {
 			const t = await assertRows(
-				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "2027", "--liuyue", "1"],
+				[
+					"--date",
+					"1990-05-15",
+					"--branch",
+					"5",
+					"--gender",
+					"male",
+					"--liunian",
+					"2027",
+					"--liuyue",
+					"1",
+				],
 				"【2027 年 农历1月 流月四化】",
 				8 // 丁年正月壬寅 → 月干壬
 			);
@@ -894,10 +1146,22 @@ describe("CLI 端到端", () => {
 			// 1990-06-15 在农历庚午年内（生年干庚）；--liunian 2024 为甲年，正月丙寅。
 			// 若误用生年干庚推月干会得「戊」—— 两口径月干不同，此样本专钉不串台。
 			const chart = generateChart({ year: 1990, month: 6, day: 15, hour: 5, gender: "male" });
-			assert.equal(chart.lunarInfo.yearStem, 6, "样本前提：1990-06-15 农历年干应为庚（索引 6）");
+			assert.equal(
+				chart.lunarInfo.yearStem,
+				6,
+				"样本前提：1990-06-15 农历年干应为庚（索引 6）"
+			);
 			const t = await cli([
-				"--date", "1990-06-15", "--branch", "5", "--gender", "male",
-				"--liunian", "2024", "--liuyue", "1",
+				"--date",
+				"1990-06-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--liunian",
+				"2024",
+				"--liuyue",
+				"1",
 			]);
 			assert.ok(
 				t.includes("月干 丙（五虎遁，由流年干 甲 推）"),
@@ -910,7 +1174,14 @@ describe("CLI 端到端", () => {
 			// 公历年取模 —— 两口径在 1-2 月出生者身上分叉，且**应当**分家：
 			// 问「1990 年流年」指公历 1990 这一年，与出生那年的农历归属无关。
 			const t = await cli([
-				"--date", "1990-01-15", "--branch", "5", "--gender", "male", "--liunian", "1990",
+				"--date",
+				"1990-01-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--liunian",
+				"1990",
 			]);
 			assert.ok(t.includes("【生年四化】年干 己"), "生年应取农历年干「己」（己巳年腊月）");
 			assert.ok(t.includes("【1990 流年四化】年干 庚"), "流年应取公历取模的「庚」");
@@ -927,14 +1198,27 @@ describe("CLI 端到端", () => {
 			] as string[][]) {
 				const stderr = await cliFails(args);
 				const flag = args.includes("--liunian") ? "--liunian" : "--liuyue";
-				assert.ok(stderr.includes(flag), `报错应点名 ${flag}（${args[args.length - 1]}），实得：${stderr}`);
+				assert.ok(
+					stderr.includes(flag),
+					`报错应点名 ${flag}（${args[args.length - 1]}），实得：${stderr}`
+				);
 			}
 		});
 
 		it("--json 的 liuNianSiHua / liuYueSiHua 与独立复算一致", async () => {
-			const j = await cliJson<AnalyzeJson & { liuNianSiHua: DynamicSihua; liuYueSiHua: DynamicSihua }>([
-				"--date", "1990-05-15", "--branch", "5", "--gender", "male",
-				"--liunian", "2026", "--liuyue", "3",
+			const j = await cliJson<
+				AnalyzeJson & { liuNianSiHua: DynamicSihua; liuYueSiHua: DynamicSihua }
+			>([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--liunian",
+				"2026",
+				"--liuyue",
+				"3",
 			]);
 			assert.equal(j.liuNianSiHua.year, 2026);
 			assert.equal(j.liuNianSiHua.stem, "丙");
@@ -949,7 +1233,11 @@ describe("CLI 端到端", () => {
 				for (const x of located) {
 					assert.equal(transforms[x.hua as "禄"], x.star, `化${x.hua}的星名与四化表不符`);
 					const palace = chart.palaces.find(p => p.stars.some(s => s.name === x.star));
-					assert.equal(x.palace ?? null, palace?.name ?? null, `${x.star} 的落宫应与独立复算一致`);
+					assert.equal(
+						x.palace ?? null,
+						palace?.name ?? null,
+						`${x.star} 的落宫应与独立复算一致`
+					);
 				}
 			}
 		});
@@ -958,14 +1246,27 @@ describe("CLI 端到端", () => {
 	describe("analyze 参数校验", () => {
 		it("--liunian 非数字报错退出（不得静默产出 NaN 四化）", async () => {
 			const stderr = await cliFails([
-				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "abc",
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--liunian",
+				"abc",
 			]);
 			assert.ok(stderr.includes("--liunian"), `报错应点名 --liunian，实得：${stderr}`);
 		});
 
 		it("--late-zi 与 --branch 同用报错（该开关只配合 --time）", async () => {
 			const stderr = await cliFails([
-				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--late-zi",
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--late-zi",
 			]);
 			assert.ok(stderr.includes("--late-zi"), `报错应点名 --late-zi，实得：${stderr}`);
 		});
@@ -983,14 +1284,30 @@ describe("CLI 端到端", () => {
 		}
 
 		it("不带 --topic 时列出 13 个主题清单", async () => {
-			const t = await cliCmd("topic", ["--date", "1990-05-15", "--branch", "5", "--gender", "male"]);
-			assert.ok(t.includes("overview") && t.includes("love") && t.includes("parents"),
-				"应列出全部主题 key");
+			const t = await cliCmd("topic", [
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+			]);
+			assert.ok(
+				t.includes("overview") && t.includes("love") && t.includes("parents"),
+				"应列出全部主题 key"
+			);
 		});
 
 		it("love 主题产出夫妻宫论断（本命视角，非空壳）", async () => {
 			const t = await cliCmd("topic", [
-				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "love",
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--topic",
+				"love",
 			]);
 			assert.ok(t.includes("夫妻"), "love 主题应指向夫妻宫（宫名口径适配生效）");
 			assert.ok(t.length > 300, `论断文本不应是空壳，实得 ${t.length} 字`);
@@ -999,13 +1316,29 @@ describe("CLI 端到端", () => {
 
 		it("friends 主题适配项目宫名口径（iztro 旧口径「仆役」→「交友宫」）", async () => {
 			const t = await cliCmd("topic", [
-				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "friends",
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--topic",
+				"friends",
 			]);
 			assert.ok(!t.includes("无法找到"), "friends 主题按「交友宫」找宫不应失配");
 		});
 
 		it("四种 view（本命/大限/流年/流月）均可产出", async () => {
-			const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "wealth"];
+			const base = [
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--topic",
+				"wealth",
+			];
 			for (const view of ["mingpan", "daxian", "liunian", "liuyue"]) {
 				const t = await cliCmd("topic", [...base, "--view", view]);
 				assert.ok(t.length > 100 && !t.includes("无法找到"), `view=${view} 应正常产出`);
@@ -1014,16 +1347,33 @@ describe("CLI 端到端", () => {
 
 		it("未知 topic 报错并列出可用值", async () => {
 			const stderr = await cmdFails("topic", [
-				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "xyz",
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--topic",
+				"xyz",
 			]);
 			assert.ok(stderr.includes("--topic"), `报错应点名 --topic，实得：${stderr}`);
 		});
 
 		it("输出末尾带知识来源分级提示", async () => {
 			const t = await cliCmd("topic", [
-				"--date", "1990-05-15", "--branch", "5", "--gender", "male", "--topic", "career",
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--topic",
+				"career",
 			]);
-			assert.ok(t.includes("转述") || t.includes("来源"), "论断输出应披露来源分级，防止把转述当原话");
+			assert.ok(
+				t.includes("转述") || t.includes("来源"),
+				"论断输出应披露来源分级，防止把转述当原话"
+			);
 		});
 	});
 
@@ -1111,13 +1461,15 @@ describe("CLI 端到端", () => {
 
 	// ── classics 古籍检索 ──
 	describe("classics 古籍检索（searchClassics 分支）", () => {
-		// ⚠️ `classics/` 自 2026-09-27 起归 purplestar-classics，源的解析钩子够不到它 ——
+		// ⚠️ 古籍内核自 2026-09-27 起归 purplestar-classics，源的解析钩子够不到它 ——
 		//    故走 loadFromSkill 而非 load。本组测的是**古籍文本本身**（分词、limit 截断、
 		//    snippet 窗口），不是「源的内核」，换加载口径即可，不必删用例。
+		//    ⚠️ `rel` 是 `"index"`：同日断派生关系后那份内核不再有 `classics/` 这一层，
+		//    入口即 `scripts/index.ts`。类型锚与 `rel` 分开，只改前者会**运行期**炸。
 		const loadClassics = () =>
-			loadFromSkill<typeof import("../skills/purplestar-classics/scripts/classics/index")>(
+			loadFromSkill<typeof import("../skills/purplestar-classics/scripts/index")>(
 				"purplestar-classics",
-				"classics/index"
+				"index"
 			);
 
 		it("空查询返回空数组（不把空白当关键词）", async () => {
@@ -1261,7 +1613,10 @@ describe("CLI 端到端", () => {
 			for (const bad of ["0", "-3", "abc"]) {
 				const t = await cliCmd("classics", ["--search", "星", "--limit", bad], "classics");
 				assert.ok(!t.includes("未找到"), `--limit ${bad} 不该谎报未找到，实得：${t}`);
-				assert.ok(t.includes("--limit"), `--limit ${bad} 应指出是 limit 的问题，实得：${t}`);
+				assert.ok(
+					t.includes("--limit"),
+					`--limit ${bad} 应指出是 limit 的问题，实得：${t}`
+				);
 			}
 		});
 	});
@@ -1270,16 +1625,40 @@ describe("CLI 端到端", () => {
 	describe("chart 命令", () => {
 		it("渲染冒烟：关键段落齐全", async () => {
 			const t = await cliCmd("chart", [
-				"--date", "1990-05-15", "--time", "09:30", "--city", "北京", "--gender", "male",
+				"--date",
+				"1990-05-15",
+				"--time",
+				"09:30",
+				"--city",
+				"北京",
+				"--gender",
+				"male",
 			]);
-			for (const seg of ["命盘", "农历：", "命宫：", "身宫：", "五行局：", "紫微：", "大限：", "当前年龄："])
+			for (const seg of [
+				"命盘",
+				"农历：",
+				"命宫：",
+				"身宫：",
+				"五行局：",
+				"紫微：",
+				"大限：",
+				"当前年龄：",
+			])
 				assert.ok(t.includes(seg), `chart 输出应含「${seg}」，实得：\n${t.slice(0, 400)}`);
 		});
 
 		it("--json 输出十二宫齐全，地支 0-11 各一次", async () => {
 			const c = JSON.parse(
 				await cliCmd("chart", [
-					"--date", "1990-05-15", "--time", "09:30", "--city", "北京", "--gender", "male", "--json",
+					"--date",
+					"1990-05-15",
+					"--time",
+					"09:30",
+					"--city",
+					"北京",
+					"--gender",
+					"male",
+					"--json",
 				])
 			) as ZiweiChart;
 			assert.equal(c.palaces.length, 12, "恒为十二宫");

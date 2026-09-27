@@ -1,23 +1,21 @@
 /**
  * 命令实现 —— 合盘 skill 的命令表。
  *
- * ⚠️ **本文件是手写的，不是副本**（见 `CLAUDE.md` 的「副本边界与同步流程」）。
- * 排盘解读 skill 的 `cli/commands.ts` 里有 9 个命令，本 skill 只该有 2 个 ——
+ * ⚠️ **本文件是手写的，不是副本**（2026-09-27 起本 skill 与源 skill 不再有派生关系）。
+ * 排盘解读 skill 的 `commands.ts` 里有 9 个命令，本 skill 只该有 2 个 ——
  * `analyze` / `topic` 之类出现在这里，只会让 Claude 照着一个跑不通的命令名去敲。
- * 裁过的文件无法逐字节守卫，这是拆 skill 的固有代价；它的正确性由
- * `cli/selftest.ts`（命令表 ↔ SKILL.md 双向一致）与仓库的 `test/cli.test.ts` 负责。
  *
  * ## 本 skill **不排盘**（2026-09-27 起）
  *
  * `synastry` 不再接受出生信息旗标（`--a-date` / `--b-city` 等已整个移除），改为读两份
  * `purplestar-astrology … analyze --json` 的输出。排盘只有一处实现，合盘只做合盘 ——
- * 从前那套「两方各自出生信息 → 就地排两张盘」的写法连同它带进来的
- * `ziwei/algorithm.ts` / `cli/birth-info*.ts` / `cli/render.ts` 一并删掉了。
+ * 从前那套「两方各自出生信息 → 就地排两张盘」的写法连同它带进来的排盘底座一并删掉了。
  *
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import。
+ * ⚠️ 本文件被 `purple-star.ts` **静态** import，故内部 import 一律写全 `.ts` 扩展名
+ * （本 skill 不注册解析钩子，靠 Node ≥ 22.15 的原生类型擦除直接加载，见 `purple-star.ts` 文件头）。
  */
 
-import type { CliArgs, CliContext } from "./args";
+import type { CliArgs } from "./purple-star.ts";
 import {
 	branchName,
 	fmtDate,
@@ -26,17 +24,10 @@ import {
 	mustPalace,
 	palaceAtBranch,
 	readAnalyzeJson,
-} from "./chart-view";
-import { cmdSelftest } from "./selftest";
-import {
-	STAR_IN_FUQI_GU,
-	SIHUA_IN_FUQI_GU,
-	MARRIAGE_STARS_BRIEF,
-	// ⚠️ 合盘内核用**相对路径**而非 `@/`：`@/` 在 tsc 眼里只映到**源** skill 的内核根
-	//    （见 tsconfig 的 paths），而 synastry-knowledge.ts 已不住在源里（2026-09-27 起归本 skill），
-	//    写 `@/` 会让 `npm run typecheck` 报「找不到模块」。相对路径在两侧都对：运行期由钩子的
-	//    `.` 分支按**本文件**所在目录补 `.ts`，tsc 也按文件位置解析。
-} from "../ziwei/synastry-knowledge";
+} from "./chart-view.ts";
+import { cmdSelftest } from "./selftest.ts";
+// ⚠️ 相对路径 + 写全 `.ts`：本 skill 已不注册解析钩子，省略扩展名会 ERR_MODULE_NOT_FOUND。
+import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "./synastry-knowledge.ts";
 
 /**
  * `synastry` 命令：合盘（双宫联参 + 夫妻宫断语）。
@@ -240,8 +231,8 @@ function cmdsynastry(args: CliArgs) {
 
 // ══════════════════════ 命令表 ══════════════════════
 
-/** 命令实现的签名：返回**已渲染好的文本**，由引导层统一 `console.log`。 */
-type Cmd = (args: CliArgs, ctx: CliContext) => string;
+/** 命令实现的签名：返回**已渲染好的文本**，由入口统一 `console.log`。 */
+type Cmd = (args: CliArgs) => string;
 
 /**
  * 命令名 → 实现。
@@ -252,10 +243,14 @@ type Cmd = (args: CliArgs, ctx: CliContext) => string;
  *
  * 用 `satisfies` 而非 `: Record<...>` 标注，是为了保住字面量键集 ——
  * `CommandName` 与 `COMMAND_DESC` 的完备性都建立在它之上。
+ *
+ * ⚠️ `selftest` 这项写成 `() => cmdSelftest()` 而不是直接 `cmdSelftest`：TS 允许参数更少的
+ * 函数赋给参数更多的类型，故直接写也对 —— 但显式零参更能说明「自检不需要参数」
+ * （从前它要 `ctx`，只为了拿内核根；现在内核根由 `selftest.ts` 自己算）。
  */
 const COMMAND_TABLE = {
 	synastry: cmdsynastry,
-	selftest: (_args: CliArgs, ctx: CliContext) => cmdSelftest(ctx),
+	selftest: () => cmdSelftest(),
 } satisfies Record<string, Cmd>;
 
 /** 合法命令名。 */
@@ -268,7 +263,7 @@ export type CommandName = keyof typeof COMMAND_TABLE;
  * 值类型显式写出 `| undefined`：命令名来自 argv，查表必然未命中，
  * 这里让「未命中」在类型上就成立，而不是靠断言把 undefined 抹掉。
  *
- * `help` 不在表内 —— 引导层单独处理，见 `purple-star.ts` 的 `main()`。
+ * `help` 不在表内 —— 入口单独处理，见 `purple-star.ts` 的 `main()`。
  */
 export const COMMANDS: Record<string, Cmd | undefined> = COMMAND_TABLE;
 

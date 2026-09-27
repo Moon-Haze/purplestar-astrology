@@ -1,51 +1,68 @@
 /**
  * 回归自检 —— 合盘 skill 的命令冒烟与自身一致性。
  *
- * ⚠️ **本文件是手写的，不是副本**（见 `CLAUDE.md` 的「副本边界与同步流程」）。
+ * ⚠️ **本文件是手写的，不是副本**（2026-09-27 起本 skill 与源 skill 不再有派生关系）。
  *
  * ## 为什么这里**不复制**排盘解读 skill 的那几百行断言
  *
- * 本 skill 的排盘内核**已不存在**（2026-09-27 起命盘由 purplestar-astrology 产出），
- * 剩下的逐字节副本只剩 `boot-hooks.ts` —— 没人会就地改它，开发循环是
- * 「改源 → `npm test` → `npm run sync:skills`」。（`cli/args.ts` 已不是源的副本：源仍用
- * `cac`，两个派生用内置 `parseArgs`，两份派生副本之间逐字节相同。）把排盘内核的断言复制过来，
- * 只会生产两份需要手工同步的副本，而漏同步的那一份会静默失效。
- * 排盘内核回归的主场是源 skill 的 `selftest` 与仓库的 `npm test`。
+ * 本 skill 的排盘内核**不存在**（命盘由 purplestar-astrology 产出），那些断言在本 skill
+ * 里连被断言的对象都没有。排盘内核回归的主场是源 skill 的 `selftest` 与仓库的 `npm test`。
  *
  * 本文件只负责**本 skill 自己的**事，四类：
- *   1. 命令冒烟 —— 引导层 → 解析钩子 → 命令表 → 渲染这条链真的跑得通
+ *   1. 命令冒烟 —— 入口 → 解析 → 命令表 → 渲染这条链真的跑得通
  *   2. 输入护栏 —— 缺 `--a-chart` / 坏 JSON / 拿 `chart --json` 顶替，都要当场说清
  *   3. 参数面 —— 拼错旗标要报错、`a-` / `b-` 前缀不得越界、SKILL.md 与实现双向一致
- *   4. 引导层豁免有界
- *
- * 外加两条**只此一份**的守卫（源里没有对应物可比）：
- *   · 参考文档守卫 —— `references/synastry-guide.md` 不被任何运行时路径读取，
- *     删空或改名不会让别的断言变红，故由本条盯着
- *   · 引文核对 —— 扫**本 skill 的根**，盯 `synastry-knowledge.ts` 里那些「倪师说」引文
- *     有没有未核实却强归属的
+ *   4. 知识源与参考文档 —— 断语库非空、`references/synastry-guide.md` 的两节都在
  *
  * ⚠️ 它留在 `scripts/` 而非 `test/`，与源 skill 同理：分发时只带走
  * `SKILL.md + scripts/ + package.json`，自检必须在交付包内，否则装到别人机器上就没法自证。
  *
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import。
+ * ## 两条守卫**不在这里**（2026-09-27 移出）
+ *
+ * - **引文核对**：从前本文件扫本 skill 的根，盯 `synastry-knowledge.ts` 里那些「倪师说」
+ *   引文有没有未核实却强归属的。现在它挪到仓库的 `test/citations.test.ts`，**扫全仓三个
+ *   skill** —— 覆盖面反而扩大（原先源扫不到本 skill、本 skill 也扫不到源的格局库）。
+ *   守卫的受众是改内核的开发者，不是拷走 skill 的用户，`test/` 是它的正确位置。
+ * - **「引导层豁免有界」**：它守的是 `boot-hooks.ts` 只依赖 `node:`，而那个文件已随简化删除
+ *   （本 skill 的内部 import 写全 `.ts` 扩展名，靠 Node 原生类型擦除加载，不需要解析钩子）。
+ *
+ * ## 参数面断言为什么**起子进程**而不是 import 解析函数
+ *
+ * 从前的参数面断言直接 `import { parseArgs, FLAG_NAMES, SIDE_PREFIXES } from "./args"`。
+ * 那有两个代价：**它测不到用户真正遇到的界面**（用户敲的是命令行，不是函数调用），
+ * 且**它把断言钉在实现上** —— 解析函数一改名 / 一挪窝，整个 `selftest` 在加载期就崩，
+ * 而那是**跑任何一项断言之前**就崩。现在参数面全走子进程：报错看 stderr，
+ * 旗标清单从 `help` 的 `Options:` 段扫（那段由 `purple-star.ts` 的声明表渲染，
+ * 故顺带证明了「help 里显示的旗标就是实际接受的旗标」）。
  */
 
-import type { CliContext } from "./args";
-import { FLAG_NAMES, SIDE_PREFIXES, parseArgs } from "./args";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-// ⚠️ `@/` 在这里可用：它解析到**本 skill 的内核根**（`scripts/`），而引文守卫的副本
-//    就在其中（切片保留，见 tools/skills.ts）。若哪天它被移出切片，本行会让 selftest
-//    加载失败并走引导层的错误指引 —— 不会静默少一条断言。
-import { scanCitations } from "@/ziwei/citation-guard";
-// ⚠️ 相对路径而非 `@/`：合盘内核已不住在源 skill 里（见 ./commands.ts 同一处注释）。
-import {
-	STAR_IN_FUQI_GU,
-	SIHUA_IN_FUQI_GU,
-	MARRIAGE_STARS_BRIEF,
-} from "../ziwei/synastry-knowledge";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+// ⚠️ 内核 import 写全 `.ts` 扩展名 —— 本 skill 不再注册解析钩子（见 purple-star.ts 文件头）。
+import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "./synastry-knowledge.ts";
+
+/**
+ * 本 skill 的内核根，即 `scripts/`。
+ *
+ * @remarks
+ * 从前它由引导层经 `CliContext` 注入（因为 `scripts/cli/*` 是被动态加载的，拿不到引导层的
+ * 局部变量）。简化的入口就是本文件的同层邻居，故一行算得出来，`CliContext` 随之取消。
+ */
+const ROOT = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * 出生方前缀 —— 与 `purple-star.ts` 的同名常量是一回事。
+ *
+ * @remarks
+ * ⚠️ 这里**没有**从 `purple-star.ts` import 它：那份文件顶层就调 `main()`，值导入会当场
+ * 把 CLI 跑起来（且与命令表构成环）。而本文件只需要这两个字面量来**剥前缀比对**，
+ * 抄两个字面量的代价小于把入口拆成「可导入的模块 + 调用点」两半的代价。
+ * 前缀的**权威定义**仍在 `purple-star.ts`，其行为由下面「前缀不得越界」那条断言盯着。
+ */
+const SIDE_PREFIXES: readonly string[] = ["a-", "b-"];
 
 // ── 冒烟用的假命盘 ──────────────────────────────────────────
 
@@ -85,10 +102,10 @@ const aux = (name: string) => ({ name, type: "minor" });
  * @remarks
  * ## 为什么是内嵌的假盘，而不是「真排一张再喂进来」
  *
- * 本 skill 里**没有排盘内核**了，`generateChart` 无从调用；去起 purplestar-astrology 的
- * 子进程则要一套「定位另一个已安装 skill」的机制 —— 那正是本次改造刻意避开的耦合，
- * 且装到 `~/.claude/skills/` 之后并不成立（见 `test/repo.test.ts` 里那条既有记录：
- * skill 之间互相转指一律用**技能名**而非路径）。故冒烟自带假盘，自包含、可离线跑。
+ * 本 skill 里**没有排盘内核**，`generateChart` 无从调用；去起 purplestar-astrology 的
+ * 子进程则要一套「定位另一个已安装 skill」的机制 —— 那是刻意避开的耦合，且装到
+ * `~/.claude/skills/` 之后并不成立（skill 之间互相转指一律用**技能名**而非路径）。
+ * 故冒烟自带假盘，自包含、可离线跑。
  *
  * ## 边界（诚实交代）
  *
@@ -174,7 +191,6 @@ function makeFixture(o: {
 /**
  * `selftest` 命令：跑一组命令冒烟与一致性断言，返回逐项报告。
  *
- * @param ctx - 运行期上下文（内核根与其来源）—— 自检要在输出里交代用的是哪一份内核
  * @returns 已渲染好的报告文本；首行为「通过 N/N」，第二行是内核根
  *
  * @remarks
@@ -183,7 +199,7 @@ function makeFixture(o: {
  * ⚠️ 有失败项时**不抛错，而是先 `console.error` 全量报告再 `process.exit(1)`** ——
  * `test/cli.test.ts` 依赖这个退出码判定自检是否全绿。
  */
-export function cmdSelftest(ctx: CliContext): string {
+export function cmdSelftest(): string {
 	/** 单条断言的结果 */
 	interface Assertion {
 		pass: boolean;
@@ -201,12 +217,18 @@ export function cmdSelftest(ctx: CliContext): string {
 		}
 	};
 
-	// ── 命令冒烟 ──
-	//
-	// ⚠️ 这里**起子进程**而不是就地 import `./commands`：`cli/commands.ts` 静态 import 本文件
-	// （命令表里挂着 `cmdSelftest`），就地 import 它会成环。更实际的理由是——冒烟要测的正是
-	// 「引导层 → 解析钩子 → 命令表 → 渲染」这**整条链**，只调一个函数测不到其中任何一环。
-	const CLI = resolve(ctx.root, "purple-star.ts");
+	/**
+	 * 起子进程跑一次本 CLI。
+	 *
+	 * @param args - 命令与参数
+	 * @returns 退出码与两路输出
+	 *
+	 * @remarks
+	 * ⚠️ **不是就地 import `./commands`**：命令表里挂着 `cmdSelftest`（本函数），
+	 * 就地 import 会成环。更实际的理由是 —— 冒烟与参数面要测的正是
+	 * 「入口 → 解析 → 命令表 → 渲染」这**整条链**，只调一个函数测不到其中任何一环。
+	 */
+	const CLI = resolve(ROOT, "purple-star.ts");
 	const run = (args: string[]): { code: number; out: string; err: string } => {
 		const r = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8" });
 		return { code: r.status ?? -1, out: r.stdout ?? "", err: r.stderr ?? "" };
@@ -329,7 +351,7 @@ export function cmdSelftest(ctx: CliContext): string {
 			// `synastry-guide` 命令改为本 skill 的参考文档 —— `synastry` 只在末尾留一行指针。
 			// ⚠️ 它**不被任何运行时路径读取**（不引入「内核读 md」这种新模式），所以删空它、
 			// 改名它、把两节之一删掉，都不会让别的断言变红 —— 本断言是唯一的提示。
-			const p = resolve(ctx.root, "..", "references", "synastry-guide.md");
+			const p = resolve(ROOT, "..", "references", "synastry-guide.md");
 			const md = readFileSync(p, "utf8");
 			// 两个锚点各盯一节：评分标准取首档（五星）判词，方法论取首章标题。
 			for (const anchor of [
@@ -343,9 +365,6 @@ export function cmdSelftest(ctx: CliContext): string {
 		});
 
 		ok("知识源：合盘断语与四化断语非空", () => {
-			// 这条 2026-09-27 从排盘解读 skill 的 selftest 搬来 —— 那几个常量随
-			// `ziwei/synastry-knowledge.ts` 一起归了本 skill，源那边的扫描根已够不到它们
-			// （源扫不到的东西不该由源声明它可用）。搬过来不是抄一份：源里那条**已删除**。
 			// ⚠️ 方法论与评分标准**不在本文件核对的范围内** —— 它们已搬去
 			// `references/synastry-guide.md`，由上面那条参考文档守卫盯着。
 			if (!Object.keys(STAR_IN_FUQI_GU).length) throw new Error("STAR_IN_FUQI_GU 为空");
@@ -353,81 +372,58 @@ export function cmdSelftest(ctx: CliContext): string {
 			return `夫妻宫断语 ${Object.keys(STAR_IN_FUQI_GU).length} 星`;
 		});
 
-		ok("引文核对：未核实引文不得冒充倪师原话（扫本 skill 的根）", () => {
-			// ⚠️ 这条是**本次改造一并修的既有缺陷**：`ziwei/citation-guard.ts` 早就被切进本
-			// skill，`tools/skills.ts` 的注释也写明理由是「synastry 的 selftest 扫自己的根」，
-			// 但本文件里**从来没有调用点** —— 那两个文件一直是死代码，而 `CLAUDE.md` 已声称
-			// 这道守卫在 synastry 生效。本次删掉排盘内核后，`synastry-knowledge.ts` 里那些
-			// 「倪师说」引文若不在这里扫，就**彻底没有覆盖**了（源的内核树够不到本 skill）。
-			//
-			// 扫描与比对全在 `ziwei/citation-guard.ts`，本断言只负责把结果翻译成人话。
-			// 守卫的失效模式（扫了个空却一片绿）由 `test/citation-guard.test.ts` 用构造的
-			// 目录树测，那里能造出违例文件；这里造不出来，只能信它 —— 故下面两条「扫到了
-			// 没有」的检查是必需的。
-			const { violations, checked, skipped } = scanCitations(ctx.root);
-			if (!checked.length)
-				throw new Error(`未扫到任何源码文件 —— 内核根 ${ctx.root} 或递归逻辑可能已失效`);
-			if (!skipped.length)
-				throw new Error(
-					"未跳过任何核对表 —— 扫描范围可能已把 annotations.ts 卷进来（其内容会自我命中）"
-				);
-			if (violations.length)
-				throw new Error(
-					`以下未核实引文仍冒充倪师原话（应改古诀云/紫微斗数有云/一说）：\n     ${violations.join("\n     ")}`
-				);
-			return `扫 ${checked.length} 个文件，suspect/fabricated 引文零强归属`;
-		});
-
-		// ── 参数面 ──
+		// ── 参数面（全部经子进程，测的是用户真正敲的那条链）──
 
 		ok("参数面：a- / b- 前缀旗标不得用在别的命令上", () => {
 			// 只有 `synastry` 读前缀；别的命令给它一个 `--a-chart` 是**用户搞错了命令**，
 			// 静默忽略会让人以为「带了命盘却没生效」，排查方向被整个带偏。本 skill 除
 			// `synastry` 外只剩 `selftest` 一条命令，故靶子都用它。
+			//
+			// ⚠️ 断言要**同时**确认「报错了」与「报的是前缀错位」：若哪天前缀被整个删掉，
+			// `--a-chart` 会退化成「未知参数 --a-chart」，仍然报错、仍然退出码 1 ——
+			// 只看退出码的话，这条会在一片绿里失去意义。
 			const probes: Array<[string, string]> = [
 				["--a-chart", "selftest"],
 				["--b-chart", "selftest"],
 				["--a-json", "selftest"],
 			];
 			for (const [flag, cmd] of probes) {
-				let msg = "";
-				try {
-					parseArgs([flag, "x"], cmd);
-				} catch (e) {
-					msg = (e as Error).message;
-				}
-				if (!msg) throw new Error(`${cmd} 上的 ${flag} 未报错 —— 前缀旗标的归属校验失效了`);
+				const r = run([cmd, flag, "x"]);
+				if (r.code === 0)
+					throw new Error(`${cmd} 上的 ${flag} 未报错 —— 前缀旗标的归属校验失效了`);
+				if (!r.err.includes("前缀"))
+					throw new Error(`${cmd} 上的 ${flag} 报的不是前缀错位，实得：${r.err.trim()}`);
 			}
 			return `${probes.length} 种越界写法均被拦下`;
 		});
 
 		ok("参数面：出生信息旗标已被整个拒收（本 skill 不再排盘）", () => {
-			// 这是本次改造**最要紧的行为变更**：从前 synastry 认 15 个出生信息旗标，
+			// 这是 2026-09-27 改造**最要紧的行为变更**：从前 synastry 认 15 个出生信息旗标，
 			// 漏写 `a-` 前缀会**静默**按默认经度排出错盘（实测整盘从「巳时·火六局·命宫子破军」
 			// 变成「卯时·土五局·命宫寅廉贞」，输出里一个字都没说）。
-			// 现在它们既不在作用域里、也不在声明表里，用了直接报「未知参数」—— 缺口不存在了。
+			// 现在它们既不在声明表里、也不被接受，用了直接报「未知参数」—— 缺口不存在了。
 			// ⚠️ 若哪天它们又被收进来，本条会变红：那时该做的是**同步恢复 SKILL.md 的措辞**，
 			// 而不是把断言改回去迁就实现。
+			//
+			// ⚠️ 这里的探针**都带 `a-` 前缀**，走的正是当初那条静默路径（前缀当时是合法的）。
+			// 剥掉前缀后剩下的 `date` / `time` / `gender` / `city` / `late-zi` 都不在声明表里。
 			const probes = ["--a-date", "--a-time", "--a-gender", "--a-city", "--a-late-zi"];
 			for (const flag of probes) {
-				let msg = "";
-				try {
-					parseArgs([flag, "x"], "synastry");
-				} catch (e) {
-					msg = (e as Error).message;
-				}
-				if (!msg)
+				const r = run(["synastry", flag, "x"]);
+				if (r.code === 0)
 					throw new Error(`${flag} 在 synastry 上被接受了 —— 出生信息旗标又漏回作用域了`);
+				if (!r.err.includes("未知参数"))
+					throw new Error(`${flag} 的报错不是「未知参数」，实得：${r.err.trim()}`);
 			}
 			return `${probes.length} 个出生信息旗标全部被拒`;
 		});
 
 		ok("参数面：拼错的旗标必须报错，并指向最接近的合法名", () => {
-			// 拼错旗标以前是**静默**的：parseArgs 任何 `--xxx` 都照单全收，命令读不到就落回
-			// 默认值。本断言锁的是**行为**而非文案。
+			// 拼错旗标以前是**静默**的：解析层任何 `--xxx` 都照单全收，命令读不到就落回
+			// 默认值。本断言锁的是**行为**（未知旗标必须抛错）而非文案本身。
 			//
-			// ⚠️ 探针围绕 `--chart` 写（本 skill 作用域里只剩 `chart` / `json` 两个名字）：
-			// `suggestFlag` 只在**剥掉前缀后的裸名集合**里找编辑距离 < 3 的最近者，
+			// ⚠️ 探针围绕 `--chart` 写（本 skill 的声明表里只有 `chart` / `json` 两个名字）：
+			// 最近邻建议只在**剥掉前缀后的裸名集合**里找编辑距离 ≤ 2 的最近者，
 			// 故三个探针的编辑距离都在阈值内，提示必然指向 `--chart`。
 			const probes: Array<[string, string]> = [
 				["--a-chrt", "chart"], // 漏字
@@ -435,32 +431,48 @@ export function cmdSelftest(ctx: CliContext): string {
 				["--a-chartss", "chart"], // 多字
 			];
 			for (const [bad, want] of probes) {
-				let msg = "";
-				try {
-					parseArgs([bad, "x"], "synastry");
-				} catch (e) {
-					msg = (e as Error).message;
-				}
-				if (!msg) throw new Error(`${bad} 未报错 —— 未知旗标又变成静默忽略了`);
-				if (!msg.includes(`--${want}`))
-					throw new Error(`${bad} 的提示应指向 --${want}，实得：${msg}`);
+				const r = run(["synastry", bad, "x"]);
+				if (r.code === 0) throw new Error(`${bad} 未报错 —— 未知旗标又变成静默忽略了`);
+				if (!r.err.includes(`--${want}`))
+					throw new Error(`${bad} 的提示应指向 --${want}，实得：${r.err.trim()}`);
 			}
 			return `${probes.length} 个拼写错误均被拦下`;
 		});
 
-		ok("参数面：SKILL.md 提到的旗标都在 args.ts 的声明表里", () => {
+		ok("参数面：取值旗标裸写必须报错并点名（不是静默当成开关）", () => {
+			// `--b-chart` 后不跟值会被解析层拒掉；若改成静默当开关，命令层读到的 aChart
+			// 就有值而 bChart 是 `true`，护栏会报「缺 --b-chart」—— 用户拿到的是一句
+			// 指错方向的提示（他明明写了）。锚点是**报错里带着他敲的那个键**。
+			const r = run(["synastry", "--b-chart"]);
+			if (r.code === 0) throw new Error("裸写 --b-chart 未报错 —— 取值旗标被当成了开关");
+			if (!r.err.includes("--b-chart"))
+				throw new Error(`报错未点名 --b-chart，实得：${r.err.trim()}`);
+			return "裸写被拦下，且点名了旗标";
+		});
+
+		ok("参数面：SKILL.md 提到的旗标都在 help 的参数段里", () => {
 			// SKILL.md 是给 Claude 读的**行为规范**（改它就等于改 skill 的行为）。它提到的旗标若在
-			// 解析层不存在，Claude 会照着敲一个被拒的参数。只查「SKILL.md → 声明表」一个方向：
-			// 反向刻意不查 —— 声明表是各 skill 的**全集**，本 skill 的 SKILL.md 本就不该提到
-			// `--focus` / `--liunian` 那些用不上的旗标。
+			// 解析层不存在，Claude 会照着敲一个被拒的参数。只查「SKILL.md → help」一个方向：
+			// 反向刻意不查 —— 声明表里的旗标没必要都写进 SKILL.md（`-h` / `--help` 就从不写）。
 			//
-			// ⚠️ 比对前**必须先剥 `a-` / `b-` 前缀**：`FLAG_NAMES` 存的是**裸名**（`chart`），
-			// 带前缀的写法由 `checkFlagName` 递归剥掉前缀后才查它。不剥就会得到一份
-			// 「全部未声明」的假红 —— 本文件初版正是这么错的。前缀表同样从 `args.ts` 取
-			// （`SIDE_PREFIXES`），不在这里写第二份。
-			const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
+			// help 的 `Options:` 段由 purple-star.ts 的声明表渲染，故这条同时保证两件事：
+			// Claude 照着 SKILL.md 敲的旗标一定被接受，且 help 上写的与实际接受的同源。
+			const r = run(["help"]);
+			if (r.code !== 0) throw new Error(`help 退出码 ${r.code}：${r.err.trim()}`);
+			const at = r.out.indexOf("\nOptions:");
+			if (at < 0) throw new Error("help 输出里找不到 Options: 段 —— 版式可能已变");
+			const seg = r.out.slice(at + 1);
+			const options = seg.slice(0, seg.indexOf("\n\n"));
+			const declared = new Set([...options.matchAll(/--([a-z][a-z0-9-]*)/g)].map(m => m[1]));
+			// 先确认真扫到了东西：正则写歪或版式变了都会得到空集，那样的「零违规」是假绿。
+			if (!declared.size)
+				throw new Error("未从 help 的 Options 段扫到旗标 —— 版式或正则已失效");
+
+			// ⚠️ 比对前**必须先剥 `a-` / `b-` 前缀**：`declared` 里存的是**裸名**（`chart`），
+			// 带前缀的写法由解析层的 `checkFlagName` 递归剥掉前缀后才查它。不剥就会得到
+			// 一份「全部未声明」的假红。
+			const md = readFileSync(resolve(ROOT, "..", "SKILL.md"), "utf8");
 			const mentioned = [...md.matchAll(/--([a-z][a-z0-9-]*)/g)].map(m => m[1]);
-			// 先确认真扫到了东西：正则写歪或文件挪了位置都会得到空数组，那样的「零违规」是假绿。
 			if (!mentioned.length)
 				throw new Error("未从 SKILL.md 扫到任何旗标 —— 正则或路径可能已失效");
 			const unknown: string[] = [];
@@ -472,10 +484,10 @@ export function cmdSelftest(ctx: CliContext): string {
 				if (p && n.length === p.length) continue;
 				if (p) prefixed++;
 				const bare = p ? n.slice(p.length) : n;
-				if (!FLAG_NAMES.has(bare)) unknown.push("--" + n);
+				if (!declared.has(bare)) unknown.push("--" + n);
 			}
 			if (unknown.length)
-				throw new Error(`SKILL.md 提到但 args.ts 未声明的旗标：${unknown.join("、")}`);
+				throw new Error(`SKILL.md 提到但 help 里没有的旗标：${unknown.join("、")}`);
 			return `${mentioned.length} 处旗标写法（含 ${prefixed} 个带前缀）全部有声明`;
 		});
 
@@ -485,7 +497,7 @@ export function cmdSelftest(ctx: CliContext): string {
 			// ⚠️ 这里读的是 commands.ts 的**源码文本**而非它的导出 —— `COMMAND_TABLE` 里挂着
 			// `cmdSelftest`，而本文件就是 selftest：静态 import 成环。正则抽键是与「读 SKILL.md
 			// 文本」同一手法，也是源 skill 那份 selftest 用的办法。
-			const src = readFileSync(resolve(ctx.root, "cli", "commands.ts"), "utf8");
+			const src = readFileSync(resolve(ROOT, "commands.ts"), "utf8");
 			const table = src.match(/const COMMAND_TABLE = \{([\s\S]*?)\} satisfies/)?.[1];
 			if (!table) throw new Error("未从 commands.ts 抽到 COMMAND_TABLE —— 声明块形状已变");
 			// ⚠️ 键上的双引号是**可选**的：命令名含连字符时不是合法标识符，必须加引号。
@@ -494,7 +506,7 @@ export function cmdSelftest(ctx: CliContext): string {
 			if (!defined.length)
 				throw new Error("COMMAND_TABLE 里一个命令名都没抽到 —— 正则或路径可能已失效");
 
-			const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
+			const md = readFileSync(resolve(ROOT, "..", "SKILL.md"), "utf8");
 			const at = md.indexOf("## 命令速查");
 			if (at < 0) throw new Error("SKILL.md 里找不到「## 命令速查」小节");
 			// 只取该小节里的表格：正文提到命令名的散文不构成「速查表说这个命令存在」的声明。
@@ -514,35 +526,6 @@ export function cmdSelftest(ctx: CliContext): string {
 				throw new Error(`SKILL.md 提到但 commands.ts 未定义的命令：${unknown.join("、")}`);
 			return `${mentioned.length} 个命令全部有实现`;
 		});
-
-		// ── 引导层豁免有界 ──
-
-		ok("引导层豁免有界：boot-hooks.ts 只依赖 node: 内置", () => {
-			// scripts/boot-hooks.ts 是引导层**唯一**被允许静态 import 的非 node: 模块。
-			// 「引导层不得出现普通静态 import」那条规则的实质是「禁止在钩子注册前触发 .ts 解析」，
-			// 而 boot-hooks.ts 只依赖 node: 内置、调用点又写全了 .ts 扩展名，故由 Node 原生类型擦除
-			// 加载，不触碰钩子 —— 这份豁免正是靠这一点成立。
-			//
-			// ⚠️ 越界有两种形态，只有一种会自己喊出来：
-			//   · 省略扩展名 → 钩子尚未注册，CLI 当场崩 ERR_MODULE_NOT_FOUND。吵，但不危险。
-			//   · 写全扩展名 → **照常跑通**（那个文件恰好没有自己的依赖）。这是颗哑雷 ——
-			//     哪天它多一个 `@/` 依赖，引导层就会在钩子注册前崩掉，而崩因指向一次看似无关的改动。
-			// 本断言守的是后一种。
-			const src = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
-			const specs = [...src.matchAll(/^\s*import\s[^;]*?from\s+["']([^"']+)["']/gm)].map(
-				m => m[1]
-			);
-			// 先确认真的扫到了东西：正则写歪或文件被改名都会得到空数组，那样的「零违规」是假绿。
-			if (!specs.length)
-				throw new Error("未扫到任何 import —— 正则或 boot-hooks.ts 的路径可能已失效");
-			const bad = specs.filter(s => !s.startsWith("node:"));
-			if (bad.length) {
-				throw new Error(
-					`boot-hooks.ts 不得依赖非 node: 模块（它要在解析钩子注册**之前**被加载），实得：${bad.join("、")}`
-				);
-			}
-			return `${specs.length} 条 import 全为 node: 内置`;
-		});
 	} finally {
 		// 临时目录在断言跑完后必删（含失败路径）。⚠️ 它在 `process.exit(1)` **之前**执行 ——
 		// 下面的输出段才决定退出码，故失败时也清理得到。
@@ -552,10 +535,9 @@ export function cmdSelftest(ctx: CliContext): string {
 	// ── 输出 ──
 	const passed = results.filter(r => r.pass).length;
 	const failed = results.length - passed;
-	const srcNote = ctx.rootLabel === "技能自带内核" ? "" : `（来源：${ctx.rootLabel}）`;
 	const out = [
 		`紫微斗数合盘 skill 回归自检 —— 通过 ${passed}/${results.length}`,
-		`内核根：${ctx.root} ${srcNote}`,
+		`内核根：${ROOT}`,
 		"",
 	];
 	for (const r of results) {
@@ -564,9 +546,8 @@ export function cmdSelftest(ctx: CliContext): string {
 	if (failed) {
 		out.push(
 			"",
-			`❌ ${failed} 项未通过。若为命令或护栏行为变更所致，请核对 scripts/cli/ 下的实现与` +
-				`本文件的断言哪一侧该改；若为副本漂移，跑 npm run sync:skills；` +
-				`若为引文核对失败，改引文的呈现方式（古诀云/紫微斗数有云/一说）而不是删断言。`
+			`❌ ${failed} 项未通过。若为命令或护栏行为变更所致，请核对 scripts/ 下的实现与` +
+				`本文件的断言哪一侧该改。`
 		);
 	} else {
 		out.push("", "✅ 全部通过。");

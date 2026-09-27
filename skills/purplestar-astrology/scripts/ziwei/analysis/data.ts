@@ -1674,7 +1674,7 @@ export const SUMMARY_TOPICS: ReadonlySet<TopicKey> = new Set<TopicKey>([
  * 主题 → 【综合建议】的三条文案。
  *
  * @remarks
- * ⚠️ 内含 `倪师《天纪 NN》` 引文，受 `citation-guard.ts` 的全树扫描盯着 ——
+ * ⚠️ 内含 `倪师《天纪 NN》` 引文，受 `test/lib/citation-guard.ts` 的全树扫描盯着 ——
  * 搬动本表不影响判定（守卫按**内容**比对、范围是推导出来的全树），但**改归属或新增
  * 未核实引文会被拦下**。处置办法见 `annotations.ts`。
  */
