@@ -296,7 +296,11 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	//    currentAge 偏 1~2 岁，并连带 currentDaXianIndex / palace.isCurrentDaXian 错位，
 	//    最坏情况是把**上一个大限的宫**当成当前大限整宫详批。
 	const now = new Date();
-	const todayLunarYear = getLunarInfo(now.getFullYear(), now.getMonth() + 1, now.getDate()).lunarYear;
+	const todayLunarYear = getLunarInfo(
+		now.getFullYear(),
+		now.getMonth() + 1,
+		now.getDate()
+	).lunarYear;
 	const currentAge = todayLunarYear - lunarInfo.lunarYear + 1;
 
 	palaces.forEach(p => {
