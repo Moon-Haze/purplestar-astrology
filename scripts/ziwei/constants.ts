@@ -192,7 +192,7 @@ export const JU_NAMES: Record<number, string> = {
  * ⚠️ 键是**年干**索引（0=甲 … 9=癸）。本表**不含**宫干四化、流年干四化、自化那种
  * 飞星派口径 —— 那些已主动下线（见 `.claude/CLAUDE.md`）。
  *
- * 消费者：`sihua.ts` 的 `getSiHuaByStem` / `buildStarSiHuaMap`，上承 `cli/commands.ts`
+ * 消费者：`sihua.ts` 的 `getSiHuaByStem`（生年 / 流年 / 流月三层的公共出口），上承 `cli/commands.ts`
  * 的生年四化落宫与合盘四化分析。⚠️ 改本表会改变**所有**四化落宫、进而改变格局命中，
  * `npm test` 的语料回归盯着这条链路。
  */

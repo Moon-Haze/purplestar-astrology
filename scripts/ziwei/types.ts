@@ -127,12 +127,17 @@ export interface Star {
 /**
  * 宫干自化的一颗星（宫干四化中「被化之星恰在本宫」的那一颗）。
  *
- * ⚠️ **飞星派遗留类型，本项目（三合派）不使用，仅为兼容保留。**
+ * ⚠️ **飞星派遗留类型，本项目（三合派）不使用。这是一个刻意留下的绊线。**
  *
- * 唯一生产者是 `sihua.ts` 的 `detectSelfSihua`，而 `algorithm.ts` 已停止填充
- * {@link Palace.selfSihua}（倪师不主张飞星派宫干自化论）。`cli/selftest.ts` 与
- * `test/school.test.ts` 各有断言盯着它不被重新填回 —— **存在不等于该用**，
- * 拿它解读就是背离本项目的体系立场。
+ * 「绊线」是什么意思：`algorithm.ts` 已停止填充 {@link Palace.selfSihua}（倪师不主张
+ * 飞星派宫干自化论），而断言要盯的**正是「有没有被填回」** —— 字段与类型删了，就无从盯起。
+ * 所以它们留着，`cli/selftest.ts` 与 `test/school.test.ts` 各有一条断言守着
+ * （断言名：「宫干自化未被填充」）。
+ *
+ * 会**生产**它的那些函数（`sihua.ts` 的 `detectSelfSihua` / `buildAllSelfSihua`）已于
+ * 2026-09-27 删除 —— 它们在**全仓**没有任何调用点，删除测试判定该消失。所以本类型如今
+ * 既无生产者也无消费者，唯一的存在理由是上面那条断言。**存在不等于该用**，拿它解读
+ * 就是背离本项目的体系立场。
  */
 export interface SelfSihuaMark {
 	/** 自化的类型：禄 / 权 / 科 / 忌 */
@@ -197,10 +202,12 @@ export interface Palace {
 /**
  * 一个大限的四化四星（按大限**宫干**推）。
  *
- * ⚠️ **飞星派遗留类型，本项目（三合派）不使用，仅为兼容保留。**
+ * ⚠️ **飞星派遗留类型，本项目（三合派）不使用。同 {@link SelfSihuaMark}，是刻意留下的绊线。**
  *
- * 唯一生产者是 `sihua.ts` 的 `getDaXianSiHua`；`algorithm.ts` 已停止生成
- * `daXians[].siHua`（本项目大限只看宫位移动，四化永远取生年干）。同 {@link SelfSihuaMark}，
+ * `algorithm.ts` 已停止生成 `daXians[].siHua`（本项目大限只看宫位移动，四化永远取生年干），
+ * 而断言要盯的正是「有没有被填回」—— 字段与类型删了，就无从盯起。
+ *
+ * 生产者 `sihua.ts` 的 `getDaXianSiHua` 已于 2026-09-27 删除（全仓零调用点）。
  * **存在不等于该用**。
  */
 export interface DaXianSiHua {
