@@ -29,29 +29,33 @@
 
 ## 启动期报错
 
-| 报错                                             | 原因与处理                                                                                                                                                |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[ziwei 启动失败] 找不到内核入口`                | skill 目录不完整。⚠️ 本技能的判据是 `ziwei/synastry-knowledge.ts`（**合盘断语库**，不是排盘内核）—— 缺了它这个 skill 就没有存在意义。从源仓库补回该文件。 |
-| `[ziwei 启动自检失败]`                           | 合盘断语库被重构、关键导出（`STAR_IN_FUQI_GU` / `MARRIAGE_STARS_BRIEF`）改名或删除。核对 `scripts/ziwei/synastry-knowledge.ts` 的实际导出。               |
-| `registerHooks is not a function` 或 TS 语法报错 | Node 版本过低，需 ≥ 22.15（本项目开发环境为 v26）。                                                                                                       |
+| 报错                                                     | 原因与处理                                                                                                                                                                                   |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Cannot find module '.../scripts/synastry-knowledge.ts'` | skill 目录不完整。⚠️ 缺的若是 **`synastry-knowledge.ts`**（合盘断语库），这个 skill 就没有存在意义；缺别的文件则是拷贝时漏带。从本仓库（或本 skill 的发布包）补回 `scripts/` 下缺的那份即可。 |
+| `Unknown file extension ".ts"` 或 TS 语法报错            | Node 版本过低，需 ≥ 22.15（本技能靠**原生类型擦除**直接加载 `.ts`，不注册解析钩子）。                                                                                                        |
 
-⚠️ 这里**不会**出现 `Cannot find module 'iztro'`，也不会出现 `Cannot find module 'cac'` —— 本技能已无排盘依赖，参数解析改用 Node 内置的 `node:util` 的 `parseArgs`，`package.json` 里**一条依赖都没有**，连 `npm install` 都不需要。若真见到这两个报错之一，说明跑的不是本 skill 的脚本。
+⚠️ 这里**不会**出现 `Cannot find module 'iztro'`，也不会出现 `Cannot find module 'cac'` —— 本技能已无排盘依赖，参数解析是自带的几十行循环，`package.json` 里**一条依赖都没有**，连 `npm install` 都不需要。若真见到这两个报错之一，说明跑的不是本 skill 的脚本。
 
 ## 确认跑的是哪一份内核
 
-`purple-star.ts` 按**两级优先级**定位内核 —— `ZIWEI_ROOT` 环境变量优先，未设则用技能自带的 `<skill>/scripts/`。
+只有一份 —— **`scripts/` 就是本技能的内核**（`purple-star.ts` 用 `import.meta.url` 定位，不依赖 cwd，也没有任何环境变量可覆盖它）。
 
 `selftest` 输出的**第二行**（形如 `内核根：<路径>`）就是当前生效的那一份，交付解读前据此核对。
 
 ## 改完本 skill 之后
 
 ```bash
-node scripts/purple-star.ts selftest   # 命令冒烟 / 命盘护栏 / 参数面 / 引文核对 / SKILL.md 一致性
+node scripts/purple-star.ts selftest   # 命令冒烟 / 命盘护栏 / 参数面 / 参考文档与知识源 / SKILL.md 一致性
 ```
 
-⚠️ **本 skill 的内核里有一半是从源仓库同步来的副本，`npm test` 不在本 skill 内。**
+⚠️ **本 skill 的每个文件都是它自己的实现，就地改即可，没有「改源再同步」这回事**（2026-09-27 起与 `purplestar-astrology` 不再有派生关系）。`scripts/` 下的五个文件各管一段：
 
-- **逐字节副本**（`scripts/boot-hooks.ts`、`scripts/ziwei/types.ts`、`scripts/ziwei/citation-guard.ts` 及其带出的 `annotations.ts`）→ **改源仓库那份**，再 `npm run sync:skills`。就地改会被同步器覆盖，仓库的层 6 一致性断言也会先变红。
-- **两份派生 skill 之间的副本**（`scripts/cli/args.ts`）→ **以 `purplestar-classics` 那份为准**，改完拷过来。它已不是源的副本（源仍用 `cac`，本 skill 用内置的 `parseArgs`），故同步器不管它；两份不一致时层 6 会当场变红。
-- **自有内核，反方向**（`scripts/ziwei/synastry-knowledge.ts`、`references/`）→ **就在本 skill 里改**，源仓库里没有对应物，**没有同步这回事**。
-- **手写件**（`scripts/cli/commands.ts`、`scripts/cli/chart-view.ts`、`scripts/cli/flag-scope.ts`、`scripts/cli/selftest.ts`、`scripts/purple-star.ts`）→ 可以就地改，不必同步。
+| 文件                    | 管什么                                                      |
+| ----------------------- | ----------------------------------------------------------- |
+| `purple-star.ts`        | 入口：参数面（声明表 + 解析循环 + 最近邻建议）+ help + 分发 |
+| `commands.ts`           | 命令表 + `synastry` 的渲染                                  |
+| `chart-view.ts`         | 读 `analyze --json` 并校验；**本 skill 的类型契约**在这里   |
+| `selftest.ts`           | 回归自检                                                    |
+| `synastry-knowledge.ts` | 合盘断语库（纯数据）                                        |
+
+⚠️ **`npm test` 不在本 skill 内** —— 它是仓库级的。而**引文核对**（那些「倪师说」引文有没有未核实却强归属的）也**不在本 skill 的 `selftest` 里**：它住在仓库的 `test/citations.test.ts`，扫描范围是**全部三个 skill**。改完 `synastry-knowledge.ts` 的引文后，回仓库跑 `npm test`（只拷走了本 skill 的用户跑不了那条，那是刻意的——守卫的受众是改内核的开发者）。

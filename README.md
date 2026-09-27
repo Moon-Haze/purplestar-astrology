@@ -22,11 +22,11 @@
 
 ## skills/ 一览
 
-| skill                                                | 做什么                               | 内核                            |
-| ---------------------------------------------------- | ------------------------------------ | ------------------------------- |
-| [purplestar-astrology](skills/purplestar-astrology/) | 排盘与命盘解读（**源**）             | CLI + `ziwei/`，含排盘引擎      |
-| [purplestar-synastry](skills/purplestar-synastry/)   | 合盘与合婚（双宫联参）               | 合盘断语（自有），零排盘引擎    |
-| [purplestar-classics](skills/purplestar-classics/)   | 古籍原文检索（骨髓赋 / 全集 / 全书） | `classics/`（自有），零排盘引擎 |
+| skill                                                | 做什么                               | 内核                                |
+| ---------------------------------------------------- | ------------------------------------ | ----------------------------------- |
+| [purplestar-astrology](skills/purplestar-astrology/) | 排盘与命盘解读（**源**）             | CLI + `ziwei/`，含排盘引擎          |
+| [purplestar-synastry](skills/purplestar-synastry/)   | 合盘与合婚（双宫联参）               | 合盘断语（自有），零排盘引擎        |
+| [purplestar-classics](skills/purplestar-classics/)   | 古籍原文检索（骨髓赋 / 全集 / 全书） | 原文数据 + 检索（自有），零排盘引擎 |
 
 「自有」= 那份内核**只住在这一个 skill 里**，源仓库里没有第二份，因此没有「改源再同步」这回事。
 
@@ -83,7 +83,7 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 ```text
 .
 ├── skills/               # 每个子目录 = 一个自包含 skill（可单独安装）
-│   ├── purplestar-astrology/   排盘解读，**源**
+│   ├── purplestar-astrology/   排盘解读，**唯一排盘**
 │   │   ├── SKILL.md            技能定义（Claude Code 入口，骨架）
 │   │   ├── references/         骨架的延伸：工作流 / 输出契约 / 参数面 / 排障，按需加载
 │   │   ├── package.json        该 skill 自己的依赖
@@ -92,9 +92,9 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 │   │       ├── cli/            参数解析 / 旗标作用域 / 渲染 / 出生信息 / 命令 / 自检
 │   │       └── ziwei/          排盘算法、格局库、四化、城市经纬度
 │   ├── purplestar-synastry/    合盘：断语库与 references/ 自有，零排盘引擎（命盘读自源）
-│   └── purplestar-classics/    古籍检索：`classics/` 与该命令自有，零排盘内核
-├── tools/skills.ts       # 派生 skill 的切片声明（唯一源）
-├── tools/sync-skills.ts  # 按声明同步副本
+│   │                           scripts/ 平铺，无 cli/ 一层，import 写全 .ts（无解析钩子）
+│   └── purplestar-classics/    古籍检索：原文数据与检索自有，零排盘内核（同上）
+├── tools/                # 开发工具（DuckDB 语料、基准），不进任何 skill
 ├── test/                 # 基准测试（见 test/README.md），不进任何 skill
 ├── tsconfig.json         # 仅供 npm run typecheck，不参与运行
 ├── package.json          # 仓库级：测试与工具的依赖
@@ -113,14 +113,14 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 一份内核只住在一个 skill 里，排盘归 `purplestar-astrology`，合盘断语归 `purplestar-synastry`，
 古籍归 `purplestar-classics`。
 
-| 内容                                     | 位置                                                             |
-| ---------------------------------------- | ---------------------------------------------------------------- |
-| 排盘算法、格局库（含古籍出处与破格条件） | `skills/purplestar-astrology/scripts/ziwei/patterns/`            |
-| 四化体系、流年流月推法                   | `skills/purplestar-astrology/scripts/ziwei/sihua.ts`             |
-| 十四主星在夫妻宫断语、四化入夫妻宫       | `skills/purplestar-synastry/scripts/ziwei/synastry-knowledge.ts` |
-| 合盘方法论与评分标准                     | `skills/purplestar-synastry/references/synastry-guide.md`        |
-| 中国城市经纬度（真太阳时校正）           | `skills/purplestar-astrology/scripts/ziwei/cities.ts`            |
-| 三部古籍原文                             | `skills/purplestar-classics/scripts/classics/data/`              |
+| 内容                                     | 位置                                                       |
+| ---------------------------------------- | ---------------------------------------------------------- |
+| 排盘算法、格局库（含古籍出处与破格条件） | `skills/purplestar-astrology/scripts/ziwei/patterns/`      |
+| 四化体系、流年流月推法                   | `skills/purplestar-astrology/scripts/ziwei/sihua.ts`       |
+| 十四主星在夫妻宫断语、四化入夫妻宫       | `skills/purplestar-synastry/scripts/synastry-knowledge.ts` |
+| 合盘方法论与评分标准                     | `skills/purplestar-synastry/references/synastry-guide.md`  |
+| 中国城市经纬度（真太阳时校正）           | `skills/purplestar-astrology/scripts/ziwei/cities.ts`      |
+| 三部古籍原文                             | `skills/purplestar-classics/scripts/data/`                 |
 
 **不含**线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/`——它们未随 skill 分发，解读请依赖上表知识源。
 
@@ -132,52 +132,45 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 
 上游曾一并带上手写的 `lunar-javascript.d.ts` 类型声明（`lunar-javascript` 包自身不带类型，缺了它 `tsc` 会报 TS7016）。本项目现已改用同作者的 TypeScript 移植版 `lunar-typescript`，该声明随之删除——`lunar-typescript` 自带 `dist/index.d.ts`，`tsc` 直接取得到类型，无需手写。
 
-## 副本关系与同步
+## 三个 skill 互相独立
 
-`skills/purplestar-astrology` 是**排盘内核的源**，派生 skill 的排盘底座是它的副本：
+**没有任何一份内核住在两个 skill 里。** 每个 skill 的 `scripts/` 就是它自己的全部实现，
+可单独拷进 `~/.claude/skills/` 直接跑。
 
-```bash
-npm run sync:skills             # 把源同步到各派生 skill
-npm run sync:skills -- --check  # 只比对不写（提交前 / 想知道有没有漂移时）
-```
+三份内核的归属：
 
-切片不是写死的文件清单，而是由 `tools/skills.ts` 的入口清单算出 **import 闭包**——
-日后往内核加一个文件，它会自动落进正确的 skill。**改排盘内核一律改源**，改完跑一次同步。
+| 内核                                                    | 住在哪                 |
+| ------------------------------------------------------- | ---------------------- |
+| 排盘引擎、格局库、分析数据库、四化、城市经纬度          | `purplestar-astrology` |
+| 合盘断语 `synastry-knowledge.ts` + 方法论 `references/` | `purplestar-synastry`  |
+| 三部古籍原文 `scripts/data/`                            | `purplestar-classics`  |
 
-副本与源**逐字节相同**，由 `test/repo.test.ts` 的层 6 断言守卫；不一致时 `npm test` 变红并
-指名是哪个文件。
+2026-09-27 之前不是这样：`purplestar-classics` 与 `purplestar-synastry` 是排盘解读的**派生
+skill**，共用的那些文件与源**逐字节相同**，靠 `tools/skills.ts` 声明切片、`npm run sync:skills`
+复制、`test/repo.test.ts` 的层 6 守卫。断开来之后，整套同步机制（那两个工具文件与那条 npm
+script）与层 6 里为此建的断言一并删除 —— **`npm run sync:skills` 已经不存在了**，别照着旧
+文档去找它。
 
-⚠️ **合盘 skill 已于 2026-09-27 撤出排盘底座**：它不再排盘，改为消费源的 `analyze --json`
-输出（数据解耦，两个 skill 之间的契约只有那份 JSON）。因此它的 `package.json` 里不再有
-`iztro` / `lunar-typescript`；它与源共用的副本也收缩到
-`boot-hooks.ts` / `ziwei/types.ts` / `ziwei/citation-guard.ts`（带出 `annotations.ts`）。
+**唯一还成立的那句话**：排盘引擎只有一处实现，在 `purplestar-astrology/scripts/`。**改排盘
+逻辑一律改那里**，改完跑 `npm test`，没有第二步。
 
-⚠️ **两个派生 skill 的 `cli/args.ts` 不再是源的副本**（2026-09-27 换解析引擎）：源那份仍由
-`cac` 驱动，两个派生改用了 Node 内置的 `node:util` 的 `parseArgs`，两边**不可能逐字节相同**，
-硬留在同步清单里只会让层 6 永远变红。它们因此改由两条断言接手：两份派生副本之间逐字节相同
-（以 `purplestar-classics` 那份为准），声明表 `FLAG_GROUPS` 与源 deep-equal。**连带的收益是两个
-派生 skill 依赖清零**，`npm install` 都不再需要。
+另两个 skill **不排盘**：合盘消费源排好的 `analyze --json`（两个 skill 之间的契约只有那份
+JSON，见 `purplestar-synastry/scripts/chart-view.ts` 自带的消费方类型契约），古籍检索压根没有
+排盘内核。两者**零 npm 依赖**，`npm install` 都不需要。
 
-下面几类不在此列，各有各的守卫：
-
-- **各 skill 自写**：`purple-star.ts` / `cli/args.ts` / `cli/commands.ts` / `cli/selftest.ts` /
-  `cli/flag-scope.ts` / `SKILL.md` / `references/`——按 skill 裁开或各存一份，无法逐字节比对
-  （`cli/args.ts` 那份由上面那条「两份派生之间逐字节相同」盯着）。
-- **自有内核**：`purplestar-synastry` 的 `ziwei/synastry-knowledge.ts`、`purplestar-classics` 的
-  `classics/`——源里根本没有对应文件，也就没有可比的对象，由各自 skill 的 `selftest` 接手。
-  合盘的方法论正文 `purplestar-synastry/references/synastry-guide.md` 同属这一类（它是文档而非
-  模块，同样只在合盘 skill 里、由该 skill 的 `selftest` 与层 2 读文件核对）。
-- **旗标作用域**：`cli/flag-scope.ts` 声明本 skill 认哪些旗标，决定 `help` 里列出哪些——
-  加了新旗标要记得决定它归谁，层 6 有四条双向断言盯着这件事。
+仍然保留、且与派生关系无关的守卫在 `test/repo.test.ts`：每个 skill 自包含（可单独拷走）、
+`package.json` 的 `type: module`、`SKILL.md` ↔ `references/` 双向一致、源的解析钩子候选序。
+引文守卫（扫全仓每个 skill 的 `scripts/`）在 `test/citations.test.ts`。
 
 ## 开发
 
 改完内核或升级依赖后，两层测试都要跑：
 
 ```bash
-npm run sync:skills -- --check          # 副本没漂移
 node skills/purplestar-astrology/scripts/purple-star.ts selftest   # 第一层：代码逻辑自洽
 npm test                                 # 第二层：与 toolkit 样本的基准比对（约 8 秒）
+node skills/purplestar-synastry/scripts/purple-star.ts selftest    # 另两个 skill 各测各的
+node skills/purplestar-classics/scripts/purple-star.ts selftest
 
 npm run test:corpus -- --year 1960       # 可选：全量核验（8,640 条，约 2 分钟）
 npm run typecheck                        # 改过类型标注就该跑（必须 0 错误）

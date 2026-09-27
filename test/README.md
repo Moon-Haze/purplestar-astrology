@@ -55,7 +55,7 @@ node skills/purplestar-synastry/scripts/purple-star.ts selftest
 相同、旗标作用域四条双向一致）。
 
 ⚠️ **各 skill 的「自有知识」本来就不受上面这条规则管**：`purplestar-synastry` 的
-`synastry-knowledge.ts` 与 `purplestar-classics` 的 `classics/` **只存在于各自 skill 里**，
+`synastry-knowledge.ts` 与 `purplestar-classics` 的 `scripts/`（原文数据与检索）**只存在于各自 skill 里**，
 源里没有对应文件、也就没有基准可跑。层 2 里那几组 `classics` 用例因此换加载口径
 （`test/lib/loader.ts` 的 `loadFromSkill`）去直取那个 skill 的模块——它们测的是那份知识
 **本身**（古籍的段落计数单位与 snippet 窗口），不是「源的内核」。

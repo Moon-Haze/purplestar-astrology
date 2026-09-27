@@ -7,14 +7,14 @@ description: 紫微斗数合盘与合婚（倪海夏《天纪》三合派体系�
 
 **本技能不排盘。**两张命盘由 `purplestar-astrology`（排盘解读）产出，本技能只读它的 `analyze --json` 输出做合盘——没有排盘引擎，也不依赖 `iztro`。因此**合盘永远是两步**：先在那个技能里排两张盘，再回到本技能合参。
 
-本技能真正自有的资产只有两份，且**只住在本技能里**（源 skill 里没有对应物）：
+本技能的资产：
 
-- 夫妻宫断语与四化断语的**权威文件** `scripts/ziwei/synastry-knowledge.ts`；
+- 夫妻宫断语与四化断语的**权威文件** `scripts/synastry-knowledge.ts`；
 - **合盘方法论与评分标准** [references/synastry-guide.md](references/synastry-guide.md)。
 
-**改这两份就在本技能里改，没有「同步」这回事。**反过来，`scripts/boot-hooks.ts` 是 `purplestar-astrology` 的逐字节副本（`ziwei/types.ts` 与 `ziwei/citation-guard.ts` 也是），改它们一律改源再 `npm run sync:skills`——就地改会被同步器覆盖，仓库的层 6 断言也会先变红。
+**本技能与 `purplestar-astrology` 没有派生关系**：`scripts/` 下每个文件都是本技能自己的实现，读代码的人不必先问「这是源还是副本」，也没有「改源再 `npm run sync:skills`」这回事——切片、逐字节副本、同步器整套机制已随派生关系一并退休。（相应地，本技能的 `scripts/` 下已无 `boot-hooks.ts`、无 `cli/` 一层、无 `ziwei/` 目录，文件平铺。）
 
-⚠️ **`scripts/cli/args.ts` 不在此列**（2026-09-27 换解析引擎）：它不再是源的副本——源那份仍由 `cac` 驱动，本技能与 `purplestar-classics` 用的是 Node 内置的 `node:util` 的 `parseArgs` 版，**两份派生副本逐字节相同，以 `purplestar-classics` 那份为准**。就地改本技能这份会被层 6 的断言当场抓住。**本技能与古籍检索 skill 因此都是零依赖**，不需要 `npm install`。
+**本技能零依赖**：参数解析是它自带的几十行循环，运行时只用 Node 内置模块，故拷进 `~/.claude/skills/` 直接就能跑，**不需要 `npm install`**。内部 import **一律写全 `.ts` 扩展名**，靠 Node ≥ 22.15 的**原生类型擦除**直接加载，不注册任何解析钩子。
 
 **本技能只做双人合盘。**用户要的是「排一张盘」「解读我的命盘」→ 那是 `purplestar-astrology`（排盘解读）的活；「查一句古诀的原文」→ `purplestar-classics`（古籍检索）。**单人解读用本技能是错的**——本技能的命令不输出格局、主题论断与分宫详表，硬做只会得到一张残缺的解读。
 
@@ -75,10 +75,10 @@ node scripts/purple-star.ts synastry --a-chart /tmp/a.json --b-chart /tmp/b.json
 
 CLI 已给出双盘数据与断语。需要展开论证时，**直接读这些文件**（它们是本技能的权威依据，不要凭记忆编造）：
 
-| 需要什么                                                 | 读哪里                                |
-| -------------------------------------------------------- | ------------------------------------- |
-| 十四主星在夫妻宫断语、四化入夫妻宫                       | `scripts/ziwei/synastry-knowledge.ts` |
-| **合盘方法论与评分标准**（五步法、缘分类型、婚期三层法） | `references/synastry-guide.md`        |
+| 需要什么                                                 | 读哪里                          |
+| -------------------------------------------------------- | ------------------------------- |
+| 十四主星在夫妻宫断语、四化入夫妻宫                       | `scripts/synastry-knowledge.ts` |
+| **合盘方法论与评分标准**（五步法、缘分类型、婚期三层法） | `references/synastry-guide.md`  |
 
 **评分标准与完整方法论不在 `synastry` 的输出里**——它们是恒定静态文本（与「这一对是谁」无关，排谁的盘都是同一份），住在 [references/synastry-guide.md](references/synastry-guide.md)，`synastry` 末尾只留一行指针。因此：
 
@@ -178,9 +178,11 @@ CLI 已给出双盘数据与断语。需要展开论证时，**直接读这些�
 - ❌ **大限四化取宫干** —— 已停止生成 `daXians[].siHua` / `stemIndex`
 - ❌ **来因宫** —— 飞星派追溯法，不使用
 
-⚠️ **陷阱**：飞星派的 `detectSelfSihua` / `findIncomingPalaces` / `getDaXianSiHua` 等函数已于 2026-09-27 从源内核的 `ziwei/sihua.ts` **删除**——不是改名、不是移到别处，全仓零调用点。本技能更彻底：连 `sihua.ts` 都不在切片里，**没有任何四化实现可供误用**，合盘要的四化只有排盘方给的 `nativeSiHua` 一个来源。
+⚠️ **陷阱**：飞星派的 `detectSelfSihua` / `findIncomingPalaces` / `getDaXianSiHua` 等函数已于 2026-09-27 从源内核的 `ziwei/sihua.ts` **删除**——不是改名、不是移到别处，全仓零调用点。本技能更彻底：连 `sihua.ts` 都没有，**没有任何四化实现可供误用**，合盘要的四化只有排盘方给的 `nativeSiHua` 一个来源。
 
-但 `types.ts` 里的 `Palace.selfSihua` / `DaXian.siHua` 字段与 `SelfSihuaMark` / `DaXianSiHua` 两个类型**仍在**（本技能持有一份只读的类型契约，见上文），那是**刻意留下的绊线**：断言盯着它们不被重新填回，字段删了就没东西可盯。**存在不等于该用**——用它们解读就是背叛本项目的体系立场。
+但**源内核**的 `types.ts` 里，`Palace.selfSihua` / `DaXian.siHua` 字段与 `SelfSihuaMark` / `DaXianSiHua` 两个类型**仍在**，那是**刻意留下的绊线**：源 skill 的 `selftest` 与仓库的 `test/school.test.ts` 各有断言盯着它们不被重新填回，字段删了就没东西可盯。**存在不等于该用**——用它们解读就是背叛本项目的体系立场。
+
+⚠️ 本技能**不持有**这份绊线。`scripts/chart-view.ts` 里的类型契约是**消费方声明**，只列合盘真正读到的字段（`chart` / `nativeSiHua.located` / `lateZi` / `basis`）——既没有 `selfSihua`，也没有 `daXians`。本技能不排盘、不可能填这两个字段，把绊线抄过来只会让「这里是消费方还是内核」变得含糊。
 
 可用的是：**生年四化**（出生年干）、**流年四化**（当年年干）、**流月四化**。合盘断语用的是双方**生年四化**互落对方宫位。
 
