@@ -1141,3 +1141,56 @@ git show c64219c:docs/doubu-analysis/02-duckdb-compression.md
 
 `c64219c` 是最后动过这批文件的提交（按 `git log -1 -- docs/doubu-analysis` 取得）。删档使这些
 路径在当前工作树不再存在，但内容在历史里完好 —— 本文件的（七）（八）结论不必因此打折扣。
+
+### 后续修正（十三）（2026-09-27）：声明与实现分离，第二次落地（含内核文件更名）
+
+`db-analysis.ts`（2407 行）与 `birth-info.ts`（532 行）按（十一）同一套分法拆开：内核侧拆成
+`analysis.ts`（推算）/ `analysis-content.ts`（`STAR_DB` 论断文案）/ `analysis-meta.ts`（类型与
+映射表），CLI 侧拆成 `birth-info.ts` / `birth-info-defs.ts`。四个新文件与原文件都在
+`.claude/CLAUDE.md` 的目录树里，判据仍是「只搬模块级声明，函数留在原地」。
+
+本次比（十一）多了一件事：**内核文件更名**（`db-analysis.ts` → `analysis.ts`）。因此多出一类只在
+更名时才会遇到的判断 —— 同一个旧名，有些地方是「指代当前文件」，有些是「陈述历史事实」或
+「指向上游 toolkit 的同名文件」，前者必须改、后两者绝不能改。全仓复查后 16 处残留 `db-analysis`
+全部落在后两类（9 处历史陈述 + 7 处上游指代），逐处判定表见 spec §7.1.1。
+
+#### 引文扫描清单的**第二次**修复（同一处，同一原因）
+
+（十一）记过判词搬到 `patterns.ts` 时漏改 `selftest` 的扫描清单、断言**静默失效**的教训。本次
+`STAR_DB` 搬入 `analysis-content.ts`，又带走了扫描面内的 24 处引文命中（当时实测总计 27 处）——
+同一处清单**第二次**需要同批修改。**两次的形态相同**：搬走的文件仍被扫描，搬入的文件没人扫，
+于是断言照旧变绿，只是再也扫不到引文实际所在的文件。
+
+修复后实测命中数 **27 → 27 不变**，分布为 `analysis.ts` 3 处、`analysis-content.ts` 24 处、
+`patterns.ts` 0 处。`annotations.json` 的 `_repo_note` 也一并把适用范围扩到三个文件。
+
+#### 证据（均为一次性，非常驻防线）
+
+| 手段 | 结果 |
+| --- | --- |
+| 公开导出名单拆前后比对（全量口径，含 `export {}` 转发） | `analysis.ts` 6 名、`birth-info.ts` 9 名，逐名相等 |
+| 17 份命令输出逐字节 diff | 全部一致（analyze × 10、topic × 2、heming、`--eot`、城市容错 × 3） |
+| 引文扫描命中数 | 27 → 27 |
+| `typecheck` / `selftest` / `npm test` | 0 错误 / 49-49 / 493 项全绿 |
+
+#### 两条只在本类拆分里才会踩到的坑
+
+**一、re-export 的两种写法不等价。** `export { A } from "./m"` 是**转发**，不会把 `A` 引入本模块
+作用域；若本模块的实现里还要用 `A`（本次 `TOPIC_LABEL`、`BirthInfoResult` 等 9 个名字都是这种
+情况），必须写成 `import { A } from "./m"` 配**本地** `export { A }`。用前者 `typecheck` 会报一串
+`Cannot find name`；用后者调用方拿到的仍是同一个绑定，公开面逐名不变。
+
+**二、核对导出名单时，`grep -oE '^export (type|interface|const|function) NAME'` 会漏掉转发形式。**
+`export { A, B };` 与 `export type { A };` 的关键字后紧跟 `{`，该模式匹配不到，于是经 re-export
+转出的名字被整批漏掉，diff 报出一个**不存在的**「公开面丢失」。核对脚本要同时覆盖
+`export … NAME` 与 `export (type )?{ … }` 两种形态，且两侧过**同一个** `sort`（本机 `sort` 走
+locale 排序，与 JS 的 `.sort()` 结果不同，混用会凭空造出差异）。
+
+#### 更名后有意残留的旧名
+
+仓库里仍有若干处写着 `db-analysis`：它们是历史陈述（如「收敛自 db-analysis 的格局」）或指向
+**上游 toolkit 的同名文件**（如 `README.md` 的「未含站点下的 `db-analysis.ts`」）。**见到不必
+当漏改。**
+
+**附带收益**：本仓曾与上游存在同名文件 `db-analysis.ts`，读者看到「未含 db-analysis.ts」无从
+分辨指哪一个。本仓更名后这层歧义自动消解。

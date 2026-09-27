@@ -48,15 +48,19 @@ npm run typecheck
     ├── purple-star.ts            引导层：定位内核根 → 注册 TS 钩子 → 启动自检 → 分发命令
     ├── cli/args.ts               参数解析（纯函数，唯一不依赖内核的 CLI 模块）
     ├── cli/birth-info.ts         出生信息（真太阳时 / 农历 / 城市容错）
+    ├── cli/birth-info-defs.ts    出生信息层的声明：接口与常量（公开面由上层 re-export）
     ├── cli/render.ts             命盘渲染（宫位 / 星曜 / 四化 / 宫名口径）
     ├── cli/commands.ts           八个命令实现 + COMMANDS 表
     ├── cli/selftest.ts           49 项回归断言
     ├── ziwei/algorithm.ts        iztro 排盘主流程
     ├── ziwei/patterns.ts         51 个格局识别器 / 82 个格局名（含古籍出处与破格条件）
+    ├── ziwei/patterns-defs.ts    格局层的声明：结构体 / 常量 / 名字裁决表
     │                             + 两套判词：description（analyze 短判词）/ topicDescription（topic 倪师口吻）
     ├── ziwei/sihua.ts            四化（生年 / 流年 / 流月）
-    ├── ziwei/analysis.ts         分析数据库 v3（主题论断动态推算，topic 命令用）
+    ├── ziwei/analysis.ts         分析数据库 v3 的推算（getTopicAnalysis，topic 命令用）
     │                             格局部分只是薄壳：从 detectPatterns 挑出有 topicDescription 的命中
+    ├── ziwei/analysis-content.ts 分析数据库 v3 的论断文案（STAR_DB：十四主星 × 12 宫语境）
+    ├── ziwei/analysis-meta.ts    分析数据库 v3 的类型与映射表（主题键 / 宫位脏腑 / 紫微诸星安放）
     ├── ziwei/annotations.json    「倪师引用」文献核对记录（selftest 锁 suspect 零强归属）
     ├── ziwei/heming-knowledge.ts 合盘方法论 + 夫妻宫断语
     ├── classics/                 三部古籍原文检索

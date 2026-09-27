@@ -100,11 +100,11 @@ CLI 已给出命盘数据与格局结论。需要展开论证时，**直接读�
 
 | 需要什么                                             | 读哪里                                                               |
 | ---------------------------------------------------- | -------------------------------------------------------------------- |
-| 格局判定规则全文（80+ 格局的必须/加分/破格三层条件）+ 各格局的 `analyze` 短判词与 `topic` 长判词 | `scripts/ziwei/patterns.ts`                                          |
+| 格局判定规则全文（80+ 格局的必须/加分/破格三层条件）+ 各格局的 `analyze` 短判词与 `topic` 长判词 | `scripts/ziwei/patterns.ts`（判定）/ `scripts/ziwei/patterns-defs.ts`（`PATTERN_VERDICTS` 判词表） |
 | 四化体系、流年流月推法                               | `scripts/ziwei/sihua.ts`                                             |
 | 合盘方法论、十四主星在夫妻宫断语、四化入夫妻宫       | `scripts/ziwei/heming-knowledge.ts`                                  |
 | 星曜释义（关键词/星性/五行）                         | `scripts/ziwei/constants.ts` 的 `STAR_DESCRIPTIONS`；或 `stars` 命令 |
-| **某主题（感情/事业/财运…）的整段论断**              | `topic` 命令（动态推算：主宫主星 + 三方四正 + 四化会照 + 大限流年）；数据在 `scripts/ziwei/analysis.ts`（分析数据库 v3） |
+| **某主题（感情/事业/财运…）的整段论断**              | `topic` 命令（动态推算：主宫主星 + 三方四正 + 四化会照 + 大限流年）；数据在 `scripts/ziwei/analysis-content.ts`（论断文案）+ `analysis.ts`（动态推算） |
 | 古籍原文引证                                         | `classics` 命令；数据在 `scripts/classics/data/`                     |
 | 倪海夏体系论述、讲义原文                             | `nihai` 命令；数据在 `scripts/nihai/`                                |
 
@@ -185,7 +185,7 @@ node scripts/purple-star.ts cities --search 成都
 
 ## 其他已知事实
 
-- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis.ts`，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `topic` 命令使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是第 2 步列出的七个：`patterns.ts`、`sihua.ts`、`analysis.ts`（或 `topic` 命令）、`heming-knowledge.ts`、`constants.ts` 的 `STAR_DESCRIPTIONS`（或 `stars` 命令）、`classics`、`nihai`。
+- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis.ts` 推算 + `analysis-content.ts` 论断文案 + `analysis-meta.ts` 类型与映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `topic` 命令使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是第 2 步列出的七个：`patterns.ts`、`sihua.ts`、`analysis.ts`（或 `topic` 命令）、`heming-knowledge.ts`、`constants.ts` 的 `STAR_DESCRIPTIONS`（或 `stars` 命令）、`classics`、`nihai`。
 - **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `sha` / `lucky`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键），只有 `type === "major"` 的那 14 颗带 `brightness`，其余三类不带（信息比 iztro 原始输出少，是口径选择不是缺漏）。
 - **年龄一律是虚岁**：`currentAge`（当前年龄）、`daXians[].startAge/endAge`、`palace.daXianAge` 三者**同为虚岁**，以**农历年（正月初一）为界** —— 不是生日，也不是立春。数据来自 iztro 的 `decadal.range`。解读时报给用户的年龄就用这个虚岁，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
 - **童限**：`currentDaXianIndex === -1` 表示此人**尚未起运**（虚岁小于五行局数，如土五局要 5 岁才起运），此时 CLI 的「当前大限」显示 `—`。这是正常的，不是数据缺失——此时按命宫论，不要硬套一个大限。
