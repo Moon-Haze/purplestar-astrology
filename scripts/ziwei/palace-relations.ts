@@ -27,7 +27,7 @@
  *
  * {@link sanFangBranches} 返回**偏移序**（本宫 → 官禄 → 财帛 → 迁移），而
  * `ZiweiChart.palaces` 的数组序是地支序（实测寅起，见 `types.ts`）。两者在本仓都有真实
- * 用途，且都**逐字进了输出**（`analysis.ts` 的「大限三方四正会照的本命四化」就是一个
+ * 用途，且都**逐字进了输出**（`analysis/` 的「大限三方四正会照的本命四化」就是一个
  * 按 `palaces` 序 push 的字符串数组），故本模块只给地支、不替调用方选顺序 ——
  * 要 `palaces` 序的自行 `chart.palaces.filter(p => sanFangBranches(b).includes(p.branch))`。
  *

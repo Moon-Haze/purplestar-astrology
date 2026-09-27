@@ -103,7 +103,7 @@ function detectRiLiZhongTian({ ming }: DetectContext): Pattern[] {
 	}];
 }
 
-/** 昌曲守命：文昌或文曲坐命宫（两星俱在时只出「文昌守命」，与 analysis.ts 的取值一致） */
+/** 昌曲守命：文昌或文曲坐命宫（两星俱在时只出「文昌守命」，与 analysis/ 的取值一致） */
 function detectChangQuShouMing({ ming }: DetectContext): Pattern[] {
 	const hasChang = hasStar(ming, "文昌");
 	const hasQu = hasStar(ming, "文曲");

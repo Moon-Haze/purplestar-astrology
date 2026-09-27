@@ -61,8 +61,12 @@ npm run typecheck
     │                             helpers.ts 宫位星曜查询；<分组>-ge.ts 各分组识别器；
     │                             ming-gong-summary.ts 命宫摘要（与判定零耦合）
     ├── ziwei/sihua.ts            四化（生年 / 流年 / 流月）
-    ├── ziwei/analysis.ts         分析数据库 v3 的推算（getTopicAnalysis，topic 命令用）
-    │                             格局部分只是薄壳：从 detectPatterns 挑出有 topicDescription 的命中
+    ├── ziwei/analysis/           分析数据库 v3（文件夹模块）：编排 + 上下文 / 查询 / 查表 / 各节
+    │                             index.ts 编排 getTopicAnalysis；context.ts 跨节共享状态；
+    │                             palace-query.ts 按宫名取宫 / 三方四正 / 渲染星曜；
+    │                             lookups.ts 文案查表 + 性别过滤 + 格局投影（薄壳：从
+    │                             detectPatterns 挑出填了 topicDescription 的命中）；
+    │                             views/ 十一个小节，各一个 renderXxx(ctx)
     ├── ziwei/analysis-data.ts    分析数据库 v3 的数据层：类型 + 映射表 + 论断文案
     │                             （STAR_CONTENT_MAP：十四主星 × 12 宫语境）
     ├── ziwei/annotations.ts      「倪师引用」文献核对记录（selftest 锁 suspect 零强归属）

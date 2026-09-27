@@ -89,7 +89,7 @@ import { E_GE } from "./e-ge";
 import { JI_CHU_GE } from "./ji-chu-ge";
 import { SHOU_LIAN_GE } from "./shou-lian-ge";
 
-// **原处 re-export** 拆分前就对外公开的三个类型与裁决表，使 `analysis.ts`（`type Pattern`）、
+// **原处 re-export** 拆分前就对外公开的三个类型与裁决表，使 `analysis/`（`type Pattern`）、
 // `test/invariants.test.ts`（`GEJU_NAME_ALIASES`）的既有 import 一行都不用改 ——
 // 本模块的公开面与拆分前**逐名一致**（原先 module-private 的 `DetectContext` 不在此列）。
 export type { Pattern, PatternCondition, GejuNameAlias } from "./types";
