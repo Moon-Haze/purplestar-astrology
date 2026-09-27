@@ -594,9 +594,10 @@ export function cmdSelftest(ctx: CliContext): string {
 		) as { entries: { status: string; text: string }[] };
 		// ⚠️ 扫描范围必须覆盖**所有**带倪师引文的源码。判词原先全在 db-analysis.ts，
 		//    2026-09-27 起 25 段倪师口吻长判词搬到了 patterns.ts（各识别器的
-		//    `topicDescription`），只读一个文件会让本断言**静默失效**——它仍会绿，
-		//    却再扫不到判词所在的文件。新增带引文的模块时，记得加进这个列表。
-		const src = ["ziwei/analysis.ts", "ziwei/patterns.ts"]
+		//    `topicDescription`），另 24 处引文随 STAR_DB 搬到了 analysis-content.ts。
+		//    只读一个文件会让本断言**静默失效**——它仍会绿，却再扫不到判词所在的文件。
+		//    新增带引文的模块时，记得加进这个列表。
+		const src = ["ziwei/analysis.ts", "ziwei/analysis-content.ts", "ziwei/patterns.ts"]
 			.map(f => readFileSync(resolve(ctx.root, f), "utf8"))
 			.join("\n");
 		// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
