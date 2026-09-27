@@ -2,14 +2,12 @@
  * 出生信息解析层的**声明**部分 —— 接口与常量。
  *
  * 与 `./birth-info` 的分工：那边是「怎么算」（真太阳时、农历换算、城市名归一），
- * 这里是「长什么样」（`CliArgs` → `BirthInfoResult` 的中间结构）。
  *
- * 依赖：./args（CliArgs）、@/ziwei/types（BirthInfo）、@/ziwei/cities（CityInfo / PROVINCES）
+ * 依赖：@/ziwei/types（BirthInfo）、@/ziwei/cities（CityInfo / PROVINCES）
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
  */
 
-import type { CliArgs } from "./args";
 import type { BirthInfo } from "@/ziwei/types";
 import { PROVINCES, type CityInfo } from "@/ziwei/cities";
 
