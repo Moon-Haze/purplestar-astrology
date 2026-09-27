@@ -2,24 +2,38 @@
  * 紫微斗数格局识别（v2 严格化版本）。
  *
  * 本模块是解读层的主体：由一张已排好的 {@link ZiweiChart} 判出命中的格局清单，
- * 每条含名称、分级、判词、涉及宫位与**分层的成立条件**。51 个 `detect*` 识别器各推入
- * 0 或 1 条 {@link Pattern}（其中火贪/铃贪、化忌入命/冲命等可推入多条），合计覆盖约 82 个
- * 格局名。
+ * 每条含名称、分级、判词、涉及宫位与**分层的成立条件**。各 `detect*` 识别器返回一个
+ * {@link Pattern} **数组**，合计覆盖约 82 个格局名。
+ *
+ * ⚠️ **每个识别器当前最多产出 1 条**（0 或 1）—— 除下面点名的两个外，全部写成
+ * 「命中即 `return`」，由代码结构直接保证；`detectHuaJiRuMingQian` / `detectChangQuHuaJi`
+ * 按宫位/星曜逐个筛，写成累积数组，但**实测同样零多产**：生年四化由年干决定，一年只有一颗化忌星，
+ * 而命宫与迁移宫互为对宫、文昌与文曲是两颗各只可能带一颗忌的星。
+ * （2026-09-27 一次性扫描：1950–2009 × 6 月 × 3 日 × 12 时辰 = 12960 张本命盘，两个
+ * 识别器的产出条数分布均只有「0 条」与「1 条」两档。）
+ *
+ * 故返回类型写成 `Pattern[]` 而非 `Pattern | null`，是为了让那两个识别器在语义上表达
+ * 「所有命中的都要报」，而不是「我知道会多条」。若 `siHua` 的来源将来扩到流年 / 大限
+ * 四化，它们会真的多产，届时不必改签名与调用点。
  *
  * ## 三模块分工
  *
- * 格局层拆成三个文件，本模块**只放函数**（18 个辅助函数 + 51 个识别器 + `detectPatterns`
- * + 判词填充 `fillVerdict`）：
+ * 格局层拆成三个文件，本模块**只放函数**（宫位/星曜查询的辅助函数 + 各 `detect*` 识别器
+ * + `detectPatterns` + 判词填充 `fillVerdict`）：
  *
  * - `patterns-types.ts` —— **形状**：结构体、识别器入参 `DetectContext`
  * - `patterns-data.ts` —— **数据**：常量、名字裁决表，以及判词表 `PATTERN_VERDICTS`
  *   （键为判词条目名，多数即格局名，少数是按变体或一族共用的条目，口径见该文件的「判词」分区）
- * - `patterns.ts`（本文件） —— **行为**：怎么判、判完推入什么
+ * - `patterns.ts`（本文件） —— **行为**：怎么判、判完返回什么
  *
- * 每个识别器的收尾统一是：先把名字算进局部 `name`，再 `patterns.push({ name, level,
- * palaces, conditions, ...PATTERN_VERDICTS[name] })` —— 判词**一律**从表里取，
+ * 每个识别器的收尾统一是：先把名字算进局部 `name`，再 `return [{ name, level,
+ * palaces, conditions, ...PATTERN_VERDICTS[name] }]` —— 判词**一律**从表里取，
  * 本模块不再出现 `description` / `topicDescription` / `source` 字面量。
  * `level` / `palaces` / `conditions` 的值是盘上算出来的，故留在识别器里。
+ *
+ * 识别器**不接触**任何累积数组：`Pattern[]` 是它的全部输出，并进总表的事只发生在
+ * `detectPatterns` 里那一行 for。故「这个识别器会不会产出多条」在它的签名与 return 处
+ * 直接可读 —— 从前靠"块末有没有 return"隐式表达，是看漏过的地方。
  *
  * 拆分前就对外公开的类型与裁决表在本模块**原处 re-export**，故公开面逐名未变
  * （见下方 import 区的说明）。
@@ -86,6 +100,66 @@ export type { Pattern, PatternCondition, GejuNameAlias } from "./patterns-types"
 export { GEJU_NAME_ALIASES } from "./patterns-data";
 
 // ────────────────── 辅助函数 ──────────────────
+
+// ── 宫位地支偏移：两组算式的单点声明 ──
+//
+// 这些算式原先**在本模块内联散落**：对宫的 `(x + 6) % 12` 出现 6 处，三方四正的偏移表
+// 在 `getSanFangPalaces` 与 `isInSanFang` 里各写一遍。两处的 TSDoc 都**声明**了「与某处
+// 同源」（`getDuiGong` 说与 `algorithm.ts` 的 `Palace.oppositeBranch` 同源、`isInSanFang`
+// 说与 `getSanFangPalaces` 同源）—— 靠注释维持的一致，改一处不会有任何东西发现。
+//
+// ⚠️ 本次收敛的边界是**本模块**，不是全仓。同一个对宫算式在 `algorithm.ts`（填
+// `Palace.oppositeBranch` 字段处，是该字段的真相源）、`analysis.ts`（6 处）、
+// `cli/commands.ts`、`cli/render.ts` 里仍各有一份。跨模块单点需要把偏移提到
+// `constants.ts` 一类的共享位置，未做 —— 别把本模块的单点误读成全仓已收敛。
+//
+// 收敛的动机不是「少写几个字符」，是给算式**一个名字**：读到 `(x + 6) % 12` 要先在脑子里
+// 翻成「对宫」，而 `duiGongBranch(x)` 直接可读。
+
+/**
+ * 取对宫地支。
+ *
+ * @param branch - 基准地支索引（0–11）
+ * @returns 相隔六个地支的那一个（子↔午、丑↔未 …）
+ *
+ * @remarks
+ * ⚠️ 与 `algorithm.ts` 填 `Palace.oppositeBranch` 的是**同一个算式**。之所以仍以函数而非
+ * 字段的形式存在：本模块多处手里只有地支值（`chart.mingGongBranch`）或要跨宫比较
+ * `branch`，取不到 `Palace` 对象；且 `oppositeBranch` 是可选字段，用前要判空。
+ *
+ * ⚠️ 入参恒为 0–11（`Palace.branch` 与 `chart.mingGongBranch` 的定义域），故**不做**
+ * {@link getPalaceByBranch} 那样的两步取模 —— 越界入参会返回越界值，由调用方负责。
+ */
+function duiGongBranch(branch: number): number {
+	return (branch + 6) % 12;
+}
+
+/**
+ * 命宫三方四正相对命宫的地支偏移：命宫、官禄宫、财帛宫、迁移宫。
+ *
+ * @remarks
+ * 十二宫由命宫**逆行**排布，故官禄在 `m + 4`、财帛在 `m + 8`、迁移在 `m + 6`（**不是**顺行）。
+ * 校验见 `test/invariants.test.ts` 的「宫名与相对命宫的逆行偏移一致」。
+ */
+const SAN_FANG_OFFSETS: readonly number[] = [0, 4, 8, 6];
+
+/**
+ * 取命宫三方四正的四个地支。
+ *
+ * @param chart - 命盘
+ * @returns 命宫、官禄宫、财帛宫、迁移宫的地支索引，顺序即 {@link SAN_FANG_OFFSETS} 的偏移序
+ *
+ * @remarks
+ * {@link getSanFangPalaces} 与 {@link isInSanFang} 的共同来源，两者不再各写一遍偏移表。
+ * 代价是每次调用构造一个四元素数组 —— 原 `isInSanFang` 为省这一次构造而内联了偏移表，
+ * 但那使「改偏移要改两处、且只靠注释声明一致」成了唯一保障。本模块以单点为准：这点构造
+ * 开销在 `npm test` 的量级上不可测量，而漂移的代价不对称。
+ */
+function sanFangBranches(chart: ZiweiChart): number[] {
+	const m = chart.mingGongBranch;
+	return SAN_FANG_OFFSETS.map(o => (m + o) % 12);
+}
+
 /**
  * 取一宫的主星名列表。
  *
@@ -150,7 +224,7 @@ function findStarPalace(chart: ZiweiChart, name: string): Palace | undefined {
  *
  * @remarks
  * `((branch % 12) + 12) % 12` 是两步取模，把入参规整到 0–11。调用点因此可以直接写
- * `(branch + 6) % 12`、`(branch + 11) % 12` 这类偏移算式而不必再判界。
+ * `(branch + 11) % 12` 这类偏移算式而不必再判界（对宫偏移另见 {@link duiGongBranch}）。
  */
 function getPalaceByBranch(chart: ZiweiChart, branch: number): Palace | undefined {
 	return chart.palaces.find(p => p.branch === ((branch % 12) + 12) % 12);
@@ -191,25 +265,15 @@ function hasShaInPalace(palace: Palace, list: string[] = SHA_NAMES): boolean {
  * @returns 命宫、官禄宫、财帛宫、迁移宫四个宫位
  *
  * @remarks
- * 以 `chart.mingGongBranch` 为基准做地支偏移，四个地支分别是：
+ * 偏移表见 {@link SAN_FANG_OFFSETS}，本函数是其「取宫位」视图（{@link sanFangBranches}
+ * 取地支，本函数再映射成 `Palace`）。偏移方向以 `test/invariants.test.ts` 的
+ * 「宫名与相对命宫的逆行偏移一致」为准 —— 十二宫由命宫**逆行**排布，别想当然写成顺行。
  *
- * | 偏移 | 宫位 |
- * | --- | --- |
- * | `m` | 命宫 |
- * | `m + 4` | 官禄宫 |
- * | `m + 8` | 财帛宫 |
- * | `m + 6` | 迁移宫 |
- *
- * 偏移方向以 `test/invariants.test.ts` 的「宫名与相对命宫的逆行偏移一致」为准
- * （`k = (mingGongBranch − branch + 12) % 12`，期望宫名取自 `PALACE_NAMES_ORDER`）——
- * 十二宫由命宫**逆行**排布，别想当然写成顺行。
- *
- * ⚠️ 返回顺序是 **`chart.palaces` 的地支序**（`filter` 保持原数组序），不是上表的偏移序，
+ * ⚠️ 返回顺序是 **`chart.palaces` 的地支序**（`filter` 保持原数组序），不是偏移表的偏移序，
  * 也不是宫位顺序；需要稳定顺序时请自行排序。正常命盘恒返回 4 个宫位。
  */
 function getSanFangPalaces(chart: ZiweiChart): Palace[] {
-	const m = chart.mingGongBranch;
-	const branches = [m, (m + 4) % 12, (m + 8) % 12, (m + 6) % 12];
+	const branches = sanFangBranches(chart);
 	return chart.palaces.filter(p => branches.includes(p.branch));
 }
 /**
@@ -220,15 +284,14 @@ function getSanFangPalaces(chart: ZiweiChart): Palace[] {
  * @returns 在命宫、官禄宫、财帛宫或迁移宫则为 `true`
  *
  * @remarks
- * 与 {@link getSanFangPalaces} 同一组偏移，但走 `includes` 直判，省去构造数组 ——
- * 识别器里高频调用（如火贪/武贪的"会照命宫三方"关卡）。
+ * 与 {@link getSanFangPalaces} 同一来源（{@link sanFangBranches}），只是直接判地支、
+ * 不取 `Palace` 对象 —— 识别器里高频调用（如火贪/武贪的"会照命宫三方"关卡）。
  *
  * ⚠️ 入参不做 `% 12` 规整，与 {@link getPalaceByBranch} 不同：传入越界值一律判 `false`，
  * 不会误命中。
  */
 function isInSanFang(chart: ZiweiChart, branch: number): boolean {
-	const m = chart.mingGongBranch;
-	return [m, (m + 4) % 12, (m + 8) % 12, (m + 6) % 12].includes(branch);
+	return sanFangBranches(chart).includes(branch);
 }
 /**
  * 取对宫。
@@ -238,11 +301,11 @@ function isInSanFang(chart: ZiweiChart, branch: number): boolean {
  * @returns 相隔六个地支的那个宫位；无匹配时返回 `undefined`
  *
  * @remarks
- * 对宫恒为 `(branch + 6) % 12`，与 `algorithm.ts` 填的 `Palace.oppositeBranch`
- * 是同一个算式。
+ * 偏移算式见 {@link duiGongBranch}（与 `algorithm.ts` 填的 `Palace.oppositeBranch` 同源）。
+ * 手里已经有 `Palace` 对象时，直接读它的 `oppositeBranch` 字段即可，不必绕本函数。
  */
 function getDuiGong(chart: ZiweiChart, branch: number): Palace | undefined {
-	return getPalaceByBranch(chart, (branch + 6) % 12);
+	return getPalaceByBranch(chart, duiGongBranch(branch));
 }
 /**
  * 取夹宫：某宫地支前后各一宫。
@@ -257,7 +320,7 @@ function getDuiGong(chart: ZiweiChart, branch: number): Palace | undefined {
  * （偏移 1）、`next` 即父母宫（偏移 11）—— 偏移口径同 {@link getSanFangPalaces}。
  *
  * 调用点（`detectRiYueJiaMing` / `detectFuBiJiaMing` / `detectYangTuoJiaJi` 等）
- * 一律先 `if (!prev || !next) return;`，因为缺一宫就构不成"夹"。
+ * 一律先 `if (!prev || !next) return [];`，因为缺一宫就构不成"夹"。
  */
 function getJiaPalaces(chart: ZiweiChart, branch: number): { prev?: Palace; next?: Palace } {
 	return {
@@ -407,12 +470,12 @@ function fillVerdict(verdict: PatternVerdict, vars: Record<string, string>): Pat
 // ────────────────── 正格识别器 ──────────────────
 
 /** 君臣庆会：紫微入命，左辅右弼同会（同宫或三方） */
-function detectJunChenQingHui({ chart, ming }: DetectContext, patterns: Pattern[]) {
-	if (!hasStar(ming, "紫微")) return;
+function detectJunChenQingHui({ chart, ming }: DetectContext): Pattern[] {
+	if (!hasStar(ming, "紫微")) return [];
 	const sanFangSet = sanFangAllStars(chart);
 	const hasZuo = sanFangSet.has("左辅");
 	const hasYou = sanFangSet.has("右弼");
-	if (!hasZuo || !hasYou) return;
+	if (!hasZuo || !hasYou) return [];
 
 	const required = ["紫微入命", "左辅右弼同会三方四正"];
 	const bonus: string[] = [];
@@ -423,20 +486,20 @@ function detectJunChenQingHui({ chart, ming }: DetectContext, patterns: Pattern[
 	if (sanFangShaCount(chart, SHA_KONG) >= 2) breaking.push("地空地劫双夹会照（紫微忌空劫）");
 
 	const name = "君臣庆会";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 75 : 90,
 		palaces: ["命宫"],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 紫府同宫：紫微+天府同宫，且该宫为命宫或迁移宫 */
-function detectZiFu({ chart }: DetectContext, patterns: Pattern[]) {
+function detectZiFu({ chart }: DetectContext): Pattern[] {
 	const ziwei = findStarPalace(chart, "紫微");
 	const tianfu = findStarPalace(chart, "天府");
-	if (!ziwei || !tianfu || ziwei.branch !== tianfu.branch) return;
+	if (!ziwei || !tianfu || ziwei.branch !== tianfu.branch) return [];
 
 	// 判定域：同宫的那一宫必须是命宫或迁移宫。
 	//
@@ -444,10 +507,10 @@ function detectZiFu({ chart }: DetectContext, patterns: Pattern[]) {
 	// 它只认 `hasStar('命宫'|'迁移', …)`。旧口径下紫府同宫在任何宫都成格（只把未坐命的降为 75），
 	// 与 topic 侧实测 44/300 盘判定相反（如紫府坐财帛：这边报格、那边不报）。
 	// 代价：紫微天府同宫于它宫时不再产出「紫府同宫」，那类盘在这两处都不再有此格局。
-	// ✓ 迁移宫即命宫对宫（`(命宫 + 6) % 12`），与 `isInSanFang` 的第 4 个偏移同源。
+	// ✓ 迁移宫即命宫对宫（见 `duiGongBranch`），与 `SAN_FANG_OFFSETS` 的第 4 个偏移同源。
 	const inMing = ziwei.branch === chart.mingGongBranch;
-	const inQianYi = ziwei.branch === (chart.mingGongBranch + 6) % 12;
-	if (!inMing && !inQianYi) return;
+	const inQianYi = ziwei.branch === duiGongBranch(chart.mingGongBranch);
+	if (!inMing && !inQianYi) return [];
 
 	const required = [inMing ? "紫微天府同入命宫" : "紫微天府同入迁移宫（照命，力减）"];
 	const bonus: string[] = [];
@@ -459,23 +522,23 @@ function detectZiFu({ chart }: DetectContext, patterns: Pattern[]) {
 	if (shaCountInPalace(ziwei, SHA_HARD) >= 2) breaking.push("紫府宫见双煞同坐");
 
 	const name = "紫府同宫";
-	patterns.push({
+	return [{
 		name,
 		level: inMing && !breaking.length ? 90 : 75,
 		palaces: [ziwei.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[inMing ? "紫府同宫·坐命" : "紫府同宫·照命"],
-	});
+	}];
 }
 
 /** 府相朝垣：天府、天相分别坐守命宫的三方四正 */
-function detectFuXiangChaoYuan({ chart, ming }: DetectContext, patterns: Pattern[]) {
+function detectFuXiangChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	const tianfu = findStarPalace(chart, "天府");
 	const tianxiang = findStarPalace(chart, "天相");
-	if (!tianfu || !tianxiang) return;
-	if (!isInSanFang(chart, tianfu.branch) || !isInSanFang(chart, tianxiang.branch)) return;
-	if (tianfu.branch === chart.mingGongBranch && tianxiang.branch === chart.mingGongBranch) return;
-	if (tianfu.branch === tianxiang.branch) return;
+	if (!tianfu || !tianxiang) return [];
+	if (!isInSanFang(chart, tianfu.branch) || !isInSanFang(chart, tianxiang.branch)) return [];
+	if (tianfu.branch === chart.mingGongBranch && tianxiang.branch === chart.mingGongBranch) return [];
+	if (tianfu.branch === tianxiang.branch) return [];
 
 	const required = ["天府坐命三方", "天相坐命三方", "两星不同宫"];
 	const bonus: string[] = [];
@@ -486,17 +549,17 @@ function detectFuXiangChaoYuan({ chart, ming }: DetectContext, patterns: Pattern
 	if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push("三方四正煞星过多");
 
 	const name = "府相朝垣";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 75 : 90,
 		palaces: [tianfu.name, tianxiang.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 阳梁昌禄：太阳+天梁+文昌+禄存四星会命宫，大贵格 */
-function detectYangLiangChangLu({ chart }: DetectContext, patterns: Pattern[]) {
+function detectYangLiangChangLu({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	if (
 		!sanFangSet.has("太阳") ||
@@ -504,7 +567,7 @@ function detectYangLiangChangLu({ chart }: DetectContext, patterns: Pattern[]) {
 		!sanFangSet.has("文昌") ||
 		!sanFangSet.has("禄存")
 	)
-		return;
+		return [];
 
 	const sun = findStarPalace(chart, "太阳")!;
 	const liang = findStarPalace(chart, "天梁")!;
@@ -518,19 +581,19 @@ function detectYangLiangChangLu({ chart }: DetectContext, patterns: Pattern[]) {
 	if (sanFangShaCount(chart, SHA_HARD) >= 2) breaking.push("三方煞重");
 
 	const name = "阳梁昌禄";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 75 : 90,
 		palaces: [sun.name, liang.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 火贪格 / 铃贪格：贪狼与火星或铃星**同宫**（不含会照） */
-function detectHuoTanLingTan({ chart }: DetectContext, patterns: Pattern[]) {
+function detectHuoTanLingTan({ chart }: DetectContext): Pattern[] {
 	const tan = findStarPalace(chart, "贪狼");
-	if (!tan) return;
+	if (!tan) return [];
 
 	// 判定域：火/铃与贪狼**同宫**。
 	//
@@ -545,7 +608,7 @@ function detectHuoTanLingTan({ chart }: DetectContext, patterns: Pattern[]) {
 	// 火铃**同时**同宫于贪狼时只出「火贪格」：沿用 topic 的 `else if` 语义，不并列两条。
 	const hasFire = hasStar(tan, "火星");
 	const hasLing = hasStar(tan, "铃星");
-	if (!hasFire && !hasLing) return;
+	if (!hasFire && !hasLing) return [];
 	const shaName = hasFire ? "火星" : "铃星";
 
 	const required = [`贪狼与${shaName}同宫`];
@@ -558,7 +621,7 @@ function detectHuoTanLingTan({ chart }: DetectContext, patterns: Pattern[]) {
 	if (hasShaInPalace(tan, SHA_KONG)) breaking.push("贪狼遇空劫（财来财去）");
 
 	const name = shaName === "火星" ? "火贪格" : "铃贪格";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 75 : 90,
 		palaces: [tan.name],
@@ -566,17 +629,17 @@ function detectHuoTanLingTan({ chart }: DetectContext, patterns: Pattern[]) {
 		...fillVerdict(PATTERN_VERDICTS[name], {
 			破格: breaking.length ? "本盘破格条件已触发，发力打折。" : "",
 		}),
-	});
+	}];
 }
 
 /** 武贪格：武曲+贪狼 同宫（丑、未） 或 对照 */
-function detectWuTan({ chart }: DetectContext, patterns: Pattern[]) {
+function detectWuTan({ chart }: DetectContext): Pattern[] {
 	const wu = findStarPalace(chart, "武曲");
 	const tan = findStarPalace(chart, "贪狼");
-	if (!wu || !tan) return;
-	const sameOrOppose = wu.branch === tan.branch || (wu.branch + 6) % 12 === tan.branch;
-	if (!sameOrOppose) return;
-	if (!isInSanFang(chart, wu.branch) && !isInSanFang(chart, tan.branch)) return;
+	if (!wu || !tan) return [];
+	const sameOrOppose = wu.branch === tan.branch || duiGongBranch(wu.branch) === tan.branch;
+	if (!sameOrOppose) return [];
+	if (!isInSanFang(chart, wu.branch) && !isInSanFang(chart, tan.branch)) return [];
 
 	const required = [
 		wu.branch === tan.branch ? "武曲贪狼同宫（丑/未）" : "武曲贪狼对宫拱照",
@@ -591,20 +654,20 @@ function detectWuTan({ chart }: DetectContext, patterns: Pattern[]) {
 	if (hasShaInPalace(wu, SHA_KONG)) breaking.push("武贪宫遇空劫");
 
 	const name = "武贪格";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 75 : 90,
 		palaces: [wu.name, tan.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 杀破狼：七杀、破军、贪狼三方齐聚 */
-function detectShaPoLang({ chart, ming }: DetectContext, patterns: Pattern[]) {
+function detectShaPoLang({ chart, ming }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	const has = ["七杀", "破军", "贪狼"].filter(s => sanFangSet.has(s));
-	if (has.length < 3) return;
+	if (has.length < 3) return [];
 
 	const required = ["七杀、破军、贪狼三星齐入命宫三方四正"];
 	const bonus: string[] = [];
@@ -616,7 +679,7 @@ function detectShaPoLang({ chart, ming }: DetectContext, patterns: Pattern[]) {
 	if (hasShaInPalace(ming, SHA_KONG)) breaking.push("命坐空劫（动得辛苦）");
 
 	const name = "杀破狼";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 40 : 75,
 		palaces: getSanFangPalaces(chart)
@@ -624,14 +687,14 @@ function detectShaPoLang({ chart, ming }: DetectContext, patterns: Pattern[]) {
 			.map(p => p.name),
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 机月同梁：天机、太阴、天同、天梁会入命宫三方四正（四星齐为上格，只齐三星为不全格） */
-function detectJiYueTongLiang({ chart, ming }: DetectContext, patterns: Pattern[]) {
+function detectJiYueTongLiang({ chart, ming }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	const has = ["天机", "太阴", "天同", "天梁"].filter(s => sanFangSet.has(s));
-	if (has.length < 3) return;
+	if (has.length < 3) return [];
 
 	// 「四星齐」与「恰好三星」原是两个格局名（机月同梁 / 机月同梁三星会），2026-09-26 合并为一个：
 	// 判定域放宽到 `>= 3`，缺星时把「不全格」记进 breaking 并把 level 降为 60。
@@ -654,7 +717,7 @@ function detectJiYueTongLiang({ chart, ming }: DetectContext, patterns: Pattern[
 	if (!full) breaking.push(`三方四正只齐 ${has.length} 星（机月同梁不全格）`);
 
 	const name = "机月同梁";
-	patterns.push({
+	return [{
 		name,
 		level: full ? (breaking.length ? 75 : 90) : 60,
 		palaces: getSanFangPalaces(chart)
@@ -664,14 +727,14 @@ function detectJiYueTongLiang({ chart, ming }: DetectContext, patterns: Pattern[
 		...fillVerdict(PATTERN_VERDICTS[full ? "机月同梁·满格" : "机月同梁·不全格"], {
 			星: has.join("、"),
 		}),
-	});
+	}];
 }
 
 /** 廉贞天相：同宫 */
-function detectLianXiang({ chart }: DetectContext, patterns: Pattern[]) {
+function detectLianXiang({ chart }: DetectContext): Pattern[] {
 	const lian = findStarPalace(chart, "廉贞");
 	const xiang = findStarPalace(chart, "天相");
-	if (!lian || !xiang || lian.branch !== xiang.branch) return;
+	if (!lian || !xiang || lian.branch !== xiang.branch) return [];
 
 	const inMing = lian.branch === chart.mingGongBranch;
 	const required = ["廉贞天相同宫"];
@@ -686,20 +749,20 @@ function detectLianXiang({ chart }: DetectContext, patterns: Pattern[]) {
 	// 名字取古籍用语：全集·卷四「廉贞与天相同宫为『廉相格』」。全称「廉贞天相格」
 	// 古籍零见，2026-09-27 按「古文优先」裁决为简称（见 GEJU_NAME_ALIASES）。
 	const name = "廉相格";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 40 : inMing ? 75 : 60,
 		palaces: [lian.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 武曲七杀：同宫，将星配财星 */
-function detectWuQiSha({ chart }: DetectContext, patterns: Pattern[]) {
+function detectWuQiSha({ chart }: DetectContext): Pattern[] {
 	const wu = findStarPalace(chart, "武曲");
 	const qi = findStarPalace(chart, "七杀");
-	if (!wu || !qi || wu.branch !== qi.branch) return;
+	if (!wu || !qi || wu.branch !== qi.branch) return [];
 
 	const inMing = wu.branch === chart.mingGongBranch;
 	const required = ["武曲七杀同宫"];
@@ -711,20 +774,20 @@ function detectWuQiSha({ chart }: DetectContext, patterns: Pattern[]) {
 	if (hasShaInPalace(wu, ["擎羊", "陀罗", "火星", "铃星"])) breaking.push("武杀宫煞星过多");
 
 	const name = "武曲七杀";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 40 : inMing ? 90 : 75,
 		palaces: [wu.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 天同天梁：同宫 */
-function detectTongLiang({ chart }: DetectContext, patterns: Pattern[]) {
+function detectTongLiang({ chart }: DetectContext): Pattern[] {
 	const tong = findStarPalace(chart, "天同");
 	const liang = findStarPalace(chart, "天梁");
-	if (!tong || !liang || tong.branch !== liang.branch) return;
+	if (!tong || !liang || tong.branch !== liang.branch) return [];
 
 	const required = ["天同天梁同宫"];
 	const bonus: string[] = [];
@@ -734,21 +797,21 @@ function detectTongLiang({ chart }: DetectContext, patterns: Pattern[]) {
 	if (hasShaInPalace(tong, SHA_HARD)) breaking.push("煞星同坐");
 
 	const name = "天同天梁格";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 60 : 75,
 		palaces: [tong.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 日月同宫：太阳太阴丑或未宫同宫 */
-function detectRiYueTongGong({ chart }: DetectContext, patterns: Pattern[]) {
+function detectRiYueTongGong({ chart }: DetectContext): Pattern[] {
 	const sun = findStarPalace(chart, "太阳");
 	const moon = findStarPalace(chart, "太阴");
-	if (!sun || !moon || sun.branch !== moon.branch) return;
-	if (sun.branch !== 1 && sun.branch !== 7) return; // 必须丑(1) 或 未(7)
+	if (!sun || !moon || sun.branch !== moon.branch) return [];
+	if (sun.branch !== 1 && sun.branch !== 7) return []; // 必须丑(1) 或 未(7)
 
 	const inMing = sun.branch === chart.mingGongBranch;
 	const required = [`太阳太阴同入${BRANCHES[sun.branch]}宫`];
@@ -760,25 +823,25 @@ function detectRiYueTongGong({ chart }: DetectContext, patterns: Pattern[]) {
 	if (hasShaInPalace(sun, SHA_HARD)) breaking.push("日月宫煞星同坐");
 
 	const name = "日月同宫";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 75 : inMing ? 90 : 75,
 		palaces: [sun.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[sun.branch === 7 ? "日月同宫·未" : "日月同宫·丑"],
-	});
+	}];
 }
 
 /** 日月夹命：太阳太阴在命宫前后两宫 */
-function detectRiYueJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
+function detectRiYueJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
-	if (!prev || !next) return;
+	if (!prev || !next) return [];
 	const prevHasSun = hasStar(prev, "太阳");
 	const prevHasMoon = hasStar(prev, "太阴");
 	const nextHasSun = hasStar(next, "太阳");
 	const nextHasMoon = hasStar(next, "太阴");
 	const ok = (prevHasSun && nextHasMoon) || (prevHasMoon && nextHasSun);
-	if (!ok) return;
+	if (!ok) return [];
 
 	const sunPalace = prevHasSun ? prev : next;
 	const moonPalace = prevHasMoon ? prev : next;
@@ -791,21 +854,21 @@ function detectRiYueJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
 		breaking.push("日月落陷（夹命无光）");
 
 	const name = "日月夹命";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 75 : 90,
 		palaces: [sunPalace.name, moonPalace.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 巨日同宫：巨门太阳同入寅或申 */
-function detectJuRiTongGong({ chart }: DetectContext, patterns: Pattern[]) {
+function detectJuRiTongGong({ chart }: DetectContext): Pattern[] {
 	const ju = findStarPalace(chart, "巨门");
 	const sun = findStarPalace(chart, "太阳");
-	if (!ju || !sun || ju.branch !== sun.branch) return;
-	if (ju.branch !== 2 && ju.branch !== 8) return; // 必须寅(2) 或 申(8)
+	if (!ju || !sun || ju.branch !== sun.branch) return [];
+	if (ju.branch !== 2 && ju.branch !== 8) return []; // 必须寅(2) 或 申(8)
 
 	const inMing = ju.branch === chart.mingGongBranch;
 	const required = [`巨门太阳同入${BRANCHES[ju.branch]}宫`];
@@ -818,19 +881,19 @@ function detectJuRiTongGong({ chart }: DetectContext, patterns: Pattern[]) {
 	if (ju.branch === 8) breaking.push("申宫太阳偏西，巨门暗曜更显");
 
 	const name = "巨日同宫";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 40 : inMing && ju.branch === 2 ? 90 : 75,
 		palaces: [ju.name],
 		conditions: { required, bonus, breaking },
 		...fillVerdict(PATTERN_VERDICTS[name], { 宫: BRANCHES[ju.branch] }),
-	});
+	}];
 }
 
 /** 石中隐玉：巨门入命于子午宫 */
-function detectShiZhongYinYu({ chart, ming }: DetectContext, patterns: Pattern[]) {
-	if (!hasStar(ming, "巨门")) return;
-	if (ming.branch !== 0 && ming.branch !== 6) return; // 子(0) 或 午(6)
+function detectShiZhongYinYu({ chart, ming }: DetectContext): Pattern[] {
+	if (!hasStar(ming, "巨门")) return [];
+	if (ming.branch !== 0 && ming.branch !== 6) return []; // 子(0) 或 午(6)
 
 	const required = [`巨门入命于${BRANCHES[ming.branch]}宫`];
 	const bonus: string[] = [];
@@ -842,22 +905,22 @@ function detectShiZhongYinYu({ chart, ming }: DetectContext, patterns: Pattern[]
 	if (hasShaInPalace(ming, SHA_HARD)) breaking.push("命坐煞星");
 
 	const name = "石中隐玉";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 40 : 90,
 		palaces: ["命宫"],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 明珠出海：命宫在未空宫，对宫丑宫为太阳太阴 */
-function detectMingZhuChuHai({ chart, ming }: DetectContext, patterns: Pattern[]) {
-	if (ming.branch !== 7) return; // 命在未
-	if (getMajorStarNames(ming).length > 0) return; // 命宫为空宫
+function detectMingZhuChuHai({ chart, ming }: DetectContext): Pattern[] {
+	if (ming.branch !== 7) return []; // 命在未
+	if (getMajorStarNames(ming).length > 0) return []; // 命宫为空宫
 	const dui = getDuiGong(chart, ming.branch);
-	if (!dui) return;
-	if (!hasStar(dui, "太阳") || !hasStar(dui, "太阴")) return;
+	if (!dui) return [];
+	if (!hasStar(dui, "太阳") || !hasStar(dui, "太阴")) return [];
 
 	const required = ["命宫在未为空宫", "对宫丑宫为太阳太阴同度"];
 	const bonus: string[] = [];
@@ -869,18 +932,18 @@ function detectMingZhuChuHai({ chart, ming }: DetectContext, patterns: Pattern[]
 	if (sanFangShaCount(chart, SHA_HARD) >= 2) breaking.push("煞星会照（珠光黯淡）");
 
 	const name = "明珠出海";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 75 : 90,
 		palaces: ["命宫", dui.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 紫微独坐入命 */
-function detectZiWeiInMing({ chart, ming }: DetectContext, patterns: Pattern[]) {
-	if (!hasStar(ming, "紫微") || hasStar(ming, "天府")) return;
+function detectZiWeiInMing({ chart, ming }: DetectContext): Pattern[] {
+	if (!hasStar(ming, "紫微") || hasStar(ming, "天府")) return [];
 
 	const required = ["紫微独坐命宫（无天府同坐）"];
 	const bonus: string[] = [];
@@ -892,24 +955,24 @@ function detectZiWeiInMing({ chart, ming }: DetectContext, patterns: Pattern[]) 
 	if (hasShaInPalace(ming, SHA_KONG)) breaking.push("紫微遇空劫（古书最忌）");
 
 	const name = "紫微入命";
-	patterns.push({
+	return [{
 		name,
 		level: breaking.length ? 40 : bonus.length ? 90 : 75,
 		palaces: ["命宫"],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 辅弼夹命 */
-function detectFuBiJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
+function detectFuBiJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
-	if (!prev || !next) return;
+	if (!prev || !next) return [];
 	const prevHasZuo = hasStar(prev, "左辅");
 	const prevHasYou = hasStar(prev, "右弼");
 	const nextHasZuo = hasStar(next, "左辅");
 	const nextHasYou = hasStar(next, "右弼");
-	if (!((prevHasZuo && nextHasYou) || (prevHasYou && nextHasZuo))) return;
+	if (!((prevHasZuo && nextHasYou) || (prevHasYou && nextHasZuo))) return [];
 
 	const required = ["左辅右弼分居命宫前后两宫"];
 	const bonus: string[] = [];
@@ -918,55 +981,55 @@ function detectFuBiJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
 		bonus.push("再会魁钺");
 
 	const name = "辅弼夹命";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required, bonus, breaking },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 昌曲夹命 */
-function detectChangQuJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
+function detectChangQuJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
-	if (!prev || !next) return;
+	if (!prev || !next) return [];
 	const prevHasChang = hasStar(prev, "文昌");
 	const prevHasQu = hasStar(prev, "文曲");
 	const nextHasChang = hasStar(next, "文昌");
 	const nextHasQu = hasStar(next, "文曲");
-	if (!((prevHasChang && nextHasQu) || (prevHasQu && nextHasChang))) return;
+	if (!((prevHasChang && nextHasQu) || (prevHasQu && nextHasChang))) return [];
 
 	const name = "昌曲夹命";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required: ["文昌文曲分居命宫前后两宫"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 魁钺夹命 */
-function detectKuiYueJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
+function detectKuiYueJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
-	if (!prev || !next) return;
+	if (!prev || !next) return [];
 	const okA = hasStar(prev, "天魁") && hasStar(next, "天钺");
 	const okB = hasStar(prev, "天钺") && hasStar(next, "天魁");
-	if (!okA && !okB) return;
+	if (!okA && !okB) return [];
 
 	const name = "魁钺夹命";
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required: ["天魁天钺分居命宫前后两宫"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 双禄朝垣：化禄 + 禄存 同会三方 */
-function detectShuangLuChaoYuan({ chart, ming }: DetectContext, patterns: Pattern[]) {
+function detectShuangLuChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	const sanFang = getSanFangPalaces(chart);
 	let huaLuFound = false;
 	let luCunFound = false;
@@ -974,10 +1037,10 @@ function detectShuangLuChaoYuan({ chart, ming }: DetectContext, patterns: Patter
 		if (p.stars.some(s => s.siHua === "禄")) huaLuFound = true;
 		if (hasStar(p, "禄存")) luCunFound = true;
 	}
-	if (!huaLuFound || !luCunFound) return;
+	if (!huaLuFound || !luCunFound) return [];
 
 	const name = "双禄朝垣";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: sanFang.map(p => p.name),
@@ -988,11 +1051,11 @@ function detectShuangLuChaoYuan({ chart, ming }: DetectContext, patterns: Patter
 				: undefined,
 		},
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 三奇加会：化禄 化权 化科 同会三方 */
-function detectSanQiJiaHui({ chart }: DetectContext, patterns: Pattern[]) {
+function detectSanQiJiaHui({ chart }: DetectContext): Pattern[] {
 	const sanFangPalaces = getSanFangPalaces(chart);
 	let lu = false,
 		quan = false,
@@ -1004,25 +1067,25 @@ function detectSanQiJiaHui({ chart }: DetectContext, patterns: Pattern[]) {
 			if (s.siHua === "科") ke = true;
 		}
 	}
-	if (!(lu && quan && ke)) return;
+	if (!(lu && quan && ke)) return [];
 
 	const name = "三奇加会";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: sanFangPalaces.map(p => p.name),
 		conditions: { required: ["化禄、化权、化科三吉化齐会命宫三方四正"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 化禄入命/官/财 */
-function detectHuaLuRuMing({ chart, ming }: DetectContext, patterns: Pattern[]) {
+function detectHuaLuRuMing({ chart, ming }: DetectContext): Pattern[] {
 	const huaLuStar = ming.stars.find(s => s.siHua === "禄" && s.type === "major");
-	if (!huaLuStar) return;
+	if (!huaLuStar) return [];
 
 	const name = `${huaLuStar.name}化禄入命`;
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: ["命宫"],
@@ -1031,14 +1094,18 @@ function detectHuaLuRuMing({ chart, ming }: DetectContext, patterns: Pattern[]) 
 			星: huaLuStar.name,
 			注: PATTERN_ASIDES["化禄入命"]?.[huaLuStar.name] ?? "",
 		}),
-	});
+	}];
 }
 
 // ────────────────── 恶格识别器 ──────────────────
 
 /** 化忌入命（坐命宫）/ 化忌冲命（坐迁移宫，对冲命宫） */
-function detectHuaJiRuMingQian({ chart }: DetectContext, patterns: Pattern[]) {
-	const qianBranch = (chart.mingGongBranch + 6) % 12;
+function detectHuaJiRuMingQian({ chart }: DetectContext): Pattern[] {
+	const qianBranch = duiGongBranch(chart.mingGongBranch);
+	// 本识别器筛的是「命宫与迁移宫**两个**宫位」，故用局部数组累积、而不是像多数识别器
+	// 那样「命中即 return」—— 表达的是「两宫命中哪个就报哪个」，不是「我知道会两条」。
+	// 实测**至多一条**：生年四化一年只有一颗化忌星，而命宫与迁移宫互为对宫，坐不满两宫。
+	const hits: Pattern[] = [];
 	for (const palace of chart.palaces) {
 		if (palace.branch !== chart.mingGongBranch && palace.branch !== qianBranch) continue;
 		const jiStar = palace.stars.find(s => s.siHua === "忌" && s.type === "major");
@@ -1048,7 +1115,7 @@ function detectHuaJiRuMingQian({ chart }: DetectContext, patterns: Pattern[]) {
 		// 迁移分支取名「冲命」而**不是**「入迁」：后者在本仓古籍库零见，前者有 1 处
 		// （《紫微斗数全书·十二宫论·夫妻宫》）。裁决依据见 {@link GEJU_NAME_ALIASES}。
 		const name = `${jiStar.name}化忌${inMing ? "入命" : "冲命"}`;
-		patterns.push({
+		hits.push({
 			name,
 			level: 40,
 			palaces: [palace.name],
@@ -1056,10 +1123,11 @@ function detectHuaJiRuMingQian({ chart }: DetectContext, patterns: Pattern[]) {
 			...fillVerdict(PATTERN_VERDICTS[inMing ? "化忌入命" : "化忌冲命"], { 星: jiStar.name }),
 		});
 	}
+	return hits;
 }
 
 /** 羊陀夹忌：化忌坐宫，左右被擎羊陀罗夹 */
-function detectYangTuoJiaJi({ chart }: DetectContext, patterns: Pattern[]) {
+function detectYangTuoJiaJi({ chart }: DetectContext): Pattern[] {
 	for (const palace of chart.palaces) {
 		const jiStar = palace.stars.find(s => s.siHua === "忌");
 		if (!jiStar) continue;
@@ -1072,85 +1140,85 @@ function detectYangTuoJiaJi({ chart }: DetectContext, patterns: Pattern[]) {
 		if (!aPrev && !aNext) continue;
 
 		const name = "羊陀夹忌";
-		patterns.push({
+		return [{
 			name,
 			level: 40,
 			palaces: ["命宫", prev.name, next.name],
 			conditions: { required: ["化忌坐命", "擎羊陀罗分居命宫前后两宫"] },
 			...PATTERN_VERDICTS[name],
-		});
-		return;
+		}];
 	}
+	return [];
 }
 
 /** 火铃夹命：火星铃星分居命宫前后 */
-function detectHuoLingJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
+function detectHuoLingJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
-	if (!prev || !next) return;
+	if (!prev || !next) return [];
 	const okA = hasStar(prev, "火星") && hasStar(next, "铃星");
 	const okB = hasStar(prev, "铃星") && hasStar(next, "火星");
-	if (!okA && !okB) return;
+	if (!okA && !okB) return [];
 
 	const name = "火铃夹命";
-	patterns.push({
+	return [{
 		name,
 		level: 40,
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required: ["火星铃星分居命宫前后两宫"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 空劫夹命：地空地劫分居命宫前后 */
-function detectKongJieJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
+function detectKongJieJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
-	if (!prev || !next) return;
+	if (!prev || !next) return [];
 	const okA = hasStar(prev, "地空") && hasStar(next, "地劫");
 	const okB = hasStar(prev, "地劫") && hasStar(next, "地空");
-	if (!okA && !okB) return;
+	if (!okA && !okB) return [];
 
 	const name = "空劫夹命";
-	patterns.push({
+	return [{
 		name,
 		level: 40,
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required: ["地空地劫分居命宫前后两宫"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 廉杀羊：廉贞、七杀、擎羊三星会照（流年大限最凶） */
-function detectLianShaYang({ chart }: DetectContext, patterns: Pattern[]) {
+function detectLianShaYang({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!(sanFangSet.has("廉贞") && sanFangSet.has("七杀") && sanFangSet.has("擎羊"))) return;
+	if (!(sanFangSet.has("廉贞") && sanFangSet.has("七杀") && sanFangSet.has("擎羊"))) return [];
 
 	const name = "廉杀羊";
-	patterns.push({
+	return [{
 		name,
 		level: 40,
 		palaces: ["命宫"],
 		conditions: { required: ["廉贞、七杀、擎羊三星会照三方四正"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 巨火羊：巨门、火星、擎羊会照 */
-function detectJuHuoYang({ chart }: DetectContext, patterns: Pattern[]) {
+function detectJuHuoYang({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!(sanFangSet.has("巨门") && sanFangSet.has("火星") && sanFangSet.has("擎羊"))) return;
+	if (!(sanFangSet.has("巨门") && sanFangSet.has("火星") && sanFangSet.has("擎羊"))) return [];
 
 	const name = "巨火羊";
-	patterns.push({
+	return [{
 		name,
 		level: 40,
 		palaces: ["命宫"],
 		conditions: { required: ["巨门、火星、擎羊三星会照三方四正"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 铃昌陀武：铃星、文昌、陀罗、武曲会照（限至投河） */
-function detectLingChangTuoWu({ chart }: DetectContext, patterns: Pattern[]) {
+function detectLingChangTuoWu({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	if (
 		!(
@@ -1160,22 +1228,22 @@ function detectLingChangTuoWu({ chart }: DetectContext, patterns: Pattern[]) {
 			sanFangSet.has("武曲")
 		)
 	)
-		return;
+		return [];
 
 	const name = "铃昌陀武";
-	patterns.push({
+	return [{
 		name,
 		level: 40,
 		palaces: ["命宫"],
 		conditions: { required: ["铃星、文昌、陀罗、武曲四星会照三方四正"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 马头带箭：擎羊在午宫坐命 */
-function detectMaTouDaiJian({ chart, ming }: DetectContext, patterns: Pattern[]) {
-	if (ming.branch !== 6) return; // 必须午
-	if (!hasStar(ming, "擎羊")) return;
+function detectMaTouDaiJian({ chart, ming }: DetectContext): Pattern[] {
+	if (ming.branch !== 6) return []; // 必须午
+	if (!hasStar(ming, "擎羊")) return [];
 
 	const required = ["擎羊于午宫坐命"];
 	const bonus: string[] = [];
@@ -1186,13 +1254,13 @@ function detectMaTouDaiJian({ chart, ming }: DetectContext, patterns: Pattern[])
 		bonus.push("魁钺加照");
 
 	const name = "马头带箭";
-	patterns.push({
+	return [{
 		name,
 		level: bonus.length ? 75 : 40,
 		palaces: ["命宫"],
 		conditions: { required, bonus },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 // ────────────────── 基础格局（提升识别覆盖率）──────────────────
@@ -1200,73 +1268,73 @@ function detectMaTouDaiJian({ chart, ming }: DetectContext, patterns: Pattern[])
 // 这些都是单一条件触发的轻量识别，level 多为 neutral / good。
 
 /** 禄存守身：禄存入身宫（或命宫与身宫同宫） */
-function detectLuCunShouShen({ chart }: DetectContext, patterns: Pattern[]) {
+function detectLuCunShouShen({ chart }: DetectContext): Pattern[] {
 	const luCunPalace = findStarPalace(chart, "禄存");
-	if (!luCunPalace) return;
+	if (!luCunPalace) return [];
 	const inMing = luCunPalace.branch === chart.mingGongBranch;
 	const inShen = luCunPalace.branch === chart.shenGongBranch;
-	if (!inMing && !inShen) return;
+	if (!inMing && !inShen) return [];
 	const name = inMing ? "禄存守命" : "禄存守身";
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: [inMing ? "命宫" : "身宫"],
 		conditions: { required: [inMing ? "禄存入命宫" : "禄存入身宫"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 天马入命/迁：驿马星动 */
-function detectTianMaRuMing({ chart }: DetectContext, patterns: Pattern[]) {
+function detectTianMaRuMing({ chart }: DetectContext): Pattern[] {
 	const tianMaPalace = findStarPalace(chart, "天马");
-	if (!tianMaPalace) return;
+	if (!tianMaPalace) return [];
 	const inMing = tianMaPalace.branch === chart.mingGongBranch;
-	const inQian = tianMaPalace.branch === (chart.mingGongBranch + 6) % 12;
-	if (!inMing && !inQian) return;
+	const inQian = tianMaPalace.branch === duiGongBranch(chart.mingGongBranch);
+	if (!inMing && !inQian) return [];
 	const name = inMing ? "天马入命" : "天马在迁";
-	patterns.push({
+	return [{
 		name,
 		level: 60,
 		palaces: [tianMaPalace.name],
 		conditions: { required: [inMing ? "天马入命宫" : "天马入迁移宫"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 化禄入财：财帛宫主星化禄 */
-function detectHuaLuRuCai({ chart }: DetectContext, patterns: Pattern[]) {
+function detectHuaLuRuCai({ chart }: DetectContext): Pattern[] {
 	const cai = chart.palaces.find(p => p.name === "财帛宫");
-	if (!cai) return;
+	if (!cai) return [];
 	const luStar = cai.stars.find(s => s.type === "major" && s.siHua === "禄");
-	if (!luStar) return;
+	if (!luStar) return [];
 	const name = "化禄入财";
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: ["财帛宫"],
 		conditions: { required: [`${luStar.name}化禄入财帛宫`] },
 		...fillVerdict(PATTERN_VERDICTS[name], { 星: luStar.name }),
-	});
+	}];
 }
 
 /** 化权入官：官禄宫主星化权 */
-function detectHuaQuanRuGuan({ chart }: DetectContext, patterns: Pattern[]) {
+function detectHuaQuanRuGuan({ chart }: DetectContext): Pattern[] {
 	const guan = chart.palaces.find(p => p.name === "官禄宫");
-	if (!guan) return;
+	if (!guan) return [];
 	const quanStar = guan.stars.find(s => s.type === "major" && s.siHua === "权");
-	if (!quanStar) return;
+	if (!quanStar) return [];
 	const name = "化权入官";
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: ["官禄宫"],
 		conditions: { required: [`${quanStar.name}化权入官禄宫`] },
 		...fillVerdict(PATTERN_VERDICTS[name], { 星: quanStar.name }),
-	});
+	}];
 }
 
 /** 化科入命/身：科名加身 */
-function detectHuaKeRuMingShen({ chart, ming }: DetectContext, patterns: Pattern[]) {
+function detectHuaKeRuMingShen({ chart, ming }: DetectContext): Pattern[] {
 	const shen = chart.palaces.find(p => p.branch === chart.shenGongBranch);
 	const target = [ming, shen].filter((p): p is Palace => Boolean(p));
 	for (const p of target) {
@@ -1274,62 +1342,63 @@ function detectHuaKeRuMingShen({ chart, ming }: DetectContext, patterns: Pattern
 		if (!keStar) continue;
 		const isMing = p.branch === chart.mingGongBranch;
 		const name = isMing ? "化科入命" : "化科入身";
-		patterns.push({
+		// 命和身重复时只识别一次：首次命中即返回
+		return [{
 			name,
 			level: 75,
 			palaces: [isMing ? "命宫" : "身宫"],
 			conditions: { required: [`${keStar.name}化科入${isMing ? "命" : "身"}宫`] },
 			...fillVerdict(PATTERN_VERDICTS[name], { 星: keStar.name }),
-		});
-		return; // 命和身重复时只识别一次
+		}];
 	}
+	return [];
 }
 
 /** 昌曲同会：文昌+文曲都在命三方四正 */
-function detectChangQuTongHui({ chart, ming }: DetectContext, patterns: Pattern[]) {
+function detectChangQuTongHui({ chart, ming }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!sanFangSet.has("文昌") || !sanFangSet.has("文曲")) return;
+	if (!sanFangSet.has("文昌") || !sanFangSet.has("文曲")) return [];
 	const inMing = hasStar(ming, "文昌") && hasStar(ming, "文曲");
 	const name = inMing ? "昌曲坐命" : "昌曲同会";
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: ["命宫"],
 		conditions: { required: ["文昌、文曲同会命宫三方四正"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 辅弼同会：左辅+右弼都在命三方四正 */
-function detectFuBiTongHui({ chart }: DetectContext, patterns: Pattern[]) {
+function detectFuBiTongHui({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!sanFangSet.has("左辅") || !sanFangSet.has("右弼")) return;
+	if (!sanFangSet.has("左辅") || !sanFangSet.has("右弼")) return [];
 	const name = "辅弼同会";
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: ["命宫"],
 		conditions: { required: ["左辅、右弼同会命宫三方四正"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 魁钺同会：天魁+天钺都在命三方四正 */
-function detectKuiYueTongHui({ chart }: DetectContext, patterns: Pattern[]) {
+function detectKuiYueTongHui({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!sanFangSet.has("天魁") || !sanFangSet.has("天钺")) return;
+	if (!sanFangSet.has("天魁") || !sanFangSet.has("天钺")) return [];
 	const name = "魁钺同会";
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: ["命宫"],
 		conditions: { required: ["天魁、天钺同会命宫三方四正"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 科权双会：化科 + 化权 同会三方四正 */
-function detectKeQuanShuangHui({ chart }: DetectContext, patterns: Pattern[]) {
+function detectKeQuanShuangHui({ chart }: DetectContext): Pattern[] {
 	const sfPalaces = getSanFangPalaces(chart);
 	let hasKe = false,
 		hasQuan = false;
@@ -1339,15 +1408,15 @@ function detectKeQuanShuangHui({ chart }: DetectContext, patterns: Pattern[]) {
 			if (s.type === "major" && s.siHua === "权") hasQuan = true;
 		}
 	}
-	if (!hasKe || !hasQuan) return;
+	if (!hasKe || !hasQuan) return [];
 	const name = "科权双会";
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: ["命宫"],
 		conditions: { required: ["化科、化权同会命宫三方四正"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 // ────────────────── 收敛自 db-analysis 的格局（2026-09-27）──────────────────
@@ -1362,113 +1431,113 @@ function detectKeQuanShuangHui({ chart }: DetectContext, patterns: Pattern[]) {
 // 查不到的写「传统口诀（本仓古籍库无直接出处）」—— **不编造篇名**，等将来补录古籍再换。
 
 /** 七杀朝斗格：七杀居寅或申，且落命宫或迁移宫（对宫紫微天府相照） */
-function detectQiShaChaoDou({ chart }: DetectContext, patterns: Pattern[]) {
+function detectQiShaChaoDou({ chart }: DetectContext): Pattern[] {
 	const qisha = findStarPalace(chart, "七杀");
-	if (!qisha) return;
-	if (qisha.branch !== 2 && qisha.branch !== 8) return; // 寅=2、申=8
+	if (!qisha) return [];
+	if (qisha.branch !== 2 && qisha.branch !== 8) return []; // 寅=2、申=8
 	const inMing = qisha.branch === chart.mingGongBranch;
-	const inQianYi = qisha.branch === (chart.mingGongBranch + 6) % 12;
-	if (!inMing && !inQianYi) return;
+	const inQianYi = qisha.branch === duiGongBranch(chart.mingGongBranch);
+	if (!inMing && !inQianYi) return [];
 
 	const name = "七杀朝斗格";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: [qisha.name],
 		conditions: { required: ["七杀居寅宫或申宫", "七杀坐命宫或迁移宫"] },
 		...fillVerdict(PATTERN_VERDICTS[name], { 宫: inMing ? "命宫" : "迁移宫" }),
-	});
+	}];
 }
 
 /** 日月并明格：太阳与太阴**同时**入庙（不限宫位，也不要求同宫——后者是「日月同宫」） */
-function detectRiYueBingMing({ chart }: DetectContext, patterns: Pattern[]) {
+function detectRiYueBingMing({ chart }: DetectContext): Pattern[] {
 	const sun = findStarPalace(chart, "太阳");
 	const moon = findStarPalace(chart, "太阴");
-	if (!sun || !moon) return;
-	if (!isBright(sun, "太阳") || !isBright(moon, "太阴")) return;
+	if (!sun || !moon) return [];
+	if (!isBright(sun, "太阳") || !isBright(moon, "太阴")) return [];
 
 	const name = "日月并明格";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: [sun.name, moon.name],
 		conditions: { required: ["太阳入庙（bright）", "太阴入庙（bright）"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 英星入庙格：破军居子或午守命 */
-function detectYingXingRuMiao({ chart, ming }: DetectContext, patterns: Pattern[]) {
-	if (ming.branch !== 0 && ming.branch !== 6) return; // 子=0、午=6
-	if (!hasStar(ming, "破军")) return;
+function detectYingXingRuMiao({ chart, ming }: DetectContext): Pattern[] {
+	if (ming.branch !== 0 && ming.branch !== 6) return []; // 子=0、午=6
+	if (!hasStar(ming, "破军")) return [];
 
 	const name = "英星入庙格";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: ["命宫"],
 		conditions: { required: ["破军居子宫或午宫", "破军坐命宫"] },
 		...PATTERN_VERDICTS[chart.birthInfo?.gender === "male" ? "英星入庙格·男" : "英星入庙格·女"],
-	});
+	}];
 }
 
 /** 日丽中天格：太阳居午守命，光芒最盛 */
-function detectRiLiZhongTian({ ming }: DetectContext, patterns: Pattern[]) {
-	if (ming.branch !== 6) return; // 必须午
-	if (!hasStar(ming, "太阳")) return;
+function detectRiLiZhongTian({ ming }: DetectContext): Pattern[] {
+	if (ming.branch !== 6) return []; // 必须午
+	if (!hasStar(ming, "太阳")) return [];
 
 	const name = "日丽中天格";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: ["命宫"],
 		conditions: { required: ["太阳居午宫", "太阳坐命宫"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 昌曲守命：文昌或文曲坐命宫（两星俱在时只出「文昌守命」，与 analysis.ts 的取值一致） */
-function detectChangQuShouMing({ ming }: DetectContext, patterns: Pattern[]) {
+function detectChangQuShouMing({ ming }: DetectContext): Pattern[] {
 	const hasChang = hasStar(ming, "文昌");
 	const hasQu = hasStar(ming, "文曲");
-	if (!hasChang && !hasQu) return;
+	if (!hasChang && !hasQu) return [];
 	const starName = hasChang ? "文昌" : "文曲";
 
 	const name = `${starName}守命`;
-	patterns.push({
+	return [{
 		name,
 		level: 75,
 		palaces: ["命宫"],
 		conditions: { required: [`${starName}坐命宫`] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 擎羊入命：擎羊坐命宫（刑克之星。擎羊在午守命另有更专门的「马头带箭」，两者可同时命中） */
-function detectQingYangRuMing({ ming }: DetectContext, patterns: Pattern[]) {
-	if (!hasStar(ming, "擎羊")) return;
+function detectQingYangRuMing({ ming }: DetectContext): Pattern[] {
+	if (!hasStar(ming, "擎羊")) return [];
 
 	const name = "擎羊入命";
-	patterns.push({
+	return [{
 		name,
 		level: 40,
 		palaces: ["命宫"],
 		conditions: { required: ["擎羊坐命宫"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 禄马交驰格：禄存与天马同宫，或同会命宫三方四正 */
-function detectLuMaJiaoChi({ chart }: DetectContext, patterns: Pattern[]) {
+function detectLuMaJiaoChi({ chart }: DetectContext): Pattern[] {
 	const lu = findStarPalace(chart, "禄存");
 	const ma = findStarPalace(chart, "天马");
-	if (!lu || !ma) return;
+	if (!lu || !ma) return [];
 	const samePalace = lu.branch === ma.branch;
 	const bothInSanFang = isInSanFang(chart, lu.branch) && isInSanFang(chart, ma.branch);
-	if (!samePalace && !bothInSanFang) return;
+	if (!samePalace && !bothInSanFang) return [];
 
 	const name = "禄马交驰格";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: samePalace ? [lu.name] : [lu.name, ma.name],
@@ -1476,37 +1545,37 @@ function detectLuMaJiaoChi({ chart }: DetectContext, patterns: Pattern[]) {
 		...fillVerdict(PATTERN_VERDICTS[name], {
 			会: samePalace ? "禄存与天马同宫" : "禄存与天马同会命宫三方四正",
 		}),
-	});
+	}];
 }
 
 /** 羊陀夹命：擎羊陀罗分居命宫前后两宫（煞格） */
-function detectYangTuoJiaMing({ chart }: DetectContext, patterns: Pattern[]) {
+function detectYangTuoJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
-	if (!prev || !next) return;
+	if (!prev || !next) return [];
 	const okA = hasStar(prev, "擎羊") && hasStar(next, "陀罗");
 	const okB = hasStar(prev, "陀罗") && hasStar(next, "擎羊");
-	if (!okA && !okB) return;
+	if (!okA && !okB) return [];
 
 	// ⚠️ 本格与「禄存守命」在 300 条基准上**完全同盘**（安星法里擎羊恒在禄存前一位、
 	// 陀罗恒在后一位），两个名字都报是照倪师侧的展示口径，不是判定分歧。
 	const name = "羊陀夹命";
-	patterns.push({
+	return [{
 		name,
 		level: 40,
 		palaces: ["命宫", prev.name, next.name],
 		conditions: { required: ["擎羊陀罗分居命宫前后两宫"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 紫府朝垣格：紫微、天府分居三方四正朝拱，而命宫本身不坐紫府 */
-function detectZiFuChaoYuan({ chart, ming }: DetectContext, patterns: Pattern[]) {
+function detectZiFuChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	const sanFang = sanFangAllStars(chart);
-	if (!sanFang.has("紫微") || !sanFang.has("天府")) return;
-	if (hasStar(ming, "紫微") || hasStar(ming, "天府")) return;
+	if (!sanFang.has("紫微") || !sanFang.has("天府")) return [];
+	if (hasStar(ming, "紫微") || hasStar(ming, "天府")) return [];
 
 	const name = "紫府朝垣格";
-	patterns.push({
+	return [{
 		name,
 		level: 90,
 		palaces: getSanFangPalaces(chart)
@@ -1514,35 +1583,38 @@ function detectZiFuChaoYuan({ chart, ming }: DetectContext, patterns: Pattern[])
 			.map(p => p.name),
 		conditions: { required: ["紫微与天府同会命宫三方四正", "命宫不坐紫微、天府"] },
 		...PATTERN_VERDICTS[name],
-	});
+	}];
 }
 
 /** 天马落空：天马与地空、地劫、旬空或截路同宫 */
-function detectTianMaLuoKong({ chart }: DetectContext, patterns: Pattern[]) {
+function detectTianMaLuoKong({ chart }: DetectContext): Pattern[] {
 	const ma = findStarPalace(chart, "天马");
-	if (!ma) return;
+	if (!ma) return [];
 	const spoilers = ["地空", "地劫", "旬空", "截路"].filter(n => hasStar(ma, n));
-	if (!spoilers.length) return;
+	if (!spoilers.length) return [];
 
 	const name = "天马落空";
-	patterns.push({
+	return [{
 		name,
 		level: 40,
 		palaces: [ma.name],
 		conditions: { required: [`天马与${spoilers.join("、")}同宫`] },
 		...fillVerdict(PATTERN_VERDICTS[name], { 煞: spoilers.join("、") }),
-	});
+	}];
 }
 
 /** 昌曲化忌：文昌或文曲带生年化忌（文星受伤，不限宫位） */
-function detectChangQuHuaJi({ chart }: DetectContext, patterns: Pattern[]) {
+function detectChangQuHuaJi({ chart }: DetectContext): Pattern[] {
+	// 本识别器对文昌、文曲**两颗**分别筛，故用累积数组而非「命中即 return」。
+	// 实测**至多一条**：一年只有一颗生年化忌星，昌曲不可能同时带忌。
+	const hits: Pattern[] = [];
 	for (const starName of CHANG_QU) {
 		const palace = findStarPalace(chart, starName);
 		if (!palace) continue;
 		if (getStarSiHua(palace, starName) !== "忌") continue;
 
 		const name = `${starName}化忌`;
-		patterns.push({
+		hits.push({
 			name,
 			level: 40,
 			palaces: [palace.name],
@@ -1550,6 +1622,7 @@ function detectChangQuHuaJi({ chart }: DetectContext, patterns: Pattern[]) {
 			...PATTERN_VERDICTS[name],
 		});
 	}
+	return hits;
 }
 
 // ────────────────── 主入口 ──────────────────
@@ -1565,8 +1638,9 @@ function detectChangQuHuaJi({ chart }: DetectContext, patterns: Pattern[]) {
  * 文本输出（`【格局识别】共 N 个`）与 `--json` 的 `patterns` 字段；`purple-star.ts` 的
  * `REQUIRED_EXPORTS` 自检盯着本导出存在。
  *
- * **实现是"全量扫描 + 累积推入"**：按函数内的 `DETECTORS` 注册表依次调用 51 个 `detect*` 识别器，每个自行判条件、
- * 命中就往同一个数组推入 —— 识别器之间**互不排斥**，同一张盘可以同时命中多条，
+ * **实现是"全量扫描 + 累积"**：按函数内的 `DETECTORS` 注册表依次调用 51 个 `detect*` 识别器，
+ * 每个自行判条件并**返回**本次命中的格局（0 条 / 1 条 / 多条），由本函数依次并进结果 ——
+ * 识别器之间**互不排斥**，同一张盘可以同时命中多条，
  * 甚至是互相矛盾的格局（如既有"君臣庆会"又有"紫微入命"）。这与"取最高分格局"的思路不同，
  * 是刻意的：判词交给解读层权衡，判定层不替它做取舍。
  *
@@ -1596,9 +1670,12 @@ export function detectPatterns(chart: ZiweiChart): Pattern[] {
 	if (!ming) return patterns;
 
 	// 识别器注册表。**顺序即语义** —— 分组与组内次序都影响输出排列（见函数头说明）。
-	// 签名统一为 ({ chart, ming }: DetectContext, patterns)；各识别器按需解构，
+	// 签名统一为 (ctx: DetectContext) => Pattern[]；各识别器按需解构 ctx，
 	// 因此「谁依赖命宫」在下表里仍然一眼可见。
-	const DETECTORS: ReadonlyArray<(ctx: DetectContext, patterns: Pattern[]) => void> = [
+	//
+	// 识别器**返回**命中结果，不碰共用数组：命中的返回 `[one]`，未命中一律返回 `[]`，
+	// 并进总表只发生在下面那行 for 里。
+	const DETECTORS: ReadonlyArray<(ctx: DetectContext) => Pattern[]> = [
 		// 上格
 		detectJunChenQingHui,
 		detectZiFu,
@@ -1663,7 +1740,7 @@ export function detectPatterns(chart: ZiweiChart): Pattern[] {
 		detectChangQuHuaJi,
 	];
 
-	for (const detect of DETECTORS) detect({ chart, ming }, patterns);
+	for (const detect of DETECTORS) patterns.push(...detect({ chart, ming }));
 
 	return patterns;
 }
