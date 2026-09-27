@@ -6,13 +6,14 @@
  * 0 或 1 条 {@link Pattern}（其中火贪/铃贪、化忌入命/冲命等可推入多条），合计覆盖约 82 个
  * 格局名。
  *
- * ## 两模块分工
+ * ## 三模块分工
  *
- * 格局层拆成两个文件，本模块**只放函数**（29 个辅助函数 + 51 个识别器 + `detectPatterns`）：
+ * 格局层拆成三个文件，本模块**只放函数**（18 个辅助函数 + 51 个识别器 + `detectPatterns`
+ * + 判词填充 `fillVerdict`）：
  *
- * - `patterns-defs.ts` —— **静态声明**：结构体、识别器入参 `DetectContext`、常量、名字裁决表，
- *   以及判词表 `PATTERN_VERDICTS`（键为判词条目名，多数即格局名，少数是按变体或一族共用的
- *   条目，口径见该文件的「判词」分区）+ 占位符填充 `fillVerdict`
+ * - `patterns-types.ts` —— **形状**：结构体、识别器入参 `DetectContext`
+ * - `patterns-data.ts` —— **数据**：常量、名字裁决表，以及判词表 `PATTERN_VERDICTS`
+ *   （键为判词条目名，多数即格局名，少数是按变体或一族共用的条目，口径见该文件的「判词」分区）
  * - `patterns.ts`（本文件） —— **行为**：怎么判、判完推入什么
  *
  * 每个识别器的收尾统一是：先把名字算进局部 `name`，再 `patterns.push({ name, level,
@@ -64,7 +65,7 @@
  */
 
 import type { ZiweiChart, Palace, Star, SiHua } from "./types";
-import type { Pattern, DetectContext } from "./patterns-defs";
+import type { Pattern, DetectContext, PatternVerdict } from "./patterns-types";
 import {
 	SHA_NAMES,
 	SHA_HARD,
@@ -72,18 +73,17 @@ import {
 	CHANG_QU,
 	PATTERN_VERDICTS,
 	PATTERN_ASIDES,
-	fillVerdict,
-} from "./patterns-defs";
+} from "./patterns-data";
 
 import { BRANCHES } from "./constants";
 
-// 静态层（结构体 / 识别器入参 / 常量 / 名字裁决表 / 判词表）已拆到 `patterns-defs.ts`；
+// 静态层已拆成 `patterns-types.ts`（形状）与 `patterns-data.ts`（数据）两个文件；
 // 本模块只留函数。
 // **原处 re-export** 拆分前就对外公开的三个类型与裁决表，使 `analysis.ts`（`type Pattern`）、
 // `test/invariants.test.ts`（`GEJU_NAME_ALIASES`）的既有 import 一行都不用改 ——
 // 本模块的公开面与拆分前**逐名一致**（原先 module-private 的 `DetectContext` 不在此列）。
-export type { Pattern, PatternCondition, GejuNameAlias } from "./patterns-defs";
-export { GEJU_NAME_ALIASES } from "./patterns-defs";
+export type { Pattern, PatternCondition, GejuNameAlias } from "./patterns-types";
+export { GEJU_NAME_ALIASES } from "./patterns-data";
 
 // ────────────────── 辅助函数 ──────────────────
 /**
@@ -379,6 +379,29 @@ function palaceHasSiHua(palace: Palace, hua: SiHua): boolean {
  */
 function sanFangHasSiHua(chart: ZiweiChart, hua: SiHua): boolean {
 	return getSanFangPalaces(chart).some(p => palaceHasSiHua(p, hua));
+}
+
+// ────────────────── 判词填充 ──────────────────
+/**
+ * 把判词里的 `{占位符}` 换成实参。没给值的占位符**原样保留** —— 这样漏填会以
+ * `{星}化禄坐命` 这种可见的畸形判词暴露出来，而不是静默产出空串。
+ *
+ * @param verdict - 判词表里的一条（`patterns-data.ts` 的 `PATTERN_VERDICTS`）
+ * @param vars - 占位符名 → 实参，键**不含**花括号（`{ 星: "武曲" }`）
+ * @returns 替换后的**新对象**；入参不被修改
+ *
+ * @remarks
+ * 占位符约定与表键口径见 `patterns-data.ts` 的「判词」分区注释。本函数原先住在格局层的
+ * 静态声明文件里，2026-09-27 拆成「形状 / 数据 / 判定」三个文件时，按声明与实现分离的
+ * 立场移回实现侧 —— 它是纯函数，且只被本模块的识别器调用点使用。
+ */
+function fillVerdict(verdict: PatternVerdict, vars: Record<string, string>): PatternVerdict {
+	const sub = (s: string): string => s.replace(/\{([^{}]+)\}/g, (m, k: string) => vars[k] ?? m);
+	const out: PatternVerdict = { description: sub(verdict.description) };
+	if (verdict.topicDescription !== undefined)
+		out.topicDescription = sub(verdict.topicDescription);
+	if (verdict.source !== undefined) out.source = sub(verdict.source);
+	return out;
 }
 
 // ────────────────── 正格识别器 ──────────────────

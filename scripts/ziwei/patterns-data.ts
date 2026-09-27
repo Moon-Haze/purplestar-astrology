@@ -1,119 +1,21 @@
 /**
- * 格局层的**定义**：结构体、识别器入参、常量、名字裁决表与判词表。
+ * 格局层的**数据**：常量、名字裁决表与判词表。
  *
  * @remarks
- * 本模块只放「是什么」，不放「怎么判」—— 51 个识别器与 {@link detectPatterns} 都在
- * 同层的 `patterns.ts` 里。拆开是为了让改判定的人不必先翻过几百行类型与数据表。
+ * 本模块只放「有什么」，既不放形状也不放判定 —— 结构体与识别器入参在同层的
+ * `patterns-types.ts`，51 个识别器与 `detectPatterns` 在 `patterns.ts`。
+ * 三者的分工是形状 / **数据** / 判定，改哪一层就只需读哪个文件。
  *
- * 判词表（{@link PATTERN_VERDICTS}）也住在本文末尾：它与类型、常量同属**静态声明**，
- * 与「怎么判」分属两层，故不再单开文件。表键口径见该分区上方的注释。
+ * 判词表（{@link PATTERN_VERDICTS}）住在本文末尾，表键口径见该分区上方的注释。
+ * 判词里 `{星}` / `{宫}` 这类占位符，由 `patterns.ts` 的 `fillVerdict` 在调用点填。
  *
- * 三处 `{@link}` 原本指向 `patterns.ts` 的符号（`detectPatterns`、`DETECTORS`），
- * 跨文件后 TSDoc 解析不到，故改为直呼其名，不再加链接。
+ * ⚠️ 本文件里的 `{@link}` 只指向**本文档内**的符号 —— 跨文件 TSDoc 解析不到，
+ * 提到 `patterns.ts` 的函数（`hasShaInPalace` 等）时直呼其名，不加链接。
  *
  * @packageDocumentation
  */
 
-import type { ZiweiChart, Palace } from "./types";
-
-// ────────────────── 类型 ──────────────────
-/**
- * 格局的成立条件分层（v2 结构）。
- *
- * @remarks
- * ⚠️ 这三个数组是**回填已判定项**的结果记录，**不是判定依据**：识别器先用代码判完条件，
- * 再把已命中的项写进来给文案层展示。故"某条件不在 `required` 里"不等于"该条件不成立"，
- * 只是那个识别器没有把它列进去。
- *
- * 三层语义：`required` 全部成立格局才被推入；`bonus` 与 `breaking` 只影响
- * {@link Pattern.level} 的取值（有 `breaking` 通常降级）。
- */
-export interface PatternCondition {
-	required: string[]; // 必须满足条件（已通过的）
-	bonus?: string[]; // 加分项（已触发）
-	breaking?: string[]; // 破格警示（已触发）
-}
-
-/**
- * 一条已命中的格局。
- *
- * @remarks
- * 由各 `detect*` 识别器在条件成立时推入 `detectPatterns` 的累积数组。
- */
-export interface Pattern {
-	name: string; // 格局名；部分识别器会拼入星名（如「武曲化禄入命」「太阴化忌冲命」）
-	level: 90 | 75 | 60 | 40; // 等级分数：90 上格 / 75 吉格 / 60 平格 / 40 凶格警示。触发破格条件时**降档**（如 90 → 75、75 → 40）
-	description: string; // 判词文案，由 cli/commands.ts 直接输出给用户（短判词 + level，analyze 用）
-	/**
-	 * topic 侧（`overview` / `personality` 两个主题）用的**倪师口吻长判词**。
-	 *
-	 * @remarks
-	 * 两种文风是**有意的分工**，不是重复：analyze 要的是「一句话 + 等级」，topic 要的是
-	 * 倪师讲课式的展开。缺省表示该格局**不在 topic 侧展示**（82 个格局名里只有约 25 个有），
-	 * 不影响判定、也不影响 analyze。
-	 *
-	 * 用**纯字符串**而非函数：所有条件分支（坐命/照命、满格/不全格、男命/女命、从 name
-	 * 剥星名）在各识别器内部都算得出来，填最终串即可。
-	 */
-	topicDescription?: string;
-	palaces: string[]; // 涉及宫位（**宫名**，非地支索引；可能含"身宫"或格局定名宫位）
-	conditions?: PatternCondition; // 成立条件分层（v2 新增）
-	source?: string; // 古籍出处（v2 新增）
-}
-/**
- * 识别器上下文：`detectPatterns` 一次组装、传给全部 51 个识别器的公共入参。
- *
- * @remarks
- * 各识别器**按需解构** —— `{ chart }` / `{ chart, ming }` / `{ ming }`。
- * 这样既让注册表能是一张同签名函数数组（见 `patterns.ts` 的 `DETECTORS`），又保住
- * 「这个识别器依不依赖命宫」在签名处一眼可见。
- *
- * ⚠️ `ming` 由 `detectPatterns` 保证非空：无命宫时它已提前 `return`，
- * 识别器无须再判空。
- *
- * ⚠️ 本接口原先在 `patterns.ts` 内是 module-private，拆出后必须 export 才能被识别器引用。
- */
-export interface DetectContext {
-	chart: ZiweiChart;
-	ming: Palace;
-}
-
-/**
- * 格局名的「同现象异名」裁决表 —— 同一现象只留一个**显示名**。
- *
- * @remarks
- * 判定早已收敛到一处（`patterns.ts` 的 `detectPatterns`），但历史上两侧各叫各的：
- * `analyze` 用 A 名、`topic` 的 `detectGeJu` 用 B 名。2026-09-27 起做统一，两侧共用显示名；
- * 落选的名字留在本表备查，不再用于显示。
- *
- * 裁决依据分两种（见 {@link GejuNameAlias.basis}），**不可混为一谈**：
- *
- * - `corpus` —— **古籍词频裁决**：逐名统计 `scripts/classics/` 三部古籍的出现次数，
- *   取高者。这几组是**真异名**（两个不同的词，如 `化禄入命` / `化禄守命`）。
- * - `convention` —— **古籍不足以裁决**：两组都零见，或者两种写法古籍并用且样本量
- *   只有个位数（如 `紫府同宫` / `紫府同宫格` 实为一个词差一个「格」字，古籍里
- *   两种写法都在用）。这类改按书写约定统一，`note` 写明理由。
- *
- * ⚠️ **表里的数字是当时实测，语料一改就作废。** `test/invariants.test.ts` 有一条
- * 预言机从古籍库重算并与此表比对 —— 它变红时该**重新裁决**，不是把数字改大。
- *
- * ⚠️ 计数口径是**原文子串**，不区分语境、也不扣包含重叠：故 `紫府同宫` 的 2 次里
- * 有 1 次其实是写在「紫府同宫格」里的。本表只用来比大小，不用来断言语义。
- */
-export interface GejuNameAlias {
-	/** 现用显示名。带星名的家族写**后缀**形式（星名由识别器拼在前面） */
-	canonical: string;
-	/** 落选的同现象异名，保留备查，不再用于显示 */
-	aliases: string[];
-	/** 裁决依据：`corpus` = 古籍词频；`convention` = 书写约定（古籍不足以裁决） */
-	basis: "corpus" | "convention";
-	/** 实测词频，键为名字原文。`convention` 类如实照记，不参与比大小 */
-	counts: Record<string, number>;
-	/** 词频 > 0 的出处（书·篇） */
-	sources: string;
-	/** 需要额外说明的裁决理由（尤其词频悬殊不大、或非词频裁决时） */
-	note?: string;
-}
+import type { GejuNameAlias, PatternVerdict } from "./patterns-types";
 
 export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
 	// ────────── 古籍词频裁决（真异名，两个不同的词）──────────
@@ -254,35 +156,22 @@ export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
 // 三张煞星名单：多个识别器共用同一份口径，改这里等于同时改所有引用它的格局。
 // SHA_NAMES 是全集（六煞）；SHA_HARD（四煞）与 SHA_KONG（空劫）是它的**两个互不相交的
 // 子集** —— 空劫不在四煞之内，故计煞时两者分别累加，不会重复计数。
-/** 六煞名单：擎羊、陀罗、火星、铃星、地空、地劫。{@link hasShaInPalace} 的默认口径。 */
+/** 六煞名单：擎羊、陀罗、火星、铃星、地空、地劫。`hasShaInPalace` 的默认口径。 */
 export const SHA_NAMES = ["擎羊", "陀罗", "火星", "铃星", "地空", "地劫"];
-/** 四煞名单（不含空劫）。陷阱计数类判定的默认口径，见 {@link shaCountInPalace} / {@link sanFangShaCount}。 */
+/** 四煞名单（不含空劫）。陷阱计数类判定的默认口径，见 `shaCountInPalace` / `sanFangShaCount`。 */
 export const SHA_HARD = ["擎羊", "陀罗", "火星", "铃星"]; // 四煞
 /** 空劫名单。紫微、双禄等格局的"最忌空劫"判定用它，与四煞分开计。 */
 export const SHA_KONG = ["地空", "地劫"]; // 空劫
 /**
- * 左辅、右弼的名单。
- *
- * @remarks
- * ⚠️ `patterns.ts` 内**无任何引用**：辅弼的判定都在调用点直接写字面量（`sanFangSet.has("左辅")
- * && sanFangSet.has("右弼")`），未走这张表。保留是为了不动逻辑，改动时别以为它在生效。
- */
-export const ZUO_YOU = ["左辅", "右弼"];
-/**
  * 文昌、文曲的名单。`detectChangQuHuaJi` 用它遍历两支（`for (const starName of CHANG_QU)`）。
  *
  * @remarks
- * 与 {@link ZUO_YOU} / {@link KUI_YUE} 不同，本表**确有引用**：该处原先的注释写作
- * 「本文件内无任何引用」，与事实不符（2026-09-27 拆模块时核对发现），故一并更正。
+ * 同层的辅弼、魁钺名单（`ZUO_YOU` / `KUI_YUE`）已于 2026-09-27 删除：它们在 `patterns.ts`
+ * 内**无任何引用**（辅弼、魁钺的判定都在调用点直接写字面量），按删除测试该消失。
+ * 本表**确有引用**，故留下 —— 同日核对时还发现原注释写作「本文件内无任何引用」，
+ * 与事实不符，一并更正。
  */
 export const CHANG_QU = ["文昌", "文曲"];
-/**
- * 天魁、天钺的名单。
- *
- * @remarks
- * ⚠️ `patterns.ts` 内**无任何引用**，同 {@link ZUO_YOU}：魁钺判定在调用点直接写字面量。
- */
-export const KUI_YUE = ["天魁", "天钺"];
 
 // ────────────────── 判词 ──────────────────
 
@@ -299,26 +188,13 @@ export const KUI_YUE = ["天魁", "天钺"];
  * - **判词自身分叉**（坐命/照命、满格/不全格、男/女、守命/守身…）→ 按变体各写一条，
  *   键写成 `格局名·变体`；名字本身已含变体的（如 `禄存守命` / `禄存守身`）则键即名字。
  * - **判词只嵌一个盘上取到的名字**（星名、宫名、杂曜名…）→ 一族只写一条，
- *   用 `{星}` / `{宫}` / `{煞}` / `{会}` 占位，由 {@link fillVerdict} 在调用点填。
+ *   用 `{星}` / `{宫}` / `{煞}` / `{会}` 占位，由 `patterns.ts` 的 `fillVerdict` 在调用点填。
  *   这不是「判词变体」：同一句话里换个星名而已，写成 N 条会复制 N 份同样的长句。
  *
  * ## 为什么 level / palaces / conditions 不在这里
  * 它们的值是**盘上算出来的**，不是判词：`level` 有 12 种互不相同的降档写法、
  * `palaces` 是宫名数组、`conditions` 是已判定项的回填记录。三者留在识别器里。
  */
-
-/**
- * 一条格局的判词。字段与同文件的 `Pattern` 同名同义，
- * 只是这里**只有文本**（识别器用展开运算把它们并进 `Pattern`）。
- */
-export interface PatternVerdict {
-	/** analyze 侧短判词，一到两句 + 等级由 `level` 单独承载 */
-	description: string;
-	/** topic 侧倪师口吻长判词；缺省表示该格局不在 topic 侧展示 */
-	topicDescription?: string;
-	/** 古籍出处 */
-	source?: string;
-}
 
 /**
  * 少数条目里**随星名再分叉的补注句**：键为条目名、次键为盘上取到的名字。
@@ -335,19 +211,6 @@ export const PATTERN_ASIDES: Record<string, Record<string, string>> = {
 		贪狼: "贪狼化禄属人脉财、桃花财。",
 	},
 };
-
-/**
- * 把 `{占位符}` 换成实参。没给值的占位符**原样保留** —— 这样漏填会以
- * `{星}化禄坐命` 这种可见的畸形判词暴露出来，而不是静默产出空串。
- */
-export function fillVerdict(verdict: PatternVerdict, vars: Record<string, string>): PatternVerdict {
-	const sub = (s: string): string => s.replace(/\{([^{}]+)\}/g, (m, k: string) => vars[k] ?? m);
-	const out: PatternVerdict = { description: sub(verdict.description) };
-	if (verdict.topicDescription !== undefined)
-		out.topicDescription = sub(verdict.topicDescription);
-	if (verdict.source !== undefined) out.source = sub(verdict.source);
-	return out;
-}
 
 /** 51 个格局的判词。键的含义见上方分区注释。 */
 export const PATTERN_VERDICTS: Record<string, PatternVerdict> = {
