@@ -52,9 +52,13 @@ skill —— **文件就是它自己的实现**，读代码的人不必先问「
 ```bash
 npm install        # 装仓库级依赖（测试与工具用）
 
-# 主力命令：命盘 + 十二宫 + 格局 + 四化 + 大限，解读所需数据一次给全
+# 主力命令：默认精简概览（总览 + 运限速览），深入靠专题旗标（可叠加，2026-09-28 起）
 node skills/purplestar-astrology/scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male
+# 专题旗标族：--info 基本信息（四柱/命主身主/斗君）· --geju 格局 · --sihua 四化
+#   --liunian [年] 流年 · --daxian [虚岁] 十年大运 · --xiaoxian [虚岁] 小限 · --focus <宫> 宫盘
+node skills/purplestar-astrology/scripts/purple-star.ts analyze \
+     --date 1990-05-15 --time 09:30 --city 北京 --gender male --geju --sihua --daxian
 
 # 合盘 —— 只有 purplestar-synastry 有这条命令，源的 CLI 里没有（2026-09-27 拆 skill 时移走）
 # 它不排盘：命盘先由上面那条 analyze --json 各排一张，再把两份 JSON 交给它
@@ -101,6 +105,9 @@ node skills/purplestar-synastry/scripts/purple-star.ts selftest
     ├── cli/birth-info.ts         出生信息（真太阳时 / 农历 / 城市容错）
     ├── cli/birth-info-defs.ts    出生信息层的声明：接口与常量（公开面由上层 re-export）
     ├── cli/render.ts             命盘渲染（宫位 / 星曜 / 四化 / 宫名口径）
+    ├── cli/yun.ts                运限专题模块（流年/大限/小限/信息/格局/四化/聚焦各节
+    │                             的定位与渲染；commands 与 selftest 两方共用，独立成
+    │                             叶子以避开「selftest ↔ commands」静态环）
     ├── cli/commands.ts           各命令实现 + COMMANDS 表
     ├── cli/selftest.ts           回归断言（项数由末行自报）
     ├── ziwei/algorithm.ts        iztro 排盘主流程

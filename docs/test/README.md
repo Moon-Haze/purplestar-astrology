@@ -27,6 +27,13 @@
 > `skills/purplestar-classics`（古籍检索）。上面两条通告里的 `scripts/...` 路径，现在一律
 > 是 `skills/purplestar-astrology/scripts/...`。**报告与下方的基线表都是时点快照，按存档惯例
 > 不回改**；要知道现在怎么跑，看 [test/README.md](../../test/README.md)。
+>
+> ⚠️ **`analyze` 的输出契约变过。** 2026-09-28 起：默认输出精简为「命盘总览 + 口径提示 +
+> 运限速览」，原先无条件输出的「十二宫一览 / 命身宫详表 / 格局识别 / 生年与流年四化 / 大限」
+> 各节改为**专题旗标**（`--info` / `--geju` / `--sihua` / `--liunian` / `--daxian` / `--xiaoxian` /
+> `--focus`，可叠加），内核随之新增小限岁数表（`Palace.xiaoXianAges`）与命主 / 身主 / 斗君
+> （`chart.mingZhu` / `shenZhu` / `douJunBranch`）。层 2 里描述「analyze 输出含
+> 【十二宫一览】【生年四化】…」的断言已在同日改为带专题旗标的调用；报告正文按存档惯例不回改。
 
 ---
 

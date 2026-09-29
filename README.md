@@ -54,7 +54,8 @@ cd ~/.claude/skills/<skill-name> && npm install
 即可——skill 内部一律以 skill 根为基准）：
 
 ```bash
-# 排盘 + 格局 + 四化 + 大限，解读所需数据一次给全
+# 排盘：默认精简概览（总览 + 运限速览），专题深入用旗标（--info/--geju/--sihua/
+#   --liunian/--daxian/--xiaoxian/--focus，可叠加；--json 仍给全量结构化数据）
 node skills/purplestar-astrology/scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
