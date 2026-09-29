@@ -244,6 +244,30 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 		],
 	},
 	{
+		title: "analyze 专题深入（可叠加；不带任何专题旗标时只出精简概览）",
+		flags: [
+			{ name: "info", kind: "switch", desc: "基本信息专题（四柱 / 命主身主 / 斗君 / 五行局）" },
+			{ name: "geju", kind: "switch", desc: "格局识别专题（格局判词 / 成立与破格条件 / 出处）" },
+			{
+				name: "sihua",
+				kind: "switch",
+				desc: "四化专题（生年 / 流年 / 流月四化落宫与叠宫）",
+			},
+			{
+				name: "daxian",
+				kind: "value",
+				value: "[虚岁]",
+				desc: "大限专题（十年大运时间轴 + 指定岁所在限的三方四正深入；缺省 = 当前虚岁）",
+			},
+			{
+				name: "xiaoxian",
+				kind: "value",
+				value: "[虚岁]",
+				desc: "小限专题（指定岁小限宫 + 十二宫小限岁数表；缺省 = 当前虚岁）",
+			},
+		],
+	},
+	{
 		title: "输出与选题",
 		flags: [
 			{ name: "json", kind: "switch", desc: "输出原始 JSON（供程序消费）" },

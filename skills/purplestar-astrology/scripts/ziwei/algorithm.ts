@@ -279,6 +279,8 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 			name: projectPalaceName(p.name as string),
 			stars: allStars,
 			daXianAge: range ? ([range[0], range[1]] as [number, number]) : undefined,
+			// 小限岁数表：iztro 按生年支与性别推定每宫所辖虚岁，此处原样提取不重复实现
+			xiaoXianAges: (p.ages as number[] | undefined) ?? [],
 			isMingGong: p.name === "命宫",
 			isShenGong: p.isBodyPalace ?? false,
 			isCurrentDaXian: false,
@@ -359,6 +361,15 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 			palaceName: p.name,
 		}));
 
+	// ── 命主 / 身主 / 子年斗君 ──
+	// 命主身主：iztro 由命/身宫地支查表定星，原样取用（不重复实现查表）
+	const mingZhu = astrolabe.soul as string;
+	const shenZhu = astrolabe.body as string;
+	// 斗君：子起正月逆数至生月，生月宫起子时顺数至生时。iztro 静态盘不带，故按口诀自推。
+	// 闰月按所闰之月数计（lunarMonth 已 Math.abs）；晚子时（hour 12）按子时论（%12）。
+	// 校准样例：2000-4-6 子时（三月）= 戌、1990-05-15 巳时（四月）= 寅（见 cli/selftest.ts）。
+	const douJunBranch = ((hour % 12) + 12 - (lunarInfo.lunarMonth - 1)) % 12;
+
 	// 宫干自化已下线（倪师不主张飞星派宫干自化论）
 
 	const currentDaXianIndex = daXians.findIndex(
@@ -375,6 +386,9 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 		ziweiPos,
 		palaces,
 		daXians,
+		mingZhu,
+		shenZhu,
+		douJunBranch,
 		currentAge,
 		currentDaXianIndex,
 	};

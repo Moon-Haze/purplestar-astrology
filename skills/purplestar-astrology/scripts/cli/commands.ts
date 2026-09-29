@@ -10,19 +10,28 @@
 import type { CliArgs, CliContext } from "./args";
 import { buildBirthInfo, findLongitude } from "./birth-info";
 import {
-	FOCUS_ALIASES,
 	birthplaceSection,
 	fmtDate,
 	genderCN,
 	lateZiSection,
 	locateSihua,
-	palaceAtBranch,
-	palaceBrief,
 	renderPalace,
 	sanFangSiZheng,
 } from "./render";
+import {
+	daXianSection,
+	focusSection,
+	gejuSection,
+	infoSection,
+	liuNianBranchOf,
+	liuNianSection,
+	overviewSection,
+	parseAgeArg,
+	sihuaSection,
+	xiaoXianPalaceOf,
+	xiaoXianSection,
+} from "./yun";
 import { cmdSelftest } from "./selftest";
-import { duiGongBranch } from "@/ziwei/palace-relations";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
 import { getSiHuaByStem, getLiuNianSiHua, getLiuYueSiHua } from "@/ziwei/sihua";
@@ -37,19 +46,21 @@ import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
 
 /**
- * `--liunian` 的年份校验（`analyze` 的流年四化与 `topic` 的流年论断共用）。
+ * `--liunian` 的年份校验（`analyze` 的流年专题与 `topic` 的流年论断共用）。
  *
  * @param args - CLI 参数表
- * @returns 流年年份；未给时默认当前公历年
- * @throws 裸开关（`--liunian` 后无值）、非整数或超出 1-9999 时
+ * @returns 流年年份；未给或裸开关时默认当前公历年（裸开关的语义就是「深入今年」）
+ * @throws 非整数或超出 1-9999 时
  *
  * @remarks
  * 非数字静默传下去会得到「NaN 天干 → 四空串」的垃圾输出，与 `--liuyue` 同一纪律：
  * 宁可报错，不静默产出错盘。
  */
 function parseLiuNianArg(args: CliArgs): number {
-	if (args.liunian === true) throw new Error("--liunian 需要一个年份值（如 --liunian 2027）");
-	const y = args.liunian !== undefined ? Number(args.liunian) : new Date().getFullYear();
+	const y =
+		args.liunian !== undefined && args.liunian !== true
+			? Number(args.liunian)
+			: new Date().getFullYear();
 	if (!Number.isInteger(y) || y < 1 || y > 9999)
 		throw new Error(`--liunian 应为 1-9999 的整数年份，收到：${args.liunian}`);
 	return y;
@@ -63,6 +74,9 @@ function parseLiuNianArg(args: CliArgs): number {
  * @throws 非整数或超出 1-12 时
  */
 function parseLiuYueArg(args: CliArgs): number | null {
+	// 裸开关必须报错：Number(true) = 1 会让它被静默当成农历一月（与 --liunian 不同，
+	// 流月的「当前月」没有明确语义 —— 农历月随流年干五虎遁推，不设默认）。
+	if (args.liuyue === true) throw new Error("--liuyue 需要一个农历月值（如 --liuyue 6）");
 	const m = args.liuyue !== undefined ? Number(args.liuyue) : null;
 	if (m !== null && (!Number.isInteger(m) || m < 1 || m > 12))
 		throw new Error("--liuyue 应为农历月 1-12");
@@ -114,17 +128,18 @@ function cmdChart(args: CliArgs) {
 /**
  * `analyze` 命令：解读用的完整输入包（本 CLI 最常用的一条）。
  *
- * @param args - CLI 参数表；除出生信息外还认 `--liunian` / `--liuyue` / `--focus`
+ * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--geju` / `--sihua` /
+ *   `--daxian [虚岁]` / `--xiaoxian [虚岁]` / `--liunian [年]` / `--liuyue` / `--focus`
  * @returns 已渲染好的文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 字符串
  *
  * @remarks
- * 输出顺序：命盘总览 → 出生地与晚子时提示 → 十二宫一览 → 命宫 / 身宫详表 → 格局识别
- * （含成立 / 加分 / 破格条件与出处）→ 生年 / 流年 / 流月四化落宫 → 大限（当前大限详表加全部大限）
- * → `--focus` 指定宫的深挖。其中「十二宫一览」是直接遍历 `chart.palaces` 输出的，即**数组原序**
- * （不是地支升序，见 `ziwei/types.ts` 的 `palaces` 字段说明）。
+ * **精简概览 + 专题分发**（2026-09-28 起）：不带任何专题旗标时只输出命盘总览、
+ * 口径提示（出生地 / 晚子时）与一行运限速览 + 专题指路；给了哪个专题旗标就**只追加**
+ * 该专题的详版（可叠加，按 --info → --geju → --sihua → --liunian → --daxian → --xiaoxian
+ * → --focus 的固定顺序）。十二宫逐宫详表归 `chart` 命令与 `--json`，不再默认铺开。
  *
- * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，这里改从借入的对宫主星取释义；
- * 两者都取不到时星性落成「无主星亦无对宫可借，全看三方四正会照」。
+ * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，`--json` 的消费方
+ * （合盘 skill）自会处理；文本路径的宫详表见 `./yun.ts` 各专题。
  */
 function cmdAnalyze(args: CliArgs) {
 	const { info, note, notes, longitude, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } =
@@ -171,6 +186,23 @@ function cmdAnalyze(args: CliArgs) {
 							located: locateSihua(chart, liuYue.transforms),
 						}
 					: null,
+				// 流年命宫与小限宫（运限速览的结构化等价物，2026-09-28 新增，只加不删）
+				liuNianPalace: {
+					year: liuNianYear,
+					branchIndex: liuNianBranchOf(liuNianYear),
+					branch: BRANCHES[liuNianBranchOf(liuNianYear)],
+					palaceName:
+						chart.palaces.find(p => p.branch === liuNianBranchOf(liuNianYear))?.name ?? null,
+				},
+				xiaoXian: (() => {
+					const p = xiaoXianPalaceOf(chart, chart.currentAge);
+					return {
+						age: chart.currentAge,
+						palaceBranchIndex: p.branch,
+						palaceBranch: BRANCHES[p.branch],
+						palaceName: p.name,
+					};
+				})(),
 				lateZi: { candidate: lateZiCandidate, applied: isLateZi },
 				// 排盘依据：日期换算 / 出生地解析 / 时辰校正三类说明，让这份 JSON 自描述
 				// 「这张盘是怎么来的」，下游（合盘 skill）据此复述真太阳时与晚子时提示，
@@ -182,24 +214,6 @@ function cmdAnalyze(args: CliArgs) {
 			2
 		);
 	}
-
-	const ming = palaceAtBranch(chart, chart.mingGongBranch, "命宫");
-	const shen = palaceAtBranch(chart, chart.shenGongBranch, "身宫");
-	const summary = getMingGongSummary(chart);
-
-	// 命宫空宫时 getMingGongSummary 返回空关键词/星性，改从借入的对宫主星取释义
-	let mingKeywords = summary.keywords;
-	let mingNature = summary.nature;
-	if (!mingKeywords.length && ming.isEmpty && ming.borrowedStars?.length) {
-		mingKeywords = ming.borrowedStars.flatMap(
-			s => STAR_DESCRIPTIONS[s]?.keywords?.split("·") ?? []
-		);
-		mingNature = `空宫，借${ming.borrowedFromName ?? ""}的${ming.borrowedStars.join("、")}论`;
-	}
-	if (!mingKeywords.length) mingNature = mingNature || "无主星亦无对宫可借，全看三方四正会照";
-	const patterns = detectPatterns(chart);
-	const dx = chart.daXians[chart.currentDaXianIndex];
-	const dxPalace = dx ? chart.palaces.find(p => p.branch === dx.palaceBranch) : null;
 
 	const out: string[] = [];
 	out.push(
@@ -215,103 +229,34 @@ function cmdAnalyze(args: CliArgs) {
 
 	out.push(...birthplaceSection(lngNote, lngAmbiguous));
 	out.push(...lateZiSection(chart, info, isLateZi, lateZiCandidate));
+	out.push(...overviewSection(chart, liuNianYear));
 
-	// ── 十二宫一览（按地支序，速查全盘用；解读主力仍是下方命宫/身宫详表）──
-	// ⚠️ 是**寅→丑**（数组原序，寅起），不是子→亥 —— `chart.palaces` 按地支数组序排，
-	//    `palaceBrief` 不做任何排序。表头写错会让读者按错误顺序去数宫位。
-	out.push("【十二宫一览】按地支序 寅→丑");
-	for (const p of chart.palaces) out.push(palaceBrief(p));
-	out.push("");
-
-	out.push("【命宫】");
-	out.push(renderPalace(ming, chart));
-	out.push(`  关键词：${mingKeywords.join("、") || "—"} · 星性：${mingNature}`);
-	out.push("");
-
-	out.push("【身宫】");
-	out.push(renderPalace(shen, chart));
-	out.push("");
-
-	out.push(`【格局识别】共 ${patterns.length} 个`);
-	if (!patterns.length) out.push("  （未识别到已收录格局）");
-	for (const p of patterns) {
-		out.push(`  ▸ ${p.name} [${p.level}分]  涉及：${p.palaces.join("、")}`);
-		out.push(`    ${p.description}`);
-		if (p.conditions) {
-			if (p.conditions.required?.length)
-				out.push(`    成立：${p.conditions.required.join("；")}`);
-			if (p.conditions.bonus?.length) out.push(`    加分：${p.conditions.bonus.join("；")}`);
-			if (p.conditions.breaking?.length)
-				out.push(`    破格：${p.conditions.breaking.join("；")}`);
-		}
-		if (p.source) out.push(`    出处：${p.source}`);
-	}
-	out.push("");
-
-	out.push(`【生年四化】年干 ${STEMS[yearStem]}`);
-	for (const x of locateSihua(chart, native)) {
+	// ── 专题分发：给了哪个旗标就追加哪个专题（可叠加）──
+	if (args.info) {
 		out.push(
-			`  化${x.hua} ${x.star} → ${x.palace ?? "（未上盘）"}${x.branch ? `(${x.branch})` : ""}`
+			"",
+			...infoSection(chart, {
+				clockTime: typeof args.time === "string" ? args.time : null,
+				solarNote: note,
+				longitude,
+			})
 		);
 	}
-	out.push("");
-
-	out.push(`【${liuNianYear} 流年四化】年干 ${liuNian.stemName}`);
-	for (const x of locateSihua(chart, liuNian.transforms)) {
+	if (args.geju) out.push("", ...gejuSection(chart));
+	if (args.sihua) out.push("", ...sihuaSection(chart, liuNianYear, liuYueMonth));
+	if (args.liunian !== undefined) out.push("", ...liuNianSection(chart, liuNianYear));
+	if (args.daxian !== undefined)
+		out.push("", ...daXianSection(chart, parseAgeArg(args.daxian, chart.currentAge, "--daxian")));
+	if (args.xiaoxian !== undefined)
 		out.push(
-			`  化${x.hua} ${x.star} → ${x.palace ?? "（未上盘）"}${x.branch ? `(${x.branch})` : ""}`
+			"",
+			...xiaoXianSection(chart, parseAgeArg(args.xiaoxian, chart.currentAge, "--xiaoxian"), liuNianYear)
 		);
-	}
-	out.push("");
-
-	if (liuYue) {
-		out.push(
-			`【${liuNianYear} 年 农历${liuYueMonth}月 流月四化】月干 ${liuYue.stemName}（五虎遁，由流年干 ${liuNian.stemName} 推）`
-		);
-		for (const x of locateSihua(chart, liuYue.transforms)) {
-			out.push(
-				`  化${x.hua} ${x.star} → ${x.palace ?? "（未上盘）"}${x.branch ? `(${x.branch})` : ""}`
-			);
-		}
-		out.push("");
-	}
-
-	out.push(
-		`【大限】当前 ${chart.currentAge}岁，走 ${dx ? `${dx.startAge}-${dx.endAge}岁 ${dx.palaceName}(${BRANCHES[dx.palaceBranch]})` : "—"}`
-	);
-	if (dxPalace) out.push(renderPalace(dxPalace, chart));
-	out.push("");
-	out.push("全部大限：");
-	for (const d of chart.daXians) {
-		out.push(
-			`  ${String(d.startAge).padStart(2)}-${String(d.endAge).padStart(2)}岁  ${d.palaceName}(${BRANCHES[d.palaceBranch]})${d === dx ? "  ← 当前" : ""}`
-		);
-	}
-
-	// 指定宫位深挖
-	if (args.focus) {
-		// --focus 只接受单个宫位。typeof 判空挡掉的是「给了 --focus 却没跟值」的形态 ——
-		// 此时 parseArgs 把它存成布尔 true（不是字符串），不参与下面的比对，
-		// 直接落到「聚焦失败」分支并列出可用宫名。
-		const focus = typeof args.focus === "string" ? args.focus : null;
-		// 先把输入归一化到项目口径再比：交友宫 / 交友 / 仆役 / 仆役宫 四种写法都能命中
-		const want = focus ? FOCUS_ALIASES.get(focus) : undefined;
-		const target = focus
-			? chart.palaces.find(p => p.name === want || BRANCHES[p.branch] === focus)
-			: undefined;
-		if (!target) {
-			out.push(
-				"",
-				`【聚焦失败】找不到宫位「${args.focus}」。可用：${chart.palaces.map(p => p.name).join("、")}`,
-				"（也接受口语简称与旧写法，如「交友」「仆役」；或直接给地支名）"
-			);
-		} else {
-			out.push("", `【聚焦：${target.name}】`);
-			out.push(renderPalace(target, chart));
-			out.push(
-				`  对宫：${chart.palaces.find(p => p.branch === duiGongBranch(target.branch))?.name}`
-			);
-		}
+	if (args.focus !== undefined) {
+		// typeof 判空挡掉「给了 --focus 却没跟值」（parseArgs 存布尔 true）的形态 ——
+		// focusSection 的归一表查不到 true，自然落到「聚焦失败」分支并列出可用宫名。
+		const focus = typeof args.focus === "string" ? args.focus : String(args.focus);
+		out.push("", ...focusSection(chart, focus, liuNianYear));
 	}
 
 	return out.join("\n");

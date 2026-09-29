@@ -41,7 +41,7 @@ import type { FlagScope } from "./args";
  */
 export const FLAG_SCOPE: FlagScope = {
 	/**
-	 * 15 个出生信息旗标 + 7 个输出/选题旗标。
+	 * 出生信息旗标 + analyze 专题旗标族 + 输出/选题旗标（全集见 `args.ts` 的 FLAG_GROUPS）。
 	 *
 	 * ⚠️ 这里的每一项都必须是 `args.ts` 的 `FLAG_GROUPS` 里真有的名字：拼错不会报错，
 	 * 只会让那个旗标在**本 skill 里失效**（用户在 help 里看不到它，用了则报「未知参数」）。
@@ -65,6 +65,12 @@ export const FLAG_SCOPE: FlagScope = {
 		"city",
 		"province",
 		"name",
+		// analyze 专题深入
+		"info",
+		"geju",
+		"sihua",
+		"daxian",
+		"xiaoxian",
 		// 输出与选题
 		"json",
 		"liunian",

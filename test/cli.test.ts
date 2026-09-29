@@ -1038,7 +1038,7 @@ describe("CLI 端到端", () => {
 				5,
 				"样本前提：1990-01-15 农历年干应为己（索引 5）"
 			);
-			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male"]);
+			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male", "--sihua"]);
 			assert.ok(
 				t.includes("【生年四化】年干 己"),
 				"年干应取农历年干「己」，而非公历取模的「庚」"
@@ -1058,7 +1058,7 @@ describe("CLI 端到端", () => {
 				.filter(s => s.siHua)
 				.map(s => `${s.siHua}:${s.name}`)
 				.sort();
-			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male"]);
+			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male", "--sihua"]);
 			// 只取【生年四化】区块 —— 流年/流月区块的行格式相同，混入会误判
 			const block = t.split("【生年四化】")[1]?.split("【")[0] ?? "";
 			const inBlock = [...block.matchAll(/化([禄权科忌]) (.+?) → /g)]
@@ -1113,7 +1113,7 @@ describe("CLI 端到端", () => {
 		it("--liunian 2026：年干丙，四化落宫与独立复算一致", async () => {
 			// (2026−4) mod 10 = 2 → 丙。标题行钉干支，四行落宫走 assertRows 独立复算。
 			await assertRows(
-				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "2026"],
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "2026", "--sihua"],
 				"【2026 流年四化】",
 				2
 			);
@@ -1132,6 +1132,7 @@ describe("CLI 端到端", () => {
 					"2027",
 					"--liuyue",
 					"1",
+					"--sihua",
 				],
 				"【2027 年 农历1月 流月四化】",
 				8 // 丁年正月壬寅 → 月干壬
@@ -1162,6 +1163,7 @@ describe("CLI 端到端", () => {
 				"2024",
 				"--liuyue",
 				"1",
+				"--sihua",
 			]);
 			assert.ok(
 				t.includes("月干 丙（五虎遁，由流年干 甲 推）"),
@@ -1182,6 +1184,7 @@ describe("CLI 端到端", () => {
 				"male",
 				"--liunian",
 				"1990",
+				"--sihua",
 			]);
 			assert.ok(t.includes("【生年四化】年干 己"), "生年应取农历年干「己」（己巳年腊月）");
 			assert.ok(t.includes("【1990 流年四化】年干 庚"), "流年应取公历取模的「庚」");
@@ -1189,7 +1192,9 @@ describe("CLI 端到端", () => {
 
 		it("--liunian / --liuyue 参数护栏（缺值、越界、非数字均报错，不静默产出）", async () => {
 			for (const args of [
-				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian"], // 旗标没跟值
+				// --liunian 裸开关**不报错**（2026-09-28 起语义 = 深入当前年），不在失败清单里；
+				// --liuyue 裸开关必须报错：Number(true) = 1 会把它静默当农历一月。
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liuyue"],
 				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "0"],
 				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "10000"],
 				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liuyue", "0"],
@@ -1203,6 +1208,15 @@ describe("CLI 端到端", () => {
 					`报错应点名 ${flag}（${args[args.length - 1]}），实得：${stderr}`
 				);
 			}
+		});
+
+		it("--liunian 裸开关 = 深入当前年（不报错；2026-09-28 起的语义）", async () => {
+			const t = await cli(["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian"]);
+			const thisYear = new Date().getFullYear();
+			assert.ok(
+				t.includes(`【${thisYear} 流年】`),
+				`裸 --liunian 应深入当前年 ${thisYear}，实得输出头：${t.slice(0, 120)}`
+			);
 		});
 
 		it("--json 的 liuNianSiHua / liuYueSiHua 与独立复算一致", async () => {

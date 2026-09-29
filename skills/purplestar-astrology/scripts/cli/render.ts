@@ -241,38 +241,6 @@ export function renderPalace(p: Palace, chart: ZiweiChart): string {
 }
 
 /**
- * 单宫一行速览（供十二宫一览表用）。
- *
- * @param p - 待渲染的宫位
- * @returns 单行文本，各列以 `│` 分隔：宫名 │ 宫干支 │ 主星 │ 吉 │ 煞 │ 大限区间；
- *   末尾按需追加 `★身宫` / `←当前大限` 标记
- *
- * @remarks
- * 主星走 {@link starLine}（含四化与亮度），吉 / 煞两列只取星名，为空时显示 `—`，
- * 大限区间缺失时同样显示 `—`。主星为空写「空宫借X(…)」。
- */
-export function palaceBrief(p: Palace): string {
-	const major = p.stars.filter(s => s.type === "major");
-	const lucky = p.stars.filter(s => s.type === "lucky");
-	const sha = p.stars.filter(s => s.type === "sha");
-	const main = major.length
-		? major.map(starLine).join("、")
-		: `空宫借${p.borrowedFromName ?? "?"}(${(p.borrowedStars ?? []).join("、") || "无主星"})`;
-	const cols = [
-		p.name,
-		`${BRANCHES[p.branch]}${STEMS[p.stem]}`,
-		main,
-		`吉:${lucky.map(s => s.name).join("、") || "—"}`,
-		`煞:${sha.map(s => s.name).join("、") || "—"}`,
-		p.daXianAge ? `${p.daXianAge[0]}-${p.daXianAge[1]}岁` : "—",
-	];
-	const tags = [p.isShenGong ? "★身宫" : "", p.isCurrentDaXian ? "←当前大限" : ""]
-		.filter(Boolean)
-		.join(" ");
-	return "  " + cols.join(" │ ") + (tags ? "  " + tags : "");
-}
-
-/**
  * 命盘指纹：宫名 + 地支 + 全星曜集合，用于比对两盘是否完全一致。
  *
  * @param c - 命盘
@@ -361,7 +329,9 @@ export function lateZiSection(
 	if (!lateZiCandidate) return out;
 	const alt = generateChart({ ...info, hour: 12 });
 	out.push("【⚠️ 晚子时口径提醒】");
-	out.push("  校正后的真太阳时落在 23:00–23:59。子时横跨两日，两种口径排出的是**两张不同的盘**。");
+	out.push(
+		"  校正后的真太阳时落在 23:00–23:59。子时横跨两日，两种口径排出的是**两张不同的盘**。"
+	);
 	out.push(
 		`  本次按【当日早子时】排盘：紫微落 ${ziweiBranchOf(chart)} · 命宫主星 ${mingMajorBrief(chart)}`
 	);

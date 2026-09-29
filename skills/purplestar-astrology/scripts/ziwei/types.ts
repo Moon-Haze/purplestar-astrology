@@ -170,6 +170,14 @@ export interface Palace {
 	stars: Star[];
 	/** 本宫所属大限的年龄段 `[起, 讫]`（**虚岁**，闭区间）。仅 iztro 给出 `decadal.range` 时有值 */
 	daXianAge?: [number, number];
+	/**
+	 * 小限落在本宫的**虚岁**列表（如 `[9,21,33,…]`，每宫 10 个、十二宫并集连续覆盖 1–120）。
+	 *
+	 * 直接取自 iztro 静态盘的 `palace.ages` —— 小限的起宫与顺逆由 iztro 按生年支与性别
+	 * 推定，本项目不重复实现。**虚岁域**，与 {@link daXianAge} / `ZiweiChart.currentAge` 同域，
+	 * 以农历年（正月初一）为界。
+	 */
+	xiaoXianAges?: number[];
 	/** 当前虚岁是否落在 {@link daXianAge} 内，由 `algorithm.ts` 逐宫标记 */
 	isCurrentDaXian?: boolean;
 	/** 是否命宫。与 {@link ZiweiChart.mingGongBranch} 指向同一宫 */
@@ -287,6 +295,19 @@ export interface ZiweiChart {
 	palaces: Palace[];
 	/** 全部大限，按起始虚岁升序 */
 	daXians: DaXian[];
+	/** 命主星名（如「贪狼」）。直接取自 iztro 静态盘的 `soul`，由命宫地支查表定星 */
+	mingZhu: string;
+	/** 身主星名（如「火星」）。直接取自 iztro 静态盘的 `body`，由身宫地支查表定星 */
+	shenZhu: string;
+	/**
+	 * **子年斗君**所在宫的地支索引 0–11：以子宫起正月**逆数**至生月，再以生月宫起子时
+	 * **顺数**至生时，所落之宫。斗君是流月定位的基准（流年正月自斗君宫起）。
+	 *
+	 * ⚠️ iztro 静态盘**不带**斗君，此字段由 `algorithm.ts` 按上式自推（已用 2000-4-6 子时男
+	 * = 戌、1990-05-15 巳时男 = 寅 两组样例校准）。闰月按所闰之月数计（与 `lunarInfo.lunarMonth`
+	 * 的 `Math.abs` 口径一致）；晚子时（hour 12）按子时论。
+	 */
+	douJunBranch: number;
 	/** 当前**虚岁**，以农历年（正月初一）为界，与 `daXianAge` / `daXians[].startAge` **同域** */
 	currentAge: number;
 	/** 当前大限在 {@link daXians} 中的下标；`-1` 表示虚岁尚未落进任何大限（童限未起运） */
