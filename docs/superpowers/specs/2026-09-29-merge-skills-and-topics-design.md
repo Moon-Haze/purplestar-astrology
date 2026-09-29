@@ -11,9 +11,9 @@
 1. `--info` 的内容应默认可见，不该每次加旗标；
 2. `--focus` 不够详细；
 3. 命令入口收敛：四条直接调 iztro 的命令融合为一条 `astrology`（旗标融合，专题旗标换英文）；
-3. 十二宫详表入口收敛为 `astrology --palaces`（原 `chart` 命令废）；
-4. **三个 skill 合并成一个**：仓库根即 skill 根，一条 CLI 承载排盘 / 古籍 / 合盘；
-5. 参数支持**JSON 配置文件**输入，并能生成配置模板。
+4. 十二宫详表入口收敛为 `astrology --palaces`（原 `chart` 命令废）；
+5. **三个 skill 合并成一个**：仓库根即 skill 根，一条 CLI 承载排盘 / 古籍 / 合盘；
+6. 参数支持**JSON 配置文件**输入，并能生成配置模板。
 
 ## 1. `astrology` 命令：四条排盘命令融合 + 旗标英文化
 
@@ -21,19 +21,19 @@ analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中
 **`astrology`**（旗标融合模式，用户指定）：不带功能旗标 = 概览；功能由旗标组合表达。
 专题旗标名**全部换英文**（用户指定），大限 / 小限 / 四化锚定 iztro 原生术语：
 
-| 功能 | 旧旗标 / 命令 | 新旗标 |
-| --- | --- | --- |
-| 基本信息（并入默认 + 只出面板） | `--info` | `--info`（不变） |
-| 格局专题 | `--geju` | `--pattern` |
-| 四化专题 | `--sihua` | `--mutagen`（iztro 术语） |
-| 流年专题 | `--liunian [年]` | `--annual [年]`（避开 `--year` 出生年的编辑距离混淆） |
-| 流月（配四化 / 流年视角） | `--liuyue 1-12` | `--monthly 1-12` |
-| 大限专题 | `--daxian [虚岁]` | `--decadal [虚岁]`（iztro 术语） |
-| 小限专题 | `--xiaoxian [虚岁]` | `--ages [虚岁]`（iztro 术语） |
-| 宫盘聚焦 | `--focus <宫>` | `--focus`（不变） |
-| 十二宫逐宫详表 | `chart` 命令 | `--palaces` |
-| 主题论断 + 视角 | `topic` 命令 `--topic`/`--view` | `--topic <key>` / `--view`（不变） |
-| 结构化输出 | `--json` | `--json`（不变） |
+| 功能                            | 旧旗标 / 命令                   | 新旗标                                                |
+| ------------------------------- | ------------------------------- | ----------------------------------------------------- |
+| 基本信息（并入默认 + 只出面板） | `--info`                        | `--info`（不变）                                      |
+| 格局专题                        | `--geju`                        | `--pattern`                                           |
+| 四化专题                        | `--sihua`                       | `--mutagen`（iztro 术语）                             |
+| 流年专题                        | `--liunian [年]`                | `--annual [年]`（避开 `--year` 出生年的编辑距离混淆） |
+| 流月（配四化 / 流年视角）       | `--liuyue 1-12`                 | `--monthly 1-12`                                      |
+| 大限专题                        | `--daxian [虚岁]`               | `--decadal [虚岁]`（iztro 术语）                      |
+| 小限专题                        | `--xiaoxian [虚岁]`             | `--ages [虚岁]`（iztro 术语）                         |
+| 宫盘聚焦                        | `--focus <宫>`                  | `--focus`（不变）                                     |
+| 十二宫逐宫详表                  | `chart` 命令                    | `--palaces`                                           |
+| 主题论断 + 视角                 | `topic` 命令 `--topic`/`--view` | `--topic <key>` / `--view`（不变）                    |
+| 结构化输出                      | `--json`                        | `--json`（不变）                                      |
 
 - **默认输出**（无功能旗标）：`【命盘总览】`三行 → `【基本信息】`12 行面板（无条件）→ 口径提示 → `【运限速览】` → 功能旗标指路。
 - **`--info`**：只输出信息面板这一节。
@@ -93,7 +93,32 @@ scripts/
 
 搬入的 classics / synastry 代码从「全扩展名 import（无钩子）」改为源的风格（`@/` 别名 + 省扩展名）。仓库回到**一种**加载方式；「另两个 skill 怎么加载 .ts」一节与相关散文删除。
 
-### 2.7 路径迁移牵动清单（改漏即崩）
+### 2.7 拼音文件名英文化（随迁移一并 `git mv`）
+
+译名按文件实际语义定（非音译）；格局分组按成格难度分级、views 小节与旗标名对齐：
+
+| 拼音文件 | 语义 | 新名 |
+| --- | --- | --- |
+| `ziwei/sihua.ts` | 四化 | `mutagen.ts`（iztro 术语，与 `--mutagen` 一致） |
+| `cli/yun.ts` | 运限专题 | `fortune.ts` |
+| `patterns/ji-chu-ge.ts` | 基础格局（常见轻量判定） | `basic.ts` |
+| `patterns/shang-ge.ts` | 上格（条件最严） | `superior.ts` |
+| `patterns/zhong-ge.ts` | 中格（古书明列、条件稍宽） | `medium.ts` |
+| `patterns/shou-lian-ge.ts` | 收敛组（自 db-analysis 归入） | `converged.ts` |
+| `patterns/zhu-li-ge.ts` | 助力格（吉星夹拱锦上添花） | `enhancing.ts` |
+| `patterns/e-ge.ts` | 恶格（煞忌刑伤） | `malefic.ts` |
+| `patterns/ming-gong-summary.ts` | 命宫摘要 | `soul-summary.ts`（iztro 命宫 = Soul Palace） |
+| `analysis/views/daxian.ts` | 当前大限分析 | `decadal.ts`（与 `--decadal` 一致） |
+| `analysis/views/liunian.ts` | 流年 + 流月分析 | `annual.ts`（与 `--annual` 一致） |
+| `analysis/views/kuiyue.ts` | 魁钺贵人倾向 | `patron.ts` |
+| `analysis/views/sanfang.ts` | 三方四正联动 | `trine.ts` |
+| `analysis/views/sihua.ts` | 本命四化会照 | `mutagen.ts`（与目录两层各一，路径区分） |
+
+**保留拼音**（「尽力」的边界）：classics 的 `data/gusuifu.ts`（骨髓赋）/ `quanji.ts`（全集）/ `quanshu.ts`（全书）是**古籍书名专名**，无通行英文名，转译反而丢失可检索性。
+
+改名牵动：全仓 import 改写（约 20 处）、`test/` 与 `tools/` 引用、CLAUDE.md 目录树。与 §2.7 路径迁移**同一笔提交**做（都是 `git mv` + import 改写，分两笔会互相踩）。
+
+### 2.8 路径迁移牵动清单（改漏即崩）
 
 | 位置                         | 改什么                                                                                        |
 | ---------------------------- | --------------------------------------------------------------------------------------------- |
