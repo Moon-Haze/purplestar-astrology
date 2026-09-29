@@ -162,5 +162,6 @@ scripts/
 
 - **git 历史可追溯**：迁移用 `git mv`，diff 可追溯；不 squash 历史。
 - **不做**：synastry 出生信息直传（用户明确否决）；不引 YAML/新依赖；不改排盘内核逻辑（ziwei/ 平移零改动）；不动 `tools/db/`（它引用的路径若受牵动单独核）。
+- **依赖形态变化**：合并后只有根 `package.json` 一份，`iztro` + `lunar-typescript` 归它——原 classics / synastry「零 npm 依赖、拷走即跑」的优势消失，整个 skill 安装后需先 `npm install`（SKILL.md 安装说明要写明）。iztro 调用关系不变：analyze / insight / chart / topic / selftest 排盘，synastry 吃 `analyze --json`（数据源头仍是 iztro），classics / stars / help 零排盘。
 - **风险点**：路径迁移的「改漏即崩」清单（§2.7）——每项都有测试或 typecheck 兜着，迁移提交必须单独成笔、全绿才合。
 - 分支策略：在 master 直接做（仓库惯例，无 PR 流程），但**迁移提交与功能提交分开**，出问题可单独 revert。
