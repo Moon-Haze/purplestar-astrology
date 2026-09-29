@@ -18,11 +18,11 @@
 
 ### 1.1 基本信息并入默认总览
 
-默认输出顺序：`【命盘总览】`（原三行）→ `【基本信息】`（原 `--info` 的 12 行面板，**无条件输出**）→ 口径提示（命中才出）→ `【运限速览】` → `【专题深入】`。
+`analyze` 默认输出顺序：`【命盘总览】`（原三行）→ `【基本信息】`（原 `--info` 的 12 行面板，**无条件输出**）→ 口径提示（命中才出）→ `【运限速览】` → 指路行（指向 `insight` 的专题旗标）。
 
-`--info` 旗标**保留**，语义变为「只输出信息面板这一节」（专题隔离语义不变）。
+`--info` 旗标**保留**（归 `insight` 命令），语义为「只输出信息面板这一节」。
 
-### 1.2 `--focus` 深化（四项全加，约 20 行 → 35-45 行）
+### 1.2 `insight --focus` 深化（四项全加，约 20 行 → 35-45 行）
 
 | 新增                             | 内容                                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -31,7 +31,13 @@
 | 涉及此宫的格局                   | `detectPatterns` 中 palaces 含此宫的格局全列（分数 + 判词 + 成立/破格）                               |
 | 小限岁数段 + 引动年份 + 主星标记 | 该宫辖的小限岁数；当前大限十年内此宫被流年命宫/对宫/三方引动的年份；主星为命主/身主星则标注；身宫标记 |
 
-### 1.3 十二宫详表归 `chart` 命令（`--gongpan` 取消）
+### 1.3 `analyze` 一分为二：`analyze`（排盘概览）+ `insight`（专题深入）
+
+- **`analyze`**：排盘 + 概览（总览 / 基本信息面板 / 口径提示 / 运限速览 / 指路）+ `--json`（合盘契约不变）。参数面收窄为出生信息 15 个 + `--json`。
+- **`insight`**：承接全部专题旗标（`--info` / `--geju` / `--sihua` / `--liunian [年]` / `--daxian [虚岁]` / `--xiaoxian [虚岁]` / `--focus <宫>`，可叠加；`--liuyue` 配 `--sihua`）。出生信息直传（内部排同一张盘），不给任何专题旗标时列出可用专题。
+- 命名走英文（用户指定）：`insight` = 对某一面的深入洞察。
+
+### 1.4 十二宫详表归 `chart` 命令（`--gongpan` 取消）
 
 十二宫逐宫详表本就是 `chart` 命令的职责（命宫/身宫/当前大限标记随宫标注），不另设 `--gongpan` 旗标。`chart` 保持独立命令：零参数干扰，「只要盘不要别的」一步到位。
 
@@ -57,7 +63,8 @@ scripts/
     ├── flag-scope.ts         作用域（a-/b- 前缀正式启用）
     ├── config.ts             新增：--config / --template 的读取与合并
     ├── birth-info.ts / birth-info-defs.ts / render.ts / yun.ts
-    ├── analyze.ts            cmdAnalyze（从 commands.ts 拆出）
+    ├── analyze.ts            cmdAnalyze（排盘 + 概览，从 commands.ts 拆出）
+    ├── insight.ts             cmdInsight（专题旗标族，从 cmdAnalyze 分出）
     ├── chart.ts / topic.ts / stars.ts / classics.ts / synastry.ts   各命令拆分文件
     ├── help.ts                总览 help 与每命令 --help（命令 → 旗标归属表 + COMMAND_HELP）
     ├── commands.ts           只留 COMMAND_TABLE + COMMAND_DESC（注册薄层）
@@ -106,9 +113,9 @@ scripts/
 
 ## 3. 命令面调整与 help 强化
 
-### 3.1 命令面（合并后 7 条 + help）
+### 3.1 命令面（合并后 8 条 + help）
 
-`analyze` / `chart` / `topic` / `classics` / `synastry` / `stars` / `selftest`，外加强化的 `help`。
+`analyze` / `insight` / `chart` / `topic` / `classics` / `synastry` / `stars` / `selftest`，外加强化的 `help`。
 
 - **`cities` 命令删除**：`ziwei/cities.ts` 的数据表**保留**（`--city` 的容错解析与歧义提示仍查它），删的只是查询命令。`REQUIRED_EXPORTS` 里的 `PROVINCES` 随之退役（无命令消费者）。
 - `chart` 保持十二宫逐宫详表职责（见 §1.3）。
@@ -130,7 +137,7 @@ scripts/
 ## 4. SKILL.md 重写
 
 - **description**：合并三域触发词（排盘解读 / 合盘合婚 / 古籍检索），删除「用 xxx 技能」指路句（改为本技能命令）。
-- 命令速查 7 条 + help：`analyze` / `chart` / `topic` / `classics` / `synastry` / `stars` / `selftest`，`cities` 已删。
+- 命令速查 8 条 + help：`analyze`（排盘概览）/ `insight`（专题深入）/ `chart`（十二宫详表）/ `topic` / `classics` / `synastry` / `stars` / `selftest`，`cities` 已删。
 - 路径约定改写：命令一律 `node scripts/purple-star.ts`（仓库根 = skill 根，两重身份合一，原「仓库级文档写全路径」的区分作废）。
 - 合盘工作流：先 `analyze --json` 两张 → `synastry --a-chart --b-chart`。
 
@@ -139,7 +146,7 @@ scripts/
 - TDD：selftest 断言先行（红→绿），沿用上一轮的模式。
 - 迁移本身以「行为不变」为准：迁移提交前后 `selftest`（合并后的三段合计）与 `npm test` 必须全绿；`typecheck` 0 错。
 - 层 6 守卫改写为单 skill 形态后，必须仍有「skill 自包含可拷走」的断言（对用户的承诺不变，只是承诺对象从三个变一个）。
-- 新增断言：`chart` 仍输出十二宫逐宫详表（职责归位后不回归）、`cities` 命令已删（调用即报未知命令）、每命令 `--help` 输出且含归属旗标、`--info` 面板进默认输出、`--focus` 四项深化各自可锚定、`--config` 合并优先级（命令行赢）、`--template` 产物可被 `--config` 吃回。
+- 新增断言：`chart` 仍输出十二宫逐宫详表（职责归位后不回归）、`cities` 命令已删（调用即报未知命令）、每命令 `--help` 输出且含归属旗标、`analyze` 默认含信息面板且**不再读**专题旗标、`insight` 各专题旗标产出、`--focus` 四项深化各自可锚定、`--config` 合并优先级（命令行赢）、`--template` 产物可被 `--config` 吃回。
 
 ## 6. 文档同步面
 
