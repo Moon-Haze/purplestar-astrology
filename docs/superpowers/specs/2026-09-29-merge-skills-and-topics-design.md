@@ -21,19 +21,19 @@ analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中
 **`astrology`**（参数融合模式，用户指定）：不带功能参数 = 概览；功能由参数组合表达。
 专题参数名**全部换英文**（用户指定），大限 / 小限 / 四化锚定 iztro 原生术语：
 
-| 功能                            | 旧参数 / 命令                   | 新参数                                                |
-| ------------------------------- | ------------------------------- | ----------------------------------------------------- |
-| 基本信息（并入默认 + 只出面板） | `--info`                        | `--info`（不变）                                      |
-| 格局专题                        | `--geju`                        | `--pattern`                                           |
-| 四化专题                        | `--sihua`                       | `--mutagen`（iztro 术语）                             |
+| 功能                            | 旧参数 / 命令                   | 新参数                                                                             |
+| ------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------- |
+| 基本信息（并入默认 + 只出面板） | `--info`                        | `--info`（不变）                                                                   |
+| 格局专题                        | `--geju`                        | `--pattern`                                                                        |
+| 四化专题                        | `--sihua`                       | `--mutagen`（iztro 术语）                                                          |
 | 流年专题                        | `--liunian [年]`                | `--yearly [年]`（对齐 iztro `horoscope.yearly`；与 `--year` 的混淆由拼错建议兜底） |
-| 流月（配四化 / 流年视角）       | `--liuyue 1-12`                 | `--monthly 1-12`                                      |
-| 大限专题                        | `--daxian [虚岁]`               | `--decadal [虚岁]`（iztro 术语）                      |
-| 小限专题                        | `--xiaoxian [虚岁]`             | `--ages [虚岁]`（iztro 术语）                         |
-| 宫盘聚焦                        | `--focus <宫>`                  | `--focus`（不变）                                     |
-| 十二宫逐宫详表                  | `chart` 命令                    | `--palaces`                                           |
-| 主题论断 + 视角                 | `topic` 命令 `--topic`/`--view` | `--topic <key>` / `--view`（不变）                    |
-| 结构化输出                      | `--json`                        | `--json`（不变）                                      |
+| 流月（配四化 / 流年视角）       | `--liuyue 1-12`                 | `--monthly 1-12`                                                                   |
+| 大限专题                        | `--daxian [虚岁]`               | `--decadal [虚岁]`（iztro 术语）                                                   |
+| 小限专题                        | `--xiaoxian [虚岁]`             | `--ages [虚岁]`（iztro 术语）                                                      |
+| 宫盘聚焦                        | `--focus <宫>`                  | `--focus`（不变）                                                                  |
+| 十二宫逐宫详表                  | `chart` 命令                    | `--palaces`                                                                        |
+| 主题论断 + 视角                 | `topic` 命令 `--topic`/`--view` | `--topic <key>` / `--view`（不变）                                                 |
+| 结构化输出                      | `--json`                        | `--json`（不变）                                                                   |
 
 - **默认输出**（无功能参数）：`【命盘总览】`三行 → `【基本信息】`12 行面板（无条件）→ 口径提示 → `【运限速览】` → 功能参数指路。
 - **`--info`**：只输出信息面板这一节。
@@ -73,7 +73,6 @@ analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中
 OptionGroup`、`FLAG_SCOPE/flag-scope.ts→OPTION_SCOPE/option-scope.ts`、`FLAG_ALIASES→
 OPTION_ALIASES`、`FLAG_NAMES→OPTION_NAMES`、`checkFlagName→checkOptionName`、`suggestFlag→suggestOption`。
 `SIDE_PREFIXES` / `prefixedCommands`（出生方前缀概念）保留原名。
-
 
 ## 2. 仓库重组：整个仓库 = 一个 skill
 
@@ -149,9 +148,28 @@ scripts/
 
 **保留拼音**（「尽力」的边界）：classics 的 `data/gusuifu.ts`（骨髓赋）/ `quanji.ts`（全集）/ `quanshu.ts`（全书）是**古籍书名专名**，无通行英文名，转译反而丢失可检索性。
 
-改名牵动：全仓 import 改写（约 20 处）、`test/` 与 `tools/` 引用、CLAUDE.md 目录树。与 §2.9 路径迁移**同一笔提交**做（都是 `git mv` + import 改写，分两笔会互相踩）。
+改名牵动：全仓 import 改写（约 20 处）、`test/` 与 `tools/` 引用、CLAUDE.md 目录树。与 §2.10 路径迁移**同一笔提交**做（都是 `git mv` + import 改写，分两笔会互相踩）。
 
-### 2.8 术语全对齐 iztro：类型值、内核字段与标识符（共五层）
+### 2.8 解析引擎：cac 退役，归一 Node 内置 `util.parseArgs`
+
+三 skill 两套引擎（源 cac / 另两个 `util.parseArgs`）合并时归一为 **`util.parseArgs`（strict 模式）**，
+`cac` 依赖从根 `package.json` 移除。依据：
+
+- help 强化已自建（`cli/help.ts` + `COMMAND_HELP` + 归属表），cac 的 help 渲染价值被取代；
+  别名归一、位置参数形态、可选值校验、`a-`/`b-` 前缀在哪个引擎上都要自己写——cac 的净价值
+  收缩为分词与 camelCase，而 `camelKey` 本仓已有独立实现。
+- cac「未注册选项静默收下」是本仓最大参数面漏洞（前置校验 + 看门人两层补丁即为它打）；
+  `strict: true` 与「宁可报错，不静默产出错盘」哲学天然同构，该漏洞在引擎层消解。
+
+实施要点：
+
+- `cli/args.ts` 重写为「`OPTION_GROUPS` 声明表（结构不变）+ 单趟扫描（吸收另两个 skill 的
+  `kind` 判据形态：取值判据来自声明表而非 token 形状，`--limit -3` 的 `-3` 是合法值）+
+  `OPTION_ALIASES` 归一 + 位置参数归类（§1.2）」。
+- **行为变更（有意）**：同一参数重复给出由 cac 的「取末值」改为**报错**——与 strict 哲学一致。
+- 回归面：selftest 全量 + 层 2 CLI 端到端全跑兜底（本仓测试齐全正是换引擎的底气）。
+
+### 2.9 术语全对齐 iztro：类型值、内核字段与标识符（共五层）
 
 前两层（参数 / 文件名）见上文；此节是**类型值、`ziwei/types.ts` 公开字段与标识符层**——与 iztro 原作者术语全面对齐（用户拍板）。牵动 types / algorithm / render / patterns / analysis / compare /
 test 与 **JSON 输出字段名**；合盘消费方（chart-view.ts）同仓同笔改。
@@ -208,7 +226,7 @@ test 与 **JSON 输出字段名**；合盘消费方（chart-view.ts）同仓同�
 `yearStem` / `yearBranch`（干支通行英文意译）、宫名「交友宫」（倪师体系口径，**有意**偏离
 iztro「仆役」——领域立场，不应对齐）。
 
-### 2.9 路径迁移牵动清单（改漏即崩）
+### 2.10 路径迁移牵动清单（改漏即崩）
 
 | 位置                         | 改什么                                                                                        |
 | ---------------------------- | --------------------------------------------------------------------------------------------- |
@@ -277,6 +295,6 @@ iztro「仆役」——领域立场，不应对齐）。
 
 - **git 历史可追溯**：迁移用 `git mv`，diff 可追溯；不 squash 历史。
 - **不做**：synastry 出生信息直传（用户明确否决）；不引 YAML/新依赖；不改排盘内核逻辑（ziwei/ 平移零改动）；不动 `tools/db/`（它引用的路径若受牵动单独核）。
-- **依赖形态变化**：合并后只有根 `package.json` 一份，`iztro` + `lunar-typescript` 归它——原 classics / synastry「零 npm 依赖、拷走即跑」的优势消失，整个 skill 安装后需先 `npm install`（SKILL.md 安装说明要写明）。iztro 调用关系不变：astrology / selftest 排盘，synastry 吃 `astrology --json`（数据源头仍是 iztro），classics / stars / help 零排盘。
-- **风险点**：路径迁移的「改漏即崩」清单（§2.9）与术语全对齐（§2.8）——后者改公开字段名，`typecheck` + 两层测试 + 合盘消费方同笔改兜底——每项都有测试或 typecheck 兜着，迁移提交必须单独成笔、全绿才合。
+- **依赖形态变化**：合并后只有根 `package.json` 一份，`iztro` + `lunar-typescript` 归它，`cac` 移除（§2.8）——原 classics / synastry「零 npm 依赖、拷走即跑」的优势消失，整个 skill 安装后需先 `npm install`（SKILL.md 安装说明要写明）。iztro 调用关系不变：astrology / selftest 排盘，synastry 吃 `astrology --json`（数据源头仍是 iztro），classics / stars / help 零排盘。
+- **风险点**：路径迁移的「改漏即崩」清单（§2.10）与术语全对齐（§2.9）——后者改公开字段名，`typecheck` + 两层测试 + 合盘消费方同笔改兜底——每项都有测试或 typecheck 兜着，迁移提交必须单独成笔、全绿才合。
 - 分支策略：在 master 直接做（仓库惯例，无 PR 流程），但**迁移提交与功能提交分开**，出问题可单独 revert。
