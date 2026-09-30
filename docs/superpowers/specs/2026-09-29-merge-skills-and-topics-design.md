@@ -169,7 +169,11 @@ scripts/
     `Unknown option '--unknown'`，与全中文报错约定冲突；自校验反而完全可控）；
   - `OPTION_ALIASES` 归一（`--geju`→`--pattern`）；
   - 位置参数归类（§1.2 形态识别）；
-  - 取值判据取自声明表 `kind`（`--limit -3` 的 `-3` 是合法值，不看 token 形状）；
+  - 取值判据取自声明表 `kind`：已声明的取值参数**贪婪吃紧随 token**（`--limit -3` 的 `-3`
+    是合法值）。⚠️ 此行为**版本敏感**：早期 `util.parseArgs`（Node 18.x）把负数当 short
+    option（strict 下报错），当前版本贪婪吃值——本项目运行要求 Node ≥ 22.15，实测
+    `--limit -3` → `{kind:"option", name:"limit", value:"-3"}` 正确；selftest 钉死此断言，
+    若未来 Node 行为回退立即变红；
   - 可选值形态（`--decadal 37` / 裸开关 `true`）与 `camelKey` 归一。
 
 **行为变更（有意）**：同一参数重复给出由 cac 的「取末值」改为**报错**。
