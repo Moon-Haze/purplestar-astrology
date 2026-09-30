@@ -92,7 +92,7 @@ scripts/
 ├── synastry/                 合盘内核：synastry-knowledge.ts + chart-view.ts + 合盘逻辑
 ├── ziwei/                    排盘内核（原样平移）
 └── cli/
-    ├── args.ts               参数面（OPTION_GROUPS 声明表 + 手写单趟扫描，见 §2.8）
+    ├── args.ts               参数面（OPTION_GROUPS + 解析）
     ├── option-scope.ts         参数作用域（前缀机制保留空表——--charts 单参数后 a-/b- 前缀不再需要）
     ├── config.ts             新增：--config / --template 的读取与合并
     ├── birth-info.ts / birth-info-defs.ts / render.ts / yun.ts
@@ -155,24 +155,25 @@ scripts/
 
 改名牵动：全仓 import 改写（约 20 处）、`test/` 与 `tools/` 引用、CLAUDE.md 目录树。与 §2.10 路径迁移**同一笔提交**做（都是 `git mv` + import 改写，分两笔会互相踩）。
 
-### 2.8 解析引擎：cac 退役，手写单趟扫描（中文报错）
+### 2.8 解析引擎：cac 退役，底座 Node 内置 `util.parseArgs` + 薄适配层
 
-三 skill 两套引擎（源 cac / 另两个手写 `util.parseArgs` 辅助扫描）合并时归一为**手写单趟扫描**，
-`cac` 依赖从根 `package.json` 移除。评估修正记录：
+三 skill 两套引擎合并时归一为 **Node 内置 `util.parseArgs`（`tokens` 模式做底座）+ 薄适配层**，
+`cac` 依赖从根 `package.json` 移除（classics / synastry 已实战此选型，推广为唯一实现）。
 
-- 初判「归一 `util.parseArgs` strict 模式」被评审推翻——**strict 报错是 Node 写死的英文**
-  （`Unknown option '--unknown'`），与本项目全中文报错约定冲突；外层捕获翻译需匹配英文消息
-  文本（Node 升级即漏），为保留 strict 而自建前置校验又把 strict 的价值取代。故不走 strict。
-- 手写单趟扫描（另两个 skill 的实战形态推广为唯一实现）：报错中文全可控、未知参数当场报错
-  （无 cac「静默收下」之洞）、零解析依赖。取值判据来自声明表 `kind`（`--limit -3` 的 `-3`
-  是合法值），`--key=value` / `--` 分隔 / 裸开关 / 可选值形态全部显式处理。
+分工：
 
-实施要点：
+- **底座（`util.parseArgs` `tokens: true`）**：token 化交给标准库——`--key value` / `--key=value` /
+  裸开关 / `--` 分隔的 token 识别，行为官方文档明确、零依赖。
+- **适配层（`cli/args.ts`，薄）**：输入格式适配全部在此——
+  - 声明表校验：未知参数当场中文报错（**不走 strict**——其报错是 Node 写死的英文
+    `Unknown option '--unknown'`，与全中文报错约定冲突；自校验反而完全可控）；
+  - `OPTION_ALIASES` 归一（`--geju`→`--pattern`）；
+  - 位置参数归类（§1.2 形态识别）；
+  - 取值判据取自声明表 `kind`（`--limit -3` 的 `-3` 是合法值，不看 token 形状）；
+  - 可选值形态（`--decadal 37` / 裸开关 `true`）与 `camelKey` 归一。
 
-- `cli/args.ts` 重写为「`OPTION_GROUPS` 声明表（结构不变）+ 单趟扫描 + `OPTION_ALIASES` 归一 +
-  位置参数归类（§1.2）」；`camelKey` 保留（本仓既有）。
-- **行为变更（有意）**：同一参数重复给出由 cac 的「取末值」改为**报错**。
-- 回归面：selftest 全量 + 层 2 CLI 端到端全跑兜底。
+**行为变更（有意）**：同一参数重复给出由 cac 的「取末值」改为**报错**。
+回归面：selftest 全量 + 层 2 CLI 端到端全跑兜底。
 
 ### 2.9 术语全对齐 iztro：类型值、内核字段与标识符（共五层）
 
