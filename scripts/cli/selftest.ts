@@ -915,7 +915,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		if (!text.includes("2026 丙午")) throw new Error("缺流年干支");
 		if (!text.includes("流年命宫")) throw new Error("缺流年命宫");
 		if (!text.includes("小限")) throw new Error("缺小限速览");
-		for (const f of ["--liunian", "--daxian", "--xiaoxian", "--info", "--geju", "--sihua", "--focus"])
+		for (const f of ["--yearly", "--decadal", "--ages", "--pattern", "--mutagen", "--focus", "--palaces", "--topic"])
 			if (!text.includes(f)) throw new Error(`专题指路缺 ${f}`);
 	});
 	ok("专题渲染：基本信息专题逐项输出（2000-4-6 子时男，对齐外部排盘参照）", () => {

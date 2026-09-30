@@ -242,7 +242,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				name: "view",
 				kind: "value",
 				value: "mingpan",
-				desc: "主题论断展示口径：mingpan / decadal / yearly / monthly",
+				desc: "主题论断展示口径：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月）",
 			},
 			{
 				name: "search",

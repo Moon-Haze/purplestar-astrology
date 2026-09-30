@@ -1,0 +1,439 @@
+// ── 排盘比对器 ──
+//
+// 拿本项目的 `generateChart()` 输出，与 toolkit 样本里的 `chart` 逐字段比。
+// 产出**结构化 diff 列表**而非布尔值 —— 300 条基准里某条失败时要能一眼看出是哪个字段。
+//
+// 四处归一化（都是实测出来的真实差异，不是防御性代码）：
+//   1. 空值形态：本项目无四化的星是显式 `mutagen: undefined`，样本则该键不存在；
+//      两边无庙旺的星都可能给 `""`。一律视为「无此属性」并忽略键的存在性差异。
+//   2. 字段超集：本项目 `Palace` 比样本多出 `oppositeBranch` / `isEmpty`
+//      （空宫时另有 `borrowedFromBranch` / `borrowedFromName` / `borrowedStars`）。
+//      这些是本项目新增的借宫结构化字段，样本没有，故只比共有字段。
+//   3. 顺序：两边 `palaces` 数组顺序实测一致（都是寅起），但**按 branch 建索引**比对，
+//      不依赖数组下标 —— 将来顺序若有变化也不会误判。
+//   4. 宫名口径：样本存的是 iztro 的名（…/仆役/…），本项目存的是倪师《天纪》的名
+//      （…/交友宫/…）。翻译**只施加在 baseline 一侧**，见 normalizePalaceName。
+// 农历换算。刻意在此**独立**调用，不复用内核的 getLunarInfo —— 见 expectedAge 的注释。
+import { Solar } from "lunar-typescript";
+
+import type { BirthInfo, LunarInfo, Star, ZiweiChart } from "@/ziwei/types";
+import { loadConstants, loadRender } from "./loader.ts";
+
+// ── 基准样本的类型（iztro 2.5.8 的 JSON 快照） ──
+//
+// 刻意**不**复用 @/ziwei/types 的 Palace / ZiweiChart 来描述样本：那些是「本项目产出」的
+// 契约，样本是**外部数据**，字段集不同（宫名是 iztro 词汇、无借宫字段、可选键可能整键
+// 缺失或为空串 —— 见上面的四处归一化）。星曜的 type / brightness / mutagen 在此放宽为
+// string 也是刻意的：比对器对外部数据不做预设，任何取值先收进来、由断言与白名单去判。
+export interface BaselineStar {
+	name: string;
+	type: string;
+	brightness?: string;
+	mutagen?: string;
+}
+
+export interface BaselinePalace {
+	branch: number;
+	stem: number;
+	/** iztro 口径宫名（如「仆役」），比对前经 normalizePalaceName 翻译 */
+	name: string;
+	stars: BaselineStar[];
+	/** 该宫所属大限区间 `[起, 讫]`（虚岁，闭区间） */
+	decadalRange?: [number, number];
+	isSoulPalace?: boolean;
+	isBodyPalace?: boolean;
+	isCurrentDecadal?: boolean;
+}
+
+export interface BaselineDecadal {
+	startAge: number;
+	endAge: number;
+	palaceBranch: number;
+	/** iztro 口径宫名 */
+	palaceName: string;
+}
+
+export interface BaselineChart {
+	soulBranch: number;
+	bodyBranch: number;
+	fiveElementsClass: number;
+	fiveElementsClassName: string;
+	ziweiPos: number;
+	lunarInfo?: Partial<LunarInfo>;
+	palaces?: BaselinePalace[];
+	decadals?: BaselineDecadal[];
+}
+
+/** fixtures/charts.jsonl 的一行：出生信息 + 基准盘（样本其余字段如 topics 已剔除）。 */
+export interface BaselineSample {
+	birthInfo: BirthInfo;
+	chart: BaselineChart;
+}
+
+/** 一处字段差异（结构化而非布尔，失败时要能一眼看出是哪个字段）。 */
+export interface ChartDiff {
+	path: string;
+	expected: unknown;
+	actual: unknown;
+	note?: string;
+	/** 白名单内的已知差异（仅 keepWhitelisted 模式下会保留并打标） */
+	whitelisted?: boolean;
+}
+
+// 宫名映射**从内核取**，不在此另抄一份。
+// 宫名是项目自己的词汇，`scripts/ziwei/constants.ts` 是它唯一的定义处；比对器只是要把
+// 基准样本的 iztro 词汇翻译成项目词汇才比得起来，本身对宫名没有立场。
+// 另起一份转录只会制造第二个真相源 —— 认表错误的任务交给下面这条注释指向的预言机。
+//
+// ⚠️ 用顶层 await 而非静态 import：ESM 的静态 import 在 loader.ts 注册解析钩子
+//    **之前**就完成了链接，那时 `@/ziwei/constants`（.ts）还解析不了。
+//
+// ⚠️⚠️ 共用同一张表意味着：**表若被写错（比如把「仆役」映射成「官禄宫」），
+// 本文件与内核会一起错，层 1 照旧全绿**。这与 test/README.md 记录的 02 号历史
+// 事故是同一个形状（比对器与内核同源同错）。堵这个盲区的是层 3 的两条**不读本表**
+// 的预言机：invariants.test.ts 的「iztro 直连词法」与「十二宫偏移位置」。
+const { IZTRO_TO_PROJECT_PALACE, BRANCHES } = await loadConstants();
+
+/**
+ * 把**基准样本**的宫名翻成项目口径。
+ *
+ * ⚠️ 只对 baseline 一侧调用，**绝不碰 actual** —— 这是本函数唯一要紧的事。
+ *    若两侧都归一化，「内核忘记映射」（有人回退 algorithm.ts 的 projectPalaceName）
+ *    会让 expected 与 actual 一起退回 iztro 名，差异被吞、回归静默通过。
+ *    单向归一化下同一个回归会报 `expected=夫妻宫, actual=夫妻`，又准又可读。
+ *
+ * 未命中原样返回而不抛错：iztro 哪天改了宫名，应当表现为一条**可读的 diff**，
+ * 而不是把整个套件炸成一堆异常。
+ */
+const normalizePalaceName = (v: string): string => IZTRO_TO_PROJECT_PALACE[v] ?? v;
+
+/**
+ * 十二地支，索引即地支序（0=子 … 11=亥）。取自内核 `constants.ts`，与上面的宫名映射同一次加载。
+ *
+ * @remarks
+ * 此前这里另抄了一份，理由是「比对器是同步函数，而内核模块是异步加载的」—— 但本模块从
+ * 第一行起就用了顶层 `await loadConstants()`，那条理由从未成立；剩下的「这份表是常量、
+ * 不随内核演进而变」是个**假设**，而假设正是该被结构消除的东西。取同一份之后，
+ * 内核若调整地支表，比对器的判据自动跟随。
+ */
+export { BRANCHES };
+
+// ── 已知差异白名单 ──
+//
+// 基准样本由 iztro **2.5.8** 生成，本项目用 **2.6.1**。两版之间 iztro 改了星曜亮度表，
+// 影响**太阳与太阴在酉宫**的庙旺利陷（跨 60 年抽样 360 条实测，差异仅此两条，此外零差异）。
+// 新版取值（酉宫日平、月旺）更合传统口径，故本项目是对的，样本是**旧版的陈旧值**。
+//
+// 白名单条目必须写明 `cause`：它是升级 iztro 时审阅差异的依据，不是掩盖差异的补丁。
+// 只放行**单个字段**（brightness）的差异，不是整颗星 —— 星曜名、type、mutagen 仍严格比对。
+export interface KnownDivergence {
+	star: string;
+	branch: number;
+	/** 样本（iztro 2.5.8）侧的取值 */
+	baseline: string;
+	/** 本项目（iztro 2.6.1）侧的取值 */
+	current: string;
+	cause: string;
+}
+
+export const KNOWN_DIVERGENCES: KnownDivergence[] = [
+	{
+		star: "太阳",
+		branch: 9, // 酉
+		baseline: "dim", // 样本（iztro 2.5.8）
+		current: "normal", // 本项目（iztro 2.6.1）
+		cause: "iztro 2.5.8→2.6.1 亮度表变更：酉宫太阳由陷改判为平",
+	},
+	{
+		star: "太阴",
+		branch: 9,
+		baseline: "dim",
+		current: "bright",
+		cause: "iztro 2.5.8→2.6.1 亮度表变更：酉宫太阴由陷改判为旺",
+	},
+];
+
+function isWhitelisted(
+	starName: string,
+	branch: number,
+	baseline: string | undefined,
+	current: string | undefined
+): boolean {
+	return KNOWN_DIVERGENCES.some(
+		d =>
+			d.star === starName &&
+			d.branch === branch &&
+			d.baseline === baseline &&
+			d.current === current
+	);
+}
+
+// 空值（'' / undefined / null）一律归一为「无」
+const val = (v: string | undefined | null): string | undefined =>
+	v === "" || v === null ? undefined : v;
+
+/** 本项目 `Palace` 中样本也有的字段 —— 比对只覆盖这些。 */
+export const SHARED_PALACE_FIELDS = [
+	"branch",
+	"stem",
+	"name",
+	"decadalRange",
+	"isSoulPalace",
+	"isBodyPalace",
+] as const;
+
+/** 大限的可比字段（飞星派的 stemIndex / stemName / mutagen 两边都不该有）。 */
+export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"] as const;
+
+/**
+ * 依「注入的当前时间」独立重算虚岁期望值。
+ *
+ * 口径：**虚岁**，以农历年（正月初一）为界 —— 不是生日、也不是立春。对应 iztro 的默认
+ * `ageDivide: 'normal'`（见 `iztro/lib/astro/FunctionalAstrolabe.js`）：
+ *     nominalAge = 目标日农历年 − 出生农历年 + 1
+ * 这正是 `decadals[].startAge/endAge` 所在的域，故 currentAge 必须用同一口径才能比。
+ *
+ * ⚠️ 这里**独立换算**，刻意不引用内核的 currentAge。
+ *    2026-09 之前两边都写 `getFullYear() - year`（周岁），域不同却公式同形，
+ *    于是内核算错、比对器跟着错，测试恒绿 —— 大限错位因此潜伏了很久。
+ *    比对器的期望值必须来自另一条计算路径，否则它就只是内核的复读机。
+ *    （更独立的预言机：iztro 自身的 horoscope().age.nominalAge，见 invariants.test.ts。）
+ *
+ * @param birthInfo 出生公历（只取年月日）
+ * @param [now] 注入「当前时间」以便测试漂移逻辑，默认取真实时间
+ */
+export function expectedAge(birthInfo: Pick<BirthInfo, "year" | "month" | "day">, now: Date = new Date()): number {
+	const lunarYearAt = (d: Date): number =>
+		Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate()).getLunar().getYear();
+	const birth = new Date(birthInfo.year, birthInfo.month - 1, birthInfo.day);
+	return lunarYearAt(now) - lunarYearAt(birth) + 1;
+}
+
+export interface CompareOptions {
+	/** 注入「当前时间」以便测试漂移逻辑，默认取真实时间 */
+	now?: Date;
+	/**
+	 * 保留白名单内的已知差异并打上 `whitelisted: true`（默认丢弃）。
+	 * 全量核验脚本用它统计白名单放行了多少处，以便升级 iztro 时判断
+	 * 这些已知差异是仍在、还是已消失（消失即说明白名单该清理了）。
+	 */
+	keepWhitelisted?: boolean;
+}
+
+/** compareChart 内部落 diff 的回调签名（传给 compareStars 复用）。 */
+type PushDiff = (
+	path: string,
+	expected: unknown,
+	got: unknown,
+	note?: string,
+	whitelisted?: boolean
+) => void;
+
+/**
+ * 比对本项目排盘结果与基准样本。
+ * @param actual   本项目 generateChart() 的输出
+ * @param baseline 样本里的 chart
+ * @param [opts]
+ * @returns 结构化 diff 列表，空数组表示完全一致
+ */
+export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: CompareOptions = {}): ChartDiff[] {
+	const now = opts.now ?? new Date();
+	const diffs: ChartDiff[] = [];
+	const push: PushDiff = (path, expected, got, note, whitelisted) => {
+		if (whitelisted && !opts.keepWhitelisted) return;
+		const d: ChartDiff = { path, expected, actual: got };
+		if (note) d.note = note;
+		if (whitelisted) d.whitelisted = true;
+		diffs.push(d);
+	};
+
+	// ── 顶层标量 ──
+	for (const k of ["soulBranch", "bodyBranch", "fiveElementsClass", "fiveElementsClassName", "ziweiPos"] as const) {
+		if (actual[k] !== baseline[k]) push(k, baseline[k], actual[k]);
+	}
+
+	// ── 农历 ──
+	const aL = actual.lunarInfo;
+	const bL = baseline.lunarInfo ?? {};
+	for (const k of ["lunarYear", "lunarMonth", "lunarDay", "yearStem", "yearBranch", "isLeapMonth"] as const) {
+		if (aL[k] !== bL[k]) push(`lunarInfo.${k}`, bL[k], aL[k]);
+	}
+
+	// ── 十二宫：按 branch 建索引，不依赖数组顺序 ──
+	const aByBranch = new Map((actual.palaces ?? []).map(p => [p.branch, p]));
+	const bByBranch = new Map((baseline.palaces ?? []).map(p => [p.branch, p]));
+	for (let b = 0; b < 12; b++) {
+		const aP = aByBranch.get(b);
+		const bP = bByBranch.get(b);
+		const label = `${BRANCHES[b]}宫(branch=${b})`;
+		if (!aP) {
+			push(`palaces[${label}]`, "存在", "缺失");
+			continue;
+		}
+		if (!bP) {
+			push(`palaces[${label}]`, "缺失", "存在");
+			continue;
+		}
+		for (const f of SHARED_PALACE_FIELDS) {
+			if (f === "branch") continue;
+			if (f === "name") {
+				// 宫名唯一需要翻译（见 normalizePalaceName）。翻译后仍是**严格相等**比对，
+				// 没有跳过任何字段 —— 性质是词汇翻译，不是放宽断言。
+				const want = normalizePalaceName(bP.name);
+				if (aP.name !== want) {
+					push(
+						`palaces[${label}].name`,
+						want,
+						aP.name,
+						want !== bP.name ? `基准原文「${bP.name}」是 iztro 旧口径` : undefined
+					);
+				}
+				continue;
+			}
+			const a = f === "decadalRange" ? JSON.stringify(aP[f] ?? null) : aP[f];
+			const bb = f === "decadalRange" ? JSON.stringify(bP[f] ?? null) : bP[f];
+			if (a !== bb) push(`palaces[${label}].${f}`, bP[f] ?? null, aP[f] ?? null);
+		}
+		compareStars(aP.stars ?? [], bP.stars ?? [], label, b, push);
+	}
+
+	// ── 大限 ──
+	const aD = actual.decadals ?? [];
+	const bD = baseline.decadals ?? [];
+	if (aD.length !== bD.length) {
+		push("decadals.length", bD.length, aD.length);
+	} else {
+		for (let i = 0; i < bD.length; i++) {
+			for (const f of DAXIAN_FIELDS) {
+				if (f === "palaceName") {
+					// 同 palaces[].name：翻译 baseline 一侧后再严格相等比对
+					const want = normalizePalaceName(bD[i].palaceName);
+					if (aD[i].palaceName !== want) {
+						push(
+							`decadals[${i}].palaceName`,
+							want,
+							aD[i].palaceName,
+							want !== bD[i].palaceName
+								? `基准原文「${bD[i].palaceName}」是 iztro 旧口径`
+								: undefined
+						);
+					}
+					continue;
+				}
+				if (aD[i][f] !== bD[i][f]) push(`decadals[${i}].${f}`, bD[i][f], aD[i][f]);
+			}
+		}
+	}
+
+	// ── 随年份漂移的三个字段：重算期望值，而非直接抄样本的陈旧快照 ──
+	// algorithm.ts 的 currentAge 是虚岁（农历年差 +1）。样本生成于 2026 年，
+	// 直接比对会在跨过下一个农历年（正月初一）后全线失败。
+	// 受影响的共三处：currentAge、currentDecadalIndex、palace.isCurrentDecadal —— 都在下面重算。
+	const age = expectedAge(actual.birthInfo, now);
+	if (actual.currentAge !== age) push("currentAge", age, actual.currentAge, "按当前年份重算");
+	const expIdx = bD.findIndex(d => age >= d.startAge && age <= d.endAge);
+	if (actual.currentDecadalIndex !== expIdx) {
+		push("currentDecadalIndex", expIdx, actual.currentDecadalIndex, "按当前年份重算");
+	}
+
+	// ── palace.isCurrentDecadal ──
+	// 样本 palace 里**有**这个字段，但同样是 2026 年的快照，故不能直接比（理由同上）。
+	// 改为按「重算的虚岁是否落在该宫大限区间内」重新推导应有的标记，用的是
+	// **基准样本的 decadalRange**（外部数据）+ **重算的 age**，去核对内核的标记逻辑。
+	//
+	// 为什么不复用上面的 expIdx：expIdx 只回答「当前走到第几步」，不回答「标在了哪个宫」。
+	// 内核分两处独立完成这件事（algorithm.ts 里由 decadalRange 循环标记、由 decadals 求 index），
+	// 两者理论上可以对不上。
+	//
+	// ⚠️ 效力边界（实测，非推测）：本检查**依赖 expectedAge()**，而它正是历史事故里与内核
+	//    一起写错的那条路径。实测把内核与比对器**同时**退回周岁，300 条盘的 currentAge /
+	//    currentDecadalIndex / isCurrentDecadal 三者本检查**全部保持全绿**，唯一变红的是层 3 的
+	//    horoscope() 预言机。即：本检查能抓「只有内核改了」的回归（已用注入 bug 验证过会红），
+	//    **抓不到「内核与比对器同源同错」**——那始终是层 3 外部预言机的职责，不可互相替代。
+	for (let b = 0; b < 12; b++) {
+		const aP = aByBranch.get(b);
+		const bP = bByBranch.get(b);
+		if (!aP || !bP) continue; // 宫位缺失已在上面报过，不重复计入
+		const range = bP.decadalRange;
+		const should = Array.isArray(range) && age >= range[0] && age <= range[1];
+		if (!!aP.isCurrentDecadal !== should) {
+			push(
+				`palaces[${BRANCHES[b]}宫(branch=${b})].isCurrentDecadal`,
+				should,
+				!!aP.isCurrentDecadal,
+				`按重算虚岁 ${age} 落在区间 ${JSON.stringify(range)} 推导`
+			);
+		}
+	}
+
+	return diffs;
+}
+
+/** 比对一个宫内的星曜集合：按星名建索引，比对 type / brightness / mutagen。 */
+function compareStars(
+	aStars: Star[],
+	bStars: BaselineStar[],
+	label: string,
+	branch: number,
+	push: PushDiff
+): void {
+	const aByName = new Map(aStars.map(s => [s.name, s]));
+	const bByName = new Map(bStars.map(s => [s.name, s]));
+
+	for (const name of bByName.keys()) {
+		if (!aByName.has(name)) push(`palaces[${label}].stars`, `含 ${name}`, "缺该星");
+	}
+	for (const name of aByName.keys()) {
+		if (!bByName.has(name)) push(`palaces[${label}].stars`, "无该星", `多出 ${name}`);
+	}
+
+	for (const [name, bS] of bByName) {
+		const aS = aByName.get(name);
+		if (!aS) continue;
+		if (aS.type !== bS.type) push(`palaces[${label}].stars[${name}].type`, bS.type, aS.type);
+
+		const aB = val(aS.brightness);
+		const bB = val(bS.brightness);
+		if (aB !== bB) {
+			const wl = isWhitelisted(name, branch, bB, aB);
+			push(
+				`palaces[${label}].stars[${name}].brightness`,
+				bB,
+				aB,
+				wl ? "已知差异（白名单）" : undefined,
+				wl
+			);
+		}
+
+		const aH = val(aS.mutagen);
+		const bH = val(bS.mutagen);
+		if (aH !== bH) push(`palaces[${label}].stars[${name}].mutagen`, bH, aH);
+	}
+}
+
+/** 把 diff 列表渲染成可读的失败信息（node:test 的断言消息里用）。 */
+export function formatDiffs(diffs: ChartDiff[], limit = 25): string {
+	if (!diffs.length) return "无差异";
+	const head = diffs
+		.slice(0, limit)
+		.map(
+			d =>
+				`  ${d.whitelisted ? "○" : "✗"} ${d.path}\n      基准=${JSON.stringify(d.expected)}  实际=${JSON.stringify(d.actual)}${d.note ? `  (${d.note})` : ""}`
+		);
+	if (diffs.length > limit) head.push(`  …… 另有 ${diffs.length - limit} 处差异未列出`);
+	return `共 ${diffs.length} 处差异：\n${head.join("\n")}`;
+}
+
+/**
+ * 盘指纹：快速判定两张盘是否逐宫一致（用于 CLI 的 --branch 12 ≡ 次日 --branch 0 之类断言）。
+ *
+ * @remarks
+ * **唯一实现在 `scripts/cli/render.ts`**，此处只是转出 —— 本模块与 CLI 走同一份代码，
+ * 不存在「改动其一时必须同步另一个」。此前这里另有一份逐行副本，两侧注释互相提醒却
+ * **没有任何断言盯着**，只在一侧加排序就会静默分叉（指纹仍各不相同，断言照旧全绿）。
+ *
+ * `loader.ts` 早已提供 `loadRender()`，测试本来就在加载 CLI 的模块，
+ * 「CLI 不能反向依赖 test/」这条理由在方向上并不成立。
+ */
+const { chartSignature } = await loadRender();
+export { chartSignature };

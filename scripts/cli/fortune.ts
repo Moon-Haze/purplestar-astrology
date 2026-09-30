@@ -143,7 +143,7 @@ export function overviewSection(chart: ZiweiChart, liuNianYear: number): string[
 		`【运限速览】虚岁 ${chart.currentAge} · 大限 ${
 			dx ? `${dx.startAge}-${dx.endAge}岁 ${dx.palaceName}(${BRANCHES[dx.palaceBranch]})` : "童限未起运"
 		} · 流年 ${liuNianYear} ${ganZhi} 流年命宫${BRANCHES[lnBranch]}·${lnPalace?.name ?? "?"} · 小限${BRANCHES[xx.branch]}·${xx.name}`,
-		"【专题深入】--info 基本信息 · --geju 格局 · --sihua 四化 · --daxian [虚岁] 大限 · --xiaoxian [虚岁] 小限 · --liunian [年] 流年 · --focus <宫> 宫盘",
+		"【专题深入】--pattern 格局 · --mutagen 四化 · --decadal [虚岁] 大限 · --ages [虚岁] 小限 · --yearly [年] 流年 · --focus <宫> 宫盘深化 · --palaces 十二宫详表 · --topic <key> 主题论断",
 	];
 }
 

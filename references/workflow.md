@@ -73,7 +73,7 @@ CLI 已给出命盘数据与格局结论。需要展开论证时，**直接读�
 
 ```bash
 # 城市经度（用户只给城市名时）
-node scripts/purple-star.ts cities --search 成都
+node scripts/purple-star.ts stars --search 成都  # 城市查询命令已删，查星曜释义
 ```
 
 ⚠️ **合盘（方法论、十四主星在夫妻宫断语、四化入夫妻宫）已不在本技能里**——连同 `ziwei/synastry-knowledge.ts` 一并搬去了 `purplestar-synastry`。用户要合盘、合婚、看两人配不配，整个转过去，别在这里凑。

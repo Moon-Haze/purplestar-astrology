@@ -1,11 +1,11 @@
 /**
- * 命盘视图层 —— 读 `purplestar-astrology … analyze --json` 的输出，并对其做只读访问。
+ * 命盘视图层 —— 读排盘命令 `astrology --json` 的输出，并对其做只读访问。
  *
  * @remarks
  * ## 本 skill 不排盘
  *
  * 命盘由排盘解读 skill（`purplestar-astrology`）产出，本 skill 只**消费**它
- * `analyze --json` 的输出。故本文件里没有一行排盘逻辑、也没有 `iztro` 依赖 ——
+ * `astrology --json` 的输出。故本文件里没有一行排盘逻辑、也没有 `iztro` 依赖 ——
  * 它做三件事：解析那份 JSON、按宫名 / 地支查宫、把宫位里的主星取出来。
  *
  * ## 为什么类型契约是**本文件自带的**，而不是 import 源的 `ziwei/types.ts`
@@ -60,7 +60,7 @@ export const branchName = (branch: number): string => BRANCHES[branch] ?? String
 
 // ══════════════════════ 命盘类型契约 ══════════════════════
 // ⚠️ 下面这组 interface 是**消费方声明**：只列本 skill 真的读到的字段。
-//    它们由 `purplestar-astrology` 的 `analyze --json` 产出（源头是 `ziwei/types.ts`），
+//    它们由 `astrology --json` 产出（源头是 `ziwei/types.ts`），
 //    但不是那份内核类型的副本 —— 见文件头「为什么类型契约是本文件自带的」。
 
 /** 四化名。 */
@@ -251,9 +251,9 @@ export function readAnalyzeJson(file: string, side: string): AnalyzeJson {
 		throw new Error(
 			`读不到${side}方命盘文件：${file}\n` +
 				`  ${(err as Error).message}\n` +
-				`  请先用 purplestar-astrology 排出命盘，再把它交给本命令：\n` +
-				`    node <purplestar-astrology>/scripts/purple-star.ts analyze \\\n` +
-				`      --date 1990-05-15 --time 09:30 --city 北京 --gender male --json > ${file}`
+				`  请先用本 CLI 的 astrology 排出命盘，再把它交给本命令：\n` +
+				`    node scripts/purple-star.ts astrology \\\n` +
+				`      --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json > ${file}（示例数据为虚构）`
 		);
 	}
 
@@ -275,7 +275,7 @@ export function readAnalyzeJson(file: string, side: string): AnalyzeJson {
 		throw new Error(
 			`${side}方命盘文件里没有命盘对象（顶层键 \`chart\`）：${file}\n` +
 				`  顶层实际有：${Object.keys(o).join("、") || "（空对象）"}\n` +
-				`  它应当是 \`analyze --json\` 的输出；\`chart --json\` 的输出**顶层就是命盘**，\n` +
+				`  它应当是 \`astrology --json\` 的输出；\`astrology --palaces --json\` 的输出**顶层就是命盘**，\n` +
 				`  没有 \`chart\` 键，也没有合盘需要的四化落宫与排盘依据。`
 		);
 	}
@@ -284,7 +284,7 @@ export function readAnalyzeJson(file: string, side: string): AnalyzeJson {
 	if (!Array.isArray(located)) {
 		throw new Error(
 			`${side}方命盘文件缺 \`nativeSiHua.located\`（生年四化落宫）：${file}\n` +
-				`  「四化入夫妻宫」一节依赖它，缺了会静默少一节结论。请用 \`analyze --json\` 重新生成。`
+				`  「四化入夫妻宫」一节依赖它，缺了会静默少一节结论。请用 \`astrology --json\` 重新生成。`
 		);
 	}
 

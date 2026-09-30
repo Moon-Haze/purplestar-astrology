@@ -5,12 +5,14 @@
  * 本文件只做四件事：**定位内核根 → 注册 TS 解析钩子 → 启动期内核自检 → 把命令分发出去**。
  * 命令实现、渲染、出生信息解析、自检都**不在**这里，见 scripts/cli/：
  *
- *   cli/args.ts        CLI 参数表与解析（纯函数，不依赖内核）
- *   cli/flag-scope.ts  本 skill 认哪些旗标（⚠️ 收窄层的遗留物，全仓只剩这一份，见该文件）
+ *   cli/args.ts        参数声明表 OPTION_GROUPS + OPTION_ALIASES + 解析（util.parseArgs 底座）
+ *   cli/option-scope.ts 参数作用域（前缀表已退役为空表）
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
- *   cli/commands.ts    各命令实现 + 命令表
- *   cli/selftest.ts    回归自检（留在 scripts/ 而非 test/，理由见该文件）
+ *   cli/astrology.ts   排盘分析一条命令（四命令合一：概览默认 + 功能参数分发）
+ *   cli/{classics,synastry,stars}.ts  各命令实现；cli/commands.ts 只做注册薄层
+ *   cli/config.ts      --config / --template 配置输入；cli/help.ts  help 渲染（man 七节）
+ *   cli/selftest.ts    回归自检（排盘 / 古籍 / 合盘三段合一）
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
  *   scripts/ziwei/algorithm.ts   排盘主流程
@@ -20,11 +22,9 @@
  *   scripts/ziwei/cities.ts      中国城市经纬度（真太阳时校正）
  *   scripts/ziwei/constants.ts   天干地支 / 四化表 / 星曜释义
  *
- * ⚠️ 合盘与古籍检索的内核**不在本 skill 里**（2026-09-27 起源不再持有它们）：
- *    `ziwei/synastry-knowledge.ts` 归 `purplestar-synastry`，`classics/` 归
- *    `purplestar-classics`。本 skill 的 CLI 相应地也只剩排盘解读相关的命令 ——
- *    要合盘或查古籍原文，去调那两边的 CLI。解读需要引证古籍原句时同理
- *    （见 `SKILL.md` 的知识源一节）。
+ * 2026-09-30 三 skill 合一：classics / synastry 的内核也已住进本仓
+ * `scripts/classics/` 与 `scripts/synastry/`，命令并入本 CLI —— 单 skill 单入口，
+ * 排盘（astrology）、古籍（classics）、合盘（synastry）都在这里（见 `SKILL.md`）。
  *
  * 依赖 Node ≥ 22.15（module.registerHooks + 原生 TS 类型擦除）。
  * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
@@ -241,7 +241,7 @@ const REQUIRED_EXPORTS = [
  *
  * ⚠️ 命令名直接来自 `argv`，故查表必然可能未命中 —— `COMMANDS` 的值类型显式带 `| undefined`。
  *
- * `--help` 出现在**任何位置**都打印 help，包括 `analyze --help` 这种。这是刻意的：
+ * `--help` 出现在**任何位置**都打印 help，包括 `astrology --help` 这种。这是刻意的：
  * `--help` 不在参数声明表里，放它走到 `parseArgs` 只会得到一句「未知参数 --help」，
  * 而用户此刻想要的显然是用法。判定提前到分发之前，`parseArgs` 因此永远见不到它。
  */

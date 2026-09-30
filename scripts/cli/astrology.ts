@@ -171,7 +171,7 @@ export function cmdAstrology(args: CliArgs) {
 				...rows,
 				"",
 				"view 可选：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月）",
-				"示例：node scripts/purple-star.ts astrology --date 1990-05-15 --branch 5 --gender male --topic love",
+				"示例：node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州 --topic love（示例数据为虚构）",
 			].join("\n");
 		}
 		const topic = String(args.topic) as TopicKey;

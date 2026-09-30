@@ -42,9 +42,9 @@ export function cmdSynastry(args: CliArgs): string {
 	if (typeof args.charts !== "string") {
 		throw new Error(
 			`缺少 --charts：本命令不排盘，两方命盘都得由排盘命令的 --json 产出。\n` +
-				`  ① 先各排一张盘（注意 --json 不带 --palaces —— 后者顶层没有四化落宫与排盘依据）：\n` +
-				`     node scripts/purple-star.ts astrology --date 1990-05-15 --time 09:30 --city 北京 --gender male --json > /tmp/a.json\n` +
-				`     node scripts/purple-star.ts astrology --date 1993-08-22 --time 14:00 --city 上海 --gender female --json > /tmp/b.json\n` +
+				`  ① 先各排一张盘（注意 --json 不带 --palaces —— 后者顶层没有四化落宫与排盘依据；示例数据为虚构）：\n` +
+				`     node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json > /tmp/a.json\n` +
+				`     node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --json > /tmp/b.json\n` +
 				`  ② 再交给本命令：\n` +
 				`     node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`
 		);

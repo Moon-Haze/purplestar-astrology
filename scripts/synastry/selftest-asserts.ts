@@ -253,7 +253,9 @@ export function asserts(): Assertion[] {
 			// 没有 `chart` 键，更没有四化落宫与排盘依据。照收会让合盘静默少两节结论。
 			const wrong = join(tmp, "wrong.json");
 			writeFileSync(wrong, JSON.stringify({ birthInfo: {}, palaces: [], soulBranch: 0 }));
-			const r = run(["synastry", "--a-chart", wrong, "--b-chart", fileB]);
+			// ⚠️ 输入必须是 --charts 形态：--a-chart 在解析层就是未知参数，到不了读文件的
+			//    契约校验（2026-09-30 评审发现的原断言假绿——子串 "chart" 被参数名误满足）。
+			const r = run(["synastry", "--charts", `${wrong},${fileB}`]);
 			if (r.code === 0) throw new Error("顶层无 chart 键却退出码为 0 —— 契约校验失效");
 			if (!r.err.includes("chart"))
 				throw new Error(`报错未提到缺失的 chart，实得：${r.err.trim()}`);

@@ -338,7 +338,7 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 				lngNote = `${prov.name}（按省会 ${prov.cities[0]?.name} 计）`;
 			} else {
 				throw new Error(
-					`未收录城市：${cityRaw}（可用 \`cities --search <关键词>\` 查询，或改用 --lng 指定经度）`
+					`未收录城市：${cityRaw}（可试省+市连写如「山东青岛」，或改用 --province / --lng 直接指定）`
 				);
 			}
 		}
