@@ -92,7 +92,7 @@ scripts/
 ├── synastry/                 合盘内核：synastry-knowledge.ts + chart-view.ts + 合盘逻辑
 ├── ziwei/                    排盘内核（原样平移）
 └── cli/
-    ├── args.ts               参数面（OPTION_GROUPS + 解析）
+    ├── args.ts               参数面（OPTION_GROUPS 声明表 + 手写单趟扫描，见 §2.8）
     ├── option-scope.ts         参数作用域（前缀机制保留空表——--charts 单参数后 a-/b- 前缀不再需要）
     ├── config.ts             新增：--config / --template 的读取与合并
     ├── birth-info.ts / birth-info-defs.ts / render.ts / yun.ts
