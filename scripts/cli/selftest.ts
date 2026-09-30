@@ -47,6 +47,7 @@ import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { Lunar } from "lunar-typescript";
 import { asserts as classicAsserts } from "@/classics/selftest-asserts";
 import { asserts as synastryAsserts } from "@/synastry/selftest-asserts";
+import { cmdStars } from "./stars";
 
 /**
  * 排盘断言的固定样例盘：1990-05-15 巳时（时辰序号 5），男。
@@ -1036,6 +1037,28 @@ export function cmdSelftest(ctx: CliContext): string {
 				`SKILL.md 提到但 args.ts 未声明的参数：${unknown.map(n => "--" + n).join("、")}`
 			);
 		return `${names.length} 种参数写法全部有声明`;
+	});
+
+	ok("命令拆分：cities 命令已删（数据表保留）；analyze → astrology 改名；stars 仍可检索", () => {
+		// 2026-09-30 命令面收敛（spec §3.1）：cities 只删查询命令（ziwei/cities.ts 数据表
+		// 仍是 --city 容错解析的依据，保留）；analyze 拆进 cli/astrology.ts 并改名 cmdAstrology
+		// （四命令融合留 Task 6，本条只钉「拆位与改名」这个中间态）。
+		const src = readFileSync(resolve(ctx.root, "cli", "commands.ts"), "utf8");
+		const table = src.match(/const COMMAND_TABLE = \{([\s\S]*?)\} satisfies/)?.[1];
+		if (!table) throw new Error("未从 commands.ts 抽到 COMMAND_TABLE —— 声明块形状已变");
+		const defined = [...table.matchAll(/^\t+"?([a-z][a-z0-9-]*)"?:/gm)].map(m => m[1]);
+		if (defined.includes("cities")) throw new Error("cities 仍在 COMMAND_TABLE —— 应删（spec §3.1）");
+		if (defined.includes("analyze")) throw new Error("analyze 仍在 COMMAND_TABLE —— 应改名 astrology");
+		if (!defined.includes("astrology") || !defined.includes("chart") || !defined.includes("topic"))
+			throw new Error(`拆位不完整（应含 astrology/chart/topic），实得：${defined.join("、")}`);
+		// cities 删除后的数据表仍在（--city 容错解析在用）
+		const cities = readFileSync(resolve(ctx.root, "ziwei", "cities.ts"), "utf8");
+		if (!/export const PROVINCES/.test(cities)) throw new Error("ziwei/cities.ts 的 PROVINCES 不在了");
+		// stars 检索不受拆分影响（直调拆出的 cmdStars）
+		const s = cmdStars({ _: [], search: "紫微" });
+		if (!s.includes("紫微") || !s.includes("关键词"))
+			throw new Error(`stars --search 紫微 的释义不见了，实得：${s.slice(0, 60)}`);
+		return "命令面收敛中间态就位";
 	});
 
 	ok("参数面：SKILL.md 命令速查表提到的命令都在 commands.ts 的命令表里", () => {

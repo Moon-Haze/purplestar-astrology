@@ -116,7 +116,7 @@ async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 
 /** 永远走真子进程（防漂移冒烟用）：进程内路径替代不了它对子进程入口的覆盖。 */
 async function cliReal(args: string[]): Promise<string> {
-	const { stdout } = await execFileAsync("node", [CLI.astrology, "analyze", ...args], {
+	const { stdout } = await execFileAsync("node", [CLI.astrology, "astrology", ...args], {
 		cwd: SKILL_ROOT,
 	});
 	return stdout;
@@ -143,7 +143,7 @@ async function cliCmd(sub: string, args: string[], skill: Skill = "astrology"): 
 
 /** 跑一次 CLI（analyze 子命令），返回 stdout。 */
 async function cli(args: string[]): Promise<string> {
-	return cliCmd("analyze", args);
+	return cliCmd("astrology", args);
 }
 
 /** 跑一次 CLI 并解析 --json 输出。 */
@@ -1450,29 +1450,47 @@ describe("CLI 端到端", () => {
 			assert.equal(findLongitude("海南"), null, "省名不是城市名，不得瞎猜");
 		});
 
-		it("CLI 层把歧义提示透出，并受同样的 5 个上限约束", async () => {
-			// 解析层记了 ambiguous 而 CLI 不打印，用户照样不知道取了哪个市 —— 这条盯透出。
-			const t = await cliCmd("cities", ["--search", "海"]);
-			const line = t.split("\n").find(l => l.includes("存在同名候选"));
-			assert.ok(line, `应提示同名候选，实得输出：\n${t}`);
-			assert.ok(line.includes("已取最短名"), "应说明按什么规则取的");
-			const listed = line
-				.replace(/^.*存在同名候选：/, "")
-				.replace(/，已取最短名.*$/, "")
-				.split("、");
-			assert.equal(listed.length, 5, `提示里的候选也应是 5 个，实得 ${listed.length} 个`);
+		it("cities 命令已删（2026-09-30）：未知命令并列出可用命令", async () => {
+			// spec §3.1 城市经纬度查询命令退役（数据表保留，--city 容错解析在用）。
+			// 查城市的正路从此是 `astrology --city <名>`（解析结果见【出生地解析】节）。
+			// ⚠️ 真子进程：未知命令的报错发生在命令分发层，进程内快捷路径不覆盖它。
+			const { stderr } = await execFileAsync("node", [
+				CLI.astrology,
+				"cities",
+				"--search",
+				"海",
+			]).catch(e => e);
+			assert.ok(stderr.includes("未知命令"), `应报未知命令，实得：${stderr}`);
+			assert.ok(stderr.includes("astrology"), `应列出可用命令，实得：${stderr}`);
 		});
 
-		it("「未收录」与「容错可解析」文案互斥", async () => {
-			// 同一段输出先否定再自证是自相矛盾的：说「未收录」就不能再说「能容错解析」。
-			const miss = await cliCmd("cities", ["--search", "不存在XYZ"]);
-			assert.ok(miss.includes("未收录"), "真查不到应说未收录");
-			assert.ok(!miss.includes("容错解析"), "查不到就不该再提容错解析");
-
-			const fuzzy = await cliCmd("cities", ["--search", "石家庄市"]);
-			assert.ok(fuzzy.includes("未直接命中"), "没直接命中应说明");
-			assert.ok(fuzzy.includes("容错解析"), "应告诉用户排盘时能识别");
-			assert.ok(!fuzzy.includes("未收录"), "能解析就不能说未收录");
+		it("「未收录」与「容错可解析」文案互斥（排盘路径透出）", async () => {
+			// cities 命令删除后，容错解析的说明由排盘路径的【出生地解析】节承担。
+			// 同一段输出先否定再自证是自相矛盾的：说「未收录」就不能再静默落 120°。
+			const t = await cli([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--city",
+				"石家庄市",
+			]);
+			assert.ok(t.includes("【出生地解析】"), "容错命中应说明按什么解析");
+			assert.ok(t.includes("石家庄"), "应给出解析目标");
+			// 真未收录必须报错退出，不得静默按 120° 排盘（spec §1.2「查不到报错不静默」）
+			const stderr = await cliFails([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--city",
+				"不存在XYZ",
+			]);
+			assert.ok(stderr.includes("未收录"), `真查不到应报未收录，实得：${stderr}`);
 		});
 	});
 

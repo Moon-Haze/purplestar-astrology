@@ -113,13 +113,12 @@ node scripts/purple-star.ts analyze \
 
 | 命令                             | 用途                                                                     |
 | -------------------------------- | ------------------------------------------------------------------------ |
-| `analyze`                        | **主力命令**。精简概览（总览 + 运限速览）+ 专题旗标族深入（可叠加）        |
+| `astrology`                      | **主力命令**（原 analyze，2026-09-30 更名）。精简概览（总览 + 运限速览）+ 专题参数族深入（可叠加） |
 | `chart`                          | 纯排盘十二宫（要逐宫详表时用）                                           |
 | `topic --topic <key> [--view …]` | 主题论断（13 主题动态推算，含知识来源分级提示）                          |
 | `stars [--search <星名>]`        | 星曜释义                                                                 |
-| `cities --search <城市>`         | 城市经度                                                                 |
 | `classics [--search <关键词>]`   | 古籍原文检索（骨髓赋 / 全集 / 全书；2026-09-30 三 skill 合一并入）       |
-| `synastry --a-chart <a> --b-chart <b>` | 合盘（双宫联参；读两份 `analyze --json` 产物；2026-09-30 并入）   |
+| `synastry --a-chart <a> --b-chart <b>` | 合盘（双宫联参；读两份 `astrology --json` 产物；2026-09-30 并入）  |
 | `selftest`                       | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次 |
 
 高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `1990-5-15 9:30 男 北京`（按形态归类）；专题深入 `--info` / `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>`（可叠加，拼音别名 `--geju`/`--sihua`/`--liunian`/`--daxian`/`--xiaoxian` 仍被识别）；输出 `--json`。
