@@ -42,6 +42,14 @@ analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中
 - `--topic` 给了 `--view` 才有意义；不带 `--topic` 时列 13 主题清单（原 topic 命令行为）。
 - 出生信息 15 个旗标不变（已英文）。
 
+### 1.1 拼音别名（英文主名 + 中文拼音双识别）
+
+英文为主名（help / SKILL.md / 文档一律用主名）；**拼音别名同时被识别**（解析层归一到主名）：
+`geju→pattern`、`sihua→transform`、`liunian→annual`、`liuyue→monthly`、`daxian→decadal`、`xiaoxian→ages`。
+
+- 实现单点：`FLAG_ALIASES` 表（args.ts），`checkFlagName` 与归一层各查一次；cac 只注册主名，help 在旗标描述尾注「别名：--geju」。
+- 与「宁可报错不静默」不冲突：别名是**显式声明**的映射，不是拼错容错——`--patern` 仍然报错，`suggestFlag` 建议主名 `--pattern`。
+
 ## 2. 仓库重组：整个仓库 = 一个 skill
 
 ### 2.1 形态
@@ -99,7 +107,7 @@ scripts/
 
 | 拼音文件 | 语义 | 新名 |
 | --- | --- | --- |
-| `ziwei/sihua.ts` | 四化 | `mutagen.ts`（iztro 术语，与 `--mutagen` 一致） |
+| `ziwei/sihua.ts` | 四化 | `transform.ts`（与 `--transform` 一致） |
 | `cli/yun.ts` | 运限专题 | `fortune.ts` |
 | `patterns/ji-chu-ge.ts` | 基础格局（常见轻量判定） | `basic.ts` |
 | `patterns/shang-ge.ts` | 上格（条件最严） | `superior.ts` |
@@ -107,12 +115,12 @@ scripts/
 | `patterns/shou-lian-ge.ts` | 收敛组（自 db-analysis 归入） | `converged.ts` |
 | `patterns/zhu-li-ge.ts` | 助力格（吉星夹拱锦上添花） | `enhancing.ts` |
 | `patterns/e-ge.ts` | 恶格（煞忌刑伤） | `malefic.ts` |
-| `patterns/ming-gong-summary.ts` | 命宫摘要 | `soul-summary.ts`（iztro 命宫 = Soul Palace） |
+| `patterns/ming-gong-summary.ts` | 命宫摘要 | `life-summary.ts`（英文命理社区通行 Life Palace；iztro 接口层 `earthlyBranchOfSoulPalace` 是库 API 名，不动） |
 | `analysis/views/daxian.ts` | 当前大限分析 | `decadal.ts`（与 `--decadal` 一致） |
 | `analysis/views/liunian.ts` | 流年 + 流月分析 | `annual.ts`（与 `--annual` 一致） |
 | `analysis/views/kuiyue.ts` | 魁钺贵人倾向 | `patron.ts` |
 | `analysis/views/sanfang.ts` | 三方四正联动 | `trine.ts` |
-| `analysis/views/sihua.ts` | 本命四化会照 | `mutagen.ts`（与目录两层各一，路径区分） |
+| `analysis/views/sihua.ts` | 本命四化会照 | `transform.ts`（与目录两层各一，路径区分） |
 
 **保留拼音**（「尽力」的边界）：classics 的 `data/gusuifu.ts`（骨髓赋）/ `quanji.ts`（全集）/ `quanshu.ts`（全书）是**古籍书名专名**，无通行英文名，转译反而丢失可检索性。
 
