@@ -10,7 +10,7 @@
 // 用完整语料**验过（`verify-source.ts` 逐字节互验，要 5.5 GB 的 reference/ 语料）。
 // `npm test` 里跑的是 `sample-source.test.ts` 的**合成行** —— 而合成行编码的是
 // 「我以为真实行长什么样」：列名、类型、数组形状一变，合成行照旧通过。
-// 更隐晦的是 `hasSiHuaKey` 那条规则（键的存在性 vs 值为 `""`）—— 文件头自己写着
+// 更隐晦的是 `hasMutagenKey` 那条规则（键的存在性 vs 值为 `""`）—— 文件头自己写着
 // 「搞错了 npm test 也不会红」。
 //
 // 本脚本把一小片真实行固化进 `test/fixtures/raw-rows.json`，于是 CI 里能断言：
@@ -40,10 +40,10 @@ const FIX_DIR = resolve(HERE, "../fixtures");
 
 /** charts.jsonl 的一行（只声明挑选用得上的字段，其余不解析）。 */
 interface FixtureLine {
-	birthInfo: { year: number; month: number; day: number; hour: number; gender: string };
+	birthInfo: { year: number; month: number; day: number; timeIndex: number; gender: string };
 	chart: {
 		lunarInfo: { isLeapMonth: boolean };
-		palaces: Array<{ stars: Array<{ name: string; siHua?: string }> }>;
+		palaces: Array<{ stars: Array<{ name: string; mutagen?: string }> }>;
 	};
 }
 
@@ -65,7 +65,7 @@ function pickSamples(parsed: FixtureLine[]): Array<{ why: string; line: FixtureL
 	const taken = new Set<string>();
 	const keyOf = (f: FixtureLine): string => {
 		const b = f.birthInfo;
-		return `${b.year}-${b.month}-${b.day}-${b.hour}-${b.gender}`;
+		return `${b.year}-${b.month}-${b.day}-${b.timeIndex}-${b.gender}`;
 	};
 	const firstWhere = (pred: (f: FixtureLine) => boolean, why: string): FixtureLine => {
 		const found = parsed.find(f => !taken.has(keyOf(f)) && pred(f));
@@ -86,12 +86,12 @@ function pickSamples(parsed: FixtureLine[]): Array<{ why: string; line: FixtureL
 			line: firstWhere(f => f.chart.lunarInfo.isLeapMonth, "闰月"),
 		},
 		{
-			why: "天钺：恒无 siHua 键的辅星，盯 hasSiHuaKey 的「整键缺失」一侧",
+			why: "天钺：恒无 mutagen 键的辅星，盯 hasMutagenKey 的「整键缺失」一侧",
 			line: firstWhere(hasStar("天钺"), "天钺"),
 		},
 		{
-			why: "真四化：有星曜带非空 siHua，盯同一规则的另一侧",
-			line: firstWhere(f => f.chart.palaces.some(p => p.stars.some(s => s.siHua)), "四化"),
+			why: "真四化：有星曜带非空 mutagen，盯同一规则的另一侧",
+			line: firstWhere(f => f.chart.palaces.some(p => p.stars.some(s => s.mutagen)), "四化"),
 		},
 	];
 }
@@ -116,18 +116,18 @@ async function main(): Promise<void> {
 			`SELECT ${COLUMNS} FROM samples s JOIN palaces p USING (sample_id)
 			 WHERE s.year = ? AND s.month = ? AND s.day = ? AND s.hour = ? AND s.gender = ?
 			 ORDER BY (p.branch + 10) % 12`,
-			[b.year, b.month, b.day, b.hour, b.gender]
+			[b.year, b.month, b.day, b.timeIndex, b.gender]
 		);
 		const rows = reader.getRowObjectsJS() as Array<Record<string, unknown>>;
 		// 形状守卫：与运行时同一判据 —— 不是 12 行，产物就是残缺的，宁可现在就炸
 		if (rows.length !== 12) {
 			throw new SourceError(
-				`${b.year}-${b.month}-${b.day} 时辰${b.hour}（${b.gender}）取到 ${rows.length} 行宫位，预期 12 行`
+				`${b.year}-${b.month}-${b.day} 时辰${b.timeIndex}（${b.gender}）取到 ${rows.length} 行宫位，预期 12 行`
 			);
 		}
 		// BigInt 不能被 JSON.stringify 序列化，统一归一（映射不读这一列）
 		out.push({ why, rows: rows.map(r => ({ ...r, sample_id: Number(r.sample_id) })) });
-		console.log(`  ✓ ${why} → ${b.year}-${b.month}-${b.day} 时辰${b.hour} ${b.gender}`);
+		console.log(`  ✓ ${why} → ${b.year}-${b.month}-${b.day} 时辰${b.timeIndex} ${b.gender}`);
 	}
 
 	writeFileSync(resolve(FIX_DIR, "raw-rows.json"), JSON.stringify(out, null, "\t") + "\n", "utf8");

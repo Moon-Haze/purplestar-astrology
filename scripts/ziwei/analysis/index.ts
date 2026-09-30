@@ -15,7 +15,7 @@
  *      本目录只剩第 1 条仍在生效。
  *   3. 删除了未使用的 getYearStemIndex 导入（那是公历取模口径，仅流年可用；
  *      生年四化必须用 chart.lunarInfo.yearStem，见 sihua.ts 的口径说明）。
- *      ⚠️ 该导入后来因「四点五、流年」需要年干而引回，现只在 `views/liunian.ts`；
+ *      ⚠️ 该导入后来因「四点五、流年」需要年干而引回，现只在 `views/yearly.ts`；
  *      用途仍是那条唯一合法用途（流年干），生年四化依旧走 chart.lunarInfo.yearStem。
  *
  * ⚠️ 知识来源分级：
@@ -45,7 +45,7 @@
  *   views/            十一个小节，每节一个 `renderXxx(ctx) => string[]`
  *
  * ⚠️ 各 view **只读 ctx、只返回自己的行**：不互相调用、不写回 ctx。唯一的跨节状态
- * （`siHuaInSanFang`）已提升进 `context.ts`，理由见该文件头部。
+ * （`mutagenInSanFang`）已提升进 `context.ts`，理由见该文件头部。
  *
  * @packageDocumentation
  */
@@ -62,14 +62,14 @@ import {
 } from "./data";
 import { makeContext } from "./context";
 import { filterGenderContent } from "./lookups";
-import { renderDaXian } from "./views/daxian";
+import { renderDecadal } from "./views/decadal";
 import { renderHealth } from "./views/health";
-import { renderKuiYue } from "./views/kuiyue";
-import { renderLiuNian } from "./views/liunian";
+import { renderKuiYue } from "./views/patron";
+import { renderLiuNian } from "./views/yearly";
 import { renderOverview } from "./views/overview";
 import { renderPersonality } from "./views/personality";
-import { renderSanFang } from "./views/sanfang";
-import { renderSiHua } from "./views/sihua";
+import { renderSanFang } from "./views/surround";
+import { renderMutagen } from "./views/mutagen";
 import { renderSuggestions } from "./views/suggestions";
 import { renderYearStem } from "./views/year-stem";
 
@@ -104,9 +104,9 @@ export function getTopicAnalysis(
 	const lines: string[] = [
 		...renderOverview(ctx), // 一、总论
 		...renderSanFang(ctx), // 二、三方四正联动分析
-		...renderSiHua(ctx), // 三、本命四化会照
+		...renderMutagen(ctx), // 三、本命四化会照
 		...renderYearStem(ctx), // 三点五、年干四化·全局关键宫位解读
-		...renderDaXian(ctx), // 四、当前大限分析
+		...renderDecadal(ctx), // 四、当前大限分析
 		...renderLiuNian(ctx), // 四点五、流年 + 四点六、流月
 		...renderPersonality(ctx), // 五、性格专属补充
 		...renderHealth(ctx), // 五点五、疾厄宫

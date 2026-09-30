@@ -137,7 +137,7 @@ const LOAD_GROUPS: Array<{ label: string; specs: string[]; note: string }> = [
 		specs: [
 			"@/ziwei/algorithm",
 			"@/ziwei/patterns",
-			"@/ziwei/sihua",
+			"@/ziwei/mutagen",
 			"@/ziwei/constants",
 			"@/ziwei/cities",
 			"@/cli/args",
@@ -155,8 +155,8 @@ const LOAD_GROUPS: Array<{ label: string; specs: string[]; note: string }> = [
 /** 可懒加载的组（analyze 用不到）——用于算「懒加载收益上限」。 */
 const DEFERRABLE = new Set(["+ analysis"]);
 
-/** 热路径样本。hour 是**时辰序号 0–12**，不是钟表时（见 types.ts 的 BirthInfo.hour）。 */
-const HOT_INFO: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male" };
+/** 热路径样本。timeIndex 是**时辰序号 0–12**，不是钟表时（见 types.ts 的 BirthInfo.timeIndex）。 */
+const HOT_INFO: BirthInfo = { year: 1990, month: 5, day: 15, timeIndex: 5, gender: "male" };
 
 // ── ②③ 子进程探针 ──
 

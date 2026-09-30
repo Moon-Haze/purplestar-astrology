@@ -9,7 +9,7 @@
 //
 // 第 3 条是 2026-09-27 补上的，补的是一条真实的缝：第 2 条的合成行编码的是
 // 「**我以为**真实行长什么样」—— 列名、类型、数组形状一变，合成行照旧全绿。
-// 更隐晦的是 `hasSiHuaKey`（键的存在性 vs 值为 `""`），sample-source.ts 的文件头自己
+// 更隐晦的是 `hasMutagenKey`（键的存在性 vs 值为 `""`），sample-source.ts 的文件头自己
 // 就写着「搞错了 npm test 也不会红」。真实行固化进 fixtures 后这条才第一次可测。
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -122,7 +122,7 @@ function twelvePalaces(): PalaceRow[] {
 type ReconstructedChart = BaselineChart & {
 	birthInfo: unknown;
 	currentAge: number;
-	currentDaXianIndex: number;
+	currentDecadalIndex: number;
 };
 
 describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => {
@@ -135,11 +135,11 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 			lunarYear: 1923, lunarMonth: 12, lunarDay: 25,
 			yearStem: 0, yearBranch: 0, isLeapMonth: false,
 		});
-		assert.equal(s.chart.mingGongBranch, 2);
-		assert.equal(s.chart.wuxingJuName, "金四局");
+		assert.equal(s.chart.soulBranch, 2);
+		assert.equal(s.chart.fiveElementsClassName, "金四局");
 		const chart = s.chart as ReconstructedChart;
 		assert.equal(chart.currentAge, 102);
-		assert.equal(chart.currentDaXianIndex, 9);
+		assert.equal(chart.currentDecadalIndex, 9);
 	});
 
 	it("chart.birthInfo 存在且与顶层 birthInfo 同内容", () => {
@@ -150,23 +150,23 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 	it("顶层与 chart 的键序与 jsonl 一致（逐字节比对的前提）", () => {
 		const s = rowsToSample(sampleRow(), twelvePalaces());
 		assert.deepEqual(Object.keys(s), ["birthInfo", "chart"]);
-		assert.deepEqual(Object.keys(s.birthInfo), ["year", "month", "day", "hour", "gender", "longitude"]);
+		assert.deepEqual(Object.keys(s.birthInfo), ["year", "month", "day", "timeIndex", "gender", "longitude"]);
 		assert.deepEqual(Object.keys(s.chart), [
-			"birthInfo", "lunarInfo", "mingGongBranch", "shenGongBranch", "wuxingJu",
-			"wuxingJuName", "ziweiPos", "palaces", "daXians", "currentAge", "currentDaXianIndex",
+			"birthInfo", "lunarInfo", "soulBranch", "bodyBranch", "fiveElementsClass",
+			"fiveElementsClassName", "ziweiPos", "palaces", "decadals", "currentAge", "currentDecadalIndex",
 		]);
 		assert.deepEqual(Object.keys(s.chart.lunarInfo ?? {}), [
 			"lunarYear", "lunarMonth", "lunarDay", "yearStem", "yearBranch", "isLeapMonth",
 		]);
 	});
 
-	it("宫位键序与 jsonl 一致，daXianAge 取自 daxian_start/end", () => {
+	it("宫位键序与 jsonl 一致，decadalRange 取自 daxian_start/end", () => {
 		const p = rowsToSample(sampleRow(), twelvePalaces()).chart.palaces![0];
 		assert.deepEqual(Object.keys(p), [
-			"branch", "stem", "name", "stars", "daXianAge",
-			"isMingGong", "isShenGong", "isCurrentDaXian",
+			"branch", "stem", "name", "stars", "decadalRange",
+			"isSoulPalace", "isBodyPalace", "isCurrentDecadal",
 		]);
-		assert.deepEqual(p.daXianAge, [2, 11]);
+		assert.deepEqual(p.decadalRange, [2, 11]);
 	});
 
 	it("星曜四段拼接：major → lucky → sha → minor", () => {
@@ -177,11 +177,11 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 		palaces[0].sha_stars = ["擎羊"];
 		palaces[0].minor_stars = ["三台", "封诰"];
 		const stars = rowsToSample(sampleRow(), palaces).chart.palaces![0].stars;
-		assert.deepEqual(stars.map(x => x.type), ["major", "major", "lucky", "sha", "minor", "minor"]);
-		assert.deepEqual(stars[0], { name: "太阳", type: "major", brightness: "bright", siHua: "" });
+		assert.deepEqual(stars.map(x => x.type), ["major", "major", "soft", "tough", "minor", "minor"]);
+		assert.deepEqual(stars[0], { name: "太阳", type: "major", brightness: "bright", mutagen: "" });
 	});
 
-	it("siHua 键的存在性：18 颗有键（主星 + 四辅星），其余整键缺失", () => {
+	it("mutagen 键的存在性：18 颗有键（主星 + 四辅星），其余整键缺失", () => {
 		const palaces = twelvePalaces();
 		palaces[0].major_stars = ["天府"]; // 终生不参与四化的主星 —— 有键、值为 ""
 		palaces[0].major_brightness = ["normal"];
@@ -192,23 +192,23 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 		const stars = rowsToSample(sampleRow(), palaces).chart.palaces![0].stars;
 		const byName = new Map(stars.map(s => [s.name, s]));
 
-		assert.ok("siHua" in byName.get("天府")!, "主星恒有 siHua 键");
-		assert.equal(byName.get("天府")!.siHua, "", "无四化时值为空串，不是 undefined");
-		assert.equal(byName.get("左辅")!.siHua, "科");
-		assert.ok(!("siHua" in byName.get("天钺")!), "天钺 必须整键缺失");
-		assert.ok(!("siHua" in byName.get("三台")!));
-		assert.ok(!("siHua" in byName.get("擎羊")!));
+		assert.ok("mutagen" in byName.get("天府")!, "主星恒有 mutagen 键");
+		assert.equal(byName.get("天府")!.mutagen, "", "无四化时值为空串，不是 undefined");
+		assert.equal(byName.get("左辅")!.mutagen, "科");
+		assert.ok(!("mutagen" in byName.get("天钺")!), "天钺 必须整键缺失");
+		assert.ok(!("mutagen" in byName.get("三台")!));
+		assert.ok(!("mutagen" in byName.get("擎羊")!));
 
 		// 逐字节：键缺失与值为 "" 是两种不同的 JSON
 		const json = JSON.stringify(byName.get("天府"));
-		assert.equal(json, '{"name":"天府","type":"major","brightness":"normal","siHua":""}');
-		assert.equal(JSON.stringify(byName.get("天钺")), '{"name":"天钺","type":"lucky"}');
+		assert.equal(json, '{"name":"天府","type":"major","brightness":"normal","mutagen":""}');
+		assert.equal(JSON.stringify(byName.get("天钺")), '{"name":"天钺","type":"soft"}');
 	});
 
-	it("daXians 按 startAge 升序，字段序与 jsonl 一致", () => {
+	it("decadals 按 startAge 升序，字段序与 jsonl 一致", () => {
 		const palaces = twelvePalaces();
 		palaces.reverse(); // 故意打乱输入顺序
-		const dx = rowsToSample(sampleRow(), palaces).chart.daXians!;
+		const dx = rowsToSample(sampleRow(), palaces).chart.decadals!;
 		assert.equal(dx.length, 12);
 		assert.deepEqual(dx.map(d => d.startAge), [2, 12, 22, 32, 42, 52, 62, 72, 82, 92, 102, 112]);
 		assert.deepEqual(Object.keys(dx[0]), ["startAge", "endAge", "palaceBranch", "palaceName"]);
@@ -216,7 +216,7 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 
 	it("不就地改动传入的 palaces 数组", () => {
 		const palaces = twelvePalaces();
-		palaces.reverse(); // ⚠️ 必须先打乱：上面的 daXians 测试已证明 twelvePalaces() 天然有序，
+		palaces.reverse(); // ⚠️ 必须先打乱：上面的 decadals 测试已证明 twelvePalaces() 天然有序，
 		                   //    有序输入会让 rowsToSample 的 sort 退化成 no-op，断言恒真
 		const before = palaces.map(p => p.branch);
 		rowsToSample(sampleRow(), palaces);
@@ -244,9 +244,18 @@ interface RawEntry {
  *
  * ⚠️ 比的是**五元组字符串**而非 JSON 片段：`JSON.parse` 出来的对象键序与原文无关，
  *    拿它拼字符串会引入原文根本没写过的键序假设。
+ *
+ * ⚠️ 兼容两种来源的键名：raw-rows 行的 `hour`（db 列名）与 charts.jsonl 的
+ *    `birthInfo.timeIndex`（2026-09-30 术语对齐后的基准键）。二者是同一个时辰序号。
  */
-const keyOf = (r: { year: number; month: number; day: number; hour: number; gender: string }): string =>
-	`${r.year}-${r.month}-${r.day}-${r.hour}-${r.gender}`;
+const keyOf = (r: {
+	year: number;
+	month: number;
+	day: number;
+	timeIndex?: number;
+	hour?: number;
+	gender: string;
+}): string => `${r.year}-${r.month}-${r.day}-${r.timeIndex ?? r.hour}-${r.gender}`;
 
 describe("真实行 → fixtures：逐字节复现（输入取自 fixtures/raw-rows.json）", () => {
 	it("每条真实行都逐字节重现 charts.jsonl 里那一条的原文", () => {

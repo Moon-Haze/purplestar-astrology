@@ -3,8 +3,8 @@
  *
  * @remarks
  * 本模块只放「是什么形状」，既不放数据也不放判定 —— 常量、名字裁决表与判词表在同目录的
- * `data.ts`，识别器按分组散在 `shang-ge.ts` / `zhong-ge.ts` / `zhu-li-ge.ts` / `e-ge.ts` /
- * `ji-chu-ge.ts` / `shou-lian-ge.ts`，装配在 `index.ts`。
+ * `data.ts`，识别器按分组散在 `superior.ts` / `medium.ts` / `enhancing.ts` / `e-ge.ts` /
+ * `basic.ts` / `converged.ts`，装配在 `index.ts`。
  * 分工是**形状 / 数据 / 判定**，改哪一层就只需读哪个文件。
  *
  * 本文件里的 `{@link}` 一律只指向**本文档内**的符号 —— 跨文件 TSDoc 解析不到，

@@ -16,7 +16,7 @@
 import type { Palace, Star, ZiweiChart } from "../types";
 // 对宫与三方四正的偏移：全仓单点在 ../palace-relations
 // （2026-09-26 收敛之前，本目录的前身 analysis.ts 自写了 6 处）
-import { duiGongBranch, sanFangBranches } from "../palace-relations";
+import { oppositeBranch, surroundBranches } from "../palace-relations";
 
 /** 获取宫位的主星列表（空宫则借对宫） */
 export function getPalaceStars(
@@ -30,7 +30,7 @@ export function getPalaceStars(
 	if (mainStars.length > 0) return { palace, mainStars, isLoan: false };
 
 	// 空宫：借对宫
-	const oppBranch = duiGongBranch(palace.branch);
+	const oppBranch = oppositeBranch(palace.branch);
 	const oppPalace = chart.palaces.find(p => p.branch === oppBranch);
 	if (!oppPalace) return { palace, mainStars: [], isLoan: false };
 
@@ -43,7 +43,7 @@ export function getSanFangSiZheng(chart: ZiweiChart, palaceName: string): Palace
 	const main = chart.palaces.find(p => p.name === palaceName);
 	if (!main) return [];
 
-	return sanFangBranches(main.branch)
+	return surroundBranches(main.branch)
 		.map(b => chart.palaces.find(p => p.branch === b))
 		.filter(Boolean) as Palace[];
 }
@@ -55,12 +55,12 @@ export function descPalaceStars(palace: Palace): string {
 	return main
 		.map(
 			s =>
-				`${s.name}${s.siHua ? "化" + s.siHua : ""}${s.brightness === "bright" ? "（庙旺）" : s.brightness === "dim" ? "（落陷）" : ""}`
+				`${s.name}${s.mutagen ? "化" + s.mutagen : ""}${s.brightness === "bright" ? "（庙旺）" : s.brightness === "dim" ? "（落陷）" : ""}`
 		)
 		.join("、");
 }
 
 /** 获取宫位中的所有四化信息 */
-export function getPalaceSiHua(palace: Palace): { name: string; siHua: string }[] {
-	return palace.stars.filter(s => s.siHua).map(s => ({ name: s.name, siHua: s.siHua! }));
+export function getPalaceMutagen(palace: Palace): { name: string; mutagen: string }[] {
+	return palace.stars.filter(s => s.mutagen).map(s => ({ name: s.name, mutagen: s.mutagen! }));
 }

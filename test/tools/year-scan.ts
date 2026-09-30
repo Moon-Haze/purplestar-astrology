@@ -61,7 +61,7 @@ function range(a: number, b: number): number[] {
 }
 
 const label = (b: BirthInfo): string =>
-	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${b.hour}时 ${b.gender}`;
+	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${b.timeIndex}时 ${b.gender}`;
 
 // ── 恒等式检查：全部返回违例描述（空数组 = 通过）──
 // 口径照 test/invariants.test.ts（层 3）复刻 —— 那里的断言绑在 300 条 fixtures 上，
@@ -77,7 +77,7 @@ interface Ctx {
 	PALACE_NAMES_ORDER: string[];
 	STEMS: string[];
 	BRANCHES: string[];
-	getSiHuaByStem(stemIndex: number): Record<string, string>;
+	getMutagenByStem(stemIndex: number): Record<string, string>;
 }
 
 function checkChart(chart: ZiweiChart, ctx: Ctx): string[] {
@@ -93,7 +93,7 @@ function checkChart(chart: ZiweiChart, ctx: Ctx): string[] {
 
 	// 2. 偏移恒等式：k = (命宫支 − 本宫支 + 12) % 12，宫名 = PALACE_NAMES_ORDER[k]
 	for (const p of chart.palaces) {
-		const k = (chart.mingGongBranch - p.branch + 12) % 12;
+		const k = (chart.soulBranch - p.branch + 12) % 12;
 		if (p.name !== PALACE_NAMES_ORDER[k])
 			errs.push(`偏移恒等式：${BRANCHES[p.branch]} 宫应为 ${PALACE_NAMES_ORDER[k]}，实得 ${p.name}`);
 	}
@@ -103,31 +103,31 @@ function checkChart(chart: ZiweiChart, ctx: Ctx): string[] {
 	if (majors.join() !== [...MAJOR_STARS].sort().join())
 		errs.push(`主星集合不符（${majors.length} 颗）：${majors.join("、")}`);
 
-	// 4. 生年四化：恰 4 颗带 siHua、禄权科忌各一、与农历年干四化表逐颗一致
-	const marked = chart.palaces.flatMap(p => p.stars).filter(s => s.siHua);
+	// 4. 生年四化：恰 4 颗带 mutagen、禄权科忌各一、与农历年干四化表逐颗一致
+	const marked = chart.palaces.flatMap(p => p.stars).filter(s => s.mutagen);
 	if (marked.length !== 4) errs.push(`带四化标记的星应恰 4 颗，实得 ${marked.length}`);
-	if (new Set(marked.map(s => s.siHua)).size !== 4)
-		errs.push(`四化应禄权科忌各一，实得 ${marked.map(s => s.siHua).join("")}`);
-	const transforms = ctx.getSiHuaByStem(chart.lunarInfo.yearStem);
+	if (new Set(marked.map(s => s.mutagen)).size !== 4)
+		errs.push(`四化应禄权科忌各一，实得 ${marked.map(s => s.mutagen).join("")}`);
+	const transforms = ctx.getMutagenByStem(chart.lunarInfo.yearStem);
 	const expectByStar: Record<string, string> = {};
 	for (const [hua, star] of Object.entries(transforms)) expectByStar[star] = hua;
 	for (const s of marked) {
-		if (expectByStar[s.name] !== s.siHua)
-			errs.push(`${s.name} 的四化标记为 ${s.siHua}，年干（${ctx.STEMS[chart.lunarInfo.yearStem]}）四化表却给 ${expectByStar[s.name] ?? "无"}`);
+		if (expectByStar[s.name] !== s.mutagen)
+			errs.push(`${s.name} 的四化标记为 ${s.mutagen}，年干（${ctx.STEMS[chart.lunarInfo.yearStem]}）四化表却给 ${expectByStar[s.name] ?? "无"}`);
 	}
 
 	// 5. 大限：12 步、12 支、跨度 10 年首尾相接、palaceName 与宫位一致
-	if (chart.daXians.length !== 12) errs.push(`大限应 12 步，实得 ${chart.daXians.length}`);
-	if (new Set(chart.daXians.map(d => d.palaceBranch)).size !== 12)
+	if (chart.decadals.length !== 12) errs.push(`大限应 12 步，实得 ${chart.decadals.length}`);
+	if (new Set(chart.decadals.map(d => d.palaceBranch)).size !== 12)
 		errs.push("大限 12 步应覆盖 12 个不同宫支");
-	const dx = [...chart.daXians].sort((a, b) => a.startAge - b.startAge);
+	const dx = [...chart.decadals].sort((a, b) => a.startAge - b.startAge);
 	for (let i = 0; i < dx.length - 1; i++) {
 		if (dx[i].endAge - dx[i].startAge !== 9)
 			errs.push(`大限第 ${i} 步跨度应为 10 年（${dx[i].startAge}-${dx[i].endAge}）`);
 		if (dx[i + 1].startAge !== dx[i].endAge + 1)
 			errs.push(`大限第 ${i} 步与第 ${i + 1} 步应相接（${dx[i].endAge} → ${dx[i + 1].startAge}）`);
 	}
-	for (const d of chart.daXians) {
+	for (const d of chart.decadals) {
 		const palace = chart.palaces.find(p => p.branch === d.palaceBranch);
 		if (!palace || palace.name !== d.palaceName)
 			errs.push(`大限宫名 ${d.palaceName} 与宫位 ${BRANCHES[d.palaceBranch]} 的实际宫名 ${palace?.name ?? "无"} 不符`);
@@ -184,8 +184,8 @@ async function main(): Promise<void> {
 
 	const { generateChart } = await loadAlgorithm();
 	const { PALACE_NAMES_ORDER, STEMS, BRANCHES } = await loadConstants();
-	const { getSiHuaByStem } = await loadSihua();
-	const ctx: Ctx = { PALACE_NAMES_ORDER, STEMS, BRANCHES, getSiHuaByStem };
+	const { getMutagenByStem } = await loadSihua();
+	const ctx: Ctx = { PALACE_NAMES_ORDER, STEMS, BRANCHES, getMutagenByStem };
 
 	let checked = 0;
 	const violations: Violation[] = [];
@@ -198,7 +198,7 @@ async function main(): Promise<void> {
 				for (const h of range(0, 11)) {
 					if (checked >= LIMIT) break outer;
 					const gender = (y + m + d + h) % 2 === 0 ? "male" : "female";
-					const birth: BirthInfo = { year: y, month: m, day: d, hour: h, gender, longitude: 120 };
+					const birth: BirthInfo = { year: y, month: m, day: d, timeIndex: h, gender, longitude: 120 };
 					checked++;
 
 					let chart: ZiweiChart;

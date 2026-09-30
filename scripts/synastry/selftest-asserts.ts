@@ -102,7 +102,7 @@ function makeFixture(o: {
 					year: 1990,
 					month: 5,
 					day: 15,
-					hour: 5,
+					timeIndex: 5,
 					gender: o.gender,
 					name: o.name,
 				},
@@ -114,15 +114,15 @@ function makeFixture(o: {
 					yearBranch: 6,
 					isLeapMonth: false,
 				},
-				mingGongBranch: o.mingBranch,
-				shenGongBranch: (o.mingBranch + 4) % 12,
-				wuxingJu: 2,
-				wuxingJuName: "火六局",
+				soulBranch: o.mingBranch,
+				bodyBranch: (o.mingBranch + 4) % 12,
+				fiveElementsClass: 2,
+				fiveElementsClassName: "火六局",
 				ziweiPos: o.mingBranch,
 				palaces,
-				daXians: [],
+				decadals: [],
 				currentAge: 36,
-				currentDaXianIndex: 0,
+				currentDecadalIndex: 0,
 			},
 			nativeSiHua: {
 				stem: "庚",
@@ -240,7 +240,7 @@ export function asserts(): Assertion[] {
 			// 这是最容易踩的坑：`chart` 命令也输出 JSON，但**顶层就是命盘本身**，
 			// 没有 `chart` 键，更没有四化落宫与排盘依据。照收会让合盘静默少两节结论。
 			const wrong = join(tmp, "wrong.json");
-			writeFileSync(wrong, JSON.stringify({ birthInfo: {}, palaces: [], mingGongBranch: 0 }));
+			writeFileSync(wrong, JSON.stringify({ birthInfo: {}, palaces: [], soulBranch: 0 }));
 			const r = run(["synastry", "--a-chart", wrong, "--b-chart", fileB]);
 			if (r.code === 0) throw new Error("顶层无 chart 键却退出码为 0 —— 契约校验失效");
 			if (!r.err.includes("chart"))

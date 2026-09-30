@@ -84,16 +84,16 @@ node scripts/purple-star.ts analyze \
 本项目**严格遵循倪海夏《天纪》三合派**。以下飞星派工具在本项目中已被**主动下线**，你**不得**使用，也不要从代码里把它们捡回来：
 
 - ❌ **宫干自化** —— `algorithm.ts` 已停止填充 `Palace.selfSihua`（注释明确："倪师不主张飞星派宫干自化论"）
-- ❌ **大限四化取宫干** —— `algorithm.ts` 已停止生成 `daXians[].siHua` / `stemIndex`
+- ❌ **大限四化取宫干** —— `algorithm.ts` 已停止生成 `decadals[].mutagen` / `stemIndex`
 - ❌ **来因宫** —— 飞星派追溯法，不使用
 
-⚠️ **陷阱**：`scripts/ziwei/sihua.ts` **只提供上面那三层四化**（`getSiHuaByStem` / `getYearStemIndex` / `getLiuNianSiHua` / `getLiuYueStemIndex` / `getLiuYueSiHua`）。飞星派的 `detectSelfSihua` / `findIncomingPalaces` / `getDaXianSiHua` 等函数已于 2026-09-27 从该模块**删除**——不是改名、不是移到别处，全仓零调用点。
+⚠️ **陷阱**：`scripts/ziwei/mutagen.ts` **只提供上面那三层四化**（`getMutagenByStem` / `getYearStemIndex` / `getYearlyMutagen` / `getMonthlyStemIndex` / `getMonthlyMutagen`）。飞星派的 `detectSelfMutagen` / `findIncomingPalaces` / `getDecadalMutagen`（旧名 sihua 时代的历史函数） 等函数已于 2026-09-27 从该模块**删除**——不是改名、不是移到别处，全仓零调用点。
 
-但 `types.ts` 里的 `Palace.selfSihua` / `DaXian.siHua` 字段与 `SelfSihuaMark` / `DaXianSiHua` 两个类型**仍在**，那是**刻意留下的绊线**：`selftest` 与 `test/school.test.ts` 各有断言盯着它们不被重新填回，字段删了就没东西可盯。**存在不等于该用**——用它们解读就是背叛本项目的体系立场。
+但 `types.ts` 里的 `Palace.selfMutagen` / `Decadal.mutagen` 字段与 `SelfMutagenMark` / `DecadalMutagen` 两个类型**仍在**，那是**刻意留下的绊线**：`selftest` 与 `test/school.test.ts` 各有断言盯着它们不被重新填回，字段删了就没东西可盯。**存在不等于该用**——用它们解读就是背叛本项目的体系立场。
 
 可用的是：**生年四化**（出生年干）、**流年四化**（当年年干）、**流月四化**（`--liuyue 6`）。CLI 的 `analyze` 已按此口径输出。
 
-倪师核心立场（权威声明见 `scripts/ziwei/sihua.ts` 的「体系基准」节）：
+倪师核心立场（权威声明见 `scripts/ziwei/mutagen.ts` 的「体系基准」节）：
 
 > 大道至简——飞星飞来飞去太复杂，不搞这个。
 > 命宫为本，三方为用。
@@ -102,12 +102,12 @@ node scripts/purple-star.ts analyze \
 ## 其他已知事实
 
 - **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis/`：推算 + `data.ts` 论断文案与类型映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `topic` 命令使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是工作流第 2 步列出的六个。
-- **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `sha` / `lucky`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键），只有 `type === "major"` 的那 14 颗带 `brightness`，其余三类不带（信息比 iztro 原始输出少，是口径选择不是缺漏）。
-- **年龄一律是虚岁**：`currentAge`（当前年龄）、`daXians[].startAge/endAge`、`palace.daXianAge` 三者**同为虚岁**，以**农历年（正月初一）为界** —— 不是生日，也不是立春。数据来自 iztro 的 `decadal.range`。解读时报给用户的年龄就用这个虚岁，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
+- **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `tough` / `soft`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键），只有 `type === "major"` 的那 14 颗带 `brightness`，其余三类不带（信息比 iztro 原始输出少，是口径选择不是缺漏）。
+- **年龄一律是虚岁**：`currentAge`（当前年龄）、`decadals[].startAge/endAge`、`palace.decadalRange` 三者**同为虚岁**，以**农历年（正月初一）为界** —— 不是生日，也不是立春。数据来自 iztro 的 `decadal.range`。解读时报给用户的年龄就用这个虚岁，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
 - **童限**：`currentDaXianIndex === -1` 表示此人**尚未起运**（虚岁小于五行局数，如土五局要 5 岁才起运），此时 CLI 的「当前大限」显示 `—`。这是正常的，不是数据缺失——此时按命宫论，不要硬套一个大限。
 - **十二宫顺序**：`chart.palaces` 按**地支数组序**排，实测为 `2,3,…,11,0,1`（**寅起**）——既不是 0-11（子起），也不是宫位顺序（命宫起）。定位某宫请按 `branch` 建索引，**不要依赖数组下标**。CLI 的「十二宫一览」也是这个序。
 - **流年 / 流月的月份**：`--liuyue` 取**农历月** 1-12，月干由流年干按五虎遁推。
-- **运限数据面**（2026-09-28 起）：`Palace.xiaoXianAges` 是小限岁数表（**虚岁**域，十二宫并集连续覆盖 1–120，每宫 10 个）；流年命宫 = **年支所在宫**（三合派不重排十二宫）；`chart.mingZhu` / `shenZhu` 是命主/身主（iztro 直给），`douJunBranch` 是子年斗君（自推，闰月按所闰月数计）。`--info` 里的节气/非节气四柱**仅为出生时刻记录，本技能不做八字论命**。
+- **运限数据面**（2026-09-28 起）：`Palace.ages` 是小限岁数表（**虚岁**域，十二宫并集连续覆盖 1–120，每宫 10 个）；流年命宫 = **年支所在宫**（三合派不重排十二宫）；`chart.mingZhu` / `shenZhu` 是命主/身主（iztro 直给），`douJunBranch` 是子年斗君（自推，闰月按所闰月数计）。`--info` 里的节气/非节气四柱**仅为出生时刻记录，本技能不做八字论命**。
 
 ## 命令速查
 

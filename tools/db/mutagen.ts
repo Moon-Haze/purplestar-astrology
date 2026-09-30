@@ -7,7 +7,7 @@ export interface SihuaSummary {
 }
 
 export interface ZiweiChartLike {
-  palaces: Array<{ name: string; stars: Array<{ name: string; siHua?: string | null }> }>;
+  palaces: Array<{ name: string; stars: Array<{ name: string; mutagen?: string | null }> }>;
 }
 
 export function extractSihua(chart: ZiweiChartLike): SihuaSummary {
@@ -17,7 +17,7 @@ export function extractSihua(chart: ZiweiChartLike): SihuaSummary {
   };
   for (const p of chart.palaces) {
     for (const s of p.stars) {
-      const si = s.siHua ?? '';
+      const si = s.mutagen ?? '';
       if (si === '') continue;
       const key = (si === '禄' ? 'lu' : si === '权' ? 'quan' : si === '科' ? 'ke' : 'ji') as 'lu' | 'quan' | 'ke' | 'ji';
       out[`${key}_star`] = s.name;

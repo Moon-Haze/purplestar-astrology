@@ -12,13 +12,13 @@
  * @packageDocumentation
  */
 
-import { siHuaSymbol } from "../data";
-import { duiGongBranch, sanFangBranches } from "../../palace-relations";
+import { mutagenSymbol } from "../data";
+import { oppositeBranch, surroundBranches } from "../../palace-relations";
 import type { AnalysisContext } from "../context";
 import { descPalaceStars } from "../palace-query";
 
 /** 渲染「四、当前大限分析」整节（无当前大限时返回空数组）。 */
-export function renderDaXian(ctx: AnalysisContext): string[] {
+export function renderDecadal(ctx: AnalysisContext): string[] {
 	const { chart, currentDx } = ctx;
 
 	const lines: string[] = [];
@@ -40,7 +40,7 @@ export function renderDaXian(ctx: AnalysisContext): string[] {
 
 		// ── 大限宫为空宫时借对宫 ──
 		if (dxPalace && dxPalace.stars.filter(s => s.type === "major").length === 0) {
-			const oppBranch = duiGongBranch(dxPalace.branch);
+			const oppBranch = oppositeBranch(dxPalace.branch);
 			const oppP = chart.palaces.find(q => q.branch === oppBranch);
 			const oppStars = oppP?.stars.filter(s => s.type === "major").map(s => s.name) ?? [];
 			if (oppStars.length > 0) {
@@ -53,17 +53,17 @@ export function renderDaXian(ctx: AnalysisContext): string[] {
 
 		// ── 大限宫与本命四化的会照（倪师正统）──
 		if (dxPalace) {
-			const dxSanFangBranches = sanFangBranches(dxPalace.branch);
+			const dxSanFangBranches = surroundBranches(dxPalace.branch);
 			const dxSanFangPalaces = chart.palaces.filter(p =>
 				dxSanFangBranches.includes(p.branch)
 			);
 			const sihuaInDxSanFang: string[] = [];
 			dxSanFangPalaces.forEach(p => {
 				p.stars
-					.filter(s => s.siHua && s.type === "major")
+					.filter(s => s.mutagen && s.type === "major")
 					.forEach(s => {
 						sihuaInDxSanFang.push(
-							`${siHuaSymbol(s.siHua!)} **本命${s.name}化${s.siHua}** 落${p.name} ${p.branch === dxPalace.branch ? "（大限本宫）" : "（大限三方四正）"}`
+							`${mutagenSymbol(s.mutagen!)} **本命${s.name}化${s.mutagen}** 落${p.name} ${p.branch === dxPalace.branch ? "（大限本宫）" : "（大限三方四正）"}`
 						);
 					});
 			});

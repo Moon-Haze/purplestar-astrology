@@ -12,10 +12,10 @@
  *
  * 2026-09-27 前这里 `import type` 的是源的一份 294 行类型副本。那份副本有两个问题：
  *
- * 1. **它是内核的全量类型**（含 `DaXian` / `SelfSihuaMark` / `LunarInfo` 等本 skill
+ * 1. **它是内核的全量类型**（含 `Decadal` / `SelfMutagenMark` / `LunarInfo` 等本 skill
  *    一个字段都不读的类型），却要靠「与源逐字节相同」来维持 —— 而本 skill 只是**消费方**，
  *    消费方该声明的是「我依赖什么」，不是「上游有什么」。
- * 2. 内核里 `Palace.selfSihua` / `DaXian.siHua` 是**三合派硬约束的绊线字段**
+ * 2. 内核里 `Palace.selfMutagen` / `Decadal.mutagen` 是**三合派硬约束的绊线字段**
  *    （刻意保留、由源与 `test/school.test.ts` 的断言盯着有没有被填回）。本 skill
  *    不排盘、不会填这两个字段，把绊线抄进来只会让「这里是消费方还是内核」变得含糊。
  *
@@ -64,7 +64,7 @@ export const branchName = (branch: number): string => BRANCHES[branch] ?? String
 //    但不是那份内核类型的副本 —— 见文件头「为什么类型契约是本文件自带的」。
 
 /** 四化名。 */
-export type SiHua = "禄" | "权" | "科" | "忌";
+export type Mutagen = "禄" | "权" | "科" | "忌";
 
 /**
  * 出生信息 —— 只列本 skill 渲染抬头用得到的几项。
@@ -87,7 +87,7 @@ export interface BirthInfo {
 export interface Star {
 	name: string;
 	/** `"major"` 即十四主星；其余三类（minor / lucky / sha）本 skill 不区分 */
-	type: "major" | "minor" | "lucky" | "sha";
+	type: "major" | "minor" | "soft" | "tough";
 }
 
 /** 一个宫位 —— 只列本 skill 用得到的字段。 */
@@ -107,9 +107,9 @@ export interface Palace {
 export interface ZiweiChart {
 	birthInfo: BirthInfo;
 	/** 命宫所在地支索引 */
-	mingGongBranch: number;
+	soulBranch: number;
 	/** 五行局名，如 `"水二局"` */
-	wuxingJuName: string;
+	fiveElementsClassName: string;
 	palaces: Palace[];
 }
 
@@ -200,7 +200,7 @@ export const majorsOf = (p: Palace): string[] =>
  */
 export interface SihuaLocation {
 	/** 四化名 */
-	hua: SiHua;
+	hua: Mutagen;
 	/** 被化的星名 */
 	star: string;
 	/** 该星所在宫名；未上盘时为 `null` */

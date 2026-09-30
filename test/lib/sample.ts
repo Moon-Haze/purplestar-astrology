@@ -11,10 +11,10 @@
 import type { BirthInfo } from "../../scripts/ziwei/types";
 
 /** 甲方虚构样本：2011-06-24 辰时（07:45），男，杭州 */
-export const SAMPLE_A: BirthInfo = { year: 2011, month: 6, day: 24, hour: 4, gender: "male" };
+export const SAMPLE_A: BirthInfo = { year: 2011, month: 6, day: 24, timeIndex: 4, gender: "male" };
 
 /** 乙方虚构样本：1999-11-03 申时（15:20），女，成都 */
-export const SAMPLE_B: BirthInfo = { year: 1999, month: 11, day: 3, hour: 8, gender: "female" };
+export const SAMPLE_B: BirthInfo = { year: 1999, month: 11, day: 3, timeIndex: 8, gender: "female" };
 
 /** SAMPLE_A 的 CLI 参数形态（配合 buildBirthInfo / 端到端子进程用例） */
 export const SAMPLE_A_ARGS = ["--date", "2011-06-24", "--time", "07:45", "--city", "杭州", "--gender", "male"] as const;

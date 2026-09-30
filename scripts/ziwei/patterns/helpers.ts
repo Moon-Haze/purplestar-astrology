@@ -12,16 +12,16 @@
  * ## 定位宫位走地支算术
  *
  * 三方四正是 `[m, (m+4), (m+8), (m+6)]`、夹宫是 `(b±1)`、对宫是 `(b+6)`
- * （见 `getSanFangPalaces` / `getJiaPalaces` / `getDuiGong`）。
+ * （见 `getSurroundPalaces` / `getJiaPalaces` / `getDuiGong`）。
  * 偏移算式**全仓单点**在 `../palace-relations`，本文件只做「按宫取星」。
  *
  * @packageDocumentation
  */
 
-import type { ZiweiChart, Palace, Star, SiHua } from "../types";
+import type { ZiweiChart, Palace, Star, Mutagen } from "../types";
 import type { PatternVerdict } from "./types";
 import { SHA_NAMES, SHA_HARD, SHA_KONG } from "./data";
-import { duiGongBranch, sanFangBranches } from "../palace-relations";
+import { oppositeBranch, surroundBranches } from "../palace-relations";
 
 // ────────────────── 辅助函数 ──────────────────
 
@@ -96,7 +96,7 @@ export function findStarPalace(chart: ZiweiChart, name: string): Palace | undefi
  *
  * @remarks
  * `((branch % 12) + 12) % 12` 是两步取模，把入参规整到 0–11。调用点因此可以直接写
- * `(branch + 11) % 12` 这类偏移算式而不必再判界（对宫偏移另见 `duiGongBranch`）。
+ * `(branch + 11) % 12` 这类偏移算式而不必再判界（对宫偏移另见 `oppositeBranch`）。
  */
 export function getPalaceByBranch(chart: ZiweiChart, branch: number): Palace | undefined {
 	return chart.palaces.find(p => p.branch === ((branch % 12) + 12) % 12);
@@ -138,15 +138,15 @@ export function hasShaInPalace(palace: Palace, list: string[] = SHA_NAMES): bool
  *
  * @remarks
  * 偏移表见 `./palace-relations` 的 `SAN_FANG_OFFSETS`，本函数是其「取宫位」视图
- * （`sanFangBranches` 取地支，本函数再映射成 `Palace`，基准一律是**命宫**）。
+ * （`surroundBranches` 取地支，本函数再映射成 `Palace`，基准一律是**命宫**）。
  * 偏移方向以 `test/invariants.test.ts` 的
  * 「宫名与相对命宫的逆行偏移一致」为准 —— 十二宫由命宫**逆行**排布，别想当然写成顺行。
  *
  * ⚠️ 返回顺序是 **`chart.palaces` 的地支序**（`filter` 保持原数组序），不是偏移表的偏移序，
  * 也不是宫位顺序；需要稳定顺序时请自行排序。正常命盘恒返回 4 个宫位。
  */
-export function getSanFangPalaces(chart: ZiweiChart): Palace[] {
-	const branches = sanFangBranches(chart.mingGongBranch);
+export function getSurroundPalaces(chart: ZiweiChart): Palace[] {
+	const branches = surroundBranches(chart.soulBranch);
 	return chart.palaces.filter(p => branches.includes(p.branch));
 }
 /**
@@ -157,14 +157,14 @@ export function getSanFangPalaces(chart: ZiweiChart): Palace[] {
  * @returns 在命宫、官禄宫、财帛宫或迁移宫则为 `true`
  *
  * @remarks
- * 与 {@link getSanFangPalaces} 同一来源（`sanFangBranches`），只是直接判地支、
+ * 与 {@link getSurroundPalaces} 同一来源（`surroundBranches`），只是直接判地支、
  * 不取 `Palace` 对象 —— 识别器里高频调用（如火贪/武贪的"会照命宫三方"关卡）。
  *
  * ⚠️ 入参不做 `% 12` 规整，与 {@link getPalaceByBranch} 不同：传入越界值一律判 `false`，
  * 不会误命中。
  */
 export function isInSanFang(chart: ZiweiChart, branch: number): boolean {
-	return sanFangBranches(chart.mingGongBranch).includes(branch);
+	return surroundBranches(chart.soulBranch).includes(branch);
 }
 /**
  * 取对宫。
@@ -174,23 +174,23 @@ export function isInSanFang(chart: ZiweiChart, branch: number): boolean {
  * @returns 相隔六个地支的那个宫位；无匹配时返回 `undefined`
  *
  * @remarks
- * 偏移算式见 `duiGongBranch`（与 `algorithm.ts` 填的 `Palace.oppositeBranch` 同源）。
+ * 偏移算式见 `oppositeBranch`（与 `algorithm.ts` 填的 `Palace.oppositeBranch` 同源）。
  * 手里已经有 `Palace` 对象时，直接读它的 `oppositeBranch` 字段即可，不必绕本函数。
  */
 export function getDuiGong(chart: ZiweiChart, branch: number): Palace | undefined {
-	return getPalaceByBranch(chart, duiGongBranch(branch));
+	return getPalaceByBranch(chart, oppositeBranch(branch));
 }
 /**
  * 取夹宫：某宫地支前后各一宫。
  *
  * @param chart - 命盘
- * @param branch - 基准地支索引（通常传 `chart.mingGongBranch`）
+ * @param branch - 基准地支索引（通常传 `chart.soulBranch`）
  * @returns `prev` 为地支序前一位（`(branch + 11) % 12`），`next` 为后一位（`(branch + 1) % 12`）；
  *   宫位缺失时对应字段为 `undefined`
  *
  * @remarks
  * "夹"看的是**地支相邻**，与宫名无关。以命宫（`m`）为基准时，`prev` 即兄弟宫
- * （偏移 1）、`next` 即父母宫（偏移 11）—— 偏移口径同 {@link getSanFangPalaces}。
+ * （偏移 1）、`next` 即父母宫（偏移 11）—— 偏移口径同 {@link getSurroundPalaces}。
  *
  * 调用点（`detectRiYueJiaMing` / `detectFuBiJiaMing` / `detectYangTuoJiaJi` 等）
  * 一律先 `if (!prev || !next) return [];`，因为缺一宫就构不成"夹"。
@@ -208,7 +208,7 @@ export function getJiaPalaces(chart: ZiweiChart, branch: number): { prev?: Palac
  * @returns 三方四正四宫中全部星曜名的集合（含主星、吉煞、杂耀）
  *
  * @remarks
- * 是 {@link getSanFangPalaces} 的聚合视图，识别器里最常用的入口（"再会昌曲"、"辅弼同会"
+ * 是 {@link getSurroundPalaces} 的聚合视图，识别器里最常用的入口（"再会昌曲"、"辅弼同会"
  * 这类判定都基于它）。
  *
  * ⚠️ 返回 `Set` 即**去重**：同名星出现多次只留一份。所以它只能回答"有没有"，
@@ -218,7 +218,7 @@ export function getJiaPalaces(chart: ZiweiChart, branch: number): { prev?: Palac
  * 同宫与会照，得另比 `Palace.branch`（如 `detectHuoTanLingTan` 的做法）。
  */
 export function sanFangAllStars(chart: ZiweiChart): Set<string> {
-	return new Set(getSanFangPalaces(chart).flatMap(p => p.stars.map(s => s.name)));
+	return new Set(getSurroundPalaces(chart).flatMap(p => p.stars.map(s => s.name)));
 }
 /**
  * 数命宫三方四正内的煞星个数。
@@ -232,7 +232,7 @@ export function sanFangAllStars(chart: ZiweiChart): Set<string> {
  * {@link sanFangAllStars} 的去重语义相反，这正是"三方煞重"类破格条件所需。
  */
 export function sanFangShaCount(chart: ZiweiChart, list: string[] = SHA_HARD): number {
-	return getSanFangPalaces(chart).reduce((sum, p) => sum + shaCountInPalace(p, list), 0);
+	return getSurroundPalaces(chart).reduce((sum, p) => sum + shaCountInPalace(p, list), 0);
 }
 /**
  * 判断一宫内某星是否庙旺。
@@ -272,14 +272,14 @@ export function isDim(palace: Palace, starName: string): boolean {
  *
  * @param palace - 目标宫位
  * @param starName - 星曜中文名
- * @returns 该星的 `siHua`（禄 / 权 / 科 / 忌）；无四化或星不在该宫时为 `undefined`
+ * @returns 该星的 `mutagen`（禄 / 权 / 科 / 忌）；无四化或星不在该宫时为 `undefined`
  *
  * @remarks
- * 读到的是**生年四化**（`algorithm.ts` 把 iztro 的 `mutagen` 落到 `Star.siHua`），
+ * 读到的是**生年四化**（`algorithm.ts` 把 iztro 的 `mutagen` 落到 `Star.mutagen`），
  * 三合派口径；不涉及宫干，故不受飞星派下线影响。
  */
-export function getStarSiHua(palace: Palace, starName: string): Star["siHua"] | undefined {
-	return findStar(palace, starName)?.siHua;
+export function getStarMutagen(palace: Palace, starName: string): Star["mutagen"] | undefined {
+	return findStar(palace, starName)?.mutagen;
 }
 /**
  * 判断一宫内是否有**任意**星带指定四化。
@@ -289,15 +289,15 @@ export function getStarSiHua(palace: Palace, starName: string): Star["siHua"] | 
  * @returns 该宫存在带此四化的星则为 `true`
  *
  * @remarks
- * 与 {@link getStarSiHua} 的分工：后者问「**某颗指定星**化没化」，本函数问「**这一宫**里
+ * 与 {@link getStarMutagen} 的分工：后者问「**某颗指定星**化没化」，本函数问「**这一宫**里
  * 有没有星化」。判「命宫见禄」这类**不指定星**的条件时用本函数。
  *
  * ⚠️ 不要用 `palace.stars.some(s => s.name === "化禄")` 代替本函数 —— 四化是
- * `Star.siHua` **字段**（取值「禄」「权」「科」「忌」），不是星曜名。把「化禄」当星名去查
+ * `Star.mutagen` **字段**（取值「禄」「权」「科」「忌」），不是星曜名。把「化禄」当星名去查
  * 星名集合**恒为 false**，条件静默失效而 `tsc` 与测试都发现不了。
  */
-export function palaceHasSiHua(palace: Palace, hua: SiHua): boolean {
-	return palace.stars.some(s => s.siHua === hua);
+export function palaceHasMutagen(palace: Palace, hua: Mutagen): boolean {
+	return palace.stars.some(s => s.mutagen === hua);
 }
 /**
  * 判断命宫三方四正内是否有**任意**星带指定四化。
@@ -307,14 +307,14 @@ export function palaceHasSiHua(palace: Palace, hua: SiHua): boolean {
  * @returns 四宫中任一宫存在带此四化的星则为 `true`
  *
  * @remarks
- * 是 {@link palaceHasSiHua} 的三方四正视图，用于「再会化科」「三方有化禄或化权」这类
+ * 是 {@link palaceHasMutagen} 的三方四正视图，用于「再会化科」「三方有化禄或化权」这类
  * 会照判定。会照**不分宫位**，故只看「四宫里有没有」，不比 `Palace.branch`。
  *
- * ⚠️ 理由同 {@link palaceHasSiHua}：`sanFangAllStars(chart).has("化科")` 是恒假写法，
+ * ⚠️ 理由同 {@link palaceHasMutagen}：`sanFangAllStars(chart).has("化科")` 是恒假写法，
  * 因为那个 `Set` 装的是**星名**。
  */
-export function sanFangHasSiHua(chart: ZiweiChart, hua: SiHua): boolean {
-	return getSanFangPalaces(chart).some(p => palaceHasSiHua(p, hua));
+export function sanFangHasMutagen(chart: ZiweiChart, hua: Mutagen): boolean {
+	return getSurroundPalaces(chart).some(p => palaceHasMutagen(p, hua));
 }
 
 

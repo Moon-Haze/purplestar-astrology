@@ -88,7 +88,7 @@ export const load = makeLoader(ROOT, ROOT_LABEL, f => {
 export const loadAlgorithm = () => load<typeof import("@/ziwei/algorithm")>("@/ziwei/algorithm");
 export const loadConstants = () => load<typeof import("@/ziwei/constants")>("@/ziwei/constants");
 export const loadPatterns = () => load<typeof import("@/ziwei/patterns")>("@/ziwei/patterns");
-export const loadSihua = () => load<typeof import("@/ziwei/sihua")>("@/ziwei/sihua");
+export const loadSihua = () => load<typeof import("@/ziwei/mutagen")>("@/ziwei/mutagen");
 export const loadClassics = () => load<typeof import("@/classics")>("@/classics");
 export const loadRender = () => load<typeof import("@/cli/render")>("@/cli/render");
 

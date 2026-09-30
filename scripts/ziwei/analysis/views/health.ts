@@ -27,7 +27,7 @@ import type { AnalysisContext } from "../context";
  *
  * @remarks
  * 该映射表本身在 `../data` 的 `PALACE_BRANCH_ORGAN`，本函数是它的
- * **唯一使用点** —— 这段注释原先夹在 `analysis.ts` 的 `getSiHuaNote` 与
+ * **唯一使用点** —— 这段注释原先夹在 `analysis.ts` 的 `getMutagenNote` 与
  * `getMinorStarNote` 之间（与两者都无关），2026-09-27 拆分时归位到这里。
  */
 export function renderHealth(ctx: AnalysisContext): string[] {
@@ -77,7 +77,7 @@ export function renderHealth(ctx: AnalysisContext): string[] {
 
 		// 化忌叠加警示
 		const jiInSanFang = sanFang.some(p =>
-			p.stars.some(s => s.siHua === "忌" && s.type === "major")
+			p.stars.some(s => s.mutagen === "忌" && s.type === "major")
 		);
 		if (jiInSanFang && branchOrgan) {
 			lines.push(

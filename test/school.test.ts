@@ -3,7 +3,7 @@
 // 本项目严格遵循倪海夏《天纪》三合派。飞星派的**宫干自化**、**大限四化取宫干**、
 // **来因宫**均已主动下线 —— algorithm.ts 不再填充这些字段；types.ts 仍保留其类型定义，
 // 那是**刻意留下的绊线**（断言盯的是「有没有被填回」，字段删了就无从盯起）。
-// 会生产它们的那些函数（detectSelfSihua / findIncomingPalaces / getDaXianSiHua 等）
+// 会生产它们的那些函数（detectSelfSihua / findIncomingPalaces / getDecadalMutagen 等）
 // 已于 2026-09-27 从 sihua.ts 删除，全仓零调用点。本文件盯住这些字段**不被重新填回**。
 //
 // ⚠️ 这条约束在 CLI 的 selftest 里也有断言。两处并不重复：selftest 用固定样例，
@@ -25,28 +25,28 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 
 const { generateChart } = await loadAlgorithm();
 const charts = samples.map(s => ({ birth: s.birthInfo, chart: generateChart({ ...s.birthInfo }) }));
-const label = (b: { year: number; month: number; day: number; hour: number; gender: string }): string =>
-	`${b.year}-${b.month}-${b.day}/${b.hour}/${b.gender}`;
+const label = (b: { year: number; month: number; day: number; timeIndex: number; gender: string }): string =>
+	`${b.year}-${b.month}-${b.day}/${b.timeIndex}/${b.gender}`;
 
 const DAXIAN_ALLOWED = ["startAge", "endAge", "palaceBranch", "palaceName"];
 
 describe("三合派体系约束", () => {
-	it("宫干自化（Palace.selfSihua）不被填充", () => {
+	it("宫干自化（Palace.selfMutagen）不被填充", () => {
 		for (const { birth, chart } of charts) {
 			for (const p of chart.palaces) {
 				assert.equal(
-					p.selfSihua,
+					p.selfMutagen,
 					undefined,
-					`${label(birth)}：${p.name} 填了 selfSihua —— 飞星派宫干自化，本项目已下线`
+					`${label(birth)}：${p.name} 填了 selfMutagen —— 飞星派宫干自化，本项目已下线`
 				);
 			}
 		}
 	});
 
-	it("大限不含飞星派字段（stemIndex / stemName / siHua）", () => {
+	it("大限不含飞星派字段（stemIndex / stemName / mutagen）", () => {
 		for (const { birth, chart } of charts) {
-			for (const [i, dx] of chart.daXians.entries()) {
-				for (const banned of ["stemIndex", "stemName", "siHua"] as const) {
+			for (const [i, dx] of chart.decadals.entries()) {
+				for (const banned of ["stemIndex", "stemName", "mutagen"] as const) {
 					assert.ok(
 						!(banned in dx),
 						`${label(birth)}：第 ${i} 步大限出现了 ${banned} —— 飞星派大限四化，本项目已下线`
@@ -58,7 +58,7 @@ describe("三合派体系约束", () => {
 
 	it("大限的键集合严格等于四个三合派字段", () => {
 		for (const { birth, chart } of charts) {
-			for (const dx of chart.daXians) {
+			for (const dx of chart.decadals) {
 				assert.deepEqual(
 					Object.keys(dx).sort(),
 					[...DAXIAN_ALLOWED].sort(),
@@ -87,8 +87,8 @@ describe("三合派体系约束", () => {
 			for (const { birth, chart } of charts) {
 				const marks = chart.palaces
 					.flatMap(p => p.stars)
-					.filter(s => s.siHua === "禄" || s.siHua === "权" || s.siHua === "科" || s.siHua === "忌")
-					.map(s => s.siHua);
+					.filter(s => s.mutagen === "禄" || s.mutagen === "权" || s.mutagen === "科" || s.mutagen === "忌")
+					.map(s => s.mutagen);
 				assert.equal(marks.length, 4, `${label(birth)}：生年四化应恰好 4 颗，实际 ${marks.length}`);
 				assert.deepEqual(
 					[...marks].sort(),
@@ -104,8 +104,8 @@ describe("三合派体系约束", () => {
 				for (const p of chart.palaces) {
 					for (const s of p.stars) {
 						assert.ok(
-							VALID.has(s.siHua),
-							`${label(birth)}：${s.name} 的 siHua=${JSON.stringify(s.siHua)} 非法`
+							VALID.has(s.mutagen),
+							`${label(birth)}：${s.name} 的 mutagen=${JSON.stringify(s.mutagen)} 非法`
 						);
 					}
 				}

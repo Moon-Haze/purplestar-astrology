@@ -37,7 +37,7 @@ const { detectPatterns, GEJU_NAME_ALIASES } = await loadPatterns();
 // 古籍内核 2026-09-30 并入根 `scripts/classics/`，`@/classics` 别名可达（与其他内核同一口径）。
 // 用到的只是**古籍文本**（格局名词频排版不变量），与排盘内核无关。
 const { ALL_BOOKS } = await load<typeof import("@/classics")>("@/classics");
-const { getSiHuaByStem, getYearStemIndex, getLiuNianSiHua, getLiuYueStemIndex } = await loadSihua();
+const { getMutagenByStem, getYearStemIndex, getYearlyMutagen, getMonthlyStemIndex } = await loadSihua();
 const { mustPalace, locateSihua } = await loadRender();
 
 const MAJOR_STARS = [
@@ -59,8 +59,8 @@ const MAJOR_STARS = [
 const LUCKY6 = ["文昌", "文曲", "左辅", "右弼", "天魁", "天钺"];
 const SHA6 = ["擎羊", "陀罗", "火星", "铃星", "地空", "地劫"];
 
-type LabeledBirth = Pick<BirthInfo, "year" | "month" | "day" | "hour" | "gender">;
-const label = (b: LabeledBirth): string => `${b.year}-${b.month}-${b.day}/${b.hour}/${b.gender}`;
+type LabeledBirth = Pick<BirthInfo, "year" | "month" | "day" | "timeIndex" | "gender">;
+const label = (b: LabeledBirth): string => `${b.year}-${b.month}-${b.day}/${b.timeIndex}/${b.gender}`;
 
 /** 对每条基准跑一次内核，供下列各 describe 复用。 */
 const charts = samples.map(s => ({ birth: s.birthInfo, chart: generateChart({ ...s.birthInfo }) }));
@@ -88,12 +88,12 @@ describe("排盘结构不变量", () => {
 
 		it("命宫与身宫标记与实际宫支一致", () => {
 			for (const { birth, chart } of charts) {
-				const ming = chart.palaces.filter(p => p.isMingGong);
-				const shen = chart.palaces.filter(p => p.isShenGong);
+				const ming = chart.palaces.filter(p => p.isSoulPalace);
+				const shen = chart.palaces.filter(p => p.isBodyPalace);
 				assert.equal(ming.length, 1, label(birth));
 				assert.equal(shen.length, 1, label(birth));
-				assert.equal(ming[0].branch, chart.mingGongBranch, label(birth));
-				assert.equal(shen[0].branch, chart.shenGongBranch, label(birth));
+				assert.equal(ming[0].branch, chart.soulBranch, label(birth));
+				assert.equal(shen[0].branch, chart.bodyBranch, label(birth));
 				assert.equal(ming[0].name, "命宫", label(birth));
 			}
 		});
@@ -136,7 +136,7 @@ describe("排盘结构不变量", () => {
 				for (const { birth, chart } of charts.filter((_, i) => i % 20 === 0)) {
 					const astrolabe = astro.bySolar(
 						`${birth.year}-${pad2(birth.month)}-${pad2(birth.day)}`,
-						birth.hour,
+						birth.timeIndex,
 						birth.gender === "male" ? "男" : "女",
 						true,
 						"zh-CN"
@@ -163,7 +163,7 @@ describe("排盘结构不变量", () => {
 				// 是两种不同形式的表示，改错一个不会连带另一个。
 				for (const { birth, chart } of charts) {
 					for (const p of chart.palaces) {
-						const k = (chart.mingGongBranch - p.branch + 12) % 12;
+						const k = (chart.soulBranch - p.branch + 12) % 12;
 						assert.equal(
 							p.name,
 							PALACE_NAMES_ORDER[k],
@@ -224,7 +224,7 @@ describe("排盘结构不变量", () => {
 		});
 
 		it("星曜 type 与 brightness 取值合法", () => {
-			const TYPES = new Set(["major", "minor", "lucky", "sha"]);
+			const TYPES = new Set(["major", "minor", "soft", "tough"]);
 			const BRIGHT = new Set(["bright", "normal", "dim"]);
 			for (const { birth, chart } of charts) {
 				for (const p of chart.palaces) {
@@ -276,10 +276,10 @@ describe("排盘结构不变量", () => {
 			};
 			for (const { birth, chart } of charts) {
 				assert.ok(
-					[2, 3, 4, 5, 6].includes(chart.wuxingJu),
-					`${label(birth)}：wuxingJu=${chart.wuxingJu}`
+					[2, 3, 4, 5, 6].includes(chart.fiveElementsClass),
+					`${label(birth)}：fiveElementsClass=${chart.fiveElementsClass}`
 				);
-				assert.equal(chart.wuxingJuName, NAMES[chart.wuxingJu], label(birth));
+				assert.equal(chart.fiveElementsClassName, NAMES[chart.fiveElementsClass], label(birth));
 			}
 		});
 
@@ -296,9 +296,9 @@ describe("排盘结构不变量", () => {
 	describe("大限", () => {
 		it("恒为 12 步，覆盖 12 个不同宫支", () => {
 			for (const { birth, chart } of charts) {
-				assert.equal(chart.daXians.length, 12, label(birth));
+				assert.equal(chart.decadals.length, 12, label(birth));
 				assert.equal(
-					new Set(chart.daXians.map(d => d.palaceBranch)).size,
+					new Set(chart.decadals.map(d => d.palaceBranch)).size,
 					12,
 					label(birth)
 				);
@@ -307,7 +307,7 @@ describe("排盘结构不变量", () => {
 
 		it("年龄区间连续：每步 10 年且首尾相接", () => {
 			for (const { birth, chart } of charts) {
-				const dx = [...chart.daXians].sort((a, b) => a.startAge - b.startAge);
+				const dx = [...chart.decadals].sort((a, b) => a.startAge - b.startAge);
 				for (let i = 0; i < dx.length - 1; i++) {
 					assert.equal(
 						dx[i].endAge - dx[i].startAge,
@@ -323,15 +323,15 @@ describe("排盘结构不变量", () => {
 			}
 		});
 
-		it("宫位的 daXianAge 与该宫大限区间一致", () => {
+		it("宫位的 decadalRange 与该宫大限区间一致", () => {
 			for (const { birth, chart } of charts) {
 				for (const p of chart.palaces) {
-					const dx = chart.daXians.find(d => d.palaceBranch === p.branch);
-					if (!dx || !p.daXianAge) continue;
+					const dx = chart.decadals.find(d => d.palaceBranch === p.branch);
+					if (!dx || !p.decadalRange) continue;
 					assert.deepEqual(
-						p.daXianAge,
+						p.decadalRange,
 						[dx.startAge, dx.endAge],
-						`${label(birth)}：${p.name} 的 daXianAge`
+						`${label(birth)}：${p.name} 的 decadalRange`
 					);
 				}
 			}
@@ -343,7 +343,7 @@ describe("排盘结构不变量", () => {
 		// 完全没有回答「此刻该走哪一步」—— 这正是曾经出错的地方：
 		//
 		//   algorithm.ts 曾写 `currentAge = new Date().getFullYear() - year`（**周岁**），
-		//   而 daXianAge / daXians[].startAge 是**虚岁**（iztro 的 decadal.range，
+		//   而 decadalRange / decadals[].startAge 是**虚岁**（iztro 的 decadal.range，
 		//   以正月初一为界）。两者域不同、公式却同形，于是 currentAge 恒偏 1~2 岁。
 		//   更糟的是当时的比对器（lib/compare.ts 的 expectedAge）照抄了同一个公式，
 		//   内核算错、测试跟着错，341 项全绿 —— 同源同错，bug 因此长期潜伏。
@@ -374,7 +374,7 @@ describe("排盘结构不变量", () => {
 				const tag = label(birth);
 				const astrolabe = astro.bySolar(
 					`${birth.year}-${pad2(birth.month)}-${pad2(birth.day)}`,
-					birth.hour,
+					birth.timeIndex,
 					birth.gender === "male" ? "男" : "女",
 					true,
 					"zh-CN"
@@ -395,20 +395,20 @@ describe("排盘结构不变量", () => {
 						h.age.nominalAge >= p.decadal.range[0] &&
 						h.age.nominalAge <= p.decadal.range[1]
 				);
-				const marked = chart.palaces.filter(p => p.isCurrentDaXian);
+				const marked = chart.palaces.filter(p => p.isCurrentDecadal);
 
 				if (!truth) {
 					assert.equal(
-						chart.currentDaXianIndex,
+						chart.currentDecadalIndex,
 						-1,
-						`${tag}：未起运时 currentDaXianIndex 应为 -1`
+						`${tag}：未起运时 currentDecadalIndex 应为 -1`
 					);
-					assert.equal(marked.length, 0, `${tag}：未起运时不应标记 isCurrentDaXian`);
+					assert.equal(marked.length, 0, `${tag}：未起运时不应标记 isCurrentDecadal`);
 					return "childhood";
 				}
 
-				const dx = chart.daXians[chart.currentDaXianIndex];
-				assert.ok(dx, `${tag}：currentDaXianIndex=${chart.currentDaXianIndex} 越界或为 -1`);
+				const dx = chart.decadals[chart.currentDecadalIndex];
+				assert.ok(dx, `${tag}：currentDecadalIndex=${chart.currentDecadalIndex} 越界或为 -1`);
 				assert.deepEqual(
 					[dx.startAge, dx.endAge],
 					truth.decadal!.range,
@@ -419,11 +419,11 @@ describe("排盘结构不变量", () => {
 					truth.earthlyBranch,
 					`${tag}：当前大限所在宫支`
 				);
-				assert.equal(marked.length, 1, `${tag}：应恰好标记 1 个 isCurrentDaXian`);
+				assert.equal(marked.length, 1, `${tag}：应恰好标记 1 个 isCurrentDecadal`);
 				assert.equal(
 					marked[0].branch,
 					dx.palaceBranch,
-					`${tag}：isCurrentDaXian 标在了别的宫`
+					`${tag}：isCurrentDecadal 标在了别的宫`
 				);
 				return "decadal";
 			};
@@ -459,8 +459,8 @@ describe("排盘结构不变量", () => {
 				{ year: now.getFullYear() - 3, month: 3, day: 15 },
 			];
 			for (const base of recent) {
-				for (const hour of [0, 6, 9]) {
-					if (check({ ...base, hour, gender: "male" }) === "childhood") childhood++;
+				for (const timeIndex of [0, 6, 9]) {
+					if (check({ ...base, timeIndex, gender: "male" }) === "childhood") childhood++;
 					else decadal++;
 				}
 			}
@@ -532,7 +532,7 @@ describe("排盘结构不变量", () => {
 					const p = mustPalace(chart, PALACE_NAMES_ORDER[k]);
 					assert.equal(
 						p.branch,
-						(chart.mingGongBranch - k + 12) % 12,
+						(chart.soulBranch - k + 12) % 12,
 						`${label(birth)}：「${PALACE_NAMES_ORDER[k]}」应落在命宫地支 −${k}`
 					);
 				}
@@ -593,7 +593,7 @@ describe("排盘结构不变量", () => {
 			// 独立定位：拿星名到十二宫里逐个找。实现里另有一条「优先匹配主星席位」的
 			// 分支（isMajor），也一并核对 —— 它决定了化曜是否被算作该宫的主星四化。
 			for (const { birth, chart } of charts) {
-				const transforms = getSiHuaByStem(getYearStemIndex(chart.birthInfo.year));
+				const transforms = getMutagenByStem(getYearStemIndex(chart.birthInfo.year));
 				const got = locateSihua(chart, transforms);
 				assert.equal(got.length, HUA.length, `${label(birth)}：应返回四条四化`);
 				for (const [i, hua] of HUA.entries()) {
@@ -627,7 +627,7 @@ describe("排盘结构不变量", () => {
 
 	// ── 格局识别：两个「静默失效」点 ──
 	//
-	// 格局层的 detectHuaLuRuCai / detectHuaQuanRuGuan（`patterns/ji-chu-ge.ts`）按**宫名**查找
+	// 格局层的 detectHuaLuRuCai / detectHuaQuanRuGuan（`patterns/basic.ts`）按**宫名**查找
 	// （原先写 `p.name === "财帛"`）。宫名口径改为项目本位后，若不跟着改，这类失效
 	// **不报错** —— 两个函数都带 `if (!cai) return` 守卫，格局只是从此永不触发，
 	// 输出里静悄悄地少两条判词。
@@ -637,8 +637,8 @@ describe("排盘结构不变量", () => {
 	// 实现按宫名找、断言按偏移算 —— 两条路径不同，才不是复读机。
 	describe("流年/流月四化（独立预言机）", () => {
 		// 生年四化（上一组）之外，三合派三层四化还有「流年 / 流月」两动态层：
-		// `getLiuNianSiHua`（公历年 → 年干，刻意**不**切农历年界）与
-		// `getLiuYueSiHua`（五虎遁：流年干 + 农历月序 → 月干）。
+		// `getYearlyMutagen`（公历年 → 年干，刻意**不**切农历年界）与
+		// `getMonthlyMutagen`（五虎遁：流年干 + 农历月序 → 月干）。
 		// 此前测试只有「--liunian 非数字报错」一条边角断言，两函数的**算术**零覆盖。
 		// 期望值若照抄实现公式就只是复读机，这里全部换第三条路径：
 		//   · 五虎遁 ← 口诀独立表（120 格逐格写死，与实现的 startStemOfYin 零共享）
@@ -664,7 +664,7 @@ describe("排盘结构不变量", () => {
 				for (let m = 1; m <= 12; m++) {
 					const expected = (firstStemOfYinByChant[s]! + m - 1) % 10;
 					assert.equal(
-						getLiuYueStemIndex(s, m),
+						getMonthlyStemIndex(s, m),
 						expected,
 						`${STEMS[s]}年农历${m}月的月干应为${STEMS[expected]}，口诀表与实现分叉`
 					);
@@ -683,7 +683,7 @@ describe("排盘结构不变量", () => {
 				const expected = STEMS.indexOf(ganZhi[0]!);
 				assert.ok(expected >= 0, `lunar 年柱「${ganZhi}」的天干不在 STEMS 里`);
 				assert.equal(
-					getLiuNianSiHua(y).stemIndex,
+					getYearlyMutagen(y).stemIndex,
 					expected,
 					`${y} 年流年干应为${ganZhi[0]}，实现与 lunar-typescript 年柱分叉`
 				);
@@ -702,7 +702,7 @@ describe("排盘结构不变量", () => {
 				[2026, "丙"],
 			];
 			for (const [y, stem] of known) {
-				assert.equal(getLiuNianSiHua(y).stemName, stem, `${y} 年流年干的通行口径为${stem}`);
+				assert.equal(getYearlyMutagen(y).stemName, stem, `${y} 年流年干的通行口径为${stem}`);
 			}
 		});
 	});
@@ -711,31 +711,31 @@ describe("排盘结构不变量", () => {
 		const OFFSET_CAI = 4; // 财帛宫
 		const OFFSET_GUAN = 8; // 官禄宫
 		const palaceAt = (chart: ZiweiChart, offset: number): Palace | undefined =>
-			chart.palaces.find(p => p.branch === (chart.mingGongBranch - offset + 12) % 12);
+			chart.palaces.find(p => p.branch === (chart.soulBranch - offset + 12) % 12);
 
-		for (const { name, offset, siHua } of [
-			{ name: "化禄入财", offset: OFFSET_CAI, siHua: "禄" },
-			{ name: "化权入官", offset: OFFSET_GUAN, siHua: "权" },
+		for (const { name, offset, mutagen } of [
+			{ name: "化禄入财", offset: OFFSET_CAI, mutagen: "禄" },
+			{ name: "化权入官", offset: OFFSET_GUAN, mutagen: "权" },
 		] as const) {
-			it(`${name}：当且仅当偏移 ${offset} 之宫的主星带化${siHua}`, () => {
+			it(`${name}：当且仅当偏移 ${offset} 之宫的主星带化${mutagen}`, () => {
 				let yes = 0;
 				let no = 0;
 				for (const { birth, chart } of charts) {
 					const p = palaceAt(chart, offset);
 					assert.ok(p, `${label(birth)}：偏移 ${offset} 处没有宫位`);
-					const should = p!.stars.some(s => s.type === "major" && s.siHua === siHua);
+					const should = p!.stars.some(s => s.type === "major" && s.mutagen === mutagen);
 					const got = detectPatterns(chart).some(x => x.name === name);
 					assert.equal(
 						got,
 						should,
-						`${label(birth)}：${p!.name}（偏移 ${offset}）主星化${siHua}=${should}，但格局识别=${got}`
+						`${label(birth)}：${p!.name}（偏移 ${offset}）主星化${mutagen}=${should}，但格局识别=${got}`
 					);
 					if (should) yes++;
 					else no++;
 				}
 				// 两侧都要有样本，否则断言可能在「全 false」上空转全绿
-				assert.ok(yes > 0, `300 条样本里没有一条化${siHua}入该宫，正例侧未生效`);
-				assert.ok(no > 0, `300 条样本里全部化${siHua}入该宫，反例侧未生效`);
+				assert.ok(yes > 0, `300 条样本里没有一条化${mutagen}入该宫，正例侧未生效`);
+				assert.ok(no > 0, `300 条样本里全部化${mutagen}入该宫，反例侧未生效`);
 			});
 		}
 
@@ -747,7 +747,7 @@ describe("排盘结构不变量", () => {
 		//   —— 「文昌守命 / 文曲守命」由同一个识别器产出。）
 		//
 		// 【独立性从哪来】
-		// 实现定位三方四正 / 夹宫走的是**地支算术**（getSanFangPalaces 的 `[m,(m+4),(m+8),(m+6)]`、
+		// 实现定位三方四正 / 夹宫走的是**地支算术**（getSurroundPalaces 的 `[m,(m+4),(m+8),(m+6)]`、
 		// getJiaPalaces 的 `(b±1)`）；下面一律走**宫名**（"财帛宫"、"兄弟宫"…），同宫类则走
 		// 「找共同容器」而实现是「分别定位再比地支」。两条路径在「怎么从 chart 找到那几个宫」
 		// 这一步分岔，任一侧写错都会对不上。宫名本身的正确性由上面「十二宫」块的两条偏移恒等式
@@ -777,15 +777,15 @@ describe("排盘结构不变量", () => {
 				starsNamed(chart, n).map(s => s.name);
 			const majorOf = (chart: ZiweiChart, n: string | undefined) =>
 				starsNamed(chart, n).filter(s => s.type === "major");
-			const siHuaStarsIn = (chart: ZiweiChart, n: string | undefined, hua: string) =>
-				starsNamed(chart, n).filter(s => s.siHua === hua);
-			const siHuaMajorNames = (
+			const mutagenStarsIn = (chart: ZiweiChart, n: string | undefined, hua: string) =>
+				starsNamed(chart, n).filter(s => s.mutagen === hua);
+			const mutagenMajorNames = (
 				chart: ZiweiChart,
 				n: string | undefined,
 				hua: string
 			): string[] =>
 				majorOf(chart, n)
-					.filter(s => s.siHua === hua)
+					.filter(s => s.mutagen === hua)
 					.map(s => s.name);
 			const sanFangNames = (chart: ZiweiChart): string[] =>
 				SANFANG_NAMES.flatMap(n => namesNamed(chart, n));
@@ -796,12 +796,12 @@ describe("排盘结构不变量", () => {
 			const offsetBetween = (from: number, to: number): number => (to - from + 12) % 12;
 
 			/** 三方四正里是否有星带某四化（不限 major）—— 三奇加会 / 双禄朝垣用。 */
-			function hasSiHuaInSanFang(chart: ZiweiChart, hua: string): boolean {
-				return SANFANG_NAMES.some(n => siHuaStarsIn(chart, n, hua).length > 0);
+			function hasMutagenInSanFang(chart: ZiweiChart, hua: string): boolean {
+				return SANFANG_NAMES.some(n => mutagenStarsIn(chart, n, hua).length > 0);
 			}
 			/** 三方四正里是否有**主星**带某四化 —— 科权双会用（实现限定 type === "major"）。 */
-			function hasMajorSiHuaInSanFang(chart: ZiweiChart, hua: string): boolean {
-				return SANFANG_NAMES.some(n => majorOf(chart, n).some(s => s.siHua === hua));
+			function hasMajorMutagenInSanFang(chart: ZiweiChart, hua: string): boolean {
+				return SANFANG_NAMES.some(n => majorOf(chart, n).some(s => s.mutagen === hua));
 			}
 			/** 地支 → 该支上的宫名（身宫按地支定位，宫名表里没有「身宫」这一宫）。 */
 			function palaceNameOfBranch(chart: ZiweiChart, branch: number): string | undefined {
@@ -837,7 +837,7 @@ describe("排盘结构不变量", () => {
 			/** 某星是否带指定四化（不限宫、不限主星）。 */
 			const starHasHua = (chart: ZiweiChart, s: string, hua: string): boolean => {
 				const p = palaceOfStar(chart, s);
-				return !!p && p.stars.some(x => x.name === s && x.siHua === hua);
+				return !!p && p.stars.some(x => x.name === s && x.mutagen === hua);
 			};
 
 			/** 火贪 / 铃贪：煞星与贪狼**同宫**（不含会照，也不引用命宫）。
@@ -875,8 +875,8 @@ describe("排盘结构不变量", () => {
 				机月同梁: c =>
 					["天机", "太阴", "天同", "天梁"].filter(s => sanFangNames(c).includes(s))
 						.length >= 3,
-				三奇加会: c => ["禄", "权", "科"].every(h => hasSiHuaInSanFang(c, h)),
-				双禄朝垣: c => hasSiHuaInSanFang(c, "禄") && sanFangNames(c).includes("禄存"),
+				三奇加会: c => ["禄", "权", "科"].every(h => hasMutagenInSanFang(c, h)),
+				双禄朝垣: c => hasMutagenInSanFang(c, "禄") && sanFangNames(c).includes("禄存"),
 				廉杀羊: c => hasAll(sanFangNames(c), "廉贞", "七杀", "擎羊"),
 				巨火羊: c => hasAll(sanFangNames(c), "巨门", "火星", "擎羊"),
 				铃昌陀武: c => hasAll(sanFangNames(c), "铃星", "文昌", "陀罗", "武曲"),
@@ -892,7 +892,7 @@ describe("排盘结构不变量", () => {
 					namesNamed(c, "命宫").includes("文曲"),
 				辅弼同会: c => hasAll(sanFangNames(c), "左辅", "右弼"),
 				魁钺同会: c => hasAll(sanFangNames(c), "天魁", "天钺"),
-				科权双会: c => hasMajorSiHuaInSanFang(c, "科") && hasMajorSiHuaInSanFang(c, "权"),
+				科权双会: c => hasMajorMutagenInSanFang(c, "科") && hasMajorMutagenInSanFang(c, "权"),
 				君臣庆会: c =>
 					namesNamed(c, "命宫").includes("紫微") &&
 					hasAll(sanFangNames(c), "左辅", "右弼"),
@@ -943,7 +943,7 @@ describe("排盘结构不变量", () => {
 				火铃夹命: c => jiaPair(c, "火星", "铃星"),
 				空劫夹命: c => jiaPair(c, "地空", "地劫"),
 				羊陀夹忌: c =>
-					siHuaStarsIn(c, "命宫", "忌").length > 0 && jiaPair(c, "擎羊", "陀罗"),
+					mutagenStarsIn(c, "命宫", "忌").length > 0 && jiaPair(c, "擎羊", "陀罗"),
 
 				// ── 单星坐宫类 ──
 				石中隐玉: c => {
@@ -964,19 +964,19 @@ describe("排盘结构不变量", () => {
 				禄存守命: c => namesNamed(c, "命宫").includes("禄存"),
 				禄存守身: c => {
 					const p = palaceOfStar(c, "禄存");
-					return !!p && p.branch === c.shenGongBranch && p.branch !== c.mingGongBranch;
+					return !!p && p.branch === c.bodyBranch && p.branch !== c.soulBranch;
 				},
 				天马入命: c => namesNamed(c, "命宫").includes("天马"),
 				天马在迁: c => palaceOfStar(c, "天马")?.name === "迁移宫",
 
 				// ── 四化入宫类（固定名） ──
-				化禄入财: c => siHuaMajorNames(c, "财帛宫", "禄").length > 0,
-				化权入官: c => siHuaMajorNames(c, "官禄宫", "权").length > 0,
-				化科入命: c => siHuaMajorNames(c, "命宫", "科").length > 0,
+				化禄入财: c => mutagenMajorNames(c, "财帛宫", "禄").length > 0,
+				化权入官: c => mutagenMajorNames(c, "官禄宫", "权").length > 0,
+				化科入命: c => mutagenMajorNames(c, "命宫", "科").length > 0,
 				化科入身: c =>
-					siHuaMajorNames(c, "命宫", "科").length === 0 &&
-					palaceNamed(c, "命宫")!.branch !== c.shenGongBranch &&
-					siHuaMajorNames(c, palaceNameOfBranch(c, c.shenGongBranch), "科").length > 0,
+					mutagenMajorNames(c, "命宫", "科").length === 0 &&
+					palaceNamed(c, "命宫")!.branch !== c.bodyBranch &&
+					mutagenMajorNames(c, palaceNameOfBranch(c, c.bodyBranch), "科").length > 0,
 
 				// ── 2026-09-27 由 db-analysis 收敛进来的 12 个格局名 ──
 				// 这些名字此前只在 `detectGeJu` 里手写判定（topic 命令的展示判词）。
@@ -1064,7 +1064,7 @@ describe("排盘结构不变量", () => {
 						assert.equal(
 							got,
 							should,
-							`${label(birth)}：预言机=${should}，实现=${got}（命宫在${BRANCHES[chart.mingGongBranch]}）`
+							`${label(birth)}：预言机=${should}，实现=${got}（命宫在${BRANCHES[chart.soulBranch]}）`
 						);
 						if (should) yes++;
 						else no++;
@@ -1088,7 +1088,7 @@ describe("排盘结构不变量", () => {
 					it(`*${suffix}：与「${palace}主星带化${hua}」一一对应`, () => {
 						let hits = 0;
 						for (const [i, { birth, chart }] of charts.entries()) {
-							const want = siHuaMajorNames(chart, palace, hua)
+							const want = mutagenMajorNames(chart, palace, hua)
 								.map(s => `${s}${suffix}`)
 								.sort();
 							const got = [...detected[i]].filter(n => n.endsWith(suffix)).sort();

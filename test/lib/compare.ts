@@ -4,7 +4,7 @@
 // 产出**结构化 diff 列表**而非布尔值 —— 300 条基准里某条失败时要能一眼看出是哪个字段。
 //
 // 四处归一化（都是实测出来的真实差异，不是防御性代码）：
-//   1. 空值形态：本项目无四化的星是显式 `siHua: undefined`，样本则该键不存在；
+//   1. 空值形态：本项目无四化的星是显式 `mutagen: undefined`，样本则该键不存在；
 //      两边无庙旺的星都可能给 `""`。一律视为「无此属性」并忽略键的存在性差异。
 //   2. 字段超集：本项目 `Palace` 比样本多出 `oppositeBranch` / `isEmpty`
 //      （空宫时另有 `borrowedFromBranch` / `borrowedFromName` / `borrowedStars`）。
@@ -23,13 +23,13 @@ import { loadConstants, loadRender } from "./loader.ts";
 //
 // 刻意**不**复用 @/ziwei/types 的 Palace / ZiweiChart 来描述样本：那些是「本项目产出」的
 // 契约，样本是**外部数据**，字段集不同（宫名是 iztro 词汇、无借宫字段、可选键可能整键
-// 缺失或为空串 —— 见上面的四处归一化）。星曜的 type / brightness / siHua 在此放宽为
+// 缺失或为空串 —— 见上面的四处归一化）。星曜的 type / brightness / mutagen 在此放宽为
 // string 也是刻意的：比对器对外部数据不做预设，任何取值先收进来、由断言与白名单去判。
 export interface BaselineStar {
 	name: string;
 	type: string;
 	brightness?: string;
-	siHua?: string;
+	mutagen?: string;
 }
 
 export interface BaselinePalace {
@@ -39,13 +39,13 @@ export interface BaselinePalace {
 	name: string;
 	stars: BaselineStar[];
 	/** 该宫所属大限区间 `[起, 讫]`（虚岁，闭区间） */
-	daXianAge?: [number, number];
-	isMingGong?: boolean;
-	isShenGong?: boolean;
-	isCurrentDaXian?: boolean;
+	decadalRange?: [number, number];
+	isSoulPalace?: boolean;
+	isBodyPalace?: boolean;
+	isCurrentDecadal?: boolean;
 }
 
-export interface BaselineDaXian {
+export interface BaselineDecadal {
 	startAge: number;
 	endAge: number;
 	palaceBranch: number;
@@ -54,14 +54,14 @@ export interface BaselineDaXian {
 }
 
 export interface BaselineChart {
-	mingGongBranch: number;
-	shenGongBranch: number;
-	wuxingJu: number;
-	wuxingJuName: string;
+	soulBranch: number;
+	bodyBranch: number;
+	fiveElementsClass: number;
+	fiveElementsClassName: string;
 	ziweiPos: number;
 	lunarInfo?: Partial<LunarInfo>;
 	palaces?: BaselinePalace[];
-	daXians?: BaselineDaXian[];
+	decadals?: BaselineDecadal[];
 }
 
 /** fixtures/charts.jsonl 的一行：出生信息 + 基准盘（样本其余字段如 topics 已剔除）。 */
@@ -125,7 +125,7 @@ export { BRANCHES };
 // 新版取值（酉宫日平、月旺）更合传统口径，故本项目是对的，样本是**旧版的陈旧值**。
 //
 // 白名单条目必须写明 `cause`：它是升级 iztro 时审阅差异的依据，不是掩盖差异的补丁。
-// 只放行**单个字段**（brightness）的差异，不是整颗星 —— 星曜名、type、siHua 仍严格比对。
+// 只放行**单个字段**（brightness）的差异，不是整颗星 —— 星曜名、type、mutagen 仍严格比对。
 export interface KnownDivergence {
 	star: string;
 	branch: number;
@@ -177,12 +177,12 @@ export const SHARED_PALACE_FIELDS = [
 	"branch",
 	"stem",
 	"name",
-	"daXianAge",
-	"isMingGong",
-	"isShenGong",
+	"decadalRange",
+	"isSoulPalace",
+	"isBodyPalace",
 ] as const;
 
-/** 大限的可比字段（飞星派的 stemIndex / stemName / siHua 两边都不该有）。 */
+/** 大限的可比字段（飞星派的 stemIndex / stemName / mutagen 两边都不该有）。 */
 export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"] as const;
 
 /**
@@ -191,7 +191,7 @@ export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"
  * 口径：**虚岁**，以农历年（正月初一）为界 —— 不是生日、也不是立春。对应 iztro 的默认
  * `ageDivide: 'normal'`（见 `iztro/lib/astro/FunctionalAstrolabe.js`）：
  *     nominalAge = 目标日农历年 − 出生农历年 + 1
- * 这正是 `daXians[].startAge/endAge` 所在的域，故 currentAge 必须用同一口径才能比。
+ * 这正是 `decadals[].startAge/endAge` 所在的域，故 currentAge 必须用同一口径才能比。
  *
  * ⚠️ 这里**独立换算**，刻意不引用内核的 currentAge。
  *    2026-09 之前两边都写 `getFullYear() - year`（周岁），域不同却公式同形，
@@ -248,7 +248,7 @@ export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: 
 	};
 
 	// ── 顶层标量 ──
-	for (const k of ["mingGongBranch", "shenGongBranch", "wuxingJu", "wuxingJuName", "ziweiPos"] as const) {
+	for (const k of ["soulBranch", "bodyBranch", "fiveElementsClass", "fiveElementsClassName", "ziweiPos"] as const) {
 		if (actual[k] !== baseline[k]) push(k, baseline[k], actual[k]);
 	}
 
@@ -290,18 +290,18 @@ export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: 
 				}
 				continue;
 			}
-			const a = f === "daXianAge" ? JSON.stringify(aP[f] ?? null) : aP[f];
-			const bb = f === "daXianAge" ? JSON.stringify(bP[f] ?? null) : bP[f];
+			const a = f === "decadalRange" ? JSON.stringify(aP[f] ?? null) : aP[f];
+			const bb = f === "decadalRange" ? JSON.stringify(bP[f] ?? null) : bP[f];
 			if (a !== bb) push(`palaces[${label}].${f}`, bP[f] ?? null, aP[f] ?? null);
 		}
 		compareStars(aP.stars ?? [], bP.stars ?? [], label, b, push);
 	}
 
 	// ── 大限 ──
-	const aD = actual.daXians ?? [];
-	const bD = baseline.daXians ?? [];
+	const aD = actual.decadals ?? [];
+	const bD = baseline.decadals ?? [];
 	if (aD.length !== bD.length) {
-		push("daXians.length", bD.length, aD.length);
+		push("decadals.length", bD.length, aD.length);
 	} else {
 		for (let i = 0; i < bD.length; i++) {
 			for (const f of DAXIAN_FIELDS) {
@@ -310,7 +310,7 @@ export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: 
 					const want = normalizePalaceName(bD[i].palaceName);
 					if (aD[i].palaceName !== want) {
 						push(
-							`daXians[${i}].palaceName`,
+							`decadals[${i}].palaceName`,
 							want,
 							aD[i].palaceName,
 							want !== bD[i].palaceName
@@ -320,7 +320,7 @@ export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: 
 					}
 					continue;
 				}
-				if (aD[i][f] !== bD[i][f]) push(`daXians[${i}].${f}`, bD[i][f], aD[i][f]);
+				if (aD[i][f] !== bD[i][f]) push(`decadals[${i}].${f}`, bD[i][f], aD[i][f]);
 			}
 		}
 	}
@@ -328,39 +328,39 @@ export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: 
 	// ── 随年份漂移的三个字段：重算期望值，而非直接抄样本的陈旧快照 ──
 	// algorithm.ts 的 currentAge 是虚岁（农历年差 +1）。样本生成于 2026 年，
 	// 直接比对会在跨过下一个农历年（正月初一）后全线失败。
-	// 受影响的共三处：currentAge、currentDaXianIndex、palace.isCurrentDaXian —— 都在下面重算。
+	// 受影响的共三处：currentAge、currentDecadalIndex、palace.isCurrentDecadal —— 都在下面重算。
 	const age = expectedAge(actual.birthInfo, now);
 	if (actual.currentAge !== age) push("currentAge", age, actual.currentAge, "按当前年份重算");
 	const expIdx = bD.findIndex(d => age >= d.startAge && age <= d.endAge);
-	if (actual.currentDaXianIndex !== expIdx) {
-		push("currentDaXianIndex", expIdx, actual.currentDaXianIndex, "按当前年份重算");
+	if (actual.currentDecadalIndex !== expIdx) {
+		push("currentDecadalIndex", expIdx, actual.currentDecadalIndex, "按当前年份重算");
 	}
 
-	// ── palace.isCurrentDaXian ──
+	// ── palace.isCurrentDecadal ──
 	// 样本 palace 里**有**这个字段，但同样是 2026 年的快照，故不能直接比（理由同上）。
 	// 改为按「重算的虚岁是否落在该宫大限区间内」重新推导应有的标记，用的是
-	// **基准样本的 daXianAge**（外部数据）+ **重算的 age**，去核对内核的标记逻辑。
+	// **基准样本的 decadalRange**（外部数据）+ **重算的 age**，去核对内核的标记逻辑。
 	//
 	// 为什么不复用上面的 expIdx：expIdx 只回答「当前走到第几步」，不回答「标在了哪个宫」。
-	// 内核分两处独立完成这件事（algorithm.ts 里由 daXianAge 循环标记、由 daXians 求 index），
+	// 内核分两处独立完成这件事（algorithm.ts 里由 decadalRange 循环标记、由 decadals 求 index），
 	// 两者理论上可以对不上。
 	//
 	// ⚠️ 效力边界（实测，非推测）：本检查**依赖 expectedAge()**，而它正是历史事故里与内核
 	//    一起写错的那条路径。实测把内核与比对器**同时**退回周岁，300 条盘的 currentAge /
-	//    currentDaXianIndex / isCurrentDaXian 三者本检查**全部保持全绿**，唯一变红的是层 3 的
+	//    currentDecadalIndex / isCurrentDecadal 三者本检查**全部保持全绿**，唯一变红的是层 3 的
 	//    horoscope() 预言机。即：本检查能抓「只有内核改了」的回归（已用注入 bug 验证过会红），
 	//    **抓不到「内核与比对器同源同错」**——那始终是层 3 外部预言机的职责，不可互相替代。
 	for (let b = 0; b < 12; b++) {
 		const aP = aByBranch.get(b);
 		const bP = bByBranch.get(b);
 		if (!aP || !bP) continue; // 宫位缺失已在上面报过，不重复计入
-		const range = bP.daXianAge;
+		const range = bP.decadalRange;
 		const should = Array.isArray(range) && age >= range[0] && age <= range[1];
-		if (!!aP.isCurrentDaXian !== should) {
+		if (!!aP.isCurrentDecadal !== should) {
 			push(
-				`palaces[${BRANCHES[b]}宫(branch=${b})].isCurrentDaXian`,
+				`palaces[${BRANCHES[b]}宫(branch=${b})].isCurrentDecadal`,
 				should,
-				!!aP.isCurrentDaXian,
+				!!aP.isCurrentDecadal,
 				`按重算虚岁 ${age} 落在区间 ${JSON.stringify(range)} 推导`
 			);
 		}
@@ -369,7 +369,7 @@ export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: 
 	return diffs;
 }
 
-/** 比对一个宫内的星曜集合：按星名建索引，比对 type / brightness / siHua。 */
+/** 比对一个宫内的星曜集合：按星名建索引，比对 type / brightness / mutagen。 */
 function compareStars(
 	aStars: Star[],
 	bStars: BaselineStar[],
@@ -405,9 +405,9 @@ function compareStars(
 			);
 		}
 
-		const aH = val(aS.siHua);
-		const bH = val(bS.siHua);
-		if (aH !== bH) push(`palaces[${label}].stars[${name}].siHua`, bH, aH);
+		const aH = val(aS.mutagen);
+		const bH = val(bS.mutagen);
+		if (aH !== bH) push(`palaces[${label}].stars[${name}].mutagen`, bH, aH);
 	}
 }
 

@@ -21,18 +21,18 @@ import {
 	findStarPalace,
 	shaCountInPalace,
 	hasShaInPalace,
-	getSanFangPalaces,
+	getSurroundPalaces,
 	isInSanFang,
 	sanFangAllStars,
 	sanFangShaCount,
 	isBright,
 	isDim,
-	getStarSiHua,
-	palaceHasSiHua,
-	sanFangHasSiHua,
+	getStarMutagen,
+	palaceHasMutagen,
+	sanFangHasMutagen,
 	fillVerdict,
 } from "./helpers";
-import { duiGongBranch } from "../palace-relations";
+import { oppositeBranch } from "../palace-relations";
 
 /** 君臣庆会：紫微入命，左辅右弼同会（同宫或三方） */
 function detectJunChenQingHui({ chart, ming }: DetectContext): Pattern[] {
@@ -47,7 +47,7 @@ function detectJunChenQingHui({ chart, ming }: DetectContext): Pattern[] {
 	const breaking: string[] = [];
 	if (sanFangSet.has("文昌") || sanFangSet.has("文曲")) bonus.push("再会文昌或文曲");
 	if (sanFangSet.has("天魁") || sanFangSet.has("天钺")) bonus.push("魁钺贵人加照");
-	if (getStarSiHua(ming, "紫微") === "权") bonus.push("紫微化权");
+	if (getStarMutagen(ming, "紫微") === "权") bonus.push("紫微化权");
 	if (sanFangShaCount(chart, SHA_KONG) >= 2) breaking.push("地空地劫双夹会照（紫微忌空劫）");
 
 	const name = "君臣庆会";
@@ -73,8 +73,8 @@ function detectZiFu({ chart }: DetectContext): Pattern[] {
 	// 与 topic 侧实测 44/300 盘判定相反（如紫府坐财帛：这边报格、那边不报）。
 	// 代价：紫微天府同宫于它宫时不再产出「紫府同宫」，那类盘在这两处都不再有此格局。
 	// ✓ 迁移宫即命宫对宫 —— 与 `palace-relations.ts` 的三方四正偏移表第 4 项同源。
-	const inMing = ziwei.branch === chart.mingGongBranch;
-	const inQianYi = ziwei.branch === duiGongBranch(chart.mingGongBranch);
+	const inMing = ziwei.branch === chart.soulBranch;
+	const inQianYi = ziwei.branch === oppositeBranch(chart.soulBranch);
 	if (!inMing && !inQianYi) return [];
 
 	const required = [inMing ? "紫微天府同入命宫" : "紫微天府同入迁移宫（照命，力减）"];
@@ -102,13 +102,13 @@ function detectFuXiangChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	const tianxiang = findStarPalace(chart, "天相");
 	if (!tianfu || !tianxiang) return [];
 	if (!isInSanFang(chart, tianfu.branch) || !isInSanFang(chart, tianxiang.branch)) return [];
-	if (tianfu.branch === chart.mingGongBranch && tianxiang.branch === chart.mingGongBranch) return [];
+	if (tianfu.branch === chart.soulBranch && tianxiang.branch === chart.soulBranch) return [];
 	if (tianfu.branch === tianxiang.branch) return [];
 
 	const required = ["天府坐命三方", "天相坐命三方", "两星不同宫"];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
-	if (hasStar(ming, "禄存") || palaceHasSiHua(ming, "禄")) bonus.push("命宫见禄");
+	if (hasStar(ming, "禄存") || palaceHasMutagen(ming, "禄")) bonus.push("命宫见禄");
 	if (sanFangAllStars(chart).has("左辅")) bonus.push("再会左辅");
 	if (hasShaInPalace(ming, SHA_HARD)) breaking.push("命宫坐煞星");
 	if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push("三方四正煞星过多");
@@ -141,7 +141,7 @@ function detectYangLiangChangLu({ chart }: DetectContext): Pattern[] {
 	const breaking: string[] = [];
 	if (isBright(sun, "太阳")) bonus.push("太阳庙旺");
 	if (isBright(liang, "天梁")) bonus.push("天梁庙旺");
-	if (sanFangHasSiHua(chart, "科")) bonus.push("再会化科");
+	if (sanFangHasMutagen(chart, "科")) bonus.push("再会化科");
 	if (isDim(sun, "太阳")) breaking.push("太阳落陷（阳梁失辉）");
 	if (sanFangShaCount(chart, SHA_HARD) >= 2) breaking.push("三方煞重");
 
@@ -180,7 +180,7 @@ function detectHuoTanLingTan({ chart }: DetectContext): Pattern[] {
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (isBright(tan, "贪狼")) bonus.push("贪狼庙旺");
-	if (getStarSiHua(tan, "贪狼") === "禄" || getStarSiHua(tan, "贪狼") === "权")
+	if (getStarMutagen(tan, "贪狼") === "禄" || getStarMutagen(tan, "贪狼") === "权")
 		bonus.push("贪狼化禄/化权");
 	if (hasShaInPalace(tan, ["擎羊", "陀罗"])) breaking.push("贪狼宫又见羊陀（破横发之力）");
 	if (hasShaInPalace(tan, SHA_KONG)) breaking.push("贪狼遇空劫（财来财去）");
@@ -202,7 +202,7 @@ function detectWuTan({ chart }: DetectContext): Pattern[] {
 	const wu = findStarPalace(chart, "武曲");
 	const tan = findStarPalace(chart, "贪狼");
 	if (!wu || !tan) return [];
-	const sameOrOppose = wu.branch === tan.branch || duiGongBranch(wu.branch) === tan.branch;
+	const sameOrOppose = wu.branch === tan.branch || oppositeBranch(wu.branch) === tan.branch;
 	if (!sameOrOppose) return [];
 	if (!isInSanFang(chart, wu.branch) && !isInSanFang(chart, tan.branch)) return [];
 
@@ -214,7 +214,7 @@ function detectWuTan({ chart }: DetectContext): Pattern[] {
 	const breaking: string[] = [];
 	if (sanFangAllStars(chart).has("火星") || sanFangAllStars(chart).has("铃星"))
 		bonus.push("再遇火星/铃星（火贪/铃贪叠加）");
-	if (getStarSiHua(wu, "武曲") === "禄") bonus.push("武曲化禄");
+	if (getStarMutagen(wu, "武曲") === "禄") bonus.push("武曲化禄");
 	if (hasShaInPalace(wu, ["擎羊", "陀罗"])) breaking.push("武贪宫见羊陀");
 	if (hasShaInPalace(wu, SHA_KONG)) breaking.push("武贪宫遇空劫");
 
@@ -237,7 +237,7 @@ function detectShaPoLang({ chart, ming }: DetectContext): Pattern[] {
 	const required = ["七杀、破军、贪狼三星齐入命宫三方四正"];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
-	if (sanFangHasSiHua(chart, "禄") || sanFangHasSiHua(chart, "权"))
+	if (sanFangHasMutagen(chart, "禄") || sanFangHasMutagen(chart, "权"))
 		bonus.push("三方有化禄或化权（动得有力）");
 	if (sanFangSet.has("左辅") && sanFangSet.has("右弼")) bonus.push("辅弼同会（变动中得贵人）");
 	if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push("煞星过重（动而无成）");
@@ -247,7 +247,7 @@ function detectShaPoLang({ chart, ming }: DetectContext): Pattern[] {
 	return [{
 		name,
 		level: breaking.length ? 40 : 75,
-		palaces: getSanFangPalaces(chart)
+		palaces: getSurroundPalaces(chart)
 			.filter(p => has.some(s => getMajorStarNames(p).includes(s)))
 			.map(p => p.name),
 		conditions: { required, bonus, breaking },
@@ -276,7 +276,7 @@ function detectJiYueTongLiang({ chart, ming }: DetectContext): Pattern[] {
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (sanFangSet.has("文昌") || sanFangSet.has("文曲")) bonus.push("再会昌曲");
-	if (sanFangHasSiHua(chart, "科")) bonus.push("再会化科");
+	if (sanFangHasMutagen(chart, "科")) bonus.push("再会化科");
 	if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push("煞星过多（机月同梁忌煞）");
 	if (hasShaInPalace(ming, SHA_HARD)) breaking.push("命宫坐煞");
 	if (!full) breaking.push(`三方四正只齐 ${has.length} 星（机月同梁不全格）`);
@@ -285,7 +285,7 @@ function detectJiYueTongLiang({ chart, ming }: DetectContext): Pattern[] {
 	return [{
 		name,
 		level: full ? (breaking.length ? 75 : 90) : 60,
-		palaces: getSanFangPalaces(chart)
+		palaces: getSurroundPalaces(chart)
 			.filter(p => has.some(s => getMajorStarNames(p).includes(s)))
 			.map(p => p.name),
 		conditions: { required, bonus, breaking },

@@ -8,9 +8,9 @@
  *    静态 import 引内核与 `@/` 别名。但**不要**反过来让 purple-star.ts 静态引本文件。
  */
 
-import type { BirthInfo, Palace, Star, ZiweiChart, SiHua } from "@/ziwei/types";
+import type { BirthInfo, Palace, Star, ZiweiChart, Mutagen } from "@/ziwei/types";
 import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/ziwei/constants";
-import { sanFangBranches } from "@/ziwei/palace-relations";
+import { surroundBranches } from "@/ziwei/palace-relations";
 import { generateChart } from "@/ziwei/algorithm";
 
 // ══════════════════════ 共用格式化 ══════════════════════
@@ -133,15 +133,15 @@ export function birthplaceSection(lngNote: string, lngAmbiguous: string[] | null
  * 找宫分两级：先找**主星**席位命中该星的宫，找不到再放宽到任意席位；`isMajor` 记录是否
  * 走了前一级（即该星在此宫被作主星收录）。
  */
-export function locateSihua(chart: ZiweiChart, transforms: Record<SiHua, string>) {
+export function locateSihua(chart: ZiweiChart, transforms: Record<Mutagen, string>) {
 	const out: {
-		hua: SiHua;
+		hua: Mutagen;
 		star: string;
 		palace: string | null;
 		branch: string | null;
 		isMajor: boolean;
 	}[] = [];
-	const huaList: SiHua[] = ["禄", "权", "科", "忌"];
+	const huaList: Mutagen[] = ["禄", "权", "科", "忌"];
 	for (const hua of huaList) {
 		const star = transforms[hua];
 		const palace =
@@ -167,8 +167,8 @@ export function locateSihua(chart: ZiweiChart, transforms: Record<SiHua, string>
  * @param branch - 本宫的地支索引 0–11
  * @returns 四个宫名，顺序为 `[本宫, 三合(+4), 三合(+8), 对宫(+6)]`；查不到的宫位退化为 `"?"`
  */
-export function sanFangSiZheng(chart: ZiweiChart, branch: number): string[] {
-	return sanFangBranches(branch).map(b => chart.palaces.find(p => p.branch === b)?.name ?? "?");
+export function surroundNames(chart: ZiweiChart, branch: number): string[] {
+	return surroundBranches(branch).map(b => chart.palaces.find(p => p.branch === b)?.name ?? "?");
 }
 
 /**
@@ -191,7 +191,7 @@ const BRIGHTNESS_CN: Record<NonNullable<Star["brightness"]>, string> = {
  */
 const starLine = (s: Star): string => {
 	const parts = [s.name];
-	if (s.siHua) parts.push(`化${s.siHua}`);
+	if (s.mutagen) parts.push(`化${s.mutagen}`);
 	if (s.brightness) parts.push(BRIGHTNESS_CN[s.brightness]);
 	return parts.join("");
 };
@@ -210,16 +210,16 @@ const starLine = (s: Star): string => {
  */
 export function renderPalace(p: Palace, chart: ZiweiChart): string {
 	const major = p.stars.filter(s => s.type === "major");
-	const lucky = p.stars.filter(s => s.type === "lucky");
-	const sha = p.stars.filter(s => s.type === "sha");
+	const lucky = p.stars.filter(s => s.type === "soft");
+	const sha = p.stars.filter(s => s.type === "tough");
 	const minor = p.stars.filter(s => s.type === "minor");
 
 	const head = `${p.name}【${BRANCHES[p.branch]}${STEMS[p.stem]}】`;
-	const age = p.daXianAge ? `${p.daXianAge[0]}-${p.daXianAge[1]}岁` : "";
+	const age = p.decadalRange ? `${p.decadalRange[0]}-${p.decadalRange[1]}岁` : "";
 	const marks = [
-		p.isMingGong ? "命宫" : "",
-		p.isShenGong ? "身宫" : "",
-		p.isCurrentDaXian ? `当前大限(${age})` : age,
+		p.isSoulPalace ? "命宫" : "",
+		p.isBodyPalace ? "身宫" : "",
+		p.isCurrentDecadal ? `当前大限(${age})` : age,
 	]
 		.filter(Boolean)
 		.join(" · ");
@@ -235,7 +235,7 @@ export function renderPalace(p: Palace, chart: ZiweiChart): string {
 	if (lucky.length) lines.push(`  吉星：${lucky.map(s => s.name).join("、")}`);
 	if (sha.length) lines.push(`  煞星：${sha.map(s => s.name).join("、")}`);
 	if (minor.length) lines.push(`  杂曜：${minor.map(s => s.name).join("、")}`);
-	lines.push(`  三方四正：${sanFangSiZheng(chart, p.branch).join(" / ")}`);
+	lines.push(`  三方四正：${surroundNames(chart, p.branch).join(" / ")}`);
 
 	return lines.join("\n");
 }
@@ -281,7 +281,7 @@ const ziweiBranchOf = (c: ZiweiChart): string => BRANCHES[c.ziweiPos];
  * @returns 主星名以「、」连接；空宫写 `空宫(借X：…)`；命宫地支取不到宫位时返回 `"—"`
  */
 function mingMajorBrief(c: ZiweiChart): string {
-	const m = c.palaces.find(p => p.branch === c.mingGongBranch);
+	const m = c.palaces.find(p => p.branch === c.soulBranch);
 	if (!m) return "—";
 	const s = m.stars.filter(x => x.type === "major").map(x => x.name);
 	return s.length
@@ -293,15 +293,15 @@ function mingMajorBrief(c: ZiweiChart): string {
  * 晚子时口径提醒。
  *
  * @param chart - 本次实际排出的盘
- * @param info - 出生信息；重排对照盘时只改 `hour`，其余照用
- * @param isLateZi - 本次是否真的按晚子时口径（即 `hour === 12`）
+ * @param info - 出生信息；重排对照盘时只改 `timeIndex`，其余照用
+ * @param isLateZi - 本次是否真的按晚子时口径（即 `timeIndex === 12`）
  * @param lateZiCandidate - 校正后的真太阳时是否落在 23:00–23:59
  * @returns 待追加进输出数组的若干行；命中任一口径时末尾带一个空行作分隔
  *
  * @remarks
  * 23:00–23:59 出生时，子时横跨两日：「当日早子时」与「晚子时算次日」排出的是两张不同的盘。
  * 故这里会**另排一张对照盘**并把两张盘的紫微位与命宫主星并列出来（`isLateZi` 时对照当日早子时
- * `hour: 0`，否则对照晚子时 `hour: 12`）。对照盘靠 `generateChart` 现排，不缓存。
+ * `timeIndex: 0`，否则对照晚子时 `timeIndex: 12`）。对照盘靠 `generateChart` 现排，不缓存。
  *
  * 措辞锚在「校正后」而非「你给的钟表时间」：开 `--eot` 或西部城市时，落在 23:00–23:59 的
  * 往往是校正后的真太阳时，钟表时间可能在别处（如喀什 02:30 校正后是前一日 23:37）。
@@ -319,7 +319,7 @@ export function lateZiSection(
 		out.push(
 			"  注意：安星依据的是次日的农历日数，故下方「农历」栏显示的是出生当日，与安星所用日相差一天，属正常。"
 		);
-		const alt = generateChart({ ...info, hour: 0 });
+		const alt = generateChart({ ...info, timeIndex: 0 });
 		out.push(
 			`  对照【当日早子时】口径：紫微落 ${ziweiBranchOf(alt)} · 命宫主星 ${mingMajorBrief(alt)}`
 		);
@@ -327,7 +327,7 @@ export function lateZiSection(
 		return out;
 	}
 	if (!lateZiCandidate) return out;
-	const alt = generateChart({ ...info, hour: 12 });
+	const alt = generateChart({ ...info, timeIndex: 12 });
 	out.push("【⚠️ 晚子时口径提醒】");
 	out.push(
 		"  校正后的真太阳时落在 23:00–23:59。子时横跨两日，两种口径排出的是**两张不同的盘**。"

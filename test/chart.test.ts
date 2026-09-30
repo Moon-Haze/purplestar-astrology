@@ -35,7 +35,7 @@ const { generateChart, parseWuxingJu } = await loadAlgorithm();
 
 const describeBirth = (b: BirthInfo): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ` +
-	`${BRANCHES[b.hour] ?? `timeIndex${b.hour}`}时 ${b.gender}`;
+	`${BRANCHES[b.timeIndex] ?? `timeIndex${b.timeIndex}`}时 ${b.gender}`;
 
 // ── 先确认基准数据真的加载进来了 ──
 // 没有这条，fixtures 读空会让下面 0 个用例、「全绿」通过 —— 那是最危险的假阳性。
@@ -94,7 +94,7 @@ describe("排盘对标（基准：iztro 2.5.8 样本）", () => {
 
 // ── 随运行年份漂移的字段 ──
 // algorithm.ts 的 currentAge 是**虚岁**（农历年差 +1，以正月初一为界），连带
-// currentDaXianIndex / palace.isCurrentDaXian。样本是 2026 年拍的快照，
+// currentDecadalIndex / palace.isCurrentDecadal。样本是 2026 年拍的快照，
 // **若测试照抄样本的 currentAge，跨过下一个正月初一本套测试就会全线变红**。
 // 故比对器按「注入的当前时间」独立重算期望值。下面这条断言证明重算确实在生效。
 describe("随年份漂移的字段", () => {
@@ -139,7 +139,7 @@ describe("已知差异白名单", () => {
 });
 
 // ── 五行局名 → 局数 的解析 ──
-// `chart.wuxingJu` 的唯一来源，而它是**从局名这一字符串反推数字**得出的，故口径需单独锁住。
+// `chart.fiveElementsClass` 的唯一来源，而它是**从局名这一字符串反推数字**得出的，故口径需单独锁住。
 // 上面的「排盘对标」只能覆盖 iztro 实际产出的中文数字写法（300 条样本全是「水二局」这类），
 // 覆盖不到口径变更后的形态 —— 那正是这里要盯的。
 describe("五行局名解析", () => {
@@ -153,7 +153,7 @@ describe("五行局名解析", () => {
 
 	it("阿拉伯数字变体同样解析成功", () => {
 		// iztro 若把 fiveElementsClass 改写成「水2局」，按纯中文数字匹配会整片落到兜底 3。
-		// 局数虽不参与安星，但会让 wuxingJu 与 wuxingJuName 互相矛盾 —— 局名说「水二局」、
+		// 局数虽不参与安星，但会让 fiveElementsClass 与 fiveElementsClassName 互相矛盾 —— 局名说「水二局」、
 		// 局数说 3，而 invariants 里的「名称与数字对应」不变量正盯着这一致性。
 		assert.equal(parseWuxingJu("水2局"), 2);
 		assert.equal(parseWuxingJu("火6局"), 6);
@@ -161,7 +161,7 @@ describe("五行局名解析", () => {
 
 	it("无法识别的局名兜底为 3 且不抛错", () => {
 		// 与 projectPalaceName 的严格口径相反：局数不参与安星，猜错的代价低于中断排盘。
-		// 这条锁的是**取舍本身**（types.ts 的 wuxingJu 注释也这么写），不是锁 3 这个值更好。
+		// 这条锁的是**取舍本身**（types.ts 的 fiveElementsClass 注释也这么写），不是锁 3 这个值更好。
 		assert.equal(parseWuxingJu("未知局"), 3);
 		assert.equal(parseWuxingJu(""), 3);
 	});

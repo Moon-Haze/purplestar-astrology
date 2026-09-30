@@ -6,16 +6,16 @@
  * 拆成 `views/` 之后闭包没了，这些变量改由本文件的 `makeContext()` 统一产出，
  * 于是每个 `renderXxx` 都退化成「读 ctx → 返回若干行」的纯函数。
  *
- * ⚠️ **这里故意多算一样东西**：`siHuaInSanFang`（三方四正范围内的本命四化）。
+ * ⚠️ **这里故意多算一样东西**：`mutagenInSanFang`（三方四正范围内的本命四化）。
  * 它原本在「三、本命四化会照」小节现算，又被「三点五、年干四化」读去做去重集合 ——
- * 是全篇**唯一一条真实的跨小节依赖**。若留在 `views/sihua.ts` 里现算，
+ * 是全篇**唯一一条真实的跨小节依赖**。若留在 `views/mutagen.ts` 里现算，
  * `views/year-stem.ts` 就无从判断哪些四化已经报过，会把三方四正内已展示的
  * **再报一遍**。提到这里算一次，两节共读同一份结果。
  *
  * @packageDocumentation
  */
 
-import type { DaXian, Palace, Star, ZiweiChart } from "../types";
+import type { Decadal, Palace, Star, ZiweiChart } from "../types";
 import {
 	STAR_CONTENT_MAP,
 	TOPIC_LABEL,
@@ -26,17 +26,17 @@ import {
 	type StarContent,
 	type TopicKey,
 } from "./data";
-import { getPalaceSiHua, getPalaceStars, getSanFangSiZheng } from "./palace-query";
-import { getSiHuaNote } from "./lookups";
+import { getPalaceMutagen, getPalaceStars, getSanFangSiZheng } from "./palace-query";
+import { getMutagenNote } from "./lookups";
 
-/** 三方四正范围内的一条本命四化（即 {@link AnalysisContext.siHuaInSanFang} 的元素）。 */
-export interface SiHuaInSanFang {
+/** 三方四正范围内的一条本命四化（即 {@link AnalysisContext.mutagenInSanFang} 的元素）。 */
+export interface MutagenInSanFang {
 	/** 该四化落在哪个宫（`Palace.name`） */
 	palaceName: string;
 	/** 带四化的星名 */
 	starName: string;
 	/** 四化字：禄 / 权 / 科 / 忌 */
-	siHua: string;
+	mutagen: string;
 	/** 该星该化的语义补充，查不到时为空串 */
 	note: string;
 }
@@ -78,16 +78,16 @@ export interface AnalysisContext {
 	sanFangLabels: [string, string, string];
 
 	/** 当前大限 */
-	currentDx: DaXian | undefined;
+	currentDx: Decadal | undefined;
 
 	/**
 	 * 三方四正范围内落的所有本命四化。
 	 *
 	 * @remarks
-	 * 由 {@link makeContext} 一次算好，供 `views/sihua.ts`（展示）与
+	 * 由 {@link makeContext} 一次算好，供 `views/mutagen.ts`（展示）与
 	 * `views/year-stem.ts`（去重）共读 —— 理由见本文件头部「故意多算一样东西」。
 	 */
-	siHuaInSanFang: SiHuaInSanFang[];
+	mutagenInSanFang: MutagenInSanFang[];
 }
 
 /**
@@ -101,7 +101,7 @@ export interface AnalysisContext {
  *
  * @remarks
  * 缺省值刻意**保持与拆分前逐字一致**：`view` 缺省 `"mingpan"`、流年取系统当前年、
- * 流月取系统当前月、大限下标取 `chart.currentDaXianIndex`。它们读的是 `new Date()`，
+ * 流月取系统当前月、大限下标取 `chart.currentDecadalIndex`。它们读的是 `new Date()`，
  * 故本函数是 `analysis/` 里唯一一处非纯函数（只影响缺省，不影响给定 options 的调用）。
  */
 export function makeContext(
@@ -112,7 +112,7 @@ export function makeContext(
 	const view: AnalysisView = options.view ?? "mingpan";
 	const liunianYear = options.liunianYear ?? new Date().getFullYear();
 	const liuyueMonth = options.liuyueMonth ?? new Date().getMonth() + 1;
-	const dxIndex = options.daXianIndex ?? chart.currentDaXianIndex;
+	const dxIndex = options.daXianIndex ?? chart.currentDecadalIndex;
 
 	const palaceName = TOPIC_PALACE_NAME[topic];
 	const topicLabel = TOPIC_LABEL[topic];
@@ -130,15 +130,15 @@ export function makeContext(
 	const sanFangLabels = TOPIC_SANFANG_LABELS[topic];
 
 	// 当前大限
-	const currentDx = chart.daXians[dxIndex];
+	const currentDx = chart.decadals[dxIndex];
 
 	// 三方四正范围内的本命四化：原先在「三、本命四化会照」现算、被「三点五」读作
 	// 去重集，现提前到这里算一次（见文件头）。算式与拆分前逐字一致。
-	const siHuaInSanFang: SiHuaInSanFang[] = [];
+	const mutagenInSanFang: MutagenInSanFang[] = [];
 	sanFang.forEach(p => {
-		getPalaceSiHua(p).forEach(({ name, siHua }) => {
-			const note = getSiHuaNote(name, siHua);
-			siHuaInSanFang.push({ palaceName: p.name, starName: name, siHua, note });
+		getPalaceMutagen(p).forEach(({ name, mutagen }) => {
+			const note = getMutagenNote(name, mutagen);
+			mutagenInSanFang.push({ palaceName: p.name, starName: name, mutagen, note });
 		});
 	});
 
@@ -158,6 +158,6 @@ export function makeContext(
 		sanFang,
 		sanFangLabels,
 		currentDx,
-		siHuaInSanFang,
+		mutagenInSanFang,
 	};
 }

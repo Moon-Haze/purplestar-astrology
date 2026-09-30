@@ -48,7 +48,7 @@ const MONTH = optOf("month") ? Number(optOf("month")) : null;
 const LIMIT = optOf("limit") ? Number(optOf("limit")) : Infinity;
 
 const label = (b: BirthInfo): string =>
-	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${BRANCHES[b.hour] ?? b.hour}时 ${b.gender}`;
+	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${BRANCHES[b.timeIndex] ?? b.timeIndex}时 ${b.gender}`;
 
 interface DiffBucket {
 	count: number;

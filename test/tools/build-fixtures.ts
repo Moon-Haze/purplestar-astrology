@@ -9,7 +9,7 @@
 // ⚠️ 产出的基准是 **iztro 2.5.8** 的行为快照，本项目用 2.6.1，两者有且仅有两处已知差异
 //    （太阳/太阴在酉宫的亮度），已在 test/lib/compare.ts 的 KNOWN_DIVERGENCES 里显式登记。
 //
-// ⚠️ 取样本改为**按出生五元组主键查询**（旧实现按行下标算址：idx = (day-1)*24 + hour*2 + genderIdx）。
+// ⚠️ 取样本改为**按出生五元组主键查询**（旧实现按行下标算址：idx = (day-1)*24 + timeIndex*2 + genderIdx）。
 //    下标算址隐含「每月每天都齐 24 条样本」的假设，改成主键查询后这个假设不再需要，语义更正确。
 //    若重建结果与既有 charts.jsonl 出现 diff，**先怀疑旧实现曾经错位取数**，
 //    用 test/tools/verify-source.ts 查清，而不是直接覆盖。
@@ -59,18 +59,18 @@ async function main(): Promise<void> {
 		// ── 常规槽位 0-3 ──
 		for (let s = 0; s < 4; s++) {
 			const month = ((i * 5 + s * 3) % 12) + 1;
-			const hour = (i * 7 + s * 3) % 12;
+			const timeIndex = (i * 7 + s * 3) % 12;
 			const gender = s % 2 === 0 ? "male" : "female";
 			const day = DAYS[s];
-			const raw = await fetchSample({ year, month, day, hour, gender });
+			const raw = await fetchSample({ year, month, day, timeIndex, gender });
 			if (!raw) {
-				console.warn(`  ⚠ ${year}-${month}-${day} 时${hour} ${gender}：样本缺失`);
+				console.warn(`  ⚠ ${year}-${month}-${day} 时${timeIndex} ${gender}：样本缺失`);
 				continue;
 			}
 			stats.months.add(month);
-			stats.hours.add(hour);
+			stats.hours.add(timeIndex);
 			stats.genders.add(gender);
-			stats.wuxing.add(raw.chart.wuxingJuName);
+			stats.wuxing.add(raw.chart.fiveElementsClassName);
 			samples.push(raw);
 		}
 
@@ -79,20 +79,20 @@ async function main(): Promise<void> {
 		let raw: BaselineSample | null;
 		if (leapMonth) {
 			const solar = Lunar.fromYmd(year, -leapMonth, 1).getSolar();
-			const hour = (i * 7 + 3) % 12;
-			raw = await fetchSample({ year, month: solar.getMonth(), day: solar.getDay(), hour, gender: "male" });
+			const timeIndex = (i * 7 + 3) % 12;
+			raw = await fetchSample({ year, month: solar.getMonth(), day: solar.getDay(), timeIndex, gender: "male" });
 			if (raw) stats.leapYears.push(`${year}(闰${leapMonth})`);
 		} else {
-			raw = await fetchSample({ year, month: 12, day: 30, hour: 0, gender: "male" });
+			raw = await fetchSample({ year, month: 12, day: 30, timeIndex: 0, gender: "male" });
 		}
 		if (!raw) {
 			console.warn(`  ⚠ ${year} 槽位 4：样本缺失`);
 			continue;
 		}
 		stats.months.add(raw.birthInfo.month);
-		stats.hours.add(raw.birthInfo.hour);
+		stats.hours.add(raw.birthInfo.timeIndex);
 		stats.genders.add(raw.birthInfo.gender);
-		stats.wuxing.add(raw.chart.wuxingJuName);
+		stats.wuxing.add(raw.chart.fiveElementsClassName);
 		samples.push(raw);
 	}
 
@@ -121,7 +121,7 @@ async function main(): Promise<void> {
 				`    · 若不是预期变化 → 这是回归，先查 scripts/ziwei/ 下的内核改动\n`
 		);
 		for (const { birth, diffs } of diverged.slice(0, 10)) {
-			console.error(`  ${birth.year}-${birth.month}-${birth.day} 时${birth.hour} ${birth.gender}`);
+			console.error(`  ${birth.year}-${birth.month}-${birth.day} 时${birth.timeIndex} ${birth.gender}`);
 			console.error(formatDiffs(diffs, 5));
 		}
 		if (diverged.length > 10) console.error(`  …… 另有 ${diverged.length - 10} 条未列出`);
@@ -147,7 +147,7 @@ async function main(): Promise<void> {
 				baselineEngine: "iztro 2.5.8",
 				note:
 					"基准为 iztro 2.5.8 的行为快照；本项目用 2.6.1，已知差异见 test/lib/compare.ts 的 KNOWN_DIVERGENCES。" +
-					"另：样本的 palaces[].name / daXians[].palaceName 存的是 iztro 宫名（第 8 宫为「仆役」、十二宫不带「宫」字），" +
+					"另：样本的 palaces[].name / decadals[].palaceName 存的是 iztro 宫名（第 8 宫为「仆役」、十二宫不带「宫」字），" +
 					"本项目输出的是倪师《天纪》口径（「交友宫」、统一带「宫」字）——" +
 					"比对时由 compare.ts 的 normalizePalaceName 施加在 baseline 一侧翻译，样本本身不做改动",
 				generatedAt: new Date().toISOString().slice(0, 10),
@@ -159,7 +159,7 @@ async function main(): Promise<void> {
 					months: [...stats.months].sort((a, b) => a - b),
 					hours: [...stats.hours].sort((a, b) => a - b),
 					genders: [...stats.genders].sort(),
-					wuxingJu: [...stats.wuxing].sort(),
+					fiveElementsClass: [...stats.wuxing].sort(),
 					leapYears: stats.leapYears,
 				},
 			},

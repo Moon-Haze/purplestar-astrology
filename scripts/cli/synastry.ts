@@ -62,8 +62,8 @@ export function cmdSynastry(args: CliArgs): string {
 	const biA = ca.birthInfo;
 	const biB = cb.birthInfo;
 
-	const mingA = palaceAtBranch(ca, ca.mingGongBranch, "甲方命宫");
-	const mingB = palaceAtBranch(cb, cb.mingGongBranch, "乙方命宫");
+	const mingA = palaceAtBranch(ca, ca.soulBranch, "甲方命宫");
+	const mingB = palaceAtBranch(cb, cb.soulBranch, "乙方命宫");
 	const fuqiA = mustPalace(ca, "夫妻宫");
 	const fuqiB = mustPalace(cb, "夫妻宫");
 	const fudeA = mustPalace(ca, "福德宫");
@@ -89,18 +89,18 @@ export function cmdSynastry(args: CliArgs): string {
 	out.push("【合盘 · 双宫联参】倪海夏：看婚姻不能只看夫妻宫，必须同时看福德宫");
 	out.push("");
 	out.push(
-		`甲方 ${biA.name ?? ""} ${fmtDate(biA)} ${A.basis.note} · ${genderCN(biA.gender)} · ${ca.wuxingJuName}`
+		`甲方 ${biA.name ?? ""} ${fmtDate(biA)} ${A.basis.note} · ${genderCN(biA.gender)} · ${ca.fiveElementsClassName}`
 	);
-	out.push(`  命宫 ${branchName(ca.mingGongBranch)}：${mA.join("、") || "（空宫借对宫）"}`);
+	out.push(`  命宫 ${branchName(ca.soulBranch)}：${mA.join("、") || "（空宫借对宫）"}`);
 	out.push(`  夫妻宫 ${branchName(fuqiA.branch)}：${fA.join("、") || "（空宫借对宫）"}`);
 	out.push(
 		`  福德宫 ${branchName(fudeA.branch)}：${majorsOf(fudeA).join("、") || "（空宫借对宫）"}`
 	);
 	out.push("");
 	out.push(
-		`乙方 ${biB.name ?? ""} ${fmtDate(biB)} ${B.basis.note} · ${genderCN(biB.gender)} · ${cb.wuxingJuName}`
+		`乙方 ${biB.name ?? ""} ${fmtDate(biB)} ${B.basis.note} · ${genderCN(biB.gender)} · ${cb.fiveElementsClassName}`
 	);
-	out.push(`  命宫 ${branchName(cb.mingGongBranch)}：${mB.join("、") || "（空宫借对宫）"}`);
+	out.push(`  命宫 ${branchName(cb.soulBranch)}：${mB.join("、") || "（空宫借对宫）"}`);
 	out.push(`  夫妻宫 ${branchName(fuqiB.branch)}：${fB.join("、") || "（空宫借对宫）"}`);
 	out.push(
 		`  福德宫 ${branchName(fudeB.branch)}：${majorsOf(fudeB).join("、") || "（空宫借对宫）"}`

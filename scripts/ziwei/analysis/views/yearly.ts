@@ -15,12 +15,12 @@
  */
 
 import { BRANCHES, STEMS } from "../../constants";
-import { sanFangBranches } from "../../palace-relations";
+import { surroundBranches } from "../../palace-relations";
 // getYearStemIndex 是**公历年取模**口径，本层只用于流年干（唯一合法用途；
 // 生年四化必须用 chart.lunarInfo.yearStem —— 两口径在 1-2 月出生者身上分叉，
 // 见 sihua.ts 的口径说明与 test/cli.test.ts 的「生年四化的年干口径」）
-import { getYearStemIndex } from "../../sihua";
-import { siHuaSymbol } from "../data";
+import { getYearStemIndex } from "../../mutagen";
+import { mutagenSymbol } from "../data";
 import type { AnalysisContext } from "../context";
 import { descPalaceStars } from "../palace-query";
 
@@ -47,17 +47,17 @@ export function renderLiuNian(ctx: AnalysisContext): string[] {
 		lines.push("");
 
 		if (lnPalace) {
-			const lnSanFangBranches = sanFangBranches(lnPalace.branch);
+			const lnSanFangBranches = surroundBranches(lnPalace.branch);
 			const lnSanFangPalaces = chart.palaces.filter(p =>
 				lnSanFangBranches.includes(p.branch)
 			);
 			const lnHits: string[] = [];
 			lnSanFangPalaces.forEach(p => {
 				p.stars
-					.filter(s => s.siHua && s.type === "major")
+					.filter(s => s.mutagen && s.type === "major")
 					.forEach(s => {
 						lnHits.push(
-							`${siHuaSymbol(s.siHua!)} **本命${s.name}化${s.siHua}** 在${p.name}${p.branch === lnPalace.branch ? "（流年本宫）" : "（流年三方四正）"}`
+							`${mutagenSymbol(s.mutagen!)} **本命${s.name}化${s.mutagen}** 在${p.name}${p.branch === lnPalace.branch ? "（流年本宫）" : "（流年三方四正）"}`
 						);
 					});
 			});

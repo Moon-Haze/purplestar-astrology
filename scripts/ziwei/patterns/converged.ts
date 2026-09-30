@@ -28,23 +28,23 @@ import { CHANG_QU, PATTERN_VERDICTS } from "./data";
 import {
 	hasStar,
 	findStarPalace,
-	getSanFangPalaces,
+	getSurroundPalaces,
 	isInSanFang,
 	getJiaPalaces,
 	sanFangAllStars,
 	isBright,
-	getStarSiHua,
+	getStarMutagen,
 	fillVerdict,
 } from "./helpers";
-import { duiGongBranch } from "../palace-relations";
+import { oppositeBranch } from "../palace-relations";
 
 /** 七杀朝斗格：七杀居寅或申，且落命宫或迁移宫（对宫紫微天府相照） */
 function detectQiShaChaoDou({ chart }: DetectContext): Pattern[] {
 	const qisha = findStarPalace(chart, "七杀");
 	if (!qisha) return [];
 	if (qisha.branch !== 2 && qisha.branch !== 8) return []; // 寅=2、申=8
-	const inMing = qisha.branch === chart.mingGongBranch;
-	const inQianYi = qisha.branch === duiGongBranch(chart.mingGongBranch);
+	const inMing = qisha.branch === chart.soulBranch;
+	const inQianYi = qisha.branch === oppositeBranch(chart.soulBranch);
 	if (!inMing && !inQianYi) return [];
 
 	const name = "七杀朝斗格";
@@ -158,7 +158,7 @@ function detectLuMaJiaoChi({ chart }: DetectContext): Pattern[] {
 
 /** 羊陀夹命：擎羊陀罗分居命宫前后两宫（煞格） */
 function detectYangTuoJiaMing({ chart }: DetectContext): Pattern[] {
-	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
+	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) return [];
 	const okA = hasStar(prev, "擎羊") && hasStar(next, "陀罗");
 	const okB = hasStar(prev, "陀罗") && hasStar(next, "擎羊");
@@ -186,7 +186,7 @@ function detectZiFuChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	return [{
 		name,
 		level: 90,
-		palaces: getSanFangPalaces(chart)
+		palaces: getSurroundPalaces(chart)
 			.filter(p => hasStar(p, "紫微") || hasStar(p, "天府"))
 			.map(p => p.name),
 		conditions: { required: ["紫微与天府同会命宫三方四正", "命宫不坐紫微、天府"] },
@@ -219,7 +219,7 @@ function detectChangQuHuaJi({ chart }: DetectContext): Pattern[] {
 	for (const starName of CHANG_QU) {
 		const palace = findStarPalace(chart, starName);
 		if (!palace) continue;
-		if (getStarSiHua(palace, starName) !== "忌") continue;
+		if (getStarMutagen(palace, starName) !== "忌") continue;
 
 		const name = `${starName}化忌`;
 		hits.push({

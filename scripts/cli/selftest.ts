@@ -26,22 +26,22 @@ import {
 } from "./birth-info";
 import { chartSignature, fmtDate } from "./render";
 import {
-	daXianSection,
+	decadalSection,
 	focusSection,
-	gejuSection,
+	patternSection,
 	infoSection,
-	liuNianBranchOf,
-	liuNianSection,
+	yearlyBranchOf,
+	yearlySection,
 	overviewSection,
-	parseAgeArg,
-	sihuaSection,
-	xiaoXianPalaceOf,
-	xiaoXianSection,
-} from "./yun";
+	parseAgesArg,
+	mutagenSection,
+	agePalaceOf,
+	ageSection,
+} from "./fortune";
 import type { BirthInfo } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns } from "@/ziwei/patterns";
-import { getSiHuaByStem, getYearStemIndex, getLiuYueSiHua } from "@/ziwei/sihua";
+import { getMutagenByStem, getYearStemIndex, getMonthlyMutagen } from "@/ziwei/mutagen";
 import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
 import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { Lunar } from "lunar-typescript";
@@ -54,7 +54,7 @@ import { asserts as synastryAsserts } from "@/synastry/selftest-asserts";
  * @remarks
  * 虚构样本，无真实人物（换样本组时改这一处；各断言的期望值均按本样本盘校准）。
  */
-const SAMPLE: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male" };
+const SAMPLE: BirthInfo = { year: 1990, month: 5, day: 15, timeIndex: 5, gender: "male" };
 
 /**
  * `selftest` 命令：跑一组排盘不变量与知识源可用性断言，返回逐项报告。
@@ -298,14 +298,14 @@ export function cmdSelftest(ctx: CliContext): string {
 			year: 1990,
 			month: 5,
 			day: 15,
-			hour: 12,
+			timeIndex: 12,
 			gender: "male",
 		});
 		const nextEarly = generateChart({
 			year: 1990,
 			month: 5,
 			day: 16,
-			hour: 0,
+			timeIndex: 0,
 			gender: "male",
 		});
 		eq(chartSignature(late), chartSignature(nextEarly), "晚子时与次日早子时");
@@ -315,14 +315,14 @@ export function cmdSelftest(ctx: CliContext): string {
 			year: 1990,
 			month: 5,
 			day: 15,
-			hour: 0,
+			timeIndex: 0,
 			gender: "male",
 		});
 		const late = generateChart({
 			year: 1990,
 			month: 5,
 			day: 15,
-			hour: 12,
+			timeIndex: 12,
 			gender: "male",
 		});
 		if (chartSignature(early) === chartSignature(late))
@@ -335,8 +335,8 @@ export function cmdSelftest(ctx: CliContext): string {
 		const viaFlag = buildBirthInfo(
 			parseArgs(["--date", "1990-05-15", "--time", "23:40", "--late-zi", "--gender", "male"])
 		);
-		eq(viaBranch.info.hour, 12);
-		eq(viaFlag.info.hour, 12);
+		eq(viaBranch.info.timeIndex, 12);
+		eq(viaFlag.info.timeIndex, 12);
 		eq(
 			chartSignature(generateChart(viaBranch.info)),
 			chartSignature(generateChart(viaFlag.info))
@@ -346,7 +346,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		const b = buildBirthInfo(
 			parseArgs(["--date", "1990-05-15", "--time", "23:40", "--gender", "male"])
 		);
-		eq(b.info.hour, 0);
+		eq(b.info.timeIndex, 0);
 		eq(b.lateZiCandidate, true);
 		eq(b.isLateZi, false);
 	});
@@ -480,10 +480,10 @@ export function cmdSelftest(ctx: CliContext): string {
 		const c = generateChart(sample);
 		eq(c.palaces.length, 12, "宫位数 ");
 		eq(new Set(c.palaces.map(p => p.branch)).size, 12, "地支去重后 ");
-		eq(c.palaces.filter(p => p.isMingGong).length, 1, "命宫数 ");
-		if (![2, 3, 4, 5, 6].includes(c.wuxingJu)) throw new Error(`五行局异常：${c.wuxingJu}`);
+		eq(c.palaces.filter(p => p.isSoulPalace).length, 1, "命宫数 ");
+		if (![2, 3, 4, 5, 6].includes(c.fiveElementsClass)) throw new Error(`五行局异常：${c.fiveElementsClass}`);
 		if (c.ziweiPos < 0 || c.ziweiPos > 11) throw new Error(`紫微位异常：${c.ziweiPos}`);
-		if (c.daXians.length !== 12) throw new Error(`大限数异常：${c.daXians.length}`);
+		if (c.decadals.length !== 12) throw new Error(`大限数异常：${c.decadals.length}`);
 	});
 	ok("排盘不变量：空宫均带借宫字段", () => {
 		const c = generateChart(sample);
@@ -508,12 +508,12 @@ export function cmdSelftest(ctx: CliContext): string {
 				year,
 				month,
 				day,
-				hour: Math.floor(rnd() * 13),
+				timeIndex: Math.floor(rnd() * 13),
 				gender: rnd() > 0.5 ? "male" : "female",
 			});
 			if (c.palaces.length !== 12 || new Set(c.palaces.map(p => p.branch)).size !== 12)
 				throw new Error(`${year}-${month}-${day} 十二宫不自洽`);
-			const ages = [...new Set(c.palaces.flatMap(p => p.xiaoXianAges ?? []))].sort(
+			const ages = [...new Set(c.palaces.flatMap(p => p.ages ?? []))].sort(
 				(a, b) => a - b
 			);
 			if (ages.length !== 120 || ages[0] !== 1 || ages[119] !== 120)
@@ -521,7 +521,7 @@ export function cmdSelftest(ctx: CliContext): string {
 			if (c.douJunBranch < 0 || c.douJunBranch > 11) throw new Error("斗君越界");
 			if (
 				c.palaces.some(p =>
-					p.stars.some(st => !["major", "minor", "lucky", "sha"].includes(st.type))
+					p.stars.some(st => !["major", "minor", "soft", "tough"].includes(st.type))
 				)
 			)
 				throw new Error("星曜类型值不自洽");
@@ -529,36 +529,56 @@ export function cmdSelftest(ctx: CliContext): string {
 		return "20 个伪随机盘全部自洽";
 	});
 
+	ok("术语对齐：iztro 字段名生效（fiveElementsClass / soulBranch / ages / mutagen）", () => {
+		// 2026-09-30 术语五层对齐（spec §2.9）：类型值 lucky/sha→soft/tough、SiHua→Mutagen、
+		// DaXian→Decadal；内核字段 wuxingJu→fiveElementsClass、mingGongBranch→soulBranch、
+		// shenGongBranch→bodyBranch、xiaoXianAges→ages、isMingGong→isSoulPalace 等。
+		const c = generateChart(SAMPLE);
+		if (!("fiveElementsClass" in c) || !("soulBranch" in c) || !("bodyBranch" in c))
+			throw new Error("chart 字段未对齐 iztro");
+		const p = c.palaces.find(x => x.isSoulPalace);
+		if (!p) throw new Error("isSoulPalace 不存在");
+		// ⚠️ 探针拆串（"lu"+"cky"）：防止后续批量改名 sed 把断言探针连同实现一起替换，
+		//    那会让这条断言变成恒真（Task 3 实测踩过）。
+		const oldLucky = "lu" + "cky";
+		const oldSha = "s" + "ha";
+		if (c.palaces.some(x => x.stars.some(s => s.type === oldLucky || s.type === oldSha)))
+			throw new Error("Star.type 仍有 lucky/sha 残留");
+		if (c.palaces.some(x => x.stars.some(s => s.type === "soft" || s.type === "tough")) === false)
+			throw new Error("soft/tough 未出现");
+		return "字段/类型值对齐";
+	});
+
 	ok("运限数据：小限岁数表 1–120 连续、每宫恰 10 个（iztro ages 提取）", () => {
 		const c = generateChart(sample);
-		const all = c.palaces.flatMap(p => p.xiaoXianAges ?? []);
+		const all = c.palaces.flatMap(p => p.ages ?? []);
 		const uniq = [...new Set(all)].sort((x, y) => x - y);
 		eq(uniq.length, 120, "岁数去重后 ");
 		for (let i = 0; i < 120; i++)
 			if (uniq[i] !== i + 1)
 				throw new Error(`岁数表不连续：第 ${i} 位是 ${uniq[i]}，应为 ${i + 1}`);
 		for (const p of c.palaces)
-			if ((p.xiaoXianAges ?? []).length !== 10)
+			if ((p.ages ?? []).length !== 10)
 				throw new Error(
-					`${p.name} 的小限岁数不是 10 个：${(p.xiaoXianAges ?? []).join(",")}`
+					`${p.name} 的小限岁数不是 10 个：${(p.ages ?? []).join(",")}`
 				);
 		// 校准锚点：1990 样例命宫(子)的小限自虚岁 9 起
-		const ming = c.palaces.find(p => p.isMingGong);
+		const ming = c.palaces.find(p => p.isSoulPalace);
 		if (!ming) throw new Error("找不到命宫");
-		eq(ming.xiaoXianAges?.[0], 9, "命宫首岁 ");
+		eq(ming.ages?.[0], 9, "命宫首岁 ");
 	});
 	ok("运限数据：命主 / 身主随盘输出（iztro soul / body）", () => {
 		const c = generateChart(sample);
 		eq(c.mingZhu, "贪狼", "1990 样例命主 ");
 		eq(c.shenZhu, "火星", "1990 样例身主 ");
 		// 外部参照样例（文墨天机排盘输出）：2000-4-6 子时男 = 命主廉贞 / 身主文昌
-		const d = generateChart({ year: 2000, month: 4, day: 6, hour: 0, gender: "male" });
+		const d = generateChart({ year: 2000, month: 4, day: 6, timeIndex: 0, gender: "male" });
 		eq(d.mingZhu, "廉贞", "2000 样例命主 ");
 		eq(d.shenZhu, "文昌", "2000 样例身主 ");
 	});
 	ok("运限数据：斗君 = 子起正月逆数生月，生月宫起子时顺数生时", () => {
 		// 外部参照样例：2000-4-6 子时男，农历三月 → 子起正月逆数三月 = 戌，戌起子时至子时 = 戌
-		const d = generateChart({ year: 2000, month: 4, day: 6, hour: 0, gender: "male" });
+		const d = generateChart({ year: 2000, month: 4, day: 6, timeIndex: 0, gender: "male" });
 		eq(BRANCHES[d.douJunBranch], "戌", "2000 样例斗君 ");
 		// 1990-05-15 巳时男，农历四月 → 子起正月逆数四月 = 酉，酉起子时顺数至巳时 = 寅
 		const c = generateChart(sample);
@@ -568,16 +588,16 @@ export function cmdSelftest(ctx: CliContext): string {
 	// ── 6. 三合派硬约束守护（防止飞星派逻辑回流）──
 	ok("三合派约束：宫干自化未被填充", () => {
 		const c = generateChart(sample);
-		const dirty = c.palaces.filter(p => p.selfSihua);
+		const dirty = c.palaces.filter(p => p.selfMutagen);
 		if (dirty.length)
 			throw new Error(
-				`检测到 selfSihua 被填充：${dirty.map(p => p.name).join("、")}（飞星派逻辑疑似回流）`
+				`检测到 selfMutagen 被填充：${dirty.map(p => p.name).join("、")}（飞星派逻辑疑似回流）`
 			);
 	});
 	ok("三合派约束：大限未携带宫干四化字段", () => {
 		const c = generateChart(sample);
-		const dirty = c.daXians.filter(
-			d => d.siHua !== undefined || d.stemIndex !== undefined || d.stemName !== undefined
+		const dirty = c.decadals.filter(
+			d => d.mutagen !== undefined || d.stemIndex !== undefined || d.stemName !== undefined
 		);
 		if (dirty.length)
 			throw new Error(
@@ -595,7 +615,7 @@ export function cmdSelftest(ctx: CliContext): string {
 		return `样本盘识别到 ${ps.length} 个格局`;
 	});
 	ok("四化：甲干 = 廉贞禄 / 破军权 / 武曲科 / 太阳忌", () => {
-		const t = getSiHuaByStem(0);
+		const t = getMutagenByStem(0);
 		eq(`${t.禄}${t.权}${t.科}${t.忌}`, "廉贞破军武曲太阳");
 	});
 	ok("四化：流年干索引按 (year-4)%10 计（1990 → 庚 = 6，仅流年用）", () => {
@@ -607,22 +627,22 @@ export function cmdSelftest(ctx: CliContext): string {
 	});
 	ok("四化：生年四化取农历年干，与盘面 mutagen 逐颗一致（跨年月样本）", () => {
 		// 1990-01-15 农历仍在己巳年（腊月），公历取模却是庚 —— 专挑两口径分叉的样本。
-		// iztro 落在 Star.siHua 上的 mutagen 按农历年干标注，是生年四化的金标准；
+		// iztro 落在 Star.mutagen 上的 mutagen 按农历年干标注，是生年四化的金标准；
 		// lunarInfo.yearStem 若与它分叉，CLI 的【生年四化】区块就会与宫详表自相矛盾。
-		const c = generateChart({ year: 1990, month: 1, day: 15, hour: 5, gender: "male" });
+		const c = generateChart({ year: 1990, month: 1, day: 15, timeIndex: 5, gender: "male" });
 		eq(c.lunarInfo.yearStem, 5, "农历年干应为己（索引 5）");
-		const tf = getSiHuaByStem(c.lunarInfo.yearStem);
+		const tf = getMutagenByStem(c.lunarInfo.yearStem);
 		const byStem = (["禄", "权", "科", "忌"] as const).map(h => `${h}:${tf[h]}`).sort();
 		const onChart = c.palaces
 			.flatMap(p => p.stars)
-			.filter(s => s.siHua)
-			.map(s => `${s.siHua}:${s.name}`)
+			.filter(s => s.mutagen)
+			.map(s => `${s.mutagen}:${s.name}`)
 			.sort();
 		eq(onChart.join("、"), byStem.join("、"), "盘面 mutagen 与农历年干四化");
 	});
 	ok("流月：五虎遁 甲年正月 = 丙寅", () => {
-		eq(getLiuYueSiHua(0, 1).stemName, "丙");
-		eq(getLiuYueSiHua(1, 1).stemName, "戊", "乙年正月 ");
+		eq(getMonthlyMutagen(0, 1).stemName, "丙");
+		eq(getMonthlyMutagen(1, 1).stemName, "戊", "乙年正月 ");
 	});
 
 	// ── 8. 知识源可用性 ──
@@ -765,32 +785,32 @@ export function cmdSelftest(ctx: CliContext): string {
 		return "5 个专题旗标（3 开关 + 2 可选值）";
 	});
 
-	ok("运限定位：liuNianBranchOf 按公历年取年支（1990→午 / 2026→午 / 2000→辰）", () => {
-		eq(BRANCHES[liuNianBranchOf(1990)], "午");
-		eq(BRANCHES[liuNianBranchOf(2026)], "午");
-		eq(BRANCHES[liuNianBranchOf(2000)], "辰");
+	ok("运限定位：yearlyBranchOf 按公历年取年支（1990→午 / 2026→午 / 2000→辰）", () => {
+		eq(BRANCHES[yearlyBranchOf(1990)], "午");
+		eq(BRANCHES[yearlyBranchOf(2026)], "午");
+		eq(BRANCHES[yearlyBranchOf(2000)], "辰");
 	});
-	ok("运限定位：xiaoXianPalaceOf 找到该虚岁的小限宫，越界必须抛错", () => {
+	ok("运限定位：agePalaceOf 找到该虚岁的小限宫，越界必须抛错", () => {
 		const c = generateChart(sample);
-		const p = xiaoXianPalaceOf(c, 9);
+		const p = agePalaceOf(c, 9);
 		eq(p.name, "命宫", "1990 盘 9 岁 ");
 		eq(BRANCHES[p.branch], "子", "命宫地支 ");
 		let threw = false;
 		try {
-			xiaoXianPalaceOf(c, 121);
+			agePalaceOf(c, 121);
 		} catch {
 			threw = true;
 		}
 		eq(threw, true, "121 岁（超出 1–120）");
 	});
-	ok("运限定位：parseAgeArg 解析虚岁参数（字符串 / 裸开关 / 缺省 / 非法）", () => {
-		eq(parseAgeArg("37", 40, "--daxian"), 37, "带值 ");
-		eq(parseAgeArg(true, 40, "--daxian"), 40, "裸开关取当前虚岁 ");
-		eq(parseAgeArg(undefined, 40, "--daxian"), 40, "缺省取当前虚岁 ");
+	ok("运限定位：parseAgesArg 解析虚岁参数（字符串 / 裸开关 / 缺省 / 非法）", () => {
+		eq(parseAgesArg("37", 40, "--daxian"), 37, "带值 ");
+		eq(parseAgesArg(true, 40, "--daxian"), 40, "裸开关取当前虚岁 ");
+		eq(parseAgesArg(undefined, 40, "--daxian"), 40, "缺省取当前虚岁 ");
 		for (const bad of ["abc", "0", "-3", "121"]) {
 			let threw = false;
 			try {
-				parseAgeArg(bad, 40, "--daxian");
+				parseAgesArg(bad, 40, "--daxian");
 			} catch {
 				threw = true;
 			}
@@ -811,7 +831,7 @@ export function cmdSelftest(ctx: CliContext): string {
 			if (!text.includes(f)) throw new Error(`专题指路缺 ${f}`);
 	});
 	ok("专题渲染：基本信息专题逐项输出（2000-4-6 子时男，对齐外部排盘参照）", () => {
-		const c = generateChart({ year: 2000, month: 4, day: 6, hour: 0, gender: "male" });
+		const c = generateChart({ year: 2000, month: 4, day: 6, timeIndex: 0, gender: "male" });
 		const text = infoSection(c, {
 			clockTime: "2000-4-6 0:15",
 			solarNote: "钟表 0:15 → 真太阳时校正 -7 分 → 子时",
@@ -839,7 +859,7 @@ export function cmdSelftest(ctx: CliContext): string {
 
 	ok("专题渲染：流年专题（流年命宫 / 三方四正 / 四化落点 / 与大限关系）", () => {
 		const c = generateChart(sample);
-		const text = liuNianSection(c, 2026).join("\n");
+		const text = yearlySection(c, 2026).join("\n");
 		if (!text.includes("年柱 丙午")) throw new Error("缺流年干支");
 		if (!text.includes("流年命宫")) throw new Error("缺流年命宫标注");
 		// 2026 午宫 = 迁移宫；流年三方四正 = 午戌寅 + 对宫子 = 迁移/夫妻/福德/命宫
@@ -854,7 +874,7 @@ export function cmdSelftest(ctx: CliContext): string {
 	});
 	ok("专题渲染：大限专题（时间轴 / 三方四正 / 四化落点 / 限内逐年）", () => {
 		const c = generateChart(sample);
-		const text = daXianSection(c, 37).join("\n");
+		const text = decadalSection(c, 37).join("\n");
 		if (!text.includes("36-45")) throw new Error("缺当前大限区间");
 		if (!text.includes("116-125")) throw new Error("缺大限时间轴首尾（116-125）");
 		// 卯限的三方四正 = 卯未亥 + 对宫酉 = 田宅/疾厄/兄弟/子女
@@ -869,7 +889,7 @@ export function cmdSelftest(ctx: CliContext): string {
 	});
 	ok("专题渲染：小限专题（小限宫 / 三方四正 / 岁数分布 / 与流年关系）", () => {
 		const c = generateChart(sample);
-		const text = xiaoXianSection(c, 37, 2026).join("\n");
+		const text = ageSection(c, 37, 2026).join("\n");
 		// 37 岁小限 = 官禄宫(辰)
 		if (!text.includes("官禄宫")) throw new Error("缺小限宫（37 岁应为官禄宫）");
 		if (!text.includes("三方四正")) throw new Error("缺小限三方四正");
@@ -878,19 +898,19 @@ export function cmdSelftest(ctx: CliContext): string {
 	});
 	ok("专题渲染：格局专题沿用格局识别（含成立条件与出处）", () => {
 		const c = generateChart(sample);
-		const text = gejuSection(c).join("\n");
+		const text = patternSection(c).join("\n");
 		if (!text.includes("【格局识别】")) throw new Error("缺【格局识别】标题");
 		if (!text.includes("英星入庙格")) throw new Error("缺样例盘必有格局（英星入庙）");
 		if (!text.includes("出处")) throw new Error("缺出处行");
 	});
 	ok("专题渲染：四化专题（生年 + 流年 + 同星引动；流月可选）", () => {
 		const c = generateChart(sample);
-		const text = sihuaSection(c, 2026, null).join("\n");
+		const text = mutagenSection(c, 2026, null).join("\n");
 		if (!text.includes("【生年四化】")) throw new Error("缺生年四化节");
 		if (!text.includes("化禄 太阳 → 兄弟宫")) throw new Error("缺生年化禄落宫（兄弟宫）");
 		if (!text.includes("【2026 流年四化】")) throw new Error("缺流年四化节");
 		if (!text.includes("天同")) throw new Error("缺生年×流年同星引动标注");
-		const withMonth = sihuaSection(c, 2026, 6).join("\n");
+		const withMonth = mutagenSection(c, 2026, 6).join("\n");
 		if (!withMonth.includes("流月四化")) throw new Error("给了农历月却缺流月四化节");
 	});
 	ok("专题渲染：宫盘聚焦专题（三方四正会照 / 四化落宫 / 运限引动）", () => {

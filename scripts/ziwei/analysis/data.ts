@@ -11,7 +11,7 @@
 
 // ─── 主星完整内容库（各宫位语境）───────────────────────────────────────────
 
-export interface SiHuaModifier {
+export interface MutagenModifier {
 	lu?: string;
 	quan?: string;
 	ke?: string;
@@ -66,7 +66,7 @@ export interface StarContent {
 	fuDe?: string;
 	/** 父母宫主星 */
 	fuMu?: string;
-	sihua: SiHuaModifier;
+	sihua: MutagenModifier;
 	brightMod?: string;
 	dimMod?: string;
 	summary: StarSummary;
@@ -1547,7 +1547,7 @@ export interface AnalysisOptions {
 	liunianYear?: number;
 	/** 流月用的月份（农历1-12）；默认当前月 */
 	liuyueMonth?: number;
-	/** 大限索引；默认 chart.currentDaXianIndex */
+	/** 大限索引；默认 chart.currentDecadalIndex */
 	daXianIndex?: number;
 }
 
@@ -1557,10 +1557,10 @@ export interface AnalysisOptions {
 // （大限段与流年段各写一遍），改了其中一处不会有任何东西发现。按本模块「类型 + 映射表
 // + 论断文案」的定位收归于此，`./index` 只留推算。
 //
-// ⚠️ 四化键一律写成**字面量联合**而非引 `../types` 的 `SiHua`：本模块开篇声明的
+// ⚠️ 四化键一律写成**字面量联合**而非引 `../types` 的 `Mutagen`：本模块开篇声明的
 // 「依赖：无」是条被人依赖的约束（可独立成型、可单测），为一张映射表破例不值当。
 
-/** 四化字 → 展示用色点符号表。本模块私有，对外只经 {@link siHuaSymbol}。 */
+/** 四化字 → 展示用色点符号表。本模块私有，对外只经 {@link mutagenSymbol}。 */
 const SIHUA_SYMBOL: Record<string, string> = {
 	禄: "🟢",
 	权: "🔵",
@@ -1571,7 +1571,7 @@ const SIHUA_SYMBOL: Record<string, string> = {
 /**
  * 取四化字的展示用色点符号。
  *
- * @param siHua - 四化字（`禄` / `权` / `科` / `忌`）
+ * @param mutagen - 四化字（`禄` / `权` / `科` / `忌`）
  * @returns 对应的色点；**未知四化字回退到化忌的 🔴**
  *
  * @remarks
@@ -1579,26 +1579,26 @@ const SIHUA_SYMBOL: Record<string, string> = {
  * （大限段 / 流年段，彼此逐字相同）与两处三元表达式链（本命四化会照段 / 关键宫位段，亦
  * 逐字相同）。四份都得跟着四化字一起改，改了其中一份则不会有任何东西发现。
  *
- * 之所以导出**函数**而非裸表：调用点手里有两种类型 —— 一类是收窄过的 `Star["siHua"]`，
- * 另一类是解构出来的 `string`。裸表若标 `Record<SiHua, string>`，后者索引不过编译；若标
+ * 之所以导出**函数**而非裸表：调用点手里有两种类型 —— 一类是收窄过的 `Star["mutagen"]`，
+ * 另一类是解构出来的 `string`。裸表若标 `Record<Mutagen, string>`，后者索引不过编译；若标
  * `Record<string, string>`，前者的拼写错误又没人拦。函数把类型收在这一处。
  *
  * 兜底取 🔴 是**收紧**：原先三元链那两处正是此行为，而 `Record` 那两处对未知字给出
  * `undefined`，会被模板串渲染成字面量 "undefined"。
  */
-export function siHuaSymbol(siHua: string): string {
-	return SIHUA_SYMBOL[siHua] ?? SIHUA_SYMBOL.忌;
+export function mutagenSymbol(mutagen: string): string {
+	return SIHUA_SYMBOL[mutagen] ?? SIHUA_SYMBOL.忌;
 }
 
 /**
  * 四化字 → 四化字段键。
  *
  * @remarks
- * 键取 `keyof SiHuaModifier`（恰为 lu/quan/ke/ji 四项）而非 `keyof TopicMod` ——
- * 后者还含 `bright` / `dim`，拿来当四化映射过宽。三处共用本表：`getSiHuaNote`、
+ * 键取 `keyof MutagenModifier`（恰为 lu/quan/ke/ji 四项）而非 `keyof TopicMod` ——
+ * 后者还含 `bright` / `dim`，拿来当四化映射过宽。三处共用本表：`getMutagenNote`、
  * 大限段、流年段。
  */
-export const SIHUA_CHAR_TO_KEY: Record<string, keyof SiHuaModifier> = {
+export const SIHUA_CHAR_TO_KEY: Record<string, keyof MutagenModifier> = {
 	禄: "lu",
 	权: "quan",
 	科: "ke",

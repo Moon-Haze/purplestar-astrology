@@ -7,7 +7,7 @@
  * 贯穿全项目的三套索引约定（三者**不同域**，混用必错）：
  * - **天干索引** 0–9，序同 `constants.ts` 的 `STEMS`（0=甲 … 9=癸）
  * - **地支索引** 0–11，序同 `constants.ts` 的 `BRANCHES`（0=子 … 11=亥）
- * - **时辰序号** 0–12，见 {@link BirthInfo.hour} —— 比地支索引**多一个 12**（晚子时）
+ * - **时辰序号** 0–12，见 {@link BirthInfo.timeIndex} —— 比地支索引**多一个 12**（晚子时）
  *
  * @packageDocumentation
  */
@@ -15,7 +15,7 @@
 /**
  * 出生信息 —— 排盘的唯一输入。
  *
- * ⚠️ 本接口同时承载「出生时刻」与「出生地」两类数据，`hour` 与 `longitude` 的单位
+ * ⚠️ 本接口同时承载「出生时刻」与「出生地」两类数据，`timeIndex` 与 `longitude` 的单位
  * 最易混淆（一个不是钟表时，一个不是地方时），改动前先看各自的字段说明。
  */
 export interface BirthInfo {
@@ -39,7 +39,7 @@ export interface BirthInfo {
 	 * `cli/birth-info.ts` 只在两种情况下产出 12：`--branch 12` 直接指定，或 `--time` 的
 	 * 真太阳时落在 23:00–23:59 且同时给了 `--late-zi`。其余情形一律产出 0–11。
 	 */
-	hour: number;
+	timeIndex: number;
 	/**
 	 * 性别。决定大限顺逆 —— 同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁），
 	 * 故**必填、无默认值**：缺失时 `buildBirthInfo` 一律报错，不静默兜底成 male。
@@ -91,7 +91,7 @@ export interface LunarInfo {
  * ⚠️ 本项目只认**生年干四化**（倪师《天纪》：四化星永远固定不动）。
  * 大限四化取宫干、宫干自化等飞星派口径已主动下线，见 `.claude/CLAUDE.md`。
  */
-export type SiHua = "禄" | "权" | "科" | "忌";
+export type Mutagen = "禄" | "权" | "科" | "忌";
 
 /**
  * 一颗星曜在某宫的状态 —— 由 `algorithm.ts` 组装，是格局判定（`patterns/`）的输入。
@@ -102,19 +102,19 @@ export interface Star {
 	/**
 	 * 星曜类型，四选一：
 	 * - `major` 主星 —— **只能**由 iztro 的 `type` 字段给出（吉煞两张名单里没有主星）
-	 * - `sha`   煞星 —— 名字命中 `algorithm.ts` 的 `SHA_STARS` 时优先判定
-	 * - `lucky` 吉星 —— 名字命中 `LUCKY_STARS` 时优先判定
+	 * - `sha`   煞星 —— 名字命中 `algorithm.ts` 的 `TOUGH_STARS` 时优先判定
+	 * - `lucky` 吉星 —— 名字命中 `SOFT_STARS` 时优先判定
 	 * - `minor` 其余（杂曜）—— 兜底值
 	 */
-	type: "major" | "minor" | "lucky" | "sha";
+	type: "major" | "minor" | "soft" | "tough";
 	/**
 	 * 生年四化标记，语义为 `"禄" | "权" | "科" | "忌"`。
 	 *
 	 * ⚠️ 直接取自 iztro 的 `mutagen`：**无四化时它给的是空字符串 `""`**，而类型上写的是
 	 * 可选（`?`）——两种「无」在运行时都会出现。判空请用真值判断
-	 * （`cli/render.ts` 的 `starLine` 即 `if (s.siHua)`），**不要**写 `=== undefined`。
+	 * （`cli/render.ts` 的 `starLine` 即 `if (s.mutagen)`），**不要**写 `=== undefined`。
 	 */
-	siHua?: SiHua;
+	mutagen?: Mutagen;
 	/**
 	 * 亮度，已归并成三档：`bright` 庙/旺、`dim` 陷/不、其余（含**缺省**）`normal`。
 	 *
@@ -129,7 +129,7 @@ export interface Star {
  *
  * ⚠️ **飞星派遗留类型，本项目（三合派）不使用。这是一个刻意留下的绊线。**
  *
- * 「绊线」是什么意思：`algorithm.ts` 已停止填充 {@link Palace.selfSihua}（倪师不主张
+ * 「绊线」是什么意思：`algorithm.ts` 已停止填充 {@link Palace.selfMutagen}（倪师不主张
  * 飞星派宫干自化论），而断言要盯的**正是「有没有被填回」** —— 字段与类型删了，就无从盯起。
  * 所以它们留着，`cli/selftest.ts` 与 `test/school.test.ts` 各有一条断言守着
  * （断言名：「宫干自化未被填充」）。
@@ -139,9 +139,9 @@ export interface Star {
  * 既无生产者也无消费者，唯一的存在理由是上面那条断言。**存在不等于该用**，拿它解读
  * 就是背离本项目的体系立场。
  */
-export interface SelfSihuaMark {
+export interface SelfMutagenMark {
 	/** 自化的类型：禄 / 权 / 科 / 忌 */
-	siHua: SiHua;
+	mutagen: Mutagen;
 	/** 自化的星名 */
 	starName: string;
 }
@@ -149,7 +149,7 @@ export interface SelfSihuaMark {
 /**
  * 一个宫位 —— 十二宫之一。
  *
- * 身宫不单独占宫，而是与十二宫中的某一宫同宫，由 {@link isShenGong} 标记
+ * 身宫不单独占宫，而是与十二宫中的某一宫同宫，由 {@link isBodyPalace} 标记
  * （故一张盘里恰有一个宫位的该字段为 true）。
  */
 export interface Palace {
@@ -169,21 +169,21 @@ export interface Palace {
 	/** 本宫全部星曜，顺序固定为：主星 → 次星（iztro `minorStars`）→ 杂曜（`adjectiveStars`） */
 	stars: Star[];
 	/** 本宫所属大限的年龄段 `[起, 讫]`（**虚岁**，闭区间）。仅 iztro 给出 `decadal.range` 时有值 */
-	daXianAge?: [number, number];
+	decadalRange?: [number, number];
 	/**
 	 * 小限落在本宫的**虚岁**列表（如 `[9,21,33,…]`，每宫 10 个、十二宫并集连续覆盖 1–120）。
 	 *
 	 * 直接取自 iztro 静态盘的 `palace.ages` —— 小限的起宫与顺逆由 iztro 按生年支与性别
-	 * 推定，本项目不重复实现。**虚岁域**，与 {@link daXianAge} / `ZiweiChart.currentAge` 同域，
+	 * 推定，本项目不重复实现。**虚岁域**，与 {@link decadalRange} / `ZiweiChart.currentAge` 同域，
 	 * 以农历年（正月初一）为界。
 	 */
-	xiaoXianAges?: number[];
-	/** 当前虚岁是否落在 {@link daXianAge} 内，由 `algorithm.ts` 逐宫标记 */
-	isCurrentDaXian?: boolean;
-	/** 是否命宫。与 {@link ZiweiChart.mingGongBranch} 指向同一宫 */
-	isMingGong?: boolean;
+	ages?: number[];
+	/** 当前虚岁是否落在 {@link decadalRange} 内，由 `algorithm.ts` 逐宫标记 */
+	isCurrentDecadal?: boolean;
+	/** 是否命宫。与 {@link ZiweiChart.soulBranch} 指向同一宫 */
+	isSoulPalace?: boolean;
 	/** 是否身宫（身宫与十二宫之一同宫，故一盘中恰一个 true） */
-	isShenGong?: boolean;
+	isBodyPalace?: boolean;
 	/**
 	 * 宫干自化结果。
 	 *
@@ -191,8 +191,8 @@ export interface Palace {
 	 * `algorithm.ts` 已停止填充此字段（倪师不主张飞星派宫干自化论），运行时恒为 `undefined`；
 	 * `cli/selftest.ts` 与 `test/school.test.ts` 有断言盯着它不被重新填回。
 	 */
-	selfSihua?: SelfSihuaMark[];
-	/** 对宫地支索引，由 `./palace-relations` 的 `duiGongBranch` 算出（该式为全仓单点） */
+	selfMutagen?: SelfMutagenMark[];
+	/** 对宫地支索引，由 `./palace-relations` 的 `oppositeBranch` 算出（该式为全仓单点） */
 	oppositeBranch?: number;
 	/** 是否空宫（本宫**无主星**，即 `stars` 里没有 `major`） */
 	isEmpty?: boolean;
@@ -210,15 +210,15 @@ export interface Palace {
 /**
  * 一个大限的四化四星（按大限**宫干**推）。
  *
- * ⚠️ **飞星派遗留类型，本项目（三合派）不使用。同 {@link SelfSihuaMark}，是刻意留下的绊线。**
+ * ⚠️ **飞星派遗留类型，本项目（三合派）不使用。同 {@link SelfMutagenMark}，是刻意留下的绊线。**
  *
- * `algorithm.ts` 已停止生成 `daXians[].siHua`（本项目大限只看宫位移动，四化永远取生年干），
+ * `algorithm.ts` 已停止生成 `decadals[].mutagen`（本项目大限只看宫位移动，四化永远取生年干），
  * 而断言要盯的正是「有没有被填回」—— 字段与类型删了，就无从盯起。
  *
- * 生产者 `sihua.ts` 的 `getDaXianSiHua` 已于 2026-09-27 删除（全仓零调用点）。
+ * 生产者 `sihua.ts` 的 `getDecadalMutagen` 已于 2026-09-27 删除（全仓零调用点）。
  * **存在不等于该用**。
  */
-export interface DaXianSiHua {
+export interface DecadalMutagen {
 	/** 大限宫的天干索引 0–9（0=甲 … 9=癸） */
 	stemIndex: number;
 	/** 大限宫的天干名（如「戊」） */
@@ -236,9 +236,9 @@ export interface DaXianSiHua {
 /**
  * 一个大限 —— 十年运程区间。
  *
- * 由 `algorithm.ts` 汇总十二宫的 `daXianAge` 生成，按起始虚岁**升序**排列。
+ * 由 `algorithm.ts` 汇总十二宫的 `decadalRange` 生成，按起始虚岁**升序**排列。
  */
-export interface DaXian {
+export interface Decadal {
 	/** 起始虚岁（闭区间下端） */
 	startAge: number;
 	/** 结束虚岁（闭区间上端） */
@@ -254,8 +254,8 @@ export interface DaXian {
 	stemIndex?: number;
 	/** ⚠️ **飞星派字段，已停止生成**（同 {@link stemIndex}）。原含义：大限宫的天干名 */
 	stemName?: string;
-	/** ⚠️ **飞星派字段，已停止生成**（同 {@link stemIndex}）。原含义：该大限的四化。类型见 {@link DaXianSiHua} */
-	siHua?: DaXianSiHua;
+	/** ⚠️ **飞星派字段，已停止生成**（同 {@link stemIndex}）。原含义：该大限的四化。类型见 {@link DecadalMutagen} */
+	mutagen?: DecadalMutagen;
 }
 
 /**
@@ -269,19 +269,19 @@ export interface ZiweiChart {
 	/** 农历信息 */
 	lunarInfo: LunarInfo;
 	/** 命宫地支索引 0–11 */
-	mingGongBranch: number;
+	soulBranch: number;
 	/** 身宫地支索引 0–11 */
-	shenGongBranch: number;
+	bodyBranch: number;
 	/** 五行局局数，取值 2–6：2 水二局 / 3 木三局 / 4 金四局 / 5 土五局 / 6 火六局 */
-	wuxingJu: number;
+	fiveElementsClass: number;
 	/**
 	 * 五行局名，iztro 原文（如「水二局」）。
 	 *
-	 * ⚠️ 局数 {@link wuxingJu} 是**取局名首字五行查表**（`constants.ts` 的 `ELEMENT_TO_JU`）
+	 * ⚠️ 局数 {@link fiveElementsClass} 是**取局名首字五行查表**（`constants.ts` 的 `ELEMENT_TO_JU`）
 	 * 解析出来的，首字非五行时兜底成 3（木三局）；而本字段永远是 iztro 的原文。
 	 * 两者可能不一致，**展示以本字段为准**。
 	 */
-	wuxingJuName: string;
+	fiveElementsClassName: string;
 	/** 紫微星所在宫的地支索引 0–11 */
 	ziweiPos: number;
 	/**
@@ -294,7 +294,7 @@ export interface ZiweiChart {
 	 */
 	palaces: Palace[];
 	/** 全部大限，按起始虚岁升序 */
-	daXians: DaXian[];
+	decadals: Decadal[];
 	/** 命主星名（如「贪狼」）。直接取自 iztro 静态盘的 `soul`，由命宫地支查表定星 */
 	mingZhu: string;
 	/** 身主星名（如「火星」）。直接取自 iztro 静态盘的 `body`，由身宫地支查表定星 */
@@ -305,11 +305,11 @@ export interface ZiweiChart {
 	 *
 	 * ⚠️ iztro 静态盘**不带**斗君，此字段由 `algorithm.ts` 按上式自推（已用 2000-4-6 子时男
 	 * = 戌、1990-05-15 巳时男 = 寅 两组样例校准）。闰月按所闰之月数计（与 `lunarInfo.lunarMonth`
-	 * 的 `Math.abs` 口径一致）；晚子时（hour 12）按子时论。
+	 * 的 `Math.abs` 口径一致）；晚子时（timeIndex 12）按子时论。
 	 */
 	douJunBranch: number;
-	/** 当前**虚岁**，以农历年（正月初一）为界，与 `daXianAge` / `daXians[].startAge` **同域** */
+	/** 当前**虚岁**，以农历年（正月初一）为界，与 `decadalRange` / `decadals[].startAge` **同域** */
 	currentAge: number;
-	/** 当前大限在 {@link daXians} 中的下标；`-1` 表示虚岁尚未落进任何大限（童限未起运） */
-	currentDaXianIndex: number;
+	/** 当前大限在 {@link decadals} 中的下标；`-1` 表示虚岁尚未落进任何大限（童限未起运） */
+	currentDecadalIndex: number;
 }

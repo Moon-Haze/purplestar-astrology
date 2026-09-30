@@ -7,15 +7,15 @@
  * 加四化补充。空宫则借对宫论事（与 `palace-query.ts` 的 `getPalaceStars` 同一口径，
  * 但这里只是**列名**，不参与后续论断）。
  *
- * 每宫末尾另附次星（六吉 + 禄存 + 天马，即 `type === "lucky"`）的深度文案。
+ * 每宫末尾另附次星（六吉 + 禄存 + 天马，即 `type === "soft"`）的深度文案。
  *
  * @packageDocumentation
  */
 
 import { PALACE_TO_CONTENT_KEY, STAR_BRIEF, STAR_CONTENT_MAP } from "../data";
-import { duiGongBranch } from "../../palace-relations";
+import { oppositeBranch } from "../../palace-relations";
 import type { AnalysisContext } from "../context";
-import { getMinorStarNote, getSiHuaNote } from "../lookups";
+import { getMinorStarNote, getMutagenNote } from "../lookups";
 import { descPalaceStars } from "../palace-query";
 
 /** 渲染「二、三方四正联动」整节。 */
@@ -46,35 +46,35 @@ export function renderSanFang(ctx: AnalysisContext): string[] {
 					starProfile && palaceContentKey
 						? (starProfile[palaceContentKey] as string | undefined)
 						: null;
-				const siHuaStr = s.siHua ? `化${s.siHua}` : "";
+				const mutagenStr = s.mutagen ? `化${s.mutagen}` : "";
 				const brightStr =
 					s.brightness === "bright"
 						? "（庙旺）"
 						: s.brightness === "dim"
 							? "（落陷）"
 							: "";
-				const siHuaNote = s.siHua ? getSiHuaNote(s.name, s.siHua) : "";
+				const mutagenNote = s.mutagen ? getMutagenNote(s.name, s.mutagen) : "";
 
 				if (fullContent) {
 					// 有完整宫位段落，直接输出全文 + 四化补充
-					lines.push(`**${s.name}${siHuaStr}${brightStr}** 在${p.name}：`);
+					lines.push(`**${s.name}${mutagenStr}${brightStr}** 在${p.name}：`);
 					lines.push("");
 					lines.push(fullContent);
-					if (siHuaNote) {
+					if (mutagenNote) {
 						lines.push("");
-						lines.push(`▶ 化${s.siHua}：${siHuaNote}`);
+						lines.push(`▶ 化${s.mutagen}：${mutagenNote}`);
 					}
 				} else {
 					// 无专项段落，用简述 + 四化
 					const brief = STAR_BRIEF[s.name] ?? "";
 					lines.push(
-						`  ${s.name}${siHuaStr}${brightStr}${brief ? "（" + brief + "）" : ""}${siHuaNote ? " | 化" + s.siHua + "：" + siHuaNote : ""}`
+						`  ${s.name}${mutagenStr}${brightStr}${brief ? "（" + brief + "）" : ""}${mutagenNote ? " | 化" + s.mutagen + "：" + mutagenNote : ""}`
 					);
 				}
 				lines.push("");
 			});
 		} else if (!isMain && mainStarsOfP.length === 0) {
-			const oppBranch = duiGongBranch(p.branch);
+			const oppBranch = oppositeBranch(p.branch);
 			const oppP = chart.palaces.find(q => q.branch === oppBranch);
 			const oppStars = oppP?.stars.filter(s => s.type === "major") ?? [];
 			if (oppStars.length > 0) {
@@ -89,7 +89,7 @@ export function renderSanFang(ctx: AnalysisContext): string[] {
 		// ── 次星（六吉 + 禄存 + 天马）深度文案 ──
 		const minorStarNotes: string[] = [];
 		p.stars
-			.filter(s => s.type === "lucky")
+			.filter(s => s.type === "soft")
 			.forEach(ls => {
 				const note = getMinorStarNote(ls.name, p.name);
 				if (note) minorStarNotes.push(`✦ **${ls.name}**：${note}`);

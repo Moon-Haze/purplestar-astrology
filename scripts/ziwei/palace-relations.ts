@@ -25,11 +25,11 @@
  *
  * ## 顺序：偏移序，不是 `palaces` 序
  *
- * {@link sanFangBranches} 返回**偏移序**（本宫 → 官禄 → 财帛 → 迁移），而
+ * {@link surroundBranches} 返回**偏移序**（本宫 → 官禄 → 财帛 → 迁移），而
  * `ZiweiChart.palaces` 的数组序是地支序（实测寅起，见 `types.ts`）。两者在本仓都有真实
  * 用途，且都**逐字进了输出**（`analysis/` 的「大限三方四正会照的本命四化」就是一个
  * 按 `palaces` 序 push 的字符串数组），故本模块只给地支、不替调用方选顺序 ——
- * 要 `palaces` 序的自行 `chart.palaces.filter(p => sanFangBranches(b).includes(p.branch))`。
+ * 要 `palaces` 序的自行 `chart.palaces.filter(p => surroundBranches(b).includes(p.branch))`。
  *
  * ## 依赖
  *
@@ -46,10 +46,10 @@
  * `algorithm.ts` 填 `Palace.oppositeBranch` 字段用的就是本函数 —— 字段与算式同源，
  * 手里已经有 `Palace` 对象时直接读字段即可，不必绕本函数。
  *
- * ⚠️ 入参恒为 0–11（`Palace.branch` 与 `ZiweiChart.mingGongBranch` 的定义域），故**不做**
+ * ⚠️ 入参恒为 0–11（`Palace.branch` 与 `ZiweiChart.soulBranch` 的定义域），故**不做**
  * 两步取模 —— 越界入参会返回越界值，由调用方负责。
  */
-export function duiGongBranch(branch: number): number {
+export function oppositeBranch(branch: number): number {
 	return (branch + 6) % 12;
 }
 
@@ -60,8 +60,8 @@ export function duiGongBranch(branch: number): number {
  * 十二宫由命宫**逆行**排布，故官禄在 `+4`、财帛在 `+8`、迁移在 `+6`（**不是**顺行）。
  * 校验见 `test/invariants.test.ts` 的「宫名与相对命宫的逆行偏移一致」。
  *
- * ⚠️ 迁移那一项与 {@link duiGongBranch} 是同一个事实（对宫），此处按三方四正的次序写进
- * 表里而非调 `duiGongBranch(+6)` —— 四个偏移同表可一眼看全，`+6` 在本表内不会再变。
+ * ⚠️ 迁移那一项与 {@link oppositeBranch} 是同一个事实（对宫），此处按三方四正的次序写进
+ * 表里而非调 `oppositeBranch(+6)` —— 四个偏移同表可一眼看全，`+6` 在本表内不会再变。
  */
 export const SAN_FANG_OFFSETS: readonly number[] = [0, 4, 8, 6];
 
@@ -71,6 +71,6 @@ export const SAN_FANG_OFFSETS: readonly number[] = [0, 4, 8, 6];
  * @param branch - 本宫的地支索引（0–11）
  * @returns 本宫、官禄宫、财帛宫、迁移宫的地支，顺序即 {@link SAN_FANG_OFFSETS} 的偏移序
  */
-export function sanFangBranches(branch: number): number[] {
+export function surroundBranches(branch: number): number[] {
 	return SAN_FANG_OFFSETS.map(o => (branch + o) % 12);
 }

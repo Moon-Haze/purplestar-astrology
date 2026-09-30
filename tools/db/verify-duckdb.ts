@@ -24,7 +24,7 @@ import {
 	type DbLayout,
 } from "./db";
 import { decodeSampleId, sampleId, sqlSampleIdExpr } from "./sample-id";
-import { extractSihua, type ZiweiChartLike } from "./sihua";
+import { extractSihua, type ZiweiChartLike } from "./mutagen";
 
 // skipped 与 ok 正交：SKIP 表示「这项在当前形态下不适用」，它既不是通过也不是失败。
 // 必须单独成一态——把「其实没跑」渲染成 PASS，读的人会当成「这项验过了」。
@@ -152,18 +152,18 @@ export async function verifyDimensions(conn: DuckDBConnection): Promise<CheckRes
 		conn,
 		`
     WITH expected AS (
-      SELECT 1924 + y AS year, m + 1 AS month, d + 1 AS day, h AS hour, gidx
+      SELECT 1924 + y AS year, m + 1 AS month, d + 1 AS day, h AS timeIndex, gidx
       FROM range(60) t1(y), range(12) t2(m), range(30) t3(d), range(12) t4(h), (VALUES (0),(1)) t5(gidx)
     )
     SELECT count(*) FROM expected e
-    LEFT JOIN samples s ON s.year=e.year AND s.month=e.month AND s.day=e.day AND s.hour=e.hour
+    LEFT JOIN samples s ON s.year=e.year AND s.month=e.month AND s.day=e.day AND s.timeIndex=e.timeIndex
       AND s.gender = CASE WHEN e.gidx=0 THEN 'male' ELSE 'female' END
     WHERE s.sample_id IS NULL`
 	);
 	const dup = await one(
 		conn,
 		`
-    SELECT count(*) FROM (SELECT year,month,day,hour,gender FROM samples GROUP BY ALL HAVING count(*)>1)`
+    SELECT count(*) FROM (SELECT year,month,day,timeIndex,gender FROM samples GROUP BY ALL HAVING count(*)>1)`
 	);
 	// 任何规模都断言：sample_id 必须等于五维自然键重算值（spec §5.1）。
 	// 该式是三表 join 的基石，一旦漂移，palaces/topics 会静默错配到别的样本上。
@@ -260,7 +260,7 @@ export async function verifySampling(conn: DuckDBConnection, src: string): Promi
 
 // 源文件定位：id → year/month → 分片；流式解压扫描匹配 birthInfo 的行
 async function readSourceRecord(src: string, id: number): Promise<Record<string, any> | null> {
-	const { year, month, day, hour, gender } = decodeSampleId(id);
+	const { year, month, day, timeIndex, gender } = decodeSampleId(id);
 	const file = path.join(
 		src,
 		`year-${year}`,
@@ -276,7 +276,7 @@ async function readSourceRecord(src: string, id: number): Promise<Record<string,
 				b.year === year &&
 				b.month === month &&
 				b.day === day &&
-				b.hour === hour &&
+				b.timeIndex === timeIndex &&
 				b.gender === gender
 			)
 				return r;
@@ -311,7 +311,7 @@ function mismatchDetail(
 			S.year === b.year &&
 				S.month === b.month &&
 				S.day === b.day &&
-				S.hour === b.hour &&
+				S.timeIndex === b.timeIndex &&
 				S.gender === b.gender,
 			"出生信息",
 		],
@@ -323,9 +323,9 @@ function mismatchDetail(
 			"农历",
 		],
 		[
-			S.ming_gong_branch === ch.mingGongBranch &&
-				S.wuxing_ju === ch.wuxingJu &&
-				S.wuxing_ju_name === ch.wuxingJuName,
+			S.ming_gong_branch === ch.soulBranch &&
+				S.wuxing_ju === ch.fiveElementsClass &&
+				S.wuxing_ju_name === ch.fiveElementsClassName,
 			"命盘概要",
 		],
 		[
@@ -348,8 +348,8 @@ function mismatchDetail(
 		}
 		const exp = {
 			major: starNames(p.stars, "major"),
-			lucky: starNames(p.stars, "lucky"),
-			sha: starNames(p.stars, "sha"),
+			lucky: starNames(p.stars, "soft"),
+			sha: starNames(p.stars, "tough"),
 			minor: starNames(p.stars, "minor"),
 		};
 		const got = {

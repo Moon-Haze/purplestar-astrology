@@ -351,7 +351,7 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 	}
 
 	// ── 时辰 ──
-	let hour: number, hourNote: string;
+	let timeIndex: number, hourNote: string;
 	const wantLateZi = g("late-zi") === true || g("late-zi") === "true";
 	// 23:00–23:59 出生 → 早/晚子时两口径会排出不同的盘，此标记用于上层给出提醒
 	let lateZiCandidate = false;
@@ -363,12 +363,12 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 		throw new Error("--late-zi 需配合 --time 使用；直接指定时辰时，晚子时请用 --branch 12");
 
 	if (g("branch") !== undefined) {
-		hour = Number(g("branch"));
+		timeIndex = Number(g("branch"));
 		// 12 = 晚子时（安星按次日），是本 CLI 对 iztro timeIndex 12 的显式暴露
-		if (!Number.isInteger(hour) || hour < 0 || hour > 12)
+		if (!Number.isInteger(timeIndex) || timeIndex < 0 || timeIndex > 12)
 			throw new Error("--branch 应为 0-11（0=子 … 11=亥）或 12（晚子时）");
 		hourNote =
-			hour === 12 ? "直接指定 晚子时（子时，安星按次日）" : `直接指定 ${shichenLabel(hour)}`;
+			timeIndex === 12 ? "直接指定 晚子时（子时，安星按次日）" : `直接指定 ${shichenLabel(timeIndex)}`;
 	} else if (g("time") !== undefined) {
 		const m = /^(\d{1,2}):(\d{2})$/.exec(String(g("time")));
 		if (!m) throw new Error(`时间格式应为 HH:MM，收到：${g("time")}`);
@@ -399,11 +399,11 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 		const clockText = `钟表 ${String(ch).padStart(2, "0")}:${m[2]}`;
 
 		if (t.isLateZi && wantLateZi) {
-			hour = 12;
+			timeIndex = 12;
 			hourNote = `${clockText} → 真太阳时校正 ${corrText} → 晚子时（安星按次日）`;
 		} else {
-			hour = t.branch;
-			hourNote = `${clockText} → 真太阳时校正 ${corrText} → ${shichenLabel(hour)}`;
+			timeIndex = t.branch;
+			hourNote = `${clockText} → 真太阳时校正 ${corrText} → ${shichenLabel(timeIndex)}`;
 			if (t.isLateZi) hourNote += "（晚子时，按当日早子时口径）";
 		}
 		hourNote += dayShiftText;
@@ -417,7 +417,7 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 			year,
 			month,
 			day,
-			hour,
+			timeIndex,
 			gender,
 			name: g("name") ? String(g("name")) : undefined,
 			longitude,
@@ -428,7 +428,7 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 		lngNote,
 		lngAmbiguous,
 		lateZiCandidate,
-		isLateZi: hour === 12,
+		isLateZi: timeIndex === 12,
 	};
 }
 

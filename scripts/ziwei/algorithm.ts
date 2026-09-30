@@ -9,11 +9,11 @@
 
 import { astro } from "iztro";
 import { Solar } from "lunar-typescript";
-import type { BirthInfo, LunarInfo, Star, Palace, DaXian, ZiweiChart } from "./types";
+import type { BirthInfo, LunarInfo, Star, Palace, Decadal, ZiweiChart } from "./types";
 import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE, ELEMENT_TO_JU } from "./constants";
-import { duiGongBranch } from "./palace-relations";
+import { oppositeBranch } from "./palace-relations";
 // 飞星派工具仅供导出，不再在排盘时调用（倪师《天纪 03》：四化星永远固定不动）
-// import { detectSelfSihua, getSiHuaByStem } from './sihua';
+// import { detectSelfSihua, getMutagenByStem } from './mutagen';
 
 // ─── 宫名口径 ────────────────────────────────────────────────────
 /**
@@ -102,13 +102,13 @@ function mapBrightness(b?: string): "bright" | "normal" | "dim" {
  * 煞星名单。
  *
  * @remarks
- * 与 {@link LUCKY_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**：名字在表内
+ * 与 {@link SOFT_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**：名字在表内
  * 就先定类型，不再看 iztro 的 `type` 字段（判定顺序见该函数）。
  *
  * ⚠️ 改这张表会改变 `Star.type`，进而改变 `patterns/` 的格局命中 ——
  * `npm test` 的语料回归盯着这条链路，别顺手加星。
  */
-const SHA_STARS = new Set([
+const TOUGH_STARS = new Set([
 	"擎羊",
 	"陀罗",
 	"火星",
@@ -126,12 +126,12 @@ const SHA_STARS = new Set([
  * 吉星名单。
  *
  * @remarks
- * 与 {@link SHA_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**。两表**不重叠**，
- * 顺序上煞星先判 —— 若将来往两表里加同名星，`sha` 会赢。
+ * 与 {@link TOUGH_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**。两表**不重叠**，
+ * 顺序上煞星先判 —— 若将来往两表里加同名星，`tough` 会赢。
  *
- * ⚠️ 同 {@link SHA_STARS}：改表即改格局命中，`npm test` 会盯着。
+ * ⚠️ 同 {@link TOUGH_STARS}：改表即改格局命中，`npm test` 会盯着。
  */
-const LUCKY_STARS = new Set([
+const SOFT_STARS = new Set([
 	"文昌",
 	"文曲",
 	"左辅",
@@ -162,25 +162,25 @@ const LUCKY_STARS = new Set([
  *
  * @param starName - 星曜中文名
  * @param iztroType - iztro 给的 `type` 字段（「主星」「煞星」「吉星」「禄存」「天马」等）
- * @returns `Star["type"]`，取值为 `major` / `sha` / `lucky` / `minor`
+ * @returns `Star["type"]`，取值为 `major` / `tough` / `soft` / `minor`
  *
  * @remarks
  * 判定优先级从高到低：
- * 1. 名字命中 {@link SHA_STARS} → `sha`
- * 2. 名字命中 {@link LUCKY_STARS} → `lucky`
+ * 1. 名字命中 {@link TOUGH_STARS} → `tough`
+ * 2. 名字命中 {@link SOFT_STARS} → `soft`
  * 3. iztro 的 `type`（转小写后比对，中英文皆认）→ 对应类型
  * 4. 兜底 `minor`
  *
- * 前两级先看名字，是 {@link SHA_STARS} 那张表存在的理由。注意 `major` **只能**由
+ * 前两级先看名字，是 {@link TOUGH_STARS} 那张表存在的理由。注意 `major` **只能**由
  * iztro 的 `type` 给出 —— 两张名单里没有主星。
  */
 function mapStarType(starName: string, iztroType: string): Star["type"] {
-	if (SHA_STARS.has(starName)) return "sha";
-	if (LUCKY_STARS.has(starName)) return "lucky";
+	if (TOUGH_STARS.has(starName)) return "tough";
+	if (SOFT_STARS.has(starName)) return "soft";
 	const t = (iztroType ?? "").toLowerCase();
 	if (t === "主星" || t === "major") return "major";
-	if (t === "煞星" || t === "tough") return "sha";
-	if (t === "吉星" || t === "soft" || t === "禄存" || t === "天马") return "lucky";
+	if (t === "煞星" || t === "tough") return "tough";
+	if (t === "吉星" || t === "soft" || t === "禄存" || t === "天马") return "soft";
 	return "minor";
 }
 
@@ -211,7 +211,7 @@ export function parseWuxingJu(name: string): number {
 /**
  * 生成紫微斗数命盘。
  *
- * @param birthInfo - 出生信息。⚠️ `hour` 是**时辰序号 0–12**（0=子 … 11=亥，12=晚子时），
+ * @param birthInfo - 出生信息。⚠️ `timeIndex` 是**时辰序号 0–12**（0=子 … 11=亥，12=晚子时），
  *   **不是** 0–23 的钟表时；钟表时到时辰序号的换算（含真太阳时校正）在 `cli/birth-info.ts` 完成
  * @returns 完整命盘。`palaces` 按**地支数组序**排列（寅起），比对时按 `branch` 建索引
  * @throws 当 iztro 返回未知宫名时（见 {@link projectPalaceName}）
@@ -220,23 +220,23 @@ export function parseWuxingJu(name: string): number {
  * **只做组装、不做推算**：调 iztro 排盘 → 逐宫翻译宫名与星曜 → 算虚岁与当前大限
  * → 补借对宫字段。命理逻辑一律不在此处重复实现。
  *
- * **大限四化已主动下线**：不再生成 `daXians[].siHua` / `stemIndex`（飞星派口径）。
+ * **大限四化已主动下线**：不再生成 `decadals[].mutagen` / `stemIndex`（飞星派口径）。
  * 体系立场见 `.claude/CLAUDE.md` 与 `SKILL.md`。
  *
  * @example
  * ```ts
- * // hour: 5 = 巳时；务必先经 buildBirthInfo 把钟表时换算成时辰序号
- * const chart = generateChart({ year: 1990, month: 5, day: 15, hour: 5, gender: "male" });
- * const ming = chart.palaces.find(p => p.isMingGong);
+ * // timeIndex: 5 = 巳时；务必先经 buildBirthInfo 把钟表时换算成时辰序号
+ * const chart = generateChart({ year: 1990, month: 5, day: 15, timeIndex: 5, gender: "male" });
+ * const ming = chart.palaces.find(p => p.isSoulPalace);
  * ```
  */
 export function generateChart(birthInfo: BirthInfo): ZiweiChart {
-	const { year, month, day, hour, gender } = birthInfo;
+	const { year, month, day, timeIndex, gender } = birthInfo;
 
 	// 调用 iztro 排盘
 	const solarDate = `${year}-${month}-${day}`;
 	const iztroGender = gender === "male" ? "男" : "女";
-	const astrolabe = astro.bySolar(solarDate, hour, iztroGender, true, "zh-CN");
+	const astrolabe = astro.bySolar(solarDate, timeIndex, iztroGender, true, "zh-CN");
 
 	// ── 组装十二宫 ──
 	const palaces: Palace[] = astrolabe.palaces.map(p => {
@@ -258,17 +258,17 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 				name: s.name as string,
 				type: "major" as const,
 				brightness: mapBrightness(s.brightness as string),
-				siHua: s.mutagen as Star["siHua"],
+				mutagen: s.mutagen as Star["mutagen"],
 			})),
 			...(p.minorStars ?? []).map(s => ({
 				name: s.name as string,
 				type: mapStarType(s.name as string, s.type as string),
-				siHua: s.mutagen as Star["siHua"],
+				mutagen: s.mutagen as Star["mutagen"],
 			})),
 			...(p.adjectiveStars ?? []).map(s => ({
 				name: s.name as string,
 				type: "minor" as const,
-				siHua: s.mutagen as Star["siHua"],
+				mutagen: s.mutagen as Star["mutagen"],
 			})),
 		];
 
@@ -278,12 +278,12 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 			stem,
 			name: projectPalaceName(p.name as string),
 			stars: allStars,
-			daXianAge: range ? ([range[0], range[1]] as [number, number]) : undefined,
+			decadalRange: range ? ([range[0], range[1]] as [number, number]) : undefined,
 			// 小限岁数表：iztro 按生年支与性别推定每宫所辖虚岁，此处原样提取不重复实现
-			xiaoXianAges: (p.ages as number[] | undefined) ?? [],
-			isMingGong: p.name === "命宫",
-			isShenGong: p.isBodyPalace ?? false,
-			isCurrentDaXian: false,
+			ages: (p.ages as number[] | undefined) ?? [],
+			isSoulPalace: p.name === "命宫",
+			isBodyPalace: p.isBodyPalace ?? false,
+			isCurrentDecadal: false,
 		};
 	});
 
@@ -291,12 +291,12 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const lunarInfo = getLunarInfo(year, month, day);
 
 	// ── 当前年龄 & 大限 ──
-	// currentAge 是**虚岁**，与 daXianAge / daXians[].startAge 同域（倪师《天纪》亦用虚岁）。
+	// currentAge 是**虚岁**，与 decadalRange / decadals[].startAge 同域（倪师《天纪》亦用虚岁）。
 	// 以农历年（正月初一）为界，不是生日、也不是立春 —— 与 iztro 的默认口径
 	// `ageDivide: 'normal'` 逐字对应（见 iztro/lib/astro/FunctionalAstrolabe.js）：
 	//     nominalAge = 目标日农历年 − 出生农历年 + 1
 	// ⚠️ 不可写成 `new Date().getFullYear() - year`（那是周岁）。两者域不同会让
-	//    currentAge 偏 1~2 岁，并连带 currentDaXianIndex / palace.isCurrentDaXian 错位，
+	//    currentAge 偏 1~2 岁，并连带 currentDecadalIndex / palace.isCurrentDecadal 错位，
 	//    最坏情况是把**上一个大限的宫**当成当前大限整宫详批。
 	const now = new Date();
 	const todayLunarYear = getLunarInfo(
@@ -307,15 +307,15 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const currentAge = todayLunarYear - lunarInfo.lunarYear + 1;
 
 	palaces.forEach(p => {
-		if (p.daXianAge && currentAge >= p.daXianAge[0] && currentAge <= p.daXianAge[1]) {
-			p.isCurrentDaXian = true;
+		if (p.decadalRange && currentAge >= p.decadalRange[0] && currentAge <= p.decadalRange[1]) {
+			p.isCurrentDecadal = true;
 		}
 	});
 
 	// ── 借对宫结构化字段（codex P0：避免文案层从自然语言反查借宫信息）──
 	// 对宫算式取自 `./palace-relations` —— 全仓对宫偏移的单点，本字段与它同源。
 	palaces.forEach(p => {
-		p.oppositeBranch = duiGongBranch(p.branch);
+		p.oppositeBranch = oppositeBranch(p.branch);
 		const mainStars = p.stars.filter(s => s.type === "major");
 		p.isEmpty = mainStars.length === 0;
 		if (p.isEmpty) {
@@ -329,17 +329,17 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	});
 
 	// ── 关键宫支 ──
-	const mingGongBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfSoulPalace as string);
-	const shenGongBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfBodyPalace as string);
+	const soulBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfSoulPalace as string);
+	const bodyBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfBodyPalace as string);
 	// 命宫 / 身宫地支必在十二宫内，这是排盘不变量（cli/render.ts 的 palaceAtBranch 同样
 	// 依赖它）；查不到即内核输出已损坏，当场报错而非兜底 0（理由同上方宫循环的干支校验）。
-	if (mingGongBranch < 0 || shenGongBranch < 0)
+	if (soulBranch < 0 || bodyBranch < 0)
 		throw new Error(
 			`命宫/身宫地支不在十二支内（命宫=${astrolabe.earthlyBranchOfSoulPalace}，` +
 				`身宫=${astrolabe.earthlyBranchOfBodyPalace}）—— 内核输出已损坏`
 		);
-	const wuxingJuName = astrolabe.fiveElementsClass as string;
-	const wuxingJu = parseWuxingJu(wuxingJuName);
+	const fiveElementsClassName = astrolabe.fiveElementsClass as string;
+	const fiveElementsClass = parseWuxingJu(fiveElementsClassName);
 
 	// ── 紫微星位置 ──
 	const ziweiPalace = palaces.find(p =>
@@ -350,13 +350,13 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const ziweiPos = ziweiPalace.branch;
 
 	// ── 大限数组（倪师《天纪》正统：四化永远固定，大限只看宫位移动）──
-	// 不再生成 daXians[].siHua / stemIndex / stemName（飞星派字段已下线）
-	const daXians: DaXian[] = palaces
-		.filter(p => p.daXianAge)
-		.sort((a, b) => a.daXianAge![0] - b.daXianAge![0])
+	// 不再生成 decadals[].mutagen / stemIndex / stemName（飞星派字段已下线）
+	const decadals: Decadal[] = palaces
+		.filter(p => p.decadalRange)
+		.sort((a, b) => a.decadalRange![0] - b.decadalRange![0])
 		.map(p => ({
-			startAge: p.daXianAge![0],
-			endAge: p.daXianAge![1],
+			startAge: p.decadalRange![0],
+			endAge: p.decadalRange![1],
 			palaceBranch: p.branch,
 			palaceName: p.name,
 		}));
@@ -366,30 +366,30 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const mingZhu = astrolabe.soul as string;
 	const shenZhu = astrolabe.body as string;
 	// 斗君：子起正月逆数至生月，生月宫起子时顺数至生时。iztro 静态盘不带，故按口诀自推。
-	// 闰月按所闰之月数计（lunarMonth 已 Math.abs）；晚子时（hour 12）按子时论（%12）。
+	// 闰月按所闰之月数计（lunarMonth 已 Math.abs）；晚子时（timeIndex 12）按子时论（%12）。
 	// 校准样例：2000-4-6 子时（三月）= 戌、1990-05-15 巳时（四月）= 寅（见 cli/selftest.ts）。
-	const douJunBranch = ((hour % 12) + 12 - (lunarInfo.lunarMonth - 1)) % 12;
+	const douJunBranch = ((timeIndex % 12) + 12 - (lunarInfo.lunarMonth - 1)) % 12;
 
 	// 宫干自化已下线（倪师不主张飞星派宫干自化论）
 
-	const currentDaXianIndex = daXians.findIndex(
+	const currentDecadalIndex = decadals.findIndex(
 		dx => currentAge >= dx.startAge && currentAge <= dx.endAge
 	);
 
 	return {
 		birthInfo,
 		lunarInfo,
-		mingGongBranch,
-		shenGongBranch,
-		wuxingJu,
-		wuxingJuName,
+		soulBranch,
+		bodyBranch,
+		fiveElementsClass,
+		fiveElementsClassName,
 		ziweiPos,
 		palaces,
-		daXians,
+		decadals,
 		mingZhu,
 		shenZhu,
 		douJunBranch,
 		currentAge,
-		currentDaXianIndex,
+		currentDecadalIndex,
 	};
 }

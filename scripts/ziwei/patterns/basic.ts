@@ -18,15 +18,15 @@
 import type { Palace } from "../types";
 import type { Pattern, DetectContext, Detector } from "./types";
 import { PATTERN_VERDICTS } from "./data";
-import { hasStar, findStarPalace, getSanFangPalaces, sanFangAllStars, fillVerdict } from "./helpers";
-import { duiGongBranch } from "../palace-relations";
+import { hasStar, findStarPalace, getSurroundPalaces, sanFangAllStars, fillVerdict } from "./helpers";
+import { oppositeBranch } from "../palace-relations";
 
 /** 禄存守身：禄存入身宫（或命宫与身宫同宫） */
 function detectLuCunShouShen({ chart }: DetectContext): Pattern[] {
 	const luCunPalace = findStarPalace(chart, "禄存");
 	if (!luCunPalace) return [];
-	const inMing = luCunPalace.branch === chart.mingGongBranch;
-	const inShen = luCunPalace.branch === chart.shenGongBranch;
+	const inMing = luCunPalace.branch === chart.soulBranch;
+	const inShen = luCunPalace.branch === chart.bodyBranch;
 	if (!inMing && !inShen) return [];
 	const name = inMing ? "禄存守命" : "禄存守身";
 	return [{
@@ -42,8 +42,8 @@ function detectLuCunShouShen({ chart }: DetectContext): Pattern[] {
 function detectTianMaRuMing({ chart }: DetectContext): Pattern[] {
 	const tianMaPalace = findStarPalace(chart, "天马");
 	if (!tianMaPalace) return [];
-	const inMing = tianMaPalace.branch === chart.mingGongBranch;
-	const inQian = tianMaPalace.branch === duiGongBranch(chart.mingGongBranch);
+	const inMing = tianMaPalace.branch === chart.soulBranch;
+	const inQian = tianMaPalace.branch === oppositeBranch(chart.soulBranch);
 	if (!inMing && !inQian) return [];
 	const name = inMing ? "天马入命" : "天马在迁";
 	return [{
@@ -59,7 +59,7 @@ function detectTianMaRuMing({ chart }: DetectContext): Pattern[] {
 function detectHuaLuRuCai({ chart }: DetectContext): Pattern[] {
 	const cai = chart.palaces.find(p => p.name === "财帛宫");
 	if (!cai) return [];
-	const luStar = cai.stars.find(s => s.type === "major" && s.siHua === "禄");
+	const luStar = cai.stars.find(s => s.type === "major" && s.mutagen === "禄");
 	if (!luStar) return [];
 	const name = "化禄入财";
 	return [{
@@ -75,7 +75,7 @@ function detectHuaLuRuCai({ chart }: DetectContext): Pattern[] {
 function detectHuaQuanRuGuan({ chart }: DetectContext): Pattern[] {
 	const guan = chart.palaces.find(p => p.name === "官禄宫");
 	if (!guan) return [];
-	const quanStar = guan.stars.find(s => s.type === "major" && s.siHua === "权");
+	const quanStar = guan.stars.find(s => s.type === "major" && s.mutagen === "权");
 	if (!quanStar) return [];
 	const name = "化权入官";
 	return [{
@@ -89,12 +89,12 @@ function detectHuaQuanRuGuan({ chart }: DetectContext): Pattern[] {
 
 /** 化科入命/身：科名加身 */
 function detectHuaKeRuMingShen({ chart, ming }: DetectContext): Pattern[] {
-	const shen = chart.palaces.find(p => p.branch === chart.shenGongBranch);
+	const shen = chart.palaces.find(p => p.branch === chart.bodyBranch);
 	const target = [ming, shen].filter((p): p is Palace => Boolean(p));
 	for (const p of target) {
-		const keStar = p.stars.find(s => s.type === "major" && s.siHua === "科");
+		const keStar = p.stars.find(s => s.type === "major" && s.mutagen === "科");
 		if (!keStar) continue;
-		const isMing = p.branch === chart.mingGongBranch;
+		const isMing = p.branch === chart.soulBranch;
 		const name = isMing ? "化科入命" : "化科入身";
 		// 命和身重复时只识别一次：首次命中即返回
 		return [{
@@ -153,13 +153,13 @@ function detectKuiYueTongHui({ chart }: DetectContext): Pattern[] {
 
 /** 科权双会：化科 + 化权 同会三方四正 */
 function detectKeQuanShuangHui({ chart }: DetectContext): Pattern[] {
-	const sfPalaces = getSanFangPalaces(chart);
+	const sfPalaces = getSurroundPalaces(chart);
 	let hasKe = false,
 		hasQuan = false;
 	for (const p of sfPalaces) {
 		for (const s of p.stars) {
-			if (s.type === "major" && s.siHua === "科") hasKe = true;
-			if (s.type === "major" && s.siHua === "权") hasQuan = true;
+			if (s.type === "major" && s.mutagen === "科") hasKe = true;
+			if (s.type === "major" && s.mutagen === "权") hasQuan = true;
 		}
 	}
 	if (!hasKe || !hasQuan) return [];

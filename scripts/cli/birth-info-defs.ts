@@ -121,6 +121,6 @@ export interface BirthInfoResult {
 	lngAmbiguous: string[] | null;
 	/** 校正后的真太阳时落在 23:00–23:59（需提醒用户复核晚子时口径） */
 	lateZiCandidate: boolean;
-	/** 本次排盘是否真的按晚子时口径（hour === 12） */
+	/** 本次排盘是否真的按晚子时口径（timeIndex === 12） */
 	isLateZi: boolean;
 }

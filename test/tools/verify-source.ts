@@ -4,12 +4,12 @@
 // 本次改造的主要验收手段。它回答一个别人替不了的问题：**从关系表重建出的样本，
 // 与 jsonl 里那一行，是不是逐字节相同？**
 //
-// 为什么非要有它：本次映射里有多处隐晦约定（siHua 键的存在性、星曜四段顺序、宫位顺序、
+// 为什么非要有它：本次映射里有多处隐晦约定（mutagen 键的存在性、星曜四段顺序、宫位顺序、
 // chart.birthInfo 的存在），它们**全都不影响 npm test 的结果** —— 比对器或按名索引、
 // 或做了空值归一化。只有字节级比对能兜住。
 //
 // 取样本时刻意**不用下标算址**。旧 build-fixtures.ts 的 pickFrom 用
-// `idx = (day-1)*24 + hour*2 + genderIdx`，隐含「每月每天都齐 24 条」的假设；
+// `idx = (day-1)*24 + timeIndex*2 + genderIdx`，隐含「每月每天都齐 24 条」的假设；
 // 互验若沿用它，就继承了待验证的假设。这里改为：读 jsonl 的一行 → 取它的出生五元组 →
 // 拿这个五元组向 DuckDB 查同一条 → 逐字节比。于是「pickFrom 是否曾经错位」变成一个
 // 可直接证实或证伪的问题：差异报告里会同时给出该行的**行号**与**旧公式算出的下标**。
@@ -216,13 +216,13 @@ async function main(): Promise<void> {
 				rebuilt.birthInfo.year === raw.birthInfo.year &&
 				rebuilt.birthInfo.month === raw.birthInfo.month &&
 				rebuilt.birthInfo.day === raw.birthInfo.day &&
-				rebuilt.birthInfo.hour === raw.birthInfo.hour &&
+				rebuilt.birthInfo.timeIndex === raw.birthInfo.timeIndex &&
 				rebuilt.birthInfo.gender === raw.birthInfo.gender;
 
 			// 旧 pickFrom 的公式：仅供诊断，**不参与取数**。
 			// 行号与它算出的下标不一致 = 旧实现曾经错位取数的直接证据。
 			const legacyIdx =
-				(raw.birthInfo.day - 1) * 24 + raw.birthInfo.hour * 2 + (raw.birthInfo.gender === "female" ? 1 : 0);
+				(raw.birthInfo.day - 1) * 24 + raw.birthInfo.timeIndex * 2 + (raw.birthInfo.gender === "female" ? 1 : 0);
 
 			let kind: DiffKind | "查无此样本";
 			let detail: string;

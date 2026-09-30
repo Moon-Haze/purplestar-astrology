@@ -2,14 +2,14 @@
  * 四化工具模块 —— 年干 / 流年干 / 流月干四化的映射查询。
  *
  * 本模块是**纯查表 + 纯算术**：输入天干索引（或公历年 / 农历月），输出「禄权科忌」各自对应的
- * 星名。四化本身由排盘层（`algorithm.ts`）从 iztro 的 `mutagen` 字段直接落到 `Star.siHua` 上，
+ * 星名。四化本身由排盘层（`algorithm.ts`）从 iztro 的 `mutagen` 字段直接落到 `Star.mutagen` 上，
  * 这里不参与安星，也不产出任何盘面字段。
  *
  * ## 三合派采用的三个四化层次（本模块接口的全部）
  *
- * - 生年四化（本命）= 出生年天干四化，静态基础，落在 `Star.siHua` 上（本模块不参与）
- * - 流年四化 = 当年年干的四化，一年动态（{@link getLiuNianSiHua}）
- * - 流月四化 = 月柱天干（五虎遁）的四化，一月动态（{@link getLiuYueSiHua}）
+ * - 生年四化（本命）= 出生年天干四化，静态基础，落在 `Star.mutagen` 上（本模块不参与）
+ * - 流年四化 = 当年年干的四化，一年动态（{@link getYearlyMutagen}）
+ * - 流月四化 = 月柱天干（五虎遁）的四化，一月动态（{@link getMonthlyMutagen}）
  *
  * ## 体系基准（本项目立场，全项目适用）
  *
@@ -24,15 +24,15 @@
  * 本项目严格遵循倪海夏《天纪》**三合派**。本模块曾一并携带宫干自化、大限四化取宫干、
  * 来因宫与四化叠加视图 —— 那些名字现已删除，弃用的是**函数与接口**，理由有二：
  *
- * 1. **删除测试**：`algorithm.ts` 停止填充 `Palace.selfSihua` / `daXians[].siHua` 之后，
+ * 1. **删除测试**：`algorithm.ts` 停止填充 `Palace.selfMutagen` / `decadals[].mutagen` 之后，
  *    它们在**全仓**（`cli/`、`test/`、`tools/` 一并算上）没有任何调用点 —— 删掉，
  *    复杂度直接消失，而不是转移到别的模块。
  * 2. **文档对冲本身是成本**：它们留在这里时，每个名字的注释都得写一遍「存在不等于该用」，
  *    文件头还要再写一遍 —— 读者得先学会忽略近一半的接口面，才看得见真正可用的那五个函数。
  *    删除之后，红线不再靠自律维持，而是**不存在**。
  *
- * ⚠️ **`types.ts` 的绊线刻意保留**：`Palace.selfSihua` / `DaXian.siHua` 两个字段与
- * `SelfSihuaMark` / `DaXianSiHua` 两个类型仍在，理由是它们的作用**恰恰是「留着但不填」**
+ * ⚠️ **`types.ts` 的绊线刻意保留**：`Palace.selfMutagen` / `Decadal.mutagen` 两个字段与
+ * `SelfMutagenMark` / `DecadalMutagen` 两个类型仍在，理由是它们的作用**恰恰是「留着但不填」**
  * —— 断言要盯的是「有没有被填回」，字段没了就无从盯起。要删它们，先读 `types.ts` 里
  * 紧挨着这两个字段的那段说明。
  *
@@ -52,7 +52,7 @@
  * @packageDocumentation
  */
 
-import type { SiHua } from "./types";
+import type { Mutagen } from "./types";
 import { SI_HUA_TABLE, STEMS } from "./constants";
 
 // ─── 1) 由天干索引取四化四星 ───────────────────────────────────
@@ -69,7 +69,7 @@ import { SI_HUA_TABLE, STEMS } from "./constants";
  * 调用方靠空串自然短路。这与 `algorithm.ts` 的 `projectPalaceName`（未命中即抛错）是
  * 相反的取舍：宫名是下游索引的键，错不起；此处越界的代价只是算不出四化。
  */
-export function getSiHuaByStem(stemIndex: number): Record<SiHua, string> {
+export function getMutagenByStem(stemIndex: number): Record<Mutagen, string> {
 	const arr = SI_HUA_TABLE[stemIndex];
 	if (!arr) return { 禄: "", 权: "", 科: "", 忌: "" };
 	return { 禄: arr[0], 权: arr[1], 科: arr[2], 忌: arr[3] };
@@ -91,7 +91,7 @@ export function getSiHuaByStem(stemIndex: number): Record<SiHua, string> {
  * `lunarInfo.yearStem`（由 `lunar-typescript` 算出的农历年干）会**相差一位**。
  * 两者用途不同：本函数**只服务流年四化**（用户问「2026 年运势」即指公历年份对应的
  * 干支年，取模恰好正确）；**生年四化必须用 `chart.lunarInfo.yearStem`** —— 盘面上
- * iztro 的 `Star.siHua`（mutagen）按农历年干标注，生年若走公历取模，1–2 月出生者
+ * iztro 的 `Star.mutagen`（mutagen）按农历年干标注，生年若走公历取模，1–2 月出生者
  * 的【生年四化】区块会与宫详表自相矛盾（实测 1990-01-15：农历己巳 vs 公历庚）。
  * `test/cli.test.ts` 的「生年四化的年干口径」一节盯着这条红线。
  */
@@ -108,19 +108,19 @@ export function getYearStemIndex(year: number): number {
  *
  * @remarks
  * 年干走 {@link getYearStemIndex}（纯取模），故同样**按公历年、不做农历年边界切换**。
- * 三合派三层四化里的「一年动态」层，与生年四化（`Star.siHua`）、流月四化并列；
+ * 三合派三层四化里的「一年动态」层，与生年四化（`Star.mutagen`）、流月四化并列；
  * 本函数**不涉及**任何宫干。
  */
-export function getLiuNianSiHua(year: number): {
+export function getYearlyMutagen(year: number): {
 	stemIndex: number;
 	stemName: string;
-	transforms: Record<SiHua, string>;
+	transforms: Record<Mutagen, string>;
 } {
 	const stemIndex = getYearStemIndex(year);
 	return {
 		stemIndex,
 		stemName: STEMS[stemIndex] ?? "",
-		transforms: getSiHuaByStem(stemIndex),
+		transforms: getMutagenByStem(stemIndex),
 	};
 }
 
@@ -128,7 +128,7 @@ export function getLiuNianSiHua(year: number): {
 /**
  * 流月天干（五虎遁）。
  *
- * @param yearStem - 年干索引 0–9（0=甲 … 9=癸），通常来自 {@link getLiuNianSiHua} 的 `stemIndex`
+ * @param yearStem - 年干索引 0–9（0=甲 … 9=癸），通常来自 {@link getYearlyMutagen} 的 `stemIndex`
  * @param month - 农历月 1–12（1 = 正月 / 寅月）
  * @returns 目标月的月柱天干索引 0–9
  *
@@ -142,7 +142,7 @@ export function getLiuNianSiHua(year: number): {
  * 表未命中（`yearStem` 越界）时兜底为 0（甲），属静默兜底 —— 代价只是该月的四化算错，
  * 不影响排盘。
  */
-export function getLiuYueStemIndex(yearStem: number, month: number): number {
+export function getMonthlyStemIndex(yearStem: number, month: number): number {
 	// 五虎遁：正月（寅月）天干
 	const startStemOfYin: Record<number, number> = {
 		0: 2,
@@ -162,7 +162,7 @@ export function getLiuYueStemIndex(yearStem: number, month: number): number {
 }
 
 /**
- * 流月四化：先由 {@link getLiuYueStemIndex} 取月柱天干，再取其四化。
+ * 流月四化：先由 {@link getMonthlyStemIndex} 取月柱天干，再取其四化。
  *
  * @param yearStem - 年干索引 0–9，通常传流年的 `stemIndex`
  * @param month - 农历月 1–12
@@ -170,20 +170,20 @@ export function getLiuYueStemIndex(yearStem: number, month: number): number {
  *
  * @remarks
  * 三合派三层四化里的「一月动态」层。`cli/commands.ts` 对应 `--liuyue`（省略即不输出流月），
- * 且**由流年干推月干**，故调用时传的是 `getLiuNianSiHua(...).stemIndex` 而非出生年干。
+ * 且**由流年干推月干**，故调用时传的是 `getYearlyMutagen(...).stemIndex` 而非出生年干。
  */
-export function getLiuYueSiHua(
+export function getMonthlyMutagen(
 	yearStem: number,
 	month: number
 ): {
 	stemIndex: number;
 	stemName: string;
-	transforms: Record<SiHua, string>;
+	transforms: Record<Mutagen, string>;
 } {
-	const stemIndex = getLiuYueStemIndex(yearStem, month);
+	const stemIndex = getMonthlyStemIndex(yearStem, month);
 	return {
 		stemIndex,
 		stemName: STEMS[stemIndex] ?? "",
-		transforms: getSiHuaByStem(stemIndex),
+		transforms: getMutagenByStem(stemIndex),
 	};
 }

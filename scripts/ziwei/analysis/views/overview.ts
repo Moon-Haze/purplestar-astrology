@@ -53,7 +53,7 @@ export function renderOverview(ctx: AnalysisContext): string[] {
 					: primaryStar.brightness === "dim"
 						? "dim"
 						: null;
-			const sihuaKey = primaryStar.siHua ? (SIHUA_CHAR_TO_KEY[primaryStar.siHua] ?? null) : null;
+			const sihuaKey = primaryStar.mutagen ? (SIHUA_CHAR_TO_KEY[primaryStar.mutagen] ?? null) : null;
 
 			const dynamicParts: string[] = [];
 			if (brightnessKey && topicMod?.[brightnessKey]) {
@@ -101,14 +101,14 @@ export function renderOverview(ctx: AnalysisContext): string[] {
 			mainStars
 				.map(
 					s =>
-						`${s.name}${s.siHua ? "化" + s.siHua : ""}${s.brightness === "bright" ? "（庙旺）" : s.brightness === "dim" ? "（落陷）" : ""}`
+						`${s.name}${s.mutagen ? "化" + s.mutagen : ""}${s.brightness === "bright" ? "（庙旺）" : s.brightness === "dim" ? "（落陷）" : ""}`
 				)
 				.join("、") || "空宫";
 
 		lines.push(`**【命盘推演】**`);
 		lines.push("");
 		lines.push(
-			`本宫主星：${loanNote}${mainStarDesc}${topic === "overview" ? `，${chart.wuxingJuName}` : ""}`
+			`本宫主星：${loanNote}${mainStarDesc}${topic === "overview" ? `，${chart.fiveElementsClassName}` : ""}`
 		);
 		lines.push("");
 
@@ -133,7 +133,7 @@ export function renderOverview(ctx: AnalysisContext): string[] {
 			const s2 = mainStars[1];
 			const brief = STAR_BRIEF[s2.name] ?? "";
 			lines.push("");
-			lines.push(`同宫第二主星：**${s2.name}${s2.siHua ? "化" + s2.siHua : ""}**——${brief}`);
+			lines.push(`同宫第二主星：**${s2.name}${s2.mutagen ? "化" + s2.mutagen : ""}**——${brief}`);
 		}
 	} else {
 		lines.push(`${palaceName}空宫，需借对宫论事，命格整体以三方四正综合判断。`);

@@ -119,11 +119,11 @@ export function rejectLegacyModeEnv(env: NodeJS.ProcessEnv = process.env): void 
 	);
 }
 
-// read_json 显式 schema（spec §3 字段；siHua 空串/字段缺失均合法，brightness 可缺失）
+// read_json 显式 schema（spec §3 字段；mutagen 空串/字段缺失均合法，brightness 可缺失）
 // columns 的 struct 形式要求「值」为 VARCHAR 类型串，嵌套类型须写成类型字符串而非嵌套 struct。
 export const READ_JSON_COLUMNS = `{
-  'birthInfo': 'STRUCT(year SMALLINT, month SMALLINT, day SMALLINT, hour SMALLINT, gender VARCHAR, longitude DOUBLE)',
-  'chart': 'STRUCT(lunarInfo STRUCT(lunarYear SMALLINT, lunarMonth SMALLINT, lunarDay SMALLINT, yearStem TINYINT, yearBranch TINYINT, isLeapMonth BOOLEAN), mingGongBranch TINYINT, shenGongBranch TINYINT, wuxingJu TINYINT, wuxingJuName VARCHAR, ziweiPos TINYINT, palaces STRUCT(branch TINYINT, stem TINYINT, name VARCHAR, stars STRUCT(name VARCHAR, type VARCHAR, brightness VARCHAR, siHua VARCHAR)[], daXianAge SMALLINT[], isMingGong BOOLEAN, isShenGong BOOLEAN, isCurrentDaXian BOOLEAN)[], daXians STRUCT(startAge SMALLINT, endAge SMALLINT, palaceBranch TINYINT, palaceName VARCHAR)[], currentAge SMALLINT, currentDaXianIndex SMALLINT)',
+  'birthInfo': 'STRUCT(year SMALLINT, month SMALLINT, day SMALLINT, timeIndex SMALLINT, gender VARCHAR, longitude DOUBLE)',
+  'chart': 'STRUCT(lunarInfo STRUCT(lunarYear SMALLINT, lunarMonth SMALLINT, lunarDay SMALLINT, yearStem TINYINT, yearBranch TINYINT, isLeapMonth BOOLEAN), soulBranch TINYINT, bodyBranch TINYINT, fiveElementsClass TINYINT, fiveElementsClassName VARCHAR, ziweiPos TINYINT, palaces STRUCT(branch TINYINT, stem TINYINT, name VARCHAR, stars STRUCT(name VARCHAR, type VARCHAR, brightness VARCHAR, mutagen VARCHAR)[], decadalRange SMALLINT[], isSoulPalace BOOLEAN, isBodyPalace BOOLEAN, isCurrentDecadal BOOLEAN)[], decadals STRUCT(startAge SMALLINT, endAge SMALLINT, palaceBranch TINYINT, palaceName VARCHAR)[], currentAge SMALLINT, currentDecadalIndex SMALLINT)',
   'topics': 'STRUCT(overview VARCHAR, personality VARCHAR, love VARCHAR, career VARCHAR, wealth VARCHAR, health VARCHAR, family VARCHAR, children VARCHAR, move VARCHAR, friends VARCHAR, home VARCHAR, spirit VARCHAR, parents VARCHAR)',
   'system': 'VARCHAR'
 }`;
@@ -164,24 +164,24 @@ export function shardSql(): {
         list_transform(list_filter(p.stars, s -> s.type='sha'),    s -> s.name) AS sha_stars,
         list_transform(list_filter(p.stars, s -> s.type='minor'),  s -> s.name) AS minor_stars,
         list_transform(list_filter(p.stars, s -> s.type='major'),  s -> coalesce(s.brightness,'')) AS major_brightness,
-        array_to_string(list_transform(list_filter(p.stars, s -> s.siHua IS NOT NULL AND s.siHua <> ''), s -> s.siHua), ',') AS sihua_flags,
-        list_transform(list_filter(p.stars, s -> s.siHua IS NOT NULL AND s.siHua <> ''), s -> s.name || ':' || s.siHua) AS sihua_stars,
-        p.isMingGong, p.isShenGong, p.isCurrentDaXian,
-        p.daXianAge[1] AS daxian_start, p.daXianAge[2] AS daxian_end
+        array_to_string(list_transform(list_filter(p.stars, s -> s.mutagen IS NOT NULL AND s.mutagen <> ''), s -> s.mutagen), ',') AS sihua_flags,
+        list_transform(list_filter(p.stars, s -> s.mutagen IS NOT NULL AND s.mutagen <> ''), s -> s.name || ':' || s.mutagen) AS sihua_stars,
+        p.isSoulPalace, p.isBodyPalace, p.isCurrentDecadal,
+        p.decadalRange[1] AS daxian_start, p.decadalRange[2] AS daxian_end
       FROM shard, UNNEST(shard.chart.palaces) AS u(p)`,
 		samples: `
       WITH sx AS (
-        SELECT ${SQL_SAMPLE_ID_EXPR} AS sample_id, st.name AS star, st.siHua AS sihua, p.name AS palace
+        SELECT ${SQL_SAMPLE_ID_EXPR} AS sample_id, st.name AS star, st.mutagen AS sihua, p.name AS palace
         FROM shard, UNNEST(shard.chart.palaces) AS u(p), UNNEST(p.stars) AS t(st)
-        WHERE st.siHua IS NOT NULL AND st.siHua <> ''
+        WHERE st.mutagen IS NOT NULL AND st.mutagen <> ''
       )
       INSERT INTO samples
-      SELECT ${SQL_SAMPLE_ID_EXPR}, j.birthInfo.year, j.birthInfo.month, j.birthInfo.day, j.birthInfo.hour,
+      SELECT ${SQL_SAMPLE_ID_EXPR}, j.birthInfo.year, j.birthInfo.month, j.birthInfo.day, j.birthInfo.timeIndex,
         j.birthInfo.gender, j.birthInfo.longitude,
         j.chart.lunarInfo.lunarYear, j.chart.lunarInfo.lunarMonth, j.chart.lunarInfo.lunarDay,
         j.chart.lunarInfo.yearStem, j.chart.lunarInfo.yearBranch, j.chart.lunarInfo.isLeapMonth,
-        j.chart.mingGongBranch, j.chart.shenGongBranch, j.chart.wuxingJu, j.chart.wuxingJuName, j.chart.ziweiPos,
-        j.chart.currentAge, j.chart.currentDaXianIndex,
+        j.chart.soulBranch, j.chart.bodyBranch, j.chart.fiveElementsClass, j.chart.fiveElementsClassName, j.chart.ziweiPos,
+        j.chart.currentAge, j.chart.currentDecadalIndex,
         f.lu_star, f.quan_star, f.ke_star, f.ji_star, f.lu_palace, f.quan_palace, f.ke_palace, f.ji_palace
       FROM shard j
       LEFT JOIN (
@@ -734,7 +734,7 @@ async function main() {
 		await conn.run(TOPIC_LINES_INDEX_SQL);
 	}
 	await conn.run(
-		"CREATE INDEX IF NOT EXISTS idx_birth ON samples(year, month, day, hour, gender)"
+		"CREATE INDEX IF NOT EXISTS idx_birth ON samples(year, month, day, timeIndex, gender)"
 	);
 	await conn.run("ANALYZE");
 

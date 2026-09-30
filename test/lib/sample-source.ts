@@ -31,7 +31,7 @@ import type { DuckDBConnection } from "@duckdb/node-api";
 import type { BirthInfo, Star } from "@/ziwei/types";
 import { loadConstants } from "./loader.ts";
 import type {
-	BaselineChart, BaselineDaXian, BaselinePalace, BaselineSample, BaselineStar,
+	BaselineChart, BaselineDecadal, BaselinePalace, BaselineSample, BaselineStar,
 } from "./compare.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/lib
@@ -192,8 +192,8 @@ export function closeSource(): void {
 
 // ── 表结构 → 基准样本的映射 ──
 //
-// 这里的每一条规则都是实测出来的，不是推断。最隐晦的一条是 `siHua` 键的**存在性**
-// （见 hasSiHuaKey），它搞错了 `npm test` 也不会红 —— 只有字节级比对能抓住。
+// 这里的每一条规则都是实测出来的，不是推断。最隐晦的一条是 `mutagen` 键的**存在性**
+// （见 hasMutagenKey），它搞错了 `npm test` 也不会红 —— 只有字节级比对能抓住。
 // 详见 docs/superpowers/specs/2026-09-25-duckdb-corpus-source-design.md 的 4.2。
 
 /** `samples` 表的一行（只列本模块用到的列）。 */
@@ -201,7 +201,7 @@ export interface SampleRow {
 	year: number;
 	month: number;
 	day: number;
-	/** **时辰序号** 0–11（不是 24 小时制的小时；库中正是此时辰序号）。 */
+	/** **时辰序号** 0–11（不是 24 小时制的小时；库中正是此时辰序号）。db 列名就叫 `hour`。 */
 	hour: number;
 	gender: string;
 	longitude: number;
@@ -247,7 +247,7 @@ const { SI_HUA_TABLE } = await loadConstants();
 const SIHUA_STARS: ReadonlySet<string> = new Set(Object.values(SI_HUA_TABLE).flat());
 
 /**
- * 重建出的星曜是否该带 `siHua` **键**（键的存在性，与「值为 `""`」是两回事）。
+ * 重建出的星曜是否该带 `mutagen` **键**（键的存在性，与「值为 `""`」是两回事）。
  *
  * 实测（全库扫 2000 条样本、按星名聚合、无一混用）：
  *   恒有键 18 颗 = 14 主星 + 左辅/右弼/文昌/文曲
@@ -257,12 +257,12 @@ const SIHUA_STARS: ReadonlySet<string> = new Set(Object.values(SI_HUA_TABLE).fla
  * **终生不参与四化的三颗主星** 天府/天相/七杀 —— 它们有键（因为 type 是 major）、值恒为 ""。
  * 所以规则拆成两半：major 一侧出 14 颗，SIHUA_STARS 一侧只额外补进 4 颗辅星。
  */
-function hasSiHuaKey(type: Star["type"], name: string): boolean {
+function hasMutagenKey(type: Star["type"], name: string): boolean {
 	return type === "major" || SIHUA_STARS.has(name);
 }
 
 /** 从 `palaces.sihua_stars`（形如 `["巨门:权"]`）取该星的四化值；该星无四化则 `""`。 */
-function siHuaOf(p: PalaceRow, name: string): string {
+function mutagenOf(p: PalaceRow, name: string): string {
 	for (const entry of p.sihua_stars ?? []) {
 		const i = entry.indexOf(":");
 		if (i > 0 && entry.slice(0, i) === name) return entry.slice(i + 1);
@@ -274,7 +274,7 @@ function siHuaOf(p: PalaceRow, name: string): string {
  * 一个宫 → `BaselinePalace`。
  *
  * ⚠️ **键序即 JSON 输出顺序**，必须与 jsonl 逐字一致：`branch, stem, name, stars,
- *    daXianAge, isMingGong, isShenGong, isCurrentDaXian`。调换字面量里的书写顺序
+ *    decadalRange, isSoulPalace, isBodyPalace, isCurrentDecadal`。调换字面量里的书写顺序
  *    会让 charts.jsonl 产生 diff（比对器察觉不到，只有字节级互验能抓住）。
  */
 function palaceOf(p: PalaceRow): BaselinePalace {
@@ -289,17 +289,17 @@ function palaceOf(p: PalaceRow): BaselinePalace {
 			name: majors[i],
 			type: "major",
 			brightness: brightness[i], // 按下标配对；实测长度相等且无空串
-			siHua: siHuaOf(p, majors[i]), // 主星恒有键
+			mutagen: mutagenOf(p, majors[i]), // 主星恒有键
 		});
 	}
 	for (const name of p.lucky_stars ?? []) {
-		if (hasSiHuaKey("lucky", name)) {
-			stars.push({ name, type: "lucky", siHua: siHuaOf(p, name) });
+		if (hasMutagenKey("soft", name)) {
+			stars.push({ name, type: "soft", mutagen: mutagenOf(p, name) });
 		} else {
-			stars.push({ name, type: "lucky" }); // 整键缺失，不是 ""
+			stars.push({ name, type: "soft" }); // 整键缺失，不是 ""
 		}
 	}
-	for (const name of p.sha_stars ?? []) stars.push({ name, type: "sha" });
+	for (const name of p.sha_stars ?? []) stars.push({ name, type: "tough" });
 	for (const name of p.minor_stars ?? []) stars.push({ name, type: "minor" });
 
 	return {
@@ -307,20 +307,20 @@ function palaceOf(p: PalaceRow): BaselinePalace {
 		stem: p.stem,
 		name: p.palace_name,
 		stars,
-		daXianAge: [p.daxian_start, p.daxian_end],
-		isMingGong: p.is_ming_gong,
-		isShenGong: p.is_shen_gong,
-		isCurrentDaXian: p.is_current_daxian,
+		decadalRange: [p.daxian_start, p.daxian_end],
+		isSoulPalace: p.is_ming_gong,
+		isBodyPalace: p.is_shen_gong,
+		isCurrentDecadal: p.is_current_daxian,
 	};
 }
 
 /**
  * 12 个宫的 `[daxian_start, daxian_end]` 即 12 个大限，**按 `startAge` 升序**排列。
  *
- * ⚠️ 比对器对 `daXians` 是**按下标**逐项比的（`aD[i]` vs `bD[i]`），顺序错了直接报红 ——
+ * ⚠️ 比对器对 `decadals` 是**按下标**逐项比的（`aD[i]` vs `bD[i]`），顺序错了直接报红 ——
  *    这与 `palaces` 按 `branch` 建索引不同。库中行序是丑起，不能直接用。
  */
-function daXiansOf(palaces: PalaceRow[]): BaselineDaXian[] {
+function decadalsOf(palaces: PalaceRow[]): BaselineDecadal[] {
 	return [...palaces] // 复制：不就地改动调用方的数组
 		.sort((a, b) => a.daxian_start - b.daxian_start)
 		.map(p => ({
@@ -346,19 +346,19 @@ export function rowsToSample(sample: SampleRow, palaces: PalaceRow[]): BaselineS
 		year: sample.year,
 		month: sample.month,
 		day: sample.day,
-		hour: sample.hour,
+		timeIndex: sample.hour,
 		gender: sample.gender === "female" ? "female" : "male",
 		longitude: sample.longitude,
 	};
 
 	// ⚠️ 类型不能光写 `BaselineChart` —— 它接口里**没有** `birthInfo` / `currentAge` /
-	//    `currentDaXianIndex` 三个字段，但 jsonl 的每一行都有它们（是 JSON.parse 带进来的
+	//    `currentDecadalIndex` 三个字段，但 jsonl 的每一行都有它们（是 JSON.parse 带进来的
 	//    多余字段，build-fixtures 写盘时原样保留）。不填它们，重写出的 charts.jsonl 会凭空少字段。
 	//    Global Constraints 禁止改 compare.ts 的契约，所以在这里显式扩展类型。
 	const chart: BaselineChart & {
 		birthInfo: BirthInfo;
 		currentAge: number;
-		currentDaXianIndex: number;
+		currentDecadalIndex: number;
 	} = {
 		birthInfo: { ...birthInfo },
 		lunarInfo: {
@@ -369,15 +369,15 @@ export function rowsToSample(sample: SampleRow, palaces: PalaceRow[]): BaselineS
 			yearBranch: sample.year_branch,
 			isLeapMonth: sample.is_leap_month,
 		},
-		mingGongBranch: sample.ming_gong_branch,
-		shenGongBranch: sample.shen_gong_branch,
-		wuxingJu: sample.wuxing_ju,
-		wuxingJuName: sample.wuxing_ju_name,
+		soulBranch: sample.ming_gong_branch,
+		bodyBranch: sample.shen_gong_branch,
+		fiveElementsClass: sample.wuxing_ju,
+		fiveElementsClassName: sample.wuxing_ju_name,
 		ziweiPos: sample.ziwei_pos,
 		palaces: palaces.map(palaceOf),
-		daXians: daXiansOf(palaces),
+		decadals: decadalsOf(palaces),
 		currentAge: sample.current_age,
-		currentDaXianIndex: sample.current_daxian_index,
+		currentDecadalIndex: sample.current_daxian_index,
 	};
 
 	return { birthInfo, chart };
@@ -428,12 +428,18 @@ const KEY_COLUMNS = "s.year = ? AND s.month = ? AND s.day = ? AND s.hour = ? AND
 /**
  * 出生五元组主键（样本唯一标识）。
  *
- * ⚠️ 基类型取 `SampleRow` 而非 `BirthInfo`：`SampleRow.gender` 是 `string`，`BirthInfo.gender`
- *    是 `"male" | "female"` 联合。用后者会让 `forEachSample` 传 `current` 时因 `string`
- *    不兼容联合而报类型错误，只能靠断言绕过 —— 这里取 `SampleRow` 让 `fetchSample`（传
- *    `birthInfo`）与 `forEachSample`（传 `current`）两边都**免断言**兼容。
+ * ⚠️ `hour`（db 列名）与 `timeIndex`（`BirthInfo` 键，2026-09-30 术语对齐后）是同一个
+ *    时辰序号 —— 两侧调用方各给其一，展示时取到哪个用哪个。基类型仍取 `SampleRow` 的
+ *    `gender: string`（见原注释），`BirthInfo` 的联合类型与之兼容。
  */
-type SampleKey = Pick<SampleRow, "year" | "month" | "day" | "hour" | "gender">;
+type SampleKey = {
+	year: number;
+	month: number;
+	day: number;
+	hour?: number;
+	timeIndex?: number;
+	gender: string;
+};
 
 /**
  * 完备性护栏：正常样本恒 12 行宫位。既不是 12，只可能是库被截断或半写入 ——
@@ -442,7 +448,7 @@ type SampleKey = Pick<SampleRow, "year" | "month" | "day" | "hour" | "gender">;
 export function assertTwelveRows(rows: PalaceRow[], key: SampleKey): void {
 	if (rows.length !== 12) {
 		throw new SourceError(
-			`样本 ${key.year}-${key.month}-${key.day} 时辰${key.hour} ` +
+			`样本 ${key.year}-${key.month}-${key.day} 时辰${key.hour ?? key.timeIndex} ` +
 				`（${key.gender}）的宫位行数异常：预期 12 行，实际 ${rows.length} 行。` +
 				`数据库可能被截断或半写入，拒绝产出形状不完整的样本。`
 		);
@@ -452,7 +458,7 @@ export function assertTwelveRows(rows: PalaceRow[], key: SampleKey): void {
 /**
  * 按出生信息精确取一条样本；不存在返回 `null`。
  *
- * ⚠️ `birthInfo.hour` 是**时辰序号** 0–11（12=晚子时，语料中不存在）。
+ * ⚠️ `birthInfo.timeIndex` 是**时辰序号** 0–11（12=晚子时，语料中不存在）。
  *    `build-fixtures.ts` 的槽位公式恒产出 0–11。
  *
  * ⚠️ 返回 `null` 而非抛错是有意的：`build-fixtures.ts` 在闰月边界上真会遇到取不到的槽位，
@@ -462,7 +468,7 @@ export async function fetchSample(birthInfo: BirthInfo): Promise<BaselineSample 
 	const conn = await openSource();
 	const reader = await conn.runAndReadAll(
 		`SELECT ${COLUMNS} ${FROM} WHERE ${KEY_COLUMNS} ${ORDER}`,
-		[birthInfo.year, birthInfo.month, birthInfo.day, birthInfo.hour, birthInfo.gender]
+		[birthInfo.year, birthInfo.month, birthInfo.day, birthInfo.timeIndex, birthInfo.gender]
 	);
 	// 类型断言（驱动返回值边界，本文件两处之一；另一处在 forEachSample）：驱动把行值声明为
 	// 宽松的 `JS` 联合，而我们**刚刚**用上面的 SELECT 亲手指定了列名与顺序，类型由构造
@@ -475,7 +481,7 @@ export async function fetchSample(birthInfo: BirthInfo): Promise<BaselineSample 
 	assertTwelveRows(rows, birthInfo);
 
 	// 只借 `first` 的样本级列（任一 JOIN 行都携带同一份样本列）；`rows` 必须传**全部 12 行**
-	// —— `rowsToSample` 的 `palaces.map` 与 `daXiansOf(palaces)` 对整个数组照用，传少了会
+	// —— `rowsToSample` 的 `palaces.map` 与 `decadalsOf(palaces)` 对整个数组照用，传少了会
 	// 产出宫数不足的畸形盘。
 	const [first] = rows;
 	return rowsToSample(first, rows);

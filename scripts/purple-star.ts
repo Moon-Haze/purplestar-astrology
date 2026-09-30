@@ -15,7 +15,7 @@
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
  *   scripts/ziwei/algorithm.ts   排盘主流程
  *   scripts/ziwei/patterns/      格局识别（含古籍出处与破格条件）
- *   scripts/ziwei/sihua.ts       四化（生年 / 流年 / 流月）
+ *   scripts/ziwei/mutagen.ts       四化（生年 / 流年 / 流月）
  *   scripts/ziwei/analysis/      分析数据库 v3（主题论断动态推算，topic 命令用）
  *   scripts/ziwei/cities.ts      中国城市经纬度（真太阳时校正）
  *   scripts/ziwei/constants.ts   天干地支 / 四化表 / 星曜释义
@@ -70,7 +70,7 @@ import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hook
  */
 type AlgorithmModule = typeof import("@/ziwei/algorithm");
 type PatternsModule = typeof import("@/ziwei/patterns");
-type SihuaModule = typeof import("@/ziwei/sihua");
+type SihuaModule = typeof import("@/ziwei/mutagen");
 type ConstantsModule = typeof import("@/ziwei/constants");
 type CitiesModule = typeof import("@/ziwei/cities");
 type ClassicsModule = typeof import("@/classics");
@@ -169,8 +169,8 @@ const load = makeLoader(ROOT, ROOT_LABEL, f => {
 // 钩子已就绪，从这里开始才能安全地加载任何 .ts（内核与 scripts/cli/ 下的子模块都一样）。
 const { generateChart } = await load<AlgorithmModule>("@/ziwei/algorithm");
 const { detectPatterns, getMingGongSummary } = await load<PatternsModule>("@/ziwei/patterns");
-const { getSiHuaByStem, getYearStemIndex, getLiuNianSiHua, getLiuYueSiHua } =
-	await load<SihuaModule>("@/ziwei/sihua");
+const { getMutagenByStem, getYearStemIndex, getYearlyMutagen, getMonthlyMutagen } =
+	await load<SihuaModule>("@/ziwei/mutagen");
 const { STEMS, BRANCHES, SHICHEN, STAR_DESCRIPTIONS } =
 	await load<ConstantsModule>("@/ziwei/constants");
 const { PROVINCES } = await load<CitiesModule>("@/ziwei/cities");
@@ -198,10 +198,10 @@ const REQUIRED_EXPORTS = [
 	["generateChart", generateChart],
 	["detectPatterns", detectPatterns],
 	["getMingGongSummary", getMingGongSummary],
-	["getSiHuaByStem", getSiHuaByStem],
+	["getMutagenByStem", getMutagenByStem],
 	["getYearStemIndex", getYearStemIndex],
-	["getLiuNianSiHua", getLiuNianSiHua],
-	["getLiuYueSiHua", getLiuYueSiHua],
+	["getYearlyMutagen", getYearlyMutagen],
+	["getMonthlyMutagen", getMonthlyMutagen],
 	["STEMS", STEMS],
 	["BRANCHES", BRANCHES],
 	["SHICHEN", SHICHEN],

@@ -15,21 +15,21 @@
 import type { Pattern, DetectContext, Detector } from "./types";
 import { PATTERN_VERDICTS } from "./data";
 import { hasStar, getJiaPalaces, sanFangAllStars, fillVerdict } from "./helpers";
-import { duiGongBranch } from "../palace-relations";
+import { oppositeBranch } from "../palace-relations";
 
 /** 化忌入命（坐命宫）/ 化忌冲命（坐迁移宫，对冲命宫） */
 function detectHuaJiRuMingQian({ chart }: DetectContext): Pattern[] {
-	const qianBranch = duiGongBranch(chart.mingGongBranch);
+	const qianBranch = oppositeBranch(chart.soulBranch);
 	// 本识别器筛的是「命宫与迁移宫**两个**宫位」，故用局部数组累积、而不是像多数识别器
 	// 那样「命中即 return」—— 表达的是「两宫命中哪个就报哪个」，不是「我知道会两条」。
 	// 实测**至多一条**：生年四化一年只有一颗化忌星，而命宫与迁移宫互为对宫，坐不满两宫。
 	const hits: Pattern[] = [];
 	for (const palace of chart.palaces) {
-		if (palace.branch !== chart.mingGongBranch && palace.branch !== qianBranch) continue;
-		const jiStar = palace.stars.find(s => s.siHua === "忌" && s.type === "major");
+		if (palace.branch !== chart.soulBranch && palace.branch !== qianBranch) continue;
+		const jiStar = palace.stars.find(s => s.mutagen === "忌" && s.type === "major");
 		if (!jiStar) continue;
 
-		const inMing = palace.branch === chart.mingGongBranch;
+		const inMing = palace.branch === chart.soulBranch;
 		// 迁移分支取名「冲命」而**不是**「入迁」：后者在本仓古籍库零见，前者有 1 处
 		// （《紫微斗数全书·十二宫论·夫妻宫》）。裁决依据见 `GEJU_NAME_ALIASES`。
 		const name = `${jiStar.name}化忌${inMing ? "入命" : "冲命"}`;
@@ -47,9 +47,9 @@ function detectHuaJiRuMingQian({ chart }: DetectContext): Pattern[] {
 /** 羊陀夹忌：化忌坐宫，左右被擎羊陀罗夹 */
 function detectYangTuoJiaJi({ chart }: DetectContext): Pattern[] {
 	for (const palace of chart.palaces) {
-		const jiStar = palace.stars.find(s => s.siHua === "忌");
+		const jiStar = palace.stars.find(s => s.mutagen === "忌");
 		if (!jiStar) continue;
-		if (palace.branch !== chart.mingGongBranch) continue; // 只看命宫被夹
+		if (palace.branch !== chart.soulBranch) continue; // 只看命宫被夹
 
 		const { prev, next } = getJiaPalaces(chart, palace.branch);
 		if (!prev || !next) continue;
@@ -71,7 +71,7 @@ function detectYangTuoJiaJi({ chart }: DetectContext): Pattern[] {
 
 /** 火铃夹命：火星铃星分居命宫前后 */
 function detectHuoLingJiaMing({ chart }: DetectContext): Pattern[] {
-	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
+	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) return [];
 	const okA = hasStar(prev, "火星") && hasStar(next, "铃星");
 	const okB = hasStar(prev, "铃星") && hasStar(next, "火星");
@@ -89,7 +89,7 @@ function detectHuoLingJiaMing({ chart }: DetectContext): Pattern[] {
 
 /** 空劫夹命：地空地劫分居命宫前后 */
 function detectKongJieJiaMing({ chart }: DetectContext): Pattern[] {
-	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
+	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) return [];
 	const okA = hasStar(prev, "地空") && hasStar(next, "地劫");
 	const okB = hasStar(prev, "地劫") && hasStar(next, "地空");

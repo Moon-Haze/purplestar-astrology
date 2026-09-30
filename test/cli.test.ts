@@ -1,7 +1,7 @@
 // ── 层 2：CLI 端到端 ──
 //
 // 这一层测的是**基准样本覆盖不到的 CLI 层逻辑**：样本的 longitude 恒为 120（真太阳时
-// 校正量恒为 0）、hour 只有 0-11（无晚子时）、出生信息恒为公历。这些逻辑全在 CLI 层，
+// 校正量恒为 0）、timeIndex 只有 0-11（无晚子时）、出生信息恒为公历。这些逻辑全在 CLI 层，
 // 故无 golden 基准可依，用手工基准 + 独立换算（lunar-typescript）互证。
 //
 // 本文件另有一条**防漂移断言**：内核直调结果必须等于 CLI --json 的输出。
@@ -39,7 +39,7 @@ const CLI = {
 type Skill = keyof typeof CLI;
 
 // ── CLI --json 输出的形态 ──
-// chart 即 ZiweiChart 的 JSON 往返形态：值为 undefined 的可选键（如无四化的 Star.siHua）
+// chart 即 ZiweiChart 的 JSON 往返形态：值为 undefined 的可选键（如无四化的 Star.mutagen）
 // 在 stringify 时消失，而可选键本就允许缺失，故结构上兼容 ZiweiChart —— 在此边界处
 // 以 as 断言收窄（JSON.parse 只能给出 unknown，取值合法性由后续断言把守）。
 /** analyze --json 的输出。 */
@@ -162,7 +162,7 @@ async function cliFails(args: string[]): Promise<string> {
 }
 
 const { generateChart } = await loadAlgorithm();
-const { getSiHuaByStem } = await loadSihua();
+const { getMutagenByStem } = await loadSihua();
 
 // ── synastry 的输入：两份 `analyze --json` 的输出文件 ──
 //
@@ -219,7 +219,7 @@ describe("CLI 端到端", () => {
 				"--gender",
 				"male",
 			]);
-			assert.equal(o.chart.birthInfo.hour, 5, "09:10 应归巳时（branch 5）");
+			assert.equal(o.chart.birthInfo.timeIndex, 5, "09:10 应归巳时（branch 5）");
 		});
 
 		it("偏西经度把时辰推前一位（跨时辰边界）", async () => {
@@ -235,7 +235,7 @@ describe("CLI 端到端", () => {
 				"male",
 			]);
 			assert.equal(o.chart.birthInfo.longitude, 116.4);
-			assert.equal(o.chart.birthInfo.hour, 4, "校正后应为辰时（branch 4），与不校正时差一位");
+			assert.equal(o.chart.birthInfo.timeIndex, 4, "校正后应为辰时（branch 4），与不校正时差一位");
 		});
 
 		it("--eot 计入均时差，可把结果推过时辰边界；默认不计", async () => {
@@ -253,10 +253,10 @@ describe("CLI 端到端", () => {
 				"male",
 			];
 			const mean = await cliJson(base);
-			assert.equal(mean.chart.birthInfo.hour, 5, "默认口径（不计均时差）应为巳时");
+			assert.equal(mean.chart.birthInfo.timeIndex, 5, "默认口径（不计均时差）应为巳时");
 
 			const apparent = await cliJson([...base, "--eot"]);
-			assert.equal(apparent.chart.birthInfo.hour, 4, "计入均时差后应退回辰时");
+			assert.equal(apparent.chart.birthInfo.timeIndex, 4, "计入均时差后应退回辰时");
 
 			// 时辰一换，整张盘都换 —— 不是微调
 			assert.notEqual(
@@ -287,7 +287,7 @@ describe("CLI 端到端", () => {
 					"--eot",
 				]);
 				assert.equal(rolled.chart.birthInfo.day, 14, "真太阳时落到前一日，日期须回退");
-				assert.equal(rolled.chart.birthInfo.hour, 11, "21:38 属亥时");
+				assert.equal(rolled.chart.birthInfo.timeIndex, 11, "21:38 属亥时");
 
 				// 手工输入校正后的日期与时辰，应得到同一张盘
 				const manual = await cliJson([
@@ -318,7 +318,7 @@ describe("CLI 端到端", () => {
 					"--eot",
 				]);
 				assert.equal(rolled.chart.birthInfo.day, 16, "真太阳时落到次日，日期须顺延");
-				assert.equal(rolled.chart.birthInfo.hour, 0, "00:00 属子时");
+				assert.equal(rolled.chart.birthInfo.timeIndex, 0, "00:00 属子时");
 
 				const manual = await cliJson([
 					"--date",
@@ -419,7 +419,7 @@ describe("CLI 端到端", () => {
 			const males: string[] = [];
 			for (const g of ["male", "m", "男"]) {
 				const o = await cliJson(["--date", "1990-05-15", "--branch", "5", "--gender", g]);
-				males.push(JSON.stringify(o.chart.daXians));
+				males.push(JSON.stringify(o.chart.decadals));
 			}
 			assert.equal(new Set(males).size, 1, "三种 male 写法应给同一张大限表");
 
@@ -437,7 +437,7 @@ describe("CLI 端到端", () => {
 			// 这里正是最需要盯住的地方 —— 性别决定大限顺逆，取错会排出整张错盘。
 			assert.equal(a.chart.birthInfo.gender, "female", "性别应回填为 female");
 			assert.notEqual(
-				JSON.stringify(a.chart.daXians),
+				JSON.stringify(a.chart.decadals),
 				males[0],
 				"性别决定大限顺逆，female 与 male 的大限表不应相同"
 			);
@@ -718,7 +718,7 @@ describe("CLI 端到端", () => {
 				year,
 				month,
 				day,
-				hour: toHour(cfg.time),
+				timeIndex: toHour(cfg.time),
 				gender: cfg.gender,
 				longitude: 120,
 			});
@@ -726,7 +726,7 @@ describe("CLI 端到端", () => {
 
 		/**
 		 * 对齐序列化：`--json` 的盘是 JSON 往返过的，值为 `undefined` 的键（如无四化的
-		 * `Star.siHua`）在 `stringify` 时已消失；直排的盘没这一步。不先对齐的话，
+		 * `Star.mutagen`）在 `stringify` 时已消失；直排的盘没这一步。不先对齐的话，
 		 * 差异全来自序列化而非排盘 —— 那正是「比对器测错了东西」的经典形态。
 		 * 只丢 `undefined` 值的键，有值的字段一个不少。
 		 */
@@ -794,7 +794,7 @@ describe("CLI 端到端", () => {
 		it("文本里的命宫/夫妻宫/福德宫地支满足「相对命宫逆行」恒等式", async () => {
 			// 「夫妻宫 = 命宫地支 −2、福德宫 = 命宫地支 +2」出自安星法本身，与被测实现零共享路径。
 			// `mustPalace` 取错宫、或渲染时用错变量，都会让某一行与**同一方的命宫行**对不上 ——
-			// 而命宫行的地支由 `mingGongBranch` 直取，是这一组里最可信的锚点。
+			// 而命宫行的地支由 `soulBranch` 直取，是这一组里最可信的锚点。
 			const texts = [
 				["样本一", await pairText()],
 				["样本二", await crossText()],
@@ -838,10 +838,10 @@ describe("CLI 端到端", () => {
 				[B, "乙"],
 			] as const) {
 				const chart = chartOf(cfg);
-				// 年干取农历年干（chart.lunarInfo.yearStem），与 iztro 落在 Star.siHua 上的
+				// 年干取农历年干（chart.lunarInfo.yearStem），与 iztro 落在 Star.mutagen 上的
 				// mutagen 同源。样本 A（1980-02-03）农历仍在己未年 —— 若预言机按公历年取模
 				// （庚），它会与被测实现共用同一个错口径，测试假绿（历史上确实如此）。
-				const transforms = getSiHuaByStem(chart.lunarInfo.yearStem);
+				const transforms = getMutagenByStem(chart.lunarInfo.yearStem);
 				// 独立路径：先由年干取四化**星名**，再到盘上找那颗星坐在哪个宫 —— 不调 locateSihua。
 				const expect = (["禄", "权", "科", "忌"] as const).filter(h =>
 					chart.palaces.some(
@@ -994,7 +994,7 @@ describe("CLI 端到端", () => {
 				year: 1990,
 				month: 5,
 				day: 15,
-				hour: 5,
+				timeIndex: 5,
 				gender: "male",
 				longitude: 120,
 			};
@@ -1028,12 +1028,12 @@ describe("CLI 端到端", () => {
 	});
 
 	describe("生年四化的年干口径", () => {
-		// iztro 落在 Star.siHua 上的 mutagen 按农历年干标注；analyze / synastry 的
+		// iztro 落在 Star.mutagen 上的 mutagen 按农历年干标注；analyze / synastry 的
 		// 【生年四化】区块若改按公历年取模（getYearStemIndex），1-2 月出生（农历仍在
 		// 上一年）者两口径分叉：同屏出现「武曲化禄」（宫详表，农历口径）与「化权武曲」
 		// （区块，公历口径）互相矛盾。区块必须与盘面同源 —— 即 chart.lunarInfo.yearStem。
 		it("跨年月出生按农历年干（1990-01-15 = 农历己巳年腊月，非公历取模的庚）", async () => {
-			const chart = generateChart({ year: 1990, month: 1, day: 15, hour: 5, gender: "male" });
+			const chart = generateChart({ year: 1990, month: 1, day: 15, timeIndex: 5, gender: "male" });
 			assert.equal(
 				chart.lunarInfo.yearStem,
 				5,
@@ -1045,19 +1045,19 @@ describe("CLI 端到端", () => {
 				"年干应取农历年干「己」，而非公历取模的「庚」"
 			);
 			for (const h of ["禄", "权", "科", "忌"] as const) {
-				const star = getSiHuaByStem(5)[h];
+				const star = getMutagenByStem(5)[h];
 				assert.ok(t.includes(`化${h} ${star}`), `化${h} 应为己干四化的「${star}」`);
 			}
 		});
 
 		it("生年四化区块与盘面 mutagen 标记逐颗一致（金标准不变量）", async () => {
-			// 盘面 Star.siHua（iztro mutagen，农历年干口径）是金标准：区块里的四颗
-			// 「化X 星Y」必须恰为盘面上所有带 siHua 标记的星，一颗不多一颗不少。
-			const birth = { year: 1990, month: 1, day: 15, hour: 5, gender: "male" } as const;
+			// 盘面 Star.mutagen（iztro mutagen，农历年干口径）是金标准：区块里的四颗
+			// 「化X 星Y」必须恰为盘面上所有带 mutagen 标记的星，一颗不多一颗不少。
+			const birth = { year: 1990, month: 1, day: 15, timeIndex: 5, gender: "male" } as const;
 			const onChart = generateChart({ ...birth })
 				.palaces.flatMap(p => p.stars)
-				.filter(s => s.siHua)
-				.map(s => `${s.siHua}:${s.name}`)
+				.filter(s => s.mutagen)
+				.map(s => `${s.mutagen}:${s.name}`)
 				.sort();
 			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male", "--sihua"]);
 			// 只取【生年四化】区块 —— 流年/流月区块的行格式相同，混入会误判
@@ -1093,8 +1093,8 @@ describe("CLI 端到端", () => {
 			const block = t.split(header)[1]?.split("【")[0] ?? "";
 			const rows = [...block.matchAll(/化([禄权科忌]) (\S+) → (.+)$/gm)];
 			assert.equal(rows.length, 4, `${header} 区块应恰有 4 行，实得 ${rows.length}`);
-			const transforms = getSiHuaByStem(stemIndex);
-			const chart = generateChart({ year: 1990, month: 5, day: 15, hour: 5, gender: "male" });
+			const transforms = getMutagenByStem(stemIndex);
+			const chart = generateChart({ year: 1990, month: 5, day: 15, timeIndex: 5, gender: "male" });
 			for (const m of rows) {
 				const [hua, star, palace] = [m[1]!, m[2]!, m[3]!];
 				assert.equal(
@@ -1147,7 +1147,7 @@ describe("CLI 端到端", () => {
 		it("流月由流年干推，不串生年干（生年庚 × 流年甲 → 正月月干丙）", async () => {
 			// 1990-06-15 在农历庚午年内（生年干庚）；--liunian 2024 为甲年，正月丙寅。
 			// 若误用生年干庚推月干会得「戊」—— 两口径月干不同，此样本专钉不串台。
-			const chart = generateChart({ year: 1990, month: 6, day: 15, hour: 5, gender: "male" });
+			const chart = generateChart({ year: 1990, month: 6, day: 15, timeIndex: 5, gender: "male" });
 			assert.equal(
 				chart.lunarInfo.yearStem,
 				6,
@@ -1239,10 +1239,10 @@ describe("CLI 端到端", () => {
 			assert.equal(j.liuNianSiHua.stem, "丙");
 			assert.equal(j.liuYueSiHua.month, 3);
 			assert.equal(j.liuYueSiHua.stem, "壬", "丙年正月起庚寅，三月壬（五虎遁顺推）");
-			const chart = generateChart({ year: 1990, month: 5, day: 15, hour: 5, gender: "male" });
+			const chart = generateChart({ year: 1990, month: 5, day: 15, timeIndex: 5, gender: "male" });
 			for (const [transforms, located] of [
-				[getSiHuaByStem(2), j.liuNianSiHua.located],
-				[getSiHuaByStem(8), j.liuYueSiHua.located],
+				[getMutagenByStem(2), j.liuNianSiHua.located],
+				[getMutagenByStem(8), j.liuYueSiHua.located],
 			] as const) {
 				assert.equal(located.length, 4, "每层四化应恰 4 颗");
 				for (const x of located) {

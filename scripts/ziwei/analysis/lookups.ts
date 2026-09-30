@@ -3,7 +3,7 @@
  *
  * @remarks
  * 本文件与 `palace-query.ts` 同层，区别在于**它读的是 `./data` 的表**：
- * `getSiHuaNote` 查四化语义、`getMinorStarNote` 查次星宫位文案、`detectGeJu` 取格局判词。
+ * `getMutagenNote` 查四化语义、`getMinorStarNote` 查次星宫位文案、`detectGeJu` 取格局判词。
  * 都不产生输出行，被 `views/` 各节调用。
  *
  * `filterGenderContent` 是唯一一个不查表的：它在 `index.ts` 的末尾对**整篇成品文本**
@@ -79,10 +79,10 @@ export function filterGenderContent(text: string, gender: "male" | "female"): st
 }
 
 /** 获取某颗星在某宫的四化modifier文字 */
-export function getSiHuaNote(starName: string, siHua: string): string {
+export function getMutagenNote(starName: string, mutagen: string): string {
 	const profile = STAR_CONTENT_MAP[starName];
 	if (!profile?.sihua) return "";
-	const key = SIHUA_CHAR_TO_KEY[siHua];
+	const key = SIHUA_CHAR_TO_KEY[mutagen];
 	if (!key) return "";
 	return profile.sihua[key] ?? "";
 }

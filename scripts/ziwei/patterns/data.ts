@@ -3,8 +3,8 @@
  *
  * @remarks
  * 本模块只放「有什么」，既不放形状也不放判定 —— 结构体与识别器入参在同目录的
- * `types.ts`，识别器按分组散在 `shang-ge.ts` / `zhong-ge.ts` / `zhu-li-ge.ts` / `e-ge.ts` /
- * `ji-chu-ge.ts` / `shou-lian-ge.ts`，装配在 `index.ts`。
+ * `types.ts`，识别器按分组散在 `superior.ts` / `medium.ts` / `enhancing.ts` / `e-ge.ts` /
+ * `basic.ts` / `converged.ts`，装配在 `index.ts`。
  * 分工是形状 / **数据** / 判定，改哪一层就只需读哪个文件。
  *
  * 判词表（{@link PATTERN_VERDICTS}）住在本文末尾，表键口径见该分区上方的注释。

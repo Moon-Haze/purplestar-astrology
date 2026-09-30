@@ -13,7 +13,7 @@
  * 识别器的产出条数分布均只有「0 条」与「1 条」两档。）
  *
  * 故返回类型写成 `Pattern[]` 而非 `Pattern | null`，是为了让那两个识别器在语义上表达
- * 「所有命中的都要报」，而不是「我知道会多条」。若 `siHua` 的来源将来扩到流年 / 大限
+ * 「所有命中的都要报」，而不是「我知道会多条」。若 `mutagen` 的来源将来扩到流年 / 大限
  * 四化，它们会真的多产，届时不必改签名与调用点。
  *
  * ## 本目录的文件分工
@@ -22,9 +22,9 @@
  * - `data.ts` —— **数据**：常量、名字裁决表，以及判词表 `PATTERN_VERDICTS`
  *   （键为判词条目名，多数即格局名，少数是按变体或一族共用的条目，口径见该文件的「判词」分区）
  * - `helpers.ts` —— **底座**：宫位 / 星曜查询与判词填充 `fillVerdict`
- * - `shang-ge.ts` / `zhong-ge.ts` / `zhu-li-ge.ts` / `e-ge.ts` / `ji-chu-ge.ts` /
- *   `shou-lian-ge.ts` —— **判定**：各分组识别器，每组末尾导出自己的 `Detector` 数组
- * - `ming-gong-summary.ts` —— **命宫摘要**：与判定零耦合，独立一刀
+ * - `superior.ts` / `medium.ts` / `enhancing.ts` / `e-ge.ts` / `basic.ts` /
+ *   `converged.ts` —— **判定**：各分组识别器，每组末尾导出自己的 `Detector` 数组
+ * - `soul-summary.ts` —— **命宫摘要**：与判定零耦合，独立一刀
  * - `index.ts`（本文件） —— **装配**：`DETECTORS` 总表 + `detectPatterns` + 公开面 re-export
  *
  * 每个识别器的收尾统一是：先把名字算进局部 `name`，再 `return [{ name, level,
@@ -50,9 +50,9 @@
  * ## 判定怎么做（实现口径）
  *
  * - **只看结构化字段，不解析文案**：判定依据是 `Palace.branch`、`Star.type`、
- *   `Star.brightness`、`Star.siHua` 四项，不读 `description` 文本
+ *   `Star.brightness`、`Star.mutagen` 四项，不读 `description` 文本
  * - **定位宫位走地支算术**：三方四正是 `[m, (m+4), (m+8), (m+6)]`、夹宫是 `(b±1)`、
- *   对宫是 `(b+6)`（见 `helpers.ts` 的 `getSanFangPalaces` / `getJiaPalaces` / `getDuiGong`）。
+ *   对宫是 `(b+6)`（见 `helpers.ts` 的 `getSurroundPalaces` / `getJiaPalaces` / `getDuiGong`）。
  *   少数例外按**宫名**查找（`detectHuaLuRuCai` 找「财帛宫」、`detectHuaQuanRuGuan`
  *   找「官禄宫」），依赖 `algorithm.ts` 的宫名口径，见 `../constants` 的
  *   `IZTRO_TO_PROJECT_PALACE`
@@ -82,19 +82,19 @@
 import type { ZiweiChart } from "../types";
 import type { Pattern, DetectContext, Detector } from "./types";
 
-import { SHANG_GE } from "./shang-ge";
-import { ZHONG_GE } from "./zhong-ge";
-import { ZHU_LI_GE } from "./zhu-li-ge";
-import { E_GE } from "./e-ge";
-import { JI_CHU_GE } from "./ji-chu-ge";
-import { SHOU_LIAN_GE } from "./shou-lian-ge";
+import { SHANG_GE } from "./superior";
+import { ZHONG_GE } from "./medium";
+import { ZHU_LI_GE } from "./enhancing";
+import { E_GE } from "./malefic";
+import { JI_CHU_GE } from "./basic";
+import { SHOU_LIAN_GE } from "./converged";
 
 // **原处 re-export** 拆分前就对外公开的三个类型与裁决表，使 `analysis/`（`type Pattern`）、
 // `test/invariants.test.ts`（`GEJU_NAME_ALIASES`）的既有 import 一行都不用改 ——
 // 本模块的公开面与拆分前**逐名一致**（原先 module-private 的 `DetectContext` 不在此列）。
 export type { Pattern, PatternCondition, GejuNameAlias } from "./types";
 export { GEJU_NAME_ALIASES } from "./data";
-export { getMingGongSummary } from "./ming-gong-summary";
+export { getMingGongSummary } from "./soul-summary";
 
 /**
  * 识别器注册表。**顺序即语义** —— 分组与组内次序都影响 `detectPatterns` 的输出排列。
@@ -159,7 +159,7 @@ const DETECTORS: ReadonlyArray<Detector> = [
  */
 export function detectPatterns(chart: ZiweiChart): Pattern[] {
 	const patterns: Pattern[] = [];
-	const ming = chart.palaces.find(p => p.branch === chart.mingGongBranch);
+	const ming = chart.palaces.find(p => p.branch === chart.soulBranch);
 	if (!ming) return patterns;
 
 	const ctx: DetectContext = { chart, ming };

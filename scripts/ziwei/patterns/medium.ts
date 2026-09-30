@@ -26,7 +26,7 @@ import {
 	sanFangShaCount,
 	isBright,
 	isDim,
-	getStarSiHua,
+	getStarMutagen,
 	fillVerdict,
 } from "./helpers";
 
@@ -36,15 +36,15 @@ function detectLianXiang({ chart }: DetectContext): Pattern[] {
 	const xiang = findStarPalace(chart, "天相");
 	if (!lian || !xiang || lian.branch !== xiang.branch) return [];
 
-	const inMing = lian.branch === chart.mingGongBranch;
+	const inMing = lian.branch === chart.soulBranch;
 	const required = ["廉贞天相同宫"];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
-	if (hasStar(lian, "禄存") || getStarSiHua(lian, "廉贞") === "禄")
+	if (hasStar(lian, "禄存") || getStarMutagen(lian, "廉贞") === "禄")
 		bonus.push("见禄存或廉贞化禄");
 	if (sanFangAllStars(chart).has("左辅")) bonus.push("左辅会照");
 	if (hasShaInPalace(lian, ["擎羊"])) breaking.push("廉相宫坐擎羊（廉杀羊倾向）");
-	if (getStarSiHua(lian, "廉贞") === "忌") breaking.push("廉贞化忌");
+	if (getStarMutagen(lian, "廉贞") === "忌") breaking.push("廉贞化忌");
 
 	// 名字取古籍用语：全集·卷四「廉贞与天相同宫为『廉相格』」。全称「廉贞天相格」
 	// 古籍零见，2026-09-27 按「古文优先」裁决为简称（见 GEJU_NAME_ALIASES）。
@@ -64,13 +64,13 @@ function detectWuQiSha({ chart }: DetectContext): Pattern[] {
 	const qi = findStarPalace(chart, "七杀");
 	if (!wu || !qi || wu.branch !== qi.branch) return [];
 
-	const inMing = wu.branch === chart.mingGongBranch;
+	const inMing = wu.branch === chart.soulBranch;
 	const required = ["武曲七杀同宫"];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
-	if (getStarSiHua(wu, "武曲") === "权") bonus.push("武曲化权");
-	if (getStarSiHua(wu, "武曲") === "禄") bonus.push("武曲化禄");
-	if (getStarSiHua(wu, "武曲") === "忌") breaking.push("武曲化忌（武曲化忌为财劫之兆）");
+	if (getStarMutagen(wu, "武曲") === "权") bonus.push("武曲化权");
+	if (getStarMutagen(wu, "武曲") === "禄") bonus.push("武曲化禄");
+	if (getStarMutagen(wu, "武曲") === "忌") breaking.push("武曲化忌（武曲化忌为财劫之兆）");
 	if (hasShaInPalace(wu, ["擎羊", "陀罗", "火星", "铃星"])) breaking.push("武杀宫煞星过多");
 
 	const name = "武曲七杀";
@@ -93,7 +93,7 @@ function detectTongLiang({ chart }: DetectContext): Pattern[] {
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (sanFangAllStars(chart).has("文昌")) bonus.push("文昌会照");
-	if (getStarSiHua(tong, "天同") === "禄") bonus.push("天同化禄");
+	if (getStarMutagen(tong, "天同") === "禄") bonus.push("天同化禄");
 	if (hasShaInPalace(tong, SHA_HARD)) breaking.push("煞星同坐");
 
 	const name = "天同天梁格";
@@ -113,7 +113,7 @@ function detectRiYueTongGong({ chart }: DetectContext): Pattern[] {
 	if (!sun || !moon || sun.branch !== moon.branch) return [];
 	if (sun.branch !== 1 && sun.branch !== 7) return []; // 必须丑(1) 或 未(7)
 
-	const inMing = sun.branch === chart.mingGongBranch;
+	const inMing = sun.branch === chart.soulBranch;
 	const required = [`太阳太阴同入${BRANCHES[sun.branch]}宫`];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
@@ -134,7 +134,7 @@ function detectRiYueTongGong({ chart }: DetectContext): Pattern[] {
 
 /** 日月夹命：太阳太阴在命宫前后两宫 */
 function detectRiYueJiaMing({ chart }: DetectContext): Pattern[] {
-	const { prev, next } = getJiaPalaces(chart, chart.mingGongBranch);
+	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) return [];
 	const prevHasSun = hasStar(prev, "太阳");
 	const prevHasMoon = hasStar(prev, "太阴");
@@ -170,14 +170,14 @@ function detectJuRiTongGong({ chart }: DetectContext): Pattern[] {
 	if (!ju || !sun || ju.branch !== sun.branch) return [];
 	if (ju.branch !== 2 && ju.branch !== 8) return []; // 必须寅(2) 或 申(8)
 
-	const inMing = ju.branch === chart.mingGongBranch;
+	const inMing = ju.branch === chart.soulBranch;
 	const required = [`巨门太阳同入${BRANCHES[ju.branch]}宫`];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (ju.branch === 2) bonus.push("寅宫太阳庙旺，巨门得日光化解是非");
-	if (getStarSiHua(ju, "巨门") === "禄" || getStarSiHua(ju, "巨门") === "权")
+	if (getStarMutagen(ju, "巨门") === "禄" || getStarMutagen(ju, "巨门") === "权")
 		bonus.push("巨门化禄/化权（口才生财）");
-	if (getStarSiHua(ju, "巨门") === "忌") breaking.push("巨门化忌（口舌官非）");
+	if (getStarMutagen(ju, "巨门") === "忌") breaking.push("巨门化忌（口舌官非）");
 	if (ju.branch === 8) breaking.push("申宫太阳偏西，巨门暗曜更显");
 
 	const name = "巨日同宫";
@@ -198,10 +198,10 @@ function detectShiZhongYinYu({ chart, ming }: DetectContext): Pattern[] {
 	const required = [`巨门入命于${BRANCHES[ming.branch]}宫`];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
-	if (getStarSiHua(ming, "巨门") === "禄" || getStarSiHua(ming, "巨门") === "权")
+	if (getStarMutagen(ming, "巨门") === "禄" || getStarMutagen(ming, "巨门") === "权")
 		bonus.push("巨门化禄/化权");
 	if (sanFangAllStars(chart).has("文昌")) bonus.push("文昌会照（石中隐玉得明）");
-	if (getStarSiHua(ming, "巨门") === "忌") breaking.push("巨门化忌（玉藏深泥）");
+	if (getStarMutagen(ming, "巨门") === "忌") breaking.push("巨门化忌（玉藏深泥）");
 	if (hasShaInPalace(ming, SHA_HARD)) breaking.push("命坐煞星");
 
 	const name = "石中隐玉";

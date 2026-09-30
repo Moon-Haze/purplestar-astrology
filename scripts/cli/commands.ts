@@ -16,27 +16,27 @@ import {
 	lateZiSection,
 	locateSihua,
 	renderPalace,
-	sanFangSiZheng,
+	surroundNames,
 } from "./render";
 import {
-	daXianSection,
+	decadalSection,
 	focusSection,
-	gejuSection,
+	patternSection,
 	infoSection,
-	liuNianBranchOf,
-	liuNianSection,
+	yearlyBranchOf,
+	yearlySection,
 	overviewSection,
-	parseAgeArg,
-	sihuaSection,
-	xiaoXianPalaceOf,
-	xiaoXianSection,
-} from "./yun";
+	parseAgesArg,
+	mutagenSection,
+	agePalaceOf,
+	ageSection,
+} from "./fortune";
 import { cmdSelftest } from "./selftest";
 import { cmdClassics } from "./classics";
 import { cmdSynastry } from "./synastry";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
-import { getSiHuaByStem, getLiuNianSiHua, getLiuYueSiHua } from "@/ziwei/sihua";
+import { getMutagenByStem, getYearlyMutagen, getMonthlyMutagen } from "@/ziwei/mutagen";
 import {
 	getTopicAnalysis,
 	TOPIC_LABEL,
@@ -106,7 +106,7 @@ function cmdChart(args: CliArgs) {
 	const out = [
 		`命盘  ${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)}`,
 		`农历：${chart.lunarInfo.lunarYear}年${chart.lunarInfo.isLeapMonth ? "闰" : ""}${chart.lunarInfo.lunarMonth}月${chart.lunarInfo.lunarDay}日 · 年柱${STEMS[chart.lunarInfo.yearStem]}${BRANCHES[chart.lunarInfo.yearBranch]}`,
-		`命宫：${BRANCHES[chart.mingGongBranch]} · 身宫：${BRANCHES[chart.shenGongBranch]} · 五行局：${chart.wuxingJuName} · 紫微：${BRANCHES[chart.ziweiPos]}`,
+		`命宫：${BRANCHES[chart.soulBranch]} · 身宫：${BRANCHES[chart.bodyBranch]} · 五行局：${chart.fiveElementsClassName} · 紫微：${BRANCHES[chart.ziweiPos]}`,
 		"",
 	];
 	out.push(...birthplaceSection(lngNote, lngAmbiguous));
@@ -115,14 +115,14 @@ function cmdChart(args: CliArgs) {
 	for (const p of chart.palaces) out.push(renderPalace(p, chart), "");
 	out.push(
 		"大限：" +
-			chart.daXians
+			chart.decadals
 				.map(
 					d => `${d.startAge}-${d.endAge}岁 ${d.palaceName}(${BRANCHES[d.palaceBranch]})`
 				)
 				.join(" | ")
 	);
 	out.push(
-		`当前年龄：${chart.currentAge}岁 · 当前大限：${chart.daXians[chart.currentDaXianIndex]?.palaceName ?? "—"}`
+		`当前年龄：${chart.currentAge}岁 · 当前大限：${chart.decadals[chart.currentDecadalIndex]?.palaceName ?? "—"}`
 	);
 	return out.join("\n");
 }
@@ -141,7 +141,7 @@ function cmdChart(args: CliArgs) {
  * → --focus 的固定顺序）。十二宫逐宫详表归 `chart` 命令与 `--json`，不再默认铺开。
  *
  * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，`--json` 的消费方
- * （合盘 skill）自会处理；文本路径的宫详表见 `./yun.ts` 各专题。
+ * （合盘 skill）自会处理；文本路径的宫详表见 `./fortune.ts` 各专题。
  */
 function cmdAnalyze(args: CliArgs) {
 	const { info, note, notes, longitude, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } =
@@ -149,19 +149,19 @@ function cmdAnalyze(args: CliArgs) {
 	const chart = generateChart(info);
 
 	// 生年四化的年干必须取**农历年干**（chart.lunarInfo.yearStem），与 iztro 落在
-	// Star.siHua 上的 mutagen 同源。不可用 getYearStemIndex(info.year)：那是公历年取模，
+	// Star.mutagen 上的 mutagen 同源。不可用 getYearStemIndex(info.year)：那是公历年取模，
 	// 1-2 月出生（农历仍在上一年）者两口径分叉，本区块会与宫详表自相矛盾
 	// （实测 1990-01-15：农历己巳年 → 武曲化禄，公历取模却得庚 → 化权武曲）。
 	const yearStem = chart.lunarInfo.yearStem;
-	const native = getSiHuaByStem(yearStem);
+	const native = getMutagenByStem(yearStem);
 	// 注意：流年用 --liunian，不可复用 --year —— 后者是出生年的回退参数。
 	// 二者同时给出不会报错：流年取 --liunian；而出生日期一旦给了 --date/--lunar，
 	// --year 就被静默忽略（buildBirthInfo 里 --date/--lunar 优先），不会有任何提示。
 	const liuNianYear = parseLiuNianArg(args);
-	const liuNian = getLiuNianSiHua(liuNianYear);
+	const liuNian = getYearlyMutagen(liuNianYear);
 	// 流月：农历月 1-12，取流年干推五虎遁（可选）
 	const liuYueMonth = parseLiuYueArg(args);
-	const liuYue = liuYueMonth !== null ? getLiuYueSiHua(liuNian.stemIndex, liuYueMonth) : null;
+	const liuYue = liuYueMonth !== null ? getMonthlyMutagen(liuNian.stemIndex, liuYueMonth) : null;
 
 	if (args.json) {
 		return JSON.stringify(
@@ -191,13 +191,13 @@ function cmdAnalyze(args: CliArgs) {
 				// 流年命宫与小限宫（运限速览的结构化等价物，2026-09-28 新增，只加不删）
 				liuNianPalace: {
 					year: liuNianYear,
-					branchIndex: liuNianBranchOf(liuNianYear),
-					branch: BRANCHES[liuNianBranchOf(liuNianYear)],
+					branchIndex: yearlyBranchOf(liuNianYear),
+					branch: BRANCHES[yearlyBranchOf(liuNianYear)],
 					palaceName:
-						chart.palaces.find(p => p.branch === liuNianBranchOf(liuNianYear))?.name ?? null,
+						chart.palaces.find(p => p.branch === yearlyBranchOf(liuNianYear))?.name ?? null,
 				},
 				xiaoXian: (() => {
-					const p = xiaoXianPalaceOf(chart, chart.currentAge);
+					const p = agePalaceOf(chart, chart.currentAge);
 					return {
 						age: chart.currentAge,
 						palaceBranchIndex: p.branch,
@@ -222,10 +222,10 @@ function cmdAnalyze(args: CliArgs) {
 		`【命盘总览】${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)} · 经度 ${longitude}°E`
 	);
 	out.push(
-		`农历 ${chart.lunarInfo.lunarYear}年${chart.lunarInfo.isLeapMonth ? "闰" : ""}${chart.lunarInfo.lunarMonth}月${chart.lunarInfo.lunarDay}日 · 年柱 ${STEMS[chart.lunarInfo.yearStem]}${BRANCHES[chart.lunarInfo.yearBranch]} · ${chart.wuxingJuName}`
+		`农历 ${chart.lunarInfo.lunarYear}年${chart.lunarInfo.isLeapMonth ? "闰" : ""}${chart.lunarInfo.lunarMonth}月${chart.lunarInfo.lunarDay}日 · 年柱 ${STEMS[chart.lunarInfo.yearStem]}${BRANCHES[chart.lunarInfo.yearBranch]} · ${chart.fiveElementsClassName}`
 	);
 	out.push(
-		`命宫 ${BRANCHES[chart.mingGongBranch]} · 身宫 ${BRANCHES[chart.shenGongBranch]} · 紫微落 ${BRANCHES[chart.ziweiPos]} · 三方四正 ${sanFangSiZheng(chart, chart.mingGongBranch).join("/")}`
+		`命宫 ${BRANCHES[chart.soulBranch]} · 身宫 ${BRANCHES[chart.bodyBranch]} · 紫微落 ${BRANCHES[chart.ziweiPos]} · 三方四正 ${surroundNames(chart, chart.soulBranch).join("/")}`
 	);
 	out.push("");
 
@@ -244,15 +244,15 @@ function cmdAnalyze(args: CliArgs) {
 			})
 		);
 	}
-	if (args.geju) out.push("", ...gejuSection(chart));
-	if (args.sihua) out.push("", ...sihuaSection(chart, liuNianYear, liuYueMonth));
-	if (args.liunian !== undefined) out.push("", ...liuNianSection(chart, liuNianYear));
+	if (args.geju) out.push("", ...patternSection(chart));
+	if (args.sihua) out.push("", ...mutagenSection(chart, liuNianYear, liuYueMonth));
+	if (args.liunian !== undefined) out.push("", ...yearlySection(chart, liuNianYear));
 	if (args.daxian !== undefined)
-		out.push("", ...daXianSection(chart, parseAgeArg(args.daxian, chart.currentAge, "--daxian")));
+		out.push("", ...decadalSection(chart, parseAgesArg(args.daxian, chart.currentAge, "--daxian")));
 	if (args.xiaoxian !== undefined)
 		out.push(
 			"",
-			...xiaoXianSection(chart, parseAgeArg(args.xiaoxian, chart.currentAge, "--xiaoxian"), liuNianYear)
+			...ageSection(chart, parseAgesArg(args.xiaoxian, chart.currentAge, "--xiaoxian"), liuNianYear)
 		);
 	if (args.focus !== undefined) {
 		// typeof 判空挡掉「给了 --focus 却没跟值」（parseArgs 存布尔 true）的形态 ——
@@ -355,7 +355,7 @@ function cmdStars(args: CliArgs) {
  *
  * @remarks
  * 与静态文案库不同：`getTopicAnalysis` 基于**整张盘**动态推算 —— 主宫主星（空宫借对宫）、
- * 三方四正会照、本命四化（取 `Star.siHua`，农历年干口径，与盘面同源）、格局、以及所选
+ * 三方四正会照、本命四化（取 `Star.mutagen`，农历年干口径，与盘面同源）、格局、以及所选
  * view 的大限/流年/流月引动，逐层拼出论断。
  *
  * 不带 `--topic` 时列出 13 个主题清单（key · 标签 · 对应宫位）。

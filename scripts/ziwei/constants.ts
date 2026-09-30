@@ -13,7 +13,7 @@ export const STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "�
 /**
  * 十二地支（Earthly Branches），数组下标即全项目的**地支索引**（0=子、1=丑 … 11=亥）。
  *
- * ⚠️ 与**时辰序号**不同域：后者多一个 12（晚子时），见 `types.ts` 的 `BirthInfo.hour`。
+ * ⚠️ 与**时辰序号**不同域：后者多一个 12（晚子时），见 `types.ts` 的 `BirthInfo.timeIndex`。
  * ⚠️ `ZiweiChart.palaces` 的数组顺序**不是**本数组的顺序（实测为 2,3,…,11,0,1，寅起）。
  * 消费者同 {@link STEMS}。
  */
@@ -26,7 +26,7 @@ export const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未",
  * 子时横跨两日（23:00–01:00）。
  *
  * ⚠️ 本表只有 12 项、**不含「晚子时」** —— 晚子时不是第 13 个时辰，而是子时的另一种
- * 安星口径（时辰序号 12，见 `types.ts` 的 `BirthInfo.hour`）。
+ * 安星口径（时辰序号 12，见 `types.ts` 的 `BirthInfo.timeIndex`）。
  *
  * 消费者：`cli/birth-info.ts` 的 `shichenLabel`（拼「巳时(09:00-11:00)」这类提示文案）、
  * `purple-star.ts` 的 `REQUIRED_EXPORTS` 自检。**不参与安星**。
@@ -157,9 +157,9 @@ export const NAYIN_ELEMENTS = [
  *
  * 消费者：`algorithm.ts` 的 `parseWuxingJu` —— 取局名首字五行查本表得出局数。
  *
- * ⚠️ 改本表会改变 `ZiweiChart.wuxingJu`，从而改变 300 条基准的对标结果。两处独立预言机
+ * ⚠️ 改本表会改变 `ZiweiChart.fiveElementsClass`，从而改变 300 条基准的对标结果。两处独立预言机
  * 盯着这条映射：`test/invariants.test.ts` 的「五行局取值 2-6 且名称与数字对应」用的是
- * 表外自带的字面量表，`test/lib/compare.ts` 比对的 `wuxingJu` 则来自 toolkit 的样本快照。
+ * 表外自带的字面量表，`test/lib/compare.ts` 比对的 `fiveElementsClass` 则来自 toolkit 的样本快照。
  */
 export const ELEMENT_TO_JU: Record<string, number> = {
 	水: 2,
@@ -172,7 +172,7 @@ export const ELEMENT_TO_JU: Record<string, number> = {
 /**
  * 五行局局数 → 局名（如 2 → 「水二局」）。
  *
- * ⚠️ 当前无消费者：运行时展示的是 iztro 的原文 `ZiweiChart.wuxingJuName`，不经本表。
+ * ⚠️ 当前无消费者：运行时展示的是 iztro 的原文 `ZiweiChart.fiveElementsClassName`，不经本表。
  * 它与 {@link ELEMENT_TO_JU} 成对（五行 ↔ 局数 ↔ 局名），仅为数据留存。
  *
  * 注意本表与 {@link ELEMENT_TO_JU} 的**状态不对等**：后者已被 `parseWuxingJu` 消费，
@@ -192,7 +192,7 @@ export const JU_NAMES: Record<number, string> = {
  * ⚠️ 键是**年干**索引（0=甲 … 9=癸）。本表**不含**宫干四化、流年干四化、自化那种
  * 飞星派口径 —— 那些已主动下线（见 `.claude/CLAUDE.md`）。
  *
- * 消费者：`sihua.ts` 的 `getSiHuaByStem`（生年 / 流年 / 流月三层的公共出口），上承 `cli/commands.ts`
+ * 消费者：`sihua.ts` 的 `getMutagenByStem`（生年 / 流年 / 流月三层的公共出口），上承 `cli/commands.ts`
  * 的生年四化落宫与合盘四化分析。⚠️ 改本表会改变**所有**四化落宫、进而改变格局命中，
  * `npm test` 的语料回归盯着这条链路。
  */
@@ -215,7 +215,7 @@ export const SI_HUA_TABLE: Record<number, [string, string, string, string]> = {
  * 键是**年干**索引，值是地支索引 0–11（行尾注释给出中文对照，如「甲: 魁丑 钺未」）。
  *
  * ⚠️ 当前 `scripts/` 与 `test/` 中**无消费者** —— 天魁天钺由 iztro 安星，
- * `algorithm.ts` 的 `LUCKY_STARS` 名单只按星名判类型，不查本表。仅为数据留存，
+ * `algorithm.ts` 的 `SOFT_STARS` 名单只按星名判类型，不查本表。仅为数据留存，
  * **改它不会影响现有输出**。
  */
 export const TIANKUI_TABLE: Record<number, [number, number]> = {
