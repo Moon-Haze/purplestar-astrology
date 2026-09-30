@@ -1125,6 +1125,45 @@ export function cmdSelftest(ctx: CliContext): string {
 		return "四项深化在";
 	});
 
+	ok("help 强化：总览含 man 七节标题且节序固定（总览另含 COMMANDS 节）", () => {
+		const r = runCli(["help"]);
+		if (r.code !== 0) throw new Error(`help 退出码 ${r.code}：${r.err.trim()}`);
+		const SECTIONS = ["NAME", "SYNOPSIS", "DESCRIPTION", "COMMANDS", "OPTIONS", "EXAMPLES", "NOTES", "SEE ALSO"];
+		let last = -1;
+		for (const sec of SECTIONS) {
+			// 节标题独占一行：首节顶行，其余前置换行
+			const idx = r.out.startsWith(`${sec}\n`) ? 0 : r.out.indexOf(`\n${sec}\n`);
+			if (idx < 0) throw new Error(`help 缺节标题 ${sec}`);
+			if (idx < last) throw new Error(`节序错乱：${sec} 出现在前一节之前`);
+			last = idx;
+		}
+		return `${SECTIONS.length} 节齐全且有序`;
+	});
+	ok("help 强化：每命令 --help 出归属参数子集（astrology 无 --search，stars 反之）", () => {
+		const astro = runCli(["astrology", "--help"]);
+		if (astro.code !== 0) throw new Error(`astrology --help 退出码 ${astro.code}`);
+		for (const want of ["NAME", "OPTIONS", "EXAMPLES"]) 
+			if (!astro.out.includes(want)) throw new Error(`astrology --help 缺 ${want}`);
+		for (const own of ["--pattern", "--mutagen", "--yearly", "--palaces", "--topic"])
+			if (!astro.out.includes(own)) throw new Error(`astrology --help 应列 ${own}`);
+		if (astro.out.includes("--search")) throw new Error("astrology --help 不该列 --search（归属过滤）");
+		const stars = runCli(["stars", "--help"]);
+		if (stars.code !== 0) throw new Error(`stars --help 退出码 ${stars.code}`);
+		if (!stars.out.includes("--search")) throw new Error("stars --help 应列 --search");
+		if (stars.out.includes("--pattern")) throw new Error("stars --help 不该列 --pattern（归属过滤）");
+		return "归属过滤双向成立";
+	});
+	ok("help 强化：示例用新虚构组合且注明「示例数据为虚构」", () => {
+		const r = runCli(["help"]);
+		if (!r.out.includes("2011-06-24") || !r.out.includes("杭州")) throw new Error("缺甲方虚构样例 2011-06-24 杭州");
+		if (!r.out.includes("1999-11-03") || !r.out.includes("成都")) throw new Error("缺乙方虚构样例 1999-11-03 成都");
+		if (!r.out.includes("虚构")) throw new Error("缺「示例数据为虚构」注记");
+		// 旧组合清退：help 里不再出现 1990-05-15 / 1993-08-22 示例
+		for (const old of ["1990-05-15", "1993-08-22"]) 
+			if (r.out.includes(old)) throw new Error(`旧示例组合 ${old} 仍在 help 里`);
+		return "虚构示例 + 注记在，旧组合已清退";
+	});
+
 	ok("参数面：SKILL.md 命令速查表提到的命令都在 commands.ts 的命令表里", () => {
 		// 与上一条同源：SKILL.md 是给 Claude 读的**行为规范**，它提到的命令若不存在，
 		// Claude 会照着敲一条必然失败的命令行。

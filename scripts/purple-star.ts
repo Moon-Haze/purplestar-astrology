@@ -179,8 +179,9 @@ const { Lunar } = await load<typeof import("lunar-typescript")>("lunar-typescrip
 const { searchClassics } = await load<ClassicsModule>("@/classics");
 const { readAnalyzeJson } = await load<ChartViewModule>("@/synastry/chart-view");
 
-const { parseArgs, OPTION_GROUPS, OPTION_NAMES } = await load<ArgsModule>("@/cli/args");
+const { parseArgs } = await load<ArgsModule>("@/cli/args");
 const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
+const helpMod = await load<typeof import("@/cli/help")>("@/cli/help");
 
 // ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默产出错盘 ──
 /**
@@ -229,110 +230,6 @@ const REQUIRED_EXPORTS = [
 // ══════════════════════ 入口 ══════════════════════
 
 /**
- * 两条最容易排出错盘的口径，作为 help 的追加段。
- *
- * @remarks
- * 刻意留在 help 里而不是别处：这两条各自都能排出一张**不同的盘**，而排盘本身不会报错
- * —— 复核时先看它们，是这个项目唯一能给的提示。（`cli/args.ts` 的旗标声明表能防
- * 「拼错旗标静默落回默认值」，防不了「口径选错」。）
- */
-const HELP_CAUTION = `  · 晚子时：23:00–23:59 出生时，子时横跨两日，【当日早子时】与【晚子时算次日】
-    排出的是两张不同的盘。复核请加 --late-zi 或 --branch 12。
-
-  · 真太阳时跨过午夜：出生日期会自动回退/顺延一天，输出里会写明「已跨过午夜，
-    出生日期…」。这是正确行为 —— 只换时辰不换日期，排出的「日 + 时」指向的
-    就不是出生时刻（喀什 00:30 的真太阳时是前一日 21:34，农历日会错一天）。`;
-
-/**
- * 常用调用示例，作为 help 的追加段。
- *
- * @remarks
- * ⚠️ 这段仍是手写的领域知识（声明表渲染不到它），改参数名时要一并改 —— `selftest` 有一条断言扫
- * `SKILL.md` 里的旗标写法，示例里的旗标因此也落在它的覆盖范围内。
- */
-const HELP_EXAMPLES = `  # 单人解读（公历）
-  node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --city 北京 --gender male
-
-  # 用户只给农历生日
-  node scripts/purple-star.ts analyze --lunar 1988-06-26 --time 10:30 --city 杭州 --gender male
-
-  # 时辰直接指定 + 指定流年 + 聚焦官禄宫
-  node scripts/purple-star.ts analyze --date 1985-11-03 --branch 6 --gender female --yearly 2027 --focus 官禄
-
-  # 23:00 后出生，复核晚子时口径
-  node scripts/purple-star.ts analyze --date 1988-02-14 --time 23:40 --late-zi --city 北京 --gender male
-
-  # 回归自检
-  node scripts/purple-star.ts selftest`;
-
-// ── help 渲染（最小版：Usage / Commands / Options 三段 + 口径警告与示例两个追加段）──
-// cac 退役（2026-09-30，spec §2.8）后 help 由声明表自行渲染：参数段从
-// OPTION_GROUPS 派生（与实际接受面同源，不各说各话），命令段从 COMMAND_DESC 派生。
-// Task 8 的 help 强化（man 七节结构 + 每命令 --help + 归属表）会接管这段渲染。
-
-/**
- * 字符串在等宽终端里占的列数：CJK / 全角字符算 2 列，其余算 1 列。
- *
- * @remarks
- * 只为 help 的描述列对齐服务（`String.length` 会把中文占位算窄，描述列会被推歪）。
- */
-function displayWidth(s: string): number {
-	let width = 0;
-	for (const ch of s) {
-		const c = ch.codePointAt(0) ?? 0;
-		const wide =
-			(c >= 0x2e80 && c <= 0xa4cf) ||
-			(c >= 0xac00 && c <= 0xd7a3) ||
-			(c >= 0xf900 && c <= 0xfaff) ||
-			(c >= 0xfe30 && c <= 0xfe6f) ||
-			(c >= 0xff00 && c <= 0xff60) ||
-			(c >= 0xffe0 && c <= 0xffe6);
-		width += wide ? 2 : 1;
-	}
-	return width;
-}
-
-/** 渲染整份 help 文本（三段 + 两个追加段，不含尾随换行）。 */
-function renderHelp(): string {
-	const lines: string[] = [
-		"紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知识库",
-		"",
-		"Usage:",
-		"  $ purple-star <command> [options]",
-	];
-	const names = Object.keys(COMMAND_DESC);
-	const cw = Math.max(...names.map(displayWidth)) + 2;
-	lines.push("", "Commands:");
-	for (const n of names) lines.push(`  ${n.padEnd(cw)}${COMMAND_DESC[n as keyof typeof COMMAND_DESC]}`);
-
-	// 参数段：平铺声明表（作用域过滤 —— OPTION_NAMES 之外的不出现），分类缩进
-	const label = (o: { name: string; kind: string; value?: string }) =>
-		o.kind === "value" ? `--${o.name} <${o.value ?? "值"}>` : `--${o.name}`;
-	const inScope = OPTION_GROUPS.flatMap(g =>
-		g.options.filter(o => OPTION_NAMES.has(o.name)).map(o => ({ ...o, title: g.title }))
-	);
-	const column = 4 + Math.max(...inScope.map(o => displayWidth(label(o)))) + 2;
-	const row = (indent: number, name: string, desc: string) =>
-		" ".repeat(indent) +
-		name +
-		" ".repeat(Math.max(1, column - indent - displayWidth(name))) +
-		desc;
-	lines.push("", "Options:");
-	let lastTitle = "";
-	for (const o of inScope) {
-		if (o.title !== lastTitle) {
-			lines.push(`  ${o.title}`);
-			lastTitle = o.title;
-		}
-		lines.push(row(4, label(o), o.desc));
-	}
-	lines.push(row(2, "-h, --help", "Display this message"));
-	lines.push("", "⚠️ 两个容易排出错盘的口径（复核时先看这两条）:", HELP_CAUTION);
-	lines.push("", "示例:", HELP_EXAMPLES);
-	return lines.join("\n");
-}
-
-/**
  * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
  *
  * @remarks
@@ -351,8 +248,16 @@ function renderHelp(): string {
 function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];
+	// `<命令> --help`：命令级帮助（man 七节 + 归属参数子集）。命令名必须是已注册的，
+	// 否则落到总览（`foo --help` 用户想看的还是总用法）。
+	if (cmd && cmd !== "help" && (argv.includes("--help") || argv.includes("-h"))) {
+		if (COMMANDS[cmd]) {
+			console.log(helpMod.renderCommandHelp(cmd as Parameters<typeof helpMod.renderCommandHelp>[0]));
+			return;
+		}
+	}
 	if (!cmd || cmd === "help" || argv.includes("--help") || argv.includes("-h")) {
-		console.log(renderHelp());
+		console.log(helpMod.renderOverviewHelp());
 		return;
 	}
 	const fn = COMMANDS[cmd];
