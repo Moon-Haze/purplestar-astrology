@@ -62,9 +62,9 @@ node scripts/purple-star.ts analyze \
 
 # 合盘 —— 只有 purplestar-synastry 有这条命令，源的 CLI 里没有（2026-09-27 拆 skill 时移走）
 # 它不排盘：命盘先由上面那条 analyze --json 各排一张，再把两份 JSON 交给它
-node skills/purplestar-synastry/scripts/purple-star.ts synastry --a-chart <a.json> --b-chart <b.json>
+node scripts/purple-star.ts synastry --a-chart <a.json> --b-chart <b.json>
 # 古籍原文检索 —— 同理，只有 purplestar-classics 有
-node skills/purplestar-classics/scripts/purple-star.ts classics --search 机月同梁
+node scripts/purple-star.ts classics --search 机月同梁
 node scripts/purple-star.ts help   # 本技能的命令与参数
 
 # 第一层：CLI 自带自检，整体执行，不支持筛选单项（项数由末行自报）
@@ -78,8 +78,8 @@ npm run test:corpus -- --year 1960    # 全量核验（需 reference/ 存在，�
 npm run typecheck
 
 # 另两个 skill 的自检：各在自己的 scripts/ 下，各测各的命令与参数面（与上面那份不同）
-node skills/purplestar-classics/scripts/purple-star.ts selftest
-node skills/purplestar-synastry/scripts/purple-star.ts selftest
+node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三段合一）
+# 合盘断言已并入主 selftest（三段合一）
 ```
 
 **改过内核或升级 `iztro` 之后，两层都要跑；动过 `.ts` 的类型标注，`npm run typecheck` 也要跑。** `selftest` 测「代码逻辑自洽」，覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、性别护栏、排盘不变量、三合派体系约束、知识源可用性；`npm test` 是**外部基准比对**，用 300 条真实盘逐字段对标，能抓住 `selftest` 那几条固定样例漏掉的行为漂移。测试的性质与效力边界见 [test/README.md](../test/README.md)。
@@ -139,7 +139,7 @@ node skills/purplestar-synastry/scripts/purple-star.ts selftest
 那是那两份 skill 各自的实现，与源**没有对应物**。
 
 同日稍后，`synastry-guide` 这条命令**又被取消**：它的载荷是恒定静态文本（与「这一对是谁」无关），
-改为合盘 skill 的参考文档 `skills/purplestar-synastry/references/synastry-guide.md`，按需读取、
+改为合盘 skill 的参考文档 `references/synastry-guide.md`，按需读取、
 不经 CLI 输出。合盘的命令因此只剩 `synastry` 与 `selftest`。
 
 `cli/` 之间是**单向依赖**，没有环：`args` ← `render`（仅取 `fmtDate`）← `birth-info` ← `commands` → `selftest`。要动哪一层，往上找它的消费者即可。

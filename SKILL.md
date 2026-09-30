@@ -66,7 +66,7 @@ node scripts/purple-star.ts analyze \
 ```
 
 1. **排盘取数** —— `analyze` 默认输出**精简概览**：命盘总览 + 口径提示（出生地 / 晚子时）+ 一行运限速览（虚岁 / 大限 / 流年命宫 / 小限）+ 专题指路。深入全靠**专题旗标**：`--info` 基本信息（四柱 / 命主身主 / 斗君）、`--geju` 格局、`--sihua` 四化（含流月）、`--liunian [年]` 流年、`--daxian [虚岁]` 十年大运、`--xiaoxian [虚岁]` 小限、`--focus <宫>` 宫盘分析 —— **可叠加**，全盘解读通常 `--geju --sihua --daxian` 一次拿齐。只给农历用 `--lunar`，只知时辰名用 `--branch`。
-2. **按需深入知识源** —— 需要展开论证时，**直接读 `scripts/ziwei/` 下的权威文件**（格局库、四化、星曜释义、主题论断），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则要调 `purplestar-classics` 技能的 CLI。
+2. **按需深入知识源** —— 需要展开论证时，**直接读 `scripts/ziwei/` 下的权威文件**（格局库、四化、星曜释义、主题论断），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则调本 CLI 的 `classics` 命令。
 3. **解读** —— 命宫定基调 → 格局定性 → 四化定着力点 → 大限看阶段 → 结论落到具体建议，**不跳步**。
 
 ## 解读输出契约
@@ -118,7 +118,9 @@ node scripts/purple-star.ts analyze \
 | `topic --topic <key> [--view …]` | 主题论断（13 主题动态推算，含知识来源分级提示）                          |
 | `stars [--search <星名>]`        | 星曜释义                                                                 |
 | `cities --search <城市>`         | 城市经度                                                                 |
-| `selftest`                       | 回归自检（末行自报项数）。改动本技能或升级 `iztro` 后跑一次              |
+| `classics [--search <关键词>]`   | 古籍原文检索（骨髓赋 / 全集 / 全书；2026-09-30 三 skill 合一并入）       |
+| `synastry --a-chart <a> --b-chart <b>` | 合盘（双宫联参；读两份 `analyze --json` 产物；2026-09-30 并入）   |
+| `selftest`                       | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次 |
 
 高频旗标：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`；专题深入 `--info` / `--geju` / `--sihua` / `--liunian [年]` / `--daxian [虚岁]` / `--xiaoxian [虚岁]` / `--focus <宫名>`（可叠加）；输出 `--json`。
 
@@ -126,8 +128,8 @@ node scripts/purple-star.ts analyze \
 
 ## 本技能不做的事
 
-- **双人合盘 / 合婚 / 看两人配不配 / 婚姻缘分 / 感情走势** → 那是 `purplestar-synastry` 技能（双宫联参：夫妻宫 × 福德宫）。本技能只做**单人**命盘。
-- **古籍原文检索** → 那是 `purplestar-classics` 技能（三部古籍全文，含《骨髓赋》）。本技能的 CLI 里**没有** `classics` 命令：解读需要引原句佐证时，调那个技能的 CLI 查，别在本技能里找。
+- **双人合盘 / 合婚的断语方法论**：合盘的**命令**（`synastry`，双宫联参：夫妻宫 × 福德宫）2026-09-30 起由本 CLI 承载，但方法论与评分标准不在命令输出里 —— 按 [references/synastry-guide.md](references/synastry-guide.md) 按需读取；合盘输入的报错对照见 [references/synastry-troubleshooting.md](references/synastry-troubleshooting.md)。
+- **八字论命 / 大运流年飞星**：见上方「体系硬约束」。古籍原文检索（`classics` 命令，三部古籍全文含《骨髓赋》）已并入本 CLI，解读需要引原句佐证时直接查。
 
 ## 若脚本报错
 

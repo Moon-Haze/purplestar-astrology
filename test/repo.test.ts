@@ -53,7 +53,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ResolveHookSync } from "node:module";
 
-import { ALL_SKILLS, CHART_LIKE, SKILLS_DIR, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
+import { ALL_SKILLS, CHART_LIKE, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
 // ⚠️ 字面相对路径，带 `.ts` 扩展名，理由同 lib/loader.ts 的同一行：boot-hooks.ts 只依赖
 //    `node:` 内置，故可在解析钩子注册之前被 Node 的原生类型擦除加载。
 // ⚠️ 内核在仓库根 scripts/（2026-09-30 上提），挪内核时本行会静默失效。

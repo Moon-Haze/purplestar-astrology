@@ -31,8 +31,8 @@ node scripts/purple-star.ts selftest     # CLI 自带的自检（与本套测试
 npm run typecheck                        # 类型检查：必须 0 错误（与本套测试也分工不同）
 
 # 每个 skill 的自检都在它自己的 scripts/ 下（三份互不相同，各测各的命令与参数面）
-node skills/purplestar-classics/scripts/purple-star.ts selftest
-node skills/purplestar-synastry/scripts/purple-star.ts selftest
+node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三段合一）
+# 合盘断言已并入主 selftest（三段合一）
 ```
 
 与 CLI 自带 `selftest` 的关系：`selftest` 固定在 CLI 里，测的是**代码逻辑自洽**（农历换算、

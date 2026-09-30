@@ -16,13 +16,12 @@ import { astro } from "iztro";
 
 import type { BirthInfo, Palace, ZiweiChart } from "@/ziwei/types";
 import {
-	load,
-	loadAlgorithm,
-	loadConstants,
-	loadFromSkill,
-	loadPatterns,
-	loadRender,
-	loadSihua,
+load,
+loadAlgorithm,
+loadConstants,
+loadPatterns,
+loadRender,
+loadSihua,
 } from "./lib/loader.ts";
 import { BRANCHES, type BaselineSample } from "./lib/compare.ts";
 
@@ -35,16 +34,9 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 const { generateChart } = await loadAlgorithm();
 const { PALACE_NAMES_ORDER, IZTRO_TO_PROJECT_PALACE, SI_HUA_TABLE, STEMS } = await loadConstants();
 const { detectPatterns, GEJU_NAME_ALIASES } = await loadPatterns();
-// ⚠️ 跨 skill 加载：古籍内核自 2026-09-27 起归 `purplestar-classics`，源的内核根
-//    已够不到它（`@/` 只指向源）。用到的只是**古籍文本**，与排盘内核无关 —— 下面的
-//    「格局名词频」是排版不变量测试，不是古籍测试，故换加载口径而非删用例。
-//    ⚠️ `rel` 写 `"index"` 而不是 `"classics/index"`：同日断派生关系后，那份内核不再有
-//    `classics/` 这一层目录，入口就是 `scripts/index.ts`（文本在 `scripts/data/`）。类型锚
-//    与 `rel` 是两处，**类型锚改对了不等于运行期路径对** —— 这里正漏改过一次，症状是
-//    `npm test` 层 2/层 3 全红而 `typecheck` 全绿。
-const { ALL_BOOKS } = await loadFromSkill<
-	typeof import("../skills/purplestar-classics/scripts/index")
->("purplestar-classics", "index");
+// 古籍内核 2026-09-30 并入根 `scripts/classics/`，`@/classics` 别名可达（与其他内核同一口径）。
+// 用到的只是**古籍文本**（格局名词频排版不变量），与排盘内核无关。
+const { ALL_BOOKS } = await load<typeof import("@/classics")>("@/classics");
 const { getSiHuaByStem, getYearStemIndex, getLiuNianSiHua, getLiuYueStemIndex } = await loadSihua();
 const { mustPalace, locateSihua } = await loadRender();
 

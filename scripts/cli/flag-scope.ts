@@ -41,10 +41,11 @@ import type { FlagScope } from "./args";
  */
 export const FLAG_SCOPE: FlagScope = {
 	/**
-	 * 出生信息旗标 + analyze 专题旗标族 + 输出/选题旗标（全集见 `args.ts` 的 FLAG_GROUPS）。
+	 * 出生信息旗标 + analyze 专题旗标族 + 输出/选题旗标 + classics/synastry 的参数
+	 * （2026-09-30 三 skill 合一：全量声明表自此全部归本 skill，全集见 `args.ts` 的 FLAG_GROUPS）。
 	 *
 	 * ⚠️ 这里的每一项都必须是 `args.ts` 的 `FLAG_GROUPS` 里真有的名字：拼错不会报错，
-	 * 只会让那个旗标在**本 skill 里失效**（用户在 help 里看不到它，用了则报「未知参数」）。
+	 * 只会让那个旗标失效（用户在 help 里看不到它，用了则报「未知参数」）。
 	 */
 	flags: [
 		// 出生日期（三选一）
@@ -65,6 +66,8 @@ export const FLAG_SCOPE: FlagScope = {
 		"city",
 		"province",
 		"name",
+		// 命盘输入（synastry 的 a- / b- 前缀叠在 chart 上）
+		"chart",
 		// analyze 专题深入
 		"info",
 		"geju",
@@ -79,14 +82,13 @@ export const FLAG_SCOPE: FlagScope = {
 		"topic",
 		"view",
 		"search",
+		// classics
+		"limit",
 	],
-	sidePrefixes: [],
-	prefixedCommands: [],
 	/**
-	 * 声明表里的 desc 是**全集视角**写的（`--search` 原写着「classics / stars / cities」），
-	 * 而本 skill 没有 `classics` 命令——那句在 help 里会指着一个不存在的命令。
+	 * 合盘的出生方前缀（2026-09-30 合并后唯一的前缀消费者是 synastry 命令）。
+	 * Task 7 输入改 `--charts` 单参数后此表回到空 —— a- / b- 前缀随之退役。
 	 */
-	descOverrides: {
-		search: "stars / cities 检索关键字（也可用位置参数）",
-	},
+	sidePrefixes: ["a-", "b-"],
+	prefixedCommands: ["synastry"],
 };

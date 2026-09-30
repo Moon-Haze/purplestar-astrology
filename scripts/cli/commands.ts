@@ -32,6 +32,8 @@ import {
 	xiaoXianSection,
 } from "./yun";
 import { cmdSelftest } from "./selftest";
+import { cmdClassics } from "./classics";
+import { cmdSynastry } from "./synastry";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
 import { getSiHuaByStem, getLiuNianSiHua, getLiuYueSiHua } from "@/ziwei/sihua";
@@ -432,6 +434,8 @@ const COMMAND_TABLE = {
 	topic: cmdTopic,
 	stars: cmdStars,
 	cities: cmdCities,
+	classics: cmdClassics,
+	synastry: cmdSynastry,
 	selftest: (_args: CliArgs, ctx: CliContext) => cmdSelftest(ctx),
 } satisfies Record<string, Cmd>;
 
@@ -468,5 +472,7 @@ export const COMMAND_DESC: Record<CommandName, string> = {
 	topic: "主题论断（13 主题动态推算：主宫 + 三方四正 + 四化会照 + 大限/流年）",
 	stars: "星曜释义",
 	cities: "城市经纬度查询（真太阳时校正用）",
-	selftest: "回归自检（农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",
+	classics: "古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）",
+	synastry: "合盘（双宫联参 + 夫妻宫断语 + 四化入夫妻宫）",
+	selftest: "回归自检（排盘 / 古籍 / 合盘三段：农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",
 };

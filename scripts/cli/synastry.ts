@@ -1,21 +1,11 @@
 /**
- * 命令实现 —— 合盘 skill 的命令表。
+ * `synastry` 命令：合盘（双宫联参 + 夫妻宫断语）。
  *
- * ⚠️ **本文件是手写的，不是副本**（2026-09-27 起本 skill 与源 skill 不再有派生关系）。
- * 排盘解读 skill 的 `commands.ts` 里有 9 个命令，本 skill 只该有 2 个 ——
- * `analyze` / `topic` 之类出现在这里，只会让 Claude 照着一个跑不通的命令名去敲。
- *
- * ## 本 skill **不排盘**（2026-09-27 起）
- *
- * `synastry` 不再接受出生信息旗标（`--a-date` / `--b-city` 等已整个移除），改为读两份
- * `purplestar-astrology … analyze --json` 的输出。排盘只有一处实现，合盘只做合盘 ——
- * 从前那套「两方各自出生信息 → 就地排两张盘」的写法连同它带进来的排盘底座一并删掉了。
- *
- * ⚠️ 本文件被 `purple-star.ts` **静态** import，故内部 import 一律写全 `.ts` 扩展名
- * （本 skill 不注册解析钩子，靠 Node ≥ 22.15 的原生类型擦除直接加载，见 `purple-star.ts` 文件头）。
+ * 2026-09-30 三 skill 合一时从 synastry 自带的 commands.ts 搬入 —— 实现逐字保留，
+ * 只换 import 来源（`@/synastry` 内核）与命令注册（进 `./commands.ts` 的 COMMAND_TABLE）。
  */
 
-import type { CliArgs } from "./purple-star.ts";
+import type { CliArgs } from "./args";
 import {
 	branchName,
 	fmtDate,
@@ -24,14 +14,10 @@ import {
 	mustPalace,
 	palaceAtBranch,
 	readAnalyzeJson,
-} from "./chart-view.ts";
-import { cmdSelftest } from "./selftest.ts";
-// ⚠️ 相对路径 + 写全 `.ts`：本 skill 已不注册解析钩子，省略扩展名会 ERR_MODULE_NOT_FOUND。
-import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "./synastry-knowledge.ts";
+} from "@/synastry/chart-view";
+import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "@/synastry/synastry-knowledge";
 
 /**
- * `synastry` 命令：合盘（双宫联参 + 夫妻宫断语）。
- *
  * @param args - CLI 参数表；`--a-chart` / `--b-chart` 各指一份 `analyze --json` 的输出文件
  * @returns 已渲染好的文本；带 `--json` 时返回两方命盘摘要的原始 JSON 字符串
  *
@@ -42,27 +28,27 @@ import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "./synas
  * `references/synastry-guide.md`（恒定静态文本，按需读取）。
  *
  * ⚠️ 任一方 `lateZi.candidate` 为真且 `applied` 为假时单独提示：那份盘按**当日早子时**
- * 口径排，若改用晚子时（算次日）重排，该方命盘会整体改变，合盘结论需重跑。本 skill
+ * 口径排，若改用晚子时（算次日）重排，该方命盘会整体改变，合盘结论需重跑。本命令
  * 只**转述**排盘方给的这两个标记，不自己重算真太阳时。
  *
  * ⚠️ 真实出生日期取自 `chart.birthInfo`（排盘方按真太阳时跨午夜调整过的那一份），
- * 真太阳时校正说明取自 `basis.note` —— 两者都来自那份 JSON，本 skill 一个字都不重算。
+ * 真太阳时校正说明取自 `basis.note` —— 两者都来自那份 JSON，本命令一个字都不重算。
  */
-function cmdsynastry(args: CliArgs) {
-	// 两个旗标都必填：本 skill 不排盘，没有它们什么都做不了。
-	// ⚠️ 缺失时报错，而**不是**回退去读出生信息旗标 —— 那种回退会让本 skill 悄悄又变成
-	//    排盘方，本次改造就白做了（且回退路径无人测，必然腐坏）。
+export function cmdSynastry(args: CliArgs): string {
+	// 两个旗标都必填：本命令不排盘，没有它们什么都做不了。
+	// ⚠️ 缺失时报错，而**不是**回退去读出生信息旗标 —— 那种回退会让本命令悄悄又变成
+	//    排盘方（且回退路径无人测，必然腐坏）。
 	if (typeof args.aChart !== "string" || typeof args.bChart !== "string") {
 		const missing = [
 			...(typeof args.aChart === "string" ? [] : ["--a-chart"]),
 			...(typeof args.bChart === "string" ? [] : ["--b-chart"]),
 		];
 		throw new Error(
-			`缺少 ${missing.join(" / ")}：本 skill 不排盘，两方命盘都得由 purplestar-astrology 给出。\n` +
+			`缺少 ${missing.join(" / ")}：本命令不排盘，两方命盘都得由排盘命令给出。\n` +
 				`  ① 先各排一张盘（注意是 analyze，不是 chart —— 后者没有四化落宫与排盘依据）：\n` +
-				`     node <purplestar-astrology>/scripts/purple-star.ts analyze \\\n` +
+				`     node scripts/purple-star.ts analyze \\\n` +
 				`       --date 1990-05-15 --time 09:30 --city 北京 --gender male --json > /tmp/a.json\n` +
-				`     node <purplestar-astrology>/scripts/purple-star.ts analyze \\\n` +
+				`     node scripts/purple-star.ts analyze \\\n` +
 				`       --date 1993-08-22 --time 14:00 --city 上海 --gender female --json > /tmp/b.json\n` +
 				`  ② 再交给本命令：\n` +
 				`     node scripts/purple-star.ts synastry --a-chart /tmp/a.json --b-chart /tmp/b.json`
@@ -129,7 +115,7 @@ function cmdsynastry(args: CliArgs) {
 		if (side.lateZi.candidate && !side.lateZi.applied) {
 			out.push(`⚠️ ${label}方出生时间落在 23:00–23:59（晚子时），这份盘按当日早子时口径排。`);
 			out.push(
-				`   若该方确为 23:00 后出生、需按晚子时（算次日）口径，请回 purplestar-astrology` +
+				`   若该方确为 23:00 后出生、需按晚子时（算次日）口径，请回排盘命令` +
 					`重排${label}方 —— 该方命盘会整体改变，合盘结论随之作废，须重跑本命令。`
 			);
 		}
@@ -183,7 +169,7 @@ function cmdsynastry(args: CliArgs) {
 	out.push("");
 
 	// 四化入夫妻宫：SIHUA_IN_FUQI_GU 的键是「化禄/化权/化科/化忌」，落宫由排盘方给
-	// （`nativeSiHua.located`，与盘面宫名同源，本 skill 不重算）
+	// （`nativeSiHua.located`，与盘面宫名同源，本命令不重算）
 	out.push("【生年四化入夫妻宫】");
 	let sihuaHit = 0;
 	for (const [label, side, fuqi] of [
@@ -228,53 +214,3 @@ function cmdsynastry(args: CliArgs) {
 
 	return out.join("\n");
 }
-
-// ══════════════════════ 命令表 ══════════════════════
-
-/** 命令实现的签名：返回**已渲染好的文本**，由入口统一 `console.log`。 */
-type Cmd = (args: CliArgs) => string;
-
-/**
- * 命令名 → 实现。
- *
- * @remarks
- * 刻意**不导出**这张裸表：导出的是下面两个视图（{@link COMMANDS} 供分发、
- * {@link COMMAND_DESC} 供渲染 HELP）。调用方拿不到「键集与描述可能对不上」的中间态。
- *
- * 用 `satisfies` 而非 `: Record<...>` 标注，是为了保住字面量键集 ——
- * `CommandName` 与 `COMMAND_DESC` 的完备性都建立在它之上。
- *
- * ⚠️ `selftest` 这项写成 `() => cmdSelftest()` 而不是直接 `cmdSelftest`：TS 允许参数更少的
- * 函数赋给参数更多的类型，故直接写也对 —— 但显式零参更能说明「自检不需要参数」
- * （从前它要 `ctx`，只为了拿内核根；现在内核根由 `selftest.ts` 自己算）。
- */
-const COMMAND_TABLE = {
-	synastry: cmdsynastry,
-	selftest: () => cmdSelftest(),
-} satisfies Record<string, Cmd>;
-
-/** 合法命令名。 */
-export type CommandName = keyof typeof COMMAND_TABLE;
-
-/**
- * 分发用的命令表：命令名 → 实现。
- *
- * @remarks
- * 值类型显式写出 `| undefined`：命令名来自 argv，查表必然未命中，
- * 这里让「未命中」在类型上就成立，而不是靠断言把 undefined 抹掉。
- *
- * `help` 不在表内 —— 入口单独处理，见 `purple-star.ts` 的 `main()`。
- */
-export const COMMANDS: Record<string, Cmd | undefined> = COMMAND_TABLE;
-
-/**
- * 命令名 → 一行说明，HELP 的命令段据此派生。
- *
- * @remarks
- * 类型写成 `Record<CommandName, string>` 而非 `Record<string, string>`：**新增命令忘了
- * 写说明就编译不过**。
- */
-export const COMMAND_DESC: Record<CommandName, string> = {
-	synastry: "合盘（双宫联参 + 夫妻宫断语 + 四化入夫妻宫）",
-	selftest: "回归自检（命令冒烟 / 参数面 / SKILL.md 一致）",
-};

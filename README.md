@@ -65,11 +65,11 @@ node scripts/purple-star.ts analyze \
 node scripts/purple-star.ts analyze \
      --date 1993-08-22 --time 14:00 --city 上海 --gender female --json > /tmp/b.json
 # 再把两份 JSON 交给合盘 skill（必须来自 analyze 而非 chart：后者没有四化落宫与排盘依据）
-node skills/purplestar-synastry/scripts/purple-star.ts synastry \
+node scripts/purple-star.ts synastry \
      --a-chart /tmp/a.json --b-chart /tmp/b.json
-# 合盘方法论与评分标准：读 skills/purplestar-synastry/references/synastry-guide.md（静态参考）
+# 合盘方法论与评分标准：读 references/synastry-guide.md（静态参考）
 
-node skills/purplestar-classics/scripts/purple-star.ts classics --search 机月同梁
+node scripts/purple-star.ts classics --search 机月同梁
 node scripts/purple-star.ts help        # 本技能的命令与参数
 node scripts/purple-star.ts selftest    # 回归自检
 
@@ -118,10 +118,10 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 | ---------------------------------------- | ---------------------------------------------------------- |
 | 排盘算法、格局库（含古籍出处与破格条件） | `scripts/ziwei/patterns/`      |
 | 四化体系、流年流月推法                   | `scripts/ziwei/sihua.ts`       |
-| 十四主星在夫妻宫断语、四化入夫妻宫       | `skills/purplestar-synastry/scripts/synastry-knowledge.ts` |
-| 合盘方法论与评分标准                     | `skills/purplestar-synastry/references/synastry-guide.md`  |
+| 十四主星在夫妻宫断语、四化入夫妻宫       | `scripts/synastry/synastry-knowledge.ts` |
+| 合盘方法论与评分标准                     | `references/synastry-guide.md`  |
 | 中国城市经纬度（真太阳时校正）           | `scripts/ziwei/cities.ts`      |
-| 三部古籍原文                             | `skills/purplestar-classics/scripts/data/`                 |
+| 三部古籍原文                             | `scripts/classics/data/`                 |
 
 **不含**线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/`——它们未随 skill 分发，解读请依赖上表知识源。
 
@@ -170,8 +170,8 @@ JSON，见 `purplestar-synastry/scripts/chart-view.ts` 自带的消费方类型�
 ```bash
 node scripts/purple-star.ts selftest   # 第一层：代码逻辑自洽
 npm test                                 # 第二层：与 toolkit 样本的基准比对（约 8 秒）
-node skills/purplestar-synastry/scripts/purple-star.ts selftest    # 另两个 skill 各测各的
-node skills/purplestar-classics/scripts/purple-star.ts selftest
+# 合盘断言已并入主 selftest（三段合一）    # 另两个 skill 各测各的
+node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三段合一）
 
 npm run test:corpus -- --year 1960       # 可选：全量核验（8,640 条，约 2 分钟）
 npm run typecheck                        # 改过类型标注就该跑（必须 0 错误）

@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
-import { loadAlgorithm, loadSihua, load, loadFromSkill, ROOT, ROOT_LABEL } from "./lib/loader.ts";
+import { loadAlgorithm, loadSihua, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
 import { BRANCHES, chartSignature } from "./lib/compare.ts";
 
 const execFileAsync = promisify(execFile);
@@ -27,10 +27,13 @@ const SKILL_ROOT = resolve(HERE, "..");
 // ── 各 skill 的 CLI 入口 ──
 // 三个 skill 互相独立、各有各的 purple-star.ts 与内核（见 CLAUDE.md「三个 skill 之间没有关系」），
 // 因此必须**逐个入口**测到 —— 只测排盘那份的话，另两个 skill 的 CLI 入口写错在测试里看不见。
+// ── CLI 入口 ──
+// 2026-09-30 三 skill 合一后只有一条入口（仓库根 scripts/purple-star.ts）；表保留三键，
+// 用例按命令族分发，路径全指根 CLI。
 const CLI = {
 	astrology: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
-	synastry: resolve(SKILL_ROOT, "skills/purplestar-synastry/scripts/purple-star.ts"),
-	classics: resolve(SKILL_ROOT, "skills/purplestar-classics/scripts/purple-star.ts"),
+	synastry: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
+	classics: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
 } as const;
 /** 上面那张表的键。新增 skill 时这里会跟着报错，提醒把用例指过去。 */
 type Skill = keyof typeof CLI;
@@ -654,7 +657,8 @@ describe("CLI 端到端", () => {
 			assert.ok(m, `末行不是指向 references/*.md 的指针：${pointer}`);
 
 			// 文件改名或删掉时红在这里，而不是红在 Claude 打开一个不存在的文件时。
-			const mdPath = resolve(SKILL_ROOT, "skills/purplestar-synastry", m[0]);
+			// 2026-09-30 起指针相对**仓库根**（合并后 skill 根 = 仓库根）。
+			const mdPath = resolve(SKILL_ROOT, m[0]);
 			assert.ok(existsSync(mdPath), `指针指向的参考文档不存在：${m[0]}`);
 		});
 	});
@@ -886,9 +890,9 @@ describe("CLI 端到端", () => {
 		it("晚子时提醒只落在命中的一方，且把用户送回排盘方", async () => {
 			// 甲方钟表 23:30、东经 120°（校正量为 0），校正后仍是晚子时；乙方正常。
 			//
-			// ⚠️ 口径**不在本 skill 里选**：提醒必须指向 `purplestar-astrology` 重排。
-			// 从前这里断言的是 `--a-late-zi`；那个旗标自 2026-09-27 起归排盘方，写在本 skill
-			// 的输出里等于让用户去敲一个必然被拒的参数 —— 断言跟着实现一起改，才不会两边都错。
+			// ⚠️ 口径**不在 synastry 里选**：提醒必须把用户送回**排盘命令**（2026-09-30 三 skill
+			// 合一后同一条 CLI 的 analyze --late-zi）重排。从前断言的是 `--a-late-zi`；
+			// 那个旗标自 2026-09-27 起归排盘方，写在合盘输出里等于让用户去敲一个必然被拒的参数。
 			const t = await cliCmd(
 				"synastry",
 				await argsOf({ ...A, time: "23:30" }, B),
@@ -896,8 +900,8 @@ describe("CLI 端到端", () => {
 			);
 			assert.ok(t.includes("⚠️ 甲方出生时间落在 23:00–23:59"), "应提示甲方落在晚子时");
 			assert.ok(
-				t.includes("purplestar-astrology"),
-				"应把用户送回排盘 skill 用晚子时口径重排"
+				t.includes("重排"),
+				"应把用户送回排盘命令用晚子时口径重排"
 			);
 			assert.ok(!t.includes("⚠️ 乙方出生时间"), "乙方不在晚子时，不应被提示");
 		});
@@ -932,10 +936,7 @@ describe("CLI 端到端", () => {
 	//
 	// ⚠️ 该 md **不被任何运行时路径读取** —— 读它的只有本组用例与 synastry 的 `selftest`。
 	describe("合盘方法论参考文档", () => {
-		const GUIDE = resolve(
-			SKILL_ROOT,
-			"skills/purplestar-synastry/references/synastry-guide.md"
-		);
+		const GUIDE = resolve(SKILL_ROOT, "references/synastry-guide.md");
 
 		it("评分标准五档按源序齐全，方法论正文完整", () => {
 			const md = readFileSync(GUIDE, "utf8");
@@ -1475,16 +1476,10 @@ describe("CLI 端到端", () => {
 
 	// ── classics 古籍检索 ──
 	describe("classics 古籍检索（searchClassics 分支）", () => {
-		// ⚠️ 古籍内核自 2026-09-27 起归 purplestar-classics，源的解析钩子够不到它 ——
-		//    故走 loadFromSkill 而非 load。本组测的是**古籍文本本身**（分词、limit 截断、
-		//    snippet 窗口），不是「源的内核」，换加载口径即可，不必删用例。
-		//    ⚠️ `rel` 是 `"index"`：同日断派生关系后那份内核不再有 `classics/` 这一层，
-		//    入口即 `scripts/index.ts`。类型锚与 `rel` 分开，只改前者会**运行期**炸。
-		const loadClassics = () =>
-			loadFromSkill<typeof import("../skills/purplestar-classics/scripts/index")>(
-				"purplestar-classics",
-				"index"
-			);
+		// ⚠️ 古籍内核 2026-09-30 并入根 `scripts/classics/`，`@/classics` 别名可达 ——
+		//    与其他内核模块同一加载口径。本组测的是**古籍文本本身**（分词、limit 截断、
+		//    snippet 窗口）。
+		const loadClassics = () => load<typeof import("@/classics")>("@/classics");
 
 		it("空查询返回空数组（不把空白当关键词）", async () => {
 			const { searchClassics } = await loadClassics();

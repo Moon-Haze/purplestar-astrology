@@ -45,6 +45,16 @@ import { getSiHuaByStem, getYearStemIndex, getLiuYueSiHua } from "@/ziwei/sihua"
 import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
 import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { Lunar } from "lunar-typescript";
+import { asserts as classicAsserts } from "@/classics/selftest-asserts";
+import { asserts as synastryAsserts } from "@/synastry/selftest-asserts";
+
+/**
+ * 排盘断言的固定样例盘：1990-05-15 巳时（时辰序号 5），男。
+ *
+ * @remarks
+ * 虚构样本，无真实人物（换样本组时改这一处；各断言的期望值均按本样本盘校准）。
+ */
+const SAMPLE: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male" };
 
 /**
  * `selftest` 命令：跑一组排盘不变量与知识源可用性断言，返回逐项报告。
@@ -106,8 +116,8 @@ export function cmdSelftest(ctx: CliContext): string {
 		}
 	};
 
-	/** 排盘不变量与三合派约束断言共用的样本盘：1990-05-15 巳时（时辰序号 5），男 */
-	const sample: BirthInfo = { year: 1990, month: 5, day: 15, hour: 5, gender: "male" };
+	/** 排盘不变量与三合派约束断言共用的样本盘（模块级 SAMPLE 的别名，见其注释） */
+	const sample = SAMPLE;
 	const sol = (y: number, m: number, d: number) => `${y}-${m}-${d}`;
 
 	// ── 1. 农历 → 公历换算 ──
@@ -485,6 +495,40 @@ export function cmdSelftest(ctx: CliContext): string {
 	});
 
 	// ── 5.5 运限数据面（小限 / 命主 / 身主 / 斗君）──
+	ok("排盘不变量：随机样本自洽（伪随机 20 盘：十二宫 / ages 覆盖 / 斗君 / 星曜分类）", () => {
+		// 随机性进测试覆盖、不进期望值（spec §3.4）：线性同余取**确定性伪随机**——
+		// 「随机」的样本覆盖是可复现的，任何一次运行都不依赖真随机性。
+		let seed = 20260930;
+		const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+		for (let i = 0; i < 20; i++) {
+			const year = 1950 + Math.floor(rnd() * 60),
+				month = 1 + Math.floor(rnd() * 12),
+				day = 1 + Math.floor(rnd() * 28);
+			const c = generateChart({
+				year,
+				month,
+				day,
+				hour: Math.floor(rnd() * 13),
+				gender: rnd() > 0.5 ? "male" : "female",
+			});
+			if (c.palaces.length !== 12 || new Set(c.palaces.map(p => p.branch)).size !== 12)
+				throw new Error(`${year}-${month}-${day} 十二宫不自洽`);
+			const ages = [...new Set(c.palaces.flatMap(p => p.xiaoXianAges ?? []))].sort(
+				(a, b) => a - b
+			);
+			if (ages.length !== 120 || ages[0] !== 1 || ages[119] !== 120)
+				throw new Error(`${year}-${month}-${day} ages 覆盖不自洽`);
+			if (c.douJunBranch < 0 || c.douJunBranch > 11) throw new Error("斗君越界");
+			if (
+				c.palaces.some(p =>
+					p.stars.some(st => !["major", "minor", "lucky", "sha"].includes(st.type))
+				)
+			)
+				throw new Error("星曜类型值不自洽");
+		}
+		return "20 个伪随机盘全部自洽";
+	});
+
 	ok("运限数据：小限岁数表 1–120 连续、每宫恰 10 个（iztro ages 提取）", () => {
 		const c = generateChart(sample);
 		const all = c.palaces.flatMap(p => p.xiaoXianAges ?? []);
@@ -678,18 +722,15 @@ export function cmdSelftest(ctx: CliContext): string {
 				throw new Error(`${bad} 的提示应指向 --${want}，实得：${msg}`);
 		}
 		// 作用域收窄探针：**本 skill 不认**的旗标必须报错，而不是静默收下。
-		// `--limit` 归古籍检索 skill、`a-` / `b-` 前缀归合盘 —— 二者都在本 skill 的
-		// cli/flag-scope.ts 之外。收窄之前 parseArgs 会照单全收（`analyze --limit 5` 静默无效，
-		// `--a-city` 被整个忽略、排出的还是默认经度的盘）。
+		// 合并后 `--limit`（classics）与 `--chart`（synastry 的 --a-chart/--b-chart 裸底名）
+		// 都进了本 skill 作用域，故收窄探针只剩**出生方前缀**这一维：`a-` / `b-` 前缀
+		// 只有 synastry 命令认，叠在 analyze 上必须报「前缀只有 synastry 命令认」。
 		//
-		// ⚠️ 少了这一条，哪天有人把 args.ts 的作用域过滤摘掉，源的 help 会重新列出这些
-		// 旗标，而**没有任何断言变红** —— 那正是本次收窄要防的回归。
+		// ⚠️ 少了这一条，哪天有人把 args.ts 的前缀收窄摘掉，`analyze --a-chart x` 会静默
+		// 通过 —— 而没有任何断言变红。
 		const outOfScope: Array<[string, string]> = [
-			["--limit", "5"], // 古籍检索专有
-			// 合盘的命盘前缀（2026-09-27 起合盘不排盘，前缀叠在 --chart 上而不在出生信息旗标上）。
-			// ⚠️ 探针必须挑**真实存在、只是归别处**的旗标：`--a-city` 一类自合盘撤出排盘后
-			// 已从声明表整个消失，拿它当探针会退化成「不存在的旗标当然报错」，与上面那组
-			// 拼写错误探针重叠 —— 跨 skill 越界这个真正的故障模式就测不出来了。
+			// 合盘的命盘前缀（真实存在、只是归 synastry 命令）：探针必须挑这种「存在但错位」
+			// 的旗标，不存在的旗标与上面那组拼写错误探针重叠。
 			["--a-chart", "/tmp/a.json"],
 			["--b-chart", "/tmp/b.json"],
 		];
@@ -932,6 +973,22 @@ export function cmdSelftest(ctx: CliContext): string {
 		if (unknown.length)
 			throw new Error(`SKILL.md 提到但 commands.ts 未定义的命令：${unknown.join("、")}`);
 		return `${mentioned.length} 个命令全部有实现`;
+	});
+
+	ok("合并自检：古籍 / 合盘断言组并入（三段合计）", () => {
+		// 2026-09-30 三 skill 合一：classics 与 synastry 的自检断言各自住在
+		// scripts/classics/selftest-asserts.ts 与 scripts/synastry/selftest-asserts.ts，
+		// 由本命令汇总执行 —— 报告分三段（排盘 / 古籍 / 合盘），首行「通过 N/N」为合计。
+		const classics = classicAsserts();
+		const synastry = synastryAsserts();
+		if (!classics.length || !synastry.length) throw new Error("断言组为空——搬移未完成");
+		results.push({ pass: true, name: "── 古籍 ──", detail: "" });
+		for (const r of classics) results.push(r);
+		results.push({ pass: true, name: "── 合盘 ──", detail: "" });
+		for (const r of synastry) results.push(r);
+		return `古籍 ${classics.filter(x => x.pass).length}/${classics.length} · 合盘 ${
+			synastry.filter(x => x.pass).length
+		}/${synastry.length}`;
 	});
 
 	// ── 输出 ──

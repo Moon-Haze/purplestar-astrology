@@ -73,6 +73,8 @@ type PatternsModule = typeof import("@/ziwei/patterns");
 type SihuaModule = typeof import("@/ziwei/sihua");
 type ConstantsModule = typeof import("@/ziwei/constants");
 type CitiesModule = typeof import("@/ziwei/cities");
+type ClassicsModule = typeof import("@/classics");
+type ChartViewModule = typeof import("@/synastry/chart-view");
 type ArgsModule = typeof import("@/cli/args");
 type CommandsModule = typeof import("@/cli/commands");
 
@@ -173,6 +175,9 @@ const { STEMS, BRANCHES, SHICHEN, STAR_DESCRIPTIONS } =
 	await load<ConstantsModule>("@/ziwei/constants");
 const { PROVINCES } = await load<CitiesModule>("@/ziwei/cities");
 const { Lunar } = await load<typeof import("lunar-typescript")>("lunar-typescript");
+// classics / synastry 的关键导出（2026-09-30 三 skill 合一）：分别对应两条命令的内核入口
+const { searchClassics } = await load<ClassicsModule>("@/classics");
+const { readAnalyzeJson } = await load<ChartViewModule>("@/synastry/chart-view");
 
 const { parseArgs, cli } = await load<ArgsModule>("@/cli/args");
 const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
@@ -203,6 +208,8 @@ const REQUIRED_EXPORTS = [
 	["STAR_DESCRIPTIONS", STAR_DESCRIPTIONS],
 	["PROVINCES", PROVINCES],
 	["Lunar", Lunar],
+	["searchClassics", searchClassics],
+	["readAnalyzeJson", readAnalyzeJson],
 ];
 {
 	const missing = REQUIRED_EXPORTS.filter(([, v]) => v === undefined || v === null).map(

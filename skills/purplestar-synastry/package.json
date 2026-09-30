@@ -1,7 +1,0 @@
-{
-	"name": "purplestar-synastry",
-	"version": "1.0.0",
-	"private": true,
-	"type": "module",
-	"description": "紫微斗数合盘与合婚 skill（倪海夏《天纪》三合派）—— 双宫联参（夫妻宫 × 福德宫）。零排盘引擎、零依赖：命盘由 purplestar-astrology 的 analyze --json 产出，本 skill 只读它的输出，参数面（声明表 + 解析 + help）内联在 scripts/purple-star.ts 里 —— 可直接拷贝到 ~/.claude/skills/ 使用（另需 purplestar-astrology 在场排盘）。"
-}

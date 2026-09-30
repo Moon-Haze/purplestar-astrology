@@ -14,7 +14,7 @@
 // 历史：本文件曾是 purple-star.ts 里 pickRoot / registerHooks / load 三者的**逐行副本**，
 // 靠注释提醒「两者必须保持行为一致」，只有 test/cli.test.ts 一条断言间接盯着。
 // 副本分叉不会被任何测试抓住 —— 它只影响「测试怎么观察内核」，测试本身照旧全绿。
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 // ⚠️ 带 `.ts` 扩展名，且 boot-hooks.ts 只依赖 `node:` 内置 —— 故本行在解析钩子注册之前
@@ -81,7 +81,7 @@ export const load = makeLoader(ROOT, ROOT_LABEL, f => {
 // ── 内核模块入口 ──
 // 每次调用都走 import()，命中 ESM 缓存，无重复解析开销。
 // 返回类型用 `typeof import("@/…")` 静态锚定：tsconfig 的 paths 让 tsc 把 `@/` 解析到
-// 排盘解读 skill 的 scripts/ 下的真实模块（从而拿到**真实导出签名**，内核签名变了这里跟着红）；
+// 仓库根 scripts/ 下的真实模块（从而拿到**真实导出签名**，内核签名变了这里跟着红）；
 // 运行时该类型整体擦除，实际加载仍走上面的动态 import + 解析钩子。
 // ⚠️ `load<T>()` 是字符串动态导入，tsc 本不检查 —— 类型锚定全靠这里的 typeof import，
 //    这正是 CLI 引导层同款模式（详见 CLAUDE.md「CLI 如何既自举又拿到内核类型」）。
@@ -89,43 +89,11 @@ export const loadAlgorithm = () => load<typeof import("@/ziwei/algorithm")>("@/z
 export const loadConstants = () => load<typeof import("@/ziwei/constants")>("@/ziwei/constants");
 export const loadPatterns = () => load<typeof import("@/ziwei/patterns")>("@/ziwei/patterns");
 export const loadSihua = () => load<typeof import("@/ziwei/sihua")>("@/ziwei/sihua");
+export const loadClassics = () => load<typeof import("@/classics")>("@/classics");
 export const loadRender = () => load<typeof import("@/cli/render")>("@/cli/render");
 
 /** 一次性取回测试最常用的符号。 */
 export async function loadKernel() {
 	const [algo, constants] = await Promise.all([loadAlgorithm(), loadConstants()]);
 	return { ...algo, ...constants };
-}
-
-// ── 跨 skill 加载 ──
-
-/** `skills/` 目录（各 skill 同处一层），跨 skill 加载的基准。 */
-const SKILLS_DIR = resolve(HERE, "../../skills");
-
-/**
- * 从**其它 skill** 的内核里加载一个模块。
- *
- * @param skill - skill 目录名，如 `"purplestar-classics"`
- * @param rel - 相对该 skill `scripts/` 的路径（**不带扩展名**，且必须是**单文件**）
- * @returns 该模块的导出；类型由调用点的泛型锚定
- *
- * @remarks
- * **为什么需要它**：`@/` 在运行期解析到**当前运行中 CLI 的内核根**（这里是源 skill 的
- * `scripts/`），而 `classics/`（归 `purplestar-classics`）与各 skill 自写的
- * `cli/flag-scope.ts` 自 2026-09-27 起都不住在源里 —— 源的钩子**够不到**它们了。
- * 这几条用例测的不是「源的内核」而是「那些模块本身」（古籍文本的排版不变量与检索行为、
- * 各 skill 的旗标作用域），所以换口径加载，而不是删用例。
- *
- * **为什么不在 `boot-hooks.ts` 加第二个 `@/` 基准**：`@/` == 当前 CLI 的内核根是
- * 文档化的不变量，且多个解析钩子之间**不会互相兜底**（前一个抛 `ERR_MODULE_NOT_FOUND`
- * 不会落到后一个）。本函数因此绕开钩子，直接用绝对 `file://` URL 走 Node 默认解析 ——
- * 代价是**类型锚必须写在调用点**（`loadFromSkill<typeof import("../../skills/…")>()`），
- * 用仓库相对字面路径，因为 tsc 的 `paths` 只把 `@/` 映到源。
- *
- * ⚠️ `rel` 不带扩展名（本函数补 `.ts`），且**不支持目录模块**（`./patterns` 那种）——
- * 需要时再补候选序，别在这里顺手抄一份 `makeResolveHook` 的解析逻辑。
- */
-export function loadFromSkill<T>(skill: string, rel: string): Promise<T> {
-	const abs = resolve(SKILLS_DIR, skill, "scripts", rel) + ".ts";
-	return import(pathToFileURL(abs).href) as Promise<T>;
 }
