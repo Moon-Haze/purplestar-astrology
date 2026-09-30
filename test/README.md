@@ -1,7 +1,7 @@
 # 排盘基准测试
 
 本目录是本 skill 的回归测试，用 518,400 条紫微斗数样本作为 golden 基准，
-锁定 `skills/purplestar-astrology/scripts/ziwei/` 排盘内核的行为。
+锁定 `scripts/ziwei/` 排盘内核的行为。
 
 语料有**三个等价载体，并存且互为验证**（不是备份关系，也不是孤本）：
 
@@ -27,7 +27,7 @@ npm test -- --year 1953                   # 同上，但层 1 只跑 1953 年的
 npm run test:corpus -- --year 1960        # 全量核验：只跑 1960 年（8,640 条，约 2 分钟）
 npm run test:corpus                       # 全量核验：518,400 条，约 2.3 小时
 
-node skills/purplestar-astrology/scripts/purple-star.ts selftest     # CLI 自带的自检（与本套测试分工不同，见下）
+node scripts/purple-star.ts selftest     # CLI 自带的自检（与本套测试分工不同，见下）
 npm run typecheck                        # 类型检查：必须 0 错误（与本套测试也分工不同）
 
 # 每个 skill 的自检都在它自己的 scripts/ 下（三份互不相同，各测各的命令与参数面）
@@ -43,7 +43,7 @@ node skills/purplestar-synastry/scripts/purple-star.ts selftest
 **标得对**——把 `Star` 写成 `any` 它一样全绿。它能抓的是「改了内核签名、忘了改调用点」这类
 结构性失配，抓不到任何行为漂移。所以它不替代上面两者，只作为前置闸门。
 
-**本套测试测的排盘内核只有源这一份。** `skills/purplestar-astrology/scripts/` 是排盘内核的
+**本套测试测的排盘内核只有源这一份。** `scripts/` 是排盘内核的
 唯一实现——其余 skill 都不排盘（合盘消费源排好的命盘 JSON，古籍检索根本没有排盘内核）。
 所以「改排盘内核」的循环就是 **改源 → `npm test`**，没有别的副本要同步。
 
@@ -100,7 +100,7 @@ node skills/purplestar-synastry/scripts/purple-star.ts selftest
 
 ### 1. 它是回归锁定，不是正确性证明
 
-基准样本由 toolkit 的 `lib/ziwei/algorithm.ts` 生成，与本项目 `skills/purplestar-astrology/scripts/ziwei/algorithm.ts`
+基准样本由 toolkit 的 `lib/ziwei/algorithm.ts` 生成，与本项目 `scripts/ziwei/algorithm.ts`
 **同源**（都调 iztro 的 `bySolar`）。所以这套测试能回答的是「行为有没有变」，
 **不能**回答「盘排得对不对」—— 两边一起错的地方（比如 iztro 自身某个安星算法有误）测不出来。
 
@@ -137,7 +137,7 @@ node skills/purplestar-synastry/scripts/purple-star.ts selftest
 
 ### 5. 随运行年份漂移的字段，测试自己重算
 
-`skills/purplestar-astrology/scripts/ziwei/algorithm.ts` 的 `currentAge` 是**虚岁**（农历年差 +1，以正月初一为界），
+`scripts/ziwei/algorithm.ts` 的 `currentAge` 是**虚岁**（农历年差 +1，以正月初一为界），
 影响 `chart.currentAge`、`chart.currentDaXianIndex`、`palace.isCurrentDaXian` 三处。
 
 样本生成于 2026 年，直接比对会在**跨过下一个正月初一后全线失败**。故比对器
@@ -382,7 +382,7 @@ node test/tools/export-raw-rows.ts
 
 ```bash
 npm install iztro@<新版本>
-node skills/purplestar-astrology/scripts/purple-star.ts selftest       # 1. 先过 CLI 自检
+node scripts/purple-star.ts selftest       # 1. 先过 CLI 自检
 npm test                                   # 2. 跑基准回归
 npm run typecheck                          # 3. 类型检查（升级 iztro 可能改到类型面）
 ```
@@ -434,7 +434,7 @@ test/
 
 ### 需要留意的维护点
 
-1. **`lib/loader.ts` 与 CLI 共用 `skills/purplestar-astrology/scripts/boot-hooks.ts`**（内核根定位 /
+1. **`lib/loader.ts` 与 CLI 共用 `scripts/boot-hooks.ts`**（内核根定位 /
    解析钩子 / 动态加载），只有**策略**各写各的：CLI 失败时 `console.error` + `process.exit(1)`，
    测试需要**抛错**而非退进程。策略经 `onFailure` 与 `candidates` 两个入参传入，机制仍只有一份 ——
    故改 `boot-hooks.ts` 时两侧同时生效，不必手动同步（这正是它当初从两份逐行副本收成一份共享模块

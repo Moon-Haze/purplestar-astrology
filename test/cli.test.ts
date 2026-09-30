@@ -28,7 +28,7 @@ const SKILL_ROOT = resolve(HERE, "..");
 // 三个 skill 互相独立、各有各的 purple-star.ts 与内核（见 CLAUDE.md「三个 skill 之间没有关系」），
 // 因此必须**逐个入口**测到 —— 只测排盘那份的话，另两个 skill 的 CLI 入口写错在测试里看不见。
 const CLI = {
-	astrology: resolve(SKILL_ROOT, "skills/purplestar-astrology/scripts/purple-star.ts"),
+	astrology: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
 	synastry: resolve(SKILL_ROOT, "skills/purplestar-synastry/scripts/purple-star.ts"),
 	classics: resolve(SKILL_ROOT, "skills/purplestar-classics/scripts/purple-star.ts"),
 } as const;
@@ -984,7 +984,7 @@ describe("CLI 端到端", () => {
 	});
 
 	describe("内核加载防漂移", () => {
-		// 引导机制已收敛到 skills/purplestar-astrology/scripts/boot-hooks.ts 一份实现（CLI 与 test/lib/loader.ts 共用），
+		// 引导机制已收敛到 scripts/boot-hooks.ts 一份实现（CLI 与 test/lib/loader.ts 共用），
 		// 故「两侧别名解析分叉」这类缺陷在结构上不再可能。这条断言守的是另一件事：
 		// 进程内内核（走 loader 的钩子）与**真实 CLI 子进程**（走 purple-star 的钩子）
 		// 是否仍排出同一张盘 —— 既覆盖内核本身被改坏，也覆盖两条引导路径的调用策略被改坏。

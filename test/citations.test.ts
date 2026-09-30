@@ -31,9 +31,9 @@ import { dirname, resolve } from "node:path";
 
 import { scanCitations } from "./lib/citation-guard.ts";
 import { ALL_SKILLS, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
-// ⚠️ 核对表是**唯一一份数据资产**，它留在源 skill 的内核里。上面那份 `scanCitations`
-//    也是 2026-09-27 从同一个 skill 的 `ziwei/` 下移出来的 —— 数据留原地，逻辑搬到测试侧。
-import { ANNOTATIONS } from "../skills/purplestar-astrology/scripts/ziwei/annotations.ts";
+// ⚠️ 核对表是**唯一一份数据资产**，它留在内核里。上面那份 `scanCitations`
+//    也是 2026-09-27 从内核的 `ziwei/` 下移出来的 —— 数据留原地，逻辑搬到测试侧。
+import { ANNOTATIONS } from "../scripts/ziwei/annotations.ts";
 
 /**
  * 从核对表里现取一条未核实引文的核心，用作违例样本。

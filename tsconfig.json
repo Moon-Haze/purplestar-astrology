@@ -13,9 +13,9 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
     "paths": {
-      "@/*": ["./skills/purplestar-astrology/scripts/*"]
+      "@/*": ["./scripts/*"]
     }
   },
-  "include": ["skills/**/*.ts", "test/**/*.ts", "tools/**/*.ts"],
+  "include": ["scripts/**/*.ts", "skills/**/*.ts", "test/**/*.ts", "tools/**/*.ts"],
   "exclude": ["node_modules", "reference"]
 }

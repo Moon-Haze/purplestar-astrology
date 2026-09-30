@@ -31,7 +31,7 @@ skill —— **文件就是它自己的实现**，读代码的人不必先问「
 整套机制（`tools/skills.ts`、`tools/sync-skills.ts`、`sync:skills` script）与层 6 里为此建的
 一批断言，以及派生 skill 里的 `boot-hooks.ts`、`cli/args.ts`、`cli/flag-scope.ts`。
 
-**唯一还成立的那句话是**：排盘内核只有一处实现 —— `skills/purplestar-astrology/scripts/`。
+**唯一还成立的那句话是**：排盘内核只有一处实现 —— `scripts/`。
 其余两个 skill 都不排盘（合盘消费源排好的 `analyze --json`，古籍检索根本没有排盘内核），
 **改排盘逻辑一律改源**，改完跑 `npm test`，没有第二步。
 
@@ -40,7 +40,7 @@ skill —— **文件就是它自己的实现**，读代码的人不必先问「
 - **`SKILL.md` 与 skill 内部的一切路径，相对 skill 根** —— `node scripts/purple-star.ts`。skill 是可被
   单独拷走的最小单元，写全路径到时会失效。
 - **仓库级文档（本文件、`README.md`、`test/`）写相对仓库根的全路径** ——
-  `skills/purplestar-astrology/scripts/purple-star.ts`。
+  `scripts/purple-star.ts`。
 - 下文的目录树以 **`<仓库根>/skills/purplestar-astrology/`** 为根展开，树内条目不再前缀。
 
 ## 命令
@@ -53,11 +53,11 @@ skill —— **文件就是它自己的实现**，读代码的人不必先问「
 npm install        # 装仓库级依赖（测试与工具用）
 
 # 主力命令：默认精简概览（总览 + 运限速览），深入靠专题旗标（可叠加，2026-09-28 起）
-node skills/purplestar-astrology/scripts/purple-star.ts analyze \
+node scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male
 # 专题旗标族：--info 基本信息（四柱/命主身主/斗君）· --geju 格局 · --sihua 四化
 #   --liunian [年] 流年 · --daxian [虚岁] 十年大运 · --xiaoxian [虚岁] 小限 · --focus <宫> 宫盘
-node skills/purplestar-astrology/scripts/purple-star.ts analyze \
+node scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male --geju --sihua --daxian
 
 # 合盘 —— 只有 purplestar-synastry 有这条命令，源的 CLI 里没有（2026-09-27 拆 skill 时移走）
@@ -65,10 +65,10 @@ node skills/purplestar-astrology/scripts/purple-star.ts analyze \
 node skills/purplestar-synastry/scripts/purple-star.ts synastry --a-chart <a.json> --b-chart <b.json>
 # 古籍原文检索 —— 同理，只有 purplestar-classics 有
 node skills/purplestar-classics/scripts/purple-star.ts classics --search 机月同梁
-node skills/purplestar-astrology/scripts/purple-star.ts help   # 本技能的命令与参数
+node scripts/purple-star.ts help   # 本技能的命令与参数
 
 # 第一层：CLI 自带自检，整体执行，不支持筛选单项（项数由末行自报）
-node skills/purplestar-astrology/scripts/purple-star.ts selftest
+node scripts/purple-star.ts selftest
 
 # 第二层：基准回归，用 toolkit 的 518,400 条样本对标排盘结果（默认跑 300 条抽样，约 8 秒）
 npm test
@@ -146,9 +146,9 @@ node skills/purplestar-synastry/scripts/purple-star.ts selftest
 
 ### 为什么能直接跑 TypeScript（没有构建步骤）
 
-`skills/purplestar-astrology/scripts/purple-star.ts` 用 Node ≥ 22.15 的 `module.registerHooks` 注册了解析钩子（见文件开头的 `registerHooks({...})`）：
+`scripts/purple-star.ts` 用 Node ≥ 22.15 的 `module.registerHooks` 注册了解析钩子（见文件开头的 `registerHooks({...})`）：
 
-- `@/xxx` → 解析到 `<内核根>/xxx`，自动补 `.ts` 或 `/index.ts`。**内核根是 skill 内的 `scripts/` 而非 skill 根**，所以 `@/ziwei/algorithm` = `skills/purplestar-astrology/scripts/ziwei/algorithm.ts`
+- `@/xxx` → 解析到 `<内核根>/xxx`，自动补 `.ts` 或 `/index.ts`。**内核根是 skill 内的 `scripts/` 而非 skill 根**，所以 `@/ziwei/algorithm` = `scripts/ziwei/algorithm.ts`
 - **`.` 相对说明符** → 同一条候选序：先补 `.ts`，再兜底 `<spec>/index.ts`。故内核里引**文件夹模块**时 `./patterns` 与 `@/ziwei/patterns` 等价，不必写显式 `/index`
 - **裸包名**（`iztro`、`lunar-typescript`）→ 自内核根向上查找 `node_modules` 解析，而非 cwd 或文件所在位置
 
@@ -160,7 +160,7 @@ node skills/purplestar-synastry/scripts/purple-star.ts selftest
 
 - `module: "preserve"` + `moduleResolution: "bundler"` —— 内核 import 不带扩展名，别的组合解析不了
 - `strict` 全开；`types: ["node"]` **不可省**，TS 7 不会自动加载 `@types/*`，去掉会凭空冒出几十条 `Cannot find name 'process'`
-- `paths` 里的 `@/*` 只映到**源** skill 的内核根 `./skills/purplestar-astrology/scripts/*`，与 CLI 运行期的别名同义；`include` 是 `skills/**/*.ts`（**全部三个 skill 的文件都会被真的类型检查**，故各 skill 自己的 `scripts/` 也在内）、`test/**/*.ts` 与 `tools/**/*.ts`
+- `paths` 里的 `@/*` 只映到**源** skill 的内核根 `./scripts/*`，与 CLI 运行期的别名同义；`include` 是 `skills/**/*.ts`（**全部三个 skill 的文件都会被真的类型检查**，故各 skill 自己的 `scripts/` 也在内）、`test/**/*.ts` 与 `tools/**/*.ts`
 
 **别把 `@/` 写进内核文件**：`@/x` 在运行期解析到**当前正在跑的那个 CLI 的内核根**，而 `tsconfig` 只把它映到源 skill —— 两者只在源里重合。内核 `*.ts` 内部因此一律用相对路径 import。**另两个 skill 里更不能出现 `@/`**：它们不注册解析钩子（见下），`@/` 在那里根本解析不了。
 

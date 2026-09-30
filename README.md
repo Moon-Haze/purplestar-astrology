@@ -56,13 +56,13 @@ cd ~/.claude/skills/<skill-name> && npm install
 ```bash
 # 排盘：默认精简概览（总览 + 运限速览），专题深入用旗标（--info/--geju/--sihua/
 #   --liunian/--daxian/--xiaoxian/--focus，可叠加；--json 仍给全量结构化数据）
-node skills/purplestar-astrology/scripts/purple-star.ts analyze \
+node scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male
 
 # 合盘：本 skill 不排盘，命盘先由上面那个 skill 各排一张（数据解耦，契约只有 JSON）
-node skills/purplestar-astrology/scripts/purple-star.ts analyze \
+node scripts/purple-star.ts analyze \
      --date 1990-05-15 --time 09:30 --city 北京 --gender male --json > /tmp/a.json
-node skills/purplestar-astrology/scripts/purple-star.ts analyze \
+node scripts/purple-star.ts analyze \
      --date 1993-08-22 --time 14:00 --city 上海 --gender female --json > /tmp/b.json
 # 再把两份 JSON 交给合盘 skill（必须来自 analyze 而非 chart：后者没有四化落宫与排盘依据）
 node skills/purplestar-synastry/scripts/purple-star.ts synastry \
@@ -70,8 +70,8 @@ node skills/purplestar-synastry/scripts/purple-star.ts synastry \
 # 合盘方法论与评分标准：读 skills/purplestar-synastry/references/synastry-guide.md（静态参考）
 
 node skills/purplestar-classics/scripts/purple-star.ts classics --search 机月同梁
-node skills/purplestar-astrology/scripts/purple-star.ts help        # 本技能的命令与参数
-node skills/purplestar-astrology/scripts/purple-star.ts selftest    # 回归自检
+node scripts/purple-star.ts help        # 本技能的命令与参数
+node scripts/purple-star.ts selftest    # 回归自检
 
 npm test                                 # 排盘基准回归（300 条样本，约 8 秒）
 npm run typecheck                        # 类型检查（必须 0 错误）
@@ -116,11 +116,11 @@ npm run typecheck                        # 类型检查（必须 0 错误）
 
 | 内容                                     | 位置                                                       |
 | ---------------------------------------- | ---------------------------------------------------------- |
-| 排盘算法、格局库（含古籍出处与破格条件） | `skills/purplestar-astrology/scripts/ziwei/patterns/`      |
-| 四化体系、流年流月推法                   | `skills/purplestar-astrology/scripts/ziwei/sihua.ts`       |
+| 排盘算法、格局库（含古籍出处与破格条件） | `scripts/ziwei/patterns/`      |
+| 四化体系、流年流月推法                   | `scripts/ziwei/sihua.ts`       |
 | 十四主星在夫妻宫断语、四化入夫妻宫       | `skills/purplestar-synastry/scripts/synastry-knowledge.ts` |
 | 合盘方法论与评分标准                     | `skills/purplestar-synastry/references/synastry-guide.md`  |
-| 中国城市经纬度（真太阳时校正）           | `skills/purplestar-astrology/scripts/ziwei/cities.ts`      |
+| 中国城市经纬度（真太阳时校正）           | `scripts/ziwei/cities.ts`      |
 | 三部古籍原文                             | `skills/purplestar-classics/scripts/data/`                 |
 
 **不含**线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/`——它们未随 skill 分发，解读请依赖上表知识源。
@@ -168,7 +168,7 @@ JSON，见 `purplestar-synastry/scripts/chart-view.ts` 自带的消费方类型�
 改完内核或升级依赖后，两层测试都要跑：
 
 ```bash
-node skills/purplestar-astrology/scripts/purple-star.ts selftest   # 第一层：代码逻辑自洽
+node scripts/purple-star.ts selftest   # 第一层：代码逻辑自洽
 npm test                                 # 第二层：与 toolkit 样本的基准比对（约 8 秒）
 node skills/purplestar-synastry/scripts/purple-star.ts selftest    # 另两个 skill 各测各的
 node skills/purplestar-classics/scripts/purple-star.ts selftest

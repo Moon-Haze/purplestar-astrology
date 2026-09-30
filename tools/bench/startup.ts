@@ -38,10 +38,10 @@ import type { BirthInfo } from "@/ziwei/types"; // 仅参与 typecheck，运行�
 // HERE = <仓库根>/tools/bench，上溯两级即仓库根（口径同 tools/db/*.ts）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(HERE, "../..");
-// ⚠️ 字面路径，且 tools/ 不在 npm test 覆盖内 —— 内核 2026-09-27 搬进 skills/ 后这类行
+// ⚠️ 字面路径，且 tools/ 不在 npm test 覆盖内 —— 内核 2026-09-30 上提仓库根后这类行
 //    漏改不会变红，只会在实跑时报模块找不到。probe 里的 `@/…` 动态 import 不在此列：
 //    它们走 LOADER 装的解析钩子，跟着 loader 的 ROOT 走。
-const CLI = resolve(SKILL_ROOT, "skills/purplestar-astrology/scripts/purple-star.ts");
+const CLI = resolve(SKILL_ROOT, "scripts/purple-star.ts");
 const LOADER = resolve(SKILL_ROOT, "test/lib/loader.ts");
 
 const RULE = "─".repeat(78);

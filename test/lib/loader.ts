@@ -20,15 +20,15 @@ import { dirname, resolve } from "node:path";
 // ⚠️ 带 `.ts` 扩展名，且 boot-hooks.ts 只依赖 `node:` 内置 —— 故本行在解析钩子注册之前
 //    就能被 Node 的原生类型擦除加载。改动本行前先读 boot-hooks.ts 的顶部注释。
 //
-// ⚠️ 搬迁（2026-09-27）：内核已从仓库根 scripts/ 移入 skills/purplestar-astrology/scripts/。
-//    本行是**字面相对路径**，不受解析钩子照顾 —— 挪内核时它是会静默失效的方向之一
-//    （另一个是 tools/ 下同样写死路径的两处，见 CLAUDE.md「skill 的布局」）。
+// ⚠️ 搬迁（2026-09-30）：内核已从 skills/purplestar-astrology/scripts/ 上提回仓库根 scripts/
+//    （单 skill 形态：仓库根 = skill 根）。本行是**字面相对路径**，不受解析钩子照顾 ——
+//    挪内核时它是会静默失效的方向之一（另一个是 tools/ 下同样写死路径的两处）。
 import {
 	installHooks,
 	loadFailureHint,
 	makeLoader,
 	pickRoot,
-} from "../../skills/purplestar-astrology/scripts/boot-hooks.ts";
+} from "../../scripts/boot-hooks.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <仓库根>/test/lib
 
@@ -45,7 +45,7 @@ const KERNEL_ENTRY = "ziwei/algorithm.ts";
 const picked = pickRoot(
 	[
 		[process.env.ZIWEI_ROOT && resolve(process.env.ZIWEI_ROOT), "ZIWEI_ROOT 环境变量"],
-		[resolve(HERE, "../../skills/purplestar-astrology/scripts"), "技能自带内核"],
+		[resolve(HERE, "../../scripts"), "仓库自带内核"],
 	],
 	KERNEL_ENTRY
 );
@@ -55,7 +55,7 @@ if (!picked.root) {
 		`找不到排盘内核（${KERNEL_ENTRY}）\n` +
 			`  已尝试：\n` +
 			picked.tried.map(t => `    - ${t}`).join("\n") +
-			`\n  处理：确认 skills/purplestar-astrology/scripts/ 下有 purple-star.ts 与 ziwei/，` +
+			`\n  处理：确认 scripts/ 下有 purple-star.ts 与 ziwei/，` +
 			`或用 ZIWEI_ROOT=<含 ziwei/ 的目录> 指定内核位置。`
 	);
 }

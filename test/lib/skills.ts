@@ -47,14 +47,16 @@ export const SOURCE_SKILL = "purplestar-astrology";
  * 仓库里全部 skill 名（已排序）。
  *
  * @remarks
- * 判据是「该目录下有 `SKILL.md`」——那正是 skill 的入口，缺了它 Claude 根本不会触发这个
- * skill。故一个没有 `SKILL.md` 的目录不算 skill，也就不会被下面的自包含断言检查到
- * （它本来就不该被当成 skill）。
+ * ⚠️ 2026-09-30 中间态（单 skill 合并进行中）：源 skill 已上提仓库根（仓库根 = skill 根），
+ * classics / synastry 仍原地待搬。故清单 = 根（以 {@link SOURCE_SKILL} 名义）+ 磁盘读
+ * `skills/` 下尚存的目录；Task 2 收口后清单收敛为「从根 SKILL.md 推导单 skill」。
  */
-export const ALL_SKILLS: readonly string[] = readdirSync(SKILLS_DIR, { withFileTypes: true })
-	.filter(e => e.isDirectory() && existsSync(resolve(SKILLS_DIR, e.name, "SKILL.md")))
-	.map(e => e.name)
-	.sort();
+export const ALL_SKILLS: readonly string[] = [
+	SOURCE_SKILL,
+	...readdirSync(SKILLS_DIR, { withFileTypes: true })
+		.filter(e => e.isDirectory() && existsSync(resolve(SKILLS_DIR, e.name, "SKILL.md")))
+		.map(e => e.name),
+].sort();
 
 /**
  * 「排盘类」skill：`SKILL.md` 里持有一份手抄的排盘底座。
@@ -75,8 +77,8 @@ export const CHART_LIKE: readonly string[] = [SOURCE_SKILL, "purplestar-synastry
  * skill 的目录绝对路径。
  *
  * @param name - skill 名（即 `skills/` 下的目录名）
- * @returns `<仓库根>/skills/<name>` 的绝对路径
+ * @returns skill 根的绝对路径；源 skill（已上提）为仓库根本身
  */
 export function skillDir(name: string): string {
-	return resolve(SKILLS_DIR, name);
+	return name === SOURCE_SKILL ? REPO_ROOT : resolve(SKILLS_DIR, name);
 }

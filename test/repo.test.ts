@@ -56,8 +56,8 @@ import type { ResolveHookSync } from "node:module";
 import { ALL_SKILLS, CHART_LIKE, SKILLS_DIR, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
 // ⚠️ 字面相对路径，带 `.ts` 扩展名，理由同 lib/loader.ts 的同一行：boot-hooks.ts 只依赖
 //    `node:` 内置，故可在解析钩子注册之前被 Node 的原生类型擦除加载。
-// ⚠️ 内核在 skills/purplestar-astrology/scripts/（2026-09-27），挪内核时本行会静默失效。
-import { makeResolveHook } from "../skills/purplestar-astrology/scripts/boot-hooks.ts";
+// ⚠️ 内核在仓库根 scripts/（2026-09-30 上提），挪内核时本行会静默失效。
+import { makeResolveHook } from "../scripts/boot-hooks.ts";
 
 /** 仓库根 —— 本文件在 `<仓库根>/test/` 下，故退一级。 */
 const SKILL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -196,7 +196,7 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 		// type 字段无关；现在两个派生 skill 改走 Node 原生类型擦除，type 一错当场崩。
 		const bad: string[] = [];
 		for (const name of ALL_SKILLS) {
-			const p = resolve(SKILLS_DIR, name, "package.json");
+			const p = resolve(skillDir(name), "package.json");
 			const pkg = JSON.parse(readFileSync(p, "utf8")) as { type?: string };
 			if (pkg.type !== "module") bad.push(`${name}: type=${String(pkg.type)}`);
 		}

@@ -44,9 +44,9 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 // ⚠️ 字面相对路径 + 写全 `.ts` 扩展名：本模块靠 Node 的原生类型擦除加载，不走解析钩子。
-//    核对表是**唯一一份数据资产**，它留在源 skill 的内核里（`ziwei/annotations.ts`）——
-//    三个 skill 的引文都对照它，故本模块 import 它而不是自存一份。
-import { ANNOTATIONS } from "../../skills/purplestar-astrology/scripts/ziwei/annotations.ts";
+//    核对表是**唯一一份数据资产**，它留在内核里（`ziwei/annotations.ts`）——
+//    全仓的引文都对照它，故本模块 import 它而不是自存一份。
+import { ANNOTATIONS } from "../../scripts/ziwei/annotations.ts";
 
 /** 一次扫描的结果。 */
 export interface CitationScan {
