@@ -200,7 +200,7 @@ export function asserts(): Assertion[] {
 				lateZiCandidate: false,
 			})
 		);
-		const PAIR = ["--a-chart", fileA, "--b-chart", fileB];
+		const PAIR = ["--charts", `${fileA},${fileB}`];
 
 		ok("合盘冒烟：synastry 读两份命盘 JSON 跑得通，三个块标题都在", () => {
 			const r = run(["synastry", ...PAIR]);
@@ -224,19 +224,31 @@ export function asserts(): Assertion[] {
 			return "判定与提醒均按 JSON 里的标记产出";
 		});
 
-		ok("合盘护栏：缺 --b-chart 必须报错，并指向排盘命令", () => {
-			// 合盘不排盘，缺了命盘就什么都做不了。报错必须**指路先排盘**，
-			// 而不是回退去读出生信息旗标 —— 那种回退会让本命令悄悄变成排盘方。
-			const r = run(["synastry", "--a-chart", fileA]);
-			if (r.code === 0) throw new Error("缺 --b-chart 却退出码为 0 —— 缺旗标的护栏失效");
-			if (!r.err.includes("--b-chart"))
-				throw new Error(`报错未点名 --b-chart，实得：${r.err.trim()}`);
-			if (!r.err.includes("analyze"))
-				throw new Error(`报错未指向排盘命令 analyze，实得：${r.err.trim()}`);
-			return "缺 --b-chart 被拦下，且指路到排盘命令";
+		ok("合盘护栏：--charts 只给一份（或三份）必须报错，并说明「甲,乙」形态", () => {
+			// --charts 是逗号分隔的**恰好两个**路径（甲先乙后）。一份/三份都是输入错误，
+			// 报错须点名期望形态，而不是静默取前两个。
+			for (const argv of [
+				["--charts", fileA],
+				["--charts", `${fileA},${fileB},${fileA}`],
+			]) {
+				const r = run(["synastry", ...argv]);
+				if (r.code === 0) throw new Error(`${argv[1]} 未报错 —— 份数护栏失效`);
+				if (!r.err.includes("两个") || !r.err.includes("--charts"))
+					throw new Error(`报错应点名 --charts 与「两个文件路径」，实得：${r.err.trim()}`);
+			}
+			return "一份与三份均被拦下";
 		});
 
-		ok("合盘护栏：拿 `chart --json` 的输出来顶替时报错，并说清为什么不行", () => {
+		ok("合盘护栏：--charts 两路径相同允许（自盘对照有意义）", () => {
+			const r = run(["synastry", "--charts", `${fileA},${fileA}`]);
+			if (r.code !== 0)
+				throw new Error(`同路径应放行（自盘对照），实得：${r.err.trim()}`);
+			if (!r.out.includes("甲方") || !r.out.includes("乙方"))
+				throw new Error("同路径输出应仍有甲乙两方");
+			return "同路径放行";
+		});
+
+		ok("合盘护栏：拿 `--palaces --json` 的输出来顶替时报错，并说清为什么不行", () => {
 			// 这是最容易踩的坑：`chart` 命令也输出 JSON，但**顶层就是命盘本身**，
 			// 没有 `chart` 键，更没有四化落宫与排盘依据。照收会让合盘静默少两节结论。
 			const wrong = join(tmp, "wrong.json");
@@ -255,7 +267,7 @@ export function asserts(): Assertion[] {
 			delete partial.nativeSiHua;
 			const p = join(tmp, "partial.json");
 			writeFileSync(p, JSON.stringify(partial));
-			const r = run(["synastry", "--a-chart", p, "--b-chart", fileB]);
+			const r = run(["synastry", "--charts", `${p},${fileB}`]);
 			if (r.code === 0) throw new Error("缺 nativeSiHua 却退出码为 0 —— 逐项校验失效");
 			if (!r.err.includes("nativeSiHua"))
 				throw new Error(`报错未点名 nativeSiHua，实得：${r.err.trim()}`);
@@ -264,8 +276,8 @@ export function asserts(): Assertion[] {
 
 		ok("合盘护栏：命盘文件不是合法 JSON 时报错", () => {
 			const broken = join(tmp, "broken.json");
-			writeFileSync(broken, "未知命令「analyze」。可用：synastry / selftest\n");
-			const r = run(["synastry", "--a-chart", broken, "--b-chart", fileB]);
+			writeFileSync(broken, "错误：未知命令「astrology」。\n");
+			const r = run(["synastry", "--charts", `${broken},${fileB}`]);
 			if (r.code === 0) throw new Error("文件不是 JSON 却退出码为 0");
 			if (!/JSON/.test(r.err)) throw new Error(`报错未提到 JSON，实得：${r.err.trim()}`);
 			return "坏 JSON 被拦下";
@@ -295,70 +307,62 @@ export function asserts(): Assertion[] {
 
 		// ── 参数面（子进程跑合并后的根 CLI）──
 
-		ok("合盘参数面：a- / b- 前缀旗标不得用在别的命令上", () => {
-			// 只有 `synastry` 读前缀；别的命令给它一个 `--a-chart` 是**用户搞错了命令**，
-			// 静默忽略会让人以为「带了命盘却没生效」。靶子用 selftest（无副作用的命令）。
-			//
-			// ⚠️ 断言要**同时**确认「报错了」与「报的是前缀错位」：若哪天前缀被整个删掉，
-			// `--a-chart` 会退化成「未知参数 --a-chart」，仍然报错、仍然退出码 1 ——
-			// 只看退出码的话，这条会在一片绿里失去意义。
-			const probes: Array<[string, string]> = [
-				["--a-chart", "stars"],
-				["--b-chart", "stars"],
-				["--a-json", "stars"],
-			];
-			for (const [flag, cmd] of probes) {
-				const r = run([cmd, flag, "x"]);
-				if (r.code === 0)
-					throw new Error(`${cmd} 上的 ${flag} 未报错 —— 前缀旗标的归属校验失效了`);
-				if (!r.err.includes("前缀"))
-					throw new Error(`${cmd} 上的 ${flag} 报的不是前缀错位，实得：${r.err.trim()}`);
+		ok("合盘参数面：a- / b- 前缀已退役（--a-chart 是未知参数）", () => {
+			// 2026-09-30 输入改 --charts 单参数（spec §2.3）：a- / b- 前缀体系整个不需要，
+			// 前缀旗标一律「未知参数」。spec 原文：原「前缀必须报错」断言改为
+			// 「--a-chart 是未知参数」。
+			const probes = ["--a-chart", "--b-chart", "--a-date", "--a-time", "--a-gender", "--a-city"];
+			for (const flag of probes) {
+				const r = run(["synastry", flag, "x"]);
+				if (r.code === 0) throw new Error(`${flag} 在 synastry 上被接受了 —— 前缀漏回了作用域`);
+				if (!r.err.includes("未知参数"))
+					throw new Error(`${flag} 的报错不是「未知参数」，实得：${r.err.trim()}`);
 			}
-			return `${probes.length} 种越界写法均被拦下`;
+			return `${probes.length} 个前缀旗标全部按未知参数被拒`;
 		});
 
 		ok("合盘参数面：拼错的旗标必须报错，并指向最接近的合法名", () => {
-			// 探针围绕 `--chart` 写（剥前缀后的裸名）：最近邻建议在裸名集合里找
-			// 编辑距离 ≤ 2 的最近者，三个探针的编辑距离都在阈值内，提示必然指向 `--chart`。
+			// 探针围绕 `--charts` 写（本命令的标志性参数）：最近邻建议找编辑距离 ≤ 2 者。
 			const probes: Array<[string, string]> = [
-				["--a-chrt", "chart"], // 漏字
-				["--a-chrat", "chart"], // 换位
-				["--a-chartss", "chart"], // 多字
+				["--chart", "charts"], // 漏尾字
+				["--chartss", "charts"], // 多字
+				["--json", "json"], // 自身合法（对照：不报错的那组不在此测）
 			];
 			for (const [bad, want] of probes) {
+				if (bad === "--json") continue;
 				const r = run(["synastry", bad, "x"]);
 				if (r.code === 0) throw new Error(`${bad} 未报错 —— 未知旗标又变成静默忽略了`);
 				if (!r.err.includes(`--${want}`))
 					throw new Error(`${bad} 的提示应指向 --${want}，实得：${r.err.trim()}`);
 			}
-			return `${probes.length} 个拼写错误均被拦下`;
+			return "拼写错误均被拦下";
 		});
 
-		ok("合盘参数面：取值旗标裸写必须报错并点名（不是静默当成开关）", () => {
-			// `--b-chart` 后不跟值：合并引擎下它成为布尔 `true`，命令层读不到字符串，
-			// 由「缺 --b-chart」护栏拦下 —— 锚点是**报错里带着他敲的那个键**且退出码非 0。
-			// （解析层的裸写拒收由 Task 4 的新引擎统一钉死。）
-			const r = run(["synastry", "--b-chart"]);
-			if (r.code === 0) throw new Error("裸写 --b-chart 未报错 —— 取值旗标被当成了开关");
-			if (!r.err.includes("--b-chart"))
-				throw new Error(`报错未点名 --b-chart，实得：${r.err.trim()}`);
-			return "裸写被拦下，且点名了旗标";
+		ok("合盘参数面：--charts 裸写或给单路径由份数护栏拦下", () => {
+			// 引擎把裸写归一为布尔 true / 单路径只有一份 —— 两种形态都过不了「恰好两份」
+			// 这道命令层护栏，报错点名 --charts。
+			for (const argv of [["--charts"], ["--charts", "only-one.json"]]) {
+				const r = run(["synastry", ...argv]);
+				if (r.code === 0) throw new Error(`${argv[0]} ${argv[1] ?? ""} 未报错`);
+				if (!r.err.includes("--charts"))
+					throw new Error(`报错未点名 --charts，实得：${r.err.trim()}`);
+			}
+			return "裸写与单路径均被拦下";
 		});
 
-		ok("合并接线：synastry 在主命令表有实现，前缀参数在主作用域已声明", () => {
-			// 三 skill 合一的接线守卫：命令进了 COMMAND_TABLE、`chart`（a-/b- 前缀的裸底名）
-			// 进了 FLAG_SCOPE 且 synastry 在 prefixedCommands 里 —— 任何一侧漏接，
-			// 用户敲 `synastry --a-chart` 就是「未知参数」。
+		ok("合并接线：synastry 在主命令表有实现，--charts 在主作用域已声明", () => {
+			// 三 skill 合一的接线守卫：命令进了 COMMAND_TABLE、`charts` 进了 OPTION_SCOPE、
+			// 前缀表已清空（a-/b- 退役）—— 任何一侧漏接，用户敲 `synastry --charts` 就是「未知参数」。
 			// 读源码文本而非 import：命令表里挂着 cmdSelftest，直接 import 会成环。
 			const cmdSrc = readFileSync(resolve(ROOT, "..", "cli", "commands.ts"), "utf8");
 			if (!/^\tsynastry: cmdSynastry,?$/m.test(cmdSrc))
 				throw new Error("cli/commands.ts 的 COMMAND_TABLE 里没有 synastry 条目 —— 合并接线断了");
 			const scopeSrc = readFileSync(resolve(ROOT, "..", "cli", "option-scope.ts"), "utf8");
-			for (const f of ['"chart"', '"a-"', '"synastry"']) {
-				if (!scopeSrc.includes(f))
-					throw new Error(`cli/option-scope.ts 的 OPTION_SCOPE 里没有 ${f} —— 合盘前缀参数未声明`);
-			}
-			return "命令表与作用域双侧接线在";
+			if (!scopeSrc.includes('"charts"'))
+				throw new Error("cli/option-scope.ts 的 OPTION_SCOPE 里没有 charts —— 合盘输入参数未声明");
+			if (scopeSrc.includes('"a-"') || scopeSrc.includes('"b-"'))
+				throw new Error("a-/b- 前缀仍在 OPTION_SCOPE —— 应已退役（Task 7）");
+			return "命令表与作用域双侧接线在，前缀已退役";
 		});
 	} finally {
 		// 临时目录在断言跑完后必删（含失败路径）。

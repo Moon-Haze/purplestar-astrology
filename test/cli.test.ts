@@ -188,7 +188,7 @@ async function analyzeFile(args: string[]): Promise<string> {
 /** 两方的排盘参数 → `synastry` 的两份命盘参数（各排一张盘、落成文件）。 */
 async function pairArgs(a: string[], b: string[]): Promise<string[]> {
 	const [fa, fb] = await Promise.all([analyzeFile(a), analyzeFile(b)]);
-	return ["--a-chart", fa, "--b-chart", fb];
+	return ["--charts", `${fa},${fb}`];
 }
 
 /**
@@ -763,7 +763,7 @@ describe("CLI 端到端", () => {
 			cliCmd("synastry", await argsOf(EMPTY_A, B), "synastry")
 		);
 
-		it("交换 --a-chart / --b-chart 后，两方命盘精确互换", async () => {
+		it("交换 --charts 的两份输入后，两方命盘精确互换", async () => {
 			const d = await pairJson();
 			const s = await swapJson();
 			assert.notDeepEqual(

@@ -18,7 +18,7 @@ import {
 import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "@/synastry/synastry-knowledge";
 
 /**
- * @param args - CLI 参数表；`--a-chart` / `--b-chart` 各指一份 `analyze --json` 的输出文件
+ * @param args - CLI 参数表；`--charts a.json,b.json` 逗号分隔恰好两份 `astrology --json` 的输出（甲先乙后）
  * @returns 已渲染好的文本；带 `--json` 时返回两方命盘摘要的原始 JSON 字符串
  *
  * @remarks
@@ -35,28 +35,29 @@ import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "@/synas
  * 真太阳时校正说明取自 `basis.note` —— 两者都来自那份 JSON，本命令一个字都不重算。
  */
 export function cmdSynastry(args: CliArgs): string {
-	// 两个旗标都必填：本命令不排盘，没有它们什么都做不了。
-	// ⚠️ 缺失时报错，而**不是**回退去读出生信息旗标 —— 那种回退会让本命令悄悄又变成
-	//    排盘方（且回退路径无人测，必然腐坏）。
-	if (typeof args.aChart !== "string" || typeof args.bChart !== "string") {
-		const missing = [
-			...(typeof args.aChart === "string" ? [] : ["--a-chart"]),
-			...(typeof args.bChart === "string" ? [] : ["--b-chart"]),
-		];
+	// --charts：逗号分隔的**恰好两个**文件路径（甲先乙后）。本命令不排盘，
+	// 两份盘都得由排盘命令的 --json 产出（spec §2.3，2026-09-30 起 a-/b- 前缀退役）。
+	// ⚠️ 缺失或份数不对时报错，而**不是**回退去读出生信息 —— 那种回退会让本命令
+	//    悄悄又变成排盘方（且回退路径无人测，必然腐坏）。
+	if (typeof args.charts !== "string") {
 		throw new Error(
-			`缺少 ${missing.join(" / ")}：本命令不排盘，两方命盘都得由排盘命令给出。\n` +
-				`  ① 先各排一张盘（注意是 analyze，不是 chart —— 后者没有四化落宫与排盘依据）：\n` +
-				`     node scripts/purple-star.ts analyze \\\n` +
-				`       --date 1990-05-15 --time 09:30 --city 北京 --gender male --json > /tmp/a.json\n` +
-				`     node scripts/purple-star.ts analyze \\\n` +
-				`       --date 1993-08-22 --time 14:00 --city 上海 --gender female --json > /tmp/b.json\n` +
+			`缺少 --charts：本命令不排盘，两方命盘都得由排盘命令的 --json 产出。\n` +
+				`  ① 先各排一张盘（注意 --json 不带 --palaces —— 后者顶层没有四化落宫与排盘依据）：\n` +
+				`     node scripts/purple-star.ts astrology --date 1990-05-15 --time 09:30 --city 北京 --gender male --json > /tmp/a.json\n` +
+				`     node scripts/purple-star.ts astrology --date 1993-08-22 --time 14:00 --city 上海 --gender female --json > /tmp/b.json\n` +
 				`  ② 再交给本命令：\n` +
-				`     node scripts/purple-star.ts synastry --a-chart /tmp/a.json --b-chart /tmp/b.json`
+				`     node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`
 		);
 	}
+	const files = args.charts.split(",").map(f => f.trim()).filter(Boolean);
+	if (files.length !== 2)
+		throw new Error(
+			`--charts 应给两个文件路径（甲,乙，逗号分隔），实得 ${files.length} 个：${args.charts}`
+		);
+	// 同路径允许：自盘对照（同一人两份相同盘）是有意义的用法。
 
-	const A = readAnalyzeJson(args.aChart, "甲");
-	const B = readAnalyzeJson(args.bChart, "乙");
+	const A = readAnalyzeJson(files[0], "甲");
+	const B = readAnalyzeJson(files[1], "乙");
 	const ca = A.chart;
 	const cb = B.chart;
 	const biA = ca.birthInfo;

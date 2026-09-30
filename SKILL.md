@@ -116,7 +116,7 @@ node scripts/purple-star.ts analyze \
 | `astrology`                      | **主力命令**（四命令合一）。概览默认含基本信息；`--palaces` 十二宫详表；`--topic` 主题论断；专题参数族可叠加 |
 | `stars [--search <星名>]`        | 星曜释义                                                                 |
 | `classics [--search <关键词>]`   | 古籍原文检索（骨髓赋 / 全集 / 全书；2026-09-30 三 skill 合一并入）       |
-| `synastry --a-chart <a> --b-chart <b>` | 合盘（双宫联参；读两份 `astrology --json` 产物；2026-09-30 并入）  |
+| `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后） |
 | `selftest`                       | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次 |
 
 高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `1990-5-15 9:30 男 北京`（按形态归类）；专题深入 `--info` / `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>`（可叠加，拼音别名 `--geju`/`--sihua`/`--liunian`/`--daxian`/`--xiaoxian` 仍被识别）；输出 `--json`。

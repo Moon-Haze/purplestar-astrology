@@ -48,8 +48,8 @@ export const OPTION_SCOPE: OptionScope = {
 		"city",
 		"province",
 		"name",
-		// 命盘输入（synastry 的 a- / b- 前缀叠在 chart 上）
-		"chart",
+		// 命盘输入（synastry）
+		"charts",
 		// 专题深入（英文主名；拼音别名见 OPTION_ALIASES）
 		"info",
 		"pattern",
@@ -69,9 +69,9 @@ export const OPTION_SCOPE: OptionScope = {
 		"limit",
 	],
 	/**
-	 * 合盘的出生方前缀（唯一的前缀消费者是 synastry 命令）。
-	 * Task 7 输入改 `--charts` 单参数后此表回到空 —— a- / b- 前缀随之退役。
+	 * 出生方前缀已退役（2026-09-30 Task 7）：synastry 输入改 `--charts` 单参数后，
+	 * a- / b- 前缀不再需要 —— 两个空表让解析层的前缀分支整个不可达。
 	 */
-	sidePrefixes: ["a-", "b-"],
-	prefixedCommands: ["synastry"],
+	sidePrefixes: [],
+	prefixedCommands: [],
 };

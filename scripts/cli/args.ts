@@ -180,13 +180,13 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		],
 	},
 	{
-		title: "命盘输入（替代整组出生信息；synastry 加 a- / b- 前缀）",
+		title: "命盘输入（synastry 专用）",
 		options: [
 			{
-				name: "chart",
+				name: "charts",
 				kind: "value",
-				value: "/tmp/a.json",
-				desc: "读排盘命令 analyze --json 的输出，代替该方出生信息",
+				value: "/tmp/a.json,/tmp/b.json",
+				desc: "合盘输入：逗号分隔恰好两份 astrology --json 的输出（甲先乙后）",
 			},
 		],
 	},
