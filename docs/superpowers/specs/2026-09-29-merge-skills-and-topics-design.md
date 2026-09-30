@@ -93,7 +93,7 @@ scripts/
 ├── ziwei/                    排盘内核（原样平移）
 └── cli/
     ├── args.ts               参数面（OPTION_GROUPS + 解析）
-    ├── option-scope.ts         作用域（a-/b- 前缀正式启用）
+    ├── option-scope.ts         参数作用域（前缀机制保留空表——--charts 单参数后 a-/b- 前缀不再需要）
     ├── config.ts             新增：--config / --template 的读取与合并
     ├── birth-info.ts / birth-info-defs.ts / render.ts / yun.ts
     ├── astrology.ts           cmdAstrology（排盘分析一条命令：概览默认 + 功能参数分发）
@@ -107,8 +107,13 @@ scripts/
 
 ### 2.3 synastry 命令
 
-- **保持 `--a-chart` / `--b-chart` 两个 JSON 文件输入**（吃 `astrology --json` 产物），**不做**出生信息直传。
-- `a-` / `b-` 前缀参数（`a-chart` / `b-chart`）进 `OPTION_GROUPS`；`option-scope.ts` 的 `sidePrefixes: ["a-", "b-"]` + `prefixedCommands: ["synastry"]` 正式启用（从遗留物变真在用）。
+- **输入改单参数**：`synastry --charts /tmp/a.json,/tmp/b.json`（逗号分隔恰好两份，**甲先乙后**；
+  吃 `astrology --json` 产物）。`--a-chart` / `--b-chart` 删除——合并本就是 breaking 版本，不保留旧名。
+  校验：不是恰好两份、文件不可读、JSON 不符消费契约即报错；两路径相同**允许**（自盘对照有意义）。
+- **连锁简化**：`a-` / `b-` 前缀体系整个不需要——`option-scope.ts` 的 `sidePrefixes` /
+  `prefixedCommands` 维持空表（原「正式启用」作废），前缀分支与 `LEGAL_KEYS` 的前缀展开
+  继续不可达；原合盘 selftest 的「`selftest --a-chart` 必须报错」断言改为「`--a-chart`
+  是未知参数」。
 - `synastry-guide.md` 从合盘 skill 的 references/ 搬到根 `references/`。
 
 ### 2.4 classics 命令
@@ -272,7 +277,7 @@ iztro「仆役」——领域立场，不应对齐）。
 - **description**：合并三域触发词（排盘解读 / 合盘合婚 / 古籍检索），删除「用 xxx 技能」指路句（改为本技能命令）。
 - 命令速查 5 条 + help：`astrology` / `classics` / `synastry` / `stars` / `selftest`（analyze / insight / chart / topic / cities 皆废）。
 - 路径约定改写：命令一律 `node scripts/purple-star.ts`（仓库根 = skill 根，两重身份合一，原「仓库级文档写全路径」的区分作废）。
-- 合盘工作流：先 `astrology --json` 两张 → `synastry --a-chart --b-chart`。
+- 合盘工作流：先 `astrology --json` 两张 → `synastry --charts a.json,b.json`。
 
 ## 5. 测试策略
 
