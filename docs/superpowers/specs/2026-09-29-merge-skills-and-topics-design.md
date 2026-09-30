@@ -48,7 +48,7 @@ analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中
 `geju→pattern`、`sihua→mutagen`、`liunian→yearly`、`liuyue→monthly`、`daxian→decadal`、`xiaoxian→ages`。
 
 - 实现单点：`OPTION_ALIASES` 表（args.ts），`checkOptionName` 与归一层各查一次；cac 只注册主名，help 在参数描述尾注「别名：--geju」。
-- 与「宁可报错不静默」不冲突：别名是**显式声明**的映射，不是拼错容错——`--patern` 仍然报错，`suggestFlag` 建议主名 `--pattern`。
+- 与「宁可报错不静默」不冲突：别名是**显式声明**的映射，不是拼错容错——`--patern` 仍然报错，`suggestOption` 建议主名 `--pattern`。
 
 ### 1.2 出生信息输入简化（删三连 + 位置参数快捷形态）
 
@@ -71,7 +71,7 @@ analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中
 （CLI 标准英文 option，与解析引擎 cac 的 `parsed.options` 同名）。现有代码的标识符与
 注释在实施笔统一改，映射：`FLAG_GROUPS→OPTION_GROUPS`、`FlagSpec/FlagGroup→OptionSpec/
 OptionGroup`、`FLAG_SCOPE/flag-scope.ts→OPTION_SCOPE/option-scope.ts`、`FLAG_ALIASES→
-OPTION_ALIASES`、`FLAG_NAMES→OPTION_NAMES`、`checkFlagName→checkOptionName`。
+OPTION_ALIASES`、`FLAG_NAMES→OPTION_NAMES`、`checkFlagName→checkOptionName`、`suggestFlag→suggestOption`。
 `SIDE_PREFIXES` / `prefixedCommands`（出生方前缀概念）保留原名。
 
 
