@@ -1,27 +1,27 @@
-# 设计：三 skill 合一 + astrology 命令融合（旗标英文化）+ 配置文件输入
+# 设计：三 skill 合一 + astrology 命令融合（参数英文化）+ 配置文件输入
 
 - 日期：2026-09-29
 - 状态：待评审
-- 前置：2026-09-28 的「analyze 专题旗标族」已交付（d4c1194 / dfd37d8）
+- 前置：2026-09-28 的「analyze 专题参数族」已交付（d4c1194 / dfd37d8）
 
 ## 0. 背景与目标
 
-用户对 2026-09-28 交付的专题旗标族不完全满意，并决定放弃「三 skill 集合」形态：
+用户对 2026-09-28 交付的专题参数族不完全满意，并决定放弃「三 skill 集合」形态：
 
-1. `--info` 的内容应默认可见，不该每次加旗标；
+1. `--info` 的内容应默认可见，不该每次加参数；
 2. `--focus` 不够详细；
-3. 命令入口收敛：四条直接调 iztro 的命令融合为一条 `astrology`（旗标融合，专题旗标换英文）；
+3. 命令入口收敛：四条直接调 iztro 的命令融合为一条 `astrology`（参数融合，专题参数换英文）；
 4. 十二宫详表入口收敛为 `astrology --palaces`（原 `chart` 命令废）；
 5. **三个 skill 合并成一个**：仓库根即 skill 根，一条 CLI 承载排盘 / 古籍 / 合盘；
 6. 参数支持**JSON 配置文件**输入，并能生成配置模板。
 
-## 1. `astrology` 命令：四条排盘命令融合 + 旗标英文化
+## 1. `astrology` 命令：四条排盘命令融合 + 参数英文化
 
 analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中的 insight）融合为一条
-**`astrology`**（旗标融合模式，用户指定）：不带功能旗标 = 概览；功能由旗标组合表达。
-专题旗标名**全部换英文**（用户指定），大限 / 小限 / 四化锚定 iztro 原生术语：
+**`astrology`**（参数融合模式，用户指定）：不带功能参数 = 概览；功能由参数组合表达。
+专题参数名**全部换英文**（用户指定），大限 / 小限 / 四化锚定 iztro 原生术语：
 
-| 功能                            | 旧旗标 / 命令                   | 新旗标                                                |
+| 功能                            | 旧参数 / 命令                   | 新参数                                                |
 | ------------------------------- | ------------------------------- | ----------------------------------------------------- |
 | 基本信息（并入默认 + 只出面板） | `--info`                        | `--info`（不变）                                      |
 | 格局专题                        | `--geju`                        | `--pattern`                                           |
@@ -35,35 +35,45 @@ analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中
 | 主题论断 + 视角                 | `topic` 命令 `--topic`/`--view` | `--topic <key>` / `--view`（不变）                    |
 | 结构化输出                      | `--json`                        | `--json`（不变）                                      |
 
-- **默认输出**（无功能旗标）：`【命盘总览】`三行 → `【基本信息】`12 行面板（无条件）→ 口径提示 → `【运限速览】` → 功能旗标指路。
+- **默认输出**（无功能参数）：`【命盘总览】`三行 → `【基本信息】`12 行面板（无条件）→ 口径提示 → `【运限速览】` → 功能参数指路。
 - **`--info`**：只输出信息面板这一节。
 - **`--focus` 深化**（四项全加）：三方四正逐宫全星曜（主星含亮度四化 + 吉煞杂曜）、对宫完整详表、涉及此宫的格局全列、小限岁数段 + 大限十年内引动年份 + 命主/身主星标记。
-- 其余功能旗标行为同 2026-09-28 交付的各专题（渲染函数复用 `cli/yun.ts`，仅改名）。
+- 其余功能参数行为同 2026-09-28 交付的各专题（渲染函数复用 `cli/yun.ts`，仅改名）。
 - `--topic` 给了 `--view` 才有意义；不带 `--topic` 时列 13 主题清单（原 topic 命令行为）。
-- 出生信息 15 个旗标不变（已英文）。
+- 出生信息 15 个参数不变（已英文）。
 
 ### 1.1 拼音别名（英文主名 + 中文拼音双识别）
 
 英文为主名（help / SKILL.md / 文档一律用主名）；**拼音别名同时被识别**（解析层归一到主名）：
 `geju→pattern`、`sihua→mutagen`、`liunian→yearly`、`liuyue→monthly`、`daxian→decadal`、`xiaoxian→ages`。
 
-- 实现单点：`FLAG_ALIASES` 表（args.ts），`checkFlagName` 与归一层各查一次；cac 只注册主名，help 在旗标描述尾注「别名：--geju」。
+- 实现单点：`OPTION_ALIASES` 表（args.ts），`checkOptionName` 与归一层各查一次；cac 只注册主名，help 在参数描述尾注「别名：--geju」。
 - 与「宁可报错不静默」不冲突：别名是**显式声明**的映射，不是拼错容错——`--patern` 仍然报错，`suggestFlag` 建议主名 `--pattern`。
 
 ### 1.2 出生信息输入简化（删三连 + 位置参数快捷形态）
 
 - **删 `--year` / `--month` / `--day` 三连**：`--date 1990-5-15` 已完全覆盖（格式宽松，月日不补零），
   日期从此二选一（`--date` / `--lunar`）。`buildBirthInfo` 的三连回退链删除。
-- **位置参数快捷形态**（零旗标）：`astrology 1990-5-15 9:30 男 北京`——按**形态归类**、顺序无关：
+- **位置参数快捷形态**（零参数）：`astrology 1990-5-15 9:30 男 北京`——按**形态归类**、顺序无关：
   日期 `\d{4}-\d{1,2}-\d{1,2}` → 公历日期；时刻 `\d{1,2}:\d{2}` → 钟表时间；性别
   `男|女|male|female|m|f`；剩余中文 token → 城市名（`findLongitude` 查，查不到**报错不静默**）。
   - 农历生日只能走 `--lunar`（与公历同形，无法按形态区分）。
-  - **旗标优先**：位置参数只填空，旗标已给的项不被覆盖；同类 token 出现两个（两个日期）报错。
+  - **参数优先**：位置参数只填空，参数已给的项不被覆盖；同类 token 出现两个（两个日期）报错。
   - `classics` / `stars` 的位置参数仍是检索词（各自命令自行解析）；`astrology` 的位置参数语义
     独立，互不干扰。
-  - 实现住 `cli/birth-info.ts`（归类 + 与旗标合并），不加新文件。
+  - 实现住 `cli/birth-info.ts`（归类 + 与参数合并），不加新文件。
 - 附带红利：`--year` 删除后，误敲 `--year` 会被「拼错建议」引向 `--yearly`（编辑距离 2），
   原「`--liunian` 勿写成 `--year`」的警告文案随之退役。
+
+### 1.3 术语重命名：「旗标」→「参数」（全文与代码）
+
+中文术语统一为「参数」；代码标识符 `FLAG_*` / `Flag*` 随之改 `OPTION_*` / `Option*`
+（CLI 标准英文 option，与解析引擎 cac 的 `parsed.options` 同名）。现有代码的标识符与
+注释在实施笔统一改，映射：`FLAG_GROUPS→OPTION_GROUPS`、`FlagSpec/FlagGroup→OptionSpec/
+OptionGroup`、`FLAG_SCOPE/flag-scope.ts→OPTION_SCOPE/option-scope.ts`、`FLAG_ALIASES→
+OPTION_ALIASES`、`FLAG_NAMES→OPTION_NAMES`、`checkFlagName→checkOptionName`。
+`SIDE_PREFIXES` / `prefixedCommands`（出生方前缀概念）保留原名。
+
 
 ## 2. 仓库重组：整个仓库 = 一个 skill
 
@@ -83,13 +93,13 @@ scripts/
 ├── synastry/                 合盘内核：synastry-knowledge.ts + chart-view.ts + 合盘逻辑
 ├── ziwei/                    排盘内核（原样平移）
 └── cli/
-    ├── args.ts               参数面（FLAG_GROUPS + 解析）
-    ├── flag-scope.ts         作用域（a-/b- 前缀正式启用）
+    ├── args.ts               参数面（OPTION_GROUPS + 解析）
+    ├── option-scope.ts         作用域（a-/b- 前缀正式启用）
     ├── config.ts             新增：--config / --template 的读取与合并
     ├── birth-info.ts / birth-info-defs.ts / render.ts / yun.ts
-    ├── astrology.ts           cmdAstrology（排盘分析一条命令：概览默认 + 功能旗标分发）
+    ├── astrology.ts           cmdAstrology（排盘分析一条命令：概览默认 + 功能参数分发）
     ├── classics.ts / synastry.ts / stars.ts   各命令拆分文件
-    ├── help.ts                总览 help 与每命令 --help（命令 → 旗标归属表 + COMMAND_HELP）
+    ├── help.ts                总览 help 与每命令 --help（命令 → 参数归属表 + COMMAND_HELP）
     ├── commands.ts           只留 COMMAND_TABLE + COMMAND_DESC（注册薄层）
     └── selftest.ts           汇总执行；排盘 / 古籍 / 合盘断言分段报告
 ```
@@ -99,7 +109,7 @@ scripts/
 ### 2.3 synastry 命令
 
 - **保持 `--a-chart` / `--b-chart` 两个 JSON 文件输入**（吃 `astrology --json` 产物），**不做**出生信息直传。
-- `a-` / `b-` 前缀旗标（`a-chart` / `b-chart`）进 `FLAG_GROUPS`；`flag-scope.ts` 的 `sidePrefixes: ["a-", "b-"]` + `prefixedCommands: ["synastry"]` 正式启用（从遗留物变真在用）。
+- `a-` / `b-` 前缀参数（`a-chart` / `b-chart`）进 `OPTION_GROUPS`；`option-scope.ts` 的 `sidePrefixes: ["a-", "b-"]` + `prefixedCommands: ["synastry"]` 正式启用（从遗留物变真在用）。
 - `synastry-guide.md` 从合盘 skill 的 references/ 搬到根 `references/`。
 
 ### 2.4 classics 命令
@@ -118,7 +128,7 @@ scripts/
 
 ### 2.7 拼音文件名英文化（随迁移一并 `git mv`）
 
-译名按文件实际语义定（非音译）；格局分组按成格难度分级、views 小节与旗标名对齐：
+译名按文件实际语义定（非音译）；格局分组按成格难度分级、views 小节与参数名对齐：
 
 | 拼音文件                        | 语义                          | 新名                                                       |
 | ------------------------------- | ----------------------------- | ---------------------------------------------------------- |
@@ -143,7 +153,7 @@ scripts/
 
 ### 2.8 术语全对齐 iztro：类型值、内核字段与标识符（共五层）
 
-前两层（旗标 / 文件名）见上文；此节是**类型值、`ziwei/types.ts` 公开字段与标识符层**——与 iztro 原作者术语全面对齐（用户拍板）。牵动 types / algorithm / render / patterns / analysis / compare /
+前两层（参数 / 文件名）见上文；此节是**类型值、`ziwei/types.ts` 公开字段与标识符层**——与 iztro 原作者术语全面对齐（用户拍板）。牵动 types / algorithm / render / patterns / analysis / compare /
 test 与 **JSON 输出字段名**；合盘消费方（chart-view.ts）同仓同笔改。
 
 **类型值**：
@@ -184,13 +194,13 @@ test 与 **JSON 输出字段名**；合盘消费方（chart-view.ts）同仓同�
 | `getLiuYueStemIndex`                                   | `getMonthlyStemIndex`                             | `monthly`                                                      |
 | `liuNianBranchOf`（fortune.ts）                        | `yearlyBranchOf`                                  | `horoscope.yearly`                                             |
 | `xiaoXianPalaceOf`                                     | `agePalaceOf`                                     | `horoscope.agePalace`                                          |
-| `liuNianSection` / `daXianSection` / `xiaoXianSection` | `yearlySection` / `decadalSection` / `ageSection` | 对应旗标词根                                                   |
-| `gejuSection` / `sihuaSection`                         | `patternSection` / `mutagenSection`               | 对应旗标词根                                                   |
+| `liuNianSection` / `daXianSection` / `xiaoXianSection` | `yearlySection` / `decadalSection` / `ageSection` | 对应参数词根                                                   |
+| `gejuSection` / `sihuaSection`                         | `patternSection` / `mutagenSection`               | 对应参数词根                                                   |
 | `parseAgeArg`                                          | `parseAgesArg`                                    | 对齐 `--ages`                                                  |
 
 标识符层的**保留**：`getYearStemIndex`（英文意译，无 iztro 对应概念）、`SHICHEN`（时辰为中国
 时制专名，iztro 无对应英文常量——`timeIndex` 是纯数字）、`lateZi*` 与 `--late-zi`（晚子时
-在 iztro 仅表现为 `timeIndex 12`，无术语名可对齐，旗标保持拼音专名）、`mustPalace` /
+在 iztro 仅表现为 `timeIndex 12`，无术语名可对齐，参数保持拼音专名）、`mustPalace` /
 `palaceAtBranch` / `chartSignature`（英文意译的渲染辅助）、`ZiweiChart` / `BirthInfo` /
 `borrowed*`（自有结构与概念）。
 
@@ -227,14 +237,14 @@ iztro「仆役」——领域立场，不应对齐）。
 
 ### 3.2 `help` 强化 + 每命令 `--help`
 
-- **`help`（总览）**：每条命令一段**详细说明**——功能、专属旗标、典型示例（含专题旗标组合）、注意事项（如「排盘四必问」「synastry 需先备两张 JSON」）。命令列表仍由 `COMMAND_DESC` 派生，详细文本新增 `COMMAND_HELP`（命令名 → 多行说明），HELP 逐命令展开。
-- **`<命令> --help`（每命令）**：输出**该命令**的用法——专属旗标（从 `FLAG_GROUPS` 过滤出该命令实际读取的子集，**命令 → 旗标归属表**由此落地）、示例、口径警告。此前「旗标作用域是 skill 级不校验归属」的诚实边界顺势收窄：help 层面先给出正确的归属视图。
-- 实现住 `cli/help.ts`：总览 help 与每命令 help 共用一张命令 → 旗标归属表 + `COMMAND_HELP` 文案表。
+- **`help`（总览）**：每条命令一段**详细说明**——功能、专属参数、典型示例（含专题参数组合）、注意事项（如「排盘四必问」「synastry 需先备两张 JSON」）。命令列表仍由 `COMMAND_DESC` 派生，详细文本新增 `COMMAND_HELP`（命令名 → 多行说明），HELP 逐命令展开。
+- **`<命令> --help`（每命令）**：输出**该命令**的用法——专属参数（从 `OPTION_GROUPS` 过滤出该命令实际读取的子集，**命令 → 参数归属表**由此落地）、示例、口径警告。此前「参数作用域是 skill 级不校验归属」的诚实边界顺势收窄：help 层面先给出正确的归属视图。
+- 实现住 `cli/help.ts`：总览 help 与每命令 help 共用一张命令 → 参数归属表 + `COMMAND_HELP` 文案表。
 
 ### 3.3 配置文件输入
 
-- **`--config <file>`**：读 JSON 文件。键名与旗标的 camelCase 同名（`date` / `time` / `city` / `gender` / `pattern` / `mutagen` / `yearly` …），出生信息与专题旗标都可写。
-- **优先级：命令行旗标覆盖配置文件同名字段**（命令行更明确，必须赢；配置是基底）。
+- **`--config <file>`**：读 JSON 文件。键名与参数的 camelCase 同名（`date` / `time` / `city` / `gender` / `pattern` / `mutagen` / `yearly` …），出生信息与专题参数都可写。
+- **优先级：命令行参数覆盖配置文件同名字段**（命令行更明确，必须赢；配置是基底）。
 - **`--template`**：打印可直接使用的示例 JSON 模板到 stdout（含双方合盘示例与注释性字段说明），用户 `--template > my.json` 落盘。模板本身必须是合法可跑的配置。
 - 校验：配置文件里的未知键、非法值与命令行同规则报错（不静默）。
 - 实现住 `cli/config.ts`：读文件 → 键校验 → 与 argv 合并（argv 优先）→ 产出合成 `CliArgs`。
@@ -251,7 +261,7 @@ iztro「仆役」——领域立场，不应对齐）。
 - TDD：selftest 断言先行（红→绿），沿用上一轮的模式。
 - 迁移本身以「行为不变」为准：迁移提交前后 `selftest`（合并后的三段合计）与 `npm test` 必须全绿；`typecheck` 0 错。
 - 层 6 守卫改写为单 skill 形态后，必须仍有「skill 自包含可拷走」的断言（对用户的承诺不变，只是承诺对象从三个变一个）。
-- 新增断言：位置参数形态（`astrology 1990-5-15 9:30 男 北京`）与旗标形态排出同一张盘、`--year`/`--month`/`--day` 已删（调用即未知参数）、同类位置参数重复报错、城市 token 查不到报错；`astrology` 默认输出概览含信息面板、各功能旗标（英文名）产出对应专题、`--palaces` 出十二宫逐宫详表、`--yearly` 缺省当前年、旧命令名（analyze / chart / topic / insight / cities）调用即报未知命令、每命令 `--help` 输出且含归属旗标、`--focus` 四项深化各自可锚定、`--config` 合并优先级（命令行赢）、`--template` 产物可被 `--config` 吃回。
+- 新增断言：位置参数形态（`astrology 1990-5-15 9:30 男 北京`）与参数形态排出同一张盘、`--year`/`--month`/`--day` 已删（调用即未知参数）、同类位置参数重复报错、城市 token 查不到报错；`astrology` 默认输出概览含信息面板、各功能参数（英文名）产出对应专题、`--palaces` 出十二宫逐宫详表、`--yearly` 缺省当前年、旧命令名（analyze / chart / topic / insight / cities）调用即报未知命令、每命令 `--help` 输出且含归属参数、`--focus` 四项深化各自可锚定、`--config` 合并优先级（命令行赢）、`--template` 产物可被 `--config` 吃回。
 
 ## 6. 文档同步面
 
