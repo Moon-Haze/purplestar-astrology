@@ -1,9 +1,9 @@
 ---
 name: purplestar-astrology
-description: 紫微斗数排盘与命理解读（倪海夏《天纪》三合派体系）—— 给出出生年月日时与性别，排出命盘并解读十二宫、格局、四化、大限流年。当用户要求排紫微斗数命盘、解读命盘、看单人命宫/事业/财运/感情、问大限流年运势时使用。触发词：紫微斗数、排盘、命盘、紫微、斗数、命宫、格局、四化、大限、流年、流月、农历生日排盘、晚子时、倪海夏、倪海厦、天纪。**双人合盘 / 合婚 / 看两人配不配**用 purplestar-synastry 技能，**只查古籍原文**（不涉及排盘与解读）用 purplestar-classics 技能。不要用于八字/四柱/子平（本技能不排八字）、塔罗、占星。
+description: 紫微斗数一条龙（倪海夏《天纪》三合派体系）—— 排盘解读、双人合盘、古籍原文检索三域合一。给出出生年月日时与性别，排出命盘并解读十二宫、格局、四化、大限流年；双人合盘看婚姻配对（双宫联参）；检索《骨髓赋》等三部古籍原文。触发词：紫微斗数、排盘、命盘、紫微、斗数、命宫、格局、四化、大限、流年、流月、农历生日排盘、晚子时、合盘、合婚、配对、婚姻缘分、两人配不配、古籍、骨髓赋、倪海夏、倪海厦、天纪。不要用于八字/四柱/子平（不排八字）、塔罗、占星。
 ---
 
-# 紫微斗数排盘与解读
+# 紫微斗数（排盘解读 · 合盘 · 古籍）
 
 本技能的排盘内核与知识库全部在 `scripts/` 下（与 CLI 同处一层），**不重复实现任何命理逻辑**——CLI 只是这些模块的访问层。排盘结果由 `iztro` + 项目既有算法确定性产出，你只负责**解读**。
 
@@ -14,7 +14,7 @@ description: 紫微斗数排盘与命理解读（倪海夏《天纪》三合派�
 下文所有命令中的 `node scripts/purple-star.ts` 都**相对于 skill 根目录**。执行前 `cd` 到该目录即可：
 
 ```bash
-cd <SKILL.md 所在目录> && node scripts/purple-star.ts analyze --date 1990-05-15 --time 09:30 --gender male
+cd <SKILL.md 所在目录> && node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州
 ```
 
 脚本本身可从**任意 cwd** 运行（内核按脚本自身位置定位，不依赖 cwd），所以 `cd` 只是为省去拼长路径。
@@ -49,7 +49,7 @@ cd <SKILL.md 所在目录> && node scripts/purple-star.ts analyze --date 1990-05
 
 脚本行为：
 
-- 用户给 `--time 23:xx` 时，`analyze` **自动输出两盘差异对照**，并说明当前用的是哪一口径 —— 你**必须**把这段提醒读出来，不能在解读里装作没这回事。
+- 用户给 `--time 23:xx` 时，`astrology` **自动输出两盘差异对照**，并说明当前用的是哪一口径 —— 你**必须**把这段提醒读出来，不能在解读里装作没这回事。
 - 逐字读提醒里的两组「紫微落 X · 命宫主星 Y」，据此向用户说明差异有多大，并**建议其确认具体钟点**。
 - 若用户确认为 23:00 后出生且要求按传统口径，加 `--late-zi` 重跑，再解读。
 - 用了 `--late-zi` 时，输出里的「农历」栏显示的仍是**出生当日**（即真太阳时校正后的日期，可能与 `--date` 差一天；安星则用其次日），两处相差一天是正常的，不要当成 bug。
@@ -61,12 +61,14 @@ cd <SKILL.md 所在目录> && node scripts/purple-star.ts analyze --date 1990-05
 三步，详细展开见 [references/workflow.md](references/workflow.md)：
 
 ```bash
-node scripts/purple-star.ts analyze \
-  --date 1990-05-15 --time 09:30 --city 北京 --gender male
+# 零参数快捷形态（按形态归类：日期 / 时刻 / 性别 / 城市，顺序无关；示例数据为虚构）
+node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州
+# 完整参数形态，两种形态可混用（参数优先）
+node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female
 ```
 
-1. **排盘取数** —— `analyze` 默认输出**精简概览**：命盘总览 + 口径提示（出生地 / 晚子时）+ 一行运限速览（虚岁 / 大限 / 流年命宫 / 小限）+ 专题指路。深入全靠**专题旗标**：`--info` 基本信息（四柱 / 命主身主 / 斗君）、`--geju` 格局、`--sihua` 四化（含流月）、`--liunian [年]` 流年、`--daxian [虚岁]` 十年大运、`--xiaoxian [虚岁]` 小限、`--focus <宫>` 宫盘分析 —— **可叠加**，全盘解读通常 `--geju --sihua --daxian` 一次拿齐。只给农历用 `--lunar`，只知时辰名用 `--branch`。
-2. **按需深入知识源** —— 需要展开论证时，**直接读 `scripts/ziwei/` 下的权威文件**（格局库、四化、星曜释义、主题论断），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则调本 CLI 的 `classics` 命令。
+1. **排盘取数** —— `astrology`（四命令合一）默认输出**概览**：命盘总览三行 + 基本信息 12 行面板（无条件）+ 口径提示（出生地 / 晚子时）+ 运限速览 + 功能参数指路。深入全靠**功能参数**：`--pattern` 格局、`--mutagen` 四化（配 `--monthly` 流月）、`--yearly [年]` 流年、`--decadal [虚岁]` 十年大运、`--ages [虚岁]` 小限、`--focus <宫>` 宫盘四项深化、`--palaces` 十二宫逐宫详表、`--topic <key>` 主题论断 —— **可叠加**，全盘解读通常 `--pattern --mutagen --decadal` 一次拿齐。只给农历用 `--lunar`，只知时辰名用 `--branch`。批量排盘可用 `--config <my.json>`（配置是基底，命令行同名参数覆盖；`--template` 生成模板）。
+2. **按需深入知识源** —— 需要展开论证时，**直接读 `scripts/` 下的权威文件**（`ziwei/` 格局库与四化、`classics/` 古籍、`synastry/` 合盘断语），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则调本 CLI 的 `classics` 命令。
 3. **解读** —— 命宫定基调 → 格局定性 → 四化定着力点 → 大限看阶段 → 结论落到具体建议，**不跳步**。
 
 ## 解读输出契约
@@ -91,7 +93,7 @@ node scripts/purple-star.ts analyze \
 
 但 `types.ts` 里的 `Palace.selfMutagen` / `Decadal.mutagen` 字段与 `SelfMutagenMark` / `DecadalMutagen` 两个类型**仍在**，那是**刻意留下的绊线**：`selftest` 与 `test/school.test.ts` 各有断言盯着它们不被重新填回，字段删了就没东西可盯。**存在不等于该用**——用它们解读就是背叛本项目的体系立场。
 
-可用的是：**生年四化**（出生年干）、**流年四化**（当年年干）、**流月四化**（`--liuyue 6`）。CLI 的 `analyze` 已按此口径输出。
+可用的是：**生年四化**（出生年干）、**流年四化**（当年年干）、**流月四化**（`--monthly 6`）。CLI 的 `astrology` 已按此口径输出。
 
 倪师核心立场（权威声明见 `scripts/ziwei/mutagen.ts` 的「体系基准」节）：
 
@@ -101,12 +103,12 @@ node scripts/purple-star.ts analyze \
 
 ## 其他已知事实
 
-- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis/`：推算 + `data.ts` 论断文案与类型映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `topic` 命令使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是工作流第 2 步列出的六个。
+- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis/`：推算 + `data.ts` 论断文案与类型映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `astrology --topic` 使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是工作流第 2 步列出的六个。
 - **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `tough` / `soft`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键），只有 `type === "major"` 的那 14 颗带 `brightness`，其余三类不带（信息比 iztro 原始输出少，是口径选择不是缺漏）。
 - **年龄一律是虚岁**：`currentAge`（当前年龄）、`decadals[].startAge/endAge`、`palace.decadalRange` 三者**同为虚岁**，以**农历年（正月初一）为界** —— 不是生日，也不是立春。数据来自 iztro 的 `decadal.range`。解读时报给用户的年龄就用这个虚岁，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
-- **童限**：`currentDaXianIndex === -1` 表示此人**尚未起运**（虚岁小于五行局数，如土五局要 5 岁才起运），此时 CLI 的「当前大限」显示 `—`。这是正常的，不是数据缺失——此时按命宫论，不要硬套一个大限。
-- **十二宫顺序**：`chart.palaces` 按**地支数组序**排，实测为 `2,3,…,11,0,1`（**寅起**）——既不是 0-11（子起），也不是宫位顺序（命宫起）。定位某宫请按 `branch` 建索引，**不要依赖数组下标**。CLI 的「十二宫一览」也是这个序。
-- **流年 / 流月的月份**：`--liuyue` 取**农历月** 1-12，月干由流年干按五虎遁推。
+- **童限**：`currentDecadalIndex === -1` 表示此人**尚未起运**（虚岁小于五行局数，如土五局要 5 岁才起运），此时 CLI 的「当前大限」显示 `—`。这是正常的，不是数据缺失——此时按命宫论，不要硬套一个大限。
+- **十二宫顺序**：`chart.palaces` 按**地支数组序**排，实测为 `2,3,…,11,0,1`（**寅起**）——既不是 0-11（子起），也不是宫位顺序（命宫起）。定位某宫请按 `branch` 建索引，**不要依赖数组下标**。CLI 的「十二宫详表」（`--palaces`）也是这个序。
+- **流年 / 流月的月份**：`--monthly` 取**农历月** 1-12，月干由流年干按五虎遁推。
 - **运限数据面**（2026-09-28 起）：`Palace.ages` 是小限岁数表（**虚岁**域，十二宫并集连续覆盖 1–120，每宫 10 个）；流年命宫 = **年支所在宫**（三合派不重排十二宫）；`chart.mingZhu` / `shenZhu` 是命主/身主（iztro 直给），`douJunBranch` 是子年斗君（自推，闰月按所闰月数计）。`--info` 里的节气/非节气四柱**仅为出生时刻记录，本技能不做八字论命**。
 
 ## 命令速查
@@ -119,9 +121,9 @@ node scripts/purple-star.ts analyze \
 | `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后） |
 | `selftest`                       | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次 |
 
-高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `1990-5-15 9:30 男 北京`（按形态归类）；专题深入 `--info` / `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>`（可叠加，拼音别名 `--geju`/`--sihua`/`--liunian`/`--daxian`/`--xiaoxian` 仍被识别）；输出 `--json`。
+高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--info` / `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>`（可叠加，拼音别名 `--geju`/`--sihua`/`--liunian`/`--daxian`/`--xiaoxian` 仍被识别）；输出 `--json`。
 
-完整参数面、各专题的内容、`--focus` 的宫名口径（含「交友宫」不是「仆役」）见 [references/flags.md](references/flags.md)。
+完整参数面（英文主名 / 拼音别名 / 位置参数形态 / `--config` / `--charts`）、各专题的内容、`--focus` 的宫名口径（含「交友宫」不是「仆役」）见 [references/options.md](references/options.md)。
 
 ## 本技能不做的事
 
