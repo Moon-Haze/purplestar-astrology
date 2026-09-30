@@ -48,40 +48,40 @@ import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
 
 /**
- * `--liunian` 的年份校验（`analyze` 的流年专题与 `topic` 的流年论断共用）。
+ * `--yearly` 的年份校验（`analyze` 的流年专题与 `topic` 的流年论断共用）。
  *
  * @param args - CLI 参数表
  * @returns 流年年份；未给或裸开关时默认当前公历年（裸开关的语义就是「深入今年」）
  * @throws 非整数或超出 1-9999 时
  *
  * @remarks
- * 非数字静默传下去会得到「NaN 天干 → 四空串」的垃圾输出，与 `--liuyue` 同一纪律：
+ * 非数字静默传下去会得到「NaN 天干 → 四空串」的垃圾输出，与 `--monthly` 同一纪律：
  * 宁可报错，不静默产出错盘。
  */
 function parseLiuNianArg(args: CliArgs): number {
 	const y =
-		args.liunian !== undefined && args.liunian !== true
-			? Number(args.liunian)
+		args.yearly !== undefined && args.yearly !== true
+			? Number(args.yearly)
 			: new Date().getFullYear();
 	if (!Number.isInteger(y) || y < 1 || y > 9999)
-		throw new Error(`--liunian 应为 1-9999 的整数年份，收到：${args.liunian}`);
+		throw new Error(`--yearly 应为 1-9999 的整数年份，收到：${args.yearly}`);
 	return y;
 }
 
 /**
- * `--liuyue` 的农历月校验（`analyze` 与 `topic` 共用）。
+ * `--monthly` 的农历月校验（`analyze` 与 `topic` 共用）。
  *
  * @param args - CLI 参数表
  * @returns 农历月 1-12；未给时为 `null`（表示「不算流月」）
  * @throws 非整数或超出 1-12 时
  */
 function parseLiuYueArg(args: CliArgs): number | null {
-	// 裸开关必须报错：Number(true) = 1 会让它被静默当成农历一月（与 --liunian 不同，
+	// 裸开关必须报错：Number(true) = 1 会让它被静默当成农历一月（与 --yearly 不同，
 	// 流月的「当前月」没有明确语义 —— 农历月随流年干五虎遁推，不设默认）。
-	if (args.liuyue === true) throw new Error("--liuyue 需要一个农历月值（如 --liuyue 6）");
-	const m = args.liuyue !== undefined ? Number(args.liuyue) : null;
+	if (args.monthly === true) throw new Error("--monthly 需要一个农历月值（如 --monthly 6）");
+	const m = args.monthly !== undefined ? Number(args.monthly) : null;
 	if (m !== null && (!Number.isInteger(m) || m < 1 || m > 12))
-		throw new Error("--liuyue 应为农历月 1-12");
+		throw new Error("--monthly 应为农历月 1-12");
 	return m;
 }
 
@@ -130,14 +130,14 @@ function cmdChart(args: CliArgs) {
 /**
  * `analyze` 命令：解读用的完整输入包（本 CLI 最常用的一条）。
  *
- * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--geju` / `--sihua` /
- *   `--daxian [虚岁]` / `--xiaoxian [虚岁]` / `--liunian [年]` / `--liuyue` / `--focus`
+ * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--pattern` / `--mutagen` /
+ *   `--decadal [虚岁]` / `--ages [虚岁]` / `--yearly [年]` / `--monthly` / `--focus`
  * @returns 已渲染好的文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 字符串
  *
  * @remarks
  * **精简概览 + 专题分发**（2026-09-28 起）：不带任何专题旗标时只输出命盘总览、
  * 口径提示（出生地 / 晚子时）与一行运限速览 + 专题指路；给了哪个专题旗标就**只追加**
- * 该专题的详版（可叠加，按 --info → --geju → --sihua → --liunian → --daxian → --xiaoxian
+ * 该专题的详版（可叠加，按 --info → --pattern → --mutagen → --yearly → --decadal → --ages
  * → --focus 的固定顺序）。十二宫逐宫详表归 `chart` 命令与 `--json`，不再默认铺开。
  *
  * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，`--json` 的消费方
@@ -154,8 +154,8 @@ function cmdAnalyze(args: CliArgs) {
 	// （实测 1990-01-15：农历己巳年 → 武曲化禄，公历取模却得庚 → 化权武曲）。
 	const yearStem = chart.lunarInfo.yearStem;
 	const native = getMutagenByStem(yearStem);
-	// 注意：流年用 --liunian，不可复用 --year —— 后者是出生年的回退参数。
-	// 二者同时给出不会报错：流年取 --liunian；而出生日期一旦给了 --date/--lunar，
+	// 注意：流年用 --yearly，不可复用 --year —— 后者是出生年的回退参数。
+	// 二者同时给出不会报错：流年取 --yearly；而出生日期一旦给了 --date/--lunar，
 	// --year 就被静默忽略（buildBirthInfo 里 --date/--lunar 优先），不会有任何提示。
 	const liuNianYear = parseLiuNianArg(args);
 	const liuNian = getYearlyMutagen(liuNianYear);
@@ -244,15 +244,15 @@ function cmdAnalyze(args: CliArgs) {
 			})
 		);
 	}
-	if (args.geju) out.push("", ...patternSection(chart));
-	if (args.sihua) out.push("", ...mutagenSection(chart, liuNianYear, liuYueMonth));
-	if (args.liunian !== undefined) out.push("", ...yearlySection(chart, liuNianYear));
-	if (args.daxian !== undefined)
-		out.push("", ...decadalSection(chart, parseAgesArg(args.daxian, chart.currentAge, "--daxian")));
-	if (args.xiaoxian !== undefined)
+	if (args.pattern) out.push("", ...patternSection(chart));
+	if (args.mutagen) out.push("", ...mutagenSection(chart, liuNianYear, liuYueMonth));
+	if (args.yearly !== undefined) out.push("", ...yearlySection(chart, liuNianYear));
+	if (args.decadal !== undefined)
+		out.push("", ...decadalSection(chart, parseAgesArg(args.decadal, chart.currentAge, "--decadal")));
+	if (args.ages !== undefined)
 		out.push(
 			"",
-			...ageSection(chart, parseAgesArg(args.xiaoxian, chart.currentAge, "--xiaoxian"), liuNianYear)
+			...ageSection(chart, parseAgesArg(args.ages, chart.currentAge, "--ages"), liuNianYear)
 		);
 	if (args.focus !== undefined) {
 		// typeof 判空挡掉「给了 --focus 却没跟值」（parseArgs 存布尔 true）的形态 ——
@@ -350,7 +350,7 @@ function cmdStars(args: CliArgs) {
  *
  * @param args - CLI 参数表；出生信息参数与 `analyze` 相同，另认
  *   `--topic <key>`（13 主题之一）、`--view mingpan|daxian|liunian|liuyue`（默认 mingpan）、
- *   `--liunian` / `--liuyue`（view 为流年/流月时的目标年月）
+ *   `--yearly` / `--monthly`（view 为流年/流月时的目标年月）
  * @returns 已渲染好的论断文本
  *
  * @remarks

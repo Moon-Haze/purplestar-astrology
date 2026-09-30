@@ -122,9 +122,9 @@ node scripts/purple-star.ts analyze \
 | `synastry --a-chart <a> --b-chart <b>` | 合盘（双宫联参；读两份 `analyze --json` 产物；2026-09-30 并入）   |
 | `selftest`                       | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次 |
 
-高频旗标：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`；专题深入 `--info` / `--geju` / `--sihua` / `--liunian [年]` / `--daxian [虚岁]` / `--xiaoxian [虚岁]` / `--focus <宫名>`（可叠加）；输出 `--json`。
+高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `1990-5-15 9:30 男 北京`（按形态归类）；专题深入 `--info` / `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>`（可叠加，拼音别名 `--geju`/`--sihua`/`--liunian`/`--daxian`/`--xiaoxian` 仍被识别）；输出 `--json`。
 
-⚠️ **`--liunian` 勿写成 `--year`** —— 后者是出生年的回退参数，写错**不会报错**，会被静默忽略。完整参数面、各专题的内容、`--focus` 的宫名口径（含「交友宫」不是「仆役」）见 [references/flags.md](references/flags.md)。
+完整参数面、各专题的内容、`--focus` 的宫名口径（含「交友宫」不是「仆役」）见 [references/flags.md](references/flags.md)。
 
 ## 本技能不做的事
 

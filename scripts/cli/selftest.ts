@@ -14,7 +14,7 @@
  */
 
 import type { CliContext } from "./args";
-import { FLAG_NAMES, SIDE_PREFIXES, parseArgs } from "./args";
+import { OPTION_NAMES, OPTION_ALIASES, SIDE_PREFIXES, parseArgs } from "./args";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -717,6 +717,91 @@ export function cmdSelftest(ctx: CliContext): string {
 		return `${specs.length} 条 import 全为 node: 内置`;
 	});
 
+	ok("解析引擎：util.parseArgs tokens 底座——贪婪取值 / 等号式 / -- 分隔", () => {
+		// 2026-09-30 引擎重写（spec §2.8）：cac 退役，底座换 Node 内置 util.parseArgs（tokens 模式）。
+		// ⚠️ 贪婪取值是**版本敏感**行为（Node ≥ 22.15 实测贪婪；早期 18.x 会把负数当短选项），
+		//    本断言钉死——Node 行为若回退立即变红。
+		const a = parseArgs(["--limit", "-3"], "classics");
+		eq(a.limit, "-3", "--limit -3 的值 ");
+		eq(parseArgs(["--focus=财帛"], "astrology").focus, "财帛", "等号式 ");
+		eq(parseArgs(["--", "-x", "y"], "astrology")._.join(","), "-x,y", "-- 之后全位置 ");
+	});
+	ok("解析引擎：重复参数与主别名同现必须报错", () => {
+		// 旧引擎（cac）对重复参数取末值——静默择一。新契约：显式报错（宁可报错不静默）。
+		for (const argv of [["--geju", "--geju"], ["--geju", "--pattern"]]) {
+			let msg = "";
+			try {
+				parseArgs(argv, "astrology");
+			} catch (e) {
+				msg = (e as Error).message;
+			}
+			if (!msg) throw new Error(`${argv.join(" ")} 未报错——重复参数应报错（旧「取末值」废止）`);
+		}
+	});
+	ok("解析引擎：拼音别名归一到英文主名", () => {
+		eq(parseArgs(["--geju"], "astrology").pattern, true, "--geju → pattern ");
+		eq(parseArgs(["--sihua"], "astrology").mutagen, true, "--sihua → mutagen ");
+		eq(parseArgs(["--liunian", "2027"], "astrology").yearly, "2027", "--liunian → yearly ");
+	});
+	ok("解析引擎：--year/--month/--day 三连已删，未知参数中文报错", () => {
+		// 三连由 --date 完全覆盖（spec §1.2），删除后误敲 --year 由拼错建议引向 --yearly（距离 2）。
+		let msg = "";
+		try {
+			parseArgs(["--year", "1990"], "astrology");
+		} catch (e) {
+			msg = (e as Error).message;
+		}
+		if (!msg.includes("未知参数") || !msg.includes("--yearly"))
+			throw new Error(`应报未知参数并建议 --yearly，实得：${msg}`);
+	});
+	ok("出生信息：位置参数形态归类（日期/时刻/性别/城市），与旗标形态同盘", () => {
+		// 零参数快捷形态：astrology 1990-5-15 9:30 男 北京 —— 按形态归类、顺序无关。
+		const pos = buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "北京"], "astrology"));
+		const flg = buildBirthInfo(
+			parseArgs(
+				["--date", "1990-05-15", "--time", "09:30", "--gender", "male", "--city", "北京"],
+				"astrology"
+			)
+		);
+		eq(
+			chartSignature(generateChart(pos.info)),
+			chartSignature(generateChart(flg.info)),
+			"位置参数与旗标 "
+		);
+		let dup = "";
+		try {
+			parseArgs(["1990-5-15", "1991-6-1"], "astrology");
+		} catch (e) {
+			dup = (e as Error).message;
+		}
+		if (!dup) throw new Error("两个日期 token 未报错");
+		let badCity = "";
+		try {
+			buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "不存在的城市XYZ"], "astrology"));
+		} catch (e) {
+			badCity = (e as Error).message;
+		}
+		if (!badCity) throw new Error("未知城市 token 未报错（不得静默落 120°E）");
+	});
+	ok("出生信息：城市 token 三条边界（省市连写 / 裸省名按省会 / 带空格报错）", () => {
+		const cn = buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "山东青岛"], "astrology"));
+		eq(cn.info.longitude, 120.4, "山东青岛连写 ");
+		const nmg = buildBirthInfo(
+			parseArgs(["1990-5-15", "9:30", "男", "内蒙古鄂尔多斯"], "astrology")
+		);
+		eq(nmg.info.longitude, 109.8, "内蒙古鄂尔多斯连写 ");
+		const prov = buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "山东"], "astrology"));
+		eq(prov.info.longitude, 117, "裸省名按省会（济南）"); // 与 --province 山东 同值
+		let spaced = "";
+		try {
+			buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "山东", "青岛"], "astrology"));
+		} catch (e) {
+			spaced = (e as Error).message;
+		}
+		if (!spaced || !spaced.includes("连写"))
+			throw new Error(`省+市带空格应报错并提示连写，实得：${spaced}`);
+	});
+
 	ok("参数面：拼错的旗标必须报错，并指向最接近的合法名", () => {
 		// 拼错旗标以前是**静默**的：parseArgs 任何 `--xxx` 都照单全收，buildBirthInfo
 		// 读不到就落回默认值 —— `--ctiy 喀什` 排出的是一张经度按默认 120°E 算的盘
@@ -766,22 +851,22 @@ export function cmdSelftest(ctx: CliContext): string {
 		return `${probes.length} 个拼写错误均被拦下，${outOfScope.length} 个作用域外旗标被拒`;
 	});
 
-	ok("参数面：analyze 专题旗标族（info/geju/sihua/daxian/xiaoxian）均可解析", () => {
-		// 专题旗标族：每个旗标对应一个输出专题，加了就只出该专题的详版。
-		// switch 型裸开关给 true；daxian / xiaoxian 是可选值形态，带值给字符串、
-		// 裸开关（= 默认当前虚岁）给 true —— 与 --liunian 的取值校验同一条纪律。
+	ok("参数面：专题参数族（info/pattern/mutagen/decadal/ages）均可解析", () => {
+		// 专题参数族：每个参数对应一个输出专题，加了就只出该专题的详版（英文名主名，
+		// 拼音别名见 OPTION_ALIASES）。switch 型裸开关给 true；decadal / ages 是可选值
+		// 形态，带值给字符串、裸开关（= 默认当前虚岁）给 true。
 		const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
-		const a = parseArgs([...base, "--info", "--geju", "--sihua"], "analyze");
+		const a = parseArgs([...base, "--info", "--pattern", "--mutagen"], "analyze");
 		eq(a.info, true, "--info ");
-		eq(a.geju, true, "--geju ");
-		eq(a.sihua, true, "--sihua ");
-		const b = parseArgs([...base, "--daxian", "37"], "analyze");
-		eq(b.daxian, "37", "--daxian 带值 ");
-		const c = parseArgs([...base, "--daxian"], "analyze");
-		eq(c.daxian, true, "--daxian 裸开关 ");
-		const d = parseArgs([...base, "--xiaoxian", "45"], "analyze");
-		// 键名无连字符，camelKey 后原样是 xiaoxian（不是 xiaoXian）
-		eq(d.xiaoxian, "45", "--xiaoxian 带值 ");
+		eq(a.pattern, true, "--pattern ");
+		eq(a.mutagen, true, "--mutagen ");
+		const b = parseArgs([...base, "--decadal", "37"], "analyze");
+		eq(b.decadal, "37", "--decadal 带值 ");
+		const c = parseArgs([...base, "--decadal"], "analyze");
+		eq(c.decadal, true, "--decadal 裸开关 ");
+		const d = parseArgs([...base, "--ages", "45"], "analyze");
+		eq(d.ages, "45", "--ages 带值 ");
+		return "5 个专题参数（3 开关 + 2 可选值）";
 		return "5 个专题旗标（3 开关 + 2 可选值）";
 	});
 
@@ -939,17 +1024,18 @@ export function cmdSelftest(ctx: CliContext): string {
 		const unknown = names
 			.map(n => {
 				// 剥掉出生方前缀再查表：`--a-late-zi` 声明的是 `late-zi`。前缀表取自
-				// 本 skill 的作用域（`SIDE_PREFIXES`）—— 本 skill 不认任何前缀，故这一步
-				// 目前恒为空转，但它是**从声明派生**的，哪天作用域变了会自动跟上。
+				// 本 skill 的作用域（`SIDE_PREFIXES`），从声明派生，作用域变了会自动跟上。
 				const p = SIDE_PREFIXES.find(pre => n.startsWith(pre));
 				return p ? n.slice(p.length) : n;
 			})
-			.filter(n => !FLAG_NAMES.has(n));
+			// 拼音别名归一到英文主名（--geju 提到的是 --pattern 的别名，同样合法）
+			.map(n => OPTION_ALIASES[n] ?? n)
+			.filter(n => !OPTION_NAMES.has(n));
 		if (unknown.length)
 			throw new Error(
-				`SKILL.md 提到但 args.ts 未声明的旗标：${unknown.map(n => "--" + n).join("、")}`
+				`SKILL.md 提到但 args.ts 未声明的参数：${unknown.map(n => "--" + n).join("、")}`
 			);
-		return `${names.length} 种旗标写法全部有声明`;
+		return `${names.length} 种参数写法全部有声明`;
 	});
 
 	ok("参数面：SKILL.md 命令速查表提到的命令都在 commands.ts 的命令表里", () => {

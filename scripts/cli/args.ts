@@ -1,133 +1,90 @@
 /**
- * CLI 参数面 —— 旗标声明表 + 校验 + 解析（cac 驱动）+ 帮助渲染。不依赖任何内核模块，
- * 也不使用 `@/` 别名。
+ * CLI 参数面 —— 参数声明表 + 校验 + 解析（`util.parseArgs` tokens 底座 + 薄适配层）。
+ * 不依赖任何内核模块，也不使用 `@/` 别名。
  *
- * 拆自 purple-star.ts。依赖图的最底层（args / render 并列底层，
- * 其余模块都建立在它们之上）：
+ * 2026-09-30 引擎重写（spec §2.8）：cac 退役，底座换 Node 内置 `util.parseArgs`
+ * （`tokens: true` 拿 token 流），输入格式适配全部在本文件的薄适配层：
  *
- *   args ─┐
- *         ├─→ birth-info ─→ commands ─→ selftest
- *   render┘        ↑____________|
+ * - **底座只管切分**：`--key=value`（inlineValue）/ 裸 `--key` / `--` 分隔 / positional
+ *   的 token 识别。⚠️ 实测（Node v26）：`strict: false` 下 `--limit -3` 的 `-3` 是**独立的
+ *   option token**（name "3"），不是 limit 的值 —— 贪婪取值因此必须由适配层自己做
+ *   （见 {@link parseArgs} 的单趟扫描），这也是「薄适配层」存在的第一个理由。
+ * - **声明表校验**：未知参数当场中文报错（不走 strict —— 其报错是 Node 写死的英文，
+ *   与全中文报错约定冲突；自校验完全可控）。
+ * - **{@link OPTION_ALIASES} 归一**（`--geju`→`--pattern`）与主名判重（重复参数报错，
+ *   旧 cac「取末值」废止）。
  *
  * ⚠️ 本文件由引导层（purple-star.ts）在 `registerHooks` **之后**动态加载。
  *    不要在 purple-star.ts 顶部用静态 `import` 引它 —— 钩子未注册时解析会失败。
- *    也正因如此，`cac` 这个裸包名的静态 `import` 落在**本文件**（此处静态 import 是允许的），
- *    引导层只通过 `load<ArgsModule>()` 拿 {@link cli} 引用。
  *
- * ## 为什么旗标要有声明表
+ * ## 为什么参数要有声明表
  *
- * 此前「有哪些旗标」这件事只存在于三处**手写副本**里：`parseArgs` 不检查名字（任何
- * `--xxx` 都照单全收）、`purple-star.ts` 的 `HELP` 字符串、`SKILL.md` 的散文。
- * 三处靠注释互相提醒「要同步」，而漂移的代价是不对称的：
+ * 「有哪些参数」的唯一来源是 {@link OPTION_GROUPS}：{@link parseArgs} 据它拒绝未知参数、
+ * help 据它渲染参数段、`SKILL.md` 则由 `selftest` 断言兜底。拼错参数名（`--ctiy 喀什`）
+ * 曾静默落回默认经度排出错盘 —— 那正是这张表要消灭的失败模式。
  *
- * - 拼错一个旗标名（`--ctiy 喀什`）以前**不报错**。`buildBirthInfo` 读的是 `city`，
- *   读不到就落回默认经度 120°E —— 排出的是一张经度错约 176 分钟（≈3 个时辰）的盘，
- *   全程没有任何提示。这类静默错盘正是本项目 `REQUIRED_EXPORTS` 与 `algorithm.ts`
- *   的 `projectPalaceName` 都在防的东西，参数面却是敞开的。
- * - `--a-chart` 写在 `analyze` 上同理：`a-` 前缀只有 `synastry` 会去读，别处直接报错。
- *
- * 现在 {@link FLAG_GROUPS} 是唯一来源：{@link parseArgs} 据它拒绝未知旗标、
- * cac 据它注册选项并渲染 help 参数段、`SKILL.md` 则由 `selftest` 断言兜底。
- *
- * ## 解析为什么是 cac 驱动、而校验为什么还得自己做
- *
- * 分词（`--key value` / `--flag` / `--` 分隔符 / 重复选项归并）交给 `cac`；
- * 但 **cac 对未注册的选项是静默收下的**（连 `run: false` 也不校验），
- * 而「拼错旗标不报错」恰恰就是上面那个错盘入口 —— 所以 {@link checkFlagName}
- * 那套校验一个字都不能少，只是执行时机挪到了 cac 之前（见 {@link parseArgs}）。
- *
- * ⚠️ **键名是 camelCase**：cac 把 `--late-zi` 归一成 `lateZi`、`--a-late-zi` 归一成 `aLateZi`。
- *    换算只有 {@link camelKey} 一处，`FLAG_GROUPS` 里的 `name` 仍写 kebab
- *    （它同时是用户敲的名字、help 的显示名、`SKILL.md` 写的名字）。
+ * ⚠️ **键名是 camelCase**（`late-zi` → `lateZi`）。换算只有 {@link camelKey} 一处，
+ *    声明表里的 `name` 仍写 kebab（它同时是用户敲的名字、help 的显示名）。
  */
 
-import { cac } from "cac";
+import { parseArgs as nodeParseArgs } from "node:util";
 
-// ⚠️ 本文件是**全仓唯一**的一份参数解析骨架（2026-09-27 起）：它曾经同步给两个派生 skill，
-//    那两个在本次改造中断开派生关系，各写各的轻量解析循环（声明表 + 解析 + help 内联在各自的
-//    `purple-star.ts` 里）—— 它们各自只认两三个旗标，不值得这份 350 行的实测行为骨架。
-//    于是「共享全量表 → 收窄成本 skill」这层适配器在本仓只剩源这一份消费者，
-//    `./flag-scope` 也不再是「各 skill 自写的那一层差异」，而是一处**已知的遗留冗余**
-//    （`FLAG_GROUPS` 是全量、`FLAG_SCOPE` 也是全量）。留在原处是因为动它要连带改下面四个
-//    收窄点与 `cli/selftest.ts`，收益只是删一个文件。
-//
-// 运行期无环：本行是**值**导入，而 `flag-scope.ts` 只以 `import type` 取下面的
-// {@link FlagScope}（类型导入被完全擦除）。
-import { FLAG_SCOPE } from "./flag-scope";
+// ⚠️ 运行期无环：本行是**值**导入，而 option-scope.ts 只以 `import type` 取下面的
+//    {@link OptionScope}（类型导入被完全擦除）。
+import { OPTION_SCOPE } from "./option-scope";
 
 /**
- * CLI 参数表：`_` 收位置参数，其余键对应 `--key`。
+ * CLI 参数表：`_` 收位置参数，其余键对应 `--key`（camelCase）。
  *
  * @remarks
  * 带值的参数存 `string`，纯开关存 `boolean` 的 `true`（见 {@link parseArgs}），
  * 因此取值前通常要先收窄类型。
  *
- * ⚠️ **键是 camelCase**（`late-zi` → `lateZi`、`a-chart` → `aChart`）—— 这是 cac 的归一规则。
- * 换算只有 {@link camelKey} 一处；按下标读参数的地方（`birth-info.ts` 的 `g()`）必须经它拼键。
- *
  * 索引签名里保留 `string[]` 是为了与 `_` 的写入同域 —— TS 要求索引签名涵盖所有具名属性。
  */
 export interface CliArgs {
-	/** 位置参数：非 `--` 开头的 argv 项，按出现顺序收集 */
+	/** 位置参数：非 `--` 开头的 argv 项，按出现顺序收集（`astrology` 命令另有形态归类） */
 	_: string[];
 	[key: string]: string | boolean | string[];
 }
 
-// ── 旗标声明：CLI 参数面的唯一定义处 ──────────────────────────
+// ── 参数声明：CLI 参数面的唯一定义处 ──────────────────────────
 
 /**
- * 一个旗标的完整声明。
+ * 一个参数的完整声明。
  *
  * @remarks
  * 界面刻意只留四格 `name / kind / value / desc` —— 声明表要能被一眼扫完，
- * 免得「加旗标」变成一件要读文档才敢做的事（那正是这份声明想消灭的成本）。
+ * 免得「加参数」变成一件要读文档才敢做的事。
  */
-export interface FlagSpec {
-	/** 旗标名，不含 `--`。`synastry` 可用 `a-` / `b-` 前缀叠在它前面（如 `--a-chart`） */
+export interface OptionSpec {
+	/** 参数名，不含 `--`。`synastry` 可用 `a-` / `b-` 前缀叠在它前面（如 `--a-chart`） */
 	name: string;
-	/** `"value"` 取值、`"switch"` 纯开关（HELP 据此决定写不写值域占位） */
+	/** `"value"` 取值、`"switch"` 纯开关（help 据此决定写不写值域占位） */
 	kind: "value" | "switch";
 	/** 值域占位，如 `"YYYY-MM-DD"`；`kind: "switch"` 时不给 */
 	value?: string;
-	/** 一行说明，即 HELP 里那一行的描述列 */
+	/** 一行说明，即 help 里那一行的描述列 */
 	desc: string;
 }
 
-/**
- * 一组旗标。
- *
- * @remarks
- * ⚠️ `title` **不进 HELP**：cac 渲染的参数段是所有**已注册 option 的平铺列表**，不带分组。
- * 它是给读声明表的人看的分类，外加承载一句只有此处可写的口径提示（「三选一」「二选一」）。
- * 想改 help 里能看到的东西，只有 {@link FlagSpec.desc} 一条路（经 `cli.option` 交给 cac）。
- */
-export interface FlagGroup {
+/** 一组参数（`title` 是给读声明表的人看的分类，不进 help 参数段）。 */
+export interface OptionGroup {
 	title: string;
-	flags: readonly FlagSpec[];
+	options: readonly OptionSpec[];
 }
 
 /**
- * 本 skill 的**旗标作用域** —— 声明「声明表里那些旗标中，本 skill 认哪些」。
+ * 本 skill 的**参数作用域** —— 声明「声明表里那些参数中，本 skill 认哪些」。
  *
  * @remarks
- * 本文件静态 import 它。**它如今只有源这一个消费者，且写的是全量**（见上方文件头的说明）——
- * 收窄能力仍在（下面四个收窄点都还生效），只是没有第二个 skill 需要被收窄。
- * 声明是**裸旗标名的正面清单**，不按「本 skill 认哪些命令」派生 —— 那会重建本文件
- * 刻意不维护的「旗标属于哪个命令」归属表（见 {@link checkFlagName} 的 ⚠️）。
- * 正面清单还有个好处：**fail-closed** —— 往 {@link FLAG_GROUPS} 加一个新旗标，
- * 它不会自动泄漏给没声明它的 skill，加的人必须决定它归谁。
- *
- * 收窄只发生在四个点上，全在本文件内：cac 的选项注册（HELP 的参数段由**已注册的
- * option** 渲染，故过滤这里 = help 自动收窄）、{@link FLAG_NAMES}（校验基准与
- * {@link suggestFlag} 的候选集）、{@link SIDE_PREFIXES}、{@link LEGAL_KEYS}。
- *
- * ⚠️ **收窄的粒度是 skill 级，不是命令级**：`stars --json` 这类「本 skill 有、
- * 但当前命令不读」的参数仍会被收下不用。要修得把每条命令实际读的键也声明出来，
- * 那正是 {@link checkFlagName} 拒绝维护的归属表，本仓不做。
+ * 单 skill 形态下这份清单即全量。声明是**裸参数名的正面清单**，不按「本 skill 认哪些
+ * 命令」派生 —— 那会重建本文件刻意不维护的「参数属于哪个命令」归属表（Task 8 的
+ * help 归属表是视图，不做硬校验）。
  */
-export interface FlagScope {
-	/** 本 skill 认的旗标名（不含 `--`）；每一项都必须是 {@link FLAG_GROUPS} 里的名字。 */
-	readonly flags: readonly string[];
+export interface OptionScope {
+	/** 本 skill 认的参数名（不含 `--`）；每一项都必须是 {@link OPTION_GROUPS} 里的名字。 */
+	readonly options: readonly string[];
 	/** 本 skill 认的出生方前缀（合盘用 `["a-", "b-"]`）；不认就给空数组。 */
 	readonly sidePrefixes: readonly string[];
 	/**
@@ -135,34 +92,32 @@ export interface FlagScope {
 	 *
 	 * @remarks
 	 * ⚠️ 这一维**不能省**：它是「前缀写在别的命令上」这条静默失败的判据。若只看
-	 * `sidePrefixes` 非空就放行，`selftest --a-chart` 会从「报错」变成「静默忽略」
-	 * —— 既违反「宁可报错，不静默」，又会让合盘 selftest 里那条断言变红。
+	 * `sidePrefixes` 非空就放行，`selftest --a-chart` 会从「报错」变成「静默忽略」。
 	 */
 	readonly prefixedCommands: readonly string[];
 	/**
-	 * 按旗标名覆盖 HELP 里的说明文案。
-	 *
-	 * @remarks
-	 * 声明表里的 desc 是**全集视角**写的（`--search` 写着「classics / stars / cities」），
-	 * 而各 skill 的命令集不同 —— 源删掉 `classics` 后，那句在源的 help 里就指着一个
-	 * 不存在的命令。作用域只管「列哪些旗标」管不到文案，故留这个口子。
+	 * 按参数名覆盖 help 里的说明文案（声明表的 desc 是全集视角时用）。
 	 */
 	readonly descOverrides?: Readonly<Record<string, string>>;
 }
 
 /**
- * 全部旗标，按 HELP 的展示顺序分组。
+ * 全部参数（英文主名），按 help 的展示顺序分组。
  *
  * @remarks
+ * - 专题参数族 2026-09-30 起英文化主名（spec §1 表）：`pattern` / `mutagen` / `yearly` /
+ *   `monthly` / `decadal` / `ages`；拼音原名成为 {@link OPTION_ALIASES} 别名。
+ * - `--year` / `--month` / `--day` 三连**已删**：`--date 1990-5-15` 完全覆盖（格式宽松，
+ *   月日不补零）。误敲 `--year` 由拼错建议引向 `--yearly`（编辑距离 2）。
+ *
  * 分组标题里的「三选一」「二选一」是**口径**而非装饰：`buildBirthInfo` 对
- * `--date` / `--lunar` / `--year+--month+--day` 与 `--time` / `--branch` 各取其一，
- * 同时给出时按该处的优先级静默择一 —— 这条规则只有写在这里才有人看得见。
+ * `--date` / `--lunar` 与 `--time` / `--branch` 各取其一，同时给出时按该处的优先级处理。
  */
-export const FLAG_GROUPS: readonly FlagGroup[] = [
+export const OPTION_GROUPS: readonly OptionGroup[] = [
 	{
-		title: "出生日期（三选一；synastry 加 a- / b- 前缀）",
-		flags: [
-			{ name: "date", kind: "value", value: "YYYY-MM-DD", desc: "公历生日" },
+		title: "出生日期（二选一）",
+		options: [
+			{ name: "date", kind: "value", value: "YYYY-MM-DD", desc: "公历生日（格式宽松，月日不补零）" },
 			{
 				name: "lunar",
 				kind: "value",
@@ -170,19 +125,11 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 				desc: "农历生日（脚本自动换算，勿与 --date 同用）",
 			},
 			{ name: "leap", kind: "switch", desc: "配合 --lunar，表示闰月" },
-			{
-				name: "year",
-				kind: "value",
-				value: "1990",
-				desc: "公历出生年（与 --month / --day 分写）",
-			},
-			{ name: "month", kind: "value", value: "1-12", desc: "公历出生月（分写）" },
-			{ name: "day", kind: "value", value: "1-31", desc: "公历出生日（分写）" },
 		],
 	},
 	{
 		title: "出生时辰（二选一）",
-		flags: [
+		options: [
 			{
 				name: "time",
 				kind: "value",
@@ -209,7 +156,7 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 	},
 	{
 		title: "其他出生信息",
-		flags: [
+		options: [
 			{ name: "gender", kind: "value", value: "male|female", desc: "性别" },
 			{
 				name: "lng",
@@ -221,7 +168,7 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 				name: "city",
 				kind: "value",
 				value: "北京",
-				desc: "用城市名代替 --lng（容错「石家庄市」「石家庄地区」等写法）",
+				desc: "用城市名代替 --lng（容错「石家庄市」「山东青岛」等写法）",
 			},
 			{
 				name: "province",
@@ -234,33 +181,33 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 	},
 	{
 		title: "命盘输入（替代整组出生信息；synastry 加 a- / b- 前缀）",
-		flags: [
+		options: [
 			{
 				name: "chart",
 				kind: "value",
 				value: "/tmp/a.json",
-				desc: "读 purplestar-astrology 的 analyze --json 输出，代替该方出生信息",
+				desc: "读排盘命令 analyze --json 的输出，代替该方出生信息",
 			},
 		],
 	},
 	{
-		title: "analyze 专题深入（可叠加；不带任何专题旗标时只出精简概览）",
-		flags: [
+		title: "专题深入（可叠加；不带任何专题参数时只出精简概览）",
+		options: [
 			{ name: "info", kind: "switch", desc: "基本信息专题（四柱 / 命主身主 / 斗君 / 五行局）" },
-			{ name: "geju", kind: "switch", desc: "格局识别专题（格局判词 / 成立与破格条件 / 出处）" },
+			{ name: "pattern", kind: "switch", desc: "格局识别专题（格局判词 / 成立与破格条件 / 出处）" },
 			{
-				name: "sihua",
+				name: "mutagen",
 				kind: "switch",
 				desc: "四化专题（生年 / 流年 / 流月四化落宫与叠宫）",
 			},
 			{
-				name: "daxian",
+				name: "decadal",
 				kind: "value",
 				value: "[虚岁]",
 				desc: "大限专题（十年大运时间轴 + 指定岁所在限的三方四正深入；缺省 = 当前虚岁）",
 			},
 			{
-				name: "xiaoxian",
+				name: "ages",
 				kind: "value",
 				value: "[虚岁]",
 				desc: "小限专题（指定岁小限宫 + 十二宫小限岁数表；缺省 = 当前虚岁）",
@@ -269,32 +216,32 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 	},
 	{
 		title: "输出与选题",
-		flags: [
+		options: [
 			{ name: "json", kind: "switch", desc: "输出原始 JSON（供程序消费）" },
 			{
-				name: "liunian",
+				name: "yearly",
 				kind: "value",
 				value: "2027",
-				desc: "analyze / topic 指定流年（默认今年）。勿用 --year，那是出生年",
+				desc: "指定流年（默认今年）",
 			},
 			{
-				name: "liuyue",
+				name: "monthly",
 				kind: "value",
 				value: "1-12",
-				desc: "analyze / topic 追加该农历月的流月四化（需先有流年）",
+				desc: "追加该农历月的流月四化（需先有流年）",
 			},
-			{ name: "focus", kind: "value", value: "财帛", desc: "analyze 额外展开指定宫位" },
+			{ name: "focus", kind: "value", value: "财帛", desc: "额外展开指定宫位" },
 			{
 				name: "topic",
 				kind: "value",
 				value: "love",
-				desc: "topic 选主题（13 个 key 之一；不带值时列清单）",
+				desc: "主题论断选主题（13 个 key 之一；不带值时列清单）",
 			},
 			{
 				name: "view",
 				kind: "value",
 				value: "mingpan",
-				desc: "topic 展示口径：mingpan / daxian / liunian / liuyue",
+				desc: "主题论断展示口径：mingpan / decadal / yearly / monthly",
 			},
 			{
 				name: "search",
@@ -308,91 +255,61 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
 ];
 
 /**
- * 声明表里的**全部**旗标名（不含 `--`），跨所有 skill —— 这是全集，不是校验基准。
+ * 拼音别名 → 英文主名（spec §1.1）。
  *
  * @remarks
- * 与 {@link FLAG_NAMES} 的区别就是作用域。仓库测试用它断言「各 skill 的作用域并起来
- * = 全集」：**每个旗标都必须有归属**，加旗标的人要决定它归谁，否则没人认领的旗标
- * 会静默地从所有 help 里消失（加了却谁也用不上，是比拼错更难发现的一类失败）。
+ * 别名是**显式声明**的映射，不是拼错容错 —— `--patern` 仍然报错，
+ * {@link suggestOption} 建议主名 `--pattern`。help / SKILL.md 一律用主名，
+ * 别名在 help 的参数描述尾注。
  */
-export const ALL_FLAG_NAMES: ReadonlySet<string> = new Set(
-	FLAG_GROUPS.flatMap(g => g.flags.map(f => f.name))
+export const OPTION_ALIASES: Record<string, string> = {
+	geju: "pattern",
+	sihua: "mutagen",
+	liunian: "yearly",
+	liuyue: "monthly",
+	daxian: "decadal",
+	xiaoxian: "ages",
+};
+
+/**
+ * 声明表里的**全部**参数名（英文主名，不含别名）。
+ *
+ * @remarks
+ * 单 skill 形态下作用域即全集。校验时先查 {@link OPTION_ALIASES} 归一，再查这张表。
+ */
+export const ALL_OPTION_NAMES: ReadonlySet<string> = new Set(
+	OPTION_GROUPS.flatMap(g => g.options.map(o => o.name))
 );
 
 /**
- * **本 skill** 认的旗标名（不含 `--`）—— {@link parseArgs} 的校验基准。
- *
- * @remarks
- * 直接取自 {@link FLAG_SCOPE}，故它同时是 {@link suggestFlag} 的候选集：
- * 「拼错了？最接近的是……」只会指向本 skill 真有的旗标，不会建议一个传了也没用的。
+ * **本 skill** 认的参数名（英文主名）—— {@link parseArgs} 的校验基准，
+ * 同时是 {@link suggestOption} 的候选集。
  */
-export const FLAG_NAMES: ReadonlySet<string> = new Set(FLAG_SCOPE.flags);
+export const OPTION_NAMES: ReadonlySet<string> = new Set(OPTION_SCOPE.options);
 
 /**
  * kebab-case → camelCase：**键名换算的唯一一处**。
  *
- * @param name - 旗标名，可带 `synastry` 的 `a-` / `b-` 前缀（如 `"a-late-zi"`）
+ * @param name - 参数名，可带 `synastry` 的 `a-` / `b-` 前缀（如 `"a-late-zi"`）
  * @returns camelCase 形式（`"aLateZi"`）
- *
- * @remarks
- * 规则来自 cac 的归一行为（实测）：它把 `--late-zi` 变成 `lateZi`、`--a-late-zi` 变成
- * `aLateZi` —— **连前缀段一并处理**，所以调用方只要拼出完整 kebab 名再交给本函数即可。
- *
- * `birth-info.ts` 的 `g(k)` 是全项目唯一按下标读参数的地方（15 个键都从它过），
- * 那边因此只需在拼键时套上本函数，不必逐个改键名。
  */
 export function camelKey(name: string): string {
 	return name.replace(/-([a-z0-9])/g, (_m: string, c: string) => c.toUpperCase());
 }
 
-/**
- * cac 实例 —— 分词与 help 的引擎。
- *
- * @remarks
- * 全部旗标注册为**全局选项**（而非逐命令注册）：本项目刻意不校验「旗标属于哪个命令」
- * （见 {@link checkFlagName} 的 ⚠️），全局注册正与之同构，`a-` / `b-` 前缀旗标也只需声明一次。
- *
- * 注册形态**按 {@link FlagSpec.kind} 分两种**，与声明表的语义对齐：
- * - `"value"` → `--name [值域]`：可选值形态，实测无值时给布尔 `true`
- *   （必填的 `<值域>` 形态会让 cac 抢在自己报错前退出，绕开本文件的中文提示）。
- * - `"switch"` → `--name`：纯布尔，实测**不吃**后面的位置参数。
- *   此前手写解析器不区分 kind、一律吃值，`classics --json 机月同梁` 会把检索词吃进
- *   `json` 而让 `_` 空掉 —— 那是静默失败，不是需要保住的行为。
- *
- * ⚠️ 刻意**不**给 `default`：给了之后未出现的参数也会进 options，
- * 破坏调用方「`undefined` 即未给出」的判空（`cmdClassics` 的 `--limit` 等就靠它取默认值）。
- *
- * 引导层拿它注册命令与 help（见 `purple-star.ts` 的 `main()`）——
- * `cac` 的静态 import 必须留在本文件，理由见文件头注释。
- */
-const cli = cac("purple-star");
-for (const group of FLAG_GROUPS) {
-	for (const flag of group.flags) {
-		// ⚠️ 作用域外的旗标**不注册** —— 这一句就是「help 只列本 skill 认的旗标」的全部实现：
-		//    cac 渲染的参数段取自**已注册的 option**，不注册即不出现，不必去改 purple-star.ts
-		//    的 help 段（它只是往 cac 的输出上追加两段领域知识）。
-		if (!FLAG_NAMES.has(flag.name)) continue;
-		cli.option(
-			flag.kind === "value" ? `--${flag.name} [${flag.value ?? "值"}]` : `--${flag.name}`,
-			FLAG_SCOPE.descOverrides?.[flag.name] ?? flag.desc
-		);
-	}
-}
-
-export { cli };
+/** 主名 → 声明（扫描循环里反复查，建一次索引）。 */
+const ALL_SPECS: ReadonlyMap<string, OptionSpec> = new Map(
+	OPTION_GROUPS.flatMap(g => g.options).map(o => [o.name, o])
+);
 
 /**
- * 本 skill 认的出生方前缀（合盘是 `a-` / `b-`，它要分别读两方出生信息）。
+ * 本 skill 认的出生方前缀（合盘是 `a-` / `b-`，它要分别读两方的命盘）。
  *
  * @remarks
- * 取自 {@link FLAG_SCOPE} —— 不排合盘的 skill 在这里是空数组，于是下面
- * {@link checkFlagName} 的前缀分支与 {@link LEGAL_KEYS} 的前缀展开**整个不可达**，
- * 「前缀」这个概念在那个 skill 里根本不存在。
- *
- * 导出是给 `cli/selftest.ts` 用的：它扫 `SKILL.md` 里提到的旗标，要先剥掉这层前缀
- * 才能与 {@link FLAG_NAMES} 比对 —— 前缀表不该有第二份。
+ * 取自 {@link OPTION_SCOPE}。导出是给 `cli/selftest.ts` 用的：它扫 `SKILL.md` 里
+ * 提到的参数，要先剥掉这层前缀再与 {@link OPTION_NAMES} 比对 —— 前缀表不该有第二份。
  */
-export const SIDE_PREFIXES: readonly string[] = FLAG_SCOPE.sidePrefixes;
+export const SIDE_PREFIXES: readonly string[] = OPTION_SCOPE.sidePrefixes;
 
 /**
  * 编辑距离：把 `a` 改成 `b` 至少几步。只用于「拼错了？最接近的是……」这句提示，
@@ -404,7 +321,7 @@ function editDistance(a: string, b: string): number {
 		const cur = [i];
 		for (let j = 1; j <= b.length; j++) {
 			const sub = prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1);
-			cur[j] = Math.min(sub, prev[j] + 1, cur[j - 1] + 1);
+			cur.push(Math.min(sub, prev[j] + 1, cur[j - 1] + 1));
 		}
 		prev = cur;
 	}
@@ -412,22 +329,26 @@ function editDistance(a: string, b: string): number {
 }
 
 /**
- * 在合法旗标名里找与 `name` 最接近的一个。
+ * 在合法参数名里找与 `name` 最接近的一个。
  *
- * @param name - 用户实际敲的旗标名（不含 `--`）
+ * @param name - 用户实际敲的参数名（不含 `--`）
  * @returns 编辑距离 ≤ 2 的最近者；都不够近则 `null`
  *
  * @remarks
- * 阈值取 2 是权衡：`ctiy` → `city` 距离 2（换位算 2 步），要抓；
- * 再放宽就会开始乱建议（`view` 会指到 `name`），反而把提示变成噪声。
+ * 阈值取 2 是权衡：`ctiy` → `city`（换位算 2 步）、`year` → `yearly` 都要抓；
+ * 再放宽就会开始乱建议，反而把提示变成噪声。
  */
-export function suggestFlag(name: string): string | null {
+export function suggestOption(name: string): string | null {
 	let best: string | null = null;
 	let bestD = 3;
-	for (const n of FLAG_NAMES) {
+	for (const n of OPTION_NAMES) {
 		const d = editDistance(name, n);
 		if (d < bestD) {
 			bestD = d;
+			best = n;
+		} else if (d === bestD && best !== null && n.includes(name) && !best.includes(name)) {
+			// 同距离偏好**包含**敲入名的候选：`--year` 距 `--leap` 与 `--yearly` 同为 2，
+			// 但 yearly 以 year 为前缀，几乎总是用户想要的那个（leap 只是无辜的等距词）。
 			best = n;
 		}
 	}
@@ -435,157 +356,223 @@ export function suggestFlag(name: string): string | null {
 }
 
 /**
- * 校验旗标名，不合法即抛错。
+ * 校验参数名（先别名归一，再查主名表），不合法即抛错。
  *
- * @param key - 已剥掉 `--` 的旗标名
- * @param command - 当前命令名；接受前缀的那几条由 {@link FlagScope.prefixedCommands} 声明
+ * @param key - 已剥掉 `--` 的参数名（可带出生方前缀）
+ * @param command - 当前命令名；接受前缀的那几条由 {@link OptionScope.prefixedCommands} 声明
  *
  * @remarks
- * 三条规则各挡一种**静默失败**，都是本文件顶部注释里那两类错盘的入口：
+ * 三条规则各挡一种**静默失败**：
  *
- * 1. 名字不在 {@link FLAG_NAMES}：拼错。以前照收不误，`buildBirthInfo` 读不到就读不到，
- *    直接落回默认值排出一张错盘。此处报错并给出最近的名字。
+ * 1. 名字（归一后）不在 {@link OPTION_NAMES}：拼错。报错并给出最近的名字。
  * 2. `a-` / `b-` 前缀出现在不收它的命令上：那里读的是不带前缀的名字，带前缀的写法会被
  *    整个忽略（`analyze --a-city 北京` 排的是默认经度的盘）。
  * 3. 前缀后面接的仍必须是声明过的名字：`--a-ctiy` 同样要抓。
  *
- * ⚠️ 刻意**不**校验「这个旗标属于这个命令」：`--json` 给 `classics` 是无害的多余参数，
- * 而把归属做成硬约束会让每条命令的合法集合成为第二个需要维护的真相 —— 拼错才是要挡的，
- * 归属错了顶多是没生效，不会排错盘。
- *
- * ⚠️ 但规则 2 **必须带「命令」这一维**（{@link FlagScope.prefixedCommands}），不能只按 skill
- * 收窄：若只看「本 skill 认 `a-` 前缀」就放行，`selftest --a-chart` 会从「报错」退化成
- * 「静默忽略」—— 既违反「宁可报错，不静默」，又会让合盘 selftest 里那条断言直接变红。
+ * ⚠️ 刻意**不**校验「这个参数属于这个命令」：`--json` 给 `classics` 是无害的多余参数，
+ *    而把归属做成硬约束会让每条命令的合法集合成为第二个需要维护的真相 —— 拼错才是要挡的。
+ *    （Task 8 的 help 归属表是**视图**，不做硬校验。）
  */
-function checkFlagName(key: string, command: string | undefined): void {
+function checkOptionName(key: string, command: string | undefined): string {
 	const prefix = SIDE_PREFIXES.find(p => key.startsWith(p));
 	if (prefix) {
-		// 前缀只在作用域声明的那几条命令上合法（合盘是 synastry）。判据取自 FLAG_SCOPE，
-		// 不写死命令名 —— 「哪条命令要分别读两方」本就是该 skill 自决的事。
-		if (command === undefined || !FLAG_SCOPE.prefixedCommands.includes(command)) {
+		// 前缀只在作用域声明的那几条命令上合法（合盘是 synastry）。
+		if (command === undefined || !OPTION_SCOPE.prefixedCommands.includes(command)) {
 			throw new Error(
-				`--${key}：\`${prefix}\` 前缀只有 ${FLAG_SCOPE.prefixedCommands.join(" / ")} 命令认` +
+				`--${key}：\`${prefix}\` 前缀只有 ${OPTION_SCOPE.prefixedCommands.join(" / ")} 命令认` +
 					`（它要分别读 ${SIDE_PREFIXES.join(" / ")} 两方）。` +
 					`${command ? `当前命令是 ${command}，` : ""}请改用 --${key.slice(prefix.length)}。`
 			);
 		}
-		checkFlagName(key.slice(prefix.length), command);
-		return;
+		return prefix + checkOptionName(key.slice(prefix.length), command);
 	}
-	if (FLAG_NAMES.has(key)) return;
-	const hint = suggestFlag(key);
+	// 别名归一：--geju → --pattern（显式声明的映射，不是拼错容错）
+	const canonical = OPTION_ALIASES[key] ?? key;
+	if (OPTION_NAMES.has(canonical)) return canonical;
+	const hint = suggestOption(canonical);
 	throw new Error(
 		`未知参数 --${key}。${hint ? `最接近的是 --${hint}。` : ""}运行 help 查看全部参数。`
 	);
 }
 
-/**
- * cac 归一后**可能出现的全部合法键**（camelCase），归一化时充当键名规则的看门人
- * （见 {@link parseArgs}）。
- *
- * @remarks
- * 两部分：无前缀的键，以及 {@link SIDE_PREFIXES} 声明的出生方前缀键（`--a-city` → `aCity`）。
- * 前缀键**一律收进集合**，不按命令过滤 —— 该不该用是 {@link checkFlagName} 按命令判的，
- * 这里只管「这个键的形状是不是我方声明表能产出的」。不收前缀的 skill 里
- * {@link SIDE_PREFIXES} 是空数组，这一步自动退化成「只有无前缀键」。
- */
-const LEGAL_KEYS: ReadonlySet<string> = new Set([
-	...[...FLAG_NAMES].map(camelKey),
-	...SIDE_PREFIXES.flatMap(p => [...FLAG_NAMES].map(n => camelKey(p + n))),
-]);
-
-/**
- * 把 cac 给出的值归一成 {@link CliArgs} 的两种形态。
- *
- * @remarks
- * cac 的值有三种形态，与原手写解析器都不同，逐个搬回来：
- * - **数组**：同一选项重复给出时 cac 会累积。取**末值**，与原实现的「后值覆盖」一致。
- * - **数字**：cac 会把纯数字转成 `number`。一律 `String()` 还原 —— 本项目所有取值方
- *   （`buildBirthInfo` 的 `g()`）都按字符串走，给个数字会让 `=== true` 之类的判断错位。
- *   ⚠️ 这一步**不可逆**：`--search 007` 到不了这里就已经是数字 `7`，前导零丢了。
- * - **布尔** `true`：开关无值时的形态，原样保留（调用方判空时要考虑它）。
- */
-function normalizeValue(raw: unknown): string | boolean {
-	if (Array.isArray(raw)) return String(raw[raw.length - 1]);
-	if (typeof raw === "boolean") return raw;
-	return String(raw);
+/** `util.parseArgs` 的 token（`strict: false` 形态，官方类型的宽松收窄）。 */
+interface Token {
+	kind: "option" | "positional" | "option-terminator";
+	index: number;
+	/** option：不含 `--` 的名字（可能来自 `-3` 这类短假名，见 parseArgs 的扫描注释） */
+	name?: string;
+	/** option：用户敲的原文（如 `--limit` / `-3`） */
+	rawName?: string;
+	/** option：`--key=value` 的内联值；空格式或 positional 无此字段 */
+	value?: string;
+	/** option：值是否内联（`--key=value` 为 true） */
+	inlineValue?: boolean;
 }
 
 /**
- * 参数解析：`--key value` / `--flag`。
+ * 参数解析：`--key value` / `--key=value` / `--flag` / `--` 分隔 / 重复报错 / 别名归一。
  *
- * @param argv - 待解析的参数数组（引导层传入的是 `process.argv.slice(2)` 去掉命令名之后的部分）
- * @param command - 当前命令名。给了就**校验旗标名**（见 {@link checkFlagName}），
- *   未知或错位的前缀旗标一律抛错而非静默忽略
- * @returns 参数表；`--flag` 后无值时存为布尔 `true`
+ * @param argv - 待解析的参数数组（**不含**命令名）
+ * @param command - 当前命令名。给了就**校验参数名**（见 {@link checkOptionName}），
+ *   未知或错位的前缀参数一律抛错而非静默忽略
+ * @returns 参数表；键已归一为 camelCase 的英文主名；`--flag` 裸开关存布尔 `true`
  *
  * @remarks
- * 三步：**前置校验 → cac 分词 → 归一**。分词（`--key value` / `--flag` / `--` 分隔符 /
- * 重复选项归并 / `--key=value` 等号式）全部交给 cac，本函数只负责它不管的那两件事。
+ * ## 两步：**底座切分 → 单趟适配**
  *
- * ⚠️ **校验必须在 cac 之前自己做**：cac 对未注册的选项是**静默收下**的（实测连
- * `run: false` 也不校验），而「拼错旗标不报错」正是文件头那类静默错盘的入口。
- * 扫描会连带吃掉 `--key value` 里的 value（判据同原来：值不会以 `--` 开头），
- * 免得把值误当成旗标名；等号式 `--key=value` 的值在同一 token 内，另行切分。
+ * 底座 `nodeParseArgs({ strict: false, tokens: true })` 只交 token 流；
+ * 取值判据、判重、别名归一、中文报错全部在下面这趟扫描里：
  *
- * ⚠️ 同一参数重复给出时取**末值**（cac 给数组，{@link normalizeValue} 取最后一项），
- * 与原实现的「后值覆盖」一致；不带值的开关存布尔 `true`。两者都是调用方判空时
- * 需要考虑的形态。
+ * - **贪婪取值**：声明表 `kind: "value"` 的参数**无条件吃紧随 token**（不论其形状）——
+ *   `--limit -3` 的 `-3` 在底座里是一个 name 为 "3" 的假 option token（实测 Node v26，
+ *   见文件头），扫描把它吃成 limit 的值。⚠️ 此行为**版本敏感**（早期 Node 的 strict 模式
+ *   会拒绝负值），selftest 钉死 —— Node 行为若回退立即变红。
+ * - **重复报错**：同一参数（归一后主名，含主别名同现 `--geju --pattern`）给两次即报错
+ *   —— 旧 cac「取末值」是静默择一，废止（spec §2.8 行为变更）。
+ * - **`--` 之后**全进 `_`（不做形态归类）。
+ * - **`-x` 短参数**：不在取值位置时一律报错 —— 本项目只有长参数。
  *
- * `command` 省略即退回「照单全收」的宽松解析 —— 供不关心旗标面、只想拿个参数表的
- * 调用方（如 `test/` 里构造输入的小工具）使用。宽松模式下前置校验与键名看门人都不生效，
- * 但 cac 的归一（camelCase 键、数字转字符串、重复取末值）仍在，键名形态与严格模式一致。
+ * `command` 省略即退回「照单全收」的宽松解析 —— 供不关心参数面、只想拿个参数表的
+ * 调用方使用。
  */
 export function parseArgs(argv: string[], command?: string): CliArgs {
-	// ① 前置校验：cac 静默收下未知选项，只有这里能拦住拼错
-	if (command !== undefined) {
-		for (let i = 0; i < argv.length; i++) {
-			const a = argv[i];
-			if (a.startsWith("--")) {
-				// `--key=value` 等号式：旗标名只到 `=` 为止，值在同一 token 内
-				const eq = a.indexOf("=");
-				const key = eq < 0 ? a.slice(2) : a.slice(2, eq);
-				checkFlagName(key, command);
-				if (eq >= 0) continue;
-				// 与 cac 一样吃掉「--key value」里的 value（判据同原解析器：值不会以 `--` 开头）。
-				// ⚠️ `-3` 这类也在此被吃掉，但它到了 cac 手里会被当成短选项，取值反而丢掉
-				//（mri 的固有行为，注册方式规避不了）。取值丢失由各命令自己的取值校验兜住
-				//（如 `cmdClassics` 把布尔 `true` 判为非法），残影键则在归一化时滤掉。
-				const next: string | undefined = argv[i + 1];
-				if (next !== undefined && !next.startsWith("--")) i++;
+	const { tokens } = nodeParseArgs({
+		args: argv,
+		strict: false,
+		tokens: true,
+	}) as { tokens: Token[] };
+
+	const args: CliArgs = { _: [] };
+	/** 已出现的归一后主名（camelCase）—— 判重基准 */
+	const seen = new Set<string>();
+	/** `--` 之后的内容只进 `_`，不参与 astrology 的形态归类 */
+	let afterTerminator = false;
+
+	for (let i = 0; i < tokens.length; i++) {
+		const t = tokens[i];
+		if (t.kind === "option-terminator") {
+			// 其后一切皆位置参数（不参与 astrology 的形态归类）
+			afterTerminator = true;
+			for (let j = i + 1; j < tokens.length; j++) {
+				const rest = tokens[j];
+				args._.push(rest.kind === "positional" ? (rest.value as string) : (rest.rawName as string));
 			}
-			// `-` 单独出现是「stdin」的传统写法，不当短选项；其余 `-x` 一律拒绝：
-			// cac 会把它收成 `options.x` 这种凭空多出来的键，而本项目没有任何短选项。
-			else if (a.startsWith("-") && a !== "-")
-				throw new Error(
-					`未知参数 ${a}。本项目只有 --xxx 长旗标形式。运行 help 查看全部参数。`
-				);
+			break;
+		}
+		if (t.kind === "positional") {
+			args._.push(t.value as string);
+			continue;
+		}		// option token（含 `-3` 这类假名——贪婪吃值会先把它消费掉，落到这里的才是真短参数）
+		const raw = String(t.rawName ?? "");
+		const key = String(t.name ?? "");
+		if (raw.startsWith("-") && !raw.startsWith("--")) {
+			// 单独的 `-` 是「stdin」的传统写法，当位置参数；其余 `-x` 一律拒绝
+			if (raw === "-") {
+				args._.push("-");
+				continue;
+			}
+			throw new Error(`未知参数 ${raw}。本项目只有 --xxx 长参数形式。运行 help 查看全部参数。`);
+		}
+		// 校验 + 别名归一（宽松模式跳过校验，直接归一）
+		const canonical =
+			command !== undefined ? checkOptionName(key, command) : (OPTION_ALIASES[key] ?? key);
+		const spec = ALL_SPECS.get(canonical);
+		const storeKey = camelKey(canonical);
+		// 判重：归一后主名判（前缀形态的 storeKey 天然不同：aChart ≠ chart，不算重复）
+		if (seen.has(storeKey))
+			throw new Error(
+				`参数 --${canonical} 重复给出（含主名与别名同现）。每个参数只给一次。`
+			);
+		seen.add(storeKey);
+
+		if (spec?.kind === "switch") {
+			if (t.inlineValue === true)
+				throw new Error(`--${canonical} 是开关，不接受值。运行 help 查看全部参数。`);
+			args[storeKey] = true;
+			continue;
+		}
+		// 取值参数：内联值直接取；空格式贪婪吃**紧随 token**（不论形状）。
+		// 紧随 token 是另一个 option / terminator / 结尾时，存布尔 true（可选值形态：
+		// `--decadal` 裸开关 = 默认当前虚岁、`--topic` 裸开关 = 列清单）——
+		// 是否接受裸开关由各命令自己的取值校验兜底（如 cmdClassics 把布尔判为非法）。
+		if (t.inlineValue === true) {
+			args[storeKey] = String(t.value);
+			continue;
+		}
+		const next = tokens[i + 1];
+		// 紧随 token 是真 option（`--xxx`）/ terminator / 结尾 → 可选值形态存 true。
+		// ⚠️ `-3` 这类假 option（底座把负数切成 name "3" 的 option token）**不算**——
+		//    贪婪取值恰恰要吃它（`--limit -3` 的 -3 是值）。
+		if (
+			!next ||
+			next.kind === "option-terminator" ||
+			(next.kind === "option" && String(next.rawName).startsWith("--"))
+		) {
+			args[storeKey] = true;
+			continue;
+		}
+		// 贪婪吃值：positional 的 value 或假 option 的 rawName（`-3`）
+		args[storeKey] = next.kind === "positional" ? String(next.value) : String(next.rawName);
+		i++;
+	}
+
+	// ── astrology 命令的位置参数形态归类（spec §1.2）──
+	// 其他命令（classics / stars 的检索词）的 `_` 原样保留；astrology 的出生信息
+	// 可零参数给（`astrology 1990-5-15 9:30 男 北京`），按形态归类、顺序无关。
+	// `--` 之后的内容已进 `_` 且不归类（用户明确说了「这些是字面量」）。
+	if (command === "astrology" && args._.length && !afterTerminator) {
+		const pos = classifyPositionals(args._);
+		args._ = [];
+		// 参数优先：位置参数只填空，旗标已给的项不被覆盖
+		for (const [k, v] of Object.entries(pos)) {
+			if (v !== undefined && args[k] === undefined) args[k] = v;
 		}
 	}
-
-	// ② 分词交给 cac：首两元素是它期望的 [node, 脚本名]（它内部 argv.slice(2)）
-	const parsed = cli.parse(["node", "purple-star", ...argv], { run: false });
-
-	// ③ 归一：把 cac 的形状搬回 CliArgs 的形状
-	const args: CliArgs = { _: [...parsed.args] };
-	for (const [key, raw] of Object.entries(parsed.options)) {
-		// cac 恒带一个 `"--"` 键（`--` 分隔符之后的内容；没写 `--` 时是空数组）。
-		// 真写了 `--` 的输入在前置校验里已被 `checkFlagName("")` 挡下，此处只需跳过它。
-		if (key === "--") continue;
-		// 短选项残影：cac/mri 把 `--limit -3` 的 `-3` 收成键 `3`（`-abc` 则拆成 a/b/c）。
-		// 本项目既无短选项也无单字符旗标（见 {@link FLAG_GROUPS}），故单字符键必然是这类残影。
-		if (key.length === 1) continue;
-		// 看门人：`LEGAL_KEYS` 由 camelKey 从声明表派生，cac 的归一结果若与它不符
-		// （规则变了、键名对不上），在这里抛错 —— 否则 `birth-info.ts` 会读不到值、
-		// 静默落回默认经度排出错盘，正是文件头那类失败。它也顺手挡下短选项造出的键。
-		if (command !== undefined && !LEGAL_KEYS.has(key))
-			throw new Error(
-				`参数 --${key} 的键名不在声明表里（cac 归一后为 \`${key}\`）。` +
-					`若 cac 的键名规则有变，需同步 camelKey。运行 help 查看全部参数。`
-			);
-		args[key] = normalizeValue(raw);
-	}
 	return args;
+}
+
+/**
+ * 出生信息位置参数的形态归类（spec §1.2）。
+ *
+ * @param tokens - 位置参数（已剔除 `--` 之后的内容）
+ * @returns `date` / `time` / `gender` / `city` 四键（camelCase，与旗标同名）
+ * @throws 同类 token 出现两个（两个日期 / 两个城市 …）—— 省与市带空格同属此类，
+ *   报错并提示连写
+ *
+ * @remarks
+ * 形态正则：日期 `^\d{4}-\d{1,2}-\d{1,2}$`、时刻 `^\d{1,2}:\d{2}$`、性别
+ * `男|女|male|female|m|f`，其余中文 token 为城市名（含「山东青岛」省市连写与「山东」
+ * 裸省名 —— 城市与省的解析在 `birth-info.ts` 的 findLongitude / 省会计链）。
+ * 农历生日只能走 `--lunar`（与公历同形，无法按形态区分）。
+ *
+ * ⚠️ 住本文件而非 `birth-info.ts`（计划原案）：归类在 {@link parseArgs} 内完成
+ * （同类 token 重复必须在解析层报错），而 birth-info 静态 import 本文件的
+ * {@link CliArgs} —— 挪过去会成环。
+ */
+export function classifyPositionals(tokens: readonly string[]): Partial<CliArgs> {
+	const out: Partial<CliArgs> = {};
+	/** 同类槽位：已有值即同类重复。城市槽的报错文案额外提示连写。 */
+	const put = (slot: "date" | "time" | "gender" | "city", value: string) => {
+		if (out[slot] !== undefined)
+			throw new Error(
+				slot === "city"
+					? `城市 token 只能给一个：省+市请连写（如「山东青岛」），或用 --city / --province 分别指定。收到：${out[slot]} 与 ${value}`
+					: `同类出生信息 token 只能给一个（${slot}）：已收 ${out[slot]}，又收 ${value}`
+			);
+		out[slot] = value;
+	};
+	for (const t of tokens) {
+		if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(t)) put("date", t);
+		else if (/^\d{1,2}:\d{2}$/.test(t)) put("time", t);
+		else if (/^(男|女|male|female|m|f)$/i.test(t)) put("gender", t);
+		else if (/[\u4e00-\u9fff]/.test(t)) put("city", t);
+		else
+			throw new Error(
+				`无法识别的位置参数：${t}。出生信息按形态归类（日期 YYYY-M-D / 时刻 HH:MM / 性别 / 中文城市名），` +
+					`其余输入请用参数给出。运行 help 查看全部参数。`
+			);
+	}
+	return out;
 }
 
 /**

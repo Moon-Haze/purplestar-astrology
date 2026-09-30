@@ -179,7 +179,7 @@ const { Lunar } = await load<typeof import("lunar-typescript")>("lunar-typescrip
 const { searchClassics } = await load<ClassicsModule>("@/classics");
 const { readAnalyzeJson } = await load<ChartViewModule>("@/synastry/chart-view");
 
-const { parseArgs, cli } = await load<ArgsModule>("@/cli/args");
+const { parseArgs, OPTION_GROUPS, OPTION_NAMES } = await load<ArgsModule>("@/cli/args");
 const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
 
 // ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默产出错盘 ──
@@ -247,7 +247,7 @@ const HELP_CAUTION = `  · 晚子时：23:00–23:59 出生时，子时横跨两
  * 常用调用示例，作为 help 的追加段。
  *
  * @remarks
- * ⚠️ 这段仍在手写（cac 渲染不到），改参数名时要一并改 —— `selftest` 有一条断言扫
+ * ⚠️ 这段仍是手写的领域知识（声明表渲染不到它），改参数名时要一并改 —— `selftest` 有一条断言扫
  * `SKILL.md` 里的旗标写法，示例里的旗标因此也落在它的覆盖范围内。
  */
 const HELP_EXAMPLES = `  # 单人解读（公历）
@@ -257,7 +257,7 @@ const HELP_EXAMPLES = `  # 单人解读（公历）
   node scripts/purple-star.ts analyze --lunar 1988-06-26 --time 10:30 --city 杭州 --gender male
 
   # 时辰直接指定 + 指定流年 + 聚焦官禄宫
-  node scripts/purple-star.ts analyze --date 1985-11-03 --branch 6 --gender female --liunian 2027 --focus 官禄
+  node scripts/purple-star.ts analyze --date 1985-11-03 --branch 6 --gender female --yearly 2027 --focus 官禄
 
   # 23:00 后出生，复核晚子时口径
   node scripts/purple-star.ts analyze --date 1988-02-14 --time 23:40 --late-zi --city 北京 --gender male
@@ -265,21 +265,72 @@ const HELP_EXAMPLES = `  # 单人解读（公历）
   # 回归自检
   node scripts/purple-star.ts selftest`;
 
-// 命令注册进 cac **只为让 help 列出命令**：分发仍由下面的 main() 查 COMMANDS 表 ——
-// cac 的 action 模型与「cmdXxx 一律**返回**字符串、console.log 只在 main() 一处发生」不合，
-// 用 action 会让输出点从 1 处变成每个命令各一处。
-for (const [name, desc] of Object.entries(COMMAND_DESC)) cli.command(name, desc);
-// 用法/命令/参数三段由 cac 自己渲染（分别来自名字、COMMAND_DESC、**本 skill 作用域内**的旗标），
-// 这两段是它渲染不到的领域知识。
-cli.help(sections => [
-	// 无标题段渲染成最前面独立的一行，位置与原 HELP 的首行一致。
-	// （不要改用 `cli.usage()` 放这句：它会把文本拼在 `$ purple-star ` **同一行**后面，
-	//   还会顶掉 cac 自带的 `<command> [options]`，读起来像一条命令。）
-	{ body: "紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知识库" },
-	...sections,
-	{ title: "⚠️ 两个容易排出错盘的口径（复核时先看这两条）", body: HELP_CAUTION },
-	{ title: "示例", body: HELP_EXAMPLES },
-]);
+// ── help 渲染（最小版：Usage / Commands / Options 三段 + 口径警告与示例两个追加段）──
+// cac 退役（2026-09-30，spec §2.8）后 help 由声明表自行渲染：参数段从
+// OPTION_GROUPS 派生（与实际接受面同源，不各说各话），命令段从 COMMAND_DESC 派生。
+// Task 8 的 help 强化（man 七节结构 + 每命令 --help + 归属表）会接管这段渲染。
+
+/**
+ * 字符串在等宽终端里占的列数：CJK / 全角字符算 2 列，其余算 1 列。
+ *
+ * @remarks
+ * 只为 help 的描述列对齐服务（`String.length` 会把中文占位算窄，描述列会被推歪）。
+ */
+function displayWidth(s: string): number {
+	let width = 0;
+	for (const ch of s) {
+		const c = ch.codePointAt(0) ?? 0;
+		const wide =
+			(c >= 0x2e80 && c <= 0xa4cf) ||
+			(c >= 0xac00 && c <= 0xd7a3) ||
+			(c >= 0xf900 && c <= 0xfaff) ||
+			(c >= 0xfe30 && c <= 0xfe6f) ||
+			(c >= 0xff00 && c <= 0xff60) ||
+			(c >= 0xffe0 && c <= 0xffe6);
+		width += wide ? 2 : 1;
+	}
+	return width;
+}
+
+/** 渲染整份 help 文本（三段 + 两个追加段，不含尾随换行）。 */
+function renderHelp(): string {
+	const lines: string[] = [
+		"紫微斗数 CLI —— 复用 scripts/ 下的排盘内核与知识库",
+		"",
+		"Usage:",
+		"  $ purple-star <command> [options]",
+	];
+	const names = Object.keys(COMMAND_DESC);
+	const cw = Math.max(...names.map(displayWidth)) + 2;
+	lines.push("", "Commands:");
+	for (const n of names) lines.push(`  ${n.padEnd(cw)}${COMMAND_DESC[n as keyof typeof COMMAND_DESC]}`);
+
+	// 参数段：平铺声明表（作用域过滤 —— OPTION_NAMES 之外的不出现），分类缩进
+	const label = (o: { name: string; kind: string; value?: string }) =>
+		o.kind === "value" ? `--${o.name} <${o.value ?? "值"}>` : `--${o.name}`;
+	const inScope = OPTION_GROUPS.flatMap(g =>
+		g.options.filter(o => OPTION_NAMES.has(o.name)).map(o => ({ ...o, title: g.title }))
+	);
+	const column = 4 + Math.max(...inScope.map(o => displayWidth(label(o)))) + 2;
+	const row = (indent: number, name: string, desc: string) =>
+		" ".repeat(indent) +
+		name +
+		" ".repeat(Math.max(1, column - indent - displayWidth(name))) +
+		desc;
+	lines.push("", "Options:");
+	let lastTitle = "";
+	for (const o of inScope) {
+		if (o.title !== lastTitle) {
+			lines.push(`  ${o.title}`);
+			lastTitle = o.title;
+		}
+		lines.push(row(4, label(o), o.desc));
+	}
+	lines.push(row(2, "-h, --help", "Display this message"));
+	lines.push("", "⚠️ 两个容易排出错盘的口径（复核时先看这两条）:", HELP_CAUTION);
+	lines.push("", "示例:", HELP_EXAMPLES);
+	return lines.join("\n");
+}
 
 /**
  * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
@@ -287,24 +338,21 @@ cli.help(sections => [
  * @remarks
  * `console.log` 只在这一处发生 —— 各 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
  *
- * 无参数、`help`、`--help`、`-h` 都走 `cli.outputHelp()`（用法 / 命令 / 参数三段由 cac 渲染，
- * 两条口径警告与示例由上面注册的 help 回调追加）；未知命令与命令内部抛出的错误都以非零码退出
- * （只打印 `err.message`，不打印栈）。传给命令的第二个参数是 `CliContext`（内核根及其来源），
- * 目前只有 `selftest` 用得上。
+ * 无参数、`help`、`--help`、`-h` 都打印 {@link renderHelp} 的产物；未知命令与命令内部抛出的
+ * 错误都以非零码退出（只打印 `err.message`，不打印栈）。传给命令的第二个参数是
+ * `CliContext`（内核根及其来源），目前只有 `selftest` 用得上。
  *
  * ⚠️ 命令名直接来自 `argv`，故查表必然可能未命中 —— `COMMANDS` 的值类型显式带 `| undefined`。
  *
  * `--help` 出现在**任何位置**都打印 help，包括 `analyze --help` 这种。这是刻意的：
- * `--help` 不在旗标声明表里，放它走到 `parseArgs` 只会得到一句「未知参数 --help」，
+ * `--help` 不在参数声明表里，放它走到 `parseArgs` 只会得到一句「未知参数 --help」，
  * 而用户此刻想要的显然是用法。判定提前到分发之前，`parseArgs` 因此永远见不到它。
  */
 function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];
 	if (!cmd || cmd === "help" || argv.includes("--help") || argv.includes("-h")) {
-		// 警告走的是上面那个 help 回调而非在这里事后补打：`outputHelp()` 直接打印、
-		// 取不回文本，接不上任何后处理。
-		cli.outputHelp();
+		console.log(renderHelp());
 		return;
 	}
 	const fn = COMMANDS[cmd];
@@ -315,7 +363,7 @@ function main() {
 		process.exit(1);
 	}
 	try {
-		// 命令名一并交给 parseArgs：旗标面要按命令校验（前缀旗标只有声明过的那几条命令认）
+		// 命令名一并交给 parseArgs：参数面要按命令校验（前缀参数只有声明过的那几条命令认）
 		const args = parseArgs(argv.slice(1), cmd);
 		console.log(fn(args, { root: ROOT, rootLabel: ROOT_LABEL }));
 	} catch (err) {

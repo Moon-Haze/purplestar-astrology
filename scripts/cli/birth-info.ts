@@ -289,15 +289,11 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 		const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(solarStr));
 		if (!m) throw new Error(`日期格式应为 YYYY-MM-DD，收到：${solarStr}`);
 		[, year, month, day] = m.map(Number);
-	} else {
-		year = Number(g("year"));
-		month = Number(g("month"));
-		day = Number(g("day"));
 	}
+	// ⚠️ --year/--month/--day 三连已删（2026-09-30，spec §1.2）：--date 完全覆盖（格式宽松），
+	//    日期从此二选一（--date / --lunar）。
 	if (!year || !month || !day)
-		throw new Error(
-			"缺少出生日期：需 --date YYYY-MM-DD、--lunar YYYY-MM-DD 或 --year/--month/--day"
-		);
+		throw new Error("缺少出生日期：需 --date YYYY-MM-DD 或 --lunar YYYY-MM-DD");
 
 	// 性别决定大限顺逆：同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁）。
 	// 缺失或非法若被静默兜底成 male，用户拿到的是一张没有任何异常信号的错盘，
@@ -324,17 +320,28 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 		longitude = Number(g("lng"));
 		if (!Number.isFinite(longitude)) throw new Error(`--lng 应为数字，收到：${g("lng")}`);
 	} else if (g("city")) {
-		const found = findLongitude(String(g("city")));
-		if (!found)
-			throw new Error(
-				`未收录城市：${g("city")}（可用 \`cities --search <关键词>\` 查询，或改用 --lng 指定经度）`
-			);
-		longitude = found.longitude;
-		// 仅在「做了容错解析」或「存在同名歧义」时提示——用户写的就是表里的名字时不必打扰
-		if (!found.exact)
-			lngNote = `「${g("city")}」按「${found.matched}」解析 → 东经 ${found.longitude}°`;
-		lngAmbiguous = found.ambiguous;
-		if (lngAmbiguous && !lngNote) lngNote = `「${g("city")}」→ 东经 ${found.longitude}°`;
+		const cityRaw = String(g("city"));
+		const found = findLongitude(cityRaw);
+		if (found) {
+			longitude = found.longitude;
+			// 仅在「做了容错解析」或「存在同名歧义」时提示——用户写的就是表里的名字时不必打扰
+			if (!found.exact)
+				lngNote = `「${cityRaw}」按「${found.matched}」解析 → 东经 ${found.longitude}°`;
+			lngAmbiguous = found.ambiguous;
+			if (lngAmbiguous && !lngNote) lngNote = `「${cityRaw}」→ 东经 ${found.longitude}°`;
+		} else {
+			// 城市名未命中时的省名回退（spec §1.2 裸省名边界）：「山东」「内蒙古」按省会计
+			//（与 --province 同一实现）。--city 旗标路径同样受益（原先直接报未收录）。
+			const prov = PROVINCES.find(x => x.name === cityRaw || x.name.startsWith(cityRaw));
+			if (prov) {
+				longitude = prov.cities[0]?.longitude ?? 120;
+				lngNote = `${prov.name}（按省会 ${prov.cities[0]?.name} 计）`;
+			} else {
+				throw new Error(
+					`未收录城市：${cityRaw}（可用 \`cities --search <关键词>\` 查询，或改用 --lng 指定经度）`
+				);
+			}
+		}
 	} else if (g("province")) {
 		const prov = PROVINCES.find(
 			x => x.name === g("province") || x.name.startsWith(String(g("province")))

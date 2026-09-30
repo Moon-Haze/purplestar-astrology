@@ -353,10 +353,10 @@ export function asserts(): Assertion[] {
 			const cmdSrc = readFileSync(resolve(ROOT, "..", "cli", "commands.ts"), "utf8");
 			if (!/^\tsynastry: cmdSynastry,?$/m.test(cmdSrc))
 				throw new Error("cli/commands.ts 的 COMMAND_TABLE 里没有 synastry 条目 —— 合并接线断了");
-			const scopeSrc = readFileSync(resolve(ROOT, "..", "cli", "flag-scope.ts"), "utf8");
+			const scopeSrc = readFileSync(resolve(ROOT, "..", "cli", "option-scope.ts"), "utf8");
 			for (const f of ['"chart"', '"a-"', '"synastry"']) {
 				if (!scopeSrc.includes(f))
-					throw new Error(`cli/flag-scope.ts 的 FLAG_SCOPE 里没有 ${f} —— 合盘前缀参数未声明`);
+					throw new Error(`cli/option-scope.ts 的 OPTION_SCOPE 里没有 ${f} —— 合盘前缀参数未声明`);
 			}
 			return "命令表与作用域双侧接线在";
 		});

@@ -146,16 +146,16 @@ export function asserts(): Assertion[] {
 	});
 
 	ok("古籍参数面：非法 --limit 的值到达命令层，由它给出中文报错", () => {
-		// ⚠️ 探针只取 `0` / `abc`：`-3` 在 cac 底座下会被当短选项而**丢值**（known issue），
-		// 贪婪取值 `--limit -3` 的断言由 Task 4 换 util.parseArgs 引擎后重新钉死。
-		for (const bad of ["0", "abc"]) {
+		// 三个探针全覆盖：`0` / `abc` 走常规值校验；`-3` 走**贪婪取值**
+		//（2026-09-30 新引擎：`-3` 是 `--limit` 的值，不是短参数 —— Review Focus 2 的钉子）。
+		for (const bad of ["0", "abc", "-3"]) {
 			const r = run(["classics", "--search", "紫微", "--limit", bad]);
 			if (!r.out.includes("--limit"))
 				throw new Error(
 					`--limit ${bad} 的报错未提到 --limit，实得：${r.out.trim() || r.err.trim()}`
 				);
 		}
-		return "0 / abc 均被命令层拦下";
+		return "0 / abc / -3 均被命令层拦下";
 	});
 
 	ok("合并接线：classics 在主命令表有实现，其参数在主作用域已声明", () => {
@@ -165,10 +165,10 @@ export function asserts(): Assertion[] {
 		const cmdSrc = readFileSync(resolve(ROOT, "..", "cli", "commands.ts"), "utf8");
 		if (!/^\tclassics: cmdClassics,?$/m.test(cmdSrc))
 			throw new Error("cli/commands.ts 的 COMMAND_TABLE 里没有 classics 条目 —— 合并接线断了");
-		const scopeSrc = readFileSync(resolve(ROOT, "..", "cli", "flag-scope.ts"), "utf8");
+		const scopeSrc = readFileSync(resolve(ROOT, "..", "cli", "option-scope.ts"), "utf8");
 		for (const f of ['"search"', '"limit"']) {
 			if (!scopeSrc.includes(f))
-				throw new Error(`cli/flag-scope.ts 的 FLAG_SCOPE 里没有 ${f} —— classics 参数未声明`);
+				throw new Error(`cli/option-scope.ts 的 OPTION_SCOPE 里没有 ${f} —— classics 参数未声明`);
 		}
 		return "命令表与作用域双侧接线在";
 	});

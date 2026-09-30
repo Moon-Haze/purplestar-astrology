@@ -1203,7 +1203,8 @@ describe("CLI 端到端", () => {
 				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liuyue", "abc"],
 			] as string[][]) {
 				const stderr = await cliFails(args);
-				const flag = args.includes("--liunian") ? "--liunian" : "--liuyue";
+				// ⚠️ 报错点名的是**归一后的英文主名**（--liunian → --yearly，2026-09-30 引擎别名归一）
+				const flag = args.includes("--liunian") ? "--yearly" : "--monthly";
 				assert.ok(
 					stderr.includes(flag),
 					`报错应点名 ${flag}（${args[args.length - 1]}），实得：${stderr}`
@@ -1270,7 +1271,8 @@ describe("CLI 端到端", () => {
 				"--liunian",
 				"abc",
 			]);
-			assert.ok(stderr.includes("--liunian"), `报错应点名 --liunian，实得：${stderr}`);
+			// 报错点名的是归一后主名 --yearly（--liunian 是拼音别名，仍被识别）
+			assert.ok(stderr.includes("--yearly"), `报错应点名 --yearly，实得：${stderr}`);
 		});
 
 		it("--late-zi 与 --branch 同用报错（该开关只配合 --time）", async () => {
