@@ -26,7 +26,7 @@ analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中
 | 基本信息（并入默认 + 只出面板） | `--info`                        | `--info`（不变）                                      |
 | 格局专题                        | `--geju`                        | `--pattern`                                           |
 | 四化专题                        | `--sihua`                       | `--mutagen`（iztro 术语）                             |
-| 流年专题                        | `--liunian [年]`                | `--annual [年]`（避开 `--year` 出生年的编辑距离混淆） |
+| 流年专题                        | `--liunian [年]`                | `--yearly [年]`（对齐 iztro `horoscope.yearly`；与 `--year` 的混淆由拼错建议兜底） |
 | 流月（配四化 / 流年视角）       | `--liuyue 1-12`                 | `--monthly 1-12`                                      |
 | 大限专题                        | `--daxian [虚岁]`               | `--decadal [虚岁]`（iztro 术语）                      |
 | 小限专题                        | `--xiaoxian [虚岁]`             | `--ages [虚岁]`（iztro 术语）                         |
@@ -105,22 +105,22 @@ scripts/
 
 译名按文件实际语义定（非音译）；格局分组按成格难度分级、views 小节与旗标名对齐：
 
-| 拼音文件 | 语义 | 新名 |
-| --- | --- | --- |
-| `ziwei/sihua.ts` | 四化 | `mutagen.ts`（与 iztro `Star.mutagen` / `--mutagen` 一致） |
-| `cli/yun.ts` | 运限专题 | `fortune.ts` |
-| `patterns/ji-chu-ge.ts` | 基础格局（常见轻量判定） | `basic.ts` |
-| `patterns/shang-ge.ts` | 上格（条件最严） | `superior.ts` |
-| `patterns/zhong-ge.ts` | 中格（古书明列、条件稍宽） | `medium.ts` |
-| `patterns/shou-lian-ge.ts` | 收敛组（自 db-analysis 归入） | `converged.ts` |
-| `patterns/zhu-li-ge.ts` | 助力格（吉星夹拱锦上添花） | `enhancing.ts` |
-| `patterns/e-ge.ts` | 恶格（煞忌刑伤） | `malefic.ts` |
-| `patterns/ming-gong-summary.ts` | 命宫摘要 | `soul-summary.ts`（对齐 iztro Soul Palace） |
-| `analysis/views/daxian.ts` | 当前大限分析 | `decadal.ts`（与 `--decadal` 一致） |
-| `analysis/views/liunian.ts` | 流年 + 流月分析 | `annual.ts`（与 `--annual` 一致） |
-| `analysis/views/kuiyue.ts` | 魁钺贵人倾向 | `patron.ts` |
-| `analysis/views/sanfang.ts` | 三方四正联动 | `surround.ts`（对齐 iztro `surroundPalaces`） |
-| `analysis/views/sihua.ts` | 本命四化会照 | `mutagen.ts`（与目录两层各一，路径区分） |
+| 拼音文件                        | 语义                          | 新名                                                       |
+| ------------------------------- | ----------------------------- | ---------------------------------------------------------- |
+| `ziwei/sihua.ts`                | 四化                          | `mutagen.ts`（与 iztro `Star.mutagen` / `--mutagen` 一致） |
+| `cli/yun.ts`                    | 运限专题                      | `fortune.ts`                                               |
+| `patterns/ji-chu-ge.ts`         | 基础格局（常见轻量判定）      | `basic.ts`                                                 |
+| `patterns/shang-ge.ts`          | 上格（条件最严）              | `superior.ts`                                              |
+| `patterns/zhong-ge.ts`          | 中格（古书明列、条件稍宽）    | `medium.ts`                                                |
+| `patterns/shou-lian-ge.ts`      | 收敛组（自 db-analysis 归入） | `converged.ts`                                             |
+| `patterns/zhu-li-ge.ts`         | 助力格（吉星夹拱锦上添花）    | `enhancing.ts`                                             |
+| `patterns/e-ge.ts`              | 恶格（煞忌刑伤）              | `malefic.ts`                                               |
+| `patterns/ming-gong-summary.ts` | 命宫摘要                      | `soul-summary.ts`（对齐 iztro Soul Palace）                |
+| `analysis/views/daxian.ts`      | 当前大限分析                  | `decadal.ts`（与 `--decadal` 一致）                        |
+| `analysis/views/liunian.ts`     | 流年 + 流月分析               | `yearly.ts`（与 `--yearly` 一致）                          |
+| `analysis/views/kuiyue.ts`      | 魁钺贵人倾向                  | `patron.ts`                                                |
+| `analysis/views/sanfang.ts`     | 三方四正联动                  | `surround.ts`（对齐 iztro `surroundPalaces`）              |
+| `analysis/views/sihua.ts`       | 本命四化会照                  | `mutagen.ts`（与目录两层各一，路径区分）                   |
 
 **保留拼音**（「尽力」的边界）：classics 的 `data/gusuifu.ts`（骨髓赋）/ `quanji.ts`（全集）/ `quanshu.ts`（全书）是**古籍书名专名**，无通行英文名，转译反而丢失可检索性。
 
@@ -133,45 +133,45 @@ test 与 **JSON 输出字段名**；合盘消费方（chart-view.ts）同仓同�
 
 **类型值**：
 
-| 现值 | 新值 | iztro 依据 |
-| --- | --- | --- |
+| 现值                           | 新值             | iztro 依据                                          |
+| ------------------------------ | ---------------- | --------------------------------------------------- |
 | `Star.type` 的 `lucky` / `sha` | `soft` / `tough` | iztro 星曜 type 英文值（实测 minorStars type=soft） |
-| 类型名 `SiHua` | `Mutagen` | `Star.mutagen` 字段同名 |
-| 类型名 `DaXian` | `Decadal` | `decadal` |
+| 类型名 `SiHua`                 | `Mutagen`        | `Star.mutagen` 字段同名                             |
+| 类型名 `DaXian`                | `Decadal`        | `decadal`                                           |
 
 **内核字段（`types.ts` 公开面，`analyze --json` 随之变更字段名）**：
 
-| 现字段 | 新字段 | iztro 依据 |
-| --- | --- | --- |
-| `chart.wuxingJu` / `wuxingJuName` | `fiveElementsClass` / `fiveElementsClassName` | `astrolabe.fiveElementsClass`（iztro 原名含 s） |
-| `chart.mingGongBranch` | `soulBranch` | `earthlyBranchOfSoulPalace`（Soul Palace） |
-| `chart.shenGongBranch` | `bodyBranch` | `earthlyBranchOfBodyPalace`（Body Palace） |
-| `chart.daXians` | `decadals` | `decadalList` |
-| `chart.currentDaXianIndex` | `currentDecadalIndex` | 自有语义 + decadal 词根 |
-| `Palace.daXianAge` | `decadalRange` | `decadal.range` |
-| `Palace.isCurrentDaXian` | `isCurrentDecadal` | 同上 |
-| `Palace.xiaoXianAges` | `ages` | `palace.ages`（同名直取） |
-| `BirthInfo.hour` | `timeIndex` | `bySolar(date, timeIndex, …)` 入参同名，语义完全一致（时辰序号 0–12） |
-| `Star.siHua` | `mutagen` | `Star.mutagen` |
+| 现字段                            | 新字段                                        | iztro 依据                                                            |
+| --------------------------------- | --------------------------------------------- | --------------------------------------------------------------------- |
+| `chart.wuxingJu` / `wuxingJuName` | `fiveElementsClass` / `fiveElementsClassName` | `astrolabe.fiveElementsClass`（iztro 原名含 s）                       |
+| `chart.mingGongBranch`            | `soulBranch`                                  | `earthlyBranchOfSoulPalace`（Soul Palace）                            |
+| `chart.shenGongBranch`            | `bodyBranch`                                  | `earthlyBranchOfBodyPalace`（Body Palace）                            |
+| `chart.daXians`                   | `decadals`                                    | `decadalList`                                                         |
+| `chart.currentDaXianIndex`        | `currentDecadalIndex`                         | 自有语义 + decadal 词根                                               |
+| `Palace.daXianAge`                | `decadalRange`                                | `decadal.range`                                                       |
+| `Palace.isCurrentDaXian`          | `isCurrentDecadal`                            | 同上                                                                  |
+| `Palace.xiaoXianAges`             | `ages`                                        | `palace.ages`（同名直取）                                             |
+| `BirthInfo.hour`                  | `timeIndex`                                   | `bySolar(date, timeIndex, …)` 入参同名，语义完全一致（时辰序号 0–12） |
+| `Star.siHua`                      | `mutagen`                                     | `Star.mutagen`                                                        |
 
 **标识符层**（函数 / 常量名，第五层——拼音标识符全部对齐 iztro 词根）：
 
-| 现名 | 新名 | iztro 依据 |
-| --- | --- | --- |
-| `duiGongBranch` | `oppositeBranch` | `surroundPalaces.opposite` |
-| `sanFangBranches` | `surroundBranches` | `surroundPalaces`（结构 `{target, opposite, wealth, career}`） |
-| `sanFangSiZheng`（render） | `surroundNames` | 同上 |
-| `getSanFangPalaces`（patterns/helpers） | `getSurroundPalaces` | 同上 |
-| `Palace.isShenGong` / `isMingGong` | `isBodyPalace` / `isSoulPalace` | iztro 宫字段 `isBodyPalace` 同名；Soul Palace 词根 |
-| `SHA_STARS` / `LUCKY_STARS` | `TOUGH_STARS` / `SOFT_STARS` | `tough` / `soft` |
-| `getSiHuaByStem` | `getMutagenByStem` | mutagen |
-| `getLiuNianSiHua` / `getLiuYueSiHua` | `getYearlyMutagen` / `getMonthlyMutagen` | `yearly` / `monthly` + mutagen |
-| `getLiuYueStemIndex` | `getMonthlyStemIndex` | `monthly` |
-| `liuNianBranchOf`（fortune.ts） | `yearlyBranchOf` | `horoscope.yearly` |
-| `xiaoXianPalaceOf` | `agePalaceOf` | `horoscope.agePalace` |
-| `liuNianSection` / `daXianSection` / `xiaoXianSection` | `yearlySection` / `decadalSection` / `ageSection` | 对应旗标词根 |
-| `gejuSection` / `sihuaSection` | `patternSection` / `mutagenSection` | 对应旗标词根 |
-| `parseAgeArg` | `parseAgesArg` | 对齐 `--ages` |
+| 现名                                                   | 新名                                              | iztro 依据                                                     |
+| ------------------------------------------------------ | ------------------------------------------------- | -------------------------------------------------------------- |
+| `duiGongBranch`                                        | `oppositeBranch`                                  | `surroundPalaces.opposite`                                     |
+| `sanFangBranches`                                      | `surroundBranches`                                | `surroundPalaces`（结构 `{target, opposite, wealth, career}`） |
+| `sanFangSiZheng`（render）                             | `surroundNames`                                   | 同上                                                           |
+| `getSanFangPalaces`（patterns/helpers）                | `getSurroundPalaces`                              | 同上                                                           |
+| `Palace.isShenGong` / `isMingGong`                     | `isBodyPalace` / `isSoulPalace`                   | iztro 宫字段 `isBodyPalace` 同名；Soul Palace 词根             |
+| `SHA_STARS` / `LUCKY_STARS`                            | `TOUGH_STARS` / `SOFT_STARS`                      | `tough` / `soft`                                               |
+| `getSiHuaByStem`                                       | `getMutagenByStem`                                | mutagen                                                        |
+| `getLiuNianSiHua` / `getLiuYueSiHua`                   | `getYearlyMutagen` / `getMonthlyMutagen`          | `yearly` / `monthly` + mutagen                                 |
+| `getLiuYueStemIndex`                                   | `getMonthlyStemIndex`                             | `monthly`                                                      |
+| `liuNianBranchOf`（fortune.ts）                        | `yearlyBranchOf`                                  | `horoscope.yearly`                                             |
+| `xiaoXianPalaceOf`                                     | `agePalaceOf`                                     | `horoscope.agePalace`                                          |
+| `liuNianSection` / `daXianSection` / `xiaoXianSection` | `yearlySection` / `decadalSection` / `ageSection` | 对应旗标词根                                                   |
+| `gejuSection` / `sihuaSection`                         | `patternSection` / `mutagenSection`               | 对应旗标词根                                                   |
+| `parseAgeArg`                                          | `parseAgesArg`                                    | 对齐 `--ages`                                                  |
 
 标识符层的**保留**：`getYearStemIndex`（英文意译，无 iztro 对应概念）、`SHICHEN`（时辰为中国
 时制专名，iztro 无对应英文常量——`timeIndex` 是纯数字）、`lateZi*` 与 `--late-zi`（晚子时
@@ -218,7 +218,7 @@ iztro「仆役」——领域立场，不应对齐）。
 
 ### 3.3 配置文件输入
 
-- **`--config <file>`**：读 JSON 文件。键名与旗标的 camelCase 同名（`date` / `time` / `city` / `gender` / `pattern` / `mutagen` / `annual` …），出生信息与专题旗标都可写。
+- **`--config <file>`**：读 JSON 文件。键名与旗标的 camelCase 同名（`date` / `time` / `city` / `gender` / `pattern` / `mutagen` / `yearly` …），出生信息与专题旗标都可写。
 - **优先级：命令行旗标覆盖配置文件同名字段**（命令行更明确，必须赢；配置是基底）。
 - **`--template`**：打印可直接使用的示例 JSON 模板到 stdout（含双方合盘示例与注释性字段说明），用户 `--template > my.json` 落盘。模板本身必须是合法可跑的配置。
 - 校验：配置文件里的未知键、非法值与命令行同规则报错（不静默）。
@@ -236,7 +236,7 @@ iztro「仆役」——领域立场，不应对齐）。
 - TDD：selftest 断言先行（红→绿），沿用上一轮的模式。
 - 迁移本身以「行为不变」为准：迁移提交前后 `selftest`（合并后的三段合计）与 `npm test` 必须全绿；`typecheck` 0 错。
 - 层 6 守卫改写为单 skill 形态后，必须仍有「skill 自包含可拷走」的断言（对用户的承诺不变，只是承诺对象从三个变一个）。
-- 新增断言：`astrology` 默认输出概览含信息面板、各功能旗标（英文名）产出对应专题、`--palaces` 出十二宫逐宫详表、`--annual` 缺省当前年、旧命令名（analyze / chart / topic / insight / cities）调用即报未知命令、每命令 `--help` 输出且含归属旗标、`--focus` 四项深化各自可锚定、`--config` 合并优先级（命令行赢）、`--template` 产物可被 `--config` 吃回。
+- 新增断言：`astrology` 默认输出概览含信息面板、各功能旗标（英文名）产出对应专题、`--palaces` 出十二宫逐宫详表、`--yearly` 缺省当前年、旧命令名（analyze / chart / topic / insight / cities）调用即报未知命令、每命令 `--help` 输出且含归属旗标、`--focus` 四项深化各自可锚定、`--config` 合并优先级（命令行赢）、`--template` 产物可被 `--config` 吃回。
 
 ## 6. 文档同步面
 
