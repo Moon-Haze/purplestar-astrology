@@ -155,24 +155,24 @@ scripts/
 
 改名牵动：全仓 import 改写（约 20 处）、`test/` 与 `tools/` 引用、CLAUDE.md 目录树。与 §2.10 路径迁移**同一笔提交**做（都是 `git mv` + import 改写，分两笔会互相踩）。
 
-### 2.8 解析引擎：cac 退役，归一 Node 内置 `util.parseArgs`
+### 2.8 解析引擎：cac 退役，手写单趟扫描（中文报错）
 
-三 skill 两套引擎（源 cac / 另两个 `util.parseArgs`）合并时归一为 **`util.parseArgs`（strict 模式）**，
-`cac` 依赖从根 `package.json` 移除。依据：
+三 skill 两套引擎（源 cac / 另两个手写 `util.parseArgs` 辅助扫描）合并时归一为**手写单趟扫描**，
+`cac` 依赖从根 `package.json` 移除。评估修正记录：
 
-- help 强化已自建（`cli/help.ts` + `COMMAND_HELP` + 归属表），cac 的 help 渲染价值被取代；
-  别名归一、位置参数形态、可选值校验、`a-`/`b-` 前缀在哪个引擎上都要自己写——cac 的净价值
-  收缩为分词与 camelCase，而 `camelKey` 本仓已有独立实现。
-- cac「未注册选项静默收下」是本仓最大参数面漏洞（前置校验 + 看门人两层补丁即为它打）；
-  `strict: true` 与「宁可报错，不静默产出错盘」哲学天然同构，该漏洞在引擎层消解。
+- 初判「归一 `util.parseArgs` strict 模式」被评审推翻——**strict 报错是 Node 写死的英文**
+  （`Unknown option '--unknown'`），与本项目全中文报错约定冲突；外层捕获翻译需匹配英文消息
+  文本（Node 升级即漏），为保留 strict 而自建前置校验又把 strict 的价值取代。故不走 strict。
+- 手写单趟扫描（另两个 skill 的实战形态推广为唯一实现）：报错中文全可控、未知参数当场报错
+  （无 cac「静默收下」之洞）、零解析依赖。取值判据来自声明表 `kind`（`--limit -3` 的 `-3`
+  是合法值），`--key=value` / `--` 分隔 / 裸开关 / 可选值形态全部显式处理。
 
 实施要点：
 
-- `cli/args.ts` 重写为「`OPTION_GROUPS` 声明表（结构不变）+ 单趟扫描（吸收另两个 skill 的
-  `kind` 判据形态：取值判据来自声明表而非 token 形状，`--limit -3` 的 `-3` 是合法值）+
-  `OPTION_ALIASES` 归一 + 位置参数归类（§1.2）」。
-- **行为变更（有意）**：同一参数重复给出由 cac 的「取末值」改为**报错**——与 strict 哲学一致。
-- 回归面：selftest 全量 + 层 2 CLI 端到端全跑兜底（本仓测试齐全正是换引擎的底气）。
+- `cli/args.ts` 重写为「`OPTION_GROUPS` 声明表（结构不变）+ 单趟扫描 + `OPTION_ALIASES` 归一 +
+  位置参数归类（§1.2）」；`camelKey` 保留（本仓既有）。
+- **行为变更（有意）**：同一参数重复给出由 cac 的「取末值」改为**报错**。
+- 回归面：selftest 全量 + 层 2 CLI 端到端全跑兜底。
 
 ### 2.9 术语全对齐 iztro：类型值、内核字段与标识符（共五层）
 
