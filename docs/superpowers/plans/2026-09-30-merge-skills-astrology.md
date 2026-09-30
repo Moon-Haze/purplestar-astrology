@@ -113,12 +113,34 @@ git mv skills/purplestar-synastry/references/synastry-guide.md references/synast
 改写搬入文件的 import：全扩展名（`./data/quanshu.ts`）→ 省扩展名（`./data/quanshu`）与 `@/ziwei/...`（引内核时）。tsconfig `include` 已覆盖 `scripts/**`，typecheck 自动接管。
 各自的 `purple-star.ts`/`commands.ts`/`selftest.ts` 重构：命令实现进 `cli/classics.ts`/`cli/synastry.ts`；各自 selftest 的断言体抽成 `scripts/classics/selftest-asserts.ts` 与 `scripts/synastry/selftest-asserts.ts`（导出 `function asserts(): {name,detail,pass}[]` 或等价形态，跟主 selftest 的 Assertion 接口对齐）。
 
+- [ ] **Step 1.5: 样例集中化与随机不变量断言（spec §3.4）**
+
+selftest 固定样例收敛到顶部一处（`const SAMPLE: BirthInfo = …`，全文件引用它）；新增：
+
+```ts
+ok("随机样本不变量：任意日期盘的十二宫/ages/斗君/星曜分类全自洽", () => {
+	let seed = 20260930; // 线性同余取确定性伪随机——可复现的「随机」
+	const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+	for (let i = 0; i < 20; i++) {
+		const year = 1950 + Math.floor(rnd() * 60), month = 1 + Math.floor(rnd() * 12), day = 1 + Math.floor(rnd() * 28);
+		const c = generateChart({ year, month, day, hour: Math.floor(rnd() * 13), gender: rnd() > 0.5 ? "male" : "female" });
+		if (c.palaces.length !== 12 || new Set(c.palaces.map(p => p.branch)).size !== 12) throw new Error(`${year}-${month}-${day} 十二宫不自洽`);
+		const ages = [...new Set(c.palaces.flatMap(p => p.ages ?? []))].sort((a, b) => a - b);
+		if (ages.length !== 120 || ages[0] !== 1 || ages[119] !== 120) throw new Error(`${year}-${month}-${day} ages 覆盖不自洽`);
+		if (c.douJunBranch < 0 || c.douJunBranch > 11) throw new Error("斗君越界");
+		if (c.palaces.some(p => p.stars.some(st => !["major","minor","soft","tough"].includes(st.type)))) throw new Error("星曜类型值不自洽");
+	}
+	return "20 个伪随机盘全部自洽";
+});
+```
+
+仓库测试侧的固定样例收敛进 `test/lib/sample.ts`（导出 `SAMPLE_A = { year: 2011, month: 6, day: 24, hour: 3, gender: "male" }` 等新虚构组合，具体期望值以实跑校准为准），文件头注明「虚构样本，无真实人物」。
+
 - [ ] **Step 2: 主 selftest 汇总三段（先写失败断言）**
 
 在 `scripts/cli/selftest.ts` 增加一条：
 
 ```ts
-ok("自检合并：classics / synastry 断言组随主 selftest 执行", () => {
 	const classics = classicAsserts();  // scripts/classics/selftest-asserts.ts
 	const synastry = synastryAsserts(); // scripts/synastry/selftest-asserts.ts
 	if (!classics.length || !synastry.length) throw new Error("断言组为空——搬移未完成");
@@ -398,7 +420,7 @@ ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运�
 - `<命令> --help`：该命令的 COMMAND_HELP + 归属参数子集 + 示例。`--help` 本身进 OPTION_GROUPS（switch）。
 - 归属表是 **help 视图**，不做硬校验（作用域仍 skill 级——spec §3.2 的「诚实边界收窄」只发生在 help 层）。
 
-- [ ] **Step 1: 断言先行**：`help` 含每命令的示例行与「排盘四必问」提示；`astrology --help` 列出 `--pattern/--mutagen/--yearly/...` 且**不含** `--search`（归属过滤）；`stars --help` 反之。
+- [ ] **Step 1: 断言先行**：`help` 输出含 man 七节标题（`NAME` / `SYNOPSIS` / `DESCRIPTION` / `OPTIONS` / `EXAMPLES` / `NOTES` / `SEE ALSO`）且节序固定；`astrology --help` 列出 `--pattern/--mutagen/--yearly/...` 且**不含** `--search`（归属过滤）；`stars --help` 反之；示例数据为新虚构组合（2011-06-24 杭州 / 1999-11-03 成都）且含「示例数据为虚构」注记。
 - [ ] **Step 2: 实现 + 三连 + Commit**：`feat(cli): help 强化——逐命令详细说明与每命令 --help（命令→参数归属表）`
 
 ---
@@ -430,7 +452,7 @@ ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运�
 - Modify: `references/workflow.md`（第 1 步 = astrology 位置参数形态与功能参数组合）、`references/flags.md` → 改名 `references/options.md`（参数面细则：英文主名表/拼音别名/位置参数形态/`--config`/`--charts`）、`references/output-contract.md`（五节契约不变，聚焦形态引 astrology `--focus`）、`references/troubleshooting.md`（路径更新）
 - Test: 层 6 的「SKILL.md ↔ references 双向一致」「SKILL.md 提到的参数都有声明」「命令速查表命令都有实现」三组断言
 
-- [ ] **Step 1: 重写 SKILL.md 与 references**（selftest 的参数扫描断言此刻会抓未声明参数——先写文档再核对声明表，红了补声明或改文档）。
+- [ ] **Step 1: 重写 SKILL.md 与 references**（全部出生示例换新虚构组合 2011-06-24 07:45 男 杭州 / 1999-11-03 15:20 女 成都，注明「示例数据为虚构」，旧组合清退）（selftest 的参数扫描断言此刻会抓未声明参数——先写文档再核对声明表，红了补声明或改文档）。
 - [ ] **Step 2: 三连全绿**（层 6 是重点）+ **Step 3: Commit**：`docs(skill): SKILL.md 重写为单 skill 形态，references 同步参数面与工作流`
 
 ---
@@ -443,7 +465,7 @@ ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运�
 - Modify: `docs/test/README.md`（备案区追加「三 skill 合一 + 命令融合 + 术语对齐」通告，报告正文不回改）
 - Test: 全量最终回归
 
-- [ ] **Step 1: 文档重写**；**Step 2: 最终回归**
+- [ ] **Step 1: 文档重写**（示例同步新虚构组合）；**Step 2: 最终回归**
 
 ```bash
 node scripts/purple-star.ts selftest 2>&1 | head -1      # 三段合计全绿
