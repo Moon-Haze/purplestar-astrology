@@ -45,7 +45,7 @@ analyze / insight / chart / topic 四条直接调 iztro 的命令（含规划中
 ### 1.1 拼音别名（英文主名 + 中文拼音双识别）
 
 英文为主名（help / SKILL.md / 文档一律用主名）；**拼音别名同时被识别**（解析层归一到主名）：
-`geju→pattern`、`sihua→transform`、`liunian→annual`、`liuyue→monthly`、`daxian→decadal`、`xiaoxian→ages`。
+`geju→pattern`、`sihua→mutagen`、`liunian→yearly`、`liuyue→monthly`、`daxian→decadal`、`xiaoxian→ages`。
 
 - 实现单点：`FLAG_ALIASES` 表（args.ts），`checkFlagName` 与归一层各查一次；cac 只注册主名，help 在旗标描述尾注「别名：--geju」。
 - 与「宁可报错不静默」不冲突：别名是**显式声明**的映射，不是拼错容错——`--patern` 仍然报错，`suggestFlag` 建议主名 `--pattern`。
@@ -107,7 +107,7 @@ scripts/
 
 | 拼音文件 | 语义 | 新名 |
 | --- | --- | --- |
-| `ziwei/sihua.ts` | 四化 | `transform.ts`（与 `--transform` 一致） |
+| `ziwei/sihua.ts` | 四化 | `mutagen.ts`（与 iztro `Star.mutagen` / `--mutagen` 一致） |
 | `cli/yun.ts` | 运限专题 | `fortune.ts` |
 | `patterns/ji-chu-ge.ts` | 基础格局（常见轻量判定） | `basic.ts` |
 | `patterns/shang-ge.ts` | 上格（条件最严） | `superior.ts` |
@@ -115,18 +115,51 @@ scripts/
 | `patterns/shou-lian-ge.ts` | 收敛组（自 db-analysis 归入） | `converged.ts` |
 | `patterns/zhu-li-ge.ts` | 助力格（吉星夹拱锦上添花） | `enhancing.ts` |
 | `patterns/e-ge.ts` | 恶格（煞忌刑伤） | `malefic.ts` |
-| `patterns/ming-gong-summary.ts` | 命宫摘要 | `life-summary.ts`（英文命理社区通行 Life Palace；iztro 接口层 `earthlyBranchOfSoulPalace` 是库 API 名，不动） |
+| `patterns/ming-gong-summary.ts` | 命宫摘要 | `soul-summary.ts`（对齐 iztro Soul Palace） |
 | `analysis/views/daxian.ts` | 当前大限分析 | `decadal.ts`（与 `--decadal` 一致） |
 | `analysis/views/liunian.ts` | 流年 + 流月分析 | `annual.ts`（与 `--annual` 一致） |
 | `analysis/views/kuiyue.ts` | 魁钺贵人倾向 | `patron.ts` |
-| `analysis/views/sanfang.ts` | 三方四正联动 | `trine.ts` |
-| `analysis/views/sihua.ts` | 本命四化会照 | `transform.ts`（与目录两层各一，路径区分） |
+| `analysis/views/sanfang.ts` | 三方四正联动 | `surround.ts`（对齐 iztro `surroundPalaces`） |
+| `analysis/views/sihua.ts` | 本命四化会照 | `mutagen.ts`（与目录两层各一，路径区分） |
 
 **保留拼音**（「尽力」的边界）：classics 的 `data/gusuifu.ts`（骨髓赋）/ `quanji.ts`（全集）/ `quanshu.ts`（全书）是**古籍书名专名**，无通行英文名，转译反而丢失可检索性。
 
-改名牵动：全仓 import 改写（约 20 处）、`test/` 与 `tools/` 引用、CLAUDE.md 目录树。与 §2.7 路径迁移**同一笔提交**做（都是 `git mv` + import 改写，分两笔会互相踩）。
+改名牵动：全仓 import 改写（约 20 处）、`test/` 与 `tools/` 引用、CLAUDE.md 目录树。与 §2.9 路径迁移**同一笔提交**做（都是 `git mv` + import 改写，分两笔会互相踩）。
 
-### 2.8 路径迁移牵动清单（改漏即崩）
+### 2.8 术语全对齐 iztro：类型值与内核字段（四层对齐的第三、四层）
+
+前两层（旗标 / 文件名）见上文；此节是**类型值与 `ziwei/types.ts` 公开字段**——与 iztro 原作者
+术语全面对齐（用户拍板）。牵动 types / algorithm / render / patterns / analysis / compare /
+test 与 **JSON 输出字段名**；合盘消费方（chart-view.ts）同仓同笔改。
+
+**类型值**：
+
+| 现值 | 新值 | iztro 依据 |
+| --- | --- | --- |
+| `Star.type` 的 `lucky` / `sha` | `soft` / `tough` | iztro 星曜 type 英文值（实测 minorStars type=soft） |
+| 类型名 `SiHua` | `Mutagen` | `Star.mutagen` 字段同名 |
+| 类型名 `DaXian` | `Decadal` | `decadal` |
+
+**内核字段（`types.ts` 公开面，`analyze --json` 随之变更字段名）**：
+
+| 现字段 | 新字段 | iztro 依据 |
+| --- | --- | --- |
+| `chart.wuxingJu` / `wuxingJuName` | `fiveElementsClass` / `fiveElementsClassName` | `astrolabe.fiveElementsClass`（iztro 原名含 s） |
+| `chart.mingGongBranch` | `soulBranch` | `earthlyBranchOfSoulPalace`（Soul Palace） |
+| `chart.shenGongBranch` | `bodyBranch` | `earthlyBranchOfBodyPalace`（Body Palace） |
+| `chart.daXians` | `decadals` | `decadalList` |
+| `chart.currentDaXianIndex` | `currentDecadalIndex` | 自有语义 + decadal 词根 |
+| `Palace.daXianAge` | `decadalRange` | `decadal.range` |
+| `Palace.isCurrentDaXian` | `isCurrentDecadal` | 同上 |
+| `Palace.xiaoXianAges` | `ages` | `palace.ages`（同名直取） |
+| `BirthInfo.hour` | `timeIndex` | `bySolar(date, timeIndex, …)` 入参同名，语义完全一致（时辰序号 0–12） |
+| `Star.siHua` | `mutagen` | `Star.mutagen` |
+
+**保留不动**（专名或既有英文意译）：`ziweiPos`（紫微为星名音译专名，iztro 库自身亦用）、
+`yearStem` / `yearBranch`（干支通行英文意译）、宫名「交友宫」（倪师体系口径，**有意**偏离
+iztro「仆役」——领域立场，不应对齐）。
+
+### 2.9 路径迁移牵动清单（改漏即崩）
 
 | 位置                         | 改什么                                                                                        |
 | ---------------------------- | --------------------------------------------------------------------------------------------- |
@@ -196,5 +229,5 @@ scripts/
 - **git 历史可追溯**：迁移用 `git mv`，diff 可追溯；不 squash 历史。
 - **不做**：synastry 出生信息直传（用户明确否决）；不引 YAML/新依赖；不改排盘内核逻辑（ziwei/ 平移零改动）；不动 `tools/db/`（它引用的路径若受牵动单独核）。
 - **依赖形态变化**：合并后只有根 `package.json` 一份，`iztro` + `lunar-typescript` 归它——原 classics / synastry「零 npm 依赖、拷走即跑」的优势消失，整个 skill 安装后需先 `npm install`（SKILL.md 安装说明要写明）。iztro 调用关系不变：astrology / selftest 排盘，synastry 吃 `astrology --json`（数据源头仍是 iztro），classics / stars / help 零排盘。
-- **风险点**：路径迁移的「改漏即崩」清单（§2.7）——每项都有测试或 typecheck 兜着，迁移提交必须单独成笔、全绿才合。
+- **风险点**：路径迁移的「改漏即崩」清单（§2.9）与术语全对齐（§2.8）——后者改公开字段名，`typecheck` + 两层测试 + 合盘消费方同笔改兜底——每项都有测试或 typecheck 兜着，迁移提交必须单独成笔、全绿才合。
 - 分支策略：在 master 直接做（仓库惯例，无 PR 流程），但**迁移提交与功能提交分开**，出问题可单独 revert。
