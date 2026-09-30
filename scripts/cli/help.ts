@@ -31,7 +31,7 @@ export const OPTION_OWNERSHIP: Record<CommandName, readonly string[]> = {
 		"time", "branch", "late-zi", "eot",
 		"gender", "lng", "city", "province", "name",
 		"info", "pattern", "mutagen", "decadal", "ages", "palaces",
-		"yearly", "monthly", "focus", "topic", "view", "json",
+		"yearly", "monthly", "focus", "topic", "view", "json", "config", "template",
 	],
 	stars: ["search"],
 	classics: ["search", "limit"],

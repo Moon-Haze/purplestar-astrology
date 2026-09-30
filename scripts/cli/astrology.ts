@@ -6,6 +6,7 @@
  */
 
 import type { CliArgs } from "./args";
+import { applyConfig, renderTemplate } from "./config";
 import { buildBirthInfo } from "./birth-info";
 import {
 	birthplaceSection,
@@ -96,6 +97,10 @@ export function parseMonthlyArg(args: CliArgs): number | null {
  * （合盘 skill）自会处理；文本路径的宫详表见 `./fortune.ts` 各专题。
  */
 export function cmdAstrology(args: CliArgs) {
+	// --template：打印配置模板即止（不排盘）
+	if (args.template) return renderTemplate();
+	// --config：配置是基底，命令行同名键覆盖（spec §3.3）
+	args = applyConfig(args);
 	const { info, note, notes, longitude, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } =
 		buildBirthInfo(args);
 	const chart = generateChart(info);

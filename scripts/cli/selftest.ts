@@ -15,9 +15,10 @@
 
 import type { CliContext } from "./args";
 import { OPTION_NAMES, OPTION_ALIASES, SIDE_PREFIXES, parseArgs } from "./args";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import {
 	buildBirthInfo,
 	calcTrueSolar,
@@ -1123,6 +1124,51 @@ export function cmdSelftest(ctx: CliContext): string {
 		for (const want of ["会照", "对宫", "格局", "小限"])
 			if (!r.out.includes(want)) throw new Error(`focus 深化缺 ${want}`);
 		return "四项深化在";
+	});
+
+	ok("--config：JSON 配置应用，命令行同名键覆盖，排盘正确", () => {
+		// spec §3.3：配置是基底，命令行更明确必须赢。未知键与命令行同规则中文报错。
+		const tmp = mkdtempSync(join(tmpdir(), "ziwei-config-"));
+		try {
+			// ① 纯配置：排出虚构样例盘
+			const cfg = join(tmp, "a.json");
+			writeFileSync(cfg, JSON.stringify({ date: "2011-06-24", time: "07:45", gender: "male", city: "杭州" }), "utf8");
+			const viaCfg = runCli(["astrology", "--config", cfg]);
+			if (viaCfg.code !== 0) throw new Error(`--config 排盘失败：${viaCfg.err.trim()}`);
+			if (!viaCfg.out.includes("2011-6-24") && !viaCfg.out.includes("2011-06-24"))
+				throw new Error("配置里的日期没生效");
+			// ② 命令行覆盖：同键以命令行为准（换城市 → 经度行不同）
+			const mixed = runCli(["astrology", "--config", cfg, "--city", "成都"]);
+			if (mixed.code !== 0) throw new Error(`覆盖运行失败：${mixed.err.trim()}`);
+			if (!mixed.out.includes("成都") && !mixed.out.includes("104.1"))
+				throw new Error("命令行 --city 未覆盖配置的同名键");
+			// ③ 配置内未知键报错（与命令行同规则）
+			const bad = join(tmp, "bad.json");
+			writeFileSync(bad, JSON.stringify({ date: "2011-06-24", noSuchKey: 1 }), "utf8");
+			const r = runCli(["astrology", "--config", bad]);
+			if (r.code === 0) throw new Error("未知键未报错");
+			if (!r.err.includes("noSuchKey")) throw new Error(`报错未点名未知键，实得：${r.err.trim()}`);
+			return "应用 / 覆盖 / 未知键三面成立";
+		} finally {
+			rmSync(tmp, { recursive: true, force: true });
+		}
+	});
+	ok("--template：模板可被 --config 吃回并排出示例盘（闭环）", () => {
+		const tmp = mkdtempSync(join(tmpdir(), "ziwei-tpl-"));
+		try {
+			const tpl = runCli(["astrology", "--template"]);
+			if (tpl.code !== 0) throw new Error(`--template 失败：${tpl.err.trim()}`);
+			if (!tpl.out.includes("_")) throw new Error("模板缺注释性 _ 前缀键");
+			// 落盘后直接 --config 吃回（模板必须是合法可跑的配置）
+			const f = join(tmp, "my.json");
+			writeFileSync(f, tpl.out, "utf8");
+			const back = runCli(["astrology", "--config", f]);
+			if (back.code !== 0) throw new Error(`模板吃回失败：${back.err.trim()}`);
+			if (!back.out.includes("【命盘总览】")) throw new Error("吃回后应排出示例盘");
+			return "模板闭环成立";
+		} finally {
+			rmSync(tmp, { recursive: true, force: true });
+		}
 	});
 
 	ok("help 强化：总览含 man 七节标题且节序固定（总览另含 COMMANDS 节）", () => {

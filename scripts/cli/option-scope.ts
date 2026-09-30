@@ -67,6 +67,9 @@ export const OPTION_SCOPE: OptionScope = {
 		"search",
 		// classics
 		"limit",
+		// 配置文件输入（astrology）
+		"config",
+		"template",
 	],
 	/**
 	 * 出生方前缀已退役（2026-09-30 Task 7）：synastry 输入改 `--charts` 单参数后，

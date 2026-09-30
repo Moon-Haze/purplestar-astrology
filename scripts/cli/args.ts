@@ -251,6 +251,17 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				desc: "classics / stars / cities 检索关键字（也可用位置参数）",
 			},
 			{ name: "limit", kind: "value", value: "15", desc: "classics 命中条数上限（正整数）" },
+			{
+				name: "config",
+				kind: "value",
+				value: "my.json",
+				desc: "读 JSON 配置文件（键 = 参数 camelCase 主名；命令行同名参数覆盖配置）",
+			},
+			{
+				name: "template",
+				kind: "switch",
+				desc: "打印可直接使用的配置模板到 stdout（--template > my.json 落盘）",
+			},
 		],
 	},
 ];
