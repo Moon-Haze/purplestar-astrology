@@ -62,16 +62,15 @@ function ms(v: number, w = 10): string {
 /**
  * 三条代表性命令：纯引导层 / 完整排盘 / 主题论断（唯一用得上分析数据库的命令）。
  *
- * ⚠️ 原先的第三条是 `classics`，2026-09-27 拆 skill 后古籍检索归了 `purplestar-classics`，
- *    本脚本量的是**排盘解读 skill 的 CLI**，故换成 `topic`。要量古籍那份，改 `CLI` 常量
- *    指向另一个 skill —— 同一时刻只量一份，混在一起的中位数没有解释力。
+ * 2026-09-30 三 skill 合一后本 CLI 就是唯一一条，探针命令随命令面收敛改为
+ * `astrology` / `astrology --topic`（2026-09-27 那次曾因 classics 拆出换成 topic）。
  */
 const E2E_CASES: Array<{ label: string; args: string[] }> = [
 	{ label: "help（纯引导层，不执行任何计算）", args: ["help"] },
 	{
-		label: "analyze（排盘 + 格局 + 渲染）",
+		label: "astrology（排盘 + 格局 + 渲染）",
 		args: [
-			"analyze",
+			"astrology",
 			"--date",
 			"1990-05-15",
 			"--time",
@@ -83,9 +82,9 @@ const E2E_CASES: Array<{ label: string; args: string[] }> = [
 		],
 	},
 	{
-		label: "topic（排盘 + 分析数据库 v3）",
+		label: "astrology --topic（排盘 + 分析数据库 v3）",
 		args: [
-			"topic",
+			"astrology",
 			"--topic",
 			"career",
 			"--date",
