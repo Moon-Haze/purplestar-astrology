@@ -34,6 +34,7 @@
 ### Task 1: 仓库重组——skills/ 迁到根，行为不变
 
 **Files:**
+
 - Move: `skills/purplestar-astrology/scripts/**` → `scripts/**`（git mv）
 - Move: `skills/purplestar-astrology/SKILL.md` → `SKILL.md`；`skills/purplestar-astrology/references/**` → `references/**`
 - Move: `skills/purplestar-astrology/package.json` 内容并入根 `package.json`（iztro/lunar-typescript 依赖与 scripts）后删除
@@ -43,6 +44,7 @@
 - Test: 迁移后三连 + `tools/db` 与 `tools/bench/startup.ts` 实跑
 
 **Interfaces:**
+
 - Produces: 根 `scripts/` 为内核根；后续所有任务在新路径工作。
 - 本任务**不改任何行为**：CLI 输出、JSON、断言文案全部不变（层 2 断言里的 `skills/...` 路径字符串按新路径更新，仅此而已）。
 
@@ -86,6 +88,7 @@ git add -A && git commit -m "refactor(repo): 仓库重组为单 skill 形态—�
 ### Task 2: classics / synastry 搬入根 scripts/ + selftest 三段合并
 
 **Files:**
+
 - Move: `skills/purplestar-classics/scripts/**` → `scripts/classics/`（data/ 随行）
 - Move: `skills/purplestar-synastry/scripts/**` → `scripts/synastry/`
 - Move: `skills/purplestar-synastry/references/synastry-guide.md` → `references/synastry-guide.md`
@@ -95,6 +98,7 @@ git add -A && git commit -m "refactor(repo): 仓库重组为单 skill 形态—�
 - Test: `scripts/classics/selftest`（迁移后并入主 selftest）
 
 **Interfaces:**
+
 - Produces: `cmdClassics(args: CliArgs): string`、`cmdSynastry(args: CliArgs): string`（cli/classics.ts、cli/synastry.ts 导出）；classics 内核导出 `searchClassics`（检索纯函数）；synastry 内核导出 `readAnalyzeJson`/`runSynastry` 等既有函数（搬入后 import 从全扩展名改为省扩展名 + `@/` 别名）。
 - 合并后 selftest 报告三段：排盘 / 古籍 / 合盘，首行「通过 N/N」合计。
 
@@ -140,12 +144,14 @@ git add -A && git commit -m "refactor(skills): classics / synastry 搬入根 scr
 ### Task 3: 文件名英文化 + 术语五层对齐 iztro
 
 **Files:**
+
 - Rename（spec §2.7 表，14 个）：`ziwei/sihua.ts→mutagen.ts`、`cli/yun.ts→fortune.ts`、`patterns/{ji-chu-ge→basic, shang-ge→superior, zhong-ge→medium, shou-lian-ge→converged, zhu-li-ge→enhancing, e-ge→malefic, ming-gong-summary→life-summary→**改 soul-summary**}.ts`、`analysis/views/{daxian→decadal, liunian→yearly, kuiyue→patron, sanfang→surround, sihua→mutagen}.ts`
 - Modify: `ziwei/types.ts`（类型值 `lucky/sha→soft/tough`、`SiHua→Mutagen`、`DaXian→Decadal`；字段 `wuxingJu/wuxingJuName→fiveElementsClass/fiveElementsClassName`、`mingGongBranch→soulBranch`、`shenGongBranch→bodyBranch`、`daXians→decadals`、`currentDaXianIndex→currentDecadalIndex`、`daXianAge→decadalRange`、`isCurrentDaXian→isCurrentDecadal`、`xiaoXianAges→ages`、`isShenGong→isBodyPalace`、`isMingGong→isSoulPalace`、`hour→timeIndex`、`Star.siHua→mutagen`）
 - Modify: 全仓引用（algorithm/render/patterns/analysis/fortune/cli 各命令/classics/synastry/test/tools——`grep -rn` 逐个旧名清零）
 - Test: 三连 + JSON 字段名快照核对（`astrology --json` 的字段——此时还叫 analyze，见 Task 6）
 
 **Interfaces:**
+
 - Produces: 全部新标识符（后续任务一律用新名）；JSON 输出字段随 types 改名（本仓无外部消费者，合盘 chart-view 同笔改）。
 - 保留不动：`ziweiPos`、`yearStem/yearBranch`、`SHICHEN`、`lateZi*`/`--late-zi`、`getYearStemIndex`、宫名「交友宫」、classics 三部书名文件。
 
@@ -192,6 +198,7 @@ git add -A && git commit -m "refactor(terms): 文件名英文化 + 术语五层�
 ### Task 4: 解析引擎——util.parseArgs tokens 底座 + 薄适配层
 
 **Files:**
+
 - Rewrite: `scripts/cli/args.ts`（cac 退役；`OPTION_GROUPS` 声明表结构保留；新增 `OPTION_ALIASES`、位置参数归类、贪婪取值、重复报错、中文报错）
 - Rename: `scripts/cli/flag-scope.ts` → `option-scope.ts`（`FLAG_*→OPTION_*`；`sidePrefixes`/`prefixedCommands` 空表保留）
 - Modify: 根 `package.json`（删 `cac` 依赖）、`scripts/purple-star.ts`（不再从 args.ts 拿 cac 的 `cli` 实例——help 渲染改走 Task 8 的 `cli/help.ts`；本任务先给最小 help 保持可跑）
@@ -199,6 +206,7 @@ git add -A && git commit -m "refactor(terms): 文件名英文化 + 术语五层�
 - Test: selftest 参数面断言组全量重写
 
 **Interfaces:**
+
 - Produces: `parseArgs(argv: string[], command?: string): CliArgs`（签名不变，实现全换）；`camelKey(name: string): string`（保留）；`OPTION_ALIASES: Record<string,string>`（`geju→pattern, sihua→mutagen, liunian→yearly, liuyue→monthly, daxian→decadal, xiaoxian→ages`）；`OPTION_NAMES: ReadonlySet<string>`（含主名，**不含**别名——校验时先查别名归一）。
 - 行为契约：未知参数→中文报错（含 `suggestOption` 最近名）；重复参数（含主名与别名同现）→报错；`--key=value` 支持；`--` 之后全进 `_`；取值参数贪婪吃紧随 token（`--limit -3` 合法）；裸开关=`true`；出生信息位置参数按形态归类（§1.2：日期 `^\d{4}-\d{1,2}-\d{1,2}$`、时刻 `^\d{1,2}:\d{2}$`、性别 `男|女|male|female|m|f`、其余中文 token=城市名）。
 
@@ -240,6 +248,17 @@ ok("出生信息：位置参数形态归类（日期/时刻/性别/城市），�
 	let badCity = "";
 	try { buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "不存在的城市XYZ"], "astrology")); } catch (e) { badCity = (e as Error).message; }
 	if (!badCity) throw new Error("未知城市 token 未报错（不得静默落 120°E）");
+});
+ok("出生信息：城市 token 三条边界（省市连写 / 裸省名按省会 / 带空格报错）", () => {
+	const cn = buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "山东青岛"], "astrology"));
+	eq(cn.info.longitude, 120.4, "山东青岛连写 ");
+	const nmg = buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "内蒙古鄂尔多斯"], "astrology"));
+	eq(nmg.info.longitude, 109.8, "内蒙古鄂尔多斯连写 ");
+	const prov = buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "山东"], "astrology"));
+	eq(prov.info.longitude, 117, "裸省名按省会（济南）"); // 与 --province 山东 同值
+	let spaced = "";
+	try { buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "山东", "青岛"], "astrology")); } catch (e) { spaced = (e as Error).message; }
+	if (!spaced || !spaced.includes("连写")) throw new Error(`省+市带空格应报错并提示连写，实得：${spaced}`);
 });
 ```
 
@@ -289,12 +308,14 @@ git add -A && git commit -m "refactor(cli): 解析引擎换 util.parseArgs token
 ### Task 5: cli/ 按命令拆分 + cities 删除
 
 **Files:**
+
 - Create: `scripts/cli/{astrology,chart,topic,stars,classics,synastry}.ts`（cmdAnalyze 改名 cmdAstrology 留 Task 6；本任务先原样拆位）
 - Rewrite: `scripts/cli/commands.ts`（只留 `COMMAND_TABLE` + `COMMAND_DESC`；cmdCities 删除）
 - Delete: `cities` 命令实现（`ziwei/cities.ts` 数据表**保留**——`--city` 容错解析在用；`REQUIRED_EXPORTS` 去掉 `PROVINCES`）
 - Test: selftest 命令面断言
 
 **Interfaces:**
+
 - Produces: 各命令文件导出 `cmdXxx(args: CliArgs, ctx: CliContext): string`；`COMMANDS: Record<string, Cmd | undefined>` 键集 = `astrology/chart/topic/classics/synastry/stars/selftest`。
 - cities 删除后：调用 `cities --search 北京` → 「未知命令」且报错文案列出全部命令。
 
@@ -309,11 +330,13 @@ git add -A && git commit -m "refactor(cli): 解析引擎换 util.parseArgs token
 ### Task 6: astrology 命令融合（四命令合一）+ 输出调整
 
 **Files:**
+
 - Rewrite: `scripts/cli/astrology.ts`（融合 analyze/chart/topic；insight 从未落地，直接跳过中间态）
 - Modify: `scripts/cli/commands.ts`（COMMAND_TABLE 删 chart/topic 条目——chart/topic 的功能成为 astrology 的 `--palaces`/`--topic`）、`scripts/cli/fortune.ts`（小节函数已在 Task 3 改名；本任务接参数名）、`scripts/cli/render.ts`
 - Test: selftest 输出形态断言组 + 层 2 端到端全面更新
 
 **Interfaces:**
+
 - Produces: `astrology` 命令全参数面 = 出生信息（位置参数或旗标）+ `--info`（只出信息面板）+ `--pattern` + `--mutagen`（配 `--monthly`）+ `--yearly [年]` + `--monthly 1-12` + `--decadal [虚岁]` + `--ages [虚岁]` + `--focus <宫>`（四项深化）+ `--palaces` + `--topic <key>`/`--view` + `--json`。
 - 默认输出（无功能参数）：总览三行 → 【基本信息】12 行面板（无条件）→ 口径提示 → 【运限速览】 → 功能参数指路。
 - `--focus` 四项深化：三方四正逐宫全星曜（主星含亮度四化+吉+煞+杂曜）、对宫完整详表（renderPalace 同规格）、涉及此宫的格局全列（detectPatterns 过滤 palaces 含此宫）、该宫 ages 岁数段 + 当前 decadal 十年内此宫被 yearly 引动的年份 + 命主/身主星标注 + 身宫标记。
@@ -350,6 +373,7 @@ ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运�
 ### Task 7: synastry `--charts` + classics/stars 归位
 
 **Files:**
+
 - Modify: `scripts/cli/synastry.ts`（`--a-chart`/`--b-chart` → `--charts a.json,b.json`；恰好两份/可读/契约校验，同路径允许）、`scripts/classics/**`（无改动，仅回归）、`scripts/cli/stars.ts`
 - Test: selftest 合盘段断言更新
 
@@ -363,11 +387,13 @@ ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运�
 ### Task 8: help 强化——COMMAND_HELP + 归属表 + 每命令 --help
 
 **Files:**
+
 - Create: `scripts/cli/help.ts`
 - Modify: `scripts/cli/commands.ts`（`COMMAND_HELP: Record<CommandName, string[]>`——每命令多行详细说明：功能/专属参数/典型示例/注意事项）、`scripts/cli/args.ts`（`OPTION_OWNERSHIP: Record<CommandName, readonly string[]>`——命令 → 专属参数名表，help 据此过滤）
 - Test: selftest help 断言
 
 **Interfaces:**
+
 - `help`（总览）：逐命令一段（COMMAND_DESC 一行 + COMMAND_HELP 展开）+ 全参数段（OPTION_GROUPS 派生，拼音别名尾注）+ 口径警告两段（HELP_CAUTION 沿用）。
 - `<命令> --help`：该命令的 COMMAND_HELP + 归属参数子集 + 示例。`--help` 本身进 OPTION_GROUPS（switch）。
 - 归属表是 **help 视图**，不做硬校验（作用域仍 skill 级——spec §3.2 的「诚实边界收窄」只发生在 help 层）。
@@ -380,11 +406,13 @@ ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运�
 ### Task 9: `--config` / `--template` 配置文件输入
 
 **Files:**
+
 - Create: `scripts/cli/config.ts`
 - Modify: `scripts/cli/args.ts`（`--config <file>` / `--template` 进 OPTION_GROUPS 与 astrology 归属）、`scripts/cli/astrology.ts`（入口先 `applyConfig`）
 - Test: selftest 配置断言
 
 **Interfaces:**
+
 - `applyConfig(argv: CliArgs): CliArgs`：读 JSON（键 = 参数 camelCase 主名，如 `date/time/city/gender/pattern/mutagen/yearly`），**命令行已给的键覆盖配置**（命令行优先）；配置内未知键/非法值与命令行同规则中文报错。
 - `--template`：stdout 打印合法可跑的示例 JSON（含单人全参数与注释性 `_说明` 键——实现时 `_` 前缀键在 applyConfig 中跳过），用户 `--template > my.json` 落盘。
 - 模板必须可被 `--config` 吃回并排出示例盘（断言闭环）。
@@ -397,6 +425,7 @@ ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运�
 ### Task 10: SKILL.md 重写 + references 同步
 
 **Files:**
+
 - Rewrite: `SKILL.md`（description 合并三域触发词：排盘解读/合盘合婚/古籍检索，删「用 xxx 技能」指路句；命令速查 `astrology/classics/synastry/stars/selftest`；路径约定「仓库根 = skill 根」；铁律/晚子时/体系约束章节保留）
 - Modify: `references/workflow.md`（第 1 步 = astrology 位置参数形态与功能参数组合）、`references/flags.md` → 改名 `references/options.md`（参数面细则：英文主名表/拼音别名/位置参数形态/`--config`/`--charts`）、`references/output-contract.md`（五节契约不变，聚焦形态引 astrology `--focus`）、`references/troubleshooting.md`（路径更新）
 - Test: 层 6 的「SKILL.md ↔ references 双向一致」「SKILL.md 提到的参数都有声明」「命令速查表命令都有实现」三组断言
@@ -409,6 +438,7 @@ ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运�
 ### Task 11: 仓库级文档 + 备案 + 最终回归
 
 **Files:**
+
 - Rewrite: `CLAUDE.md`（目录树按新结构重画——`scripts/` 根、cli/ 逐文件；删「三个 skill」「另两个 skill 怎么加载」「派生关系」各节；守卫表更新；「参数面单点声明」改 OPTION_GROUPS 表述）、`README.md`（单 skill 介绍 + 安装需 `npm install` + 新命令示例）
 - Modify: `docs/test/README.md`（备案区追加「三 skill 合一 + 命令融合 + 术语对齐」通告，报告正文不回改）
 - Test: 全量最终回归
