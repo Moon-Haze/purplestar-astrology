@@ -14,8 +14,6 @@
 import type { CliArgs, CliContext } from "./args";
 import { cmdSelftest } from "./selftest";
 import { cmdAstrology } from "./astrology";
-import { cmdChart } from "./chart";
-import { cmdTopic } from "./topic";
 import { cmdStars } from "./stars";
 import { cmdClassics } from "./classics";
 import { cmdSynastry } from "./synastry";
@@ -37,8 +35,6 @@ type Cmd = (args: CliArgs, ctx: CliContext) => string;
  */
 const COMMAND_TABLE = {
 	astrology: cmdAstrology,
-	chart: cmdChart,
-	topic: cmdTopic,
 	stars: cmdStars,
 	classics: cmdClassics,
 	synastry: cmdSynastry,
@@ -70,9 +66,7 @@ export const COMMANDS: Record<string, Cmd | undefined> = COMMAND_TABLE;
  * 写说明就编译不过**。
  */
 export const COMMAND_DESC: Record<CommandName, string> = {
-	astrology: "排盘分析一条命令（概览默认 + 功能参数）★ 最常用",
-	chart: "纯排盘十二宫",
-	topic: "主题论断（13 主题动态推算：主宫 + 三方四正 + 四化会照 + 大限/流年）",
+	astrology: "排盘分析一条命令（概览默认 + 功能参数：专题/--palaces/--topic）★ 最常用",
 	stars: "星曜释义",
 	classics: "古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）",
 	synastry: "合盘（双宫联参 + 夫妻宫断语 + 四化入夫妻宫）",

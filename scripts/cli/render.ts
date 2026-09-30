@@ -189,7 +189,7 @@ const BRIGHTNESS_CN: Record<NonNullable<Star["brightness"]>, string> = {
  * @param s - 单颗星曜
  * @returns 星名 + 四化 + 亮度拼接成的描述；后两项缺哪项就省哪项
  */
-const starLine = (s: Star): string => {
+export const starLine = (s: Star): string => {
 	const parts = [s.name];
 	if (s.mutagen) parts.push(`化${s.mutagen}`);
 	if (s.brightness) parts.push(BRIGHTNESS_CN[s.brightness]);

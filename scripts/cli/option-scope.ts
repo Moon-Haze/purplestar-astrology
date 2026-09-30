@@ -56,6 +56,7 @@ export const OPTION_SCOPE: OptionScope = {
 		"mutagen",
 		"decadal",
 		"ages",
+		"palaces",
 		// 输出与选题
 		"json",
 		"yearly",

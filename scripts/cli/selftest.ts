@@ -16,6 +16,7 @@
 import type { CliContext } from "./args";
 import { OPTION_NAMES, OPTION_ALIASES, SIDE_PREFIXES, parseArgs } from "./args";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import {
 	buildBirthInfo,
@@ -1049,8 +1050,11 @@ export function cmdSelftest(ctx: CliContext): string {
 		const defined = [...table.matchAll(/^\t+"?([a-z][a-z0-9-]*)"?:/gm)].map(m => m[1]);
 		if (defined.includes("cities")) throw new Error("cities 仍在 COMMAND_TABLE —— 应删（spec §3.1）");
 		if (defined.includes("analyze")) throw new Error("analyze 仍在 COMMAND_TABLE —— 应改名 astrology");
-		if (!defined.includes("astrology") || !defined.includes("chart") || !defined.includes("topic"))
-			throw new Error(`拆位不完整（应含 astrology/chart/topic），实得：${defined.join("、")}`);
+		// Task 6 融合后 chart/topic 也退役（职责成为 astrology 的 --palaces / --topic 参数）
+		if (defined.includes("chart") || defined.includes("topic"))
+			throw new Error("chart/topic 仍在 COMMAND_TABLE —— 已融合为 astrology 参数（Task 6）");
+		if (!defined.includes("astrology"))
+			throw new Error(`拆位不完整（应含 astrology），实得：${defined.join("、")}`);
 		// cities 删除后的数据表仍在（--city 容错解析在用）
 		const cities = readFileSync(resolve(ctx.root, "ziwei", "cities.ts"), "utf8");
 		if (!/export const PROVINCES/.test(cities)) throw new Error("ziwei/cities.ts 的 PROVINCES 不在了");
@@ -1059,6 +1063,66 @@ export function cmdSelftest(ctx: CliContext): string {
 		if (!s.includes("紫微") || !s.includes("关键词"))
 			throw new Error(`stars --search 紫微 的释义不见了，实得：${s.slice(0, 60)}`);
 		return "命令面收敛中间态就位";
+	});
+
+	// ── astrology 融合（2026-09-30 四命令合一，spec §1）：输出形态断言组 ──
+	// 子进程跑真 CLI：融合后的输出形态是用户可见契约，进程内直调测不到分发层。
+	const runCli = (args: string[]): { code: number; out: string; err: string } => {
+		const r = spawnSync(process.execPath, [resolve(ctx.root, "purple-star.ts"), ...args], {
+			encoding: "utf8",
+		});
+		return { code: r.status ?? -1, out: r.stdout ?? "", err: r.stderr ?? "" };
+	};
+
+	ok("astrology：默认输出含基本信息面板与运限速览，无专题节", () => {
+		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "北京"]);
+		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		for (const want of ["【命盘总览】", "【基本信息】", "子年斗君", "【运限速览】"])
+			if (!r.out.includes(want)) throw new Error(`缺 ${want}`);
+		for (const gone of ["【格局识别】", "【生年四化】"])
+			if (r.out.includes(gone)) throw new Error(`默认不应出现 ${gone}`);
+		return "概览默认含基本信息";
+	});
+	ok("astrology：--palaces 出十二宫逐宫详表（原 chart 职责）", () => {
+		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "--palaces"]);
+		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		// 十二宫逐宫详表：每宫名一块 + renderPalace 形态（星曜行）
+		for (const palace of ["命宫", "夫妻宫", "官禄宫", "福德宫", "田宅宫"])
+			if (!r.out.includes(palace)) throw new Error(`缺宫位块 ${palace}`);
+		if (!r.out.includes("大限")) throw new Error("缺大限一览");
+		if (!/(化禄|化权|化科|化忌)/.test(r.out)) throw new Error("详表应含四化标注");
+		return "十二宫详表在";
+	});
+	ok("astrology：--topic love 出主题论断（原 topic 职责）；--view 越界报错", () => {
+		const r = runCli([
+			"astrology",
+			"1990-5-15",
+			"9:30",
+			"男",
+			"--topic",
+			"love",
+		]);
+		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		if (!r.out.includes("【主题论断")) throw new Error("缺主题论断标题");
+		if (!r.out.includes("知识来源分级")) throw new Error("缺知识来源分级披露");
+		const bad = runCli(["astrology", "1990-5-15", "9:30", "男", "--topic", "love", "--view", "xxx"]);
+		if (bad.code === 0 || !bad.err.includes("--view")) throw new Error("--view 越界应报错并点名");
+		return "主题论断与 view 校验在";
+	});
+	ok("astrology：旧命令名已删且报错指路", () => {
+		for (const old of ["analyze", "chart", "topic", "insight", "cities"]) {
+			const r = runCli([old, "--date", "1990-05-15", "--time", "9:30", "--gender", "男"]);
+			if (!r.err.includes("未知命令") || !r.err.includes("astrology"))
+				throw new Error(`${old} 应报未知命令并指路 astrology，实得：${r.err.trim()}`);
+		}
+		return "5 个旧命令名全部指路 astrology";
+	});
+	ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运限引动）", () => {
+		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "--focus", "命宫"]);
+		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		for (const want of ["会照", "对宫", "格局", "小限"])
+			if (!r.out.includes(want)) throw new Error(`focus 深化缺 ${want}`);
+		return "四项深化在";
 	});
 
 	ok("参数面：SKILL.md 命令速查表提到的命令都在 commands.ts 的命令表里", () => {

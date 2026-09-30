@@ -7,7 +7,15 @@
 
 import type { CliArgs } from "./args";
 import { buildBirthInfo } from "./birth-info";
-import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua, surroundNames } from "./render";
+import {
+	birthplaceSection,
+	fmtDate,
+	genderCN,
+	lateZiSection,
+	locateSihua,
+	renderPalace,
+	surroundNames,
+} from "./render";
 import {
 	decadalSection,
 	focusSection,
@@ -25,6 +33,13 @@ import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
 import { getMutagenByStem, getYearlyMutagen, getMonthlyMutagen } from "@/ziwei/mutagen";
 import { STEMS, BRANCHES } from "@/ziwei/constants";
+import {
+	getTopicAnalysis,
+	TOPIC_LABEL,
+	TOPIC_PALACE_NAME,
+	type TopicKey,
+	type AnalysisView,
+} from "@/ziwei/analysis";
 
 /**
  * `--yearly` 的年份校验（`analyze` 的流年专题与 `topic` 的流年论断共用）。
@@ -100,6 +115,85 @@ export function cmdAstrology(args: CliArgs) {
 	const liuYueMonth = parseMonthlyArg(args);
 	const liuYue = liuYueMonth !== null ? getMonthlyMutagen(liuNian.stemIndex, liuYueMonth) : null;
 
+	// ── 融合分支（2026-09-30 四命令合一，spec §1）──
+	// --info：只输出信息面板这一节（面板本身在默认输出里无条件存在，本参数是「只看面板」）
+	if (args.info) {
+		return [
+			`【命盘总览】${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)}`,
+			"",
+			...infoSection(chart, {
+				clockTime: typeof args.time === "string" ? args.time : null,
+				solarNote: note,
+				longitude,
+			}),
+		].join("\n");
+	}
+
+	// --palaces：十二宫逐宫详表（原 chart 命令的职责，2026-09-30 起并入本参数）。
+	// --palaces --json 与原 chart --json 同形：顶层即命盘本身（不带格局/四化包装）。
+	if (args.palaces) {
+		if (args.json) return JSON.stringify(chart, null, 2);
+		const out = [
+			`命盘  ${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)}`,
+			`农历：${chart.lunarInfo.lunarYear}年${chart.lunarInfo.isLeapMonth ? "闰" : ""}${chart.lunarInfo.lunarMonth}月${chart.lunarInfo.lunarDay}日 · 年柱${STEMS[chart.lunarInfo.yearStem]}${BRANCHES[chart.lunarInfo.yearBranch]}`,
+			`命宫：${BRANCHES[chart.soulBranch]} · 身宫：${BRANCHES[chart.bodyBranch]} · 五行局：${chart.fiveElementsClassName} · 紫微：${BRANCHES[chart.ziweiPos]}`,
+			"",
+		];
+		out.push(...birthplaceSection(lngNote, lngAmbiguous));
+		out.push(...lateZiSection(chart, info, isLateZi, lateZiCandidate));
+		out.push("─".repeat(56));
+		for (const p2 of chart.palaces) out.push(renderPalace(p2, chart), "");
+		out.push(
+			"大限：" +
+				chart.decadals
+					.map(d => `${d.startAge}-${d.endAge}岁 ${d.palaceName}(${BRANCHES[d.palaceBranch]})`)
+					.join(" | ")
+		);
+		out.push(
+			`当前年龄：${chart.currentAge}岁 · 当前大限：${chart.decadals[chart.currentDecadalIndex]?.palaceName ?? "—"}`
+		);
+		return out.join("\n");
+	}
+
+	// --topic：主题论断（原 topic 命令的职责）。不带值（或裸开关）= 列 13 主题清单。
+	if (args.topic !== undefined) {
+		if (args.topic === true) {
+			const rows = (Object.keys(TOPIC_LABEL) as TopicKey[]).map(
+				k => `  ${k.padEnd(11)} ${TOPIC_LABEL[k]}（看${TOPIC_PALACE_NAME[k]}）`
+			);
+			return [
+				"13 个主题（--topic <key> 选其一）：",
+				...rows,
+				"",
+				"view 可选：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月）",
+				"示例：node scripts/purple-star.ts astrology --date 1990-05-15 --branch 5 --gender male --topic love",
+			].join("\n");
+		}
+		const topic = String(args.topic) as TopicKey;
+		if (!TOPIC_LABEL[topic])
+			throw new Error(
+				`--topic 应为 13 个主题之一（${Object.keys(TOPIC_LABEL).join("/")}），收到：${args.topic}`
+			);
+		const viewRaw = args.view !== undefined ? String(args.view) : "mingpan";
+		if (!["mingpan", "daxian", "liunian", "liuyue"].includes(viewRaw))
+			throw new Error(`--view 应为 mingpan/daxian/liunian/liuyue，收到：${args.view}`);
+		const view = viewRaw as AnalysisView;
+		const text = getTopicAnalysis(chart, topic, {
+			view,
+			liunianYear: parseYearlyArg(args),
+			liuyueMonth: parseMonthlyArg(args) ?? undefined,
+		});
+		return [
+			`【主题论断 · ${TOPIC_LABEL[topic]}】${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)}`,
+			"",
+			text,
+			"",
+			"⚠️ 知识来源分级：以上论断出自分析数据库 v3 —— 其中「倪师说」引号句部分为传统口诀的",
+			"   风格化转述，不一定是《天纪》逐字原话（verified / traditional / methodology / suspect 四级），",
+			"   引用下断语时请注明口径。",
+		].join("\n");
+	}
+
 	if (args.json) {
 		return JSON.stringify(
 			{
@@ -168,19 +262,17 @@ export function cmdAstrology(args: CliArgs) {
 
 	out.push(...birthplaceSection(lngNote, lngAmbiguous));
 	out.push(...lateZiSection(chart, info, isLateZi, lateZiCandidate));
+	// ── 基本信息面板：无条件输出（2026-09-30 融合契约，spec §1）──
+	// 从前它是 --info 专题；spec §0 的用户反馈第一条就是「基本信息应默认可见」。
+	out.push(
+		"",
+		...infoSection(chart, {
+			clockTime: typeof args.time === "string" ? args.time : null,
+			solarNote: note,
+			longitude,
+		})
+	);
 	out.push(...overviewSection(chart, liuNianYear));
-
-	// ── 专题分发：给了哪个旗标就追加哪个专题（可叠加）──
-	if (args.info) {
-		out.push(
-			"",
-			...infoSection(chart, {
-				clockTime: typeof args.time === "string" ? args.time : null,
-				solarNote: note,
-				longitude,
-			})
-		);
-	}
 	if (args.pattern) out.push("", ...patternSection(chart));
 	if (args.mutagen) out.push("", ...mutagenSection(chart, liuNianYear, liuYueMonth));
 	if (args.yearly !== undefined) out.push("", ...yearlySection(chart, liuNianYear));

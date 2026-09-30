@@ -22,7 +22,7 @@ import {
 } from "@/ziwei/mutagen";
 import { surroundBranches, oppositeBranch } from "@/ziwei/palace-relations";
 import { detectPatterns } from "@/ziwei/patterns";
-import { FOCUS_ALIASES, locateSihua, renderPalace, surroundNames } from "./render";
+import { FOCUS_ALIASES, locateSihua, renderPalace, starLine, surroundNames } from "./render";
 import { Solar } from "lunar-typescript";
 
 // ══════════════════════ 运限定位（纯函数）══════════════════════
@@ -542,18 +542,35 @@ export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: n
 
 	const out = [`【聚焦：${target.name}】`];
 	out.push(renderPalace(target, chart));
-	out.push(`  对宫：${chart.palaces.find(p => p.branch === oppBranch)?.name ?? "?"}`);
+	// 命主 / 身主星标注 + 身宫标记（spec §1 四项深化的第四件）
+	if (target.isSoulPalace) out.push(`  命宫 —— 命主星：${chart.mingZhu}`);
+	if (target.isBodyPalace) out.push(`  ⭐ 此宫为身宫 —— 身主星：${chart.shenZhu}`);
 	out.push("");
-	out.push("三方四正会照：");
+
+	// ── 深化一：对宫完整详表（renderPalace 同规格，2026-09-30 起）──
+	const oppPalace = chart.palaces.find(p => p.branch === oppBranch);
+	out.push(`对宫详表：${oppPalace?.name ?? "?"}`);
+	if (oppPalace) out.push(renderPalace(oppPalace, chart));
+	out.push("");
+
+	// ── 深化二：三方四正逐宫全星曜（主星含亮度四化 + 吉煞杂曜，不再只列主星）──
+	out.push("三方四正会照（逐宫全星曜）：");
 	for (const b of sanFang) {
 		const p = chart.palaces.find(x => x.branch === b);
 		if (!p) continue;
-		const majors = p.stars.filter(s => s.type === "major").map(s => s.name);
-		out.push(
-			`  ${p.name}(${BRANCHES[b]})：${majors.length ? majors.join("、") : `空宫借${p.borrowedFromName ?? "?"}`}`
-		);
+		const all = p.stars.map(starLine).join("、");
+		out.push(`  ${p.name}(${BRANCHES[b]})：${all || `空宫借${p.borrowedFromName ?? "?"}`}`);
 	}
 	out.push(`  会照主星汇总：${huiZhaoMajors(chart, sanFang).join("、") || "（无）"}`);
+
+	// ── 深化三：涉及此宫的格局全列（detectPatterns 过滤 palaces 含此宫）──
+	out.push("");
+	out.push("涉及此宫的格局：");
+	const patternsHere = detectPatterns(chart).filter(pt =>
+		(pt.palaces ?? []).some(n => n === target.name || n.includes(target.name))
+	);
+	if (patternsHere.length) for (const pt of patternsHere) out.push(`  · ${pt.name}（${pt.level}）`);
+	else out.push("  （无成立的格局涉及此宫）");
 
 	out.push("");
 	out.push("四化落宫：");
@@ -584,5 +601,28 @@ export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: n
 	const xx = agePalaceOf(chart, chart.currentAge);
 	if (xx.branch === target.branch)
 		out.push(`  当前虚岁 ${chart.currentAge} 小限在此宫`);
+	// ── 深化四（续）：小限岁数段 + 当前大限十年内此宫被流年引动的年份 ──
+	const ages = target.ages ?? [];
+	if (ages.length)
+		out.push(
+			`  小限岁数段：${ages[0]}-${ages[ages.length - 1]} 岁（共 ${ages.length} 个落点）`
+		);
+	const cur = chart.decadals[chart.currentDecadalIndex];
+	if (cur) {
+		// 大限起止虚岁 → 公历年区间（虚岁 = 出生公历年 + 虚岁 - 1 的近似口径，
+		// 与 overviewSection 的速览同源）；逐年看流年命宫是否落此宫 / 对宫 / 三方
+		const birthYear = chart.lunarInfo.lunarYear;
+		const y0 = birthYear + cur.startAge - 1;
+		const y1 = Math.min(birthYear + cur.endAge - 1, new Date().getFullYear() + 10);
+		const hits: number[] = [];
+		for (let y = y0; y <= y1; y++) {
+			const b = yearlyBranchOf(y);
+			if (b === target.branch || b === oppBranch || sanFang.includes(b)) hits.push(y);
+		}
+		out.push(
+			`  当前大限（${cur.startAge}-${cur.endAge} 岁，${y0}-${y1} 年）内流年引动此宫（含对冲/会照）：` +
+				(hits.length ? hits.join("、") : "（无）")
+		);
+	}
 	return out;
 }

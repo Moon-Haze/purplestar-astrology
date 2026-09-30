@@ -1300,14 +1300,15 @@ describe("CLI 端到端", () => {
 			assert.fail(`命令本应失败却成功了：purple-star.ts ${sub} ${args.join(" ")}`);
 		}
 
-		it("不带 --topic 时列出 13 个主题清单", async () => {
-			const t = await cliCmd("topic", [
+		it("--topic 裸开关列出 13 个主题清单（不带 --topic 则是默认概览）", async () => {
+			const t = await cliCmd("astrology", [
 				"--date",
 				"1990-05-15",
 				"--branch",
 				"5",
 				"--gender",
 				"male",
+				"--topic",
 			]);
 			assert.ok(
 				t.includes("overview") && t.includes("love") && t.includes("parents"),
@@ -1316,7 +1317,7 @@ describe("CLI 端到端", () => {
 		});
 
 		it("love 主题产出夫妻宫论断（本命视角，非空壳）", async () => {
-			const t = await cliCmd("topic", [
+			const t = await cliCmd("astrology", [
 				"--date",
 				"1990-05-15",
 				"--branch",
@@ -1332,7 +1333,7 @@ describe("CLI 端到端", () => {
 		});
 
 		it("friends 主题适配项目宫名口径（iztro 旧口径「仆役」→「交友宫」）", async () => {
-			const t = await cliCmd("topic", [
+			const t = await cliCmd("astrology", [
 				"--date",
 				"1990-05-15",
 				"--branch",
@@ -1357,13 +1358,13 @@ describe("CLI 端到端", () => {
 				"wealth",
 			];
 			for (const view of ["mingpan", "daxian", "liunian", "liuyue"]) {
-				const t = await cliCmd("topic", [...base, "--view", view]);
+				const t = await cliCmd("astrology", [...base, "--view", view]);
 				assert.ok(t.length > 100 && !t.includes("无法找到"), `view=${view} 应正常产出`);
 			}
 		});
 
 		it("未知 topic 报错并列出可用值", async () => {
-			const stderr = await cmdFails("topic", [
+			const stderr = await cmdFails("astrology", [
 				"--date",
 				"1990-05-15",
 				"--branch",
@@ -1377,7 +1378,7 @@ describe("CLI 端到端", () => {
 		});
 
 		it("输出末尾带知识来源分级提示", async () => {
-			const t = await cliCmd("topic", [
+			const t = await cliCmd("astrology", [
 				"--date",
 				"1990-05-15",
 				"--branch",
@@ -1653,7 +1654,8 @@ describe("CLI 端到端", () => {
 	// ── chart 命令 ──
 	describe("chart 命令", () => {
 		it("渲染冒烟：关键段落齐全", async () => {
-			const t = await cliCmd("chart", [
+			const t = await cliCmd("astrology", [
+				"--palaces",
 				"--date",
 				"1990-05-15",
 				"--time",
@@ -1676,9 +1678,10 @@ describe("CLI 端到端", () => {
 				assert.ok(t.includes(seg), `chart 输出应含「${seg}」，实得：\n${t.slice(0, 400)}`);
 		});
 
-		it("--json 输出十二宫齐全，地支 0-11 各一次", async () => {
+		it("--palaces --json 输出十二宫齐全，地支 0-11 各一次（原 chart --json 同形）", async () => {
 			const c = JSON.parse(
-				await cliCmd("chart", [
+				await cliCmd("astrology", [
+					"--palaces",
 					"--date",
 					"1990-05-15",
 					"--time",

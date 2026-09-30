@@ -193,7 +193,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 	{
 		title: "专题深入（可叠加；不带任何专题参数时只出精简概览）",
 		options: [
-			{ name: "info", kind: "switch", desc: "基本信息专题（四柱 / 命主身主 / 斗君 / 五行局）" },
+			{ name: "info", kind: "switch", desc: "只输出基本信息面板这一节（面板默认已在概览里）" },
 			{ name: "pattern", kind: "switch", desc: "格局识别专题（格局判词 / 成立与破格条件 / 出处）" },
 			{
 				name: "mutagen",
@@ -212,6 +212,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				value: "[虚岁]",
 				desc: "小限专题（指定岁小限宫 + 十二宫小限岁数表；缺省 = 当前虚岁）",
 			},
+			{ name: "palaces", kind: "switch", desc: "十二宫逐宫详表（原 chart 命令职责，2026-09-30 并入）" },
 		],
 	},
 	{
