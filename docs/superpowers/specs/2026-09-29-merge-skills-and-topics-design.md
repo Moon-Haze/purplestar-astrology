@@ -126,10 +126,9 @@ scripts/
 
 改名牵动：全仓 import 改写（约 20 处）、`test/` 与 `tools/` 引用、CLAUDE.md 目录树。与 §2.9 路径迁移**同一笔提交**做（都是 `git mv` + import 改写，分两笔会互相踩）。
 
-### 2.8 术语全对齐 iztro：类型值与内核字段（四层对齐的第三、四层）
+### 2.8 术语全对齐 iztro：类型值、内核字段与标识符（共五层）
 
-前两层（旗标 / 文件名）见上文；此节是**类型值与 `ziwei/types.ts` 公开字段**——与 iztro 原作者
-术语全面对齐（用户拍板）。牵动 types / algorithm / render / patterns / analysis / compare /
+前两层（旗标 / 文件名）见上文；此节是**类型值、`ziwei/types.ts` 公开字段与标识符层**——与 iztro 原作者术语全面对齐（用户拍板）。牵动 types / algorithm / render / patterns / analysis / compare /
 test 与 **JSON 输出字段名**；合盘消费方（chart-view.ts）同仓同笔改。
 
 **类型值**：
@@ -154,6 +153,31 @@ test 与 **JSON 输出字段名**；合盘消费方（chart-view.ts）同仓同�
 | `Palace.xiaoXianAges` | `ages` | `palace.ages`（同名直取） |
 | `BirthInfo.hour` | `timeIndex` | `bySolar(date, timeIndex, …)` 入参同名，语义完全一致（时辰序号 0–12） |
 | `Star.siHua` | `mutagen` | `Star.mutagen` |
+
+**标识符层**（函数 / 常量名，第五层——拼音标识符全部对齐 iztro 词根）：
+
+| 现名 | 新名 | iztro 依据 |
+| --- | --- | --- |
+| `duiGongBranch` | `oppositeBranch` | `surroundPalaces.opposite` |
+| `sanFangBranches` | `surroundBranches` | `surroundPalaces`（结构 `{target, opposite, wealth, career}`） |
+| `sanFangSiZheng`（render） | `surroundNames` | 同上 |
+| `getSanFangPalaces`（patterns/helpers） | `getSurroundPalaces` | 同上 |
+| `Palace.isShenGong` / `isMingGong` | `isBodyPalace` / `isSoulPalace` | iztro 宫字段 `isBodyPalace` 同名；Soul Palace 词根 |
+| `SHA_STARS` / `LUCKY_STARS` | `TOUGH_STARS` / `SOFT_STARS` | `tough` / `soft` |
+| `getSiHuaByStem` | `getMutagenByStem` | mutagen |
+| `getLiuNianSiHua` / `getLiuYueSiHua` | `getYearlyMutagen` / `getMonthlyMutagen` | `yearly` / `monthly` + mutagen |
+| `getLiuYueStemIndex` | `getMonthlyStemIndex` | `monthly` |
+| `liuNianBranchOf`（fortune.ts） | `yearlyBranchOf` | `horoscope.yearly` |
+| `xiaoXianPalaceOf` | `agePalaceOf` | `horoscope.agePalace` |
+| `liuNianSection` / `daXianSection` / `xiaoXianSection` | `yearlySection` / `decadalSection` / `ageSection` | 对应旗标词根 |
+| `gejuSection` / `sihuaSection` | `patternSection` / `mutagenSection` | 对应旗标词根 |
+| `parseAgeArg` | `parseAgesArg` | 对齐 `--ages` |
+
+标识符层的**保留**：`getYearStemIndex`（英文意译，无 iztro 对应概念）、`SHICHEN`（时辰为中国
+时制专名，iztro 无对应英文常量——`timeIndex` 是纯数字）、`lateZi*` 与 `--late-zi`（晚子时
+在 iztro 仅表现为 `timeIndex 12`，无术语名可对齐，旗标保持拼音专名）、`mustPalace` /
+`palaceAtBranch` / `chartSignature`（英文意译的渲染辅助）、`ZiweiChart` / `BirthInfo` /
+`borrowed*`（自有结构与概念）。
 
 **保留不动**（专名或既有英文意译）：`ziweiPos`（紫微为星名音译专名，iztro 库自身亦用）、
 `yearStem` / `yearBranch`（干支通行英文意译）、宫名「交友宫」（倪师体系口径，**有意**偏离
