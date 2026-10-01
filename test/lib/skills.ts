@@ -7,7 +7,7 @@
 // ## 为什么清单仍从磁盘推导
 //
 // 手写一份名单会在**形态变化时静默漂移**：判据「根下有 `SKILL.md`」是唯一的事实来源
-// （缺了它 Claude 根本不会触发这个 skill，自包含断言也会大面积失效）——
+// （缺了它助手根本不会触发这个 skill，自包含断言也会大面积失效）——
 // 与本仓「目录存在与否是唯一事实来源」是同一条原则。
 //
 // ⚠️ 与之相对，{@link CHART_LIKE} **必须手写**：「排不排盘」是语义，磁盘上看不出来。
@@ -37,7 +37,7 @@ export const SOURCE_SKILL = "purplestar-astrology";
  * 仓库里全部 skill 名。
  *
  * @remarks
- * 单 skill 形态：判据「仓库根下有 `SKILL.md`」（skill 的入口，缺了它 Claude 不会触发）。
+ * 单 skill 形态：判据「仓库根下有 `SKILL.md`」（skill 的入口，缺了它助手不会触发）。
  */
 export const ALL_SKILLS: readonly string[] = existsSync(resolve(REPO_ROOT, "SKILL.md"))
 	? [SOURCE_SKILL]

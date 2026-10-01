@@ -171,7 +171,7 @@ const { getMutagenByStem } = await loadSihua();
 // 免掉每个用例起两个 node 子进程的冷启动税），把 stdout 写进临时文件，再把**文件路径**
 // 交给 synastry 子进程。
 //
-// ⚠️ 这条路径正是 Claude 按 SKILL.md 编排的那条。若哪天 `analyze --json` 少了一个
+// ⚠️ 这条路径正是助手按 SKILL.md 编排的那条。若哪天 `analyze --json` 少了一个
 // synastry 依赖的字段（`chart` / `nativeSiHua.located` / `lateZi` / `basis`），红的是这里；
 // 而假盘的形状对不对由 synastry 自己的 `selftest` 冒烟，两者分工不同。
 const SYN_TMP = mkdtempSync(join(tmpdir(), "synastry-cli-"));
@@ -656,7 +656,7 @@ describe("CLI 端到端", () => {
 			const m = pointer.match(/references\/[a-z0-9-]+\.md/);
 			assert.ok(m, `末行不是指向 references/*.md 的指针：${pointer}`);
 
-			// 文件改名或删掉时红在这里，而不是红在 Claude 打开一个不存在的文件时。
+			// 文件改名或删掉时红在这里，而不是红在助手打开一个不存在的文件时。
 			// 2026-09-30 起指针相对**仓库根**（合并后 skill 根 = 仓库根）。
 			const mdPath = resolve(SKILL_ROOT, m[0]);
 			assert.ok(existsSync(mdPath), `指针指向的参考文档不存在：${m[0]}`);

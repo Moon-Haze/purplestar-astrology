@@ -1,16 +1,16 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文件为在此仓库工作的 AI 助手提供指导。
 
 ## 这是什么
 
-一个 **Claude Code skill**：紫微斗数排盘、合盘与古籍检索三域合一（2026-09-30 起单 skill 形态，
+一个 **AI 助手技能（skill）**：紫微斗数排盘、合盘与古籍检索三域合一（2026-09-30 起单 skill 形态，
 **仓库根 = skill 根**）。根 `SKILL.md` + 根 `scripts/`（CLI + 三个域的内核）+ 根 `references/` +
 根 `package.json`，整个仓库可拷进 `~/.claude/skills/` 直接使用（拷走后需 `npm install`）。
 
-关键含义：**`SKILL.md` 不是文档，是可执行的行为规范**——Claude 读它来决定如何排盘与解读。改 `SKILL.md` 等于改这个 skill 的行为。
+关键含义：**`SKILL.md` 不是文档，是可执行的行为规范**——助手读它来决定如何排盘与解读。改 `SKILL.md` 等于改这个 skill 的行为。
 
-**`SKILL.md` 是骨架，`references/` 是它的延伸**——这是 Claude Code 的三级渐进披露：frontmatter 常驻上下文，`SKILL.md` 在技能触发后加载，`references/` 只在 Claude 真的去读时才进上下文。骨架只放**每次触发都要用**的东西（路径约定、铁律、晚子时、体系约束、已知口径、命令速查），而排障 / 输出契约全文 / 参数面细则 / 工作流详展开一律进 `references/`，并**由 `SKILL.md` 写明何时读它**。
+**`SKILL.md` 是骨架，`references/` 是它的延伸**——这是三级渐进披露：frontmatter 常驻上下文，`SKILL.md` 在技能触发后加载，`references/` 只在助手真的去读时才进上下文。骨架只放**每次触发都要用**的东西（路径约定、铁律、晚子时、体系约束、已知口径、命令速查），而排障 / 输出契约全文 / 参数面细则 / 工作流详展开一律进 `references/`，并**由 `SKILL.md` 写明何时读它**。
 
 **路径约定**：仓库根 = skill 根，一切命令写 `node scripts/purple-star.ts`（仓库级文档与 skill 内文档从此同一口径，不再有 `skills/<name>/` 前缀）。
 

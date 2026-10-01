@@ -1,13 +1,13 @@
 # 紫微斗数（purplestar-astrology）
 
-倪海夏《天纪》**三合派**体系的紫微斗数排盘与解读 skill，供 Claude Code 使用。
+倪海夏《天纪》**三合派**体系的紫微斗数排盘与解读 skill，供 AI 助手调用。
 
 本仓**整体就是一个 skill**（2026-09-30 三 skill 合一：排盘解读 / 合盘 / 古籍检索三域，
 仓库根 = skill 根），拷进 `~/.claude/skills/` 后跑一次 `npm install` 即可。
 
 ## 这是什么
 
-一个 Claude Code skill：用户给出出生年月日时与性别，Claude 调用本 skill 的 CLI 完成排盘、
+一个 AI 助手技能（skill）：用户给出出生年月日时与性别，助手调用本 skill 的 CLI 完成排盘、
 格局识别、四化推演、大限流年与主题论断，并可做双人合盘、检索三部古籍原文。
 
 排盘由 `iztro` + 本项目内核的确定性算法产出，**不靠模型推算**——CLI 负责算，模型只负责解读。
@@ -16,7 +16,7 @@
 
 每个 skill 的 `SKILL.md` 是**骨架**——只放每次触发都要用的东西（路径约定、必须问清的输入、晚子时陷阱、
 体系约束、已知口径、命令速查）。排障、输出契约全文、参数面细则、工作流详展开都在同目录的
-`references/` 下，由 `SKILL.md` 写明「何时读它」——**没被读到就不占上下文**。这是 Claude Code 的渐进披露：
+`references/` 下，由 `SKILL.md` 写明「何时读它」——**没被读到就不占上下文**。这是渐进披露：
 进上下文的只有 `SKILL.md` 本身，`scripts/` 下上万行内核一行都不进（它只在 Node 里执行）。
 
 ## 安装
@@ -29,7 +29,7 @@ cp -r <本仓库> <项目>/.claude/skills/purplestar-astrology
 cp -r <本仓库> ~/.claude/skills/purplestar-astrology
 ```
 
-目录名必须与 `SKILL.md` frontmatter 的 `name` 一致，Claude Code 据此发现技能。
+目录名必须与 `SKILL.md` frontmatter 的 `name` 一致，宿主环境据此发现技能。
 
 `node_modules/` 不必拷（已在 `.gitignore` 中），落位后补一次依赖：
 
@@ -41,7 +41,7 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 
 ```text
 .
-├── SKILL.md             # 技能定义（Claude Code 入口，骨架）
+├── SKILL.md             # 技能定义（技能入口，骨架）
 ├── references/          # 骨架的延伸：工作流 / 参数面 / 输出契约 / 排障 / 合盘指南，按需加载
 ├── scripts/             # CLI 与三个域的内核同处一层（内核根）
 │   ├── purple-star.ts   # 引导层：定位内核根 → 注册 TS 钩子 → 启动自检 → 分发命令

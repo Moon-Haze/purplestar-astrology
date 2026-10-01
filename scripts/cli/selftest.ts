@@ -1180,8 +1180,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	ok("参数面：SKILL.md 提到的旗标都在 args.ts 的声明表里", () => {
-		// SKILL.md 是给 Claude 读的**行为规范**（见 .claude/CLAUDE.md：改它就等于改 skill
-		// 的行为）。它提到的旗标若在解析层不存在，Claude 会照着敲一个被拒的参数。
+		// SKILL.md 是给助手读的**行为规范**（见 .claude/CLAUDE.md：改它就等于改 skill
+		// 的行为）。它提到的旗标若在解析层不存在，助手会照着敲一个被拒的参数。
 		//
 		// 只查「SKILL.md → 声明表」这一个方向。反向（声明表里的旗标都要写进 SKILL.md）
 		// 刻意不查：SKILL.md 是使用指南不是穷举清单，`topic` 的 13 个 key、`classics` 的
@@ -1394,8 +1394,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	ok("参数面：SKILL.md 命令速查表提到的命令都在 commands.ts 的命令表里", () => {
-		// 与上一条同源：SKILL.md 是给 Claude 读的**行为规范**，它提到的命令若不存在，
-		// Claude 会照着敲一条必然失败的命令行。键集取自函数顶部的动态 import（真模块
+		// 与上一条同源：SKILL.md 是给助手读的**行为规范**，它提到的命令若不存在，
+		// 助手会照着敲一条必然失败的命令行。键集取自函数顶部的动态 import（真模块
 		// 的键集，不再有「正则漏抽」的失效模式，物理排版随之退出契约）。
 		const defined = commandNames;
 
@@ -1426,7 +1426,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	ok("文档一致性：references 深层文件与单 skill 形态同步（合并遗留漂移盯防）", () => {
 		// 三 skill 合一是「骨架先行」的改造：SKILL.md / options / troubleshooting 同步了，
 		// 而 workflow 第 2 步与两份 synastry 细则曾被落下——骨架指路深入后读到的却是
-		// 「classics/synastry 已搬去 sibling skill」，把 Claude 往错误方向带。这些标记
+		// 「classics/synastry 已搬去 sibling skill」，把助手往错误方向带。这些标记
 		// 词（旧 skill 名 / 不存在的 sihua.ts / 旧自述句）一旦回潮就在这里变红。
 		const read = (p: string) => readFileSync(resolve(ctx.root, "..", "references", p), "utf8");
 		for (const [file, text] of [
