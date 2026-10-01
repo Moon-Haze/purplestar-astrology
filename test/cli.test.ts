@@ -1640,12 +1640,20 @@ describe("CLI 端到端", () => {
 		it("--limit 非正整数时指出是参数问题，不谎报「未找到」", async () => {
 			// 内核把非法 limit 归成空结果后，若 CLI 不加区分，`--limit 0` 会输出
 			// 「古籍中未找到「星」。」—— 明明有 41 条命中，只是上限被设成了 0。
+			// 2026-10-01 起值域非法由命令层 throw：引导层打「错误：」上 stderr 并 exit 1，
+			// 报错不再出现在 stdout（旧 return 行为对机器路径等于没报）。
 			for (const bad of ["0", "-3", "abc"]) {
-				const t = await cliCmd("classics", ["--search", "星", "--limit", bad], "classics");
-				assert.ok(!t.includes("未找到"), `--limit ${bad} 不该谎报未找到，实得：${t}`);
+				let stderr = "";
+				try {
+					await cliCmd("classics", ["--search", "星", "--limit", bad], "classics");
+				} catch (err) {
+					stderr = (err as { stderr?: string }).stderr ?? (err as Error).message;
+				}
+				assert.ok(stderr, `--limit ${bad} 本应失败（非零退出），却成功了`);
+				assert.ok(!stderr.includes("未找到"), `--limit ${bad} 不该谎报未找到，实得：${stderr}`);
 				assert.ok(
-					t.includes("--limit"),
-					`--limit ${bad} 应指出是 limit 的问题，实得：${t}`
+					stderr.includes("--limit"),
+					`--limit ${bad} 应指出是 limit 的问题，实得：${stderr}`
 				);
 			}
 		});

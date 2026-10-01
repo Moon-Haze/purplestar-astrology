@@ -787,6 +787,41 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			throw new Error(`省+市带空格应报错并提示连写，实得：${spaced}`);
 	});
 
+	ok("出生信息：公历日期不存在的 round-trip 校验（不静默归一化出错盘）", () => {
+		// JS Date 会把 2011-02-30 静默归一化成 03-02：标题印 02-30、实际排 03-02 的错盘，
+		// --json 的 birthInfo.day=30 与 lunarInfo.lunarDay 更自相矛盾。2026-10-01 起反查
+		// 必须原样回来，否则报错（与农历路径的回环校验同一立场）。文案须回显原始输入。
+		for (const bad of ["2011-02-30", "2011-02-29"]) {
+			let msg = "";
+			try {
+				buildBirthInfo(parseArgs(["--date", bad, "07:45", "杭州", "male"], "astrology"));
+			} catch (e) {
+				msg = (e as Error).message;
+			}
+			// 文案判据按任务口径二选一：含原始输入（回显）或含「不存在」
+			if (!msg || !(msg.includes(bad) || msg.includes("不存在")))
+				throw new Error(`${bad} 未报错或文案未回显原始输入，实得：${msg || "未报错"}`);
+		}
+		// 位置参数形态与 --date 在 buildBirthInfo 汇合，必须同受校验（宽松格式 2011-2-30）
+		let posMsg = "";
+		try {
+			buildBirthInfo(parseArgs(["2011-2-30", "07:45", "杭州", "male"], "astrology"));
+		} catch (e) {
+			posMsg = (e as Error).message;
+		}
+		if (!posMsg.includes("2011-2-30"))
+			throw new Error(`位置参数 2011-2-30 未报错或未回显原文，实得：${posMsg || "未报错"}`);
+		// 闰年边界不得误伤：2012-02-29 必须原样通过
+		const leap = buildBirthInfo(parseArgs(["--date", "2012-02-29", "07:45", "杭州", "male"], "astrology"));
+		eq(leap.info.year, 2012, "闰年 2-29 年份 ");
+		eq(leap.info.month, 2, "闰年 2-29 月份 ");
+		eq(leap.info.day, 29, "闰年 2-29 日 ");
+		// 宽松合法格式先归一再校验，1990-5-15 不受影响
+		const loose = buildBirthInfo(parseArgs(["--date", "1990-5-15", "07:45", "杭州", "male"], "astrology"));
+		eq(loose.info.day, 15, "宽松格式 1990-5-15 日 ");
+		return "2-30 / 平年 2-29 报错并回显；闰年 2-29 与宽松格式放行";
+	});
+
 	ok("参数面：拼错的旗标必须报错，并指向最接近的合法名", () => {
 		// 拼错旗标以前是**静默**的：parseArgs 任何 `--xxx` 都照单全收，buildBirthInfo
 		// 读不到就落回默认值 —— `--ctiy 喀什` 排出的是一张经度按默认 120°E 算的盘
@@ -862,9 +897,16 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	ok("命令面：--search 末尾缺值（裸开关 true）必须指路，不把 true 当检索词", () => {
-		const s = cmdStars(parseArgs(["--search"], "stars"));
-		if (!s.includes("需要一个检索词"))
-			throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);
+		// 2026-10-01 起值域非法走 throw（引导层打「错误：」上 stderr 并 exit 1），
+		// 不再 return——return 会把报错当正常输出打 stdout 且 exit 0，机器路径无法感知。
+		let msg = "";
+		try {
+			cmdStars(parseArgs(["--search"], "stars"));
+		} catch (e) {
+			msg = (e as Error).message;
+		}
+		if (!msg.includes("需要一个检索词"))
+			throw new Error(`缺值未指路（应 throw），实得：${msg || "未报错"}`);
 	});
 
 	ok("命令面：classics --search 末尾缺值同样指路", () => {
@@ -1249,6 +1291,24 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		return "四项深化在";
 	});
 
+	ok("astrology：不存在的公历日期子进程全链路报错（--json 机器路径同受校验）", () => {
+		// 进程内 buildBirthInfo 断言在「出生信息」区；这条补的是**用户与机器真正走的路**：
+		// 引导层 catch → stderr「错误：…」+ exit 1，--json 分支（先 buildBirthInfo 再 stringify）
+		// 不许把 throw 吞成正常 JSON 输出。
+		for (const bad of ["2011-02-30", "2011-02-29"]) {
+			const r = runCli(["astrology", "--date", bad, "--time", "07:45", "--city", "杭州", "--gender", "male", "--json"]);
+			if (r.code === 0) throw new Error(`${bad} 未报错（退出码 0）—— 静默归一化又回来了`);
+			if (r.out.trim()) throw new Error(`${bad} 报错时 stdout 应为空（不许输出半截 JSON），实得：${r.out.slice(0, 60)}`);
+			if (!(r.err.includes(bad) || r.err.includes("不存在")))
+				throw new Error(`${bad} 的报错未回显原始输入，实得：${r.err.trim()}`);
+		}
+		// 闰年边界不得误伤：2012-02-29 必须正常排出整盘
+		const leap = runCli(["astrology", "--date", "2012-02-29", "--time", "07:45", "--city", "杭州", "--gender", "male"]);
+		if (leap.code !== 0) throw new Error(`2012-02-29（闰年）被误伤：${leap.err.trim()}`);
+		if (!leap.out.includes("【命盘总览】")) throw new Error("2012-02-29 应正常排出命盘总览");
+		return "非法日期 stderr+exit1（--json 同）；闰年 2-29 放行";
+	});
+
 	ok("--config：JSON 配置应用，命令行同名键覆盖，排盘正确", () => {
 		// spec §3.3：配置是基底，命令行更明确必须赢。未知键与命令行同规则中文报错。
 		const tmp = mkdtempSync(join(tmpdir(), "ziwei-config-"));
@@ -1361,6 +1421,25 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		if (unknown.length)
 			throw new Error(`SKILL.md 提到但 commands.ts 未定义的命令：${unknown.join("、")}`);
 		return `${mentioned.length} 个命令全部有实现`;
+	});
+
+	ok("文档一致性：references 深层文件与单 skill 形态同步（合并遗留漂移盯防）", () => {
+		// 三 skill 合一是「骨架先行」的改造：SKILL.md / options / troubleshooting 同步了，
+		// 而 workflow 第 2 步与两份 synastry 细则曾被落下——骨架指路深入后读到的却是
+		// 「classics/synastry 已搬去 sibling skill」，把 Claude 往错误方向带。这些标记
+		// 词（旧 skill 名 / 不存在的 sihua.ts / 旧自述句）一旦回潮就在这里变红。
+		const read = (p: string) => readFileSync(resolve(ctx.root, "..", "references", p), "utf8");
+		for (const [file, text] of [
+			["workflow.md", read("workflow.md")],
+			["synastry-troubleshooting.md", read("synastry-troubleshooting.md")],
+			["synastry-guide.md", read("synastry-guide.md")],
+		] as const) {
+			for (const stale of ["purplestar-classics", "purplestar-synastry", "ziwei/sihua.ts", "本技能不排盘"]) {
+				if (text.includes(stale))
+					throw new Error(`${file} 仍含合并前口径「${stale}」——三 skill 已合一，请按现行 CLI 改写`);
+			}
+		}
+		return "workflow / synastry-troubleshooting / synastry-guide 三份与现行 CLI 口径一致";
 	});
 
 	// 古籍 / 合盘断言组在断言流此处执行（async，故在 ok 断言体之外 await），并入主报告。

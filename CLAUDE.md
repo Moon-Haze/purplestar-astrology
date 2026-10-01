@@ -42,7 +42,7 @@ node scripts/purple-star.ts stars --search 紫微
 node scripts/purple-star.ts help             # 总览（man 八节结构）
 node scripts/purple-star.ts astrology --help # 每命令（归属参数子集）
 
-# 第一层：CLI 自带自检（排盘 / 古籍 / 合盘三段合一，项数由末行自报）
+# 第一层：CLI 自带自检（排盘 / 古籍 / 合盘三段合一，项数由首行自报）
 node scripts/purple-star.ts selftest
 
 # 第二层：基准回归，用 toolkit 的 518,400 条样本对标排盘结果（默认跑 300 条抽样，约 8 秒）
@@ -53,7 +53,7 @@ npm run test:corpus -- --year 1960    # 全量核验（需 reference/ 存在，�
 npm run typecheck
 ```
 
-**改过内核或升级 `iztro` 之后，两层都要跑；动过 `.ts` 的类型标注，`npm run typecheck` 也要跑。** `selftest` 测「代码逻辑自洽」，覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、性别护栏、排盘不变量、三合派体系约束、知识源可用性、古籍检索行为、合盘护栏与参数面契约；`npm test` 是**外部基准比对**，用 300 条真实盘逐字段对标，能抓住 `selftest` 那几条固定样例漏掉的行为漂移。测试的性质与效力边界见 [test/README.md](../test/README.md)。
+**改过内核或升级 `iztro` 之后，两层都要跑；动过 `.ts` 的类型标注，`npm run typecheck` 也要跑。** `selftest` 测「代码逻辑自洽」，覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、性别护栏、排盘不变量、三合派体系约束、知识源可用性、古籍检索行为、合盘护栏与参数面契约；`npm test` 是**外部基准比对**，用 300 条真实盘逐字段对标，能抓住 `selftest` 那几条固定样例漏掉的行为漂移。测试的性质与效力边界见 [test/README.md](test/README.md)。
 
 三者分工不同，谁都替代不了谁：`typecheck` 只看类型**自洽**，不看类型**标得对不对**——把 `Star` 写成 `any` 它一样全绿，所以我们**不用 `any` 绕过报错**。
 
@@ -84,7 +84,9 @@ npm run typecheck
     ├── cli/config.ts               --config / --template（JSON 配置输入）
     ├── cli/help.ts                 help 渲染（man 七节 + 命令→参数归属表）
     ├── cli/commands.ts             命令注册薄层（COMMAND_TABLE + COMMAND_DESC + COMMAND_HELP）
-    ├── cli/selftest.ts             回归断言（三段汇总，项数由末行自报）
+    ├── cli/selftest.ts             回归断言（三段汇总，项数由首行自报）
+    ├── cli/selftest-kit.ts         selftest 断言共用 harness（Assertion / eq / ok）——selftest 与
+    │                               classics / synastry 两个断言组共用
     ├── ziwei/                      排盘内核：algorithm（iztro 主流程）/ patterns（格局层）/
     │                               mutagen（四化）/ analysis（主题论断数据库 v3）/ constants /
     │                               cities / palace-relations / annotations / types
@@ -94,7 +96,7 @@ npm run typecheck
                                     契约）/ selftest-asserts（断言组）
 ```
 
-`cli/` 之间是**单向依赖**，没有环：`args` ← `render`（仅取 `fmtDate`）← `birth-info` ← 各命令 → `selftest`。要动哪一层，往上找它的消费者即可。
+`cli/` 之间是**单向依赖**，没有环：`args` / `render`（`fmtDate` 的定义处）← `birth-info` ← 各命令 → `selftest`。要动哪一层，往上找它的消费者即可。
 
 ### 为什么能直接跑 TypeScript（没有构建步骤）
 
@@ -125,9 +127,9 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 ### 三处启动期防御
 
-1. **`REQUIRED_EXPORTS` 自检**：模块加载后立刻校验关键导出（含 classics/synastry 的入口导出），缺任何一个直接退出——**宁可启动失败，也不静默产出错盘**。
+1. **`LOADED` 全量导出自检**：每个模块 load 一次存 namespace、收进 `LOADED` 表（含 classics/synastry 的入口模块），自检对**全部**导出做非空扫描（不再有手抄清单）——缺任何一个直接退出，**宁可启动失败，也不静默产出错盘**。
 2. **`selftest`**：CLI 自带的回归断言（三段汇总），整体执行。
-3. **`npm test`**：`test/` 下的基准回归（七层），失效的基准是负债而非保障——见 [test/README.md](../test/README.md) 的「升级 iztro 的流程」。
+3. **`npm test`**：`test/` 下的基准回归（七层），失效的基准是负债而非保障——见 [test/README.md](test/README.md) 的「升级 iztro 的流程」。
 
 ## 体系硬约束：三合派，不是飞星派
 
@@ -180,7 +182,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 **参数面单点声明**：`cli/args.ts` 的 `OPTION_GROUPS` 是「有哪些参数」的唯一来源——help 的参数段据它派生、`parseArgs` 据它拒绝未知参数、`OPTION_ALIASES` 声明拼音别名（归一到英文主名）、`selftest` 断言 `SKILL.md` 提到的参数都有声明。拼错参数（`--ctiy 喀什`）报错并给最近邻建议，不再静默落回默认经度。
 
-**解析引擎**（2026-09-30 重写）：`util.parseArgs` `tokens` 模式做**底座**（token 化交给标准库），薄适配层做四件事——声明表校验（未知参数中文报错）、别名归一、判重（重复参数报错，旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值；Node 版本敏感，selftest 钉死）。`classics` / `synastry` 等命令的位置参数语义各自独立（检索词 / `--charts` 路径），`astrology` 的位置参数按形态归类（日期/时刻/性别/城市）。⚠️ `--charts` 与前缀退役后，`option-scope.ts` 的 `sidePrefixes` / `prefixedCommands` 是空表（概念保留，机制不可达）。
+**解析引擎**（2026-09-30 重写）：`util.parseArgs` `tokens` 模式做**底座**（token 化交给标准库），薄适配层做四件事——声明表校验（未知参数中文报错）、别名归一、判重（重复参数报错，旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值；Node 版本敏感，selftest 钉死）。`classics` / `synastry` 等命令的位置参数语义各自独立（检索词 / `--charts` 路径），`astrology` 的位置参数按形态归类（日期/时刻/性别/城市）。⚠️ `--charts` 与前缀退役后，`option-scope.ts` 的 `sidePrefixes` / `prefixedCommands` 是空表（概念保留，机制不可达）；作用域清单本身也已差量化（2026-10-01）：`excluded` 空表即默认全集、显式声明排除项，`OPTION_NAMES` 由 `args.ts` 从全集按排除项派生。
 
 三条约束，改动时别踩：
 

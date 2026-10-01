@@ -527,19 +527,21 @@ export function ageSection(chart: ZiweiChart, age: number, liuNianYear: number):
  * @param chart - 命盘
  * @param focusRaw - 用户原始输入（项目全名 / 口语简称 / iztro 旧口径 / 地支名）
  * @param liuNianYear - 流年公历年（引动标注用）
- * @returns 渲染好的文本；找不到宫时返回「聚焦失败」说明
+ * @returns 渲染好的文本
+ * @throws 宫名不命中任何写法时（值域非法与命令其它 throw 行为一致：
+ *   引导层打「错误：」并 exit 1；原「聚焦失败」文本段会被机器路径当正常输出吞掉）
  */
 export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: number): string[] {
 	const want = FOCUS_ALIASES.get(focusRaw);
 	const target = chart.palaces.find(
 		p => p.name === want || BRANCHES[p.branch] === focusRaw
 	);
-	if (!target) {
-		return [
-			`【聚焦失败】找不到宫位「${focusRaw}」。可用：${chart.palaces.map(p => p.name).join("、")}`,
-			"（也接受口语简称与旧写法，如「交友」「仆役」；或直接给地支名）",
-		];
-	}
+	if (!target)
+		// 指路信息全留在 message 里，stderr 一条不丢
+		throw new Error(
+			`找不到宫位「${focusRaw}」。可用：${chart.palaces.map(p => p.name).join("、")}` +
+				`（也接受口语简称与旧写法，如「交友」「仆役」；或直接给地支名）`
+		);
 
 	const sanFang = surroundBranches(target.branch);
 	const oppBranch = oppositeBranch(target.branch);

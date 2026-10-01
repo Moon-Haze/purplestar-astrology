@@ -19,8 +19,12 @@ export function cmdStars(args: CliArgs) {
 	const names = Object.keys(STAR_DESCRIPTIONS);
 	// 裸开关（--search 落在参数末尾）会被解析层存成 true（可选值形态），先拦下指路，
 	// 否则 String(true) = "true" 被当成星名，静默产出错结果。
+	// 值域非法走 throw（引导层打「错误：」并 exit 1），与命令其它 throw 行为一致；
+	// 原 return 会把报错当正常输出打上 stdout 且 exit 0，机器路径无法感知。
 	if (typeof args.search === "boolean")
-		return "--search 需要一个检索词（如 --search 紫微），也可直接写位置参数：stars 紫微。";
+		throw new Error(
+			"--search 需要一个检索词（如 --search 紫微），也可直接写位置参数：stars 紫微。"
+		);
 	// 位置参数与 --search 等价（SYNOPSIS 承诺的形态，与 cmdClassics 同款回退）。
 	const q = String(args.search ?? args._.join(" "));
 	if (q) {

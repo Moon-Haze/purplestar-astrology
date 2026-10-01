@@ -38,8 +38,10 @@ export function cmdClassics(args: CliArgs): string {
 	// 下面那条「未找到」——明明有命中，只是把上限设成了 0 或写成了非数字。
 	//
 	// `typeof ... === "boolean"` 那一支是裸写 `--limit`（没跟值）的第二道防线。
+	// 值域非法走 throw（引导层打「错误：」并 exit 1），与命令其它 throw 行为一致，
+	// 不再走 return——return 会把报错当正常输出打上 stdout 且 exit 0，机器路径无法感知。
 	if (typeof args.limit === "boolean" || Number.isNaN(limit) || limit < 1)
-		return `--limit 需为正整数，实得 ${String(args.limit)}。`;
+		throw new Error(`--limit 需为正整数，实得 ${String(args.limit)}。`);
 	const hits = searchClassics(q, limit);
 	if (!hits.length) return `古籍中未找到「${q}」。`;
 	const out = [`古籍检索「${q}」命中 ${hits.length} 条：`, ""];

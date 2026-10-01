@@ -211,7 +211,8 @@ export function findLongitude(cityName: string): LongitudeHit | null {
  *
  * @param args - CLI 参数表
  * @returns 排盘用的 `info` 加上供渲染提示的说明字段，见 {@link BirthInfoResult}
- * @throws 日期缺失 / 格式非法 / 农历换算失败、性别缺失或非法、出生地未收录、
+ * @throws 日期缺失 / 格式非法 / 公历日期不存在（round-trip 校验，如 2011-02-30）/
+ *   农历换算失败、性别缺失或非法、出生地未收录、
  *   时辰缺失或非法，以及 `--lunar` 与 `--date` 同用、`--late-zi` 未配合 `--time`
  *
  * @remarks
@@ -286,7 +287,28 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	} else if (solarStr) {
 		const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(solarStr));
 		if (!m) throw new Error(`日期格式应为 YYYY-MM-DD，收到：${solarStr}`);
-		[, year, month, day] = m.map(Number);
+		const [sy, sm, sd] = m.slice(1).map(Number);
+		if (sm < 1 || sm > 12) throw new Error(`日期不存在：${solarStr}（月份应为 1-12，收到 ${sm}）`);
+		// 日历真值 round-trip 校验：宽松格式（1990-5-15）先归一再校验。JS Date 会把
+		// 2011-02-30 静默归一化为 03-02（Date.UTC 同样），直接下传就是一张「标题印着
+		// 02-30、实际排 03-02」的错盘（--json 的 birthInfo.day 与 lunarInfo 更会自相矛盾）。
+		// 与农历路径的回环校验同一立场：反查必须原样回来，否则宁可报错也不产出错盘。
+		// 注：lunar-typescript 的 Solar 不做归一化（fromYmd(2011,2,30) 原样吞下），
+		// round-trip 只能用 JS Date 反查。
+		const probe = new Date(Date.UTC(sy, sm - 1, sd));
+		// Date 对 0-99 的年份有「+1900」的遗留映射，故年份只在 ≥100 时参与原样反查；
+		// 月/日的滚动（02-30→03-02、13-01→次年 01-01）不受该映射影响，必被下面的比较拦下。
+		const roundTripOk =
+			(sy >= 100 || probe.getUTCFullYear() === sy) &&
+			probe.getUTCMonth() === sm - 1 &&
+			probe.getUTCDate() === sd;
+		if (!roundTripOk) {
+			const maxDay = new Date(Date.UTC(sy, sm, 0)).getUTCDate();
+			throw new Error(`日期不存在：${solarStr}（${sy} 年 ${sm} 月只有 ${maxDay} 天）`);
+		}
+		year = sy;
+		month = sm;
+		day = sd;
 	}
 	// ⚠️ --year/--month/--day 三连已删（2026-09-30，spec §1.2）：--date 完全覆盖（格式宽松），
 	//    日期从此二选一（--date / --lunar）。

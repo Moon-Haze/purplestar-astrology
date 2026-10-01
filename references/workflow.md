@@ -61,22 +61,19 @@ node scripts/purple-star.ts astrology \
 
 ## 第 2 步：按需深入知识源
 
-CLI 已给出命盘数据与格局结论。需要展开论证时，**直接读这些文件**（它们是本技能的权威依据，不要凭记忆编造）：
+CLI 已给出命盘数据与格局结论。需要展开论证时，**直接读这些文件、调这些命令**（它们是本技能的权威依据，不要凭记忆编造）：
 
 | 需要什么                                                                                         | 读哪里                                                                                                                                              |
 | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 格局判定规则全文（80+ 格局的必须/加分/破格三层条件）+ 各格局的短判词与主题长判词 | `scripts/ziwei/patterns/`（basic / superior / medium / converged / enhancing / malefic 各判定 + `data.ts` 的 `PATTERN_VERDICTS` 判词表）                                                  |
-| 四化体系、流年流月推法                                                                           | `scripts/ziwei/sihua.ts`                                                                                                                            |
+| 四化体系、流年流月推法                                                                           | `scripts/ziwei/mutagen.ts`（生年 / 流年 / 流月四化；三合派体系基准声明见该文件「体系基准」节）                                                                                                                            |
 | 星曜释义（关键词/星性/五行）                                                                     | `scripts/ziwei/constants.ts` 的 `STAR_DESCRIPTIONS`；或 `stars` 命令                                                                                |
-| **某主题（感情/事业/财运…）的整段论断**                                                          | `topic` 命令（动态推算：主宫主星 + 三方四正 + 四化会照 + 大限流年）；数据在 `scripts/ziwei/analysis/`（`data.ts` 论断文案 + 其余为动态推算） |
-| 古籍原文引证                                                                                     | 本技能内**没有** `classics` 命令了（2026-09-27 拆 skill），改用 `purplestar-classics` 技能的 CLI：`node <该 skill>/scripts/purple-star.ts classics --search <词>` |
+| **某主题（感情/事业/财运…）的整段论断**                                                          | `astrology --topic <key>`（不带值时列出全部主题；动态推算：主宫主星 + 三方四正 + 四化会照 + 大限流年）；数据在 `scripts/ziwei/analysis/`（`data.ts` 论断文案 + 其余为动态推算） |
+| 古籍原文引证                                                                                     | 本 CLI 的 `classics` 命令：`node scripts/purple-star.ts classics --search <词>`（2026-09-30 三 skill 合一并入，骨髓赋 / 全集 / 全书三部全文检索；实测 `--search 机月同梁` 命中 5 条） |
 
-```bash
-# 城市经度（用户只给城市名时）
-node scripts/purple-star.ts stars --search 成都  # 城市查询命令已删，查星曜释义
-```
+城市经度不用另查——城市名直接给 `--city`（如 `--city 成都`）；容错写法（「石家庄市」「山东青岛」等）见 `scripts/cli/args.ts` 声明表的 `--city` 项。
 
-⚠️ **合盘（方法论、十四主星在夫妻宫断语、四化入夫妻宫）已不在本技能里**——连同 `ziwei/synastry-knowledge.ts` 一并搬去了 `purplestar-synastry`。用户要合盘、合婚、看两人配不配，整个转过去，别在这里凑。
+⚠️ **合盘用本 CLI 的 `synastry` 命令**（2026-09-30 三 skill 合一并入）：先各排一份 `astrology --json`（不带 `--palaces`），再 `node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`（甲先乙后）。命令输出双宫联参、夫妻宫断语、四化入夫妻宫与桃花孤克星；**方法论与评分标准**（五步法、缘分类型、婚期、星级）读 [references/synastry-guide.md](synastry-guide.md)，输入报错对照见 [references/synastry-troubleshooting.md](synastry-troubleshooting.md)。
 
 ## 第 3 步：解读
 

@@ -134,14 +134,16 @@ export async function asserts(): Promise<Assertion[]> {
 	ok("古籍参数面：非法 --limit 的值到达命令层，由它给出中文报错", () => {
 		// 三个探针全覆盖：`0` / `abc` 走常规值校验；`-3` 走**贪婪取值**
 		//（2026-09-30 新引擎：`-3` 是 `--limit` 的值，不是短参数 —— Review Focus 2 的钉子）。
+		// 2026-10-01 起值域非法由命令层 throw：报错走 stderr 且退出码非零
+		//（参照 synastry-asserts 的 r.err 先例；旧 return 行为会把报错打 stdout 且 exit 0）。
 		for (const bad of ["0", "abc", "-3"]) {
 			const r = run(["classics", "--search", "紫微", "--limit", bad]);
-			if (!r.out.includes("--limit"))
-				throw new Error(
-					`--limit ${bad} 的报错未提到 --limit，实得：${r.out.trim() || r.err.trim()}`
-				);
+			if (r.code === 0)
+				throw new Error(`--limit ${bad} 未报错（退出码 0）—— 值域非法必须非零退出`);
+			if (!r.err.includes("--limit"))
+				throw new Error(`--limit ${bad} 的报错未提到 --limit，实得：${r.err.trim()}`);
 		}
-		return "0 / abc / -3 均被命令层拦下";
+		return "0 / abc / -3 均被命令层拦下（stderr + 非零退出）";
 	});
 
 	ok("合并接线：classics 在主命令表有实现，其参数在主作用域已声明", () => {
