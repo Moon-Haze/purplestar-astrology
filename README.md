@@ -3,7 +3,7 @@
 倪海夏《天纪》**三合派**体系的紫微斗数排盘与解读 skill，供 AI 助手调用。
 
 本仓**整体就是一个 skill**（2026-09-30 三 skill 合一：排盘解读 / 合盘 / 古籍检索三域，
-仓库根 = skill 根），拷进 `~/.claude/skills/` 后跑一次 `npm install` 即可。
+仓库根 = skill 根），拷进宿主的技能目录后跑一次 `npm install` 即可。
 
 ## 这是什么
 
@@ -21,12 +21,14 @@
 
 ## 安装
 
+把整个仓库拷贝到宿主环境的**技能目录**下（目录名 `purplestar-astrology`）：
+
 ```bash
 # 项目级：只在该项目内可用
-cp -r <本仓库> <项目>/.claude/skills/purplestar-astrology
+cp -r <本仓库> <项目>/<技能目录>/purplestar-astrology
 
 # 个人级：所有项目可用
-cp -r <本仓库> ~/.claude/skills/purplestar-astrology
+cp -r <本仓库> ~/<技能目录>/purplestar-astrology
 ```
 
 目录名必须与 `SKILL.md` frontmatter 的 `name` 一致，宿主环境据此发现技能。
@@ -34,7 +36,7 @@ cp -r <本仓库> ~/.claude/skills/purplestar-astrology
 `node_modules/` 不必拷（已在 `.gitignore` 中），落位后补一次依赖：
 
 ```bash
-cd ~/.claude/skills/purplestar-astrology && npm install
+cd ~/<技能目录>/purplestar-astrology && npm install
 ```
 
 ## 目录结构
@@ -59,7 +61,7 @@ cd ~/.claude/skills/purplestar-astrology && npm install
 
 ## 直接用 CLI
 
-以下命令均在**仓库根**执行（装到 `~/.claude/skills/` 之后同理；脚本可从任意 cwd 用绝对路径跑）。
+以下命令均在**仓库根**执行（装到技能目录之后同理；脚本可从任意 cwd 用绝对路径跑）。
 示例数据为虚构：
 
 ```bash
