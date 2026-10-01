@@ -209,8 +209,7 @@ export function findLongitude(cityName: string): LongitudeHit | null {
 /**
  * 从参数构造 BirthInfo。
  *
- * @param args - CLI 参数表；synastry 的甲/乙两方各传一次本函数
- * @param p - 参数前缀；synastry 传 `"a-"` / `"b-"`，其余命令传空串（默认）
+ * @param args - CLI 参数表
  * @returns 排盘用的 `info` 加上供渲染提示的说明字段，见 {@link BirthInfoResult}
  * @throws 日期缺失 / 格式非法 / 农历换算失败、性别缺失或非法、出生地未收录、
  *   时辰缺失或非法，以及 `--lunar` 与 `--date` 同用、`--late-zi` 未配合 `--time`
@@ -233,11 +232,10 @@ export function findLongitude(cityName: string): LongitudeHit | null {
  * ⚠️ 真太阳时跨过午夜时，此处会就地用 {@link shiftDate} 调整 `year` / `month` / `day` 并记进
  * `note` —— 日期是单点流入 `info` 的，改在这里，下游（农历、排盘、合盘、流年）自动跟随。
  */
-export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
-	// `CliArgs` 的键是 camelCase（cac 的归一），而这里的 `k` 与 `p` 都按 kebab 写
-	//（`p` 是 `"a-"` / `"b-"`，`k` 是 `"late-zi"` 这类声明表里的名字），
+export function buildBirthInfo(args: CliArgs): BirthInfoResult {
+	// `CliArgs` 的键是 camelCase，而这里的 `k` 按声明表的 kebab 写（如 `"late-zi"`），
 	// 故**在拼键时**过一道 camelKey —— 15 个键的读取都从 `g` 走，换算只需一处。
-	const g = (k: string) => args[camelKey(p + k)];
+	const g = (k: string) => args[camelKey(k)];
 
 	// ── 出生日期 ──
 	let year: number | undefined,
@@ -301,11 +299,11 @@ export function buildBirthInfo(args: CliArgs, p = ""): BirthInfoResult {
 	const genderRaw = g("gender");
 	if (genderRaw === undefined)
 		throw new Error(
-			`缺少性别：需 --${p}gender male|female（性别决定大限顺逆，缺失会排出错盘）`
+			`缺少性别：需 --gender male|female|男|女（性别决定大限顺逆，缺失会排出错盘）`
 		);
 	const genderValue = String(genderRaw).toLowerCase();
 	if (!["male", "m", "男", "female", "f", "女"].includes(genderValue))
-		throw new Error(`--${p}gender 应为 male 或 female，收到：${genderRaw}`);
+		throw new Error(`--gender 应为 male|female|男|女，收到：${genderRaw}`);
 	const gender = ["female", "f", "女"].includes(genderValue) ? "female" : "male";
 
 	// ── 真太阳时口径：默认只做经度校正；--eot 额外计入均时差 ──

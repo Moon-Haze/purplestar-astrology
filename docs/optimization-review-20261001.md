@@ -10,7 +10,7 @@
 
 热点依据 git log：近两周改动集中在 CLI 命令面（四命令合一、解析引擎换 `util.parseArgs`、`--config`/`--template`）与 selftest 三段合一。术语遵循 codebase-design 词汇表：module（模块）、interface（接口）、depth（深/浅）、seam（接缝）、adapter（适配器）、leverage（杠杆）、locality（局部性）。
 
-### 候选 1 · 补上 selftest 缺失的接缝接口：抽 `selftest-kit` 　【Strong】
+### 候选 1 · 补上 selftest 缺失的接缝接口：抽 `selftest-kit` 　【Strong】✅ 已实施
 
 **涉及文件**
 
@@ -51,7 +51,7 @@ flowchart TB
   end
 ```
 
-### 候选 2 · 参数「单一来源」名实相符：OPTION_SCOPE 手抄全集退役 　【Strong】
+### 候选 2 · 参数「单一来源」名实相符：OPTION_SCOPE 手抄全集退役 　【Strong】✅ 已实施
 
 **涉及文件**
 
@@ -71,7 +71,7 @@ flowchart TB
 - **leverage**：加参数动一处
 - 「唯一来源」interface 名实相符
 
-### 候选 3 · 命令表的物理排版不再是契约：cmdSelftest 异步化，四份正则归一 　【Strong】
+### 候选 3 · 命令表的物理排版不再是契约：cmdSelftest 异步化，四份正则归一 　【Strong】✅ 已实施
 
 **涉及文件**
 
@@ -91,7 +91,7 @@ flowchart TB
 - 命令改名由 import 类型接住
 - seam 从「文本约定」变「module」
 
-### 候选 4 · fortune 节内收拢两个渲染 helper 　【Worth exploring】
+### 候选 4 · fortune 节内收拢两个渲染 helper 　【Worth exploring】✅ 已实施
 
 **涉及文件**　`scripts/cli/fortune.ts:307-311, 314-318, 325-329, 373-384, 449-461, 496, 564`
 
@@ -106,7 +106,7 @@ flowchart TB
 - 差异表达为一个参数
 - 删除的是重复，非制造浅抽象
 
-### 候选 5 · astrology 分发器瘦身：抬头收拢 + `--json` 契约纯函数化 　【Worth exploring】
+### 候选 5 · astrology 分发器瘦身：抬头收拢 + `--json` 契约纯函数化 　【Worth exploring】✅ 已实施
 
 **涉及文件**　`scripts/cli/astrology.ts:127/258, 143/261, 147-148/268-269, 202-254`
 
@@ -121,7 +121,7 @@ flowchart TB
 - 删抬头双份拼装
 - **leverage**：改键名动一处
 
-### 候选 6 · 合盘契约闭环：真 CLI 产物进 selftest 合盘段 　【Strong】
+### 候选 6 · 合盘契约闭环：真 CLI 产物进 selftest 合盘段 　【Strong】✅ 已实施
 
 **涉及文件**
 
@@ -141,7 +141,7 @@ flowchart TB
 - **locality**：漂移当场红
 - 与候选 1、5 同链路互补
 
-### 候选 7 · 拆除 birth-info 的死前缀机制（前缀退役收尾） 　【Worth exploring】
+### 候选 7 · 拆除 birth-info 的死前缀机制（前缀退役收尾） 　【Worth exploring】✅ 已实施
 
 **涉及文件**　`scripts/cli/birth-info.ts:205-214, 236-244, 407-416`；`scripts/cli/args.ts:88`
 
@@ -155,7 +155,7 @@ flowchart TB
 - 注释不再教错人
 - 净删一层包装
 
-### 候选 8 · REQUIRED_EXPORTS 从加载表派生，消灭二次登记 　【Worth exploring】
+### 候选 8 · REQUIRED_EXPORTS 从加载表派生，消灭二次登记 　【Worth exploring】✅ 已实施
 
 **涉及文件**　`scripts/purple-star.ts:170-184`（10 次 load 解构约 17 个导出）、`:198-228`（REQUIRED_EXPORTS 15 项逐一重抄）
 
@@ -211,7 +211,9 @@ flowchart TB
 
 ### §2 真缺陷（P1，建议优先修）
 
-#### §2.1 `stars` 位置参数被静默忽略——文档承诺未兑现
+> ✅ **修复状态（2026-10-01，两批）**：命令面 §2 全部四项与 §3.1 / §3.2 / §3.3 / §3.4 / §3.5 已修复合入；第一部分架构候选 1–8 已全部实施（含 `cli/selftest-kit.ts` 抽取、cmdSelftest 异步化 + 四份源码正则归一为动态 import、OPTION_SCOPE 差量化、REQUIRED_EXPORTS 从加载表派生、`buildAnalyzeJson` 纯函数化与两道契约对拍断言）。终验：selftest **120/120**（本评审累计新增 9 条断言）· npm test **520/520** · typecheck **0 错误**。要点：§2.3 的护栏落在 `cmdAstrology` 文本路径分发处（`--json` 的 `liuYueSiHua` 是独立顶层键，不带 `--mutagen` 仍合法 —— 第一版护栏放 `parseMonthlyArg` 时被 npm test 基准对拍抓包后修正）；§3.5 复核后确认 `astrology` 抬头本无双空格（原文误判），实际问题只在 `synastry` 抬头；候选 1 的子进程探针未收进 kit（Mimosa 安全 hook 拦截 spawnSync 集中化，且探针本就「机制共用、策略各异」）。§4 六个决策项（拼音别名去留、JSON 键名风格等）仍待拍板。
+
+#### §2.1 `stars` 位置参数被静默忽略——文档承诺未兑现 ✅ 已修复
 
 help 的 SYNOPSIS 明确写 `node scripts/purple-star.ts stars <关键词>`，参数描述也说"（也可用位置参数）"。但实测：
 
@@ -222,7 +224,7 @@ $ stars --search 紫微 → 正确过滤，只出紫微
 
 **建议**：cmdStars 消费位置参数（与 `--search` 归一），或解析层对"位置参数未被声明消费"报错。
 
-#### §2.2 值型参数在末尾缺值时静默变成 `true`
+#### §2.2 值型参数在末尾缺值时静默变成 `true` ✅ 已修复（`cmdStars` / `cmdClassics` 各加布尔拦截指路）
 
 ```
 $ classics --limit 3 --search   → 古籍中未找到「true」。
@@ -233,7 +235,7 @@ $ stars --search                → 未收录星曜「true」。已收录：紫�
 
 **建议**：在解析适配层补一条"值型参数（kind: value）取不到值 → 中文报错"的分支，一次修复惠及全部值型参数。
 
-#### §2.3 `--monthly` 的触发条件 help 写错了，且静默吞参数
+#### §2.3 `--monthly` 的触发条件 help 写错了，且静默吞参数 ✅ 已修复（help 描述改为「配合 --mutagen」+ 文本路径加指路护栏）
 
 help 描述：`--monthly <1-12> 追加该农历月的流月四化（需先有流年）`。实测：
 
@@ -247,7 +249,7 @@ help 描述：`--monthly <1-12> 追加该农历月的流月四化（需先有流
 
 **建议**：修正 help 的 `--monthly` 描述；cmdFortune 对"给了 `--monthly` 但没有 `--mutagen`"输出指路（照搬 synastry 缺输入的两步指路模式）。
 
-#### §2.4 `--gender` 报错文案与实际值域矛盾
+#### §2.4 `--gender` 报错文案与实际值域矛盾 ✅ 已修复（报错与 help 值域统一为 `male|female|男|女`）
 
 `--gender 男` 实际合法（自动归一，与位置参数"男"一致），但 `--gender abc` 报 `--gender 应为 male 或 female，收到：abc`，help 值域也写 `<male|female>`——都低估了实际值域，误导用户以为中文不合法。
 
@@ -255,13 +257,13 @@ help 描述：`--monthly <1-12> 追加该农历月的流月四化（需先有流
 
 ### §3 清晰度问题（P2）
 
-#### §3.1 help 的 OPTIONS 组标题与参数行排版脱节（渲染 bug）
+#### §3.1 help 的 OPTIONS 组标题与参数行排版脱节（渲染 bug） ✅ 已修复
 
 `help.ts` 的 `renderOptions`（143-159 行）把组标题即时 `lines.push`、参数行先收集进 `rows` 最后统一 append，导致**所有组标题连续堆叠在最前、全部参数平铺在后**。`astrology --help` 里 5 个组标题挤在一起，"专题深入"标题下实际跟着的是 `-h` 到 `--template` 的全部参数——分组语义名存实亡。所有命令的 help 都受影响。
 
 **建议**：组标题与参数行同步输出（把 rows 改为按组即时 append），两行级调整。
 
-#### §3.2 必值/可选值在 help 里无法辨别
+#### §3.2 必值/可选值在 help 里无法辨别 ✅ 已修复
 
 四种形态混用：
 
@@ -274,15 +276,15 @@ help 描述：`--monthly <1-12> 追加该农历月的流月四化（需先有流
 
 用户无法从 help 判断哪些参数可以不带值——这正是 §2.2/§2.3 的温床。**建议**：统一语法（可选值一律 `<[x]>`），声明表加 `optionalValue` 标记由 help 派生。
 
-#### §3.3 `cities` 残留
+#### §3.3 `cities` 残留 ✅ 已修复
 
 `--search` 描述仍写"classics / stars / **cities** 检索关键字"，cities 命令已在 `cda4d37` 删除。help 总览、stars、classics 三处受影响。07a7078 评审收口漏了这处。
 
-#### §3.4 NOTES 全量模板化
+#### §3.4 NOTES 全量模板化 ✅ 已修复
 
 `stars` / `classics` / `synastry` 的 `--help` 里 NOTES 全是排盘铁律（四必问 / 晚子时 / 真太阳时跨午夜）。synastry 不排盘，却出现"复核请加 --late-zi"——对它无效的参数。**建议**：全局铁律留在总览 help，命令级按需裁剪（如 synastry 只保留与合盘相关的口径提示）。
 
-#### §3.5 抬头双空格
+#### §3.5 抬头双空格 ✅ 已修复（复核后确认 `astrology` 抬头本无此问题 —— 双空格只在 `synastry` 的「甲方/乙方」行，已修）
 
 不给 `--name` 时抬头出现双空格：`【命盘总览】␣␣2011-06-24 …`（`info.name ?? ""` 的空槽位占位）；synastry 的"甲方␣␣2011-06-24"同源。小瑕疵，trim 即可。
 

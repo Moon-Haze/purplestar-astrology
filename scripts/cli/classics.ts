@@ -18,6 +18,10 @@ import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics";
  * 摘要里的 `<mark>` 高亮标签会换成 `『』`，并把 `『词『` 这类未闭合的嵌套收尾成一个 `』`。
  */
 export function cmdClassics(args: CliArgs): string {
+	// 裸开关（--search 落在参数末尾）会被解析层存成 true，先拦下指路，
+	// 否则 String(true) = "true" 被当成检索词（「未找到「true」」就是这么来的）。
+	if (typeof args.search === "boolean")
+		return "--search 需要一个检索词（如 --search 机月同梁）。";
 	if (!args.search && !args._.length) {
 		return [
 			`已收录古籍 ${ALL_BOOKS.length} 部，共 ${TOTAL_PARAGRAPHS} 段：`,

@@ -167,54 +167,57 @@ const load = makeLoader(ROOT, ROOT_LABEL, f => {
 });
 
 // 钩子已就绪，从这里开始才能安全地加载任何 .ts（内核与 scripts/cli/ 下的子模块都一样）。
-const { generateChart } = await load<AlgorithmModule>("@/ziwei/algorithm");
-const { detectPatterns, getMingGongSummary } = await load<PatternsModule>("@/ziwei/patterns");
-const { getMutagenByStem, getYearStemIndex, getYearlyMutagen, getMonthlyMutagen } =
-	await load<SihuaModule>("@/ziwei/mutagen");
-const { STEMS, BRANCHES, SHICHEN, STAR_DESCRIPTIONS } =
-	await load<ConstantsModule>("@/ziwei/constants");
-const { PROVINCES } = await load<CitiesModule>("@/ziwei/cities");
-const { Lunar } = await load<typeof import("lunar-typescript")>("lunar-typescript");
-// classics / synastry 的关键导出（2026-09-30 三 skill 合一）：分别对应两条命令的内核入口
-const { searchClassics } = await load<ClassicsModule>("@/classics");
-const { readAnalyzeJson } = await load<ChartViewModule>("@/synastry/chart-view");
+// 每个模块 load 一次存 namespace：既供下方解构，也进 LOADED 表参与启动自检 ——
+// 不再有「解构一份 + REQUIRED_EXPORTS 手抄第二份」的双登记。
+const algorithmNs = await load<AlgorithmModule>("@/ziwei/algorithm");
+const patternsNs = await load<PatternsModule>("@/ziwei/patterns");
+const sihuaNs = await load<SihuaModule>("@/ziwei/mutagen");
+const constantsNs = await load<ConstantsModule>("@/ziwei/constants");
+const citiesNs = await load<CitiesModule>("@/ziwei/cities");
+const lunarNs = await load<typeof import("lunar-typescript")>("lunar-typescript");
+// classics / synastry 的入口模块（2026-09-30 三 skill 合一）：分别对应两条命令的内核
+const classicsNs = await load<ClassicsModule>("@/classics");
+const chartViewNs = await load<ChartViewModule>("@/synastry/chart-view");
 
-const { parseArgs } = await load<ArgsModule>("@/cli/args");
-const { COMMANDS, COMMAND_DESC } = await load<CommandsModule>("@/cli/commands");
+const argsNs = await load<ArgsModule>("@/cli/args");
+const commandsNs = await load<CommandsModule>("@/cli/commands");
 const helpMod = await load<typeof import("@/cli/help")>("@/cli/help");
+
+const { parseArgs } = argsNs;
+const { COMMANDS, COMMAND_DESC } = commandsNs;
 
 // ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默产出错盘 ──
 /**
- * 启动期必须存在的上游导出清单，每项是 `[导出名, 运行时值]`。
+ * 已加载模块清单，自检据此**派生**而非手抄第二份：对每个 namespace 的**全部**导出做
+ * 非空扫描 —— 新模块加进这里一行，它的导出自动受检，「加模块忘登记、自检静默变弱」
+ * 从结构上不可能。
  *
  * @remarks
  * 子模块是静态 import 内核的，少一个导出本来就会让它们加载失败；但那时抛的是裸的
  * `SyntaxError: does not provide an export named ...`，指不到该改哪里。这里先 load 一遍
- * 并逐项点名，把「哪个导出没了、当前内核根在哪、接下来怎么办」一次说清。
+ * 并点名缺失项，把「哪个导出没了、当前内核根在哪、接下来怎么办」一次说清。
  *
  * ⚠️ 也因此：在内核里重命名或删除导出会让 CLI 立刻报错 —— **这是有意的，不是脆弱**。
  * 与 `algorithm.ts` 的 `projectPalaceName` 同一理念：宁可启动失败，也不静默产出错盘。
  */
-const REQUIRED_EXPORTS = [
-	["generateChart", generateChart],
-	["detectPatterns", detectPatterns],
-	["getMingGongSummary", getMingGongSummary],
-	["getMutagenByStem", getMutagenByStem],
-	["getYearStemIndex", getYearStemIndex],
-	["getYearlyMutagen", getYearlyMutagen],
-	["getMonthlyMutagen", getMonthlyMutagen],
-	["STEMS", STEMS],
-	["BRANCHES", BRANCHES],
-	["SHICHEN", SHICHEN],
-	["STAR_DESCRIPTIONS", STAR_DESCRIPTIONS],
-	["PROVINCES", PROVINCES],
-	["Lunar", Lunar],
-	["searchClassics", searchClassics],
-	["readAnalyzeJson", readAnalyzeJson],
+const LOADED: ReadonlyArray<readonly [string, Record<string, unknown>]> = [
+	["@/ziwei/algorithm", algorithmNs],
+	["@/ziwei/patterns", patternsNs],
+	["@/ziwei/mutagen", sihuaNs],
+	["@/ziwei/constants", constantsNs],
+	["@/ziwei/cities", citiesNs],
+	["lunar-typescript", lunarNs],
+	["@/classics", classicsNs],
+	["@/synastry/chart-view", chartViewNs],
+	["@/cli/args", argsNs],
+	["@/cli/commands", commandsNs],
+	["@/cli/help", helpMod],
 ];
 {
-	const missing = REQUIRED_EXPORTS.filter(([, v]) => v === undefined || v === null).map(
-		([n]) => n
+	const missing = LOADED.flatMap(([spec, ns]) =>
+		Object.entries(ns)
+			.filter(([, v]) => v === undefined || v === null)
+			.map(([n]) => `${spec} 的 ${n}`)
 	);
 	if (missing.length) {
 		console.error(
@@ -245,7 +248,7 @@ const REQUIRED_EXPORTS = [
  * `--help` 不在参数声明表里，放它走到 `parseArgs` 只会得到一句「未知参数 --help」，
  * 而用户此刻想要的显然是用法。判定提前到分发之前，`parseArgs` 因此永远见不到它。
  */
-function main() {
+async function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];
 	// `<命令> --help`：命令级帮助（man 七节 + 归属参数子集）。命令名必须是已注册的，
@@ -270,7 +273,8 @@ function main() {
 	try {
 		// 命令名一并交给 parseArgs：参数面要按命令校验（前缀参数只有声明过的那几条命令认）
 		const args = parseArgs(argv.slice(1), cmd);
-		console.log(fn(args, { root: ROOT, rootLabel: ROOT_LABEL }));
+		// Cmd 允许返回 Promise（cmdSelftest 异步化后动态 import 命令表），统一 await。
+		console.log(await fn(args, { root: ROOT, rootLabel: ROOT_LABEL }));
 	} catch (err) {
 		console.error(`错误：${(err as Error).message}`);
 		process.exit(1);

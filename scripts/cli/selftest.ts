@@ -14,7 +14,15 @@
  */
 
 import type { CliContext } from "./args";
-import { OPTION_NAMES, OPTION_ALIASES, SIDE_PREFIXES, parseArgs } from "./args";
+import {
+	ALL_OPTION_NAMES,
+	OPTION_NAMES,
+	OPTION_ALIASES,
+	SIDE_PREFIXES,
+	OPTION_GROUPS,
+	parseArgs,
+} from "./args";
+import { OPTION_SCOPE } from "./option-scope";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join, resolve } from "node:path";
@@ -43,13 +51,19 @@ import {
 import type { BirthInfo } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns } from "@/ziwei/patterns";
-import { getMutagenByStem, getYearStemIndex, getMonthlyMutagen } from "@/ziwei/mutagen";
+import { getMutagenByStem, getYearStemIndex, getMonthlyMutagen, getYearlyMutagen } from "@/ziwei/mutagen";
+import { readAnalyzeJson } from "@/synastry/chart-view";
 import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
 import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
 import { Lunar } from "lunar-typescript";
 import { asserts as classicAsserts } from "@/classics/selftest-asserts";
 import { asserts as synastryAsserts } from "@/synastry/selftest-asserts";
 import { cmdStars } from "./stars";
+import { cmdClassics } from "./classics";
+import { cmdAstrology, buildAnalyzeJson } from "./astrology";
+import { cmdSynastry } from "./synastry";
+import { renderCommandHelp, renderOverviewHelp } from "./help";
+import { createHarness, eq } from "./selftest-kit";
 
 /**
  * 排盘断言的固定样例盘：1990-05-15 巳时（时辰序号 5），男。
@@ -74,50 +88,18 @@ const SAMPLE: BirthInfo = { year: 1990, month: 5, day: 15, timeIndex: 5, gender:
  * ⚠️ 有失败项时**不抛错，而是先 `console.error` 全量报告再 `process.exit(1)`** ——
  * `test/cli.test.ts` 依赖这个退出码判定自检是否全绿。
  */
-export function cmdSelftest(ctx: CliContext): string {
-	/** 单条断言的结果 */
-	interface Assertion {
-		/** 是否通过 */
-		pass: boolean;
-		/** 断言名（本身即断言内容的描述，直接进报告） */
-		name: string;
-		/** 补充说明：通过时是断言体返回的 detail，失败时是抛出的错误信息 */
-		detail: string;
-	}
-	const results: Assertion[] = [];
-	/**
-	 * 相等断言，不等即抛错。
-	 *
-	 * @param actual - 实得值
-	 * @param expected - 期望值
-	 * @param msg - 错误信息前缀，用来点明是哪一处比对失败
-	 *
-	 * @remarks
-	 * 用 `!==` **严格相等**比较，不做深比较也不做类型转换；失败信息里用 `JSON.stringify` 展开两侧取值。
-	 */
-	const eq = (actual: unknown, expected: unknown, msg = "") => {
-		if (actual !== expected)
-			throw new Error(
-				`${msg}期望 ${JSON.stringify(expected)}，实得 ${JSON.stringify(actual)}`
-			);
-	};
-	/**
-	 * 跑一条断言并登记结果。
-	 *
-	 * @param name - 断言名，直接进报告
-	 * @param fn - 断言体：抛错即判失败；返回值若非空则作为该项的补充说明
-	 *
-	 * @remarks
-	 * 断言体里的 `eq` 失败会抛错，异常在此被捕获并记为该条失败 —— 一条失败不影响其余断言继续跑。
-	 */
-	const ok = (name: string, fn: () => unknown) => {
-		try {
-			const detail = fn();
-			results.push({ pass: true, name, detail: detail == null ? "" : String(detail) });
-		} catch (err) {
-			results.push({ pass: false, name, detail: (err as Error).message });
-		}
-	};
+export async function cmdSelftest(ctx: CliContext): Promise<string> {
+	// harness（Assertion / eq / ok）抽在 ./selftest-kit —— 原先与 classics / synastry
+	// 两个断言组逐字同形的三份本地定义由此归一。
+	const { results, ok } = createHarness();
+
+	// 命令表键集：动态 import 打断「commands → selftest → commands」静态环（Cmd 已
+	// 放宽为可返回 Promise），取代旧「读 commands.ts 源码文本、正则抽键」的第三条路 ——
+	// 那条路让命令表的物理排版成了 load-bearing 契约（连「键上双引号可选」都要注释防踩）。
+	// 取 COMMANDS 视图而非裸表：表本身刻意不导出（防止键集/描述对不上的中间态外泄），
+	// 而断言要的正是运行期真实键集。
+	const { COMMANDS } = await import("./commands");
+	const commandNames = Object.keys(COMMANDS);
 
 	/** 排盘不变量与三合派约束断言共用的样本盘（模块级 SAMPLE 的别名，见其注释） */
 	const sample = SAMPLE;
@@ -873,6 +855,150 @@ export function cmdSelftest(ctx: CliContext): string {
 		return "5 个专题旗标（3 开关 + 2 可选值）";
 	});
 
+	ok("命令面：stars 位置参数与 --search 等价（SYNOPSIS 承诺的检索形态）", () => {
+		const s = cmdStars(parseArgs(["紫微"], "stars"));
+		if (!s.includes("紫微：关键词") || s.includes("天机"))
+			throw new Error(`位置参数未生效，输出开头：${s.slice(0, 40)}`);
+	});
+
+	ok("命令面：--search 末尾缺值（裸开关 true）必须指路，不把 true 当检索词", () => {
+		const s = cmdStars(parseArgs(["--search"], "stars"));
+		if (!s.includes("需要一个检索词"))
+			throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);
+	});
+
+	ok("命令面：classics --search 末尾缺值同样指路", () => {
+		const s = cmdClassics(parseArgs(["--limit", "3", "--search"], "classics"));
+		if (!s.includes("需要一个检索词"))
+			throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);
+	});
+
+	ok("命令面：--monthly 不带 --mutagen 必须指路（流月四化随四化专题输出）", () => {
+		// 文本路径约束：--json 的 liuYueSiHua 是独立顶层键，不带 --mutagen 合法（基准对拍依赖）。
+		const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
+		let msg: string | null = null;
+		try {
+			cmdAstrology(parseArgs([...base, "--monthly", "6"], "astrology"));
+		} catch (e) {
+			msg = (e as Error).message;
+		}
+		if (!msg || !msg.includes("--mutagen"))
+			throw new Error(`缺 --mutagen 未指路：${msg ?? "未报错"}`);
+		const withMutagen = cmdAstrology(
+			parseArgs([...base, "--mutagen", "--monthly", "6"], "astrology")
+		);
+		if (!withMutagen.includes("流月四化")) throw new Error("带 --mutagen 后流月节缺失");
+	});
+
+	ok("命令面：--gender 报错文案与 help 值域承认中文（男|女 实际合法）", () => {
+		let msg = "";
+		try {
+			buildBirthInfo(parseArgs(["--date", "1990-05-15", "--branch", "5", "--gender", "abc"]));
+		} catch (e) {
+			msg = (e as Error).message;
+		}
+		if (!msg.includes("男") || !msg.includes("女"))
+			throw new Error(`报错文案未承认中文值域：${msg}`);
+	});
+
+	ok("命令面：参数描述不再引用已删除的 cities 命令", () => {
+		const descs = OPTION_GROUPS.flatMap(g => g.options.map(o => `${o.name} ${o.desc}`)).join("\n");
+		if (descs.includes("cities"))
+			throw new Error("desc 仍提 cities —— 该命令已删（spec §3.1），文案要跟上");
+	});
+
+	ok("命令面：合盘抬头不因缺省 --name 残留双空格（astrology 抬头无此问题）", () => {
+		// 用真 CLI JSON 产物喂合盘（astrology --json 的输出是合法输入，进程内直调更轻）
+		const tmp = mkdtempSync(join(tmpdir(), "ziwei-synastry-hdr-"));
+		try {
+			const json = (d: string, g: string) =>
+				cmdAstrology(parseArgs(["--date", d, "--branch", "5", "--gender", g, "--json"], "astrology"));
+			const a = join(tmp, "a.json");
+			const b = join(tmp, "b.json");
+			writeFileSync(a, json("1990-05-15", "male"), "utf8");
+			writeFileSync(b, json("1992-08-01", "female"), "utf8");
+			const s = cmdSynastry(parseArgs(["--charts", `${a},${b}`], "synastry"));
+			const bad = s.split("\n").filter(l => /^(甲方|乙方) {2}/.test(l));
+			if (bad.length) throw new Error(`抬头双空格：${bad[0]}`);
+		} finally {
+			rmSync(tmp, { recursive: true, force: true });
+		}
+	});
+
+	ok("命令面：help 的 OPTIONS 组标题与参数行同步输出（分组语义不失效）", () => {
+		const lines = renderCommandHelp("astrology").split("\n");
+		const i = lines.findIndex(l => l.includes("出生日期（二选一）"));
+		if (i < 0) throw new Error("找不到组标题");
+		const next = lines[i + 1] ?? "";
+		if (next.trim() && !next.includes("--"))
+			throw new Error(`组标题堆叠：标题后紧跟另一标题「${next.trim()}」`);
+	});
+
+	ok("声明表：作用域差量排除表里的名字都真实存在（拼错不许静默失效）", () => {
+		// 差量化后 OPTION_NAMES = 全集 − excluded：排除项拼错不再「静默让参数失效」，
+		// 而是从这里变红 —— excluded 每一项都必须能在全集里点到位。
+		for (const n of OPTION_SCOPE.excluded) {
+			if (!ALL_OPTION_NAMES.has(n))
+				throw new Error(`OPTION_SCOPE.excluded 里的「${n}」不在声明表 —— 拼写错误`);
+		}
+		const scope = [...ALL_OPTION_NAMES].filter(n => !OPTION_SCOPE.excluded.includes(n));
+		if (scope.length !== OPTION_NAMES.size)
+			throw new Error("OPTION_NAMES 与「全集 − excluded」的基数不一致 —— 派生逻辑或引用脱节");
+		return `全集 ${ALL_OPTION_NAMES.size} · 排除 ${OPTION_SCOPE.excluded.length} · 作用域 ${OPTION_NAMES.size}`;
+	});
+
+	ok("声明表：可选值参数 help 显示 <[x]>，必值参数保持 <x>（值语法不再混用）", () => {
+		const s = renderCommandHelp("astrology");
+		// 可选值族（裸开关合法）：缺省取当前值或列清单
+		for (const want of ["--yearly <[年]>", "--decadal <[虚岁]>", "--ages <[虚岁]>", "--topic <[key]>"]) {
+			if (!s.includes(want)) throw new Error(`可选值语法缺失：${want}`);
+		}
+		// 必值族：缺值会被指路，尖括号不吞方括号
+		if (!s.includes("--focus <宫>")) throw new Error("必值参数 --focus <宫> 的值语法变了");
+		if (s.includes("--monthly <[1-12]>"))
+			throw new Error("--monthly 被标成可选值 —— 它必须带值（裸开关会指路）");
+	});
+
+	ok("help 裁剪：命令级 NOTES 只带本命令相关的铁律，全量保留在总览", () => {
+		const syn = renderCommandHelp("synastry");
+		if (syn.includes("排盘四必问") || syn.includes("--late-zi"))
+			throw new Error("synastry --help 仍在教排盘铁律 —— 它不排盘");
+		for (const cmd of ["stars", "classics"] as const) {
+			if (renderCommandHelp(cmd).includes("晚子时"))
+				throw new Error(`${cmd} --help 带着排盘 NOTES —— 应裁剪`);
+		}
+		const overview = renderOverviewHelp();
+		if (!overview.includes("排盘四必问") || !overview.includes("--late-zi"))
+			throw new Error("总览 help 的全量铁律被误裁 —— 排盘铁律只在总览保底");
+	});
+
+	ok("契约对拍：buildAnalyzeJson 的生产端产物过 readAnalyzeJson 消费方校验", () => {
+		// 生产端纯函数化后可在进程内直测：真盘一次，产物写临时文件喂消费方契约 ——
+		// 「一处生产（buildAnalyzeJson）、一处消费（readAnalyzeJson）、一处对拍（这里）」，
+		// 与子进程端的合盘契约闭环互补。
+		const chart = generateChart(SAMPLE);
+		const json = buildAnalyzeJson({
+			chart,
+			liuNianYear: 2026,
+			liuYueMonth: null,
+			basis: {
+				note: "钟表 → 巳时（对拍样例）",
+				notes: ["自检对拍产物"],
+				lateZiCandidate: false,
+				isLateZi: false,
+			},
+		});
+		const tmp = mkdtempSync(join(tmpdir(), "ziwei-analyze-json-"));
+		try {
+			const p = join(tmp, "out.json");
+			writeFileSync(p, json, "utf8");
+			const parsed = readAnalyzeJson(p, "甲");
+			if (!parsed.chart?.palaces?.length) throw new Error("对拍产物缺宫位 —— 契约校验形同虚设");
+		} finally {
+			rmSync(tmp, { recursive: true, force: true });
+		}
+	});
+
 	ok("运限定位：yearlyBranchOf 按公历年取年支（1990→午 / 2026→午 / 2000→辰）", () => {
 		eq(BRANCHES[yearlyBranchOf(1990)], "午");
 		eq(BRANCHES[yearlyBranchOf(2026)], "午");
@@ -1043,12 +1169,9 @@ export function cmdSelftest(ctx: CliContext): string {
 
 	ok("命令拆分：cities 命令已删（数据表保留）；analyze → astrology 改名；stars 仍可检索", () => {
 		// 2026-09-30 命令面收敛（spec §3.1）：cities 只删查询命令（ziwei/cities.ts 数据表
-		// 仍是 --city 容错解析的依据，保留）；analyze 拆进 cli/astrology.ts 并改名 cmdAstrology
-		// （四命令融合留 Task 6，本条只钉「拆位与改名」这个中间态）。
-		const src = readFileSync(resolve(ctx.root, "cli", "commands.ts"), "utf8");
-		const table = src.match(/const COMMAND_TABLE = \{([\s\S]*?)\} satisfies/)?.[1];
-		if (!table) throw new Error("未从 commands.ts 抽到 COMMAND_TABLE —— 声明块形状已变");
-		const defined = [...table.matchAll(/^\t+"?([a-z][a-z0-9-]*)"?:/gm)].map(m => m[1]);
+		// 仍是 --city 容错解析的依据，保留）；analyze 拆进 cli/astrology.ts 并改名 cmdAstrology。
+		// 键集取自函数顶部的动态 import（见彼处注释）。
+		const defined = commandNames;
 		if (defined.includes("cities")) throw new Error("cities 仍在 COMMAND_TABLE —— 应删（spec §3.1）");
 		if (defined.includes("analyze")) throw new Error("analyze 仍在 COMMAND_TABLE —— 应改名 astrology");
 		// Task 6 融合后 chart/topic 也退役（职责成为 astrology 的 --palaces / --topic 参数）
@@ -1212,22 +1335,9 @@ export function cmdSelftest(ctx: CliContext): string {
 
 	ok("参数面：SKILL.md 命令速查表提到的命令都在 commands.ts 的命令表里", () => {
 		// 与上一条同源：SKILL.md 是给 Claude 读的**行为规范**，它提到的命令若不存在，
-		// Claude 会照着敲一条必然失败的命令行。
-		//
-		// ⚠️ 这里读的是 commands.ts 的**源码文本**而非它的导出 —— `COMMAND_TABLE` 里挂着
-		// `cmdSelftest`，而本文件就是 selftest：静态 import 成环，动态 import 又要把
-		// `cmdSelftest` 改成 async（波及调用点）。正则抽键是这两者之外的第三条路，
-		// 与「读 SKILL.md 文本」正是同一手法。
-		const src = readFileSync(resolve(ctx.root, "cli", "commands.ts"), "utf8");
-		const table = src.match(/const COMMAND_TABLE = \{([\s\S]*?)\} satisfies/)?.[1];
-		if (!table) throw new Error("未从 commands.ts 抽到 COMMAND_TABLE —— 声明块形状已变");
-		// ⚠️ 键上的双引号是**可选**的，别把它从正则里省掉：命令名含连字符时
-		// 不是合法标识符，对象字面量里**必须**加引号。只认裸键的写法会静默漏抽这一项，
-		// 于是「表里有、扫描器看不见」→ 反向误报成「SKILL.md 提到但未定义」，
-		// 而且报的方向正好与真相相反（实测踩过）。
-		const defined = [...table.matchAll(/^\t+"?([a-z][a-z0-9-]*)"?:/gm)].map(m => m[1]);
-		if (!defined.length)
-			throw new Error("COMMAND_TABLE 里一个命令名都没抽到 —— 正则或路径可能已失效");
+		// Claude 会照着敲一条必然失败的命令行。键集取自函数顶部的动态 import（真模块
+		// 的键集，不再有「正则漏抽」的失效模式，物理排版随之退出契约）。
+		const defined = commandNames;
 
 		const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
 		const at = md.indexOf("## 命令速查");
@@ -1253,12 +1363,14 @@ export function cmdSelftest(ctx: CliContext): string {
 		return `${mentioned.length} 个命令全部有实现`;
 	});
 
+	// 古籍 / 合盘断言组在断言流此处执行（async，故在 ok 断言体之外 await），并入主报告。
+	const classics = await classicAsserts();
+	const synastry = await synastryAsserts();
+
 	ok("合并自检：古籍 / 合盘断言组并入（三段合计）", () => {
 		// 2026-09-30 三 skill 合一：classics 与 synastry 的自检断言各自住在
 		// scripts/classics/selftest-asserts.ts 与 scripts/synastry/selftest-asserts.ts，
 		// 由本命令汇总执行 —— 报告分三段（排盘 / 古籍 / 合盘），首行「通过 N/N」为合计。
-		const classics = classicAsserts();
-		const synastry = synastryAsserts();
 		if (!classics.length || !synastry.length) throw new Error("断言组为空——搬移未完成");
 		results.push({ pass: true, name: "── 古籍 ──", detail: "" });
 		for (const r of classics) results.push(r);

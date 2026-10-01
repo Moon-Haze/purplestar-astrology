@@ -16,13 +16,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "./index";
-
-/** 单条断言的结果（与 cli/selftest.ts 的 Assertion 同形）。 */
-export interface Assertion {
-	pass: boolean;
-	name: string;
-	detail: string;
-}
+import { createHarness, eq, type Assertion } from "../cli/selftest-kit";
 
 /** 本内核目录（`scripts/classics`）。 */
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -32,22 +26,14 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
  *
  * @returns 逐条结果；由 `cli/selftest.ts` 并入主报告
  */
-export function asserts(): Assertion[] {
-	const results: Assertion[] = [];
-	const eq = (actual: unknown, expected: unknown, msg = "") => {
-		if (actual !== expected)
-			throw new Error(
-				`${msg}期望 ${JSON.stringify(expected)}，实得 ${JSON.stringify(actual)}`
-			);
-	};
-	const ok = (name: string, fn: () => unknown) => {
-		try {
-			const detail = fn();
-			results.push({ pass: true, name, detail: detail == null ? "" : String(detail) });
-		} catch (err) {
-			results.push({ pass: false, name, detail: (err as Error).message });
-		}
-	};
+export async function asserts(): Promise<Assertion[]> {
+	// harness（Assertion / eq / ok）共用 cli/selftest-kit，此处不再有本地定义。
+	const { results, ok } = createHarness();
+	// 命令表与作用域键集：动态 import 打断「commands → selftest → 本文件」静态环
+	//（Cmd 已放宽为可返回 Promise），取代旧的「读源码文本做子串/正则匹配」——
+	// 那会让 commands.ts 与 option-scope.ts 的物理排版成为契约。
+	const { COMMANDS } = await import("../cli/commands");
+	const { OPTION_NAMES } = await import("../cli/args");
 
 	/**
 	 * 起子进程跑一次合并后的根 CLI（测「入口 → 解析 → 命令表 → 渲染」整条链）。
@@ -159,16 +145,14 @@ export function asserts(): Assertion[] {
 	});
 
 	ok("合并接线：classics 在主命令表有实现，其参数在主作用域已声明", () => {
-		// 三 skill 合一的接线守卫：命令进了 COMMAND_TABLE、参数进了 FLAG_SCOPE，
+		// 三 skill 合一的接线守卫：命令进了 COMMAND_TABLE、参数进了 OPTION_NAMES，
 		// 任何一侧漏接，用户敲 `classics` 就是「未知命令」或 `--limit` 就是「未知参数」。
-		// 读源码文本而非 import：命令表里挂着 cmdSelftest，直接 import 会成环。
-		const cmdSrc = readFileSync(resolve(ROOT, "..", "cli", "commands.ts"), "utf8");
-		if (!/^\tclassics: cmdClassics,?$/m.test(cmdSrc))
-			throw new Error("cli/commands.ts 的 COMMAND_TABLE 里没有 classics 条目 —— 合并接线断了");
-		const scopeSrc = readFileSync(resolve(ROOT, "..", "cli", "option-scope.ts"), "utf8");
-		for (const f of ['"search"', '"limit"']) {
-			if (!scopeSrc.includes(f))
-				throw new Error(`cli/option-scope.ts 的 OPTION_SCOPE 里没有 ${f} —— classics 参数未声明`);
+		// 键集来自函数顶部的动态 import（见彼处注释）。
+		if (!("classics" in COMMANDS))
+			throw new Error("cli/commands.ts 的命令表里没有 classics 条目 —— 合并接线断了");
+		for (const f of ["search", "limit"]) {
+			if (!OPTION_NAMES.has(f))
+				throw new Error(`cli 的 OPTION_NAMES 里没有 ${f} —— classics 参数未声明`);
 		}
 		return "命令表与作用域双侧接线在";
 	});

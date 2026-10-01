@@ -18,13 +18,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "./synastry-knowledge";
-
-/** 单条断言的结果（与 cli/selftest.ts 的 Assertion 同形）。 */
-export interface Assertion {
-	pass: boolean;
-	name: string;
-	detail: string;
-}
+import { readAnalyzeJson } from "./chart-view";
+import { createHarness, type Assertion } from "../cli/selftest-kit";
 
 /** 本内核目录（`scripts/synastry`）。 */
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -143,16 +138,14 @@ function makeFixture(o: {
  *
  * @returns 逐条结果；由 `cli/selftest.ts` 并入主报告
  */
-export function asserts(): Assertion[] {
-	const results: Assertion[] = [];
-	const ok = (name: string, fn: () => unknown) => {
-		try {
-			const detail = fn();
-			results.push({ pass: true, name, detail: detail == null ? "" : String(detail) });
-		} catch (err) {
-			results.push({ pass: false, name, detail: (err as Error).message });
-		}
-	};
+export async function asserts(): Promise<Assertion[]> {
+	// harness（Assertion / ok）共用 cli/selftest-kit，此处不再有本地定义。
+	const { results, ok } = createHarness();
+	// 命令表与作用域：动态 import 打断「commands → selftest → 本文件」静态环（Cmd 已
+	// 放宽为可返回 Promise），取代旧的「读源码文本做子串匹配」—— 物理排版退出契约。
+	const { COMMANDS } = await import("../cli/commands");
+	const { OPTION_NAMES } = await import("../cli/args");
+	const { OPTION_SCOPE } = await import("../cli/option-scope");
 
 	/** 起子进程跑一次合并后的根 CLI（测「入口 → 解析 → 命令表 → 渲染」整条链）。 */
 	const run = (args: string[]): { code: number; out: string; err: string } => {
@@ -352,17 +345,33 @@ export function asserts(): Assertion[] {
 			return "裸写与单路径均被拦下";
 		});
 
+		ok("契约闭环：astrology --json 的真实产物过 readAnalyzeJson 校验", () => {
+			// 交付包内唯一能跑的自检层要直接盯住生产端-消费端 seam：typecheck 对
+			// JSON 边界无能为力（JSON.parse 后 as 断言），假盘 fixture 又只是契约的
+			// 手写拷贝，接不住生产端键名漂移 —— 让 run 起子进程排一张真盘落临时文件，
+			// 喂给 readAnalyzeJson 逐项校验，闭环不依赖交付包外的 test/。
+			const r = run(["astrology", "--date", "1990-05-15", "--branch", "5", "--gender", "male", "--json"]);
+			if (r.code !== 0) throw new Error(`astrology --json 非零退出：${r.err.trim()}`);
+			const tmp = mkdtempSync(join(tmpdir(), "synastry-contract-"));
+			try {
+				const p = join(tmp, "real.json");
+				writeFileSync(p, r.out, "utf8");
+				const parsed = readAnalyzeJson(p, "甲");
+				if (!parsed.chart?.palaces?.length) throw new Error("readAnalyzeJson 产物缺宫位 —— 契约校验形同虚设");
+			} finally {
+				rmSync(tmp, { recursive: true, force: true });
+			}
+		});
+
 		ok("合并接线：synastry 在主命令表有实现，--charts 在主作用域已声明", () => {
-			// 三 skill 合一的接线守卫：命令进了 COMMAND_TABLE、`charts` 进了 OPTION_SCOPE、
+			// 三 skill 合一的接线守卫：命令进了 COMMAND_TABLE、`charts` 进了 OPTION_NAMES、
 			// 前缀表已清空（a-/b- 退役）—— 任何一侧漏接，用户敲 `synastry --charts` 就是「未知参数」。
-			// 读源码文本而非 import：命令表里挂着 cmdSelftest，直接 import 会成环。
-			const cmdSrc = readFileSync(resolve(ROOT, "..", "cli", "commands.ts"), "utf8");
-			if (!/^\tsynastry: cmdSynastry,?$/m.test(cmdSrc))
-				throw new Error("cli/commands.ts 的 COMMAND_TABLE 里没有 synastry 条目 —— 合并接线断了");
-			const scopeSrc = readFileSync(resolve(ROOT, "..", "cli", "option-scope.ts"), "utf8");
-			if (!scopeSrc.includes('"charts"'))
-				throw new Error("cli/option-scope.ts 的 OPTION_SCOPE 里没有 charts —— 合盘输入参数未声明");
-			if (scopeSrc.includes('"a-"') || scopeSrc.includes('"b-"'))
+			// 键集来自函数顶部的动态 import（见彼处注释）。
+			if (!("synastry" in COMMANDS))
+				throw new Error("cli/commands.ts 的命令表里没有 synastry 条目 —— 合并接线断了");
+			if (!OPTION_NAMES.has("charts"))
+				throw new Error("cli 的 OPTION_NAMES 里没有 charts —— 合盘输入参数未声明");
+			if (OPTION_SCOPE.sidePrefixes.includes("a-") || OPTION_SCOPE.sidePrefixes.includes("b-"))
 				throw new Error("a-/b- 前缀仍在 OPTION_SCOPE —— 应已退役（Task 7）");
 			return "命令表与作用域双侧接线在，前缀已退役";
 		});

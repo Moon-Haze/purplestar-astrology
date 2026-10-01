@@ -126,9 +126,13 @@ function displayWidth(s: string): number {
 	return width;
 }
 
-/** 参数的 help 标签（`--name <值域>` 或裸 `--name`，别名尾注由调用方拼接）。 */
+/** 参数的 help 标签：`--name <值域>`（必值）、`--name <[值域]>`（可选值）或裸 `--name`；别名尾注由调用方拼接。 */
 const label = (o: OptionSpec) =>
-	o.kind === "value" ? `--${o.name} <${o.value ?? "值"}>` : `--${o.name}`;
+	o.kind === "switch"
+		? `--${o.name}`
+		: o.optionalValue
+			? `--${o.name} <[${o.value ?? "值"}]>`
+			: `--${o.name} <${o.value ?? "值"}>`;
 
 /** 主名 → 拼音别名（尾注用，倒排 OPTION_ALIASES）。 */
 const ALIAS_OF = new Map<string, string>(
@@ -141,21 +145,32 @@ const ALIAS_OF = new Map<string, string>(
  * @param owned - 该命令归属的参数名集合（总览 = 全量）
  */
 function renderOptions(owned: ReadonlySet<string>): string[] {
-	const lines: string[] = [];
-	let lastTitle = "";
-	const rows: Array<[string, string]> = [["  -h, --help", "显示本帮助（任何命令可用）"]];
+	// 逐组收集（相邻同名组合并），最后按组序同步输出标题与参数 —— 旧写法把组标题
+	// 即时 push、参数行收集到循环外统一 append，结果所有标题堆在前面，分组名存实亡。
+	const groups: Array<{ title: string; rows: Array<[string, string]> }> = [];
 	for (const g of OPTION_GROUPS) {
 		const opts = g.options.filter(o => owned.has(o.name));
 		if (!opts.length) continue;
-		if (g.title !== lastTitle) {
-			lines.push(`  ${g.title}`);
-			lastTitle = g.title;
-		}
-		for (const o of opts) rows.push([`  ${label(o)}${ALIAS_OF.get(o.name) ? `（别名 --${ALIAS_OF.get(o.name)}）` : ""}`, o.desc]);
+		const rows: Array<[string, string]> = opts.map(o => [
+			`  ${label(o)}${ALIAS_OF.get(o.name) ? `（别名 --${ALIAS_OF.get(o.name)}）` : ""}`,
+			o.desc,
+		]);
+		const last = groups[groups.length - 1];
+		if (last && last.title === g.title) last.rows.push(...rows);
+		else groups.push({ title: g.title, rows });
 	}
-	const column = Math.max(...rows.map(([l]) => displayWidth(l))) + 2;
-	for (const [l, d] of rows)
-		lines.push(l + " ".repeat(Math.max(1, column - displayWidth(l))) + d);
+	const allRows: Array<[string, string]> = [
+		["  -h, --help", "显示本帮助（任何命令可用）"],
+		...groups.flatMap(g => g.rows),
+	];
+	const column = Math.max(...allRows.map(([l]) => displayWidth(l))) + 2;
+	const pad = (l: string, d: string) =>
+		l + " ".repeat(Math.max(1, column - displayWidth(l))) + d;
+	const lines: string[] = [pad("  -h, --help", "显示本帮助（任何命令可用）")];
+	for (const g of groups) {
+		lines.push(`  ${g.title}`);
+		for (const [l, d] of g.rows) lines.push(pad(l, d));
+	}
 	return lines;
 }
 
@@ -209,11 +224,16 @@ export function renderCommandHelp(cmd: CommandName): string {
 	lines.push("OPTIONS");
 	lines.push(...renderOptions(owned), "");
 	lines.push("EXAMPLES", ...(COMMAND_EXAMPLES[cmd] ?? []), "");
-	lines.push("NOTES");
-	lines.push("  · 排盘四必问：出生日期、出生时间、性别、出生地 —— 缺一问一，不要猜。");
-	lines.push(...HELP_CAUTION);
-	if (cmd === "astrology") lines.push("  · " + ALIAS_NOTE);
-	lines.push("");
+	// NOTES 按命令裁剪：四必问 / 晚子时 / 真太阳时跨午夜都是**排盘**铁律 —— synastry
+	// 不排盘、stars/classics 不涉出生信息，全量模板会让命令级 help 教人用对它无效的
+	// 参数（如 synastry --help 里的 --late-zi）。全量铁律保留在总览 help。
+	if (cmd === "astrology") {
+		lines.push("NOTES");
+		lines.push("  · 排盘四必问：出生日期、出生时间、性别、出生地 —— 缺一问一，不要猜。");
+		lines.push(...HELP_CAUTION);
+		lines.push("  · " + ALIAS_NOTE);
+		lines.push("");
+	}
 	lines.push("SEE ALSO");
 	const others = Object.keys(COMMAND_DESC).filter(n => n !== cmd);
 	lines.push(`  其余命令：${others.join("、")} · 总览：node scripts/purple-star.ts help`);

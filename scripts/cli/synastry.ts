@@ -90,7 +90,7 @@ export function cmdSynastry(args: CliArgs): string {
 	out.push("【合盘 · 双宫联参】倪海夏：看婚姻不能只看夫妻宫，必须同时看福德宫");
 	out.push("");
 	out.push(
-		`甲方 ${biA.name ?? ""} ${fmtDate(biA)} ${A.basis.note} · ${genderCN(biA.gender)} · ${ca.fiveElementsClassName}`
+		`甲方${biA.name ? ` ${biA.name}` : ""} ${fmtDate(biA)} ${A.basis.note} · ${genderCN(biA.gender)} · ${ca.fiveElementsClassName}`
 	);
 	out.push(`  命宫 ${branchName(ca.soulBranch)}：${mA.join("、") || "（空宫借对宫）"}`);
 	out.push(`  夫妻宫 ${branchName(fuqiA.branch)}：${fA.join("、") || "（空宫借对宫）"}`);
@@ -99,7 +99,7 @@ export function cmdSynastry(args: CliArgs): string {
 	);
 	out.push("");
 	out.push(
-		`乙方 ${biB.name ?? ""} ${fmtDate(biB)} ${B.basis.note} · ${genderCN(biB.gender)} · ${cb.fiveElementsClassName}`
+		`乙方${biB.name ? ` ${biB.name}` : ""} ${fmtDate(biB)} ${B.basis.note} · ${genderCN(biB.gender)} · ${cb.fiveElementsClassName}`
 	);
 	out.push(`  命宫 ${branchName(cb.soulBranch)}：${mB.join("、") || "（空宫借对宫）"}`);
 	out.push(`  夫妻宫 ${branchName(fuqiB.branch)}：${fB.join("、") || "（空宫借对宫）"}`);

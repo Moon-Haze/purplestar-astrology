@@ -64,6 +64,12 @@ export interface OptionSpec {
 	kind: "value" | "switch";
 	/** 值域占位，如 `"YYYY-MM-DD"`；`kind: "switch"` 时不给 */
 	value?: string;
+	/**
+	 * 可选值形态：裸开关（不带值）**合法**，由命令侧取缺省（`--yearly` = 当年）或
+	 * 列清单（`--topic`）。help 据此把值域显示成 `<[x]>`；不标注即必值，末尾缺值
+	 * 会以「需要一个值」被命令侧指路。
+	 */
+	optionalValue?: boolean;
 	/** 一行说明，即 help 里那一行的描述列 */
 	desc: string;
 }
@@ -83,8 +89,12 @@ export interface OptionGroup {
  * help 归属表是视图，不做硬校验）。
  */
 export interface OptionScope {
-	/** 本 skill 认的参数名（不含 `--`）；每一项都必须是 {@link OPTION_GROUPS} 里的名字。 */
-	readonly options: readonly string[];
+	/**
+	 * 从声明表**排除**的参数名（差量形态：默认全集）。单 skill 形态下为空数组 ——
+	 * 全集即作用域，旧的「正面清单全量手抄」已退役（它恒等于全集，只付拼错静默失效
+	 * 与逐项维护两笔成本）。每一项都必须是 {@link OPTION_GROUPS} 里的名字。
+	 */
+	readonly excluded: readonly string[];
 	/** 本 skill 认的出生方前缀（合盘用 `["a-", "b-"]`）；不认就给空数组。 */
 	readonly sidePrefixes: readonly string[];
 	/**
@@ -157,7 +167,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 	{
 		title: "其他出生信息",
 		options: [
-			{ name: "gender", kind: "value", value: "male|female", desc: "性别" },
+			{ name: "gender", kind: "value", value: "male|female|男|女", desc: "性别" },
 			{
 				name: "lng",
 				kind: "value",
@@ -203,13 +213,15 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			{
 				name: "decadal",
 				kind: "value",
-				value: "[虚岁]",
+				value: "虚岁",
+				optionalValue: true,
 				desc: "大限专题（十年大运时间轴 + 指定岁所在限的三方四正深入；缺省 = 当前虚岁）",
 			},
 			{
 				name: "ages",
 				kind: "value",
-				value: "[虚岁]",
+				value: "虚岁",
+				optionalValue: true,
 				desc: "小限专题（指定岁小限宫 + 十二宫小限岁数表；缺省 = 当前虚岁）",
 			},
 			{ name: "palaces", kind: "switch", desc: "十二宫逐宫详表（原 chart 命令职责，2026-09-30 并入）" },
@@ -222,20 +234,22 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			{
 				name: "yearly",
 				kind: "value",
-				value: "2027",
+				value: "年",
+				optionalValue: true,
 				desc: "指定流年（默认今年）",
 			},
 			{
 				name: "monthly",
 				kind: "value",
 				value: "1-12",
-				desc: "追加该农历月的流月四化（需先有流年）",
+				desc: "配合 --mutagen 四化专题：追加该农历月的流月四化（流年缺省取当年）",
 			},
 			{ name: "focus", kind: "value", value: "财帛", desc: "额外展开指定宫位" },
 			{
 				name: "topic",
 				kind: "value",
-				value: "love",
+				value: "key",
+				optionalValue: true,
 				desc: "主题论断选主题（13 个 key 之一；不带值时列清单）",
 			},
 			{
@@ -248,7 +262,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				name: "search",
 				kind: "value",
 				value: "机月同梁",
-				desc: "classics / stars / cities 检索关键字（也可用位置参数）",
+				desc: "classics / stars 检索关键字（也可用位置参数）",
 			},
 			{ name: "limit", kind: "value", value: "15", desc: "classics 命中条数上限（正整数）" },
 			{
@@ -296,8 +310,14 @@ export const ALL_OPTION_NAMES: ReadonlySet<string> = new Set(
 /**
  * **本 skill** 认的参数名（英文主名）—— {@link parseArgs} 的校验基准，
  * 同时是 {@link suggestOption} 的候选集。
+ *
+ * @remarks
+ * 从全集按 {@link OPTION_SCOPE.excluded} **差量**派生：单 skill 形态下排除表为空，
+ * 作用域即全集；「有哪些参数」因此真正只有 OPTION_GROUPS 一处声明。
  */
-export const OPTION_NAMES: ReadonlySet<string> = new Set(OPTION_SCOPE.options);
+export const OPTION_NAMES: ReadonlySet<string> = new Set(
+	[...ALL_OPTION_NAMES].filter(n => !OPTION_SCOPE.excluded.includes(n))
+);
 
 /**
  * kebab-case → camelCase：**键名换算的唯一一处**。

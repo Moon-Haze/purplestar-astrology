@@ -20,8 +20,15 @@ import { cmdSynastry } from "./synastry";
 
 // ══════════════════════ 命令表 ══════════════════════
 
-/** 命令实现的签名：返回**已渲染好的文本**，由引导层统一 `console.log`。 */
-type Cmd = (args: CliArgs, ctx: CliContext) => string;
+/**
+ * 命令实现的签名：返回**已渲染好的文本**（或其 Promise），由引导层统一 `await` 后 `console.log`。
+ *
+ * @remarks
+ * 允许 async 是给 `cmdSelftest` 的：它要 `await import("./commands")` 取命令表键集
+ * （替代旧的「读源码文本正则抽键」），动态 import 是打断「commands → selftest → commands」
+ * 静态环的唯一手段 —— 同步签名下这条 seam 只能用对物理排版敏感的正则走第三条路。
+ */
+type Cmd = (args: CliArgs, ctx: CliContext) => string | Promise<string>;
 
 /**
  * 命令名 → 实现。

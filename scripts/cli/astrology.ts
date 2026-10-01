@@ -5,6 +5,7 @@
  * 参数）留 Task 6，本文件先承载 analyze 的原实现。
  */
 
+import type { BirthInfo, Mutagen, ZiweiChart } from "@/ziwei/types";
 import type { CliArgs } from "./args";
 import { applyConfig, renderTemplate } from "./config";
 import { buildBirthInfo } from "./birth-info";
@@ -81,6 +82,95 @@ export function parseMonthlyArg(args: CliArgs): number | null {
 }
 
 /**
+ * 抬头行（命盘总览式）：`【标题】[名字 ]日期 说明 · 性别` —— --info / --topic /
+ * 默认概览三处专题分发共用；名字槽缺省时直接省略，不残留双空格。
+ */
+function chartHeader(title: string, info: BirthInfo, note: string): string {
+	const namePart = info.name ? `${info.name} ` : "";
+	return `${title}${namePart}${fmtDate(info)} ${note} · ${genderCN(info.gender)}`;
+}
+
+/**
+ * `--json` 的产物（生产端）：`astrology --json` 的顶层契约，也是
+ * {@link readAnalyzeJson|synastry/chart-view 的 readAnalyzeJson} 所消费的形状。
+ *
+ * @remarks
+ * 提为具名纯函数是为了让契约**一处生产、一处消费、一处对拍** —— 键名不再散落在
+ * 分发函数中段，selftest 可以进程内直调本函数、把产物喂给消费方校验（原先是子进程
+ * 端到端才能测的形状）。顶层键即输出契约：chart / patterns / mingGongSummary /
+ * nativeSiHua / liuNianSiHua / liuYueSiHua / liuNianPalace / xiaoXian / lateZi / basis。
+ */
+export function buildAnalyzeJson(input: {
+	chart: ZiweiChart;
+	/** 流年年号（`--yearly` 的值；缺省当年由 caller 先经 parseYearlyArg 归一） */
+	liuNianYear: number;
+	/** 农历月 1-12；`null` = 不算流月 */
+	liuYueMonth: number | null;
+	/** 排盘依据（日期换算 / 出生地解析 / 时辰校正的说明），原样进 `basis` 键 */
+	basis: { note: string; notes: string[]; lateZiCandidate: boolean; isLateZi: boolean };
+}): string {
+	const { chart, liuNianYear, liuYueMonth, basis } = input;
+	// 派生收进实现内部（caller 只给语义参数，_interface_ 上不存在「传错组合」的态空间）：
+	// 年干取农历口径（与宫详表同源），生年四化与流年/流月四化由查表函数从年号重算 ——
+	// 全是纯函数，重算零成本，换来的是少 7 个参数与天然一致。
+	const yearStem = chart.lunarInfo.yearStem;
+	const native = getMutagenByStem(yearStem);
+	const liuNian = getYearlyMutagen(liuNianYear);
+	const liuYue = liuYueMonth !== null ? getMonthlyMutagen(liuNian.stemIndex, liuYueMonth) : null;
+	return JSON.stringify(
+		{
+			chart,
+			patterns: detectPatterns(chart),
+			mingGongSummary: getMingGongSummary(chart),
+			nativeSiHua: {
+				stem: STEMS[yearStem],
+				transforms: native,
+				located: locateSihua(chart, native),
+			},
+			liuNianSiHua: {
+				year: liuNianYear,
+				stem: liuNian.stemName,
+				transforms: liuNian.transforms,
+				located: locateSihua(chart, liuNian.transforms),
+			},
+			liuYueSiHua: liuYue
+				? {
+						month: liuYueMonth,
+						stem: liuYue.stemName,
+						transforms: liuYue.transforms,
+						located: locateSihua(chart, liuYue.transforms),
+					}
+				: null,
+			// 流年命宫与小限宫（运限速览的结构化等价物，2026-09-28 新增，只加不删）
+			liuNianPalace: {
+				year: liuNianYear,
+				branchIndex: yearlyBranchOf(liuNianYear),
+				branch: BRANCHES[yearlyBranchOf(liuNianYear)],
+				palaceName:
+					chart.palaces.find(p => p.branch === yearlyBranchOf(liuNianYear))?.name ?? null,
+			},
+			xiaoXian: (() => {
+				const p = agePalaceOf(chart, chart.currentAge);
+				return {
+					age: chart.currentAge,
+					palaceBranchIndex: p.branch,
+					palaceBranch: BRANCHES[p.branch],
+					palaceName: p.name,
+				};
+			})(),
+			lateZi: { candidate: basis.lateZiCandidate, applied: basis.isLateZi },
+			// 排盘依据：日期换算 / 出生地解析 / 时辰校正三类说明，让这份 JSON 自描述
+			// 「这张盘是怎么来的」，下游（合盘 skill）据此复述真太阳时与晚子时提示，
+			// 而不必自己重做一遍出生信息解析。
+			// 键名刻意不叫 trueSolar —— notes 里还含农历换算与出生地解析，与真太阳时无关。
+			basis,
+		},
+		null,
+		2
+	);
+}
+
+/**
  * `astrology` 命令：解读用的完整输入包（本 CLI 最常用的一条；原 analyze，2026-09-30 更名）。
  *
  * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--pattern` / `--mutagen` /
@@ -124,7 +214,7 @@ export function cmdAstrology(args: CliArgs) {
 	// --info：只输出信息面板这一节（面板本身在默认输出里无条件存在，本参数是「只看面板」）
 	if (args.info) {
 		return [
-			`【命盘总览】${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)}`,
+			chartHeader("【命盘总览】", info, note),
 			"",
 			...infoSection(chart, {
 				clockTime: typeof args.time === "string" ? args.time : null,
@@ -189,7 +279,7 @@ export function cmdAstrology(args: CliArgs) {
 			liuyueMonth: parseMonthlyArg(args) ?? undefined,
 		});
 		return [
-			`【主题论断 · ${TOPIC_LABEL[topic]}】${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)}`,
+			chartHeader(`【主题论断 · ${TOPIC_LABEL[topic]}】`, info, note),
 			"",
 			text,
 			"",
@@ -200,63 +290,18 @@ export function cmdAstrology(args: CliArgs) {
 	}
 
 	if (args.json) {
-		return JSON.stringify(
-			{
-				chart,
-				patterns: detectPatterns(chart),
-				mingGongSummary: getMingGongSummary(chart),
-				nativeSiHua: {
-					stem: STEMS[yearStem],
-					transforms: native,
-					located: locateSihua(chart, native),
-				},
-				liuNianSiHua: {
-					year: liuNianYear,
-					stem: liuNian.stemName,
-					transforms: liuNian.transforms,
-					located: locateSihua(chart, liuNian.transforms),
-				},
-				liuYueSiHua: liuYue
-					? {
-							month: liuYueMonth,
-							stem: liuYue.stemName,
-							transforms: liuYue.transforms,
-							located: locateSihua(chart, liuYue.transforms),
-						}
-					: null,
-				// 流年命宫与小限宫（运限速览的结构化等价物，2026-09-28 新增，只加不删）
-				liuNianPalace: {
-					year: liuNianYear,
-					branchIndex: yearlyBranchOf(liuNianYear),
-					branch: BRANCHES[yearlyBranchOf(liuNianYear)],
-					palaceName:
-						chart.palaces.find(p => p.branch === yearlyBranchOf(liuNianYear))?.name ?? null,
-				},
-				xiaoXian: (() => {
-					const p = agePalaceOf(chart, chart.currentAge);
-					return {
-						age: chart.currentAge,
-						palaceBranchIndex: p.branch,
-						palaceBranch: BRANCHES[p.branch],
-						palaceName: p.name,
-					};
-				})(),
-				lateZi: { candidate: lateZiCandidate, applied: isLateZi },
-				// 排盘依据：日期换算 / 出生地解析 / 时辰校正三类说明，让这份 JSON 自描述
-				// 「这张盘是怎么来的」，下游（合盘 skill）据此复述真太阳时与晚子时提示，
-				// 而不必自己重做一遍出生信息解析。
-				// 键名刻意不叫 trueSolar —— notes 里还含农历换算与出生地解析，与真太阳时无关。
-				basis: { note, notes },
-			},
-			null,
-			2
-		);
+		// 契约生产端提为具名纯函数（buildAnalyzeJson）：键名集中一处，selftest 可进程内直测。
+		// 只传语义参数 —— 四化派生收在函数内部，天然一致。
+		return buildAnalyzeJson({
+			chart,
+			liuNianYear,
+			liuYueMonth,
+			basis: { note, notes, lateZiCandidate, isLateZi },
+		});
 	}
 
 	const out: string[] = [];
-	out.push(
-		`【命盘总览】${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)} · 经度 ${longitude}°E`
-	);
+	out.push(`${chartHeader("【命盘总览】", info, note)} · 经度 ${longitude}°E`);
 	out.push(
 		`农历 ${chart.lunarInfo.lunarYear}年${chart.lunarInfo.isLeapMonth ? "闰" : ""}${chart.lunarInfo.lunarMonth}月${chart.lunarInfo.lunarDay}日 · 年柱 ${STEMS[chart.lunarInfo.yearStem]}${BRANCHES[chart.lunarInfo.yearBranch]} · ${chart.fiveElementsClassName}`
 	);
@@ -279,6 +324,12 @@ export function cmdAstrology(args: CliArgs) {
 	);
 	out.push(...overviewSection(chart, liuNianYear));
 	if (args.pattern) out.push("", ...patternSection(chart));
+	// 流月四化随四化专题输出：单独给 --monthly（不带 --mutagen）会被静默吞掉，在这里指路。
+	// 只约束文本路径 —— --json 的 liuYueSiHua 是独立顶层键（基准对拍依赖裸 --json --monthly）。
+	if (args.monthly !== undefined && !args.mutagen)
+		throw new Error(
+			"--monthly 需要 --mutagen：流月四化在四化专题中输出，请加 --mutagen（流年缺省取当年，可用 --yearly 指定）。"
+		);
 	if (args.mutagen) out.push("", ...mutagenSection(chart, liuNianYear, liuYueMonth));
 	if (args.yearly !== undefined) out.push("", ...yearlySection(chart, liuNianYear));
 	if (args.decadal !== undefined)
