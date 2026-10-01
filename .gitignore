@@ -48,11 +48,12 @@ reference/
 # db/dataset.staging/：构建期的暂存分片与半截产物，收尾即删。**必须忽略** ——
 #   构建进行中误跑 git add -A，会把半截 parquet 提交进历史。
 db/dataset.staging/
-db/ziwei.duckdb
-db/ziwei.duckdb.*
+db/ziwei.duckdb*
 
 # ── 系统垃圾 ──────────────────────────────────────────────
 .DS_Store
 *.log
 npm-debug.log*
-samples-out/**
+samples-out/
+.mimosa/
+.mimosa/
