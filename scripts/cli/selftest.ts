@@ -932,6 +932,32 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		if (!withMutagen.includes("流月四化")) throw new Error("带 --mutagen 后流月节缺失");
 	});
 
+	ok("命令面：独占分支激活时被吞的功能参数必须指路（不静默）", () => {
+		const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
+		for (const [argv, keyword] of [
+			[[...base, "--palaces", "--pattern"], "--pattern"],
+			[[...base, "--palaces", "--mutagen"], "--mutagen"],
+			[[...base, "--topic", "love", "--pattern"], "--pattern"],
+			[[...base, "--json", "--info"], "--info"],
+			[[...base, "--json", "--topic", "love"], "--topic"],
+		] as const) {
+			let msg: string | null = null;
+			try {
+				cmdAstrology(parseArgs(argv as unknown as string[], "astrology"));
+			} catch (e) {
+				msg = (e as Error).message;
+			}
+			if (!msg || !msg.includes("独占") || !msg.includes(keyword as string))
+				throw new Error(`独占分支未指路（${keyword}）：${msg ?? "未报错且静默输出"}`);
+		}
+		// 组合边界：--json + --palaces 是 synastry 契约，必须保留且出合法 JSON
+		const json = cmdAstrology(
+			parseArgs([...base, "--palaces", "--json"], "astrology")
+		);
+		JSON.parse(json);
+		return "--palaces/--topic/--json 三组独占语义全部指路；--palaces --json 契约保留";
+	});
+
 	ok("命令面：--gender 报错文案与 help 值域承认中文（男|女 实际合法）", () => {
 		let msg = "";
 		try {

@@ -7,6 +7,7 @@
 
 import type { BirthInfo, Mutagen, ZiweiChart } from "@/ziwei/types";
 import type { CliArgs } from "./args";
+import { camelKey, OPTION_GROUPS } from "./args";
 import { applyConfig, renderTemplate } from "./config";
 import { buildBirthInfo } from "./birth-info";
 import {
@@ -171,6 +172,38 @@ export function buildAnalyzeJson(input: {
 }
 
 /**
+ * 可被独占分支吞掉的功能参数集合——从声明表**派生**：专题深入组的全部参数
+ * （palaces 自身除外）加上输出与选题组里的 yearly / monthly / focus。
+ */
+const SHADOWABLE = new Set(
+	OPTION_GROUPS.flatMap(g => {
+		if (g.title.startsWith("专题深入")) return g.options.map(o => o.name).filter(n => n !== "palaces");
+		if (g.title === "输出与选题") return g.options.filter(o => ["yearly", "monthly", "focus"].includes(o.name)).map(o => o.name);
+		return [];
+	})
+);
+
+/**
+ * 独占分支（--palaces / --topic）激活时，其余功能参数不会生效——静默吞违反
+ * 「宁可启动失败，也不静默产出错盘」，在这里指路。优先级链：
+ * --palaces > --topic > 其他功能参数（--json 仅与 --palaces 组合，见各自分支）。
+ */
+function assertNoShadowedFeatures(args: CliArgs, exclusive: "--palaces" | "--topic"): void {
+	// --topic 自身**消费** --yearly / --monthly（流年/流月视角的年份与农历月，见 topic
+	// 分支的 parseYearlyArg / parseMonthlyArg）——它们不是被吞参数，检测必须放行，
+	// 否则 `--topic love --yearly 2027`（流年论断指定年份）这一合法用法会被误伤。
+	const consumed = exclusive === "--topic" ? ["yearly", "monthly"] : [];
+	const shadowed = [...SHADOWABLE]
+		.filter(n => !consumed.includes(n))
+		.filter(n => (args as Record<string, unknown>)[camelKey(n)] !== undefined);
+	if (shadowed.length)
+		throw new Error(
+			`${exclusive} 是独占分支，以下功能参数不会生效：${shadowed.map(n => `--${n}`).join("、")}。` +
+				`独占分支请单独使用（优先级：--palaces > --topic > 其他功能参数）。`
+		);
+}
+
+/**
  * `astrology` 命令：解读用的完整输入包（本 CLI 最常用的一条；原 analyze，2026-09-30 更名）。
  *
  * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--pattern` / `--mutagen` /
@@ -213,6 +246,17 @@ export function cmdAstrology(args: CliArgs) {
 	// ── 融合分支（2026-09-30 四命令合一，spec §1）──
 	// --info：只输出信息面板这一节（面板本身在默认输出里无条件存在，本参数是「只看面板」）
 	if (args.info) {
+		if (args.json)
+			throw new Error("--info 是独占分支，与 --json 不可同给：--info 只输出文本面板（--json 仅与完整概览或 --palaces 组合）。");
+		// 优先级链落地：--palaces / --topic 在场时，若放行到下面各分支，独占分支会被
+		// 本分支**抢跑**吞掉（本分支排在它们之前）——指路，不静默。--info 属于链上的
+		// 「其他功能参数」：--palaces > --topic > --info。
+		const higher = args.palaces ? "--palaces" : args.topic !== undefined ? "--topic" : null;
+		if (higher)
+			throw new Error(
+				`${higher} 是独占分支，以下功能参数不会生效：--info。` +
+					`独占分支请单独使用（优先级：--palaces > --topic > 其他功能参数）。`
+			);
 		return [
 			chartHeader("【命盘总览】", info, note),
 			"",
@@ -227,6 +271,7 @@ export function cmdAstrology(args: CliArgs) {
 	// --palaces：十二宫逐宫详表（原 chart 命令的职责，2026-09-30 起并入本参数）。
 	// --palaces --json 与原 chart --json 同形：顶层即命盘本身（不带格局/四化包装）。
 	if (args.palaces) {
+		assertNoShadowedFeatures(args, "--palaces");
 		if (args.json) return JSON.stringify(chart, null, 2);
 		const out = [
 			`命盘  ${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)}`,
@@ -252,6 +297,11 @@ export function cmdAstrology(args: CliArgs) {
 
 	// --topic：主题论断（原 topic 命令的职责）。不带值（或裸开关）= 列 13 主题清单。
 	if (args.topic !== undefined) {
+		if (args.json)
+			throw new Error("--topic 是独占分支，与 --json 不可同给：主题论断只有文本形态（--json 仅与完整概览或 --palaces 组合）。");
+		// 检测在列清单判断之前：yearly / monthly 是 --topic 自己消费的参数（已放行），
+		// 其余被吞功能参数在列清单路径同样不会生效，一并指路。
+		assertNoShadowedFeatures(args, "--topic");
 		if (args.topic === true) {
 			const rows = (Object.keys(TOPIC_LABEL) as TopicKey[]).map(
 				k => `  ${k.padEnd(11)} ${TOPIC_LABEL[k]}（看${TOPIC_PALACE_NAME[k]}）`
