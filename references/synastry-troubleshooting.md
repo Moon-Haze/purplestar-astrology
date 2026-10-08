@@ -55,10 +55,10 @@ chart / patterns / mingGongSummary / nativeSiHua / liuNianSiHua / liuYueSiHua / 
   当前内核根：<skill根>/scripts（来源：技能自带内核）
   → Cannot find module 'iztro' / 'lunar-typescript'：依赖未装。
      在 skill 根（<skill根>）执行 npm install 即可（依赖清单见该目录 package.json）
-  → registerHooks is not a function 或 TS 语法报错：Node 版本过低，需 ≥ 22.15（当前 v26.10.0）
+  → registerHooks is not a function 或 TS 语法报错：Node 版本过低，需 ≥ 22.18（当前 v26.10.0）
 ```
 
-两个分支各挡一种成因：`iztro` / `lunar-typescript` 找不到 → 依赖未装，在本目录（仓库根即 skill 根）`npm install`；`registerHooks is not a function` 或 TS 语法报错 → Node 版本过低，需 ≥ 22.15（本 CLI 靠 Node 原生类型擦除直接加载 `.ts`，不注册解析钩子）。
+两个分支各挡一种成因：`iztro` / `lunar-typescript` 找不到 → 依赖未装，在本目录（仓库根即 skill 根）`npm install`；`registerHooks is not a function` 或 TS 语法报错 → Node 版本过低，需 ≥ 22.18（本 CLI 靠 Node 原生类型擦除直接加载 `.ts`，不注册解析钩子）。
 
 ## 确认跑的是哪一份内核
 

@@ -9,7 +9,7 @@
 | `[ziwei 启动失败] 找不到排盘内核`                   | skill 目录不完整，`<skill>/scripts/` 下的内核缺失（拷贝时漏带）。从本仓库补回 `scripts/` 整个目录（排盘 `ziwei/`、古籍 `classics/`、合盘 `synastry/` 都在这里），或用 `ZIWEI_ROOT=<含 ziwei/ 的目录>` 指定内核位置。 |
 | `[ziwei 启动自检失败]`                              | 内核被重构、关键导出改名或删除。核对 `scripts/cli/` 各模块的 import 列表与 `scripts/` 下内核的实际导出是否对得上。                                                                                                         |
 | `Cannot find module 'iztro'` / `'lunar-typescript'` | 依赖未装。**看报错里的「当前内核根」**，在该目录下 `npm install`。                                                                                                                                                         |
-| `registerHooks is not a function` 或 TS 语法报错    | Node 版本过低，需 ≥ 22.15（本项目开发环境为 v26）。                                                                                                                                                                        |
+| `registerHooks is not a function` 或 TS 语法报错    | Node 版本过低，需 ≥ 22.18（本项目开发环境为 v26）。                                                                                                                                                                        |
 
 ## 确认跑的是哪一份内核
 

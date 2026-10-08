@@ -26,7 +26,7 @@
  * `scripts/classics/` 与 `scripts/synastry/`，命令并入本 CLI —— 单 skill 单入口，
  * 排盘（astrology）、古籍（classics）、合盘（synastry）都在这里（见 `SKILL.md`）。
  *
- * 依赖 Node ≥ 22.15（module.registerHooks + 原生 TS 类型擦除）。
+ * 依赖 Node ≥ 22.18（module.registerHooks + 原生 TS 类型擦除）。
  * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
  * 帮助：node scripts/purple-star.ts help
  * 自检：node scripts/purple-star.ts selftest

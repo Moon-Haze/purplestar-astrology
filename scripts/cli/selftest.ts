@@ -611,6 +611,33 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			throw new Error("太阳「三不见」在 synastry 侧被强化为「必有」——两库口径打架");
 		if (d.includes("二十八岁后"))
 			throw new Error("武曲晚婚门槛 data.ts 仍为 28 岁——应统一为 30 岁");
+		// classics/data 侧的飞星词白名单机检（spec §4.3，与上方 synastry-knowledge 禁词
+		// 对偶）：「自化 / 来因宫 / 飞化」只允许出现在否定 / 辨析语境——白名单按文件钉
+		// **稳定子串**而非行号（行号随文案增删漂移，子串跟着语境走）：quanshu 的辨析条
+		// （「北派飞星派之自化……倪师不主张使用」）与 quanji 的口径括注（「古籍原文如此」）。
+		// gusuifu 零白名单——任何新出现的第三处即红。注释行不参与（非用户可见文案，
+		// 与 grades 断言的过滤同一先例）。
+		const FLYING_WORDS = /自化|来因宫|飞化/;
+		const CLASSICS_FLYING_WHITELIST: Readonly<Record<string, readonly string[]>> = {
+			"gusuifu.ts": [],
+			"quanji.ts": ["古籍原文如此"],
+			"quanshu.ts": ["北派飞星派之自化"],
+		};
+		for (const [file, pins] of Object.entries(CLASSICS_FLYING_WHITELIST)) {
+			const src = readFileSync(resolve(ctx.root, "classics", "data", file), "utf8");
+			const offender = src
+				.split("\n")
+				.map((line, i) => ({ line: line.trim(), no: i + 1 }))
+				.filter(({ line }) => FLYING_WORDS.test(line))
+				.filter(({ line }) => !/^(\/\/|\/\*|\*)/.test(line))
+				.find(({ line }) => !pins.some(p => line.includes(p)));
+			if (offender)
+				throw new Error(
+					`classics/data/${file} L${offender.no} 出现白名单外飞星词（自化/来因宫/飞化）：` +
+						`「${offender.line.slice(0, 40)}」——体系不计算宫干飞化，用户可见文案只允许` +
+						`否定/辨析语境（本文件白名单：${pins.join("、") || "无"}）`
+				);
+		}
 	});
 
 	// ── 7. 格局与四化 ──
@@ -963,6 +990,10 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			[[...base, "--topic", "love", "--pattern"], "--pattern"],
 			[[...base, "--json", "--info"], "--info"],
 			[[...base, "--json", "--topic", "love"], "--topic"],
+			// --info 自身也是独占分支（面板单独输出）：其余功能参数同给必须指路，
+			// 不能静默吞参只出面板（终审 C1；SKILL.md / options.md 均有此承诺）。
+			[[...base, "--info", "--pattern"], "--pattern"],
+			[[...base, "--info", "--mutagen"], "--mutagen"],
 		] as const) {
 			let msg: string | null = null;
 			try {
@@ -1518,7 +1549,14 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		const claude = readFileSync(resolve(ctx.root, "..", "CLAUDE.md"), "utf8");
 		const opts = readFileSync(resolve(ctx.root, "..", "references", "options.md"), "utf8");
 		const testReadme = readFileSync(resolve(ctx.root, "..", "test", "README.md"), "utf8");
-		for (const [name, text] of [["README.md", readme], ["CLAUDE.md", claude]] as const) {
+		// boot-hooks 的失败指引是**用户运行时真实看到**的报错文案——下限号写错（如仍写
+		// 22.15）会把低版本用户引向一条裸跑必失败的路径，纳入机检钉死（终审 D-1）。
+		const bootHooks = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
+		for (const [name, text] of [
+			["README.md", readme],
+			["CLAUDE.md", claude],
+			["scripts/boot-hooks.ts", bootHooks],
+		] as const) {
 			if (text.includes("22.15") && !text.includes("NODE_OPTIONS"))
 				throw new Error(`${name} 仍承诺 Node ≥ 22.15 —— 实测 22.15.0 裸跑 ERR_UNKNOWN_FILE_EXTENSION，下限应为 22.18`);
 		}

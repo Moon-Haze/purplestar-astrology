@@ -184,16 +184,23 @@ const SHADOWABLE = new Set(
 );
 
 /**
- * 独占分支（--palaces / --topic）激活时，其余功能参数不会生效——静默吞违反
+ * 独占分支（--palaces / --topic / --info）激活时，其余功能参数不会生效——静默吞违反
  * 「宁可启动失败，也不静默产出错盘」，在这里指路。优先级链：
- * --palaces > --topic > 其他功能参数（--json 仅与 --palaces 组合，见各自分支）。
+ * --palaces > --topic > 其他功能参数（--info 属于链上的「其他功能参数」，但它自身
+ * 也是独占分支——只输出面板一节；--json 仅与 --palaces 组合，见各自分支）。
  */
-function assertNoShadowedFeatures(args: CliArgs, exclusive: "--palaces" | "--topic"): void {
+function assertNoShadowedFeatures(
+	args: CliArgs,
+	exclusive: "--palaces" | "--topic" | "--info"
+): void {
 	// --topic 自身**消费** --yearly / --monthly（流年/流月视角的年份与农历月，见 topic
 	// 分支的 parseYearlyArg / parseMonthlyArg）——它们不是被吞参数，检测必须放行，
 	// 否则 `--topic love --yearly 2027`（流年论断指定年份）这一合法用法会被误伤。
 	const consumed = exclusive === "--topic" ? ["yearly", "monthly"] : [];
 	const shadowed = [...SHADOWABLE]
+		// 排除独占参数自身：info 在 SHADOWABLE 集合里（专题深入组），不过滤会报出
+		// 「--info 不会生效：--info」的自指文案（palaces / topic 本就不在集合中，无影响）。
+		.filter(n => n !== exclusive.slice(2))
 		.filter(n => !consumed.includes(n))
 		.filter(n => (args as Record<string, unknown>)[camelKey(n)] !== undefined);
 	if (shadowed.length)
@@ -257,6 +264,10 @@ export function cmdAstrology(args: CliArgs) {
 				`${higher} 是独占分支，以下功能参数不会生效：--info。` +
 					`独占分支请单独使用（优先级：--palaces > --topic > 其他功能参数）。`
 			);
+		// 其余功能参数（--pattern / --mutagen / --decadal / --ages / --yearly / --monthly /
+		// --focus）与本分支同给同样不会生效——静默吞违反启动纪律，统一走独占检测指路。
+		// palaces / topic / json 三者由上方各自的检查负责（职责不重复）。
+		assertNoShadowedFeatures(args, "--info");
 		return [
 			chartHeader("【命盘总览】", info, note),
 			"",

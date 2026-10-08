@@ -229,6 +229,6 @@ export function loadFailureHint(f: LoadFailure): string {
 		`  当前内核根：${f.root}（来源：${f.label}）\n` +
 		`  → Cannot find module 'iztro' / 'lunar-typescript'：依赖未装。\n` +
 		`     在 skill 根（${resolve(f.root, "..")}）执行 npm install 即可（依赖清单见该目录 package.json）\n` +
-		`  → registerHooks is not a function 或 TS 语法报错：Node 版本过低，需 ≥ 22.15（当前 ${process.version}）`
+		`  → registerHooks is not a function 或 TS 语法报错：Node 版本过低，需 ≥ 22.18（当前 ${process.version}）`
 	);
 }
