@@ -1578,11 +1578,11 @@ describe("CLI 端到端", () => {
 
 		it("snippet 两端都被截断时，前后上下文恰各 40 字", async () => {
 			const { searchClassics } = await loadClassics();
-			// 段落普遍短于 81 字，全库只有 qj-1-1（85 字）容得下两端都截断的命中。
+			// 段落普遍短于 81 字，全库只有 qj-1-1（151 字，含飞化口径括注）容得下两端都截断的命中。
 			// 下列三条 guard 保证算术成立，任一失效都会指名道姓地报出来，而不是静默变松。
 			const hit = searchClassics("之", 10_000).find(h => h.paragraphId === "qj-1-1");
 			assert.ok(hit, "「之」应命中 qj-1-1");
-			assert.equal(hit.text.length, 85, "样本段长度变了，下面的 40+40 算术需重新核对");
+			assert.equal(hit.text.length, 151, "样本段长度变了，下面的 40+40 算术需重新核对");
 			assert.equal(hit.text.indexOf("之"), 41, "命中位置变了，同上");
 			assert.ok(!/[<>&"']/.test(hit.text), "该段含需转义字符，长度会被 &quot; 撑大");
 

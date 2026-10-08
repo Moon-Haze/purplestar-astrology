@@ -589,6 +589,19 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 				`检测到大限携带四化/宫干字段：${dirty.length} 条（飞星派逻辑疑似回流）`
 			);
 	});
+	ok("体系合规：合盘输出无飞星派断语，两库引句口径不打架", () => {
+		const k = readFileSync(resolve(ctx.root, "synastry", "synastry-knowledge.ts"), "utf8");
+		if (/自化(禄|权|科|忌)/.test(k))
+			throw new Error("synastry-knowledge 仍含「自化」断语——体系不计算宫干自化，用户可见文案不得出现");
+		const d = readFileSync(resolve(ctx.root, "ziwei", "analysis", "data.ts"), "utf8");
+		if (d.includes("娶个七杀入命的太太") && !d.includes("坊间流传"))
+			throw new Error("七杀「娶妻毁一半」引句丢失「未核实」口径标注");
+		const s = readFileSync(resolve(ctx.root, "synastry", "synastry-knowledge.ts"), "utf8");
+		if (s.includes("必有重大灾祸"))
+			throw new Error("太阳「三不见」在 synastry 侧被强化为「必有」——两库口径打架");
+		if (d.includes("二十八岁后"))
+			throw new Error("武曲晚婚门槛 data.ts 仍为 28 岁——应统一为 30 岁");
+	});
 
 	// ── 7. 格局与四化 ──
 	ok("格局识别：返回数组且每条含 name / level", () => {
