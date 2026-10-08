@@ -1483,6 +1483,38 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			throw new Error("test/README.md 缺升级 iztro 的 pin 改写警告");
 	});
 
+	// 知识分级登记表（grades.ts）：动态 import 与上方 COMMANDS 同理 —— ok 断言体是同步
+	// 回调，import 只能在断言流之外 await（既定模式，见 classics / synastry 断言组注）。
+	const grades = await import("@/ziwei/analysis/grades");
+
+	ok("知识分级：data.ts 全部倪师引句在 grades.ts 有登记且档位合法（零缺失）", () => {
+		const { NI_GRADES } = grades;
+		const legal = new Set(["verified", "traditional", "suspect", "methodology"]);
+		for (const e of NI_GRADES) {
+			if (!legal.has(e.grade))
+				throw new Error(`grades.ts 的「${e.quote}」档位非法：${e.grade}`);
+		}
+		const src = readFileSync(resolve(ctx.root, "ziwei", "analysis", "data.ts"), "utf8");
+		// 引句标记（与评估报告口径一致，按 2026-10-08 实测扩展）：「倪师 / 倪海夏」锚点
+		// + 少量过渡（星名、出处「天纪 03」、动词「说·言·明言·将…列为」等）+「」或英文
+		// 双引号内 ≥2 字引句；标记与引句须同在一行，注释行不参与；(?<!非) 排除「一说非
+		// 倪师原话」散注里的倪师字样 —— 那一处恰恰声明**不是**倪师引句。
+		const QUOTE_RE =
+			/((?<!非)倪师|倪海夏)[^「」"“”‘’；。—\n]{0,14}[：:]?[「"]([^「」"\n]{2,})[」"]/g;
+		const marks = src
+			.split("\n")
+			.filter(l => !/^\s*(\/\/|\/\*|\*)/.test(l))
+			.flatMap(l => [...l.matchAll(QUOTE_RE)]);
+		if (marks.length < 28) throw new Error(`引句标记只抽到 ${marks.length} 条（评估基线 28）——标记正则或文案已变，先核对再改断言`);
+		const registered = new Set(NI_GRADES.map(e => e.quote));
+		const missing = marks
+			.map(m => m[2].slice(0, 12))
+			.filter(q => !registered.has(q));
+		if (missing.length)
+			throw new Error(`以下倪师引句未在 grades.ts 登记分级：${missing.map(q => `「${q}…」`).join("、")}`);
+		return `${marks.length} 条引句全部有分级登记`;
+	});
+
 	// 古籍 / 合盘断言组在断言流此处执行（async，故在 ok 断言体之外 await），并入主报告。
 	const classics = await classicAsserts();
 	const synastry = await synastryAsserts();
