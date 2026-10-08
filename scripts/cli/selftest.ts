@@ -594,10 +594,20 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		if (/自化(禄|权|科|忌)/.test(k))
 			throw new Error("synastry-knowledge 仍含「自化」断语——体系不计算宫干自化，用户可见文案不得出现");
 		const d = readFileSync(resolve(ctx.root, "ziwei", "analysis", "data.ts"), "utf8");
-		if (d.includes("娶个七杀入命的太太") && !d.includes("坊间流传"))
-			throw new Error("七杀「娶妻毁一半」引句丢失「未核实」口径标注");
-		const s = readFileSync(resolve(ctx.root, "synastry", "synastry-knowledge.ts"), "utf8");
-		if (s.includes("必有重大灾祸"))
+		// 七杀「毁一半」引句是 suspect 档：两库各自引用时，引句前 40 字内必须带
+		// 「坊间流传」口径标注（data.ts 形态「坊间流传倪师笑言（未核实）」、
+		// synastry 形态「（坊间流传，未核实倪师原话）」）——两文件分开读、分开判，
+		// 文件其他位置出现「坊间流传」四字不放行。
+		const qiShaQuote = "差不多毁了一半";
+		const assertQiShaLabeled = (src: string, srcName: string) => {
+			const i = src.indexOf(qiShaQuote);
+			if (i < 0) return; // 该库不引用此句则无需标注
+			if (!src.slice(Math.max(0, i - 40), i).includes("坊间流传"))
+				throw new Error(`${srcName} 七杀「毁了一半」引句丢失「坊间流传」未核实标注`);
+		};
+		assertQiShaLabeled(d, "data.ts");
+		assertQiShaLabeled(k, "synastry-knowledge");
+		if (k.includes("必有重大灾祸"))
 			throw new Error("太阳「三不见」在 synastry 侧被强化为「必有」——两库口径打架");
 		if (d.includes("二十八岁后"))
 			throw new Error("武曲晚婚门槛 data.ts 仍为 28 岁——应统一为 30 岁");
