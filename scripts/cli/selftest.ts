@@ -1468,6 +1468,21 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		return "workflow / synastry-troubleshooting / synastry-guide 三份与现行 CLI 口径一致";
 	});
 
+	ok("文档一致性：Node 下限、独占分支、升级警告三处承诺与实现同步", () => {
+		const readme = readFileSync(resolve(ctx.root, "..", "README.md"), "utf8");
+		const claude = readFileSync(resolve(ctx.root, "..", "CLAUDE.md"), "utf8");
+		const opts = readFileSync(resolve(ctx.root, "..", "references", "options.md"), "utf8");
+		const testReadme = readFileSync(resolve(ctx.root, "..", "test", "README.md"), "utf8");
+		for (const [name, text] of [["README.md", readme], ["CLAUDE.md", claude]] as const) {
+			if (text.includes("22.15") && !text.includes("NODE_OPTIONS"))
+				throw new Error(`${name} 仍承诺 Node ≥ 22.15 —— 实测 22.15.0 裸跑 ERR_UNKNOWN_FILE_EXTENSION，下限应为 22.18`);
+		}
+		if (!opts.includes("独占分支") || !opts.includes("--palaces` > `--topic"))
+			throw new Error("options.md 缺独占分支优先级链描述");
+		if (!testReadme.includes("npm install iztro@latest"))
+			throw new Error("test/README.md 缺升级 iztro 的 pin 改写警告");
+	});
+
 	// 古籍 / 合盘断言组在断言流此处执行（async，故在 ok 断言体之外 await），并入主报告。
 	const classics = await classicAsserts();
 	const synastry = await synastryAsserts();

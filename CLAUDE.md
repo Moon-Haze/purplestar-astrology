@@ -100,7 +100,7 @@ npm run typecheck
 
 ### 为什么能直接跑 TypeScript（没有构建步骤）
 
-`scripts/purple-star.ts` 用 Node ≥ 22.15 的 `module.registerHooks` 注册了解析钩子：
+`scripts/purple-star.ts` 用 Node ≥ 22.18 的 `module.registerHooks` 注册了解析钩子（22.15–22.17 需 `NODE_OPTIONS=--experimental-strip-types` 且子进程链路不可靠，不作承诺）：
 
 - `@/xxx` → 解析到 `<内核根>/xxx`，自动补 `.ts` 或 `/index.ts`。内核根是仓库的 `scripts/`，所以 `@/ziwei/algorithm` = `scripts/ziwei/algorithm.ts`
 - **`.` 相对说明符** → 同一条候选序：先补 `.ts`，再兜底 `<spec>/index.ts`。故内核里引**文件夹模块**时 `./patterns` 与 `@/ziwei/patterns` 等价

@@ -387,6 +387,8 @@ npm test                                   # 2. 跑基准回归
 npm run typecheck                          # 3. 类型检查（升级 iztro 可能改到类型面）
 ```
 
+⚠️ **禁止 `npm install iztro@latest`——实测会把 package.json 的精确 pin `"2.6.1"` 改写为 `"^2.6.1"`，锁版本失效。正确姿势：显式编辑 package.json 版本号 → `npm install` → `git diff package.json` 确认 pin 形态未被改写。**
+
 - **全绿** → 行为未变，直接提交 `package.json` + `package-lock.json`
 - **变红** → 逐个看失败信息（带宫位、星名、基准值、实际值）。确认是预期的版本行为变化后：
     1. 在 [lib/compare.ts](lib/compare.ts) 的 `KNOWN_DIVERGENCES` **登记新条目并写明 `cause`**

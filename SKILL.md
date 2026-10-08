@@ -45,7 +45,7 @@ cd <SKILL.md 所在目录> && node scripts/purple-star.ts astrology 2011-06-24 0
 | **当日早子时**    | 按出生当日的农历日数安星         | 默认。                           |
 | **晚子时·算次日** | 子时归次日，按次日的农历日数安星 | 加 `--late-zi`，或 `--branch 12` |
 
-已验证的等价关系：**`timeIndex 12` ≡ 次日 `timeIndex 0`**（命盘逐宫完全一致）。
+已验证的等价关系：**`timeIndex 12` ≡ 次日 `timeIndex 0`**（命盘逐宫完全一致）。`--late-zi` 须配合 `--time`；直接指定时辰的晚子时用 `--branch 12`，两者不可同给（`--late-zi` 缺 `--time` 即报错）。
 
 脚本行为：
 
@@ -67,7 +67,7 @@ node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州
 node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female
 ```
 
-1. **排盘取数** —— `astrology`（四命令合一）默认输出**概览**：命盘总览三行 + 基本信息 12 行面板（无条件）+ 口径提示（出生地 / 晚子时）+ 运限速览 + 功能参数指路。深入全靠**功能参数**：`--pattern` 格局、`--mutagen` 四化（配 `--monthly` 流月）、`--yearly [年]` 流年、`--decadal [虚岁]` 十年大运、`--ages [虚岁]` 小限、`--focus <宫>` 宫盘四项深化、`--palaces` 十二宫逐宫详表、`--topic <key>` 主题论断 —— **可叠加**，全盘解读通常 `--pattern --mutagen --decadal` 一次拿齐。只给农历用 `--lunar`，只知时辰名用 `--branch`。批量排盘可用 `--config <my.json>`（配置是基底，命令行同名参数覆盖；`--template` 生成模板）。
+1. **排盘取数** —— `astrology`（四命令合一）默认输出**概览**：命盘总览三行 + 基本信息 12 行面板（无条件）+ 口径提示（出生地 / 晚子时）+ 运限速览 + 功能参数指路。深入全靠**功能参数**：`--pattern` 格局、`--mutagen` 四化（配 `--monthly` 流月）、`--yearly [年]` 流年、`--decadal [虚岁]` 十年大运、`--ages [虚岁]` 小限、`--focus <宫>` 宫盘四项深化、`--palaces` 十二宫逐宫详表、`--topic <key>` 主题论断 —— **专题参数可叠加**（`--info` / `--palaces` / `--topic` 是**独占分支**：给出即接管输出，与其余功能参数同给会报错指路），全盘解读通常 `--pattern --mutagen --decadal` 一次拿齐。只给农历用 `--lunar`，只知时辰名用 `--branch`。批量排盘可用 `--config <my.json>`（配置是基底，命令行同名参数覆盖；`--template` 生成模板）。
 2. **按需深入知识源** —— 需要展开论证时，**直接读 `scripts/` 下的权威文件**（`ziwei/` 格局库与四化、`classics/` 古籍、`synastry/` 合盘断语），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则调本 CLI 的 `classics` 命令。
 3. **解读** —— 命宫定基调 → 格局定性 → 四化定着力点 → 大限看阶段 → 结论落到具体建议，**不跳步**。
 
@@ -113,15 +113,15 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 
 ## 命令速查
 
-| 命令                             | 用途                                                                     |
-| -------------------------------- | ------------------------------------------------------------------------ |
-| `astrology`                      | **主力命令**（四命令合一）。概览默认含基本信息；`--palaces` 十二宫详表；`--topic` 主题论断；专题参数族可叠加 |
-| `stars [--search <星名>]`        | 星曜释义                                                                 |
-| `classics [--search <关键词>]`   | 古籍原文检索（骨髓赋 / 全集 / 全书；2026-09-30 三 skill 合一并入）       |
-| `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后） |
-| `selftest`                       | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次 |
+| 命令                                  | 用途                                                                                                                       |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `astrology`                           | **主力命令**（四命令合一）。概览默认含基本信息；`--palaces` 十二宫详表；`--topic` 主题论断；专题参数可叠加（独占分支除外） |
+| `stars [--search <星名>]`             | 星曜释义                                                                                                                   |
+| `classics [--search <关键词>]`        | 古籍原文检索（骨髓赋 / 全集 / 全书；2026-09-30 三 skill 合一并入）                                                         |
+| `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后）                                                                 |
+| `selftest`                            | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次                                              |
 
-高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--info` / `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>`（可叠加，拼音别名 `--geju`/`--sihua`/`--liunian`/`--daxian`/`--xiaoxian` 仍被识别）；输出 `--json`。
+高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>` 可叠加（`--info` / `--palaces` / `--topic` 是独占分支；拼音别名 `--geju`/`--sihua`/`--liunian`/`--daxian`/`--xiaoxian` 仍被识别）；输出 `--json`。
 
 完整参数面（英文主名 / 拼音别名 / 位置参数形态 / `--config` / `--charts`）、各专题的内容、`--focus` 的宫名口径（含「交友宫」不是「仆役」）见 [references/options.md](references/options.md)。
 

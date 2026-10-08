@@ -46,7 +46,7 @@ cd ~/<技能目录>/purplestar-astrology && npm install
 
 ## 环境要求
 
-**Node ≥ 22.15**（依赖 `module.registerHooks` 与原生 TypeScript 类型擦除，直接运行无需编译）；
+**Node ≥ 22.18**（依赖 `module.registerHooks` 与原生 TypeScript 类型擦除，直接运行无需编译）；
 依赖 iztro / lunar-typescript 由 `package-lock.json` 锁定，保证排盘结果不因环境分叉。
 
 ## 数据来源
