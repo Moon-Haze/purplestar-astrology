@@ -190,6 +190,23 @@ export function cmdSynastry(args: CliArgs): string {
 		out.push("  双方夫妻宫均无生年四化落入 —— 婚姻非先天格局的着力点，随大限流年引动。");
 	out.push("");
 
+	// 双盘四化互参（五步法第 4 步的数据底座）：甲方四化星落乙方何宫、乙方落甲方何宫。
+	// 数据两份 JSON 里本就齐备，这里只是渲染成对照，免得助手自己排两份详表手工对星。
+	// 跨盘匹配按「同名宫位」（甲方化禄星落自己夫妻宫 → 看乙方盘上同名的那座宫），
+	// 与 guide 的「飞化互参」口径一致；宫名查找沿用 mustPalace 的 find 惯用形态，
+	// 但找不到不抛错 —— 互参是对照表，兜底一行「未上盘」即可（理论上十二宫名固定都能找到）。
+	out.push("【双盘四化互参】", "  甲方四化 → 落乙方宫位：");
+	for (const x of A.nativeSiHua.located) {
+		const palace = x.palace ? (cb.palaces.find(p => p.name === x.palace)?.name ?? null) : null;
+		out.push(`    化${x.hua} ${x.star} → ${palace ? `乙方${palace}` : "（未上乙方盘）"}`);
+	}
+	out.push("  乙方四化 → 落甲方宫位：");
+	for (const x of B.nativeSiHua.located) {
+		const palace = x.palace ? (ca.palaces.find(p => p.name === x.palace)?.name ?? null) : null;
+		out.push(`    化${x.hua} ${x.star} → ${palace ? `甲方${palace}` : "（未上甲方盘）"}`);
+	}
+	out.push("");
+
 	// 夫妻宫桃花 / 孤克星
 	out.push("【夫妻宫桃花·孤克星】");
 	let marriageHit = 0;

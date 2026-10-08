@@ -1016,6 +1016,28 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		}
 	});
 
+	ok("合盘交付：输出含双盘四化互参节（五步法第 4 步的数据缺口补齐）", () => {
+		const tmp = mkdtempSync(join(tmpdir(), "ziwei-synastry-hucan-"));
+		try {
+			const json = (d: string, g: string) =>
+				cmdAstrology(parseArgs(["--date", d, "--branch", "5", "--gender", g, "--json"], "astrology"));
+			const a = join(tmp, "a.json");
+			const b = join(tmp, "b.json");
+			writeFileSync(a, json("1990-05-15", "male"), "utf8");
+			writeFileSync(b, json("1992-08-01", "female"), "utf8");
+			const out = cmdSynastry(parseArgs(["--charts", `${a},${b}`], "synastry"));
+			if (!out.includes("【双盘四化互参】"))
+				throw new Error("缺【双盘四化互参】节");
+			if (!out.includes("甲方") || !out.includes("落乙方") || !out.includes("乙方") || !out.includes("落甲方"))
+				throw new Error("互参节缺双向对照行");
+			// 自盘对照：两路径相同时不得崩溃
+			const self2 = cmdSynastry(parseArgs(["--charts", `${a},${a}`], "synastry"));
+			if (!self2.includes("【双盘四化互参】")) throw new Error("自盘对照缺互参节");
+		} finally {
+			rmSync(tmp, { recursive: true, force: true });
+		}
+	});
+
 	ok("命令面：help 的 OPTIONS 组标题与参数行同步输出（分组语义不失效）", () => {
 		const lines = renderCommandHelp("astrology").split("\n");
 		const i = lines.findIndex(l => l.includes("出生日期（二选一）"));

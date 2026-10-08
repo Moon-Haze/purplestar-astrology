@@ -73,7 +73,7 @@ CLI 已给出命盘数据与格局结论。需要展开论证时，**直接读�
 
 城市经度不用另查——城市名直接给 `--city`（如 `--city 成都`）；容错写法（「石家庄市」「山东青岛」等）见 `scripts/cli/args.ts` 声明表的 `--city` 项。
 
-⚠️ **合盘用本 CLI 的 `synastry` 命令**（2026-09-30 三 skill 合一并入）：先各排一份 `astrology --json`（不带 `--palaces`），再 `node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`（甲先乙后）。命令输出双宫联参、夫妻宫断语、四化入夫妻宫与桃花孤克星；**方法论与评分标准**（五步法、缘分类型、婚期、星级）读 [references/synastry-guide.md](synastry-guide.md)，输入报错对照见 [references/synastry-troubleshooting.md](synastry-troubleshooting.md)。
+⚠️ **合盘用本 CLI 的 `synastry` 命令**（2026-09-30 三 skill 合一并入）：先各排一份 `astrology --json`，产物经 stdout 重定向落盘（`> /tmp/a.json`）；勿带 `--palaces`（其 `--json` 顶层没有四化落宫与排盘依据）。再 `node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`（甲先乙后）。命令输出双宫联参、夫妻宫断语、四化入夫妻宫、双盘四化互参与桃花孤克星；**方法论与评分标准**（五步法、缘分类型、婚期、星级）读 [references/synastry-guide.md](synastry-guide.md)，输入报错对照见 [references/synastry-troubleshooting.md](synastry-troubleshooting.md)。
 
 ## 第 3 步：解读
 
