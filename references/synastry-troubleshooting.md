@@ -62,12 +62,12 @@ chart / patterns / mingGongSummary / nativeSiHua / liuNianSiHua / liuYueSiHua / 
 
 ## 确认跑的是哪一份内核
 
-只有一份——内核按脚本自身位置（`import.meta.url`）定位，不依赖 cwd，也没有环境变量可覆盖。`node scripts/purple-star.ts selftest` 输出的**第二行**（形如 `内核根：<路径>`，来源标注「技能自带内核」）就是当前生效的那一份，交付解读前据此核对。
+内核按脚本自身位置（`import.meta.url`）定位，不依赖 cwd；`ZIWEI_ROOT` 环境变量优先（想把内核指到别处时用），未设则用技能自带内核（即本仓库根的 `scripts/`）。`node scripts/purple-star.ts selftest` 输出的**第二行**（形如 `内核根：<路径>`，来源标注「ZIWEI_ROOT 环境变量」或「技能自带内核」）就是当前生效的那一份，交付解读前据此核对。
 
 ## 改完合盘相关代码之后
 
 ```bash
-node scripts/purple-star.ts selftest   # 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数；实测 120/120）
+node scripts/purple-star.ts selftest   # 回归自检（排盘 / 古籍 / 合盘三段，项数以输出末行自报为准，勿以文档数字为验收标准；2026-10-09 实测 128/128）
 npm test                               # 仓库级回归：cli / 排盘不变量 / 三合派约束 / 引文核对（test/citations.test.ts）都在这条里
 ```
 

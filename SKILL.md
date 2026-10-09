@@ -19,6 +19,8 @@ cd <SKILL.md 所在目录> && node scripts/purple-star.ts astrology 2011-06-24 0
 
 脚本本身可从**任意 cwd** 运行（内核按脚本自身位置定位，不依赖 cwd），所以 `cd` 只是为省去拼长路径。
 
+**首次使用**：在 skill 根执行 `npm install`（需 Node ≥ 22.18——本 CLI 靠 `module.registerHooks` 与原生 TS 类型擦除直接加载 `.ts`，不注册解析钩子；依赖清单见 `package.json`）。依赖未装或 Node 过低时的报错对照，见 [references/troubleshooting.md](references/troubleshooting.md)。
+
 ## 铁律：四个必须问清的输入
 
 排盘错一个输入，整盘皆错。用户没给全时**必须追问，不要猜**：
