@@ -25,21 +25,16 @@ node_modules/
 #    （2026-09-25 曾据此误判「语料已丢失」，见 docs/superpowers/specs/ 下的设计文档）。
 reference/
 
-# ── 样本数据集（随仓库分发，**不忽略**）────────────────────
-# db/dataset/ 整目录入库，克隆即可用、不必重建：
-#   samples.parquet + palaces.parquet    0.8 + 12.0 MiB —— 排盘基准工具
-#     （test/lib/sample-source.ts）的数据源
-#   topics-*.parquet（11 片）            378.9 MiB —— 13 主题解读文本，
-#     query / verify:db 建 topics 视图时读它。**必须入库**：read_parquet 的 glob
-#     匹配不到文件是**直接报错**而非返回空集，缺了它连 `SELECT count(*) FROM samples`
-#     都会在建视图那步失败 —— 而全新 clone 恰好就是这个状态。
-# 全部由 641.5 MiB 的 DuckDB 库导出。Parquet 的红利几乎全在星曜那 6 个嵌套列上 ——
-# DuckDB 的 LIST<VARCHAR> 逐元素存放星名，Parquet 做字典编码把重复星名压成整数索引；
-# 而 topics 是纯文本，压不动，378.9 MiB 基本照搬。
-# ⚠️ 别把「50 倍」当成整份数据集的压缩率：那是拿**含 topics 的整库**去比**只有两张表
-#    的 Parquet**（口径不同）。同口径是 391.7 MiB 对 641.5 MiB，**1.6 倍**。
-# 故此处**刻意不写** db/dataset/ 下的任何文件。
-# ⚠️ 代价：git 对二进制不做 delta，日后每次重建 topics 都要全量重传这 379 MiB。
+# ── 样本数据集（按用途分流，2026-10-09 起）────────────────
+# 入库（保留）：db/dataset/ 下 samples.parquet + palaces.parquet（0.8 + 12.0 MiB）——
+#   test/lib/sample-source.ts 的数据源（排盘基准工具 full-corpus / build-fixtures /
+#   verify-source 读它；npm test 本身不依赖 db/，但语料回归链路依赖）。
+# 出库（忽略）：db/dataset/topics-*.parquet（11 片，约 379 MiB）—— 13 主题解读文本，
+#   属已下线的数据路线（分析数据库 v3 代码路线取代，见 scripts/ziwei/analysis/）。
+#   2026-10-09 起移出 git 跟踪：git 对二进制不做 delta，每次重建 topics 都要全量
+#   重传 379 MiB，而运行时（scripts/）对它零依赖。磁盘文件保留，需要时可重建
+#   （tools/db/build-duckdb.ts → 导出）。
+db/dataset/topics-*.parquet
 
 # ── 不入版本控制的数据 ────────────────────────────────────
 # db/ziwei.duckdb：上面那份数据集的**导出来源**（641.5 MiB，超 GitHub 单文件
