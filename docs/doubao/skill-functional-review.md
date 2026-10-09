@@ -34,8 +34,12 @@
 **影响**：每次 clone 拉 398M（其中 97% 是没人读的 parquet）；分发 zip 若含 git 目录会同样膨胀；仓库协作时 diff/status 都变慢。
 
 **建议**：
-1. `git rm -r --cached db/` + `.gitignore` 补 `db/dataset/*.parquet`（保留 tools/db 建库脚本与文档，仅去数据）
+1. ~~`git rm -r --cached db/` + `.gitignore` 补 `db/dataset/*.parquet`（保留 tools/db 建库脚本与文档，仅去数据）~~
 2. 彻底瘦身需 `git filter-repo` 改写历史（仅当要公开分发、在意 clone 体验时做；历史已在远端，改写会动所有 clone）
+
+**✅ 2026-10-09 已落地（commit f01c08d，独立项目 ../purplestar-db-slim 承载），范围有一处实读修正**：
+- 出库的是 `topics-*.parquet` 11 片（约 379M，占 97%）——已下线数据路线遗留；`samples.parquet + palaces.parquet`（12.8M）**保留入库**：实读发现它们是 `test/lib/sample-source.ts`（语料基准工具数据源）的活依赖，评审「运行时零依赖」只对 scripts/ 成立。
+- 实测浅克隆（--depth 1）787M → **30M**；磁盘文件保留、历史未改写（size-pack 不变，瘦身体现在新 clone）。
 
 ### F2 SKILL.md 缺「首次使用」指引 —— agent 首次运行的成功路径没有预防
 
