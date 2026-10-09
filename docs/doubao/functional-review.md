@@ -33,9 +33,9 @@ liuNianPalace: {
 },
 ```
 
-**建议**：提一个局部变量 `const lnBranch = yearlyBranchOf(liuNianYear)`，三处引用一次计算。纯函数零成本，但消除重复与读代码时的"这三处一定是同一个值吗"疑虑。
+**建议**：提一个局部变量 `const lnBranch = yearlyBranchOf(liuNianYear)`，三处引用一次计算。纯函数零成本，但消除重复与读代码时的"这三处一定是同一个值吗"疑虑。✅ 2026-10-09 已修（commit 9318a80，`--json` 输出与改前逐字节一致）。
 
-**同样模式**：`fortune.ts` 内 `yearlySection` / `decadalSection` 多次调 `surroundNames(chart, 同 branch)`，可先取 `const names = surroundNames(...)` 复用。
+**同样模式**：`fortune.ts` 内 `yearlySection` / `decadalSection` 多次调 `surroundNames(chart, 同 branch)`，可先取 `const names = surroundNames(...)` 复用。✅ 2026-10-09 已修（yearlySection 大限三方名一次取好，同 commit）。
 
 ### P2：palace 查找用 Map 索引统一 —— 结构性优化，收益在可维护性
 
@@ -88,9 +88,10 @@ liuNianPalace: {
 
 ## 四、推荐路线
 
-1. **P1（顺手改）**：`buildAnalyzeJson` 提 `lnBranch` 局部变量；`fortune.ts` 各 Section 复用 `surroundNames` 结果。改完跑 selftest 全绿即可。
-2. **P2（重构任务，可选）**：新增 `palaceByBranch(chart)` 索引工具，替换 10+ 处散落 find——统一兜底语义（一律抛错），行为不变，selftest + npm test 兜底。
+1. ~~**P1（顺手改）**~~ ✅ 2026-10-09 已落地（9318a80，golden 对比逐字节一致）。
+2. **P2（重构任务，可选）**：新增 `palaceByBranch(chart)` 索引工具，替换 10+ 处散落 find——统一兜底语义（一律抛错），行为不变，selftest + npm test 兜底。（保留为后续独立任务）
 3. P3/P4/P5 维持现状，不投入。
+4. **F6 补记**：数据路线 npm scripts（build:db / verify:db / query）已于 2026-10-09 删除（同 commit 9318a80）。
 
 ## 五、验证方式
 - P1：改后 `selftest` 128/128 全绿 + `--json` 输出与改前逐字节一致（golden snapshot 思维）。

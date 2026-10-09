@@ -45,7 +45,7 @@
 ```
 首次使用：在 skill 根执行 npm install（Node ≥ 22.18，依赖清单见 package.json）。
 ```
-一行改动，agent 首次运行的成功率显著提升。注意：SKILL.md 有 selftest 文档-代码断言盯着，但该行不涉及旗标名，不会触发。
+一行改动，agent 首次运行的成功率显著提升。注意：SKILL.md 有 selftest 文档-代码断言盯着，但该行不涉及旗标名，不会触发。**✅ 2026-10-09 已落地（a12f245）**。
 
 ### F3 运行依赖与开发依赖未分离 —— 打包体积 126M vs 7.5M
 
@@ -68,7 +68,7 @@
 
 ### F6 小项：package.json 残留数据路线脚本
 
-`build:db` / `verify:db` / `query` 三个 npm scripts 属数据路线，运行时用不到。数据路线下线后可删（保留则不影响）。`name: purplestar-astrology-skill` 已正确反映 skill 形态。
+`build:db` / `verify:db` / `query` 三个 npm scripts 属数据路线，运行时用不到。数据路线下线后可删（保留则不影响）。`name: purplestar-astrology-skill` 已正确反映 skill 形态。**✅ 2026-10-09 已删（9318a80）；tools/db 脚本保留在仓内（typecheck 依赖其类型，devDep @duckdb/node-api 相应保留）**。
 
 ---
 
