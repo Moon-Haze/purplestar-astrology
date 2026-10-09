@@ -403,12 +403,14 @@ export function yearlySection(chart: ZiweiChart, year: number): string[] {
 	out.push(...sihuaLines(chart, liuNian.transforms, sanFang, " ★ 入流年三方四正"));	if (dx) {
 		const dxSanFang = surroundBranches(dx.palaceBranch);
 		const entered = dxSanFang.includes(lnBranch);
+		// 大限三方名一次取好（入/不入两分支共用；原先两分支各查一次）
+		const dxSanFangNames = surroundNames(chart, dx.palaceBranch).join("/");
 		out.push("");
 		out.push(
 			`与当前大限（${dx.startAge}-${dx.endAge}岁 ${dx.palaceName}(${BRANCHES[dx.palaceBranch]})）：` +
 				(entered
-					? `流年命宫**入**大限三方四正（${surroundNames(chart, dx.palaceBranch).join("/")}）—— 限运引动流年`
-					: `流年命宫**不入**大限三方四正（${surroundNames(chart, dx.palaceBranch).join("/")}）—— 流年独立于限运看`)
+					? `流年命宫**入**大限三方四正（${dxSanFangNames}）—— 限运引动流年`
+					: `流年命宫**不入**大限三方四正（${dxSanFangNames}）—— 流年独立于限运看`)
 		);
 	}
 	const pairs = sameStarPairs(chart, nativeSiHuaOf(chart), liuNian.transforms);

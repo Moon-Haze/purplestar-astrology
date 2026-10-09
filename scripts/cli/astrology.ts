@@ -143,13 +143,16 @@ export function buildAnalyzeJson(input: {
 					}
 				: null,
 			// 流年命宫与小限宫（运限速览的结构化等价物，2026-09-28 新增，只加不删）
-			liuNianPalace: {
-				year: liuNianYear,
-				branchIndex: yearlyBranchOf(liuNianYear),
-				branch: BRANCHES[yearlyBranchOf(liuNianYear)],
-				palaceName:
-					chart.palaces.find(p => p.branch === yearlyBranchOf(liuNianYear))?.name ?? null,
-			},
+			// 流年地支一次算好：三处引用同值，重复调用徒增「这三处是否同值」的读码疑虑。
+			liuNianPalace: (() => {
+				const lnBranch = yearlyBranchOf(liuNianYear);
+				return {
+					year: liuNianYear,
+					branchIndex: lnBranch,
+					branch: BRANCHES[lnBranch],
+					palaceName: chart.palaces.find(p => p.branch === lnBranch)?.name ?? null,
+				};
+			})(),
 			xiaoXian: (() => {
 				const p = agePalaceOf(chart, chart.currentAge);
 				return {

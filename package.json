@@ -7,9 +7,6 @@
 	"scripts": {
 		"test": "node test/lib/run.ts",
 		"test:corpus": "tsx test/tools/full-corpus.ts",
-		"build:db": "tsx tools/db/build-duckdb.ts",
-		"verify:db": "tsx tools/db/verify-duckdb.ts",
-		"query": "tsx tools/db/query.ts",
 		"bench:startup": "tsx tools/bench/startup.ts",
 		"typecheck": "tsc --noEmit -p tsconfig.json"
 	},
