@@ -10,6 +10,8 @@
  * 且探针涉及进程创建，留在各自的运行语境里更诚实。
  */
 
+import type { CliArgs, CliContext } from "./args";
+
 /** 单条断言的结果 */
 export interface Assertion {
 	/** 是否通过 */
@@ -18,6 +20,51 @@ export interface Assertion {
 	name: string;
 	/** 补充说明：通过时是断言体返回的 detail，失败时是抛出的错误信息 */
 	detail: string;
+}
+
+/** 进程内直调结果：与子进程冒烟的 `{ code, out, err }` 同构，断言换载体不改判据。 */
+export interface CallResult {
+	/** 退出码语义：0 成功，1 命令抛错 */
+	code: number;
+	/** 命令返回的渲染文本（成功路径） */
+	out: string;
+	/** 错误文案（引导层同形 `错误：<message>`；失败路径） */
+	err: string;
+}
+
+/**
+ * 进程内直调一条命令（等价于走一遍 main 的分发，但不起子进程）。**同步版**：
+ * 断言组测的命令（astrology / stars / classics / synastry）都是同步返回文本，
+ * harness 的 `ok` 无需为直调改异步签名。
+ *
+ * @param cmd - 命令名（须已在命令表内；未知命令由调用方先判键集）
+ * @param argv - 命令参数（不含命令名本身）
+ * @param dispatch - 命令表里的实现（`COMMANDS[cmd]`）
+ * @param parse - `parseArgs`（调用方注入，kit 不静态依赖 args 的运行时）
+ * @param ctx - 运行期上下文（内核根与其来源）
+ * @returns 与子进程冒烟同构的结果；throw 被捕获并拼成引导层同形文案
+ *
+ * @remarks
+ * 输出形态断言原用 spawnSync 起真 CLI —— 每次约 3.2 秒（iztro 冷启动），全量 30 个
+ * 调用点 ≈ 96 秒。直调复用本进程已加载的 iztro（约 25ms/次），断言语义等价：成功路径
+ * 同一返回串；错误路径同一 throw（此处捕获后拼「错误：」前缀）。「stderr 前缀 + exit 1」
+ * 这条真链路由各断言组保留的子进程冒烟覆盖。
+ */
+export function callDirect(
+	cmd: string,
+	argv: string[],
+	dispatch: (args: CliArgs, ctx: CliContext) => string | Promise<string>,
+	parse: (argv: string[], cmd: string) => CliArgs,
+	ctx: CliContext
+): CallResult {
+	try {
+		const out = dispatch(parse(argv, cmd), ctx);
+		if (typeof out !== "string")
+			throw new Error(`kit 直调仅支持同步命令（${cmd} 返回了 Promise——本断言组不测 selftest 命令）`);
+		return { code: 0, out, err: "" };
+	} catch (err) {
+		return { code: 1, out: "", err: `错误：${(err as Error).message}` };
+	}
 }
 
 /**

@@ -77,6 +77,8 @@ type ClassicsModule = typeof import("@/classics");
 type ChartViewModule = typeof import("@/synastry/chart-view");
 type ArgsModule = typeof import("@/cli/args");
 type CommandsModule = typeof import("@/cli/commands");
+/** 轻量命令元数据（名字与 HELP 文案，无命令实现依赖）——help 路径只需它。 */
+type MetaModule = typeof import("@/cli/command-meta");
 
 // 历史注记：这里曾有一段 `process.emitWarning` 猴子补丁，用于过滤
 // `MODULE_TYPELESS_PACKAGE_JSON` 告警 —— 那是上游 ziwei-master（Next.js 项目，不能把
@@ -166,68 +168,77 @@ const load = makeLoader(ROOT, ROOT_LABEL, f => {
 	process.exit(1);
 });
 
-// 钩子已就绪，从这里开始才能安全地加载任何 .ts（内核与 scripts/cli/ 下的子模块都一样）。
-// 每个模块 load 一次存 namespace：既供下方解构，也进 LOADED 表参与启动自检 ——
-// 不再有「解构一份 + REQUIRED_EXPORTS 手抄第二份」的双登记。
-const algorithmNs = await load<AlgorithmModule>("@/ziwei/algorithm");
-const patternsNs = await load<PatternsModule>("@/ziwei/patterns");
-const sihuaNs = await load<SihuaModule>("@/ziwei/mutagen");
-const constantsNs = await load<ConstantsModule>("@/ziwei/constants");
-const citiesNs = await load<CitiesModule>("@/ziwei/cities");
-const lunarNs = await load<typeof import("lunar-typescript")>("lunar-typescript");
-// classics / synastry 的入口模块（2026-09-30 三 skill 合一）：分别对应两条命令的内核
-const classicsNs = await load<ClassicsModule>("@/classics");
-const chartViewNs = await load<ChartViewModule>("@/synastry/chart-view");
-
-const argsNs = await load<ArgsModule>("@/cli/args");
-const commandsNs = await load<CommandsModule>("@/cli/commands");
-const helpMod = await load<typeof import("@/cli/help")>("@/cli/help");
-
-const { parseArgs } = argsNs;
-const { COMMANDS, COMMAND_DESC } = commandsNs;
-
-// ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默产出错盘 ──
+// ── 排盘内核的加载 + 启动自检：惰性（2026-10-09 selftest-performance 方案 B）──
+// 原先这批 load 在模块顶层无条件执行，连 `help` 都要付约 3.2 秒的 iztro 冷启动。
+// 收进本函数后，help / 未知命令路径只加载 command-meta + help（轻模块）即返回；
+// 真正要排盘 / 检索 / 合盘时才调用本函数 —— 启动自检的语义随之收窄为
+// 「加载内核时就地自检」，而 help 本来就不消费内核导出，不受影响。
 /**
- * 已加载模块清单，自检据此**派生**而非手抄第二份：对每个 namespace 的**全部**导出做
- * 非空扫描 —— 新模块加进这里一行，它的导出自动受检，「加模块忘登记、自检静默变弱」
- * 从结构上不可能。
+ * 加载排盘所需的全部模块并做启动自检，返回分发所需的命令表与参数解析器。
  *
  * @remarks
- * 子模块是静态 import 内核的，少一个导出本来就会让它们加载失败；但那时抛的是裸的
- * `SyntaxError: does not provide an export named ...`，指不到该改哪里。这里先 load 一遍
- * 并点名缺失项，把「哪个导出没了、当前内核根在哪、接下来怎么办」一次说清。
- *
- * ⚠️ 也因此：在内核里重命名或删除导出会让 CLI 立刻报错 —— **这是有意的，不是脆弱**。
- * 与 `algorithm.ts` 的 `projectPalaceName` 同一理念：宁可启动失败，也不静默产出错盘。
+ * 每个模块 load 一次存 namespace：既供解构，也进 LOADED 表参与启动自检 ——
+ * 不再有「解构一份 + REQUIRED_EXPORTS 手抄第二份」的双登记。
  */
-const LOADED: ReadonlyArray<readonly [string, Record<string, unknown>]> = [
-	["@/ziwei/algorithm", algorithmNs],
-	["@/ziwei/patterns", patternsNs],
-	["@/ziwei/mutagen", sihuaNs],
-	["@/ziwei/constants", constantsNs],
-	["@/ziwei/cities", citiesNs],
-	["lunar-typescript", lunarNs],
-	["@/classics", classicsNs],
-	["@/synastry/chart-view", chartViewNs],
-	["@/cli/args", argsNs],
-	["@/cli/commands", commandsNs],
-	["@/cli/help", helpMod],
-];
-{
-	const missing = LOADED.flatMap(([spec, ns]) =>
-		Object.entries(ns)
-			.filter(([, v]) => v === undefined || v === null)
-			.map(([n]) => `${spec} 的 ${n}`)
-	);
-	if (missing.length) {
-		console.error(
-			`[ziwei 启动自检失败] 以下上游导出缺失：${missing.join("、")}\n` +
-				`  当前内核根：${ROOT}（来源：${ROOT_LABEL}）\n` +
-				`  可能原因：内核被重构，或导出被改名 / 删除。\n` +
-				`  处理：核对 scripts/cli/ 各模块的 import 列表与 scripts/ 下内核的实际导出是否对得上。`
+async function loadCore() {
+	const algorithmNs = await load<AlgorithmModule>("@/ziwei/algorithm");
+	const patternsNs = await load<PatternsModule>("@/ziwei/patterns");
+	const sihuaNs = await load<SihuaModule>("@/ziwei/mutagen");
+	const constantsNs = await load<ConstantsModule>("@/ziwei/constants");
+	const citiesNs = await load<CitiesModule>("@/ziwei/cities");
+	const lunarNs = await load<typeof import("lunar-typescript")>("lunar-typescript");
+	// classics / synastry 的入口模块（2026-09-30 三 skill 合一）：分别对应两条命令的内核
+	const classicsNs = await load<ClassicsModule>("@/classics");
+	const chartViewNs = await load<ChartViewModule>("@/synastry/chart-view");
+
+	const argsNs = await load<ArgsModule>("@/cli/args");
+	const commandsNs = await load<CommandsModule>("@/cli/commands");
+	const helpMod = await load<typeof import("@/cli/help")>("@/cli/help");
+
+	// ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默产出错盘 ──
+	/**
+	 * 已加载模块清单，自检据此**派生**而非手抄第二份：对每个 namespace 的**全部**导出做
+	 * 非空扫描 —— 新模块加进这里一行，它的导出自动受检，「加模块忘登记、自检静默变弱」
+	 * 从结构上不可能。
+	 *
+	 * @remarks
+	 * 子模块是静态 import 内核的，少一个导出本来就会让它们加载失败；但那时抛的是裸的
+	 * `SyntaxError: does not provide an export named ...`，指不到该改哪里。这里先 load 一遍
+	 * 并点名缺失项，把「哪个导出没了、当前内核根在哪、接下来怎么办」一次说清。
+	 *
+	 * ⚠️ 也因此：在内核里重命名或删除导出会让 CLI 立刻报错 —— **这是有意的，不是脆弱**。
+	 * 与 `algorithm.ts` 的 `projectPalaceName` 同一理念：宁可启动失败，也不静默产出错盘。
+	 */
+	const LOADED: ReadonlyArray<readonly [string, Record<string, unknown>]> = [
+		["@/ziwei/algorithm", algorithmNs],
+		["@/ziwei/patterns", patternsNs],
+		["@/ziwei/mutagen", sihuaNs],
+		["@/ziwei/constants", constantsNs],
+		["@/ziwei/cities", citiesNs],
+		["lunar-typescript", lunarNs],
+		["@/classics", classicsNs],
+		["@/synastry/chart-view", chartViewNs],
+		["@/cli/args", argsNs],
+		["@/cli/commands", commandsNs],
+		["@/cli/help", helpMod],
+	];
+	{
+		const missing = LOADED.flatMap(([spec, ns]) =>
+			Object.entries(ns)
+				.filter(([, v]) => v === undefined || v === null)
+				.map(([n]) => `${spec} 的 ${n}`)
 		);
-		process.exit(1);
+		if (missing.length) {
+			console.error(
+				`[ziwei 启动自检失败] 以下上游导出缺失：${missing.join("、")}\n` +
+					`  当前内核根：${ROOT}（来源：${ROOT_LABEL}）\n` +
+					`  可能原因：内核被重构，或导出被改名 / 删除。\n` +
+					`  处理：核对 scripts/cli/ 各模块的 import 列表与 scripts/ 下内核的实际导出是否对得上。`
+			);
+			process.exit(1);
+		}
 	}
+	return { COMMANDS: commandsNs.COMMANDS, parseArgs: argsNs.parseArgs };
 }
 
 // ══════════════════════ 入口 ══════════════════════
@@ -251,18 +262,23 @@ const LOADED: ReadonlyArray<readonly [string, Record<string, unknown>]> = [
 async function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];
-	// `<命令> --help`：命令级帮助（man 七节 + 归属参数子集）。命令名必须是已注册的，
-	// 否则落到总览（`foo --help` 用户想看的还是总用法）。
+	// help 路径只加载轻模块（command-meta + help，均不依赖命令实现），不为看一眼
+	// 用途付出 iztro 冷启动（2026-10-09 selftest-performance 方案 B：约 3.3s → 近瞬时）。
 	if (cmd && cmd !== "help" && (argv.includes("--help") || argv.includes("-h"))) {
-		if (COMMANDS[cmd]) {
-			console.log(helpMod.renderCommandHelp(cmd as Parameters<typeof helpMod.renderCommandHelp>[0]));
+		const metaNs = await load<MetaModule>("@/cli/command-meta");
+		const helpLite = await load<typeof import("@/cli/help")>("@/cli/help");
+		if ((metaNs.COMMAND_NAMES as readonly string[]).includes(cmd)) {
+			console.log(helpLite.renderCommandHelp(cmd as Parameters<typeof helpLite.renderCommandHelp>[0]));
 			return;
 		}
 	}
 	if (!cmd || cmd === "help" || argv.includes("--help") || argv.includes("-h")) {
-		console.log(helpMod.renderOverviewHelp());
+		const helpLite = await load<typeof import("@/cli/help")>("@/cli/help");
+		console.log(helpLite.renderOverviewHelp());
 		return;
 	}
+	// 真正要执行命令了：此刻才加载内核并做启动自检（见 loadCore 的注释）。
+	const { COMMANDS, parseArgs } = await loadCore();
 	const fn = COMMANDS[cmd];
 	if (!fn) {
 		console.error(

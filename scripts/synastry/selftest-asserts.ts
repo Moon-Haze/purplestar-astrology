@@ -12,14 +12,13 @@
  * 与 `cli/selftest.ts` 的接口：导出 {@link asserts}，逐条结果由主 selftest 汇总。
  */
 
-import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "./synastry-knowledge";
 import { readAnalyzeJson } from "./chart-view";
-import { createHarness, type Assertion } from "../cli/selftest-kit";
+import { createHarness, callDirect, type Assertion } from "../cli/selftest-kit";
 
 /** 本内核目录（`scripts/synastry`）。 */
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -144,15 +143,23 @@ export async function asserts(): Promise<Assertion[]> {
 	// 命令表与作用域：动态 import 打断「commands → selftest → 本文件」静态环（Cmd 已
 	// 放宽为可返回 Promise），取代旧的「读源码文本做子串匹配」—— 物理排版退出契约。
 	const { COMMANDS } = await import("../cli/commands");
-	const { OPTION_NAMES } = await import("../cli/args");
+	const { OPTION_NAMES, parseArgs } = await import("../cli/args");
 	const { OPTION_SCOPE } = await import("../cli/option-scope");
 
-	/** 起子进程跑一次合并后的根 CLI（测「入口 → 解析 → 命令表 → 渲染」整条链）。 */
-	const run = (args: string[]): { code: number; out: string; err: string } => {
-		const r = spawnSync(process.execPath, [resolve(ROOT, "..", "purple-star.ts"), ...args], {
-			encoding: "utf8",
+	/**
+	 * 进程内直调一条命令（原 spawnSync 子进程——每次约 3.2 秒 iztro 冷启动，本组
+	 * 11 个调用点 ≈ 35 秒；直调复用本进程已加载的 iztro，判据同构：code/out/err
+	 * 三元组、错误路径同一「错误：」前缀文案）。「stderr 前缀 + exit 1」真链路由
+	 * 主 selftest 的三条子进程冒烟覆盖。
+	 */
+	const run = (argv: string[]): { code: number; out: string; err: string } => {
+		const [cmd, ...rest] = argv;
+		const fn = COMMANDS[cmd as keyof typeof COMMANDS];
+		if (!fn) return { code: 1, out: "", err: `未知命令「${cmd}」。` };
+		return callDirect(cmd, rest, fn, parseArgs, {
+			root: resolve(ROOT, ".."),
+			rootLabel: "技能自带内核",
 		});
-		return { code: r.status ?? -1, out: r.stdout ?? "", err: r.stderr ?? "" };
 	};
 
 	// 临时目录：两份假盘写在这里，喂给子进程。用 mkdtemp 而非固定名，避免并行跑时互相踩。
@@ -346,10 +353,10 @@ export async function asserts(): Promise<Assertion[]> {
 		});
 
 		ok("契约闭环：astrology --json 的真实产物过 readAnalyzeJson 校验", () => {
-			// 交付包内唯一能跑的自检层要直接盯住生产端-消费端 seam：typecheck 对
-			// JSON 边界无能为力（JSON.parse 后 as 断言），假盘 fixture 又只是契约的
-			// 手写拷贝，接不住生产端键名漂移 —— 让 run 起子进程排一张真盘落临时文件，
-			// 喂给 readAnalyzeJson 逐项校验，闭环不依赖交付包外的 test/。
+		// 交付包内唯一能跑的自检层要直接盯住生产端-消费端 seam：typecheck 对
+		// JSON 边界无能为力（JSON.parse 后 as 断言），假盘 fixture 又只是契约的
+		// 手写拷贝，接不住生产端键名漂移 —— 让 run（进程内直调）排一张真盘落临时
+		// 文件，喂给 readAnalyzeJson 逐项校验，闭环不依赖交付包外的 test/。
 			const r = run(["astrology", "--date", "1990-05-15", "--branch", "5", "--gender", "male", "--json"]);
 			if (r.code !== 0) throw new Error(`astrology --json 非零退出：${r.err.trim()}`);
 			const tmp = mkdtempSync(join(tmpdir(), "synastry-contract-"));

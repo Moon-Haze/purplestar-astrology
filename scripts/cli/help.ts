@@ -14,8 +14,7 @@
  * 示例与注意事项。参数清单从 `args.ts` 的 OPTION_GROUPS 派生（与实际接受面同源）。
  */
 
-import type { CommandName } from "./commands";
-import { COMMAND_DESC, COMMAND_HELP } from "./commands";
+import { COMMAND_DESC, COMMAND_HELP, COMMAND_NAMES, type CommandName } from "./command-meta";
 import { OPTION_GROUPS, OPTION_ALIASES, type OptionSpec } from "./args";
 
 /**

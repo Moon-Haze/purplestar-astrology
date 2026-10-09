@@ -63,7 +63,7 @@ import { cmdClassics } from "./classics";
 import { cmdAstrology, buildAnalyzeJson } from "./astrology";
 import { cmdSynastry } from "./synastry";
 import { renderCommandHelp, renderOverviewHelp } from "./help";
-import { createHarness, eq } from "./selftest-kit";
+import { createHarness, eq, callDirect } from "./selftest-kit";
 
 /**
  * 排盘断言的固定样例盘：1990-05-15 巳时（时辰序号 5），男。
@@ -1347,16 +1347,30 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	// ── astrology 融合（2026-09-30 四命令合一，spec §1）：输出形态断言组 ──
-	// 子进程跑真 CLI：融合后的输出形态是用户可见契约，进程内直调测不到分发层。
+	// 子进程探针只留给文末的冒烟（守住「入口 → 解析 → 命令表 → 渲染 + 错误出口」真链路）；
+	// 输出形态断言用进程内直调（call）—— 每次子进程约 3.2 秒（iztro 冷启动），直调约
+	// 25ms，判据同构（code/out/err 三元组，错误路径同一「错误：」前缀文案）。
 	const runCli = (args: string[]): { code: number; out: string; err: string } => {
 		const r = spawnSync(process.execPath, [resolve(ctx.root, "purple-star.ts"), ...args], {
 			encoding: "utf8",
 		});
 		return { code: r.status ?? -1, out: r.stdout ?? "", err: r.stderr ?? "" };
 	};
+	/** 直调版：与 runCli 同形返回。help / <cmd> --help 不走命令表分发，由 help 模块渲染函数直调。 */
+	const call = (argv: string[]): { code: number; out: string; err: string } => {
+		const [cmd, ...rest] = argv;
+		const fn = COMMANDS[cmd as keyof typeof COMMANDS];
+		if (!fn)
+			return {
+				code: 1,
+				out: "",
+				err: `未知命令「${cmd}」。可用：${commandNames.join(" / ")}\n运行 help 查看完整用法。`,
+			};
+		return callDirect(cmd, rest, fn, parseArgs, ctx);
+	};
 
 	ok("astrology：默认输出含基本信息面板与运限速览，无专题节", () => {
-		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "北京"]);
+		const r = call(["astrology", "1990-5-15", "9:30", "男", "北京"]);
 		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 		for (const want of ["【命盘总览】", "【基本信息】", "子年斗君", "【运限速览】"])
 			if (!r.out.includes(want)) throw new Error(`缺 ${want}`);
@@ -1365,7 +1379,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		return "概览默认含基本信息";
 	});
 	ok("astrology：--palaces 出十二宫逐宫详表（原 chart 职责）", () => {
-		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "--palaces"]);
+		const r = call(["astrology", "1990-5-15", "9:30", "男", "--palaces"]);
 		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 		// 十二宫逐宫详表：每宫名一块 + renderPalace 形态（星曜行）
 		for (const palace of ["命宫", "夫妻宫", "官禄宫", "福德宫", "田宅宫"])
@@ -1375,7 +1389,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		return "十二宫详表在";
 	});
 	ok("astrology：--topic love 出主题论断（原 topic 职责）；--view 越界报错", () => {
-		const r = runCli([
+		const r = call([
 			"astrology",
 			"1990-5-15",
 			"9:30",
@@ -1386,42 +1400,42 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 		if (!r.out.includes("【主题论断")) throw new Error("缺主题论断标题");
 		if (!r.out.includes("知识来源分级")) throw new Error("缺知识来源分级披露");
-		const bad = runCli(["astrology", "1990-5-15", "9:30", "男", "--topic", "love", "--view", "xxx"]);
+		const bad = call(["astrology", "1990-5-15", "9:30", "男", "--topic", "love", "--view", "xxx"]);
 		if (bad.code === 0 || !bad.err.includes("--view")) throw new Error("--view 越界应报错并点名");
 		return "主题论断与 view 校验在";
 	});
-	ok("astrology：旧命令名已删且报错指路", () => {
+	ok("astrology：旧命令名已删（命令表键集层面；stderr/exit 指路由冒烟断言覆盖）", () => {
 		for (const old of ["analyze", "chart", "topic", "insight", "cities"]) {
-			const r = runCli([old, "--date", "1990-05-15", "--time", "9:30", "--gender", "男"]);
-			if (!r.err.includes("未知命令") || !r.err.includes("astrology"))
-				throw new Error(`${old} 应报未知命令并指路 astrology，实得：${r.err.trim()}`);
+			if (COMMANDS[old as keyof typeof COMMANDS])
+				throw new Error(`${old} 不应仍在命令表里 —— 应已收敛到 astrology`);
 		}
-		return "5 个旧命令名全部指路 astrology";
+		return "5 个旧命令名已全部出表";
 	});
 	ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运限引动）", () => {
-		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "--focus", "命宫"]);
+		const r = call(["astrology", "1990-5-15", "9:30", "男", "--focus", "命宫"]);
 		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 		for (const want of ["会照", "对宫", "格局", "小限"])
 			if (!r.out.includes(want)) throw new Error(`focus 深化缺 ${want}`);
 		return "四项深化在";
 	});
 
-	ok("astrology：不存在的公历日期子进程全链路报错（--json 机器路径同受校验）", () => {
+	ok("astrology：不存在的公历日期全链路报错（--json 机器路径同受校验）", () => {
 		// 进程内 buildBirthInfo 断言在「出生信息」区；这条补的是**用户与机器真正走的路**：
-		// 引导层 catch → stderr「错误：…」+ exit 1，--json 分支（先 buildBirthInfo 再 stringify）
-		// 不许把 throw 吞成正常 JSON 输出。
+		// --json 分支（先 buildBirthInfo 再 stringify）不许把 throw 吞成正常 JSON 输出。
+		// 载体是进程内直调：throw → code 1 / out 空 / err 含原文；「stderr 前缀 + exit 1」
+		// 的子进程真链路由文末冒烟覆盖。
 		for (const bad of ["2011-02-30", "2011-02-29"]) {
-			const r = runCli(["astrology", "--date", bad, "--time", "07:45", "--city", "杭州", "--gender", "male", "--json"]);
+			const r = call(["astrology", "--date", bad, "--time", "07:45", "--city", "杭州", "--gender", "male", "--json"]);
 			if (r.code === 0) throw new Error(`${bad} 未报错（退出码 0）—— 静默归一化又回来了`);
 			if (r.out.trim()) throw new Error(`${bad} 报错时 stdout 应为空（不许输出半截 JSON），实得：${r.out.slice(0, 60)}`);
 			if (!(r.err.includes(bad) || r.err.includes("不存在")))
 				throw new Error(`${bad} 的报错未回显原始输入，实得：${r.err.trim()}`);
 		}
 		// 闰年边界不得误伤：2012-02-29 必须正常排出整盘
-		const leap = runCli(["astrology", "--date", "2012-02-29", "--time", "07:45", "--city", "杭州", "--gender", "male"]);
+		const leap = call(["astrology", "--date", "2012-02-29", "--time", "07:45", "--city", "杭州", "--gender", "male"]);
 		if (leap.code !== 0) throw new Error(`2012-02-29（闰年）被误伤：${leap.err.trim()}`);
 		if (!leap.out.includes("【命盘总览】")) throw new Error("2012-02-29 应正常排出命盘总览");
-		return "非法日期 stderr+exit1（--json 同）；闰年 2-29 放行";
+		return "非法日期 code1/out空/err回显（--json 同）；闰年 2-29 放行";
 	});
 
 	ok("--config：JSON 配置应用，命令行同名键覆盖，排盘正确", () => {
@@ -1431,19 +1445,19 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			// ① 纯配置：排出虚构样例盘
 			const cfg = join(tmp, "a.json");
 			writeFileSync(cfg, JSON.stringify({ date: "2011-06-24", time: "07:45", gender: "male", city: "杭州" }), "utf8");
-			const viaCfg = runCli(["astrology", "--config", cfg]);
+			const viaCfg = call(["astrology", "--config", cfg]);
 			if (viaCfg.code !== 0) throw new Error(`--config 排盘失败：${viaCfg.err.trim()}`);
 			if (!viaCfg.out.includes("2011-6-24") && !viaCfg.out.includes("2011-06-24"))
 				throw new Error("配置里的日期没生效");
 			// ② 命令行覆盖：同键以命令行为准（换城市 → 经度行不同）
-			const mixed = runCli(["astrology", "--config", cfg, "--city", "成都"]);
+			const mixed = call(["astrology", "--config", cfg, "--city", "成都"]);
 			if (mixed.code !== 0) throw new Error(`覆盖运行失败：${mixed.err.trim()}`);
 			if (!mixed.out.includes("成都") && !mixed.out.includes("104.1"))
 				throw new Error("命令行 --city 未覆盖配置的同名键");
 			// ③ 配置内未知键报错（与命令行同规则）
 			const bad = join(tmp, "bad.json");
 			writeFileSync(bad, JSON.stringify({ date: "2011-06-24", noSuchKey: 1 }), "utf8");
-			const r = runCli(["astrology", "--config", bad]);
+			const r = call(["astrology", "--config", bad]);
 			if (r.code === 0) throw new Error("未知键未报错");
 			if (!r.err.includes("noSuchKey")) throw new Error(`报错未点名未知键，实得：${r.err.trim()}`);
 			return "应用 / 覆盖 / 未知键三面成立";
@@ -1454,13 +1468,13 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	ok("--template：模板可被 --config 吃回并排出示例盘（闭环）", () => {
 		const tmp = mkdtempSync(join(tmpdir(), "ziwei-tpl-"));
 		try {
-			const tpl = runCli(["astrology", "--template"]);
+			const tpl = call(["astrology", "--template"]);
 			if (tpl.code !== 0) throw new Error(`--template 失败：${tpl.err.trim()}`);
 			if (!tpl.out.includes("_")) throw new Error("模板缺注释性 _ 前缀键");
 			// 落盘后直接 --config 吃回（模板必须是合法可跑的配置）
 			const f = join(tmp, "my.json");
 			writeFileSync(f, tpl.out, "utf8");
-			const back = runCli(["astrology", "--config", f]);
+			const back = call(["astrology", "--config", f]);
 			if (back.code !== 0) throw new Error(`模板吃回失败：${back.err.trim()}`);
 			if (!back.out.includes("【命盘总览】")) throw new Error("吃回后应排出示例盘");
 			return "模板闭环成立";
@@ -1470,13 +1484,13 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	ok("help 强化：总览含 man 七节标题且节序固定（总览另含 COMMANDS 节）", () => {
-		const r = runCli(["help"]);
-		if (r.code !== 0) throw new Error(`help 退出码 ${r.code}：${r.err.trim()}`);
+		// help 不走命令表分发（main 特判），直调渲染函数即可 —— 断言对象是渲染产物本身。
+		const out = renderOverviewHelp();
 		const SECTIONS = ["NAME", "SYNOPSIS", "DESCRIPTION", "COMMANDS", "OPTIONS", "EXAMPLES", "NOTES", "SEE ALSO"];
 		let last = -1;
 		for (const sec of SECTIONS) {
 			// 节标题独占一行：首节顶行，其余前置换行
-			const idx = r.out.startsWith(`${sec}\n`) ? 0 : r.out.indexOf(`\n${sec}\n`);
+			const idx = out.startsWith(`${sec}\n`) ? 0 : out.indexOf(`\n${sec}\n`);
 			if (idx < 0) throw new Error(`help 缺节标题 ${sec}`);
 			if (idx < last) throw new Error(`节序错乱：${sec} 出现在前一节之前`);
 			last = idx;
@@ -1484,28 +1498,46 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		return `${SECTIONS.length} 节齐全且有序`;
 	});
 	ok("help 强化：每命令 --help 出归属参数子集（astrology 无 --search，stars 反之）", () => {
-		const astro = runCli(["astrology", "--help"]);
-		if (astro.code !== 0) throw new Error(`astrology --help 退出码 ${astro.code}`);
-		for (const want of ["NAME", "OPTIONS", "EXAMPLES"]) 
-			if (!astro.out.includes(want)) throw new Error(`astrology --help 缺 ${want}`);
+		const astro = renderCommandHelp("astrology");
+		for (const want of ["NAME", "OPTIONS", "EXAMPLES"])
+			if (!astro.includes(want)) throw new Error(`astrology --help 缺 ${want}`);
 		for (const own of ["--pattern", "--mutagen", "--yearly", "--palaces", "--topic"])
-			if (!astro.out.includes(own)) throw new Error(`astrology --help 应列 ${own}`);
-		if (astro.out.includes("--search")) throw new Error("astrology --help 不该列 --search（归属过滤）");
-		const stars = runCli(["stars", "--help"]);
-		if (stars.code !== 0) throw new Error(`stars --help 退出码 ${stars.code}`);
-		if (!stars.out.includes("--search")) throw new Error("stars --help 应列 --search");
-		if (stars.out.includes("--pattern")) throw new Error("stars --help 不该列 --pattern（归属过滤）");
+			if (!astro.includes(own)) throw new Error(`astrology --help 应列 ${own}`);
+		if (astro.includes("--search")) throw new Error("astrology --help 不该列 --search（归属过滤）");
+		const stars = renderCommandHelp("stars");
+		if (!stars.includes("--search")) throw new Error("stars --help 应列 --search");
+		if (stars.includes("--pattern")) throw new Error("stars --help 不该列 --pattern（归属过滤）");
 		return "归属过滤双向成立";
 	});
 	ok("help 强化：示例用新虚构组合且注明「示例数据为虚构」", () => {
-		const r = runCli(["help"]);
-		if (!r.out.includes("2011-06-24") || !r.out.includes("杭州")) throw new Error("缺甲方虚构样例 2011-06-24 杭州");
-		if (!r.out.includes("1999-11-03") || !r.out.includes("成都")) throw new Error("缺乙方虚构样例 1999-11-03 成都");
-		if (!r.out.includes("虚构")) throw new Error("缺「示例数据为虚构」注记");
+		const out = renderOverviewHelp();
+		if (!out.includes("2011-06-24") || !out.includes("杭州")) throw new Error("缺甲方虚构样例 2011-06-24 杭州");
+		if (!out.includes("1999-11-03") || !out.includes("成都")) throw new Error("缺乙方虚构样例 1999-11-03 成都");
+		if (!out.includes("虚构")) throw new Error("缺「示例数据为虚构」注记");
 		// 旧组合清退：help 里不再出现 1990-05-15 / 1993-08-22 示例
-		for (const old of ["1990-05-15", "1993-08-22"]) 
-			if (r.out.includes(old)) throw new Error(`旧示例组合 ${old} 仍在 help 里`);
+		for (const old of ["1990-05-15", "1993-08-22"])
+			if (out.includes(old)) throw new Error(`旧示例组合 ${old} 仍在 help 里`);
 		return "虚构示例 + 注记在，旧组合已清退";
+	});
+
+	// ── 子进程冒烟（仅此三条用 runCli）：守住直调测不到的「入口 → 分发 → 进程出口」真链路 ──
+	ok("冒烟（子进程）：成功链路 入口→解析→命令表→渲染 一次走通", () => {
+		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "北京"]);
+		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		if (!r.out.includes("【命盘总览】")) throw new Error("缺总览");
+		return "子进程成功链路在";
+	});
+	ok("冒烟（子进程）：错误链路 stderr「错误：」前缀 + exit 1 + stdout 空（--json 路径）", () => {
+		const r = runCli(["astrology", "--date", "2011-02-30", "--time", "07:45", "--gender", "male", "--json"]);
+		if (r.code === 0 || !r.err.startsWith("错误：")) throw new Error(`应 stderr「错误：」前缀 + 非零退出，实得 code=${r.code} err=${r.err.slice(0, 60)}`);
+		if (r.out.trim()) throw new Error("stdout 应为空");
+		return "子进程错误出口在";
+	});
+	ok("冒烟（子进程）：未知命令 stderr + exit 1 并指路", () => {
+		const r = runCli(["analyze", "--date", "1990-05-15"]);
+		if (r.code === 0 || !r.err.includes("未知命令") || !r.err.includes("astrology"))
+			throw new Error(`实得：${r.err.trim()}`);
+		return "未知命令指路在";
 	});
 
 	ok("参数面：SKILL.md 命令速查表提到的命令都在 commands.ts 的命令表里", () => {
