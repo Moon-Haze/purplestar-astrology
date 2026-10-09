@@ -70,7 +70,7 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 ```
 
 1. **排盘取数** —— `astrology`（四命令合一）默认输出**概览**：命盘总览三行 + 基本信息 12 行面板（无条件）+ 口径提示（出生地 / 晚子时）+ 运限速览 + 功能参数指路。深入全靠**功能参数**：`--pattern` 格局、`--mutagen` 四化（配 `--monthly` 流月）、`--yearly [年]` 流年、`--decadal [虚岁]` 十年大运、`--ages [虚岁]` 小限、`--focus <宫>` 宫盘四项深化、`--palaces` 十二宫逐宫详表、`--topic <key>` 主题论断 —— **专题参数可叠加**（`--info` / `--palaces` / `--topic` 是**独占分支**：给出即接管输出，与其余功能参数同给会报错指路），全盘解读通常 `--pattern --mutagen --decadal` 一次拿齐。只给农历用 `--lunar`，只知时辰名用 `--branch`。批量排盘可用 `--config <my.json>`（配置是基底，命令行同名参数覆盖；`--template` 生成模板）。
-2. **按需深入知识源** —— 需要展开论证时，**直接读 `scripts/` 下的权威文件**（`ziwei/` 格局库与四化、`classics/` 古籍、`synastry/` 合盘断语），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则调本 CLI 的 `classics` 命令。
+2. **按需深入知识源** —— 需要展开论证时，**能用 CLI 命令查的优先用命令**（古籍原文用 `classics`、星曜释义用 `stars`——命令输出即已校验形态）；命令查不到或需读源码语义时，再读 `scripts/` 下的权威文件（`ziwei/` 格局库与四化、`classics/` 古籍、`synastry/` 合盘断语），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则调本 CLI 的 `classics` 命令。
 3. **解读** —— 命宫定基调 → 格局定性 → 四化定着力点 → 大限看阶段 → 结论落到具体建议，**不跳步**。
 
 ## 解读输出契约
@@ -105,10 +105,22 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 
 ## 其他已知事实
 
-- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis/`：推算 + `data.ts` 论断文案与类型映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `astrology --topic` 使用。⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话，引用下断语须注明口径。解读的知识源是工作流第 2 步列出的六个。
+### 知识库来源
+
+- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/ziwei/analysis/`：推算 + `data.ts` 论断文案与类型映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `astrology --topic` 使用。解读的知识源是工作流第 2 步列出的六个。
+- **分析数据库 v3 的输出分级**：⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话（verified / traditional / methodology / suspect 四级），引用下断语须注明口径。
+
+### 亮度与星曜口径
+
 - **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `tough` / `soft`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键），只有 `type === "major"` 的那 14 颗带 `brightness`，其余三类不带（信息比 iztro 原始输出少，是口径选择不是缺漏）。
+
+### 年龄与运限口径
+
 - **年龄一律是虚岁**：`currentAge`（当前年龄）、`decadals[].startAge/endAge`、`palace.decadalRange` 三者**同为虚岁**，以**农历年（正月初一）为界** —— 不是生日，也不是立春。数据来自 iztro 的 `decadal.range`。解读时报给用户的年龄就用这个虚岁，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
 - **童限**：`currentDecadalIndex === -1` 表示此人**尚未起运**（虚岁小于五行局数，如土五局要 5 岁才起运），此时 CLI 的「当前大限」显示 `—`。这是正常的，不是数据缺失——此时按命宫论，不要硬套一个大限。
+
+### 数据面布局
+
 - **十二宫顺序**：`chart.palaces` 按**地支数组序**排，实测为 `2,3,…,11,0,1`（**寅起**）——既不是 0-11（子起），也不是宫位顺序（命宫起）。定位某宫请按 `branch` 建索引，**不要依赖数组下标**。CLI 的「十二宫详表」（`--palaces`）也是这个序。
 - **流年 / 流月的月份**：`--monthly` 取**农历月** 1-12，月干由流年干按五虎遁推。
 - **运限数据面**（2026-09-28 起）：`Palace.ages` 是小限岁数表（**虚岁**域，十二宫并集连续覆盖 1–120，每宫 10 个）；流年命宫 = **年支所在宫**（三合派不重排十二宫）；`chart.mingZhu` / `shenZhu` 是命主/身主（iztro 直给），`douJunBranch` 是子年斗君（自推，闰月按所闰月数计）。`--info` 里的节气/非节气四柱**仅为出生时刻记录，本技能不做八字论命**。
@@ -123,7 +135,7 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 | `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后）                                                                 |
 | `selftest`                            | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次                                              |
 
-高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>` 可叠加（`--info` / `--palaces` / `--topic` 是独占分支；拼音别名 `--geju`/`--sihua`/`--liunian`/`--daxian`/`--xiaoxian` 仍被识别）；输出 `--json`。
+高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>` 可叠加（`--info` / `--palaces` / `--topic` 是独占分支；拼音别名仍被识别，全表见 options.md）；输出 `--json`。
 
 完整参数面（英文主名 / 拼音别名 / 位置参数形态 / `--config` / `--charts`）、各专题的内容、`--focus` 的宫名口径（含「交友宫」不是「仆役」）见 [references/options.md](references/options.md)。
 
