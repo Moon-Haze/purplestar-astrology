@@ -1200,8 +1200,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			"地理经度 : 120.000",
 			"钟表时间 : 2000-4-6 0:15",
 			"农历时间 : 庚辰年三月初二日子时",
-			"节气四柱 : 庚辰 庚辰 甲午 甲子",
-			"非节气四柱 : 庚辰 庚辰 甲午 甲子",
+			// 两口径相同（该样例年柱/月柱分界一致）→ 合并为一行（O3：并列相同值是噪音）
+			"四柱(节气与非节气同) : 庚辰 庚辰 甲午 甲子",
 			"五行局数 : 金四局",
 			"命盘类型 : 三合盘(天盘)",
 			"命主:廉贞",
@@ -1213,6 +1213,19 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		const miss = want.filter(w => !text.includes(w));
 		if (miss.length) throw new Error(`基本信息节缺以下行：\n  ${miss.join("\n  ")}`);
 		return `${want.length} 项全部在`;
+	});
+
+	ok("专题渲染：节气与非节气四柱分叉时并列两行（2021-02-08，立春后/正月初一前）", () => {
+		// 2021 立春 2-03、正月初一 2-12：2-08 出生者节气口径已入辛丑年、农历口径
+		// 仍在庚子年腊月 —— 年/月柱分叉，正是需要并列对照的形态。
+		const c = generateChart({ year: 2021, month: 2, day: 8, timeIndex: 4, gender: "male" });
+		const text = infoSection(c, { clockTime: "8:30", solarNote: "", longitude: 120 }).join("\n");
+		const jie = text.split("\n").find(l => l.startsWith("节气四柱 : "));
+		const fei = text.split("\n").find(l => l.startsWith("非节气四柱 : "));
+		if (!jie || !fei) throw new Error(`两口径分叉时应并列两行，实得：\n${text}`);
+		if (jie.slice("节气四柱 : ".length) === fei.slice("非节气四柱 : ".length))
+			throw new Error("样例选取失效：两口径竟然相同，请换立春/正月初一之间的日期");
+		return "分叉时两行对照在";
 	});
 
 	ok("专题渲染：流年专题（流年命宫 / 三方四正 / 四化落点 / 与大限关系）", () => {

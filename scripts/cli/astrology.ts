@@ -383,6 +383,8 @@ export function cmdAstrology(args: CliArgs) {
 			longitude,
 		})
 	);
+	// 面板注释行与运限速览之间隔一个空行，与出生地/晚子时节的空行分隔节奏一致
+	out.push("");
 	out.push(...overviewSection(chart, liuNianYear));
 	if (args.pattern) out.push("", ...patternSection(chart));
 	// 流月四化随四化专题输出：单独给 --monthly（不带 --mutagen）会被静默吞掉，在这里指路。

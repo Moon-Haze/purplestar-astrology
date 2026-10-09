@@ -315,19 +315,6 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	if (!year || !month || !day)
 		throw new Error("缺少出生日期：需 --date YYYY-MM-DD 或 --lunar YYYY-MM-DD");
 
-	// 性别决定大限顺逆：同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁）。
-	// 缺失或非法若被静默兜底成 male，用户拿到的是一张没有任何异常信号的错盘，
-	// 故按「宁可启动失败，也不静默产出错盘」处理：一律报错。
-	const genderRaw = g("gender");
-	if (genderRaw === undefined)
-		throw new Error(
-			`缺少性别：需 --gender male|female|男|女（性别决定大限顺逆，缺失会排出错盘）`
-		);
-	const genderValue = String(genderRaw).toLowerCase();
-	if (!["male", "m", "男", "female", "f", "女"].includes(genderValue))
-		throw new Error(`--gender 应为 male|female|男|女，收到：${genderRaw}`);
-	const gender = ["female", "f", "女"].includes(genderValue) ? "female" : "male";
-
 	// ── 真太阳时口径：默认只做经度校正；--eot 额外计入均时差 ──
 	// 均时差与经度无关（--lng 120 时也不为 0），故这个开关独立于「出生地是否给出」。
 	const useEot = g("eot") === true || g("eot") === "true";
@@ -437,6 +424,21 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	} else {
 		throw new Error("缺少出生时辰：需 --time HH:MM 或 --branch 0-12");
 	}
+
+	// 性别决定大限顺逆：同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁）。
+	// 缺失或非法若被静默兜底成 male，用户拿到的是一张没有任何异常信号的错盘，
+	// 故按「宁可启动失败，也不静默产出错盘」处理：一律报错。
+	// （校验位置在时辰之后：缺项报错保持「日期 → 时辰 → 性别」的自然顺序——
+	//   只给日期时先报缺时辰，而不是跳过时辰直接报缺性别。）
+	const genderRaw = g("gender");
+	if (genderRaw === undefined)
+		throw new Error(
+			`缺少性别：需 --gender male|female|男|女（性别决定大限顺逆，缺失会排出错盘）`
+		);
+	const genderValue = String(genderRaw).toLowerCase();
+	if (!["male", "m", "男", "female", "f", "女"].includes(genderValue))
+		throw new Error(`--gender 应为 male|female|男|女，收到：${genderRaw}`);
+	const gender = ["female", "f", "女"].includes(genderValue) ? "female" : "male";
 
 	const notes = [dateNote, lngNote, hourNote].filter(Boolean);
 	return {

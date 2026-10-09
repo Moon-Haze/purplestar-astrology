@@ -182,6 +182,12 @@ export function infoSection(chart: ZiweiChart, opts: InfoClockOpts): string[] {
 	const jieQi = `${bazi.getYear()} ${bazi.getMonth()} ${bazi.getDay()} ${bazi.getTime()}`;
 	const feiJieQi = `${lunar.getYearInGanZhi()} ${lunar.getMonthInGanZhi()} ${bazi.getDay()} ${bazi.getTime()}`;
 	const nongLi = `${STEMS[li.yearStem]}${BRANCHES[li.yearBranch]}年${lunarMonthCN(li.lunarMonth)}${lunarDayCN(li.lunarDay)}日${BRANCHES[bi.timeIndex % 12]}时`;
+	// 两口径相同时并列两行是噪音（并列相同值会被读者当成 bug 疑点）；只有分叉
+	// （立春与正月初一之间出生，年/月柱走不同分界）才值得并列对照。
+	const pillars =
+		jieQi === feiJieQi
+			? [`四柱(节气与非节气同) : ${jieQi}`]
+			: [`节气四柱 : ${jieQi}`, `非节气四柱 : ${feiJieQi}`];
 	return [
 		"【基本信息】",
 		`性别 : ${bi.gender === "male" ? "男" : "女"}`,
@@ -189,8 +195,7 @@ export function infoSection(chart: ZiweiChart, opts: InfoClockOpts): string[] {
 		`钟表时间 : ${opts.clockTime ?? "未给（按 --branch 时辰排盘）"}`,
 		`真太阳时 : ${opts.solarNote}`,
 		`农历时间 : ${nongLi}`,
-		`节气四柱 : ${jieQi}`,
-		`非节气四柱 : ${feiJieQi}`,
+		...pillars,
 		`五行局数 : ${chart.fiveElementsClassName}`,
 		"命盘类型 : 三合盘(天盘)",
 		`身主:${chart.shenZhu}; 命主:${chart.mingZhu}; 子年斗君:${BRANCHES[chart.douJunBranch]}; 身宫:${BRANCHES[chart.bodyBranch]}`,
