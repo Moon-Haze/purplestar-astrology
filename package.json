@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"private": true,
 	"type": "module",
-	"description": "紫微斗数 skill 仓库（倪海夏《天纪》三合派）。排盘内核只有一处实现，在 scripts/（2026-09-30 起上提仓库根，仓库根 = skill 根）；classics 与 synastry 的搬入见实施计划。",
+	"description": "紫微斗数 skill 仓库（倪海夏《天纪》三合派）。排盘内核只有一处实现，在 scripts/（仓库根 = skill 根）；classics 与 synastry 的搬入见实施计划。",
 	"scripts": {
 		"test": "node test/lib/run.ts",
 		"test:corpus": "tsx test/tools/full-corpus.ts",
@@ -17,6 +17,9 @@
 	"devDependencies": {
 		"@duckdb/node-api": "1.5.5-r.5",
 		"@types/node": "^26.6.2",
+		"eslint": "^10.12.0",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-prettier": "^5.5.6",
 		"tsx": "^4.19.1",
 		"typescript": "^7.0.2"
 	},
