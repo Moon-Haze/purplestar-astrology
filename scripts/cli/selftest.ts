@@ -51,7 +51,12 @@ import {
 import type { BirthInfo } from "@/ziwei/types";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns } from "@/ziwei/patterns";
-import { getMutagenByStem, getYearStemIndex, getMonthlyMutagen, getYearlyMutagen } from "@/ziwei/mutagen";
+import {
+	getMutagenByStem,
+	getYearStemIndex,
+	getMonthlyMutagen,
+	getYearlyMutagen,
+} from "@/ziwei/mutagen";
 import { readAnalyzeJson } from "@/synastry/chart-view";
 import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
 import { STEMS, BRANCHES, STAR_DESCRIPTIONS } from "@/ziwei/constants";
@@ -466,7 +471,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		eq(c.palaces.length, 12, "宫位数 ");
 		eq(new Set(c.palaces.map(p => p.branch)).size, 12, "地支去重后 ");
 		eq(c.palaces.filter(p => p.isSoulPalace).length, 1, "命宫数 ");
-		if (![2, 3, 4, 5, 6].includes(c.fiveElementsClass)) throw new Error(`五行局异常：${c.fiveElementsClass}`);
+		if (![2, 3, 4, 5, 6].includes(c.fiveElementsClass))
+			throw new Error(`五行局异常：${c.fiveElementsClass}`);
 		if (c.ziweiPos < 0 || c.ziweiPos > 11) throw new Error(`紫微位异常：${c.ziweiPos}`);
 		if (c.decadals.length !== 12) throw new Error(`大限数异常：${c.decadals.length}`);
 	});
@@ -484,7 +490,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		// 随机性进测试覆盖、不进期望值（spec §3.4）：线性同余取**确定性伪随机**——
 		// 「随机」的样本覆盖是可复现的，任何一次运行都不依赖真随机性。
 		let seed = 20260930;
-		const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+		const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
 		for (let i = 0; i < 20; i++) {
 			const year = 1950 + Math.floor(rnd() * 60),
 				month = 1 + Math.floor(rnd() * 12),
@@ -498,9 +504,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			});
 			if (c.palaces.length !== 12 || new Set(c.palaces.map(p => p.branch)).size !== 12)
 				throw new Error(`${year}-${month}-${day} 十二宫不自洽`);
-			const ages = [...new Set(c.palaces.flatMap(p => p.ages ?? []))].sort(
-				(a, b) => a - b
-			);
+			const ages = [...new Set(c.palaces.flatMap(p => p.ages ?? []))].sort((a, b) => a - b);
 			if (ages.length !== 120 || ages[0] !== 1 || ages[119] !== 120)
 				throw new Error(`${year}-${month}-${day} ages 覆盖不自洽`);
 			if (c.douJunBranch < 0 || c.douJunBranch > 11) throw new Error("斗君越界");
@@ -515,7 +519,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	ok("术语对齐：iztro 字段名生效（fiveElementsClass / soulBranch / ages / mutagen）", () => {
-		// 2026-09-30 术语五层对齐（spec §2.9）：类型值 lucky/sha→soft/tough、SiHua→Mutagen、
+		// 术语五层对齐（spec §2.9）：类型值 lucky/sha→soft/tough、SiHua→Mutagen、
 		// DaXian→Decadal；内核字段 wuxingJu→fiveElementsClass、mingGongBranch→soulBranch、
 		// shenGongBranch→bodyBranch、xiaoXianAges→ages、isMingGong→isSoulPalace 等。
 		const c = generateChart(SAMPLE);
@@ -529,7 +533,10 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		const oldSha = "s" + "ha";
 		if (c.palaces.some(x => x.stars.some(s => s.type === oldLucky || s.type === oldSha)))
 			throw new Error("Star.type 仍有 lucky/sha 残留");
-		if (c.palaces.some(x => x.stars.some(s => s.type === "soft" || s.type === "tough")) === false)
+		if (
+			c.palaces.some(x => x.stars.some(s => s.type === "soft" || s.type === "tough")) ===
+			false
+		)
 			throw new Error("soft/tough 未出现");
 		return "字段/类型值对齐";
 	});
@@ -544,9 +551,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 				throw new Error(`岁数表不连续：第 ${i} 位是 ${uniq[i]}，应为 ${i + 1}`);
 		for (const p of c.palaces)
 			if ((p.ages ?? []).length !== 10)
-				throw new Error(
-					`${p.name} 的小限岁数不是 10 个：${(p.ages ?? []).join(",")}`
-				);
+				throw new Error(`${p.name} 的小限岁数不是 10 个：${(p.ages ?? []).join(",")}`);
 		// 校准锚点：1990 样例命宫(子)的小限自虚岁 9 起
 		const ming = c.palaces.find(p => p.isSoulPalace);
 		if (!ming) throw new Error("找不到命宫");
@@ -592,7 +597,9 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	ok("体系合规：合盘输出无飞星派断语，两库引句口径不打架", () => {
 		const k = readFileSync(resolve(ctx.root, "synastry", "synastry-knowledge.ts"), "utf8");
 		if (/自化(禄|权|科|忌)/.test(k))
-			throw new Error("synastry-knowledge 仍含「自化」断语——体系不计算宫干自化，用户可见文案不得出现");
+			throw new Error(
+				"synastry-knowledge 仍含「自化」断语——体系不计算宫干自化，用户可见文案不得出现"
+			);
 		const d = readFileSync(resolve(ctx.root, "ziwei", "analysis", "data.ts"), "utf8");
 		// 七杀「毁一半」引句是 suspect 档：两库各自引用时，引句前 40 字内必须带
 		// 「坊间流传」口径标注（data.ts 形态「坊间流传倪师笑言（未核实）」、
@@ -753,7 +760,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	ok("解析引擎：util.parseArgs tokens 底座——贪婪取值 / 等号式 / -- 分隔", () => {
-		// 2026-09-30 引擎重写（spec §2.8）：cac 退役，底座换 Node 内置 util.parseArgs（tokens 模式）。
+		// 解析引擎（spec §2.8）：底座为 Node 内置 util.parseArgs（tokens 模式）。
 		// ⚠️ 贪婪取值是**版本敏感**行为（Node ≥ 22.15 实测贪婪；早期 18.x 会把负数当短选项），
 		//    本断言钉死——Node 行为若回退立即变红。
 		const a = parseArgs(["--limit", "-3"], "classics");
@@ -763,14 +770,18 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 	ok("解析引擎：重复参数与主别名同现必须报错", () => {
 		// 旧引擎（cac）对重复参数取末值——静默择一。新契约：显式报错（宁可报错不静默）。
-		for (const argv of [["--geju", "--geju"], ["--geju", "--pattern"]]) {
+		for (const argv of [
+			["--geju", "--geju"],
+			["--geju", "--pattern"],
+		]) {
 			let msg = "";
 			try {
 				parseArgs(argv, "astrology");
 			} catch (e) {
 				msg = (e as Error).message;
 			}
-			if (!msg) throw new Error(`${argv.join(" ")} 未报错——重复参数应报错（旧「取末值」废止）`);
+			if (!msg)
+				throw new Error(`${argv.join(" ")} 未报错——重复参数应报错（旧「取末值」废止）`);
 		}
 	});
 	ok("解析引擎：拼音别名归一到英文主名", () => {
@@ -839,7 +850,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 
 	ok("出生信息：公历日期不存在的 round-trip 校验（不静默归一化出错盘）", () => {
 		// JS Date 会把 2011-02-30 静默归一化成 03-02：标题印 02-30、实际排 03-02 的错盘，
-		// --json 的 birthInfo.day=30 与 lunarInfo.lunarDay 更自相矛盾。2026-10-01 起反查
+		// --json 的 birthInfo.day=30 与 lunarInfo.lunarDay 更自相矛盾。反查
 		// 必须原样回来，否则报错（与农历路径的回环校验同一立场）。文案须回显原始输入。
 		for (const bad of ["2011-02-30", "2011-02-29"]) {
 			let msg = "";
@@ -862,12 +873,16 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		if (!posMsg.includes("2011-2-30"))
 			throw new Error(`位置参数 2011-2-30 未报错或未回显原文，实得：${posMsg || "未报错"}`);
 		// 闰年边界不得误伤：2012-02-29 必须原样通过
-		const leap = buildBirthInfo(parseArgs(["--date", "2012-02-29", "07:45", "杭州", "male"], "astrology"));
+		const leap = buildBirthInfo(
+			parseArgs(["--date", "2012-02-29", "07:45", "杭州", "male"], "astrology")
+		);
 		eq(leap.info.year, 2012, "闰年 2-29 年份 ");
 		eq(leap.info.month, 2, "闰年 2-29 月份 ");
 		eq(leap.info.day, 29, "闰年 2-29 日 ");
 		// 宽松合法格式先归一再校验，1990-5-15 不受影响
-		const loose = buildBirthInfo(parseArgs(["--date", "1990-5-15", "07:45", "杭州", "male"], "astrology"));
+		const loose = buildBirthInfo(
+			parseArgs(["--date", "1990-5-15", "07:45", "杭州", "male"], "astrology")
+		);
 		eq(loose.info.day, 15, "宽松格式 1990-5-15 日 ");
 		return "2-30 / 平年 2-29 报错并回显；闰年 2-29 与宽松格式放行";
 	});
@@ -947,8 +962,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	ok("命令面：--search 末尾缺值（裸开关 true）必须指路，不把 true 当检索词", () => {
-		// 2026-10-01 起值域非法走 throw（引导层打「错误：」上 stderr 并 exit 1），
-		// 不再 return——return 会把报错当正常输出打 stdout 且 exit 0，机器路径无法感知。
+		// 值域非法走 throw（引导层打「错误：」上 stderr 并 exit 1），
+		// 不 return——return 会把报错当正常输出打 stdout 且 exit 0，机器路径无法感知。
 		let msg = "";
 		try {
 			cmdStars(parseArgs(["--search"], "stars"));
@@ -961,8 +976,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 
 	ok("命令面：classics --search 末尾缺值同样指路", () => {
 		const s = cmdClassics(parseArgs(["--limit", "3", "--search"], "classics"));
-		if (!s.includes("需要一个检索词"))
-			throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);
+		if (!s.includes("需要一个检索词")) throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);
 	});
 
 	ok("命令面：--monthly 不带 --mutagen 必须指路（流月四化随四化专题输出）", () => {
@@ -1005,9 +1019,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 				throw new Error(`独占分支未指路（${keyword}）：${msg ?? "未报错且静默输出"}`);
 		}
 		// 组合边界：--json + --palaces 是 synastry 契约，必须保留且出合法 JSON
-		const json = cmdAstrology(
-			parseArgs([...base, "--palaces", "--json"], "astrology")
-		);
+		const json = cmdAstrology(parseArgs([...base, "--palaces", "--json"], "astrology"));
 		JSON.parse(json);
 		return "--palaces/--topic/--json 三组独占语义全部指路；--palaces --json 契约保留";
 	});
@@ -1024,7 +1036,9 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	ok("命令面：参数描述不再引用已删除的 cities 命令", () => {
-		const descs = OPTION_GROUPS.flatMap(g => g.options.map(o => `${o.name} ${o.desc}`)).join("\n");
+		const descs = OPTION_GROUPS.flatMap(g => g.options.map(o => `${o.name} ${o.desc}`)).join(
+			"\n"
+		);
 		if (descs.includes("cities"))
 			throw new Error("desc 仍提 cities —— 该命令已删（spec §3.1），文案要跟上");
 	});
@@ -1034,7 +1048,9 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		const tmp = mkdtempSync(join(tmpdir(), "ziwei-synastry-hdr-"));
 		try {
 			const json = (d: string, g: string) =>
-				cmdAstrology(parseArgs(["--date", d, "--branch", "5", "--gender", g, "--json"], "astrology"));
+				cmdAstrology(
+					parseArgs(["--date", d, "--branch", "5", "--gender", g, "--json"], "astrology")
+				);
 			const a = join(tmp, "a.json");
 			const b = join(tmp, "b.json");
 			writeFileSync(a, json("1990-05-15", "male"), "utf8");
@@ -1051,15 +1067,21 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		const tmp = mkdtempSync(join(tmpdir(), "ziwei-synastry-hucan-"));
 		try {
 			const json = (d: string, g: string) =>
-				cmdAstrology(parseArgs(["--date", d, "--branch", "5", "--gender", g, "--json"], "astrology"));
+				cmdAstrology(
+					parseArgs(["--date", d, "--branch", "5", "--gender", g, "--json"], "astrology")
+				);
 			const a = join(tmp, "a.json");
 			const b = join(tmp, "b.json");
 			writeFileSync(a, json("1990-05-15", "male"), "utf8");
 			writeFileSync(b, json("1992-08-01", "female"), "utf8");
 			const out = cmdSynastry(parseArgs(["--charts", `${a},${b}`], "synastry"));
-			if (!out.includes("【双盘四化互参】"))
-				throw new Error("缺【双盘四化互参】节");
-			if (!out.includes("甲方") || !out.includes("落乙方") || !out.includes("乙方") || !out.includes("落甲方"))
+			if (!out.includes("【双盘四化互参】")) throw new Error("缺【双盘四化互参】节");
+			if (
+				!out.includes("甲方") ||
+				!out.includes("落乙方") ||
+				!out.includes("乙方") ||
+				!out.includes("落甲方")
+			)
 				throw new Error("互参节缺双向对照行");
 			// 自盘对照：两路径相同时不得崩溃
 			const self2 = cmdSynastry(parseArgs(["--charts", `${a},${a}`], "synastry"));
@@ -1094,7 +1116,12 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	ok("声明表：可选值参数 help 显示 <[x]>，必值参数保持 <x>（值语法不再混用）", () => {
 		const s = renderCommandHelp("astrology");
 		// 可选值族（裸开关合法）：缺省取当前值或列清单
-		for (const want of ["--yearly <[年]>", "--decadal <[虚岁]>", "--ages <[虚岁]>", "--topic <[key]>"]) {
+		for (const want of [
+			"--yearly <[年]>",
+			"--decadal <[虚岁]>",
+			"--ages <[虚岁]>",
+			"--topic <[key]>",
+		]) {
 			if (!s.includes(want)) throw new Error(`可选值语法缺失：${want}`);
 		}
 		// 必值族：缺值会被指路，尖括号不吞方括号
@@ -1137,7 +1164,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			const p = join(tmp, "out.json");
 			writeFileSync(p, json, "utf8");
 			const parsed = readAnalyzeJson(p, "甲");
-			if (!parsed.chart?.palaces?.length) throw new Error("对拍产物缺宫位 —— 契约校验形同虚设");
+			if (!parsed.chart?.palaces?.length)
+				throw new Error("对拍产物缺宫位 —— 契约校验形同虚设");
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });
 		}
@@ -1176,18 +1204,30 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		}
 	});
 
-	ok("专题渲染：概览节 = 运限速览一行（虚岁/大限/流年命宫/小限）+ 专题指路", () => {
-		const c = generateChart(sample);
-		const text = overviewSection(c, 2026).join("\n");
-		if (!text.includes("【运限速览】")) throw new Error("缺【运限速览】标题");
-		if (!text.includes(`虚岁 ${c.currentAge}`)) throw new Error("缺当前虚岁");
-		if (!text.includes("大限")) throw new Error("缺大限速览");
-		if (!text.includes("2026 丙午")) throw new Error("缺流年干支");
-		if (!text.includes("流年命宫")) throw new Error("缺流年命宫");
-		if (!text.includes("小限")) throw new Error("缺小限速览");
-		for (const f of ["--yearly", "--decadal", "--ages", "--pattern", "--mutagen", "--focus", "--palaces", "--topic"])
-			if (!text.includes(f)) throw new Error(`专题指路缺 ${f}`);
-	});
+	ok(
+		"专题渲染：概览节 = 运限速览一行（虚岁/大限/流年命宫/小限）+ 专题指路（零输入演示态用）",
+		() => {
+			const c = generateChart(sample);
+			const text = overviewSection(c, 2026).join("\n");
+			if (!text.includes("【运限速览】")) throw new Error("缺【运限速览】标题");
+			if (!text.includes(`虚岁 ${c.currentAge}`)) throw new Error("缺当前虚岁");
+			if (!text.includes("大限")) throw new Error("缺大限速览");
+			if (!text.includes("2026 丙午")) throw new Error("缺流年干支");
+			if (!text.includes("流年命宫")) throw new Error("缺流年命宫");
+			if (!text.includes("小限")) throw new Error("缺小限速览");
+			for (const f of [
+				"--yearly",
+				"--decadal",
+				"--ages",
+				"--pattern",
+				"--mutagen",
+				"--focus",
+				"--palaces",
+				"--topic",
+			])
+				if (!text.includes(f)) throw new Error(`专题指路缺 ${f}`);
+		}
+	);
 	ok("专题渲染：基本信息专题逐项输出（2000-4-6 子时男，对齐外部排盘参照）", () => {
 		const c = generateChart({ year: 2000, month: 4, day: 6, timeIndex: 0, gender: "male" });
 		const text = infoSection(c, {
@@ -1197,6 +1237,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		}).join("\n");
 		const want = [
 			"性别 : 男",
+			"公历生日 : 2000-04-06",
 			"地理经度 : 120.000",
 			"钟表时间 : 2000-4-6 0:15",
 			"农历时间 : 庚辰年三月初二日子时",
@@ -1204,6 +1245,10 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			"四柱(节气与非节气同) : 庚辰 庚辰 甲午 甲子",
 			"五行局数 : 金四局",
 			"命盘类型 : 三合盘(天盘)",
+			// 面板含命宫行与三方四正（公历生日见上）
+			"命宫:",
+			"紫微落:",
+			"三方四正:",
 			"命主:廉贞",
 			"身主:文昌",
 			"子年斗君:戌",
@@ -1219,7 +1264,9 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		// 2021 立春 2-03、正月初一 2-12：2-08 出生者节气口径已入辛丑年、农历口径
 		// 仍在庚子年腊月 —— 年/月柱分叉，正是需要并列对照的形态。
 		const c = generateChart({ year: 2021, month: 2, day: 8, timeIndex: 4, gender: "male" });
-		const text = infoSection(c, { clockTime: "8:30", solarNote: "", longitude: 120 }).join("\n");
+		const text = infoSection(c, { clockTime: "8:30", solarNote: "", longitude: 120 }).join(
+			"\n"
+		);
 		const jie = text.split("\n").find(l => l.startsWith("节气四柱 : "));
 		const fei = text.split("\n").find(l => l.startsWith("非节气四柱 : "));
 		if (!jie || !fei) throw new Error(`两口径分叉时应并列两行，实得：\n${text}`);
@@ -1249,13 +1296,11 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		if (!text.includes("36-45")) throw new Error("缺当前大限区间");
 		if (!text.includes("116-125")) throw new Error("缺大限时间轴首尾（116-125）");
 		// 卯限的三方四正 = 卯未亥 + 对宫酉 = 田宅/疾厄/兄弟/子女
-		if (!text.includes("疾厄宫") || !text.includes("兄弟宫"))
-			throw new Error("缺大限三方四正");
+		if (!text.includes("疾厄宫") || !text.includes("兄弟宫")) throw new Error("缺大限三方四正");
 		// 生年化科太阴落卯（大限本宫）
 		if (!text.includes("太阴")) throw new Error("缺生年四化落大限三方的标注");
 		// 限内逐年表：37 岁 = 2026 丙午 流年命宫午；小限官禄宫
-		if (!text.includes("37岁") || !text.includes("丙午"))
-			throw new Error("缺限内逐年对照表");
+		if (!text.includes("37岁") || !text.includes("丙午")) throw new Error("缺限内逐年对照表");
 		if (!text.includes("小限")) throw new Error("逐年表缺小限列");
 	});
 	ok("专题渲染：小限专题（小限宫 / 三方四正 / 岁数分布 / 与流年关系）", () => {
@@ -1325,12 +1370,14 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	});
 
 	ok("命令拆分：cities 命令已删（数据表保留）；analyze → astrology 改名；stars 仍可检索", () => {
-		// 2026-09-30 命令面收敛（spec §3.1）：cities 只删查询命令（ziwei/cities.ts 数据表
+		// 命令面（spec §3.1）：cities 只删查询命令（ziwei/cities.ts 数据表
 		// 仍是 --city 容错解析的依据，保留）；analyze 拆进 cli/astrology.ts 并改名 cmdAstrology。
 		// 键集取自函数顶部的动态 import（见彼处注释）。
 		const defined = commandNames;
-		if (defined.includes("cities")) throw new Error("cities 仍在 COMMAND_TABLE —— 应删（spec §3.1）");
-		if (defined.includes("analyze")) throw new Error("analyze 仍在 COMMAND_TABLE —— 应改名 astrology");
+		if (defined.includes("cities"))
+			throw new Error("cities 仍在 COMMAND_TABLE —— 应删（spec §3.1）");
+		if (defined.includes("analyze"))
+			throw new Error("analyze 仍在 COMMAND_TABLE —— 应改名 astrology");
 		// Task 6 融合后 chart/topic 也退役（职责成为 astrology 的 --palaces / --topic 参数）
 		if (defined.includes("chart") || defined.includes("topic"))
 			throw new Error("chart/topic 仍在 COMMAND_TABLE —— 已融合为 astrology 参数（Task 6）");
@@ -1338,7 +1385,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			throw new Error(`拆位不完整（应含 astrology），实得：${defined.join("、")}`);
 		// cities 删除后的数据表仍在（--city 容错解析在用）
 		const cities = readFileSync(resolve(ctx.root, "ziwei", "cities.ts"), "utf8");
-		if (!/export const PROVINCES/.test(cities)) throw new Error("ziwei/cities.ts 的 PROVINCES 不在了");
+		if (!/export const PROVINCES/.test(cities))
+			throw new Error("ziwei/cities.ts 的 PROVINCES 不在了");
 		// stars 检索不受拆分影响（直调拆出的 cmdStars）
 		const s = cmdStars({ _: [], search: "紫微" });
 		if (!s.includes("紫微") || !s.includes("关键词"))
@@ -1346,7 +1394,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		return "命令面收敛中间态就位";
 	});
 
-	// ── astrology 融合（2026-09-30 四命令合一，spec §1）：输出形态断言组 ──
+	// ── astrology 融合（spec §1）：输出形态断言组 ──
 	// 子进程探针只留给文末的冒烟（守住「入口 → 解析 → 命令表 → 渲染 + 错误出口」真链路）；
 	// 输出形态断言用进程内直调（call）—— 每次子进程约 3.2 秒（iztro 冷启动），直调约
 	// 25ms，判据同构（code/out/err 三元组，错误路径同一「错误：」前缀文案）。
@@ -1369,16 +1417,93 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		return callDirect(cmd, rest, fn, parseArgs, ctx);
 	};
 
-	ok("astrology：默认输出含基本信息面板与运限速览，无专题节", () => {
-		const r = call(["astrology", "1990-5-15", "9:30", "男", "北京"]);
-		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
-		for (const want of ["【命盘总览】", "【基本信息】", "子年斗君", "【运限速览】"])
-			if (!r.out.includes(want)) throw new Error(`缺 ${want}`);
-		for (const gone of ["【格局识别】", "【生年四化】"])
-			if (r.out.includes(gone)) throw new Error(`默认不应出现 ${gone}`);
-		return "概览默认含基本信息";
-	});
-	ok("astrology：--palaces 出十二宫逐宫详表（原 chart 职责）", () => {
+	ok(
+		"astrology：概览与 --info 带面板 + 运限速览 + 专题指路；给了专题参数则只出专题详版",
+		() => {
+			// 未深入形态（无功能参数概览 / 仅 --info）输出三节；给了具体专题参数的
+			// 输出 = 口径提示 + 专题详版 —— 面板与速览/指路均不带。
+			// 任何形态都不出现【命盘总览】抬头。
+			for (const argv of [
+				["astrology", "1990-5-15", "9:30", "男", "北京"],
+				[
+					"astrology",
+					"--date",
+					"1990-5-15",
+					"--time",
+					"9:30",
+					"--gender",
+					"男",
+					"--city",
+					"北京",
+					"--info",
+				],
+			]) {
+				const r = call(argv);
+				if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+				for (const want of [
+					"【基本信息】",
+					"公历生日 : 1990-05-15",
+					"命宫:",
+					"三方四正:",
+					"子年斗君",
+					"【运限速览】",
+					"【专题深入】",
+				])
+					if (!r.out.includes(want)) throw new Error(`${argv.join(" ")} 缺 ${want}`);
+				for (const gone of ["【命盘总览】", "【格局识别】", "【生年四化】"])
+					if (r.out.includes(gone)) throw new Error(`${argv.join(" ")} 不应出现 ${gone}`);
+			}
+			const deep = call([
+				"astrology",
+				"1990-5-15",
+				"9:30",
+				"男",
+				"北京",
+				"--pattern",
+				"--mutagen",
+			]);
+			if (deep.code !== 0) throw new Error(`退出码 ${deep.code}，stderr：${deep.err.trim()}`);
+			for (const want of ["【格局识别】", "【生年四化】"])
+				if (!deep.out.includes(want)) throw new Error(`专题叠加缺 ${want}`);
+			for (const gone of ["【命盘总览】", "【基本信息】", "【运限速览】", "【专题深入】"])
+				if (deep.out.includes(gone))
+					throw new Error(`专题叠加不应出现 ${gone}（已在深入，基底与指路是噪声）`);
+			return "未深入形态带三节（无总览抬头）；专题形态只出专题详版";
+		}
+	);
+	ok(
+		"astrology：零输入默认输出虚构示例面板 + 运限速览 + 专题指路；--json/部分输入仍守纪律",
+		() => {
+			// 契约：出生信息一项不给且未表达其他输出意图 → 不报「缺少出生日期」，
+			// 以虚构样例（与 help 示例同源）演示【基本信息】面板、运限速览与专题指路并附
+			// 用法指路。--json 是机器接口不喂虚构数据；部分输入（给了一半）继续按
+			// 「缺一问一」报错。
+			for (const argv of [["astrology"], ["astrology", "--info"]]) {
+				const r = call(argv);
+				if (r.code !== 0)
+					throw new Error(
+						`零输入 ${argv.join(" ")} 应演示面板，实得 code ${r.code}：${r.err.trim()}`
+					);
+				for (const want of [
+					"【基本信息】",
+					"公历生日 : 2011-06-24",
+					"虚构",
+					"--date",
+					"【运限速览】",
+					"【专题深入】",
+				])
+					if (!r.out.includes(want)) throw new Error(`零输入输出缺 ${want}`);
+			}
+			const json = call(["astrology", "--json"]);
+			if (json.code === 0 || !json.err.includes("出生"))
+				throw new Error("--json 零输入必须报错指路（机器接口不喂虚构数据）");
+			const partial = call(["astrology", "1990-5-15"]);
+			if (partial.code === 0 || !partial.err.includes("时辰"))
+				throw new Error(`部分输入应报缺时辰（缺一问一），实得：${partial.err.trim()}`);
+			return "零输入示例面板在；--json 与部分输入仍报错";
+		}
+	);
+	ok("astrology：--palaces 出十二宫逐宫详表", () => {
 		const r = call(["astrology", "1990-5-15", "9:30", "男", "--palaces"]);
 		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 		// 十二宫逐宫详表：每宫名一块 + renderPalace 形态（星曜行）
@@ -1388,20 +1513,23 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		if (!/(化禄|化权|化科|化忌)/.test(r.out)) throw new Error("详表应含四化标注");
 		return "十二宫详表在";
 	});
-	ok("astrology：--topic love 出主题论断（原 topic 职责）；--view 越界报错", () => {
-		const r = call([
+	ok("astrology：--topic love 出主题论断；--view 越界报错", () => {
+		const r = call(["astrology", "1990-5-15", "9:30", "男", "--topic", "love"]);
+		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		if (!r.out.includes("【主题论断")) throw new Error("缺主题论断标题");
+		if (!r.out.includes("知识来源分级")) throw new Error("缺知识来源分级披露");
+		const bad = call([
 			"astrology",
 			"1990-5-15",
 			"9:30",
 			"男",
 			"--topic",
 			"love",
+			"--view",
+			"xxx",
 		]);
-		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
-		if (!r.out.includes("【主题论断")) throw new Error("缺主题论断标题");
-		if (!r.out.includes("知识来源分级")) throw new Error("缺知识来源分级披露");
-		const bad = call(["astrology", "1990-5-15", "9:30", "男", "--topic", "love", "--view", "xxx"]);
-		if (bad.code === 0 || !bad.err.includes("--view")) throw new Error("--view 越界应报错并点名");
+		if (bad.code === 0 || !bad.err.includes("--view"))
+			throw new Error("--view 越界应报错并点名");
 		return "主题论断与 view 校验在";
 	});
 	ok("astrology：旧命令名已删（命令表键集层面；stderr/exit 指路由冒烟断言覆盖）", () => {
@@ -1425,16 +1553,40 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		// 载体是进程内直调：throw → code 1 / out 空 / err 含原文；「stderr 前缀 + exit 1」
 		// 的子进程真链路由文末冒烟覆盖。
 		for (const bad of ["2011-02-30", "2011-02-29"]) {
-			const r = call(["astrology", "--date", bad, "--time", "07:45", "--city", "杭州", "--gender", "male", "--json"]);
+			const r = call([
+				"astrology",
+				"--date",
+				bad,
+				"--time",
+				"07:45",
+				"--city",
+				"杭州",
+				"--gender",
+				"male",
+				"--json",
+			]);
 			if (r.code === 0) throw new Error(`${bad} 未报错（退出码 0）—— 静默归一化又回来了`);
-			if (r.out.trim()) throw new Error(`${bad} 报错时 stdout 应为空（不许输出半截 JSON），实得：${r.out.slice(0, 60)}`);
+			if (r.out.trim())
+				throw new Error(
+					`${bad} 报错时 stdout 应为空（不许输出半截 JSON），实得：${r.out.slice(0, 60)}`
+				);
 			if (!(r.err.includes(bad) || r.err.includes("不存在")))
 				throw new Error(`${bad} 的报错未回显原始输入，实得：${r.err.trim()}`);
 		}
 		// 闰年边界不得误伤：2012-02-29 必须正常排出整盘
-		const leap = call(["astrology", "--date", "2012-02-29", "--time", "07:45", "--city", "杭州", "--gender", "male"]);
+		const leap = call([
+			"astrology",
+			"--date",
+			"2012-02-29",
+			"--time",
+			"07:45",
+			"--city",
+			"杭州",
+			"--gender",
+			"male",
+		]);
 		if (leap.code !== 0) throw new Error(`2012-02-29（闰年）被误伤：${leap.err.trim()}`);
-		if (!leap.out.includes("【命盘总览】")) throw new Error("2012-02-29 应正常排出命盘总览");
+		if (!leap.out.includes("【基本信息】")) throw new Error("2012-02-29 应正常排出基本信息面板");
 		return "非法日期 code1/out空/err回显（--json 同）；闰年 2-29 放行";
 	});
 
@@ -1444,7 +1596,11 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		try {
 			// ① 纯配置：排出虚构样例盘
 			const cfg = join(tmp, "a.json");
-			writeFileSync(cfg, JSON.stringify({ date: "2011-06-24", time: "07:45", gender: "male", city: "杭州" }), "utf8");
+			writeFileSync(
+				cfg,
+				JSON.stringify({ date: "2011-06-24", time: "07:45", gender: "male", city: "杭州" }),
+				"utf8"
+			);
 			const viaCfg = call(["astrology", "--config", cfg]);
 			if (viaCfg.code !== 0) throw new Error(`--config 排盘失败：${viaCfg.err.trim()}`);
 			if (!viaCfg.out.includes("2011-6-24") && !viaCfg.out.includes("2011-06-24"))
@@ -1459,7 +1615,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			writeFileSync(bad, JSON.stringify({ date: "2011-06-24", noSuchKey: 1 }), "utf8");
 			const r = call(["astrology", "--config", bad]);
 			if (r.code === 0) throw new Error("未知键未报错");
-			if (!r.err.includes("noSuchKey")) throw new Error(`报错未点名未知键，实得：${r.err.trim()}`);
+			if (!r.err.includes("noSuchKey"))
+				throw new Error(`报错未点名未知键，实得：${r.err.trim()}`);
 			return "应用 / 覆盖 / 未知键三面成立";
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });
@@ -1476,7 +1633,9 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			writeFileSync(f, tpl.out, "utf8");
 			const back = call(["astrology", "--config", f]);
 			if (back.code !== 0) throw new Error(`模板吃回失败：${back.err.trim()}`);
-			if (!back.out.includes("【命盘总览】")) throw new Error("吃回后应排出示例盘");
+			// 模板自带 pattern/yearly/focus → 吃回即专题叠加形态（不带
+			// 面板），以格局详版在场证明配置吃回成功。
+			if (!back.out.includes("【格局识别】")) throw new Error("吃回后应排出示例盘专题详版");
 			return "模板闭环成立";
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });
@@ -1486,7 +1645,16 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	ok("help 强化：总览含 man 七节标题且节序固定（总览另含 COMMANDS 节）", () => {
 		// help 不走命令表分发（main 特判），直调渲染函数即可 —— 断言对象是渲染产物本身。
 		const out = renderOverviewHelp();
-		const SECTIONS = ["NAME", "SYNOPSIS", "DESCRIPTION", "COMMANDS", "OPTIONS", "EXAMPLES", "NOTES", "SEE ALSO"];
+		const SECTIONS = [
+			"NAME",
+			"SYNOPSIS",
+			"DESCRIPTION",
+			"COMMANDS",
+			"OPTIONS",
+			"EXAMPLES",
+			"NOTES",
+			"SEE ALSO",
+		];
 		let last = -1;
 		for (const sec of SECTIONS) {
 			// 节标题独占一行：首节顶行，其余前置换行
@@ -1503,16 +1671,20 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			if (!astro.includes(want)) throw new Error(`astrology --help 缺 ${want}`);
 		for (const own of ["--pattern", "--mutagen", "--yearly", "--palaces", "--topic"])
 			if (!astro.includes(own)) throw new Error(`astrology --help 应列 ${own}`);
-		if (astro.includes("--search")) throw new Error("astrology --help 不该列 --search（归属过滤）");
+		if (astro.includes("--search"))
+			throw new Error("astrology --help 不该列 --search（归属过滤）");
 		const stars = renderCommandHelp("stars");
 		if (!stars.includes("--search")) throw new Error("stars --help 应列 --search");
-		if (stars.includes("--pattern")) throw new Error("stars --help 不该列 --pattern（归属过滤）");
+		if (stars.includes("--pattern"))
+			throw new Error("stars --help 不该列 --pattern（归属过滤）");
 		return "归属过滤双向成立";
 	});
 	ok("help 强化：示例用新虚构组合且注明「示例数据为虚构」", () => {
 		const out = renderOverviewHelp();
-		if (!out.includes("2011-06-24") || !out.includes("杭州")) throw new Error("缺甲方虚构样例 2011-06-24 杭州");
-		if (!out.includes("1999-11-03") || !out.includes("成都")) throw new Error("缺乙方虚构样例 1999-11-03 成都");
+		if (!out.includes("2011-06-24") || !out.includes("杭州"))
+			throw new Error("缺甲方虚构样例 2011-06-24 杭州");
+		if (!out.includes("1999-11-03") || !out.includes("成都"))
+			throw new Error("缺乙方虚构样例 1999-11-03 成都");
 		if (!out.includes("虚构")) throw new Error("缺「示例数据为虚构」注记");
 		// 旧组合清退：help 里不再出现 1990-05-15 / 1993-08-22 示例
 		for (const old of ["1990-05-15", "1993-08-22"])
@@ -1524,12 +1696,24 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	ok("冒烟（子进程）：成功链路 入口→解析→命令表→渲染 一次走通", () => {
 		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "北京"]);
 		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
-		if (!r.out.includes("【命盘总览】")) throw new Error("缺总览");
+		if (!r.out.includes("【基本信息】")) throw new Error("缺基本信息面板");
 		return "子进程成功链路在";
 	});
 	ok("冒烟（子进程）：错误链路 stderr「错误：」前缀 + exit 1 + stdout 空（--json 路径）", () => {
-		const r = runCli(["astrology", "--date", "2011-02-30", "--time", "07:45", "--gender", "male", "--json"]);
-		if (r.code === 0 || !r.err.startsWith("错误：")) throw new Error(`应 stderr「错误：」前缀 + 非零退出，实得 code=${r.code} err=${r.err.slice(0, 60)}`);
+		const r = runCli([
+			"astrology",
+			"--date",
+			"2011-02-30",
+			"--time",
+			"07:45",
+			"--gender",
+			"male",
+			"--json",
+		]);
+		if (r.code === 0 || !r.err.startsWith("错误："))
+			throw new Error(
+				`应 stderr「错误：」前缀 + 非零退出，实得 code=${r.code} err=${r.err.slice(0, 60)}`
+			);
 		if (r.out.trim()) throw new Error("stdout 应为空");
 		return "子进程错误出口在";
 	});
@@ -1581,9 +1765,16 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			["synastry-troubleshooting.md", read("synastry-troubleshooting.md")],
 			["synastry-guide.md", read("synastry-guide.md")],
 		] as const) {
-			for (const stale of ["purplestar-classics", "purplestar-synastry", "ziwei/sihua.ts", "本技能不排盘"]) {
+			for (const stale of [
+				"purplestar-classics",
+				"purplestar-synastry",
+				"ziwei/sihua.ts",
+				"本技能不排盘",
+			]) {
 				if (text.includes(stale))
-					throw new Error(`${file} 仍含合并前口径「${stale}」——三 skill 已合一，请按现行 CLI 改写`);
+					throw new Error(
+						`${file} 仍含合并前口径「${stale}」——三 skill 已合一，请按现行 CLI 改写`
+					);
 			}
 		}
 		return "workflow / synastry-troubleshooting / synastry-guide 三份与现行 CLI 口径一致";
@@ -1603,7 +1794,9 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			["scripts/boot-hooks.ts", bootHooks],
 		] as const) {
 			if (text.includes("22.15") && !text.includes("NODE_OPTIONS"))
-				throw new Error(`${name} 仍承诺 Node ≥ 22.15 —— 实测 22.15.0 裸跑 ERR_UNKNOWN_FILE_EXTENSION，下限应为 22.18`);
+				throw new Error(
+					`${name} 仍承诺 Node ≥ 22.15 —— 实测 22.15.0 裸跑 ERR_UNKNOWN_FILE_EXTENSION，下限应为 22.18`
+				);
 		}
 		if (!opts.includes("独占分支") || !opts.includes("--palaces` > `--topic"))
 			throw new Error("options.md 缺独占分支优先级链描述");
@@ -1623,7 +1816,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 				throw new Error(`grades.ts 的「${e.quote}」档位非法：${e.grade}`);
 		}
 		const src = readFileSync(resolve(ctx.root, "ziwei", "analysis", "data.ts"), "utf8");
-		// 引句标记（与评估报告口径一致，按 2026-10-08 实测扩展）：「倪师 / 倪海夏」锚点
+		// 引句标记（与评估报告口径一致，按实测扩展）：「倪师 / 倪海夏」锚点
 		// + 少量过渡（星名、出处「天纪 03」、动词「说·言·明言·将…列为」等）+「」或英文
 		// 双引号内 ≥2 字引句；标记与引句须同在一行，注释行不参与；(?<!非) 排除「一说非
 		// 倪师原话」散注里的倪师字样 —— 那一处恰恰声明**不是**倪师引句。
@@ -1636,13 +1829,16 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			.split("\n")
 			.filter(l => !/^\s*(\/\/|\/\*|\*)/.test(l))
 			.flatMap(l => [...l.matchAll(QUOTE_RE)]);
-		if (marks.length < 28) throw new Error(`引句标记只抽到 ${marks.length} 条（评估基线 28）——标记正则或文案已变，先核对再改断言`);
+		if (marks.length < 28)
+			throw new Error(
+				`引句标记只抽到 ${marks.length} 条（评估基线 28）——标记正则或文案已变，先核对再改断言`
+			);
 		const registered = new Set(NI_GRADES.map(e => e.quote));
-		const missing = marks
-			.map(m => m[2].slice(0, 12))
-			.filter(q => !registered.has(q));
+		const missing = marks.map(m => m[2].slice(0, 12)).filter(q => !registered.has(q));
 		if (missing.length)
-			throw new Error(`以下倪师引句未在 grades.ts 登记分级：${missing.map(q => `「${q}…」`).join("、")}`);
+			throw new Error(
+				`以下倪师引句未在 grades.ts 登记分级：${missing.map(q => `「${q}…」`).join("、")}`
+			);
 		// 反向（grades.ts 头注释承诺的另一半）：登记的 quote 若在文案中抽不到对应引句
 		// ——写错的定位串或文案已删的引句——这里是幽灵条目，必须点名变红。
 		const inText = new Set(marks.map(m => m[2].slice(0, 12)));
@@ -1659,7 +1855,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	const synastry = await synastryAsserts();
 
 	ok("合并自检：古籍 / 合盘断言组并入（三段合计）", () => {
-		// 2026-09-30 三 skill 合一：classics 与 synastry 的自检断言各自住在
+		// classics 与 synastry 的自检断言各自住在
 		// scripts/classics/selftest-asserts.ts 与 scripts/synastry/selftest-asserts.ts，
 		// 由本命令汇总执行 —— 报告分三段（排盘 / 古籍 / 合盘），首行「通过 N/N」为合计。
 		if (!classics.length || !synastry.length) throw new Error("断言组为空——搬移未完成");

@@ -1,11 +1,11 @@
 /**
- * 古籍检索自检断言组 —— 2026-09-30 三 skill 合一时从 classics 自带的 selftest.ts 抽出。
+ * 古籍检索自检断言组 —— 从 classics 自带的 selftest.ts 抽出。
  *
  * 断言体基本原样；适配点只有一类：**参数面断言改跑合并后的根 CLI**
  * （`node scripts/purple-star.ts classics …`），因为 classics 不再有独立入口。
  * 合并引擎（cac 底座）在 `--limit -3` 贪婪取值与取值参数裸写拒收上与 classics
- * 原自研解析器不同 —— 那两条断言由 Task 4 换 `util.parseArgs` 引擎后重新钉死，
- * 此处先按引擎当下真实行为收窄（见各断言注释）。
+ * 原自研解析器不同 —— 那两条断言按 `util.parseArgs` 引擎的真实行为钉死
+ * （见各断言注释）。
  *
  * 与 `cli/selftest.ts` 的接口：导出 {@link asserts}，逐条结果由主 selftest 汇总
  * （报告分三段：排盘 / 古籍 / 合盘）。
@@ -148,9 +148,9 @@ export async function asserts(): Promise<Assertion[]> {
 
 	ok("古籍参数面：非法 --limit 的值到达命令层，由它给出中文报错", () => {
 		// 三个探针全覆盖：`0` / `abc` 走常规值校验；`-3` 走**贪婪取值**
-		//（2026-09-30 新引擎：`-3` 是 `--limit` 的值，不是短参数 —— Review Focus 2 的钉子）。
-		// 2026-10-01 起值域非法由命令层 throw：报错走 stderr 且退出码非零
-		//（参照 synastry-asserts 的 r.err 先例；旧 return 行为会把报错打 stdout 且 exit 0）。
+		//（`-3` 是 `--limit` 的值，不是短参数）。
+		// 值域非法由命令层 throw：报错走 stderr 且退出码非零
+		//（参照 synastry-asserts 的 r.err 先例）。
 		for (const bad of ["0", "abc", "-3"]) {
 			const r = call(["classics", "--search", "紫微", "--limit", bad]);
 			if (r.code === 0)

@@ -10,7 +10,7 @@
  *
  * ## 为什么类型契约是**本文件自带的**，而不是 import 源的 `ziwei/types.ts`
  *
- * 2026-09-27 前这里 `import type` 的是源的一份 294 行类型副本。那份副本有两个问题：
+ * 本 skill 是纯消费方，不 import 源的 `ziwei/types.ts`，类型契约自带。整份全量类型副本有两个问题：
  *
  * 1. **它是内核的全量类型**（含 `Decadal` / `SelfMutagenMark` / `LunarInfo` 等本 skill
  *    一个字段都不读的类型），却要靠「与源逐字节相同」来维持 —— 而本 skill 只是**消费方**，

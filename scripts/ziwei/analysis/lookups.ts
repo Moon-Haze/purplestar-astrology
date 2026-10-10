@@ -15,9 +15,8 @@
 import type { ZiweiChart } from "../types";
 import { MINOR_STAR_PALACE_CONTENT, SIHUA_CHAR_TO_KEY, STAR_CONTENT_MAP } from "./data";
 // 格局的**命中判定**统一由 patterns/ 负责（本文件只写判词），故这里引它的产出。
-// 2026-09-26 先对齐了 4 个口径分歧的格局（紫府同宫 / 火贪格 / 铃贪格 / 机月同梁）；
-// 2026-09-27 把剩下 ~30 段手写判定**全部**收敛过去（含 12 个原先只在本文件存在的格局，
-// 判定搬进 patterns.ts 的「收敛自 db-analysis 的格局」一组）。至此 `detectGeJu` 不含任何判定。
+// 所有手写判定（含 12 个原先只在本文件存在的格局）都已收敛到 patterns/，
+// `detectGeJu` 不含任何判定。
 import { detectPatterns, type Pattern } from "../patterns";
 
 /**
@@ -99,15 +98,11 @@ export function detectGeJu(chart: ZiweiChart): { name: string; description: stri
 	//   - analyze 侧短判词 + 等级：`Pattern.description` / `Pattern.level`
 	//   - topic 侧倪师口吻长判词：`Pattern.topicDescription`
 	//
-	// 本函数只是**投影**：把填了长判词的命中挑出来，供 `overview` / `personality` 展示。
-	// 2026-09-27 之前，25 段长判词散在本目录的前身 `analysis.ts` 里、按名字二次查表
-	// （`hasAny` / `bySuffix` / `starOf` 三个 helper 就是为此而生）；现已搬进各识别器。
-	// **新增格局只要在 patterns/ 的识别器里填 `topicDescription`，这边自动就能展示**，
-	// 不会再有「判定加了、判词忘了补、topic 静默不显示」的漏。
-	//
-	// 展示顺序**按 level 降序**（同级保持识别器注册序）—— 不再维护一张 25 元素的手写
-	// 顺序表：那张表每加一个格局都要同步，是纯粹的漂移源。（2026-09-27 之前的顺序是
-	// 手写的 1–25，与判定无关，故这次变动不影响任何判定结果。）
+		// 本函数只是**投影**：把填了长判词的命中挑出来，供 `overview` / `personality` 展示。
+		// **新增格局只要在 patterns/ 的识别器里填 `topicDescription`，这边自动就能展示**，
+		// 不会有「判定加了、判词忘了补、topic 静默不显示」的漏。
+		//
+		// 展示顺序**按 level 降序**（同级保持识别器注册序）。
 	return detectPatterns(chart)
 		.filter((p): p is Pattern & { topicDescription: string } => !!p.topicDescription)
 		.sort((a, b) => b.level - a.level)

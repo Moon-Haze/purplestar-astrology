@@ -2,7 +2,7 @@
  * CLI 参数面 —— 参数声明表 + 校验 + 解析（`util.parseArgs` tokens 底座 + 薄适配层）。
  * 不依赖任何内核模块，也不使用 `@/` 别名。
  *
- * 2026-09-30 引擎重写（spec §2.8）：cac 退役，底座换 Node 内置 `util.parseArgs`
+ * cac 已退役，底座换 Node 内置 `util.parseArgs`
  * （`tokens: true` 拿 token 流），输入格式适配全部在本文件的薄适配层：
  *
  * - **底座只管切分**：`--key=value`（inlineValue）/ 裸 `--key` / `--` 分隔 / positional
@@ -115,7 +115,7 @@ export interface OptionScope {
  * 全部参数（英文主名），按 help 的展示顺序分组。
  *
  * @remarks
- * - 专题参数族 2026-09-30 起英文化主名（spec §1 表）：`pattern` / `mutagen` / `yearly` /
+ * - 专题参数族主名英文化（spec §1 表）：`pattern` / `mutagen` / `yearly` /
  *   `monthly` / `decadal` / `ages`；拼音原名成为 {@link OPTION_ALIASES} 别名。
  * - `--year` / `--month` / `--day` 三连**已删**：`--date 1990-5-15` 完全覆盖（格式宽松，
  *   月日不补零）。误敲 `--year` 由拼错建议引向 `--yearly`（编辑距离 2）。
@@ -127,7 +127,12 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 	{
 		title: "出生日期（二选一）",
 		options: [
-			{ name: "date", kind: "value", value: "YYYY-MM-DD", desc: "公历生日（格式宽松，月日不补零）" },
+			{
+				name: "date",
+				kind: "value",
+				value: "YYYY-MM-DD",
+				desc: "公历生日（格式宽松，月日不补零）",
+			},
 			{
 				name: "lunar",
 				kind: "value",
@@ -203,8 +208,16 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 	{
 		title: "专题深入（可叠加；不带任何专题参数时只出精简概览）",
 		options: [
-			{ name: "info", kind: "switch", desc: "只输出基本信息面板这一节（面板默认已在概览里）" },
-			{ name: "pattern", kind: "switch", desc: "格局识别专题（格局判词 / 成立与破格条件 / 出处）" },
+			{
+				name: "info",
+				kind: "switch",
+				desc: "只出基本信息面板 + 运限速览 + 专题指路（与无功能参数的概览同尾，不展开专题详版）",
+			},
+			{
+				name: "pattern",
+				kind: "switch",
+				desc: "格局识别专题（格局判词 / 成立与破格条件 / 出处）",
+			},
 			{
 				name: "mutagen",
 				kind: "switch",
@@ -224,7 +237,11 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				optionalValue: true,
 				desc: "小限专题（指定岁小限宫 + 十二宫小限岁数表；缺省 = 当前虚岁）",
 			},
-			{ name: "palaces", kind: "switch", desc: "十二宫逐宫详表（原 chart 命令职责，2026-09-30 并入）" },
+			{
+				name: "palaces",
+				kind: "switch",
+				desc: "十二宫逐宫详表",
+			},
 		],
 	},
 	{
@@ -487,14 +504,16 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 			afterTerminator = true;
 			for (let j = i + 1; j < tokens.length; j++) {
 				const rest = tokens[j];
-				args._.push(rest.kind === "positional" ? (rest.value as string) : (rest.rawName as string));
+				args._.push(
+					rest.kind === "positional" ? (rest.value as string) : (rest.rawName as string)
+				);
 			}
 			break;
 		}
 		if (t.kind === "positional") {
 			args._.push(t.value as string);
 			continue;
-		}		// option token（含 `-3` 这类假名——贪婪吃值会先把它消费掉，落到这里的才是真短参数）
+		} // option token（含 `-3` 这类假名——贪婪吃值会先把它消费掉，落到这里的才是真短参数）
 		const raw = String(t.rawName ?? "");
 		const key = String(t.name ?? "");
 		if (raw.startsWith("-") && !raw.startsWith("--")) {
@@ -503,7 +522,9 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 				args._.push("-");
 				continue;
 			}
-			throw new Error(`未知参数 ${raw}。本项目只有 --xxx 长参数形式。运行 help 查看全部参数。`);
+			throw new Error(
+				`未知参数 ${raw}。本项目只有 --xxx 长参数形式。运行 help 查看全部参数。`
+			);
 		}
 		// 校验 + 别名归一（宽松模式跳过校验，直接归一）
 		const canonical =
@@ -512,9 +533,7 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 		const storeKey = camelKey(canonical);
 		// 判重：归一后主名判（前缀形态的 storeKey 天然不同：aChart ≠ chart，不算重复）
 		if (seen.has(storeKey))
-			throw new Error(
-				`参数 --${canonical} 重复给出（含主名与别名同现）。每个参数只给一次。`
-			);
+			throw new Error(`参数 --${canonical} 重复给出（含主名与别名同现）。每个参数只给一次。`);
 		seen.add(storeKey);
 
 		if (spec?.kind === "switch") {

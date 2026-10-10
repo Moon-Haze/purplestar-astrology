@@ -15,7 +15,6 @@
 
 import type { Palace, Star, ZiweiChart } from "../types";
 // 对宫与三方四正的偏移：全仓单点在 ../palace-relations
-// （2026-09-26 收敛之前，本目录的前身 analysis.ts 自写了 6 处）
 import { oppositeBranch, surroundBranches } from "../palace-relations";
 
 /** 获取宫位的主星列表（空宫则借对宫） */

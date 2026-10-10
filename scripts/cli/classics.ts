@@ -1,8 +1,7 @@
 /**
  * `classics` 命令：古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）。
  *
- * 2026-09-30 三 skill 合一时从 classics 自带的 commands.ts 搬入 —— 实现逐字保留，
- * 只换 import 来源（`@/classics` 内核）与命令注册（进 `./commands.ts` 的 COMMAND_TABLE）。
+ * 实现逐字保留，只换 import 来源（`@/classics` 内核）与命令注册（进 `./commands.ts` 的 COMMAND_TABLE）。
  */
 
 import type { CliArgs } from "./args";

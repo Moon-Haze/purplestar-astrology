@@ -7,7 +7,7 @@
 //      2. `rowsToSample` 用**合成行**逐条覆盖映射规则
 //      3. `rowsToSample` 用 `fixtures/raw-rows.json` 里的**真实行**逐字节复现 charts.jsonl
 //
-// 第 3 条是 2026-09-27 补上的，补的是一条真实的缝：第 2 条的合成行编码的是
+// 第 3 条补的是一条真实的缝：第 2 条的合成行编码的是
 // 「**我以为**真实行长什么样」—— 列名、类型、数组形状一变，合成行照旧全绿。
 // 更隐晦的是 `hasMutagenKey`（键的存在性 vs 值为 `""`），sample-source.ts 的文件头自己
 // 就写着「搞错了 npm test 也不会红」。真实行固化进 fixtures 后这条才第一次可测。
@@ -246,7 +246,7 @@ interface RawEntry {
  *    拿它拼字符串会引入原文根本没写过的键序假设。
  *
  * ⚠️ 兼容两种来源的键名：raw-rows 行的 `hour`（db 列名）与 charts.jsonl 的
- *    `birthInfo.timeIndex`（2026-09-30 术语对齐后的基准键）。二者是同一个时辰序号。
+ *    `birthInfo.timeIndex`（基准键）。二者是同一个时辰序号。
  */
 const keyOf = (r: {
 	year: number;

@@ -12,8 +12,8 @@
 //
 // ②③ 均在**真实 node 子进程**中测，不在本进程内。原因：本编排脚本跑在 tsx 下，
 // 而 tsx 的 esbuild 转换成本与源文件大小成正比 —— 实测把 nihai 的加载成本从 5ms
-// 抬到 14ms、cli/commands 从 13ms 抬到 38ms，大源文件被高估约 2–3 倍（nihai 模块已于
-// 2026-09-27 随同名命令一并移除，此处数据留作 tsx 高估幅度的例证）。子进程探针
+// 抬到 14ms、cli/commands 从 13ms 抬到 38ms，大源文件被高估约 2–3 倍（nihai 模块已
+// 随同名命令一并移除，此处数据留作 tsx 高估幅度的例证）。子进程探针
 // 复用 test/lib/loader.ts 的 registerHooks（该文件是 CLI 引导层的既定副本，且有一条
 // 漂移断言盯着），因此**不需要**在这里再写第三份 hook 逻辑。
 //
@@ -38,7 +38,7 @@ import type { BirthInfo } from "@/ziwei/types"; // 仅参与 typecheck，运行�
 // HERE = <仓库根>/tools/bench，上溯两级即仓库根（口径同 tools/db/*.ts）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(HERE, "../..");
-// ⚠️ 字面路径，且 tools/ 不在 npm test 覆盖内 —— 内核 2026-09-30 上提仓库根后这类行
+// ⚠️ 字面路径，且 tools/ 不在 npm test 覆盖内 —— 这类行
 //    漏改不会变红，只会在实跑时报模块找不到。probe 里的 `@/…` 动态 import 不在此列：
 //    它们走 LOADER 装的解析钩子，跟着 loader 的 ROOT 走。
 const CLI = resolve(SKILL_ROOT, "scripts/purple-star.ts");
@@ -62,8 +62,7 @@ function ms(v: number, w = 10): string {
 /**
  * 三条代表性命令：纯引导层 / 完整排盘 / 主题论断（唯一用得上分析数据库的命令）。
  *
- * 2026-09-30 三 skill 合一后本 CLI 就是唯一一条，探针命令随命令面收敛改为
- * `astrology` / `astrology --topic`（2026-09-27 那次曾因 classics 拆出换成 topic）。
+ * 本 CLI 是唯一一条，探针命令为 `astrology` / `astrology --topic`。
  */
 const E2E_CASES: Array<{ label: string; args: string[] }> = [
 	{ label: "help（纯引导层，不执行任何计算）", args: ["help"] },
@@ -124,8 +123,8 @@ function benchE2E(runs: number): E2ERow[] {
  * 顺序**必须**依赖先于依赖者：`cli/commands` 静态 import 了分析数据库等，
  * 放最后才能让它的边际值只反映自身与**尚未列入前面组**的那几份依赖。
  *
- * ⚠️ 2026-09-27 拆 skill 时删掉了 `+ classics` 与 `+ synastry-knowledge` 两组：那两个模块
- *    已随同名命令搬去 `purplestar-classics` / `purplestar-synastry`，源的内核根里**没有
+ * ⚠️ `+ classics` 与 `+ synastry-knowledge` 两组已删：那两个模块
+ *    随同名命令搬去 `purplestar-classics` / `purplestar-synastry` 后，源的内核根里**没有
  *    这两个文件**，留着会让探针以 ERR_MODULE_NOT_FOUND 退出（tools/ 不在 npm test 覆盖内，
  *    这类失效只会在实跑时暴露）。它们当年记的是「仅某条命令需要」的懒加载余地，
  *    接手这个角色的现在是 `+ analysis`。

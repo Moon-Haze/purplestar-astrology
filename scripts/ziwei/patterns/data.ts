@@ -167,10 +167,9 @@ export const SHA_KONG = ["地空", "地劫"]; // 空劫
  * 文昌、文曲的名单。`detectChangQuHuaJi` 用它遍历两支（`for (const starName of CHANG_QU)`）。
  *
  * @remarks
- * 同层的辅弼、魁钺名单（`ZUO_YOU` / `KUI_YUE`）已于 2026-09-27 删除：它们在 `patterns.ts`
+ * 同层的辅弼、魁钺名单（`ZUO_YOU` / `KUI_YUE`）已删除：它们在 `patterns.ts`
  * 内**无任何引用**（辅弼、魁钺的判定都在调用点直接写字面量），按删除测试该消失。
- * 本表**确有引用**，故留下 —— 同日核对时还发现原注释写作「本文件内无任何引用」，
- * 与事实不符，一并更正。
+ * 本表**确有引用**，故留下。
  */
 export const CHANG_QU = ["文昌", "文曲"];
 

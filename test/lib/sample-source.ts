@@ -80,7 +80,7 @@ export function missingDepHint(err: unknown): string {
  *    （samples 0.8 MiB、palaces 12.0 MiB，都在 GitHub 单文件上限内），所以「缺失」
  *    意味着克隆不完整或目录被清理，而不是「本来就没有」。但它仍不是唯一副本 ——
  *    `reference/` 下的 jsonl 语料是同一份数据的原始形态。
- *    2026-09-25 曾因 `ls` 是带 `--git-ignore` 的 eza 别名而误判语料已失，
+ *    曾因 `ls` 是带 `--git-ignore` 的 eza 别名而误判语料已失，
  *    见 docs/superpowers/specs/ 下的设计文档。
  */
 export function missingDbHint(dbDir: string = DB_DIR, missing: readonly string[] = []): string {
@@ -428,7 +428,7 @@ const KEY_COLUMNS = "s.year = ? AND s.month = ? AND s.day = ? AND s.hour = ? AND
 /**
  * 出生五元组主键（样本唯一标识）。
  *
- * ⚠️ `hour`（db 列名）与 `timeIndex`（`BirthInfo` 键，2026-09-30 术语对齐后）是同一个
+ * ⚠️ `hour`（db 列名）与 `timeIndex`（`BirthInfo` 键）是同一个
  *    时辰序号 —— 两侧调用方各给其一，展示时取到哪个用哪个。基类型仍取 `SampleRow` 的
  *    `gender: string`（见原注释），`BirthInfo` 的联合类型与之兼容。
  */

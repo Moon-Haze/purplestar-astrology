@@ -28,7 +28,7 @@ const SKILL_ROOT = resolve(HERE, "..");
 // 三个 skill 互相独立、各有各的 purple-star.ts 与内核（见 CLAUDE.md「三个 skill 之间没有关系」），
 // 因此必须**逐个入口**测到 —— 只测排盘那份的话，另两个 skill 的 CLI 入口写错在测试里看不见。
 // ── CLI 入口 ──
-// 2026-09-30 三 skill 合一后只有一条入口（仓库根 scripts/purple-star.ts）；表保留三键，
+// 三 skill 合一后只有一条入口（仓库根 scripts/purple-star.ts）；表保留三键，
 // 用例按命令族分发，路径全指根 CLI。
 const CLI = {
 	astrology: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
@@ -166,7 +166,7 @@ const { getMutagenByStem } = await loadSihua();
 
 // ── synastry 的输入：两份 `analyze --json` 的输出文件 ──
 //
-// 合盘 skill **不排盘**（2026-09-27 起）：`synastry` 只吃 `purplestar-astrology` 排好的盘。
+// 合盘 skill **不排盘**：`synastry` 只吃 `purplestar-astrology` 排好的盘。
 // 故测试也必须走同一条两步路 —— 先用**源 skill 的 CLI** 真排一张（`cli()` 走进程内路径，
 // 免掉每个用例起两个 node 子进程的冷启动税），把 stdout 写进临时文件，再把**文件路径**
 // 交给 synastry 子进程。
@@ -638,7 +638,7 @@ describe("CLI 端到端", () => {
 		// ── 绊线：恒定静态文本不得回到 synastry 的输出里 ──
 		//
 		// `【评分标准】` 与【完整方法论】两段（170 行，实测占本命令输出 78%）与「这一对是谁」
-		// 无关，排谁的盘都是同一份，2026-09-27 起住在 `references/synastry-guide.md`。这两段
+		// 无关，排谁的盘都是同一份，住在 `references/synastry-guide.md`。这两段
 		// 回到 `synastry` 里时，除了这条不会有任何东西变红（md 那边有它自己的守卫，见下面那组）。
 		//
 		// ⚠️ 断言的是**块标题字面量**而非「方法论」三个字：末尾那行指针本身就要说「方法论」，
@@ -657,7 +657,7 @@ describe("CLI 端到端", () => {
 			assert.ok(m, `末行不是指向 references/*.md 的指针：${pointer}`);
 
 			// 文件改名或删掉时红在这里，而不是红在助手打开一个不存在的文件时。
-			// 2026-09-30 起指针相对**仓库根**（合并后 skill 根 = 仓库根）。
+			// 指针相对**仓库根**（单 skill 形态下 skill 根 = 仓库根）。
 			const mdPath = resolve(SKILL_ROOT, m[0]);
 			assert.ok(existsSync(mdPath), `指针指向的参考文档不存在：${m[0]}`);
 		});
@@ -890,9 +890,8 @@ describe("CLI 端到端", () => {
 		it("晚子时提醒只落在命中的一方，且把用户送回排盘方", async () => {
 			// 甲方钟表 23:30、东经 120°（校正量为 0），校正后仍是晚子时；乙方正常。
 			//
-			// ⚠️ 口径**不在 synastry 里选**：提醒必须把用户送回**排盘命令**（2026-09-30 三 skill
-			// 合一后同一条 CLI 的 analyze --late-zi）重排。从前断言的是 `--a-late-zi`；
-			// 那个旗标自 2026-09-27 起归排盘方，写在合盘输出里等于让用户去敲一个必然被拒的参数。
+			// ⚠️ 口径**不在 synastry 里选**：提醒必须把用户送回**排盘命令**（同一条 CLI 的
+			// analyze --late-zi）重排。
 			const t = await cliCmd(
 				"synastry",
 				await argsOf({ ...A, time: "23:30" }, B),
@@ -927,9 +926,9 @@ describe("CLI 端到端", () => {
 
 	// ── 合盘方法论参考文档：从 synastry 拆出的恒定静态文本 ──
 	//
-	// 这两段原在 `synastry` 文本输出末尾无条件重印（实测占其输出 78%），2026-09-27 拆成
-	// `synastry-guide` 命令，同日改为 `references/synastry-guide.md` —— 静态参考按需读文件，
-	// 不必 spawnSync 起一个 node 进程走完引导层才拿到一段恒定的文本。
+	// 这两段曾原在 `synastry` 文本输出末尾无条件重印（实测占其输出 78%），现住在
+	// `references/synastry-guide.md` —— 静态参考按需读文件，不必 spawnSync 起一个
+	// node 进程走完引导层才拿到一段恒定的文本。
 	//
 	// 这一组**刻意不造独立预言机**：载荷就是那份 md，不存在第二条独立路径，硬造只会生产一份
 	// 需要同步的副本。它守的是「搬走了、搬全了、搬到位了」这三件事。
@@ -1173,7 +1172,7 @@ describe("CLI 端到端", () => {
 		});
 
 		it("生年与流年的年干口径刻意分家：1990-01-15 生年己（农历）、流年庚（公历）同屏", async () => {
-			// 生年四化取农历年干（chart.lunarInfo.yearStem，2026-09 修复），流年四化取
+			// 生年四化取农历年干（chart.lunarInfo.yearStem），流年四化取
 			// 公历年取模 —— 两口径在 1-2 月出生者身上分叉，且**应当**分家：
 			// 问「1990 年流年」指公历 1990 这一年，与出生那年的农历归属无关。
 			const t = await cli([
@@ -1193,7 +1192,7 @@ describe("CLI 端到端", () => {
 
 		it("--liunian / --liuyue 参数护栏（缺值、越界、非数字均报错，不静默产出）", async () => {
 			for (const args of [
-				// --liunian 裸开关**不报错**（2026-09-28 起语义 = 深入当前年），不在失败清单里；
+				// --liunian 裸开关**不报错**（语义 = 深入当前年），不在失败清单里；
 				// --liuyue 裸开关必须报错：Number(true) = 1 会把它静默当农历一月。
 				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liuyue"],
 				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "0"],
@@ -1203,7 +1202,7 @@ describe("CLI 端到端", () => {
 				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liuyue", "abc"],
 			] as string[][]) {
 				const stderr = await cliFails(args);
-				// ⚠️ 报错点名的是**归一后的英文主名**（--liunian → --yearly，2026-09-30 引擎别名归一）
+				// ⚠️ 报错点名的是**归一后的英文主名**（--liunian → --yearly，引擎别名归一）
 				const flag = args.includes("--liunian") ? "--yearly" : "--monthly";
 				assert.ok(
 					stderr.includes(flag),
@@ -1212,7 +1211,7 @@ describe("CLI 端到端", () => {
 			}
 		});
 
-		it("--liunian 裸开关 = 深入当前年（不报错；2026-09-28 起的语义）", async () => {
+		it("--liunian 裸开关 = 深入当前年（不报错）", async () => {
 			const t = await cli(["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian"]);
 			const thisYear = new Date().getFullYear();
 			assert.ok(
@@ -1451,7 +1450,7 @@ describe("CLI 端到端", () => {
 			assert.equal(findLongitude("海南"), null, "省名不是城市名，不得瞎猜");
 		});
 
-		it("cities 命令已删（2026-09-30）：未知命令并列出可用命令", async () => {
+		it("cities 命令已删：未知命令并列出可用命令", async () => {
 			// spec §3.1 城市经纬度查询命令退役（数据表保留，--city 容错解析在用）。
 			// 查城市的正路从此是 `astrology --city <名>`（解析结果见【出生地解析】节）。
 			// ⚠️ 真子进程：未知命令的报错发生在命令分发层，进程内快捷路径不覆盖它。
@@ -1497,7 +1496,7 @@ describe("CLI 端到端", () => {
 
 	// ── classics 古籍检索 ──
 	describe("classics 古籍检索（searchClassics 分支）", () => {
-		// ⚠️ 古籍内核 2026-09-30 并入根 `scripts/classics/`，`@/classics` 别名可达 ——
+		// ⚠️ 古籍内核在根 `scripts/classics/`，`@/classics` 别名可达 ——
 		//    与其他内核模块同一加载口径。本组测的是**古籍文本本身**（分词、limit 截断、
 		//    snippet 窗口）。
 		const loadClassics = () => load<typeof import("@/classics")>("@/classics");
@@ -1640,8 +1639,8 @@ describe("CLI 端到端", () => {
 		it("--limit 非正整数时指出是参数问题，不谎报「未找到」", async () => {
 			// 内核把非法 limit 归成空结果后，若 CLI 不加区分，`--limit 0` 会输出
 			// 「古籍中未找到「星」。」—— 明明有 41 条命中，只是上限被设成了 0。
-			// 2026-10-01 起值域非法由命令层 throw：引导层打「错误：」上 stderr 并 exit 1，
-			// 报错不再出现在 stdout（旧 return 行为对机器路径等于没报）。
+			// 值域非法由命令层 throw：引导层打「错误：」上 stderr 并 exit 1，
+			// 报错不出现在 stdout（return 行为对机器路径等于没报）。
 			for (const bad of ["0", "-3", "abc"]) {
 				let stderr = "";
 				try {
@@ -1686,7 +1685,7 @@ describe("CLI 端到端", () => {
 				assert.ok(t.includes(seg), `chart 输出应含「${seg}」，实得：\n${t.slice(0, 400)}`);
 		});
 
-		it("--palaces --json 输出十二宫齐全，地支 0-11 各一次（原 chart --json 同形）", async () => {
+		it("--palaces --json 输出十二宫齐全，地支 0-11 各一次", async () => {
 			const c = JSON.parse(
 				await cliCmd("astrology", [
 					"--palaces",

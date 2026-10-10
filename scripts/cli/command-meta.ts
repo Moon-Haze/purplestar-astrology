@@ -1,9 +1,8 @@
 /**
  * 命令元数据 —— 命令名清单与 HELP 渲染所需的描述文案。
  *
- * 2026-10-09 从 `commands.ts` 拆出（评审 selftest-performance 方案 B）：`commands.ts`
- * 静态 import 各命令实现（→ astrology → 内核 → iztro），HELP 渲染却只需要名字与
- * 文案。拆出后 `purple-star.ts` 的 help / 未知命令路径只加载本模块即可返回，不再为
+ * `commands.ts` 静态 import 各命令实现（→ astrology → 内核 → iztro），HELP 渲染却只需要
+ * 名字与文案。本模块拆出后 `purple-star.ts` 的 help / 未知命令路径只加载它即可返回，不再为
  * 看一眼用法付出 iztro 冷启动（约 3.2 秒）。
  *
  * ⚠️ 本文件是**轻模块**：不得 import 任何命令实现或内核（help 渲染的依赖底线）。
@@ -12,13 +11,7 @@
  */
 
 /** 合法命令名（顺序即 help COMMANDS 节的展示序）。 */
-export const COMMAND_NAMES = [
-	"astrology",
-	"stars",
-	"classics",
-	"synastry",
-	"selftest",
-] as const;
+export const COMMAND_NAMES = ["astrology", "stars", "classics", "synastry", "selftest"] as const;
 
 /** 合法命令名类型。 */
 export type CommandName = (typeof COMMAND_NAMES)[number];
@@ -32,14 +25,18 @@ export type CommandName = (typeof COMMAND_NAMES)[number];
  */
 export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 	astrology: [
-		"排盘分析一条命令（2026-09-30 四命令合一：原 analyze / chart / topic 融入参数）。",
-		"不带功能参数 = 概览：命盘总览三行 + 基本信息 12 行面板（无条件）+ 口径提示 + 运限速览 + 功能参数指路。",
+		"排盘分析一条命令。",
+		"不带功能参数 = 概览：基本信息面板（含公历生日 / 命宫 / 身宫 / 紫微落 / 三方四正）+ 口径提示 + 运限速览 + 专题指路。",
 		"专题参数可叠加：--pattern 格局 / --mutagen 四化 / --yearly [年] 流年 / --monthly 流月（须配 --mutagen）/",
 		"--decadal [虚岁] 大限 / --ages [虚岁] 小限 / --focus <宫>（四项深化：三方四正逐宫全星曜、",
-		"对宫完整详表、涉及格局全列、运限引动年份）。",
-		"--info（只出基本信息面板）/ --palaces（十二宫逐宫详表）/ --topic（主题论断）是独占分支：",
+		"对宫完整详表、涉及格局全列、运限引动年份）。给了专题参数则只出口径提示 + 专题详版",
+		"（基本信息面板 / 运限速览 / 专题指路均不带 —— 已在深入）。",
+		"--info（面板 + 运限速览 + 专题指路，与概览同尾）/ --palaces（十二宫逐宫详表）/ --topic（主题论断）是独占分支：",
 		"给出即接管输出，与其余功能参数同给会报错指路；优先级 --palaces > --topic > 其他功能参数。",
 		"出生信息支持零参数快捷形态（按形态归类、顺序无关）与完整参数形态，二者可混用（参数优先）。",
+		"完全零输入（出生信息一项不给）时不报错：以虚构示例（2011-06-24 杭州）演示基本信息面板 +",
+		"运限速览 + 专题指路并附用法指引。--json 与其他功能参数仍要求出生信息，",
+		"部分输入按「缺一问一」报错。",
 		"⚠️ 排盘四必问：日期、时间、性别、出生地 —— 缺一问一，不要猜。",
 	],
 	stars: ["星曜释义查询：不给关键词列出全部已收录星曜，给定时出该星的「关键词 · 星性 · 五行」。"],
@@ -73,5 +70,6 @@ export const COMMAND_DESC: Record<CommandName, string> = {
 	stars: "星曜释义",
 	classics: "古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）",
 	synastry: "合盘（双宫联参 + 夫妻宫断语 + 四化入夫妻宫）",
-	selftest: "回归自检（排盘 / 古籍 / 合盘三段：农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",
+	selftest:
+		"回归自检（排盘 / 古籍 / 合盘三段：农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",
 };

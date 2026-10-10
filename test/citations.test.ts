@@ -1,6 +1,6 @@
 // ── 引文守卫（元测试 + 全仓扫描）──
 //
-// 本文件是 `test/lib/citation-guard.ts` 的**唯一消费者**（2026-09-27 起）。它做两件事，
+// 本文件是 `test/lib/citation-guard.ts` 的**唯一消费者**。它做两件事，
 // 对应下面两个 describe：
 //
 //   一、喂守卫一棵**构造的临时目录树**，验它的扫描范围与排除规则本身对不对；
@@ -31,8 +31,7 @@ import { dirname, resolve } from "node:path";
 
 import { scanCitations } from "./lib/citation-guard.ts";
 import { ALL_SKILLS, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
-// ⚠️ 核对表是**唯一一份数据资产**，它留在内核里。上面那份 `scanCitations`
-//    也是 2026-09-27 从内核的 `ziwei/` 下移出来的 —— 数据留原地，逻辑搬到测试侧。
+// ⚠️ 核对表是**唯一一份数据资产**，它留在内核里 —— 数据留原地，逻辑搬到测试侧。
 import { ANNOTATIONS } from "../scripts/ziwei/annotations.ts";
 
 /**

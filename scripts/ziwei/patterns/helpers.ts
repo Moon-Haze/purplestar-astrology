@@ -328,9 +328,8 @@ export function sanFangHasMutagen(chart: ZiweiChart, hua: Mutagen): boolean {
  * @returns 替换后的**新对象**；入参不被修改
  *
  * @remarks
- * 占位符约定与表键口径见 `data.ts` 的「判词」分区注释。本函数原先住在格局层的
- * 静态声明文件里，2026-09-27 拆出「形状 / 数据」两个文件时，按声明与实现分离的
- * 立场移回实现侧 —— 它是纯函数，且只被同目录的识别器调用点使用。
+ * 占位符约定与表键口径见 `data.ts` 的「判词」分区注释。本函数按声明与实现
+ * 分离的立场住在实现侧 —— 它是纯函数，且只被同目录的识别器调用点使用。
  */
 export function fillVerdict(verdict: PatternVerdict, vars: Record<string, string>): PatternVerdict {
 	const sub = (s: string): string => s.replace(/\{([^{}]+)\}/g, (m, k: string) => vars[k] ?? m);

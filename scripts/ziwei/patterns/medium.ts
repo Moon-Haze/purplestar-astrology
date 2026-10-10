@@ -47,7 +47,7 @@ function detectLianXiang({ chart }: DetectContext): Pattern[] {
 	if (getStarMutagen(lian, "廉贞") === "忌") breaking.push("廉贞化忌");
 
 	// 名字取古籍用语：全集·卷四「廉贞与天相同宫为『廉相格』」。全称「廉贞天相格」
-	// 古籍零见，2026-09-27 按「古文优先」裁决为简称（见 GEJU_NAME_ALIASES）。
+	// 古籍零见，按「古文优先」裁决为简称（见 GEJU_NAME_ALIASES）。
 	const name = "廉相格";
 	return [{
 		name,

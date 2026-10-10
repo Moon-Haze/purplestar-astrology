@@ -22,7 +22,7 @@
  *   scripts/ziwei/cities.ts      中国城市经纬度（真太阳时校正）
  *   scripts/ziwei/constants.ts   天干地支 / 四化表 / 星曜释义
  *
- * 2026-09-30 三 skill 合一：classics / synastry 的内核也已住进本仓
+ * classics / synastry 的内核也住进本仓
  * `scripts/classics/` 与 `scripts/synastry/`，命令并入本 CLI —— 单 skill 单入口，
  * 排盘（astrology）、古籍（classics）、合盘（synastry）都在这里（见 `SKILL.md`）。
  *
@@ -168,11 +168,10 @@ const load = makeLoader(ROOT, ROOT_LABEL, f => {
 	process.exit(1);
 });
 
-// ── 排盘内核的加载 + 启动自检：惰性（2026-10-09 selftest-performance 方案 B）──
-// 原先这批 load 在模块顶层无条件执行，连 `help` 都要付约 3.2 秒的 iztro 冷启动。
-// 收进本函数后，help / 未知命令路径只加载 command-meta + help（轻模块）即返回；
-// 真正要排盘 / 检索 / 合盘时才调用本函数 —— 启动自检的语义随之收窄为
-// 「加载内核时就地自检」，而 help 本来就不消费内核导出，不受影响。
+// ── 排盘内核的加载 + 启动自检：惰性 ──
+// help / 未知命令路径只加载 command-meta + help（轻模块）即返回，不为看一眼用法付出
+// iztro 冷启动；真正要排盘 / 检索 / 合盘时才调用本函数。启动自检的语义是
+// 「加载内核时就地自检」，help 不消费内核导出，不受影响。
 /**
  * 加载排盘所需的全部模块并做启动自检，返回分发所需的命令表与参数解析器。
  *
@@ -187,7 +186,7 @@ async function loadCore() {
 	const constantsNs = await load<ConstantsModule>("@/ziwei/constants");
 	const citiesNs = await load<CitiesModule>("@/ziwei/cities");
 	const lunarNs = await load<typeof import("lunar-typescript")>("lunar-typescript");
-	// classics / synastry 的入口模块（2026-09-30 三 skill 合一）：分别对应两条命令的内核
+	// classics / synastry 的入口模块：分别对应两条命令的内核
 	const classicsNs = await load<ClassicsModule>("@/classics");
 	const chartViewNs = await load<ChartViewModule>("@/synastry/chart-view");
 
@@ -263,7 +262,7 @@ async function main() {
 	const argv = process.argv.slice(2);
 	const cmd = argv[0];
 	// help 路径只加载轻模块（command-meta + help，均不依赖命令实现），不为看一眼
-	// 用途付出 iztro 冷启动（2026-10-09 selftest-performance 方案 B：约 3.3s → 近瞬时）。
+	// 用途付出 iztro 冷启动。
 	if (cmd && cmd !== "help" && (argv.includes("--help") || argv.includes("-h"))) {
 		const metaNs = await load<MetaModule>("@/cli/command-meta");
 		const helpLite = await load<typeof import("@/cli/help")>("@/cli/help");

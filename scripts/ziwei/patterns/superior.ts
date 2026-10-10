@@ -68,7 +68,7 @@ function detectZiFu({ chart }: DetectContext): Pattern[] {
 
 	// 判定域：同宫的那一宫必须是命宫或迁移宫。
 	//
-	// ⚠️ 2026-09-26 由「任一同宫皆可」收窄，取 topic 侧（analysis.ts 的 detectGeJu）口径 ——
+	// ⚠️ 口径由「任一同宫皆可」收窄，取 topic 侧（analysis.ts 的 detectGeJu）口径 ——
 	// 它只认 `hasStar('命宫'|'迁移', …)`。旧口径下紫府同宫在任何宫都成格（只把未坐命的降为 75），
 	// 与 topic 侧实测 44/300 盘判定相反（如紫府坐财帛：这边报格、那边不报）。
 	// 代价：紫微天府同宫于它宫时不再产出「紫府同宫」，那类盘在这两处都不再有此格局。
@@ -162,7 +162,7 @@ function detectHuoTanLingTan({ chart }: DetectContext): Pattern[] {
 
 	// 判定域：火/铃与贪狼**同宫**。
 	//
-	// ⚠️ 2026-09-26 由「同宫或三方四正会照 + 贪狼须会照命宫三方」收窄，取 topic 侧
+	// ⚠️ 口径由「同宫或三方四正会照 + 贪狼须会照命宫三方」收窄，取 topic 侧
 	// （analysis.ts 的 detectGeJu）口径 —— 它只要求 `贪狼宫内有火铃`。
 	// 旧口径的两个毛病：① 三方四正**不可传递**，`sameOrTrine` 比的是**贪狼的**三方，
 	// 而 `isInSanFang` 只约束贪狼本身，于是命中盘里有一部分煞星其实照不到命宫
@@ -261,7 +261,7 @@ function detectJiYueTongLiang({ chart, ming }: DetectContext): Pattern[] {
 	const has = ["天机", "太阴", "天同", "天梁"].filter(s => sanFangSet.has(s));
 	if (has.length < 3) return [];
 
-	// 「四星齐」与「恰好三星」原是两个格局名（机月同梁 / 机月同梁三星会），2026-09-26 合并为一个：
+	// 「四星齐」与「恰好三星」同属一个格局名（机月同梁三星会并入机月同梁）：
 	// 判定域放宽到 `>= 3`，缺星时把「不全格」记进 breaking 并把 level 降为 60。
 	//
 	// ⚠️ 域是**三方四正**（含迁移宫），不是「命宫三方」—— topic 侧的 detectGeJu 用的是三方

@@ -1,5 +1,5 @@
 /**
- * 合盘自检断言组 —— 2026-09-30 三 skill 合一时从 synastry 自带的 selftest.ts 抽出。
+ * 合盘自检断言组 —— 从 synastry 自带的 selftest.ts 抽出。
  *
  * 断言体基本原样；适配点有三类：
  * 1. **参数面断言改跑合并后的根 CLI**（`node scripts/purple-star.ts synastry …`）；
@@ -254,7 +254,7 @@ export async function asserts(): Promise<Assertion[]> {
 			const wrong = join(tmp, "wrong.json");
 			writeFileSync(wrong, JSON.stringify({ birthInfo: {}, palaces: [], soulBranch: 0 }));
 			// ⚠️ 输入必须是 --charts 形态：--a-chart 在解析层就是未知参数，到不了读文件的
-			//    契约校验（2026-09-30 评审发现的原断言假绿——子串 "chart" 被参数名误满足）。
+			//    契约校验。
 			const r = run(["synastry", "--charts", `${wrong},${fileB}`]);
 			if (r.code === 0) throw new Error("顶层无 chart 键却退出码为 0 —— 契约校验失效");
 			if (!r.err.includes("chart"))
@@ -288,7 +288,7 @@ export async function asserts(): Promise<Assertion[]> {
 		ok("合盘参考文档：references/synastry-guide.md 在，评分标准与方法论两节都有内容", () => {
 			// 评分标准与完整方法论是**恒定静态文本**（与「这一对是谁」无关），不被任何运行时
 			// 路径读取（不引入「内核读 md」这种新模式）—— 本断言是唯一的提示。
-			// 2026-09-30 起住在仓库根 references/（合并前在合盘 skill 自己的 references/）。
+			// 住在仓库根 references/。
 			const p = resolve(ROOT, "..", "..", "references", "synastry-guide.md");
 			const md = readFileSync(p, "utf8");
 			for (const anchor of [
@@ -310,7 +310,7 @@ export async function asserts(): Promise<Assertion[]> {
 		// ── 参数面（子进程跑合并后的根 CLI）──
 
 		ok("合盘参数面：a- / b- 前缀已退役（--a-chart 是未知参数）", () => {
-			// 2026-09-30 输入改 --charts 单参数（spec §2.3）：a- / b- 前缀体系整个不需要，
+			// 输入用 --charts 单参数（spec §2.3）：a- / b- 前缀体系整个不需要，
 			// 前缀旗标一律「未知参数」。spec 原文：原「前缀必须报错」断言改为
 			// 「--a-chart 是未知参数」。
 			const probes = ["--a-chart", "--b-chart", "--a-date", "--a-time", "--a-gender", "--a-city"];

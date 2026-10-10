@@ -14,7 +14,7 @@ import { fmtDate } from "./render";
 import { BRANCHES, SHICHEN } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
 import { Lunar, type Solar } from "lunar-typescript";
-// 2026-09-27 拆分：四个接口与两个模块级常量搬到了 ./birth-info-defs，
+// 四个接口与两个模块级常量住在 ./birth-info-defs，
 // 这里只为函数实现服务；公开面由文末 re-export 兜住，调用方一行未改。
 import {
 	ADMIN_SUFFIX,
@@ -310,8 +310,7 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		month = sm;
 		day = sd;
 	}
-	// ⚠️ --year/--month/--day 三连已删（2026-09-30，spec §1.2）：--date 完全覆盖（格式宽松），
-	//    日期从此二选一（--date / --lunar）。
+	// ⚠️ 日期从此二选一（--date / --lunar，spec §1.2）：--date 完全覆盖（格式宽松）。
 	if (!year || !month || !day)
 		throw new Error("缺少出生日期：需 --date YYYY-MM-DD 或 --lunar YYYY-MM-DD");
 

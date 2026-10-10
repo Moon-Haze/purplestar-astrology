@@ -1,6 +1,6 @@
 // ── skill 清单（仓库级，唯一源）──
 //
-// 2026-09-30 三 skill 合一：**仓库根 = skill 根**（根 `SKILL.md` + 根 `scripts/` +
+// 三 skill 合一后的单 skill 形态：**仓库根 = skill 根**（根 `SKILL.md` + 根 `scripts/` +
 // 根 `references/` + 根 `package.json`），classics 与 synastry 的内核分别住在
 // `scripts/classics/` 与 `scripts/synastry/`，命令并入同一条 CLI。清单自此只有一项。
 //
@@ -64,6 +64,6 @@ export const CHART_LIKE: readonly string[] = [SOURCE_SKILL];
  */
 export function skillDir(name: string): string {
 	if (name !== SOURCE_SKILL)
-		throw new Error(`单 skill 形态下没有第二个 skill：${name}（2026-09-30 三 skill 合一）`);
+		throw new Error(`单 skill 形态下没有第二个 skill：${name}`);
 	return REPO_ROOT;
 }

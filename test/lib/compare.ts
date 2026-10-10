@@ -194,7 +194,7 @@ export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"
  * 这正是 `decadals[].startAge/endAge` 所在的域，故 currentAge 必须用同一口径才能比。
  *
  * ⚠️ 这里**独立换算**，刻意不引用内核的 currentAge。
- *    2026-09 之前两边都写 `getFullYear() - year`（周岁），域不同却公式同形，
+ *    曾因两边公式同形（`getFullYear() - year` 周岁，域却不同），内核算错、比对器跟着错，
  *    于是内核算错、比对器跟着错，测试恒绿 —— 大限错位因此潜伏了很久。
  *    比对器的期望值必须来自另一条计算路径，否则它就只是内核的复读机。
  *    （更独立的预言机：iztro 自身的 horoscope().age.nominalAge，见 invariants.test.ts。）

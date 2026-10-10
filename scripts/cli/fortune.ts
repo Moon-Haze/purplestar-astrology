@@ -1,7 +1,7 @@
 /**
  * 运限专题模块 —— 流年 / 大限 / 小限 / 基本信息 / 格局 / 四化各专题的定位与渲染。
  *
- * 拆自 commands.ts 的 cmdAnalyze（2026-09-28 专题旗标族改造）。存在的理由与 selftest.ts
+ * 存在的理由与 selftest.ts
  * 相同：它被 commands.ts 与 selftest.ts **两方**调用，而 selftest 被 commands 静态引着，
  * 专题渲染若留在 cmdAnalyze 里，selftest 就测不到它（静态环）—— 独立成本层叶子即无环。
  *
@@ -38,7 +38,7 @@ import { Solar } from "lunar-typescript";
  * 流年命宫就是**年支所在的那个宫**（三合派：不重排十二宫，以年支宫为流年命宫论三方四正）。
  */
 export function yearlyBranchOf(year: number): number {
-	return ((year - 4) % 12 + 12) % 12;
+	return (((year - 4) % 12) + 12) % 12;
 }
 
 /**
@@ -56,10 +56,11 @@ export function yearlyBranchOf(year: number): number {
  */
 export function agePalaceOf(chart: ZiweiChart, age: number): Palace {
 	const p = chart.palaces.find(x => x.ages?.includes(age));
-	if (!p)
+	if (!p) {
 		throw new Error(
 			`虚岁 ${age} 不落在任何宫的小限岁数表内（有效域 1–120）—— 多半是参数敲错，不静默兜底`
 		);
+	}
 	return p;
 }
 
@@ -82,10 +83,13 @@ export function parseAgesArg(
 	currentAge: number,
 	flagName: string
 ): number {
-	if (raw === undefined || raw === true) return currentAge;
+	if (raw === undefined || raw === true) {
+		return currentAge;
+	}
 	const n = Number(raw);
-	if (!Number.isInteger(n) || n < 1 || n > 120)
+	if (!Number.isInteger(n) || n < 1 || n > 120) {
 		throw new Error(`${flagName} 应为 1-120 的整数虚岁，收到：${raw}`);
+	}
 	return n;
 }
 
@@ -98,9 +102,22 @@ export function parseAgesArg(
  * @returns 正月 / 二月 / … / 十月 / **冬月** / **腊月**（十一月、十二月的传统叫法）
  */
 function lunarMonthCN(m: number): string {
-	return ["正月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "冬月", "腊月"][
-		m - 1
-	] ?? `${m}月`;
+	return (
+		[
+			"正月",
+			"二月",
+			"三月",
+			"四月",
+			"五月",
+			"六月",
+			"七月",
+			"八月",
+			"九月",
+			"十月",
+			"冬月",
+			"腊月",
+		][m - 1] ?? `${m}月`
+	);
 }
 
 /**
@@ -120,18 +137,20 @@ function lunarDayCN(d: number): string {
 	return "三十";
 }
 
-// ══════════════════════ 概览节（默认输出的运限速览）══════════════════════
+// ══════════════════════ 概览节（概览 / --info / 零输入演示态的运限速览与专题指路）══════════════════════
 
 /**
- * 概览节：一行运限速览 + 一行专题指路 —— 精简默认输出的全部内容（总览节除外）。
+ * 概览节：一行运限速览 + 一行专题指路。
  *
  * @param chart - 命盘
- * @param liuNianYear - 流年公历年（默认输出取当前年；给了 `--liunian` 时取它）
+ * @param liuNianYear - 流年公历年（缺省当前年；给了 `--yearly` 时取它）
  * @returns 两行文本
  *
  * @remarks
- * 速览行同时给出四个运限坐标（虚岁 / 大限 / 流年命宫 / 小限宫），让「一眼定位」
- * 与「该往哪个专题旗标深入」在一次默认输出里就能完成。
+ * 契约：在「无功能参数的概览」「--info」与零输入演示态输出；给了具体
+ * 专题参数（`--pattern` / `--mutagen` / `--yearly` 等）的输出不带 —— 已在深入，
+ * 指路是噪声。速览行同时给出四个运限坐标（虚岁 / 大限 / 流年命宫 / 小限宫），
+ * 让「一眼定位」与「该往哪个专题旗标深入」在未深入形态的输出里就能完成。
  */
 export function overviewSection(chart: ZiweiChart, liuNianYear: number): string[] {
 	const dx = chart.decadals[chart.currentDecadalIndex];
@@ -141,7 +160,9 @@ export function overviewSection(chart: ZiweiChart, liuNianYear: number): string[
 	const ganZhi = `${STEMS[getYearStemIndex(liuNianYear)]}${BRANCHES[lnBranch]}`;
 	return [
 		`【运限速览】虚岁 ${chart.currentAge} · 大限 ${
-			dx ? `${dx.startAge}-${dx.endAge}岁 ${dx.palaceName}(${BRANCHES[dx.palaceBranch]})` : "童限未起运"
+			dx
+				? `${dx.startAge}-${dx.endAge}岁 ${dx.palaceName}(${BRANCHES[dx.palaceBranch]})`
+				: "童限未起运"
 		} · 流年 ${liuNianYear} ${ganZhi} 流年命宫${BRANCHES[lnBranch]}·${lnPalace?.name ?? "?"} · 小限${BRANCHES[xx.branch]}·${xx.name}`,
 		"【专题深入】--pattern 格局 · --mutagen 四化 · --decadal [虚岁] 大限 · --ages [虚岁] 小限 · --yearly [年] 流年 · --focus <宫> 宫盘深化 · --palaces 十二宫详表 · --topic <key> 主题论断",
 	];
@@ -163,13 +184,15 @@ export interface InfoClockOpts {
 }
 
 /**
- * `--info`：基本信息专题 —— 性别 / 经度 / 钟表与真太阳时 / 农历 / 节气与非节气四柱 /
- * 五行局 / 命盘类型 / 命主身主斗君身宫。
+ * `--info`：基本信息专题 —— 姓名 / 性别 / 公历生日 / 经度 / 钟表与真太阳时 / 农历 /
+ * 节气与非节气四柱 / 五行局 / 命盘类型 / 命宫身宫紫微 / 三方四正 / 命主身主斗君。
  *
  * @param chart - 命盘
  * @param opts - 出生时刻展示串
  *
  * @remarks
+ * 面板行集：公历生日与姓名，命宫 / 紫微落 / 三方四正（身宫与命宫同行，避免重复）。
+ *
  * 四柱由 `lunar-typescript` 现算（节气口径 = `getEightChar()`，立春分年、节气分月；
  * 非节气口径 = 正月初一分年 + 农历月柱）。⚠️ 四柱**仅为出生时刻记录**，本技能
  * 不做八字论命 —— SKILL.md 的红线拦的是八字解读，不拦出生数据展示。
@@ -190,7 +213,9 @@ export function infoSection(chart: ZiweiChart, opts: InfoClockOpts): string[] {
 			: [`节气四柱 : ${jieQi}`, `非节气四柱 : ${feiJieQi}`];
 	return [
 		"【基本信息】",
+		...(bi.name ? [`姓名 : ${bi.name}`] : []),
 		`性别 : ${bi.gender === "male" ? "男" : "女"}`,
+		`公历生日 : ${bi.year}-${String(bi.month).padStart(2, "0")}-${String(bi.day).padStart(2, "0")}`,
 		`地理经度 : ${opts.longitude.toFixed(3)}`,
 		`钟表时间 : ${opts.clockTime ?? "未给（按 --branch 时辰排盘）"}`,
 		`真太阳时 : ${opts.solarNote}`,
@@ -198,7 +223,9 @@ export function infoSection(chart: ZiweiChart, opts: InfoClockOpts): string[] {
 		...pillars,
 		`五行局数 : ${chart.fiveElementsClassName}`,
 		"命盘类型 : 三合盘(天盘)",
-		`身主:${chart.shenZhu}; 命主:${chart.mingZhu}; 子年斗君:${BRANCHES[chart.douJunBranch]}; 身宫:${BRANCHES[chart.bodyBranch]}`,
+		`命宫:${BRANCHES[chart.soulBranch]} · 身宫:${BRANCHES[chart.bodyBranch]} · 紫微落:${BRANCHES[chart.ziweiPos]}`,
+		`三方四正:${surroundNames(chart, chart.soulBranch).join("/")}`,
+		`身主:${chart.shenZhu}; 命主:${chart.mingZhu}; 子年斗君:${BRANCHES[chart.douJunBranch]}`,
 		"（注：四柱仅为出生时刻记录，本技能不做八字论命。）",
 	];
 }
@@ -279,13 +306,12 @@ function sameStarPairs(
 	native: Record<string, string>,
 	liuNian: Record<string, string>
 ) {
-	const out: { star: string; nativeHua: string; liuNianHua: string; branch: number | null }[] = [];
+	const out: { star: string; nativeHua: string; liuNianHua: string; branch: number | null }[] =
+		[];
 	for (const hua of ["禄", "权", "科", "忌"] as const) {
 		for (const hua2 of ["禄", "权", "科", "忌"] as const) {
 			if (native[hua] === liuNian[hua2] && !out.some(o => o.star === native[hua])) {
-				const palace = chart.palaces.find(p =>
-					p.stars.some(s => s.name === native[hua])
-				);
+				const palace = chart.palaces.find(p => p.stars.some(s => s.name === native[hua]));
 				out.push({
 					star: native[hua],
 					nativeHua: hua,
@@ -301,7 +327,7 @@ function sameStarPairs(
 // ══════════════════════ 格局专题（--geju）══════════════════════
 
 /**
- * `--geju`：格局识别专题 —— 与原 analyze 的格局节同源（detectPatterns 全量输出）。
+ * `--geju`：格局识别专题 —— detectPatterns 全量输出。
  *
  * @param chart - 命盘
  */
@@ -313,13 +339,19 @@ export function patternSection(chart: ZiweiChart): string[] {
 		out.push(`  ▸ ${p.name} [${p.level}分]  涉及：${p.palaces.join("、")}`);
 		out.push(`    ${p.description}`);
 		if (p.conditions) {
-			if (p.conditions.required?.length)
+			if (p.conditions.required?.length) {
 				out.push(`    成立：${p.conditions.required.join("；")}`);
-			if (p.conditions.bonus?.length) out.push(`    加分：${p.conditions.bonus.join("；")}`);
-			if (p.conditions.breaking?.length)
+			}
+			if (p.conditions.bonus?.length) {
+				out.push(`    加分：${p.conditions.bonus.join("；")}`);
+			}
+			if (p.conditions.breaking?.length) {
 				out.push(`    破格：${p.conditions.breaking.join("；")}`);
+			}
 		}
-		if (p.source) out.push(`    出处：${p.source}`);
+		if (p.source) {
+			out.push(`    出处：${p.source}`);
+		}
 	}
 	return out;
 }
@@ -384,7 +416,9 @@ export function mutagenSection(
 export function yearlySection(chart: ZiweiChart, year: number): string[] {
 	const lnBranch = yearlyBranchOf(year);
 	const lnPalace = chart.palaces.find(p => p.branch === lnBranch);
-	if (!lnPalace) throw new Error(`流年命宫（${BRANCHES[lnBranch]}）不在十二宫内 —— 内核输出已损坏`);
+	if (!lnPalace) {
+		throw new Error(`流年命宫（${BRANCHES[lnBranch]}）不在十二宫内 —— 内核输出已损坏`);
+	}
 	const sanFang = surroundBranches(lnBranch);
 	const liuNian = getYearlyMutagen(year);
 	// 流年虚岁：流年农历年 − 出生农历年 + 1（与 currentAge 同域同口径）
@@ -400,7 +434,8 @@ export function yearlySection(chart: ZiweiChart, year: number): string[] {
 		"",
 		`流年四化（年干 ${liuNian.stemName}）：`,
 	];
-	out.push(...sihuaLines(chart, liuNian.transforms, sanFang, " ★ 入流年三方四正"));	if (dx) {
+	out.push(...sihuaLines(chart, liuNian.transforms, sanFang, " ★ 入流年三方四正"));
+	if (dx) {
 		const dxSanFang = surroundBranches(dx.palaceBranch);
 		const entered = dxSanFang.includes(lnBranch);
 		// 大限三方名一次取好（入/不入两分支共用；原先两分支各查一次）
@@ -447,7 +482,12 @@ export function decadalSection(chart: ZiweiChart, age: number): string[] {
 	out.push("十年大运时间轴：");
 	for (const d of chart.decadals) {
 		const p = chart.palaces.find(x => x.branch === d.palaceBranch);
-		const majors = p ? p.stars.filter(s => s.type === "major").map(s => s.name).join("、") : "";
+		const majors = p
+			? p.stars
+					.filter(s => s.type === "major")
+					.map(s => s.name)
+					.join("、")
+			: "";
 		const cur = d === dx;
 		out.push(
 			`  ${String(d.startAge).padStart(3)}-${String(d.endAge).padStart(3)}岁  ${d.palaceName}(${BRANCHES[d.palaceBranch]})` +
@@ -462,7 +502,9 @@ export function decadalSection(chart: ZiweiChart, age: number): string[] {
 
 	const dxPalace = chart.palaces.find(p => p.branch === dx.palaceBranch);
 	out.push("");
-	out.push(`深查大限：${age} 岁 → ${dx.startAge}-${dx.endAge}岁 ${dx.palaceName}(${BRANCHES[dx.palaceBranch]})`);
+	out.push(
+		`深查大限：${age} 岁 → ${dx.startAge}-${dx.endAge}岁 ${dx.palaceName}(${BRANCHES[dx.palaceBranch]})`
+	);
 	if (dxPalace) out.push(renderPalace(dxPalace, chart));
 	const sanFang = surroundBranches(dx.palaceBranch);
 	out.push(`大限三方四正（限之财官迁移）：${surroundNames(chart, dx.palaceBranch).join(" / ")}`);
@@ -540,15 +582,14 @@ export function ageSection(chart: ZiweiChart, age: number, liuNianYear: number):
  */
 export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: number): string[] {
 	const want = FOCUS_ALIASES.get(focusRaw);
-	const target = chart.palaces.find(
-		p => p.name === want || BRANCHES[p.branch] === focusRaw
-	);
-	if (!target)
+	const target = chart.palaces.find(p => p.name === want || BRANCHES[p.branch] === focusRaw);
+	if (!target) {
 		// 指路信息全留在 message 里，stderr 一条不丢
 		throw new Error(
 			`找不到宫位「${focusRaw}」。可用：${chart.palaces.map(p => p.name).join("、")}` +
 				`（也接受口语简称与旧写法，如「交友」「仆役」；或直接给地支名）`
 		);
+	}
 
 	const sanFang = surroundBranches(target.branch);
 	const oppBranch = oppositeBranch(target.branch);
@@ -562,7 +603,7 @@ export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: n
 	if (target.isBodyPalace) out.push(`  ⭐ 此宫为身宫 —— 身主星：${chart.shenZhu}`);
 	out.push("");
 
-	// ── 深化一：对宫完整详表（renderPalace 同规格，2026-09-30 起）──
+	// ── 深化一：对宫完整详表（renderPalace 同规格）──
 	const oppPalace = chart.palaces.find(p => p.branch === oppBranch);
 	out.push(`对宫详表：${oppPalace?.name ?? "?"}`);
 	if (oppPalace) out.push(renderPalace(oppPalace, chart));
@@ -584,18 +625,25 @@ export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: n
 	const patternsHere = detectPatterns(chart).filter(pt =>
 		(pt.palaces ?? []).some(n => n === target.name || n.includes(target.name))
 	);
-	if (patternsHere.length) for (const pt of patternsHere) out.push(`  · ${pt.name}（${pt.level}）`);
-	else out.push("  （无成立的格局涉及此宫）");
+	if (patternsHere.length) {
+		for (const pt of patternsHere) {
+			out.push(`  · ${pt.name}（${pt.level}）`);
+		}
+	} else {
+		out.push("  （无成立的格局涉及此宫）");
+	}
 
 	out.push("");
 	out.push("四化落宫：");
 	const native = nativeSiHuaOf(chart);
-	const nativesHere = locateSihua(chart, native).filter(
-		x => x.palace === target.name
-	);
-	if (nativesHere.length)
-		for (const x of nativesHere) out.push(`  生年化${x.hua} ${x.star} 落此宫`);
-	else out.push("  生年四化：无落此宫");
+	const nativesHere = locateSihua(chart, native).filter(x => x.palace === target.name);
+	if (nativesHere.length) {
+		for (const x of nativesHere) {
+			out.push(`  生年化${x.hua} ${x.star} 落此宫`);
+		}
+	} else {
+		out.push("  生年四化：无落此宫");
+	}
 	const liuNianHere = locateSihua(chart, liuNian.transforms).filter(
 		x => x.palace === target.name
 	);
@@ -605,23 +653,29 @@ export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: n
 
 	out.push("");
 	out.push("运限引动：");
-	if (target.decadalRange)
-		out.push(`  此宫为 ${target.decadalRange[0]}-${target.decadalRange[1]} 岁大限宫${target.isCurrentDecadal ? "（当前所行）" : ""}`);
-	if (target.branch === lnBranch)
+	if (target.decadalRange) {
+		out.push(
+			`  此宫为 ${target.decadalRange[0]}-${target.decadalRange[1]} 岁大限宫${target.isCurrentDecadal ? "（当前所行）" : ""}`
+		);
+	}
+	if (target.branch === lnBranch) {
 		out.push(`  ${liuNianYear} 流年命宫在此 —— 值年之宫`);
-	else if (lnBranch === oppBranch)
+	} else if (lnBranch === oppBranch) {
 		out.push(`  ${liuNianYear} 流年命宫在其对宫 —— 对冲引动`);
-	else if (sanFang.includes(lnBranch))
+	} else if (sanFang.includes(lnBranch)) {
 		out.push(`  ${liuNianYear} 流年命宫会照此宫（三方四正内）`);
+	}
 	const xx = agePalaceOf(chart, chart.currentAge);
-	if (xx.branch === target.branch)
+	if (xx.branch === target.branch) {
 		out.push(`  当前虚岁 ${chart.currentAge} 小限在此宫`);
+	}
 	// ── 深化四（续）：小限岁数段 + 当前大限十年内此宫被流年引动的年份 ──
 	const ages = target.ages ?? [];
-	if (ages.length)
+	if (ages.length) {
 		out.push(
 			`  小限岁数段：${ages[0]}-${ages[ages.length - 1]} 岁（共 ${ages.length} 个落点）`
 		);
+	}
 	const cur = chart.decadals[chart.currentDecadalIndex];
 	if (cur) {
 		// 大限起止虚岁 → 公历年区间（虚岁 = 出生公历年 + 虚岁 - 1 的近似口径，

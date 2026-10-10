@@ -1,7 +1,6 @@
 /**
  * help 渲染 —— 总览 help 与每命令 `--help`（man 手册页结构，spec §3.2）。
  *
- * 2026-09-30 从 purple-star.ts 的最小版接管（Task 8 强化）：
  * - **总览 `help`**：NAME / SYNOPSIS / DESCRIPTION / COMMANDS / OPTIONS / EXAMPLES /
  *   NOTES / SEE ALSO 八节（比每命令版多一节 COMMANDS），节标题大写、节序固定 ——
  *   `less purple-star.ts help` 的观感即 man。
@@ -26,11 +25,32 @@ import { OPTION_GROUPS, OPTION_ALIASES, type OptionSpec } from "./args";
  */
 export const OPTION_OWNERSHIP: Record<CommandName, readonly string[]> = {
 	astrology: [
-		"date", "lunar", "leap",
-		"time", "branch", "late-zi", "eot",
-		"gender", "lng", "city", "province", "name",
-		"info", "pattern", "mutagen", "decadal", "ages", "palaces",
-		"yearly", "monthly", "focus", "topic", "view", "json", "config", "template",
+		"date",
+		"lunar",
+		"leap",
+		"time",
+		"branch",
+		"late-zi",
+		"eot",
+		"gender",
+		"lng",
+		"city",
+		"province",
+		"name",
+		"info",
+		"pattern",
+		"mutagen",
+		"decadal",
+		"ages",
+		"palaces",
+		"yearly",
+		"monthly",
+		"focus",
+		"topic",
+		"view",
+		"json",
+		"config",
+		"template",
 	],
 	stars: ["search"],
 	classics: ["search", "limit"],
@@ -66,7 +86,7 @@ const OVERVIEW_EXAMPLES = [
 	`  # 专题深入可叠加：格局 + 四化 + 指定流年 + 聚焦财帛宫
   node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --pattern --mutagen --yearly 2027 --focus 财帛`,
 	"",
-	`  # 十二宫逐宫详表（原 chart 职责）与主题论断（原 topic 职责）
+	`  # 十二宫逐宫详表与主题论断
   node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --palaces
   node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --topic love`,
 	"",
@@ -88,6 +108,8 @@ const COMMAND_EXAMPLES: Record<CommandName, readonly string[]> = {
 		"  node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州",
 		"  node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --pattern --mutagen",
 		"  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --topic love --view liunian",
+		"  # 完全零输入不报错：以虚构示例演示基本信息面板 + 运限速览 + 专题指路",
+		"  node scripts/purple-star.ts astrology",
 		"",
 		FICTION_NOTE,
 	],
@@ -163,8 +185,7 @@ function renderOptions(owned: ReadonlySet<string>): string[] {
 		...groups.flatMap(g => g.rows),
 	];
 	const column = Math.max(...allRows.map(([l]) => displayWidth(l))) + 2;
-	const pad = (l: string, d: string) =>
-		l + " ".repeat(Math.max(1, column - displayWidth(l))) + d;
+	const pad = (l: string, d: string) => l + " ".repeat(Math.max(1, column - displayWidth(l))) + d;
 	const lines: string[] = [pad("  -h, --help", "显示本帮助（任何命令可用）")];
 	for (const g of groups) {
 		lines.push(`  ${g.title}`);
@@ -177,7 +198,12 @@ function renderOptions(owned: ReadonlySet<string>): string[] {
 export function renderOverviewHelp(): string {
 	const lines: string[] = [];
 	lines.push("NAME", "  purple-star —— 紫微斗数 CLI（排盘解读 / 古籍检索 / 合盘，三域合一）", "");
-	lines.push("SYNOPSIS", "  node scripts/purple-star.ts <command> [options]", "  node scripts/purple-star.ts help", "");
+	lines.push(
+		"SYNOPSIS",
+		"  node scripts/purple-star.ts <command> [options]",
+		"  node scripts/purple-star.ts help",
+		""
+	);
 	lines.push("DESCRIPTION");
 	lines.push(
 		"  单条 CLI 承载三个领域：astrology 排盘解读（四命令合一）、classics 古籍原文检索、",
@@ -192,7 +218,10 @@ export function renderOverviewHelp(): string {
 	lines.push("  help".padEnd(cw + 2) + "本帮助");
 	lines.push("  各命令的专属用法：node scripts/purple-star.ts <command> --help", "");
 	lines.push("OPTIONS");
-	lines.push(...renderOptions(new Set(OPTION_GROUPS.flatMap(g => g.options.map(o => o.name)))), "");
+	lines.push(
+		...renderOptions(new Set(OPTION_GROUPS.flatMap(g => g.options.map(o => o.name)))),
+		""
+	);
 	lines.push("EXAMPLES", ...OVERVIEW_EXAMPLES, "");
 	lines.push("NOTES");
 	lines.push("  · 排盘四必问：出生日期、出生时间、性别、出生地 —— 缺一问一，不要猜。");
@@ -200,7 +229,9 @@ export function renderOverviewHelp(): string {
 	lines.push("  · " + ALIAS_NOTE);
 	lines.push("  · 需要经 npm install 装依赖（iztro / lunar-typescript），拷走即装。", "");
 	lines.push("SEE ALSO");
-	lines.push("  SKILL.md（使用总纲）· references/（workflow / options / output-contract / troubleshooting）");
+	lines.push(
+		"  SKILL.md（使用总纲）· references/（workflow / options / output-contract / troubleshooting）"
+	);
 	return lines.join("\n");
 }
 
@@ -216,7 +247,10 @@ export function renderCommandHelp(cmd: CommandName): string {
 			"  node scripts/purple-star.ts astrology --date … --time … --gender … [--city …] [专题参数…]"
 		);
 	else if (cmd === "classics" || cmd === "stars")
-		lines.push(`  node scripts/purple-star.ts ${cmd} [--search <关键词>] [--limit N]`, `  node scripts/purple-star.ts ${cmd} <关键词>`);
+		lines.push(
+			`  node scripts/purple-star.ts ${cmd} [--search <关键词>] [--limit N]`,
+			`  node scripts/purple-star.ts ${cmd} <关键词>`
+		);
 	else lines.push(`  node scripts/purple-star.ts ${cmd} [options]`);
 	lines.push("");
 	lines.push("DESCRIPTION", ...(COMMAND_HELP[cmd] ?? []).map(l => (l ? `  ${l}` : l)), "");

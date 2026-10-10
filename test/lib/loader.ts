@@ -20,9 +20,8 @@ import { dirname, resolve } from "node:path";
 // ⚠️ 带 `.ts` 扩展名，且 boot-hooks.ts 只依赖 `node:` 内置 —— 故本行在解析钩子注册之前
 //    就能被 Node 的原生类型擦除加载。改动本行前先读 boot-hooks.ts 的顶部注释。
 //
-// ⚠️ 搬迁（2026-09-30）：内核已从 skills/purplestar-astrology/scripts/ 上提回仓库根 scripts/
-//    （单 skill 形态：仓库根 = skill 根）。本行是**字面相对路径**，不受解析钩子照顾 ——
-//    挪内核时它是会静默失效的方向之一（另一个是 tools/ 下同样写死路径的两处）。
+// ⚠️ 内核在仓库根 scripts/（单 skill 形态：仓库根 = skill 根）。本行是**字面相对路径**，
+//    不受解析钩子照顾 —— 挪内核时它是会静默失效的方向之一（另一个是 tools/ 下同样写死路径的两处）。
 import {
 	installHooks,
 	loadFailureHint,

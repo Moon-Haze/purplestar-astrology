@@ -1,5 +1,5 @@
 /**
- * `--config` / `--template` —— JSON 配置文件输入（spec §3.3，2026-09-30 新增）。
+ * `--config` / `--template` —— JSON 配置文件输入（spec §3.3）。
  *
  * - **`--config <file>`**：读 JSON 文件，键名与参数的 camelCase 主名同名
  *   （`date` / `time` / `city` / `gender` / `pattern` / `mutagen` / `yearly` …），

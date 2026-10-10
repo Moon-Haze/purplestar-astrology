@@ -1,8 +1,7 @@
 /**
  * `synastry` 命令：合盘（双宫联参 + 夫妻宫断语）。
  *
- * 2026-09-30 三 skill 合一时从 synastry 自带的 commands.ts 搬入 —— 实现逐字保留，
- * 只换 import 来源（`@/synastry` 内核）与命令注册（进 `./commands.ts` 的 COMMAND_TABLE）。
+ * 实现逐字保留，只换 import 来源（`@/synastry` 内核）与命令注册（进 `./commands.ts` 的 COMMAND_TABLE）。
  */
 
 import type { CliArgs } from "./args";
@@ -36,7 +35,7 @@ import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "@/synas
  */
 export function cmdSynastry(args: CliArgs): string {
 	// --charts：逗号分隔的**恰好两个**文件路径（甲先乙后）。本命令不排盘，
-	// 两份盘都得由排盘命令的 --json 产出（spec §2.3，2026-09-30 起 a-/b- 前缀退役）。
+	// 两份盘都得由排盘命令的 --json 产出（spec §2.3；a-/b- 前缀已退役）。
 	// ⚠️ 缺失或份数不对时报错，而**不是**回退去读出生信息 —— 那种回退会让本命令
 	//    悄悄又变成排盘方（且回退路径无人测，必然腐坏）。
 	if (typeof args.charts !== "string") {

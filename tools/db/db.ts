@@ -15,7 +15,7 @@ export const CREATE_DB_PRAGMAS = [
 // 此处只转出 —— 内核的 TopicKey 与这里的列序从此不可能漂移（此前是两份，靠注释提醒）。
 // 视图、构建、校验三处共用同一常量。
 // ⚠️ 用相对路径而非 `@/` 别名：tools/ 由 tsx 直接执行，不走 CLI 的解析钩子 ——
-//    故内核上提到仓库根 scripts/ 后（2026-09-30）本行必须手改，**且 tools/ 不在 npm test 覆盖内**，
+//    故本行必须随内核位置手改（内核在仓库根 scripts/），**且 tools/ 不在 npm test 覆盖内**，
 //    漏改不会让任何测试变红，只会在实跑时报模块找不到。
 import { TOPIC_KEYS, type TopicKey } from "../../scripts/ziwei/analysis/data";
 export { TOPIC_KEYS, type TopicKey };
@@ -256,7 +256,7 @@ export function topicsViewSqlParquet(topicsDir: string): string {
 }
 
 // 形态探测（spec §3.2）：不新增元数据表，靠两种形态本来就互斥的结构特征判定。
-// inline 的 schema 已在 2026-09-25 验收锁定，为存一个 mode 字段而多建一张表，
+// inline 的 schema 已验收锁定，为存一个 mode 字段而多建一张表，
 // 会让「inline 与验收版逐字节一致」这条硬约束不再成立。
 //
 // 判据必须同时看两项：只看字典两表会把「改动前的旧格式库」误判成 parquet

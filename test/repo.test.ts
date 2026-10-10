@@ -9,22 +9,15 @@
 //   三、骨架接线（SKILL.md ↔ references/ 双向一致）
 //   四、解析钩子的候选序（boot-hooks.ts 的 `.` 与 `@/` 两条分支）
 //
-// ⚠️ **引文守卫不在这里**，它住在 [citations.test.ts](citations.test.ts)（2026-09-27 移出）。
-// 从前它分散在三处：排盘解读 skill 的 `selftest` 扫自己的内核树、合盘 skill 的 `selftest`
-// 扫自己的断语库（各存一份守卫副本），本文件再补一组「喂构造树」的元测试。收拢之后
-// **一处扫全仓**，两个盲区（源扫不到合盘、合盘扫不到源）一并消失。
+// ⚠️ **引文守卫不在这里**，它住在 [citations.test.ts](citations.test.ts)：
+// 引文扫描在 test/ 里**一处扫全仓**，源与合盘的断语库都覆盖，没有各扫各的盲区。
 //
-// ⚠️ **skill 之间的派生关系已不存在**（2026-09-27）。此前 `purplestar-classics` 与
-// `purplestar-synastry` 是排盘解读的派生 skill：内核切片与源**逐字节相同**，由
-// `tools/skills.ts` 声明、`npm run sync:skills` 执行、本文件的一批断言守卫。断开之后
-// 每个 skill 都是普通 skill —— 文件就是它自己的实现，读代码的人不必先问「这是源还是副本」。
-// 随之删掉的是：逐字节副本、切片闭包与残留、「两份 cli/args.ts 相同」、旗标作用域四条
-// 双向一致（连同 `tools/` 下那两个文件与 `sync:skills` 这个 npm script）。
+// ⚠️ **skill 之间没有派生关系**：每个 skill 都是普通 skill —— 文件就是它自己的实现，
+// 读代码的人不必先问「这是源还是副本」。
 //
-// ⚠️ **保留下来的是与派生关系无关的两组**，删了就丢了真守卫：
+// ⚠️ **保留的两组真守卫**，删了就丢：
 //   · skill 自包含与 `type: module` —— 保证每个 skill 仍可单独拷进 `~/.claude/skills/` 直接跑；
-//   · 解析钩子候选序 —— 它测的是**源**的 `boot-hooks.ts`，而源仍用 `@/` 别名与省略扩展名，
-//     本次改动没碰它。
+//   · 解析钩子候选序 —— 它测的是**源**的 `boot-hooks.ts`，而源仍用 `@/` 别名与省略扩展名。
 //
 // ## 为什么登记一致性也要测
 //
@@ -56,7 +49,7 @@ import type { ResolveHookSync } from "node:module";
 import { ALL_SKILLS, CHART_LIKE, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
 // ⚠️ 字面相对路径，带 `.ts` 扩展名，理由同 lib/loader.ts 的同一行：boot-hooks.ts 只依赖
 //    `node:` 内置，故可在解析钩子注册之前被 Node 的原生类型擦除加载。
-// ⚠️ 内核在仓库根 scripts/（2026-09-30 上提），挪内核时本行会静默失效。
+// ⚠️ 内核在仓库根 scripts/，挪内核时本行会静默失效。
 import { makeResolveHook } from "../scripts/boot-hooks.ts";
 
 /** 仓库根 —— 本文件在 `<仓库根>/test/` 下，故退一级。 */
@@ -154,7 +147,7 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 
 	// ── 二、skill 自包含 ──
 	//
-	// 这组与「源 → 派生」那套机制无关（那套已于 2026-09-27 退休）：它守的是本仓对用户的
+	// 这组与「源 → 派生」那套机制无关（那套已退休）：它守的是本仓对用户的
 	// **承诺** —— `skills/` 下每个子目录都能单独拷进 `~/.claude/skills/` 直接使用。
 	// 判据因此不看任何清单，只看磁盘：目录下有 SKILL.md 就算一个 skill（见 lib/skills.ts）。
 
@@ -192,8 +185,8 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 		// `import` 语法当场报错 —— 而根 package.json 里明明写着 type: module，症状看起来像是
 		// 「根配置被忽略了」，排查方向会被整个带偏（源 skill 的 package.json 正是拆分时新建的）。
 		//
-		// ⚠️ 2026-09-27 后这条**更重要了**：从前派生 skill 的 `.ts` 靠解析钩子加载，钩子与
-		// type 字段无关；现在两个派生 skill 改走 Node 原生类型擦除，type 一错当场崩。
+			// ⚠️ 这条**尤其重要**：`.ts` 若靠解析钩子加载，钩子与
+			// type 字段无关；若改走 Node 原生类型擦除，type 一错当场崩。
 		const bad: string[] = [];
 		for (const name of ALL_SKILLS) {
 			const p = resolve(skillDir(name), "package.json");
@@ -292,7 +285,7 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 // ── 四、解析钩子的候选序 ──
 //
 // 本组测的是**源** skill 的 `boot-hooks.ts` —— 它仍用 `@/` 别名与省略扩展名的 import，
-// 故仍需要那套解析钩子。两个派生 skill 已于 2026-09-27 改走 Node 原生类型擦除
+// 故仍需要那套解析钩子。派生 skill（若存在）改走 Node 原生类型擦除
 // （import 写全 `.ts` 扩展名，不注册任何钩子），但**源不受影响**，本组因此原样保留。
 //
 // 内核里出现**文件夹模块**（`ziwei/patterns/`）之后，`./patterns` 这类说明符就有两种

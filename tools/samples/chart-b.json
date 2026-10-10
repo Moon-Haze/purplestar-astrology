@@ -1,0 +1,951 @@
+{
+  "chart": {
+    "birthInfo": {
+      "year": 1999,
+      "month": 11,
+      "day": 3,
+      "timeIndex": 7,
+      "gender": "female",
+      "longitude": 104.1
+    },
+    "lunarInfo": {
+      "lunarYear": 1999,
+      "lunarMonth": 9,
+      "lunarDay": 26,
+      "yearStem": 5,
+      "yearBranch": 3,
+      "isLeapMonth": false
+    },
+    "soulBranch": 3,
+    "bodyBranch": 5,
+    "fiveElementsClass": 6,
+    "fiveElementsClassName": "火六局",
+    "ziweiPos": 10,
+    "palaces": [
+      {
+        "branch": 2,
+        "stem": 2,
+        "name": "兄弟宫",
+        "stars": [
+          {
+            "name": "廉贞",
+            "type": "major",
+            "brightness": "bright",
+            "mutagen": ""
+          },
+          {
+            "name": "右弼",
+            "type": "soft",
+            "mutagen": ""
+          },
+          {
+            "name": "天福",
+            "type": "minor"
+          },
+          {
+            "name": "天月",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          116,
+          125
+        ],
+        "ages": [
+          12,
+          24,
+          36,
+          48,
+          60,
+          72,
+          84,
+          96,
+          108,
+          120
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 8,
+        "isEmpty": false
+      },
+      {
+        "branch": 3,
+        "stem": 3,
+        "name": "命宫",
+        "stars": [
+          {
+            "name": "文昌",
+            "type": "soft",
+            "mutagen": ""
+          },
+          {
+            "name": "恩光",
+            "type": "minor"
+          },
+          {
+            "name": "天哭",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          6,
+          15
+        ],
+        "ages": [
+          11,
+          23,
+          35,
+          47,
+          59,
+          71,
+          83,
+          95,
+          107,
+          119
+        ],
+        "isSoulPalace": true,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 9,
+        "isEmpty": true,
+        "borrowedFromBranch": 9,
+        "borrowedFromName": "迁移宫",
+        "borrowedStars": [
+          "天机",
+          "巨门"
+        ]
+      },
+      {
+        "branch": 4,
+        "stem": 4,
+        "name": "父母宫",
+        "stars": [
+          {
+            "name": "破军",
+            "type": "major",
+            "brightness": "bright",
+            "mutagen": ""
+          },
+          {
+            "name": "地空",
+            "type": "tough"
+          },
+          {
+            "name": "火星",
+            "type": "tough"
+          },
+          {
+            "name": "解神",
+            "type": "minor"
+          },
+          {
+            "name": "天空",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          16,
+          25
+        ],
+        "ages": [
+          10,
+          22,
+          34,
+          46,
+          58,
+          70,
+          82,
+          94,
+          106,
+          118
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 10,
+        "isEmpty": false
+      },
+      {
+        "branch": 5,
+        "stem": 5,
+        "name": "福德宫",
+        "stars": [
+          {
+            "name": "天同",
+            "type": "major",
+            "brightness": "bright",
+            "mutagen": ""
+          },
+          {
+            "name": "天马",
+            "type": "soft"
+          },
+          {
+            "name": "铃星",
+            "type": "tough"
+          },
+          {
+            "name": "陀罗",
+            "type": "tough"
+          },
+          {
+            "name": "天巫",
+            "type": "minor"
+          },
+          {
+            "name": "孤辰",
+            "type": "minor"
+          },
+          {
+            "name": "蜚廉",
+            "type": "minor"
+          },
+          {
+            "name": "破碎",
+            "type": "minor"
+          },
+          {
+            "name": "天刑",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          26,
+          35
+        ],
+        "ages": [
+          9,
+          21,
+          33,
+          45,
+          57,
+          69,
+          81,
+          93,
+          105,
+          117
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": true,
+        "isCurrentDecadal": true,
+        "oppositeBranch": 11,
+        "isEmpty": false
+      },
+      {
+        "branch": 6,
+        "stem": 6,
+        "name": "田宅宫",
+        "stars": [
+          {
+            "name": "武曲",
+            "type": "major",
+            "brightness": "bright",
+            "mutagen": "禄"
+          },
+          {
+            "name": "天府",
+            "type": "major",
+            "brightness": "bright",
+            "mutagen": ""
+          },
+          {
+            "name": "禄存",
+            "type": "soft"
+          },
+          {
+            "name": "地劫",
+            "type": "tough"
+          },
+          {
+            "name": "天喜",
+            "type": "minor"
+          },
+          {
+            "name": "天才",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          36,
+          45
+        ],
+        "ages": [
+          8,
+          20,
+          32,
+          44,
+          56,
+          68,
+          80,
+          92,
+          104,
+          116
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 0,
+        "isEmpty": false
+      },
+      {
+        "branch": 7,
+        "stem": 7,
+        "name": "官禄宫",
+        "stars": [
+          {
+            "name": "太阳",
+            "type": "major",
+            "brightness": "normal",
+            "mutagen": ""
+          },
+          {
+            "name": "太阴",
+            "type": "major",
+            "brightness": "dim",
+            "mutagen": ""
+          },
+          {
+            "name": "擎羊",
+            "type": "tough"
+          },
+          {
+            "name": "龙池",
+            "type": "minor"
+          },
+          {
+            "name": "凤阁",
+            "type": "minor"
+          },
+          {
+            "name": "华盖",
+            "type": "minor"
+          },
+          {
+            "name": "年解",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          46,
+          55
+        ],
+        "ages": [
+          7,
+          19,
+          31,
+          43,
+          55,
+          67,
+          79,
+          91,
+          103,
+          115
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 1,
+        "isEmpty": false
+      },
+      {
+        "branch": 8,
+        "stem": 8,
+        "name": "交友宫",
+        "stars": [
+          {
+            "name": "贪狼",
+            "type": "major",
+            "brightness": "normal",
+            "mutagen": "权"
+          },
+          {
+            "name": "天钺",
+            "type": "soft"
+          },
+          {
+            "name": "天寿",
+            "type": "minor"
+          },
+          {
+            "name": "天厨",
+            "type": "minor"
+          },
+          {
+            "name": "月德",
+            "type": "minor"
+          },
+          {
+            "name": "截路",
+            "type": "minor"
+          },
+          {
+            "name": "天伤",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          56,
+          65
+        ],
+        "ages": [
+          6,
+          18,
+          30,
+          42,
+          54,
+          66,
+          78,
+          90,
+          102,
+          114
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 2,
+        "isEmpty": false
+      },
+      {
+        "branch": 9,
+        "stem": 9,
+        "name": "迁移宫",
+        "stars": [
+          {
+            "name": "天机",
+            "type": "major",
+            "brightness": "bright",
+            "mutagen": ""
+          },
+          {
+            "name": "巨门",
+            "type": "major",
+            "brightness": "bright",
+            "mutagen": ""
+          },
+          {
+            "name": "天姚",
+            "type": "minor"
+          },
+          {
+            "name": "封诰",
+            "type": "minor"
+          },
+          {
+            "name": "天官",
+            "type": "minor"
+          },
+          {
+            "name": "旬空",
+            "type": "minor"
+          },
+          {
+            "name": "空亡",
+            "type": "minor"
+          },
+          {
+            "name": "天虚",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          66,
+          75
+        ],
+        "ages": [
+          5,
+          17,
+          29,
+          41,
+          53,
+          65,
+          77,
+          89,
+          101,
+          113
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 3,
+        "isEmpty": false
+      },
+      {
+        "branch": 10,
+        "stem": 0,
+        "name": "疾厄宫",
+        "stars": [
+          {
+            "name": "紫微",
+            "type": "major",
+            "brightness": "normal",
+            "mutagen": ""
+          },
+          {
+            "name": "天相",
+            "type": "major",
+            "brightness": "normal",
+            "mutagen": ""
+          },
+          {
+            "name": "阴煞",
+            "type": "minor"
+          },
+          {
+            "name": "天使",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          76,
+          85
+        ],
+        "ages": [
+          4,
+          16,
+          28,
+          40,
+          52,
+          64,
+          76,
+          88,
+          100,
+          112
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 4,
+        "isEmpty": false
+      },
+      {
+        "branch": 11,
+        "stem": 1,
+        "name": "财帛宫",
+        "stars": [
+          {
+            "name": "天梁",
+            "type": "major",
+            "brightness": "dim",
+            "mutagen": "科"
+          },
+          {
+            "name": "文曲",
+            "type": "soft",
+            "mutagen": "忌"
+          },
+          {
+            "name": "天贵",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          86,
+          95
+        ],
+        "ages": [
+          3,
+          15,
+          27,
+          39,
+          51,
+          63,
+          75,
+          87,
+          99,
+          111
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 5,
+        "isEmpty": false
+      },
+      {
+        "branch": 0,
+        "stem": 2,
+        "name": "子女宫",
+        "stars": [
+          {
+            "name": "七杀",
+            "type": "major",
+            "brightness": "bright",
+            "mutagen": ""
+          },
+          {
+            "name": "左辅",
+            "type": "soft",
+            "mutagen": ""
+          },
+          {
+            "name": "天魁",
+            "type": "soft"
+          },
+          {
+            "name": "红鸾",
+            "type": "minor"
+          },
+          {
+            "name": "咸池",
+            "type": "minor"
+          },
+          {
+            "name": "天德",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          96,
+          105
+        ],
+        "ages": [
+          2,
+          14,
+          26,
+          38,
+          50,
+          62,
+          74,
+          86,
+          98,
+          110
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 6,
+        "isEmpty": false
+      },
+      {
+        "branch": 1,
+        "stem": 3,
+        "name": "夫妻宫",
+        "stars": [
+          {
+            "name": "三台",
+            "type": "minor"
+          },
+          {
+            "name": "八座",
+            "type": "minor"
+          },
+          {
+            "name": "台辅",
+            "type": "minor"
+          },
+          {
+            "name": "寡宿",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          106,
+          115
+        ],
+        "ages": [
+          1,
+          13,
+          25,
+          37,
+          49,
+          61,
+          73,
+          85,
+          97,
+          109
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 7,
+        "isEmpty": true,
+        "borrowedFromBranch": 7,
+        "borrowedFromName": "官禄宫",
+        "borrowedStars": [
+          "太阳",
+          "太阴"
+        ]
+      }
+    ],
+    "decadals": [
+      {
+        "startAge": 6,
+        "endAge": 15,
+        "palaceBranch": 3,
+        "palaceName": "命宫"
+      },
+      {
+        "startAge": 16,
+        "endAge": 25,
+        "palaceBranch": 4,
+        "palaceName": "父母宫"
+      },
+      {
+        "startAge": 26,
+        "endAge": 35,
+        "palaceBranch": 5,
+        "palaceName": "福德宫"
+      },
+      {
+        "startAge": 36,
+        "endAge": 45,
+        "palaceBranch": 6,
+        "palaceName": "田宅宫"
+      },
+      {
+        "startAge": 46,
+        "endAge": 55,
+        "palaceBranch": 7,
+        "palaceName": "官禄宫"
+      },
+      {
+        "startAge": 56,
+        "endAge": 65,
+        "palaceBranch": 8,
+        "palaceName": "交友宫"
+      },
+      {
+        "startAge": 66,
+        "endAge": 75,
+        "palaceBranch": 9,
+        "palaceName": "迁移宫"
+      },
+      {
+        "startAge": 76,
+        "endAge": 85,
+        "palaceBranch": 10,
+        "palaceName": "疾厄宫"
+      },
+      {
+        "startAge": 86,
+        "endAge": 95,
+        "palaceBranch": 11,
+        "palaceName": "财帛宫"
+      },
+      {
+        "startAge": 96,
+        "endAge": 105,
+        "palaceBranch": 0,
+        "palaceName": "子女宫"
+      },
+      {
+        "startAge": 106,
+        "endAge": 115,
+        "palaceBranch": 1,
+        "palaceName": "夫妻宫"
+      },
+      {
+        "startAge": 116,
+        "endAge": 125,
+        "palaceBranch": 2,
+        "palaceName": "兄弟宫"
+      }
+    ],
+    "mingZhu": "文曲",
+    "shenZhu": "天同",
+    "douJunBranch": 11,
+    "currentAge": 28,
+    "currentDecadalIndex": 2
+  },
+  "patterns": [
+    {
+      "name": "机月同梁",
+      "level": 60,
+      "palaces": [
+        "官禄宫",
+        "迁移宫",
+        "财帛宫"
+      ],
+      "conditions": {
+        "required": [
+          "天机、太阴、天梁会入命宫三方四正（四星中 3 星）"
+        ],
+        "bonus": [
+          "再会昌曲",
+          "再会化科"
+        ],
+        "breaking": [
+          "三方四正只齐 3 星（机月同梁不全格）"
+        ]
+      },
+      "description": "三方四正会齐天机、太阴、天梁，机月同梁不全格，文质带谋，但稳定度不如四星齐。仍宜公职、教研、医疗、服务等需要积累与稳定的行业，关键看缺位星与四化的配合。",
+      "topicDescription": "天机、太阴、天同、天梁会入命宫三方四正，惟四星中只齐三星——机月同梁为「不全格」，古训「机月同梁格，作吏人」的稳健路线仍在，但格局力量打折，成败更看缺位之星与四化的配合；宜公教、政府、传播、文化事业，不宜冒险创业。",
+      "source": "《紫微斗数全书·机月同梁格》（降级版）"
+    },
+    {
+      "name": "日月同宫",
+      "level": 75,
+      "palaces": [
+        "官禄宫"
+      ],
+      "conditions": {
+        "required": [
+          "太阳太阴同入未宫"
+        ],
+        "bonus": [
+          "未宫日月同辉（古书云未宫日月双美）",
+          "昌曲会照"
+        ],
+        "breaking": [
+          "日月宫煞星同坐"
+        ]
+      },
+      "description": "太阳太阴于未宫同宫，阴阳平衡，文武兼备。主异性缘佳、事业顺遂、名声远播。未宫日月双美尤佳。",
+      "topicDescription": "太阳太阴同宫，日月同照一处——一生常在名声、情感、家庭责任之间取得平衡；庙旺则左右逢源，落陷则内外压力并重。",
+      "source": "《紫微斗数全书》"
+    },
+    {
+      "name": "昌曲同会",
+      "level": 75,
+      "palaces": [
+        "命宫"
+      ],
+      "conditions": {
+        "required": [
+          "文昌、文曲同会命宫三方四正"
+        ]
+      },
+      "description": "文昌文曲同会三方四正，主才华横溢、口才文笔俱佳。宜走需要表达与文采的行业，化科加持则名声大显。",
+      "source": "《紫微斗数全书·文星论》"
+    },
+    {
+      "name": "文昌守命",
+      "level": 75,
+      "palaces": [
+        "命宫"
+      ],
+      "conditions": {
+        "required": [
+          "文昌坐命宫"
+        ]
+      },
+      "description": "文昌坐命宫，为\"文星守命\"——主聪明俊秀、才华出众，利考试与名声，宜文教、艺术、传媒或需要专业技艺的行当，以才华换取名利最为顺畅。",
+      "topicDescription": "文昌坐命——才华横溢，文采出众，有学识与艺术天赋，是科甲名声之星。主考试运佳，学业顺遂；适合文教、艺术、传媒或需要专业技艺的领域，以才华换取名利是最顺畅的人生路线。",
+      "source": "《紫微斗数全书·十二宫论·命宫》"
+    },
+    {
+      "name": "文曲化忌",
+      "level": 40,
+      "palaces": [
+        "财帛宫"
+      ],
+      "conditions": {
+        "required": [
+          "文曲带生年化忌"
+        ]
+      },
+      "description": "文曲化忌——文星受伤，主文书、契约、考试、言论一类的事易生暗亏：签约核对条款、考试防疏漏、言语慎出口，化忌是功课而非定论。",
+      "topicDescription": "文曲化忌——口才表达与情感感性方面易生波折；社交场合的言语需谨慎，桃花事务多纠葛，文艺创作虽有灵感但落地易生误解。",
+      "source": "传统口诀（本仓古籍库无直接出处）"
+    }
+  ],
+  "mingGongSummary": {
+    "stars": [],
+    "keywords": [],
+    "nature": "空宫"
+  },
+  "nativeSiHua": {
+    "stem": "己",
+    "transforms": {
+      "禄": "武曲",
+      "权": "贪狼",
+      "科": "天梁",
+      "忌": "文曲"
+    },
+    "located": [
+      {
+        "hua": "禄",
+        "star": "武曲",
+        "palace": "田宅宫",
+        "branch": "午",
+        "isMajor": true
+      },
+      {
+        "hua": "权",
+        "star": "贪狼",
+        "palace": "交友宫",
+        "branch": "申",
+        "isMajor": true
+      },
+      {
+        "hua": "科",
+        "star": "天梁",
+        "palace": "财帛宫",
+        "branch": "亥",
+        "isMajor": true
+      },
+      {
+        "hua": "忌",
+        "star": "文曲",
+        "palace": "财帛宫",
+        "branch": "亥",
+        "isMajor": false
+      }
+    ]
+  },
+  "liuNianSiHua": {
+    "year": 2026,
+    "stem": "丙",
+    "transforms": {
+      "禄": "天同",
+      "权": "天机",
+      "科": "文昌",
+      "忌": "廉贞"
+    },
+    "located": [
+      {
+        "hua": "禄",
+        "star": "天同",
+        "palace": "福德宫",
+        "branch": "巳",
+        "isMajor": true
+      },
+      {
+        "hua": "权",
+        "star": "天机",
+        "palace": "迁移宫",
+        "branch": "酉",
+        "isMajor": true
+      },
+      {
+        "hua": "科",
+        "star": "文昌",
+        "palace": "命宫",
+        "branch": "卯",
+        "isMajor": false
+      },
+      {
+        "hua": "忌",
+        "star": "廉贞",
+        "palace": "兄弟宫",
+        "branch": "寅",
+        "isMajor": true
+      }
+    ]
+  },
+  "liuYueSiHua": null,
+  "liuNianPalace": {
+    "year": 2026,
+    "branchIndex": 6,
+    "branch": "午",
+    "palaceName": "田宅宫"
+  },
+  "xiaoXian": {
+    "age": 28,
+    "palaceBranchIndex": 10,
+    "palaceBranch": "戌",
+    "palaceName": "疾厄宫"
+  },
+  "lateZi": {
+    "candidate": false,
+    "applied": false
+  },
+  "basis": {
+    "note": "钟表 15:20 → 真太阳时校正 -64 分 → 未时(13:00-15:00)",
+    "notes": [
+      "钟表 15:20 → 真太阳时校正 -64 分 → 未时(13:00-15:00)"
+    ],
+    "lateZiCandidate": false,
+    "isLateZi": false
+  }
+}

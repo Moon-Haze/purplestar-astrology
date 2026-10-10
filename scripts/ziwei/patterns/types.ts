@@ -94,16 +94,15 @@ export type Detector = (ctx: DetectContext) => Pattern[];
  * 格局名的「同现象异名」裁决表 —— 同一现象只留一个**显示名**。
  *
  * @remarks
- * 判定早已收敛到一处（`index.ts` 的 `detectPatterns`），但历史上两侧各叫各的：
- * `analyze` 用 A 名、`topic` 的 `detectGeJu` 用 B 名。2026-09-27 起做统一，两侧共用显示名；
+ * 判定早已收敛到一处（`index.ts` 的 `detectPatterns`），但两侧曾各叫各的：
+ * `analyze` 用 A 名、`topic` 的 `detectGeJu` 用 B 名。两侧现已统一共用显示名；
  * 落选的名字留在本表备查，不再用于显示。
  *
  * 裁决依据分两种（见 {@link GejuNameAlias.basis}），**不可混为一谈**：
  *
  * - `corpus` —— **古籍词频裁决**：逐名统计三部古籍的出现次数，取高者。这几组是
  *   **真异名**（两个不同的词，如 `化禄入命` / `化禄守命`）。语料本体在
- *   `purplestar-classics` 技能里（`scripts/`），2026-09-27 拆 skill 时从本
- *   skill 移出 —— **口径没变，只是换了个 skill 住**。
+ *   `purplestar-classics` 技能里（`scripts/`）—— **口径没变，只是换了个 skill 住**。
  * - `convention` —— **古籍不足以裁决**：两组都零见，或者两种写法古籍并用且样本量
  *   只有个位数（如 `紫府同宫` / `紫府同宫格` 实为一个词差一个「格」字，古籍里
  *   两种写法都在用）。这类改按书写约定统一，`note` 写明理由。

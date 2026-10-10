@@ -1,8 +1,7 @@
 /**
- * `astrology` 命令：排盘分析一条命令（原 analyze 更名，2026-09-30 命令面收敛）。
+ * `astrology` 命令：排盘分析一条命令。
  *
- * 拆自 commands.ts（各命令按文件拆分，spec §2.2）；四命令融合（chart/topic 并入
- * 参数）留 Task 6，本文件先承载 analyze 的原实现。
+ * 各命令按文件拆分（spec §2.2）；chart/topic 融入参数（见 spec §1）。
  */
 
 import type { BirthInfo, Mutagen, ZiweiChart } from "@/ziwei/types";
@@ -142,7 +141,7 @@ export function buildAnalyzeJson(input: {
 						located: locateSihua(chart, liuYue.transforms),
 					}
 				: null,
-			// 流年命宫与小限宫（运限速览的结构化等价物，2026-09-28 新增，只加不删）
+			// 流年命宫与小限宫（运限速览的结构化等价物，只加不删）
 			// 流年地支一次算好：三处引用同值，重复调用徒增「这三处是否同值」的读码疑虑。
 			liuNianPalace: (() => {
 				const lnBranch = yearlyBranchOf(liuNianYear);
@@ -180,11 +179,58 @@ export function buildAnalyzeJson(input: {
  */
 const SHADOWABLE = new Set(
 	OPTION_GROUPS.flatMap(g => {
-		if (g.title.startsWith("专题深入")) return g.options.map(o => o.name).filter(n => n !== "palaces");
-		if (g.title === "输出与选题") return g.options.filter(o => ["yearly", "monthly", "focus"].includes(o.name)).map(o => o.name);
+		if (g.title.startsWith("专题深入"))
+			return g.options.map(o => o.name).filter(n => n !== "palaces");
+		if (g.title === "输出与选题")
+			return g.options
+				.filter(o => ["yearly", "monthly", "focus"].includes(o.name))
+				.map(o => o.name);
 		return [];
 	})
 );
+
+/**
+ * 出生相关参数名（camelCase）—— 从声明表派生：前三组（出生日期 / 出生时辰 / 其他出生
+ * 信息）的全部参数。零输入演示的判据之一：这些键**全部**缺席。位置参数归类与
+ * `--config` 注入都发生在此之前（parseArgs / applyConfig），二者给出的出生信息均算「已输入」。
+ */
+const BIRTH_KEYS = OPTION_GROUPS.flatMap(g =>
+	g.title.startsWith("出生") ? g.options.map(o => camelKey(o.name)) : []
+);
+
+/**
+ * 表达了输出意图的功能参数（camelCase）—— 从声明表派生：专题深入组与输出选题组的
+ * 全部参数，刨去 `info`（零输入时它正是演示目标）与 `config`（它是参数来源而非输出
+ * 形态，配置里没写出生信息时同样允许落演示）。零输入 + 这些参数在场 = 用户要特定
+ * 输出，不替他排虚构盘 —— 交回原路径按「缺一问一」报错（`--json` 尤其如此：机器
+ * 接口不喂虚构数据）。
+ */
+const INTENT_KEYS = OPTION_GROUPS.flatMap(g =>
+	g.title.startsWith("专题深入") || g.title === "输出与选题"
+		? g.options.map(o => camelKey(o.name)).filter(k => k !== "info" && k !== "config")
+		: []
+);
+
+/**
+ * 零输入演示的内置虚构样例 —— 与 help 示例、`--template` 配置模板同源
+ * （2011-06-24 07:45 杭州 male），输出自带「虚构」声明，不会被误当真实排盘。
+ */
+const SAMPLE_BIRTH: Partial<CliArgs> = {
+	date: "2011-06-24",
+	time: "07:45",
+	city: "杭州",
+	gender: "male",
+};
+
+/** 零输入演示的头部声明（面板前）与用法指路（面板后）。 */
+const SAMPLE_HEADER = "（未给出生信息 —— 以下为内置虚构示例的演示盘）";
+const SAMPLE_TRAILER = [
+	"",
+	"── 零输入演示：以上为虚构示例盘（2011-06-24 杭州男，与 help 示例同源）。排你自己的盘：",
+	"   node scripts/purple-star.ts astrology 1990-5-15 9:30 男 北京",
+	"   node scripts/purple-star.ts astrology --date 1990-5-15 --time 9:30 --gender 男 --city 北京",
+	"   完整参数运行 help 查看。（示例数据为虚构，无真实人物）",
+];
 
 /**
  * 独占分支（--palaces / --topic / --info）激活时，其余功能参数不会生效——静默吞违反
@@ -214,17 +260,24 @@ function assertNoShadowedFeatures(
 }
 
 /**
- * `astrology` 命令：解读用的完整输入包（本 CLI 最常用的一条；原 analyze，2026-09-30 更名）。
+ * `astrology` 命令：解读用的完整输入包（本 CLI 最常用的一条）。
  *
  * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--pattern` / `--mutagen` /
  *   `--decadal [虚岁]` / `--ages [虚岁]` / `--yearly [年]` / `--monthly` / `--focus`
  * @returns 已渲染好的文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 字符串
  *
  * @remarks
- * **精简概览 + 专题分发**（2026-09-28 起）：不带任何专题旗标时只输出命盘总览、
- * 口径提示（出生地 / 晚子时）与一行运限速览 + 专题指路；给了哪个专题旗标就**只追加**
- * 该专题的详版（可叠加，按 --info → --pattern → --mutagen → --yearly → --decadal → --ages
- * → --focus 的固定顺序）。十二宫逐宫详表归 `chart` 命令与 `--json`，不再默认铺开。
+ * **精简概览 + 专题分发**：不带任何专题旗标时
+ * 输出口径提示（出生地 / 晚子时）、基本信息面板与运限速览 + 专题指路（--info 同尾：
+ * 面板 + 两节；公历生日 / 命宫 / 紫微落 / 三方四正并入面板）；给了
+ * 哪个专题旗标就只追加该专题的详版（可叠加，按 --pattern → --mutagen → --yearly →
+ * --decadal → --ages → --focus 的固定顺序），且不再带面板与运限速览/指路 —— 已在
+ * 深入，基底与指路都是噪声。十二宫逐宫详表归 `--palaces` 与 `--json`。
+ *
+ * **零输入演示**：出生信息一项没给且未表达其他输出意图（`--json` /
+ * `--palaces` / `--topic` / 专题参数均不在场）时，不报「缺少出生日期」，以内置虚构
+ * 样例（2011-06-24 07:45 杭州 male）演示基本信息面板 + 运限速览 + 专题指路并附用法
+ * 指路；部分输入不适用，继续按「缺一问一」报错。
  *
  * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，`--json` 的消费方
  * （合盘 skill）自会处理；文本路径的宫详表见 `./fortune.ts` 各专题。
@@ -234,6 +287,14 @@ export function cmdAstrology(args: CliArgs) {
 	if (args.template) return renderTemplate();
 	// --config：配置是基底，命令行同名键覆盖（spec §3.3）
 	args = applyConfig(args);
+	// ── 零输入演示契约：出生信息一项没给且未表达其他输出意图时，
+	// 不报「缺少出生日期」，改以内置虚构样例演示基本信息面板。部分输入不适用 ——
+	// 给了一半说明想排特定的盘，继续走「缺一问一」报错；--json / --palaces / --topic /
+	// 专题参数在场同样不适用：那是明确的输出意图，虚构盘只会伪装成他要的产物。
+	const usingSample =
+		BIRTH_KEYS.every(k => (args as Record<string, unknown>)[k] === undefined) &&
+		!INTENT_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
+	if (usingSample) args = { ...args, ...SAMPLE_BIRTH, info: true };
 	const { info, note, notes, longitude, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } =
 		buildBirthInfo(args);
 	const chart = generateChart(info);
@@ -253,11 +314,13 @@ export function cmdAstrology(args: CliArgs) {
 	const liuYueMonth = parseMonthlyArg(args);
 	const liuYue = liuYueMonth !== null ? getMonthlyMutagen(liuNian.stemIndex, liuYueMonth) : null;
 
-	// ── 融合分支（2026-09-30 四命令合一，spec §1）──
+	// ── 融合分支（spec §1）──
 	// --info：只输出信息面板这一节（面板本身在默认输出里无条件存在，本参数是「只看面板」）
 	if (args.info) {
 		if (args.json)
-			throw new Error("--info 是独占分支，与 --json 不可同给：--info 只输出文本面板（--json 仅与完整概览或 --palaces 组合）。");
+			throw new Error(
+				"--info 是独占分支，与 --json 不可同给：--info 只输出文本面板（--json 仅与完整概览或 --palaces 组合）。"
+			);
 		// 优先级链落地：--palaces / --topic 在场时，若放行到下面各分支，独占分支会被
 		// 本分支**抢跑**吞掉（本分支排在它们之前）——指路，不静默。--info 属于链上的
 		// 「其他功能参数」：--palaces > --topic > --info。
@@ -272,18 +335,23 @@ export function cmdAstrology(args: CliArgs) {
 		// palaces / topic / json 三者由上方各自的检查负责（职责不重复）。
 		assertNoShadowedFeatures(args, "--info");
 		return [
-			chartHeader("【命盘总览】", info, note),
-			"",
+			...(usingSample ? [SAMPLE_HEADER, ""] : []),
 			...infoSection(chart, {
 				clockTime: typeof args.time === "string" ? args.time : null,
 				solarNote: note,
 				longitude,
 			}),
+			// --info 与「无功能参数的概览」同尾：面板后跟运限速览与
+			// 专题指路 —— 两者都是「还没深入」的形态，指路正好；给了具体专题参数的
+			// 输出则不再带这两节（已在深入，指路是噪声）。
+			"",
+			...overviewSection(chart, liuNianYear),
+			...(usingSample ? SAMPLE_TRAILER : []),
 		].join("\n");
 	}
 
-	// --palaces：十二宫逐宫详表（原 chart 命令的职责，2026-09-30 起并入本参数）。
-	// --palaces --json 与原 chart --json 同形：顶层即命盘本身（不带格局/四化包装）。
+	// --palaces：十二宫逐宫详表。
+	// --palaces --json 顶层即命盘本身（不带格局/四化包装）。
 	if (args.palaces) {
 		assertNoShadowedFeatures(args, "--palaces");
 		if (args.json) return JSON.stringify(chart, null, 2);
@@ -300,7 +368,10 @@ export function cmdAstrology(args: CliArgs) {
 		out.push(
 			"大限：" +
 				chart.decadals
-					.map(d => `${d.startAge}-${d.endAge}岁 ${d.palaceName}(${BRANCHES[d.palaceBranch]})`)
+					.map(
+						d =>
+							`${d.startAge}-${d.endAge}岁 ${d.palaceName}(${BRANCHES[d.palaceBranch]})`
+					)
 					.join(" | ")
 		);
 		out.push(
@@ -309,10 +380,12 @@ export function cmdAstrology(args: CliArgs) {
 		return out.join("\n");
 	}
 
-	// --topic：主题论断（原 topic 命令的职责）。不带值（或裸开关）= 列 13 主题清单。
+	// --topic：主题论断。不带值（或裸开关）= 列 13 主题清单。
 	if (args.topic !== undefined) {
 		if (args.json)
-			throw new Error("--topic 是独占分支，与 --json 不可同给：主题论断只有文本形态（--json 仅与完整概览或 --palaces 组合）。");
+			throw new Error(
+				"--topic 是独占分支，与 --json 不可同给：主题论断只有文本形态（--json 仅与完整概览或 --palaces 组合）。"
+			);
 		// 检测在列清单判断之前：yearly / monthly 是 --topic 自己消费的参数（已放行），
 		// 其余被吞功能参数在列清单路径同样不会生效，一并指路。
 		assertNoShadowedFeatures(args, "--topic");
@@ -364,31 +437,33 @@ export function cmdAstrology(args: CliArgs) {
 		});
 	}
 
+	// ── 未深入形态的输出基底 ──
+	// 基本信息面板（公历生日 / 姓名 / 命宫 / 紫微落 / 三方四正，见 infoSection）──
 	const out: string[] = [];
-	out.push(`${chartHeader("【命盘总览】", info, note)} · 经度 ${longitude}°E`);
-	out.push(
-		`农历 ${chart.lunarInfo.lunarYear}年${chart.lunarInfo.isLeapMonth ? "闰" : ""}${chart.lunarInfo.lunarMonth}月${chart.lunarInfo.lunarDay}日 · 年柱 ${STEMS[chart.lunarInfo.yearStem]}${BRANCHES[chart.lunarInfo.yearBranch]} · ${chart.fiveElementsClassName}`
-	);
-	out.push(
-		`命宫 ${BRANCHES[chart.soulBranch]} · 身宫 ${BRANCHES[chart.bodyBranch]} · 紫微落 ${BRANCHES[chart.ziweiPos]} · 三方四正 ${surroundNames(chart, chart.soulBranch).join("/")}`
-	);
-	out.push("");
-
 	out.push(...birthplaceSection(lngNote, lngAmbiguous));
 	out.push(...lateZiSection(chart, info, isLateZi, lateZiCandidate));
-	// ── 基本信息面板：无条件输出（2026-09-30 融合契约，spec §1）──
-	// 从前它是 --info 专题；spec §0 的用户反馈第一条就是「基本信息应默认可见」。
-	out.push(
-		"",
-		...infoSection(chart, {
-			clockTime: typeof args.time === "string" ? args.time : null,
-			solarNote: note,
-			longitude,
-		})
-	);
-	// 面板注释行与运限速览之间隔一个空行，与出生地/晚子时节的空行分隔节奏一致
-	out.push("");
-	out.push(...overviewSection(chart, liuNianYear));
+	// ── 未深入形态的基底：基本信息面板 + 运限速览 + 专题指路
+	// 三者同进退，只在「无功能参数的概览」输出（--info 与零输入演示态同尾）。
+	// 给了具体专题参数的输出只保留命盘总览与口径提示 + 专题详版 ——
+	// 已在深入，基底与指路都是噪声（--monthly 必配 --mutagen，归 mutagen 管）。
+	const deepDive =
+		args.pattern ||
+		args.mutagen ||
+		args.yearly !== undefined ||
+		args.decadal !== undefined ||
+		args.ages !== undefined ||
+		args.focus !== undefined;
+	if (!deepDive)
+		out.push(
+			"",
+			...infoSection(chart, {
+				clockTime: typeof args.time === "string" ? args.time : null,
+				solarNote: note,
+				longitude,
+			}),
+			"",
+			...overviewSection(chart, liuNianYear)
+		);
 	if (args.pattern) out.push("", ...patternSection(chart));
 	// 流月四化随四化专题输出：单独给 --monthly（不带 --mutagen）会被静默吞掉，在这里指路。
 	// 只约束文本路径 —— --json 的 liuYueSiHua 是独立顶层键（基准对拍依赖裸 --json --monthly）。
@@ -399,7 +474,10 @@ export function cmdAstrology(args: CliArgs) {
 	if (args.mutagen) out.push("", ...mutagenSection(chart, liuNianYear, liuYueMonth));
 	if (args.yearly !== undefined) out.push("", ...yearlySection(chart, liuNianYear));
 	if (args.decadal !== undefined)
-		out.push("", ...decadalSection(chart, parseAgesArg(args.decadal, chart.currentAge, "--decadal")));
+		out.push(
+			"",
+			...decadalSection(chart, parseAgesArg(args.decadal, chart.currentAge, "--decadal"))
+		);
 	if (args.ages !== undefined)
 		out.push(
 			"",
@@ -412,6 +490,8 @@ export function cmdAstrology(args: CliArgs) {
 		out.push("", ...focusSection(chart, focus, liuNianYear));
 	}
 
+	// 头部三行删除后，口径节可能为空（未给出生地且非晚子时）—— 清掉开头可能
+	// 残留的空行，让面板或专题节直接顶格。
+	while (out.length > 0 && out[0] === "") out.shift();
 	return out.join("\n");
 }
-

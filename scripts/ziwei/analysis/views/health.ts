@@ -27,8 +27,7 @@ import type { AnalysisContext } from "../context";
  *
  * @remarks
  * 该映射表本身在 `../data` 的 `PALACE_BRANCH_ORGAN`，本函数是它的
- * **唯一使用点** —— 这段注释原先夹在 `analysis.ts` 的 `getMutagenNote` 与
- * `getMinorStarNote` 之间（与两者都无关），2026-09-27 拆分时归位到这里。
+ * **唯一使用点**。
  */
 export function renderHealth(ctx: AnalysisContext): string[] {
 	const { chart, topic, mainPalace, primaryStar, sanFang } = ctx;
