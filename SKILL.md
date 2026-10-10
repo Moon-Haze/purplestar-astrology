@@ -69,13 +69,13 @@ node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州
 node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female
 ```
 
-1. **排盘取数** —— `astrology`（四命令合一）默认输出**概览**：基本信息面板（含公历生日 / 命宫 / 身宫 / 紫微落 / 三方四正）+ 口径提示（出生地 / 晚子时）+ 运限速览 + 专题指路。深入全靠**功能参数**：`--pattern` 格局、`--mutagen` 四化（配 `--monthly` 流月）、`--yearly [年]` 流年、`--decadal [虚岁]` 十年大运、`--ages [虚岁]` 小限、`--focus <宫>` 宫盘四项深化、`--palaces` 十二宫逐宫详表、`--topic <key>` 主题论断 —— **专题参数可叠加**（`--info` / `--palaces` / `--topic` 是**独占分支**：给出即接管输出，与其余功能参数同给会报错指路；给了专题参数的输出只出口径提示 + 专题详版，基本信息面板 / 运限速览 / 专题指路均不带），全盘解读通常 `--pattern --mutagen --decadal` 一次拿齐。只给农历用 `--lunar`，只知时辰名用 `--branch`。批量排盘可用 `--config <my.json>`（配置是基底，命令行同名参数覆盖；`--template` 生成模板）。⚠️ 完全零输入（出生信息一项不给）时命令不报错，而是以内置虚构示例（2011-06-24 杭州）演示基本信息面板 + 运限速览 + 专题指路 —— 你**绝不可**把这份演示盘当作用户的命盘解读；部分输入则按「缺一问一」向用户补问。
+1. **排盘取数** —— `astrology`（四命令合一）默认输出**概览**：基本信息面板（含公历生日 / 命宫 / 身宫 / 紫微落 / 三方四正）+ 口径提示（出生地 / 晚子时）+ 运限速览 + 专题指路。深入全靠**功能参数**：`--pattern` 格局、`--mutagen` 四化（配 `--monthly` 流月）、`--yearly [年]` 流年、`--decadal [虚岁]` 十年大运、`--ages [虚岁]` 小限、`--focus <宫>` 宫盘四项深化、`--palaces` 十二宫逐宫详表、`--topic <key>` 主题论断、`--report` 全盘主题报告（Markdown，13 板块一次出全）—— **专题参数可叠加**（`--info` / `--palaces` / `--topic` / `--report` 是**独占分支**：给出即接管输出，与其余功能参数同给会报错指路；给了专题参数的输出只出口径提示 + 专题详版，基本信息面板 / 运限速览 / 专题指路均不带），全盘解读通常 `--pattern --mutagen --decadal` 一次拿齐。只给农历用 `--lunar`，只知时辰名用 `--branch`。批量排盘可用 `--config <my.json>`（配置是基底，命令行同名参数覆盖；`--template` 生成模板）。⚠️ 完全零输入（出生信息一项不给）时命令不报错，而是以内置虚构示例（2011-06-24 杭州）演示基本信息面板 + 运限速览 + 专题指路 —— 你**绝不可**把这份演示盘当作用户的命盘解读；部分输入则按「缺一问一」向用户补问（`--report` / `--json` / `--palaces` / `--topic` 等输出意图在场时不落演示，照常报错补问）。
 2. **按需深入知识源** —— 需要展开论证时，**能用 CLI 命令查的优先用命令**（古籍原文用 `classics`、星曜释义用 `stars`——命令输出即已校验形态）；命令查不到或需读源码语义时，再读 `scripts/` 下的权威文件（`ziwei/` 格局库与四化、`classics/` 古籍、`synastry/` 合盘断语），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则调本 CLI 的 `classics` 命令。
 3. **解读** —— 命宫定基调 → 格局定性 → 四化定着力点 → 大限看阶段 → 结论落到具体建议，**不跳步**。
 
 ## 解读输出契约
 
-交付给用户的解读文本，章节、顺序、命名固定为五节——**命宫总论 · 格局定性 · 四化着力点 · 当前大限 · 综论与建议**（前置一行基本信息与一段总评）。模板全文与聚焦 / 主题 / 流年 / 合盘四种形态规则、十二宫主管领域白话对照，见 [references/output-contract.md](references/output-contract.md)。
+交付给用户的解读文本，章节、顺序、命名固定为五节——**命宫总论 · 格局定性 · 四化着力点 · 当前大限 · 综论与建议**（前置一行基本信息与一段总评）。模板全文与聚焦 / 主题 / 流年 / 合盘四种形态规则、全盘报告形态（`--report` 的 Markdown 交付物，原样转发不改写）、十二宫主管领域白话对照，见 [references/output-contract.md](references/output-contract.md)。
 
 三条最要紧的硬约束：
 
@@ -127,25 +127,20 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 
 ## 命令速查
 
-| 命令                                  | 用途                                                                                                                       |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `astrology`                           | **主力命令**（四命令合一）。概览默认含基本信息；`--palaces` 十二宫详表；`--topic` 主题论断；专题参数可叠加（独占分支除外） |
-| `stars [--search <星名>]`             | 星曜释义                                                                                                                   |
-| `classics [--search <关键词>]`        | 古籍原文检索（骨髓赋 / 全集 / 全书；2026-09-30 三 skill 合一并入）                                                         |
-| `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后）                                                                 |
-| `selftest`                            | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次                                              |
+| 命令                                  | 用途                                                                                                                                                                 |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `astrology`                           | **主力命令**（四命令合一）。概览默认含基本信息；`--palaces` 十二宫详表；`--topic` 主题论断；`--report` 全盘报告（Markdown）；专题参数可叠加（独占分支除外）           |
+| `stars [--search <星名>]`             | 星曜释义                                                                                                                                                             |
+| `classics [--search <关键词>]`        | 古籍原文检索（骨髓赋 / 全集 / 全书；2026-09-30 三 skill 合一并入）                                                                                                   |
+| `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后）。方法论与评分标准不在命令输出里，按 [references/synastry-guide.md](references/synastry-guide.md) 按需读取 |
+| `selftest`                            | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次                                                                                        |
 
-高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>` 可叠加（`--info` / `--palaces` / `--topic` 是独占分支；拼音别名仍被识别，全表见 options.md）；输出 `--json`。
+高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>` 可叠加（`--info` / `--palaces` / `--topic` / `--report` 是独占分支；拼音别名仍被识别，全表见 options.md）；输出 `--json`。
 
 完整参数面（英文主名 / 拼音别名 / 位置参数形态 / `--config` / `--charts`）、各专题的内容、`--focus` 的宫名口径（含「交友宫」不是「仆役」）见 [references/options.md](references/options.md)。
 
-## 本技能不做的事
-
-- **双人合盘 / 合婚的断语方法论**：合盘的**命令**（`synastry`，双宫联参：夫妻宫 × 福德宫）2026-09-30 起由本 CLI 承载，但方法论与评分标准不在命令输出里 —— 按 [references/synastry-guide.md](references/synastry-guide.md) 按需读取；合盘输入的报错对照见 [references/synastry-troubleshooting.md](references/synastry-troubleshooting.md)。
-- **八字论命 / 大运流年飞星**：见上方「体系硬约束」。古籍原文检索（`classics` 命令，三部古籍全文含《骨髓赋》）已并入本 CLI，解读需要引原句佐证时直接查。
-
 ## 若脚本报错
 
-报错对照表、内核定位的方式、以及**改完本技能后该跑哪些回归**，见 [references/troubleshooting.md](references/troubleshooting.md)。
+报错对照表、内核定位的方式、以及**改完本技能后该跑哪些回归**，见 [references/troubleshooting.md](references/troubleshooting.md)；合盘输入的报错对照另见 [references/synastry-troubleshooting.md](references/synastry-troubleshooting.md)。
 
 一句话：改完先跑 `node scripts/purple-star.ts selftest`，全绿再交付解读；要更彻底的回归，在仓库根再跑一次 `npm test`。

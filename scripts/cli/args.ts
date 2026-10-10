@@ -276,6 +276,11 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				desc: "主题论断展示口径：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月），后三者也接受同名英文 decadal/yearly/monthly",
 			},
 			{
+				name: "report",
+				kind: "switch",
+				desc: "全盘主题报告（Markdown）：13 个板块一次出全，本命静态口径，独占分支（单独使用）",
+			},
+			{
 				name: "search",
 				kind: "value",
 				value: "机月同梁",

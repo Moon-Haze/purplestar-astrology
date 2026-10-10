@@ -1002,6 +1002,9 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			[[...base, "--palaces", "--pattern"], "--pattern"],
 			[[...base, "--palaces", "--mutagen"], "--mutagen"],
 			[[...base, "--topic", "love", "--pattern"], "--pattern"],
+			[[...base, "--topic", "love", "--report"], "--report"],
+			[[...base, "--report", "--pattern"], "--pattern"],
+			[[...base, "--report", "--json"], "--json"],
 			[[...base, "--json", "--info"], "--info"],
 			[[...base, "--json", "--topic", "love"], "--topic"],
 			// --info 自身也是独占分支（面板单独输出）：其余功能参数同给必须指路，
@@ -1021,7 +1024,49 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		// 组合边界：--json + --palaces 是 synastry 契约，必须保留且出合法 JSON
 		const json = cmdAstrology(parseArgs([...base, "--palaces", "--json"], "astrology"));
 		JSON.parse(json);
-		return "--palaces/--topic/--json 三组独占语义全部指路；--palaces --json 契约保留";
+		return "--palaces/--topic/--report/--json 四组独占语义全部指路；--palaces --json 契约保留";
+	});
+
+	ok("命令面：--report 产出 13 板块 Markdown 且为纯本命静态口径", () => {
+		const t = cmdAstrology(
+			parseArgs(
+				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--report"],
+				"astrology"
+			)
+		);
+		if (!t.startsWith("# 紫微斗数全盘报告")) throw new Error("报告应以一级标题开头");
+		const h2 = t.split("\n").filter(l => l.startsWith("## ")).length;
+		if (h2 !== 13) throw new Error(`## 二级标题应为 13 个板块，实得 ${h2}`);
+		if (!t.includes("知识来源分级")) throw new Error("报告尾注缺知识来源分级");
+		// 本命静态口径：--view / 运限参数同给必须指路，不静默切视角
+		for (const extra of [
+			["--view", "daxian"],
+			["--yearly", "2027"],
+			["--monthly", "6"],
+		]) {
+			let msg: string | null = null;
+			try {
+				cmdAstrology(
+					parseArgs(
+						[
+							"--date",
+							"1990-05-15",
+							"--branch",
+							"5",
+							"--gender",
+							"male",
+							"--report",
+							...extra,
+						],
+						"astrology"
+					)
+				);
+			} catch (e) {
+				msg = (e as Error).message;
+			}
+			if (!msg) throw new Error(`--report + ${extra.join(" ")} 未指路且静默输出`);
+		}
+		return "13 板块齐全；--view / --yearly / --monthly 同给全部指路";
 	});
 
 	ok("命令面：--gender 报错文案与 help 值域承认中文（男|女 实际合法）", () => {
@@ -1417,60 +1462,57 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		return callDirect(cmd, rest, fn, parseArgs, ctx);
 	};
 
-	ok(
-		"astrology：概览与 --info 带面板 + 运限速览 + 专题指路；给了专题参数则只出专题详版",
-		() => {
-			// 未深入形态（无功能参数概览 / 仅 --info）输出三节；给了具体专题参数的
-			// 输出 = 口径提示 + 专题详版 —— 面板与速览/指路均不带。
-			// 任何形态都不出现【命盘总览】抬头。
-			for (const argv of [
-				["astrology", "1990-5-15", "9:30", "男", "北京"],
-				[
-					"astrology",
-					"--date",
-					"1990-5-15",
-					"--time",
-					"9:30",
-					"--gender",
-					"男",
-					"--city",
-					"北京",
-					"--info",
-				],
-			]) {
-				const r = call(argv);
-				if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
-				for (const want of [
-					"【基本信息】",
-					"公历生日 : 1990-05-15",
-					"命宫:",
-					"三方四正:",
-					"子年斗君",
-					"【运限速览】",
-					"【专题深入】",
-				])
-					if (!r.out.includes(want)) throw new Error(`${argv.join(" ")} 缺 ${want}`);
-				for (const gone of ["【命盘总览】", "【格局识别】", "【生年四化】"])
-					if (r.out.includes(gone)) throw new Error(`${argv.join(" ")} 不应出现 ${gone}`);
-			}
-			const deep = call([
+	ok("astrology：概览与 --info 带面板 + 运限速览 + 专题指路；给了专题参数则只出专题详版", () => {
+		// 未深入形态（无功能参数概览 / 仅 --info）输出三节；给了具体专题参数的
+		// 输出 = 口径提示 + 专题详版 —— 面板与速览/指路均不带。
+		// 任何形态都不出现【命盘总览】抬头。
+		for (const argv of [
+			["astrology", "1990-5-15", "9:30", "男", "北京"],
+			[
 				"astrology",
+				"--date",
 				"1990-5-15",
+				"--time",
 				"9:30",
+				"--gender",
 				"男",
+				"--city",
 				"北京",
-				"--pattern",
-				"--mutagen",
-			]);
-			if (deep.code !== 0) throw new Error(`退出码 ${deep.code}，stderr：${deep.err.trim()}`);
-			for (const want of ["【格局识别】", "【生年四化】"])
-				if (!deep.out.includes(want)) throw new Error(`专题叠加缺 ${want}`);
-			for (const gone of ["【命盘总览】", "【基本信息】", "【运限速览】", "【专题深入】"])
-				if (deep.out.includes(gone))
-					throw new Error(`专题叠加不应出现 ${gone}（已在深入，基底与指路是噪声）`);
-			return "未深入形态带三节（无总览抬头）；专题形态只出专题详版";
+				"--info",
+			],
+		]) {
+			const r = call(argv);
+			if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+			for (const want of [
+				"【基本信息】",
+				"公历生日 : 1990-05-15",
+				"命宫:",
+				"三方四正:",
+				"子年斗君",
+				"【运限速览】",
+				"【专题深入】",
+			])
+				if (!r.out.includes(want)) throw new Error(`${argv.join(" ")} 缺 ${want}`);
+			for (const gone of ["【命盘总览】", "【格局识别】", "【生年四化】"])
+				if (r.out.includes(gone)) throw new Error(`${argv.join(" ")} 不应出现 ${gone}`);
 		}
-	);
+		const deep = call([
+			"astrology",
+			"1990-5-15",
+			"9:30",
+			"男",
+			"北京",
+			"--pattern",
+			"--mutagen",
+		]);
+		if (deep.code !== 0) throw new Error(`退出码 ${deep.code}，stderr：${deep.err.trim()}`);
+		for (const want of ["【格局识别】", "【生年四化】"])
+			if (!deep.out.includes(want)) throw new Error(`专题叠加缺 ${want}`);
+		for (const gone of ["【命盘总览】", "【基本信息】", "【运限速览】", "【专题深入】"])
+			if (deep.out.includes(gone))
+				throw new Error(`专题叠加不应出现 ${gone}（已在深入，基底与指路是噪声）`);
+		return "未深入形态带三节（无总览抬头）；专题形态只出专题详版";
+	});
 	ok(
 		"astrology：零输入默认输出虚构示例面板 + 运限速览 + 专题指路；--json/部分输入仍守纪律",
 		() => {
@@ -1615,7 +1657,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			"male",
 		]);
 		if (leap.code !== 0) throw new Error(`2012-02-29（闰年）被误伤：${leap.err.trim()}`);
-		if (!leap.out.includes("【基本信息】")) throw new Error("2012-02-29 应正常排出基本信息面板");
+		if (!leap.out.includes("【基本信息】"))
+			throw new Error("2012-02-29 应正常排出基本信息面板");
 		return "非法日期 code1/out空/err回显（--json 同）；闰年 2-29 放行";
 	});
 

@@ -576,6 +576,42 @@ const SAMPLES: Sample[] = [
 			"liuyue",
 		],
 	},
+	{
+		group: "astrology · 主题论断",
+		title: "--report 全盘报告（Markdown）",
+		desc: "13 个板块一次出全（独占分支，本命静态口径），文档头含骨架 / 四化 / 格局 / 运限与口径提示",
+		args: [
+			"astrology",
+			"--date",
+			"1999-11-3",
+			"--time",
+			"15:20",
+			"--city",
+			"成都",
+			"--gender",
+			"female",
+			"--report",
+		],
+	},
+	{
+		group: "astrology · 主题论断",
+		title: "--report 与功能参数同给被指路",
+		desc: "--report 是独占分支，与 --pattern 同给报错不静默吞",
+		expectFail: true,
+		args: [
+			"astrology",
+			"--date",
+			"1999-11-3",
+			"--time",
+			"15:20",
+			"--city",
+			"成都",
+			"--gender",
+			"female",
+			"--report",
+			"--pattern",
+		],
+	},
 
 	// ── astrology：输出形态与配置 ──
 	{
@@ -758,15 +794,22 @@ async function main(): Promise<void> {
 	const referenced = new Set<string>();
 	for (const s of SAMPLES)
 		for (const a of s.args)
-			for (const part of a.split(",")) if (part.startsWith("tools/samples/")) referenced.add(part);
+			for (const part of a.split(","))
+				if (part.startsWith("tools/samples/")) referenced.add(part);
 	const missing = [...referenced].filter(f => !existsSync(resolve(SKILL_ROOT, f)));
 	if (missing.length) {
 		console.error(`✘ 缺少样例输入文件：${missing.join("、")}`);
 		console.error("  它们仅本地存在（不入库），在仓库根执行以下命令重建：");
 		console.error("    mkdir -p tools/samples");
-		console.error("    node scripts/purple-star.ts astrology --template >| tools/samples/config.example.json");
-		console.error("    node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json >| tools/samples/chart-a.json");
-		console.error("    node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成都 --gender female --json >| tools/samples/chart-b.json");
+		console.error(
+			"    node scripts/purple-star.ts astrology --template >| tools/samples/config.example.json"
+		);
+		console.error(
+			"    node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json >| tools/samples/chart-a.json"
+		);
+		console.error(
+			"    node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成都 --gender female --json >| tools/samples/chart-b.json"
+		);
 		process.exit(1);
 	}
 

@@ -48,6 +48,7 @@ export const OPTION_OWNERSHIP: Record<CommandName, readonly string[]> = {
 		"focus",
 		"topic",
 		"view",
+		"report",
 		"json",
 		"config",
 		"template",
@@ -86,9 +87,10 @@ const OVERVIEW_EXAMPLES = [
 	`  # 专题深入可叠加：格局 + 四化 + 指定流年 + 聚焦财帛宫
   node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --pattern --mutagen --yearly 2027 --focus 财帛`,
 	"",
-	`  # 十二宫逐宫详表与主题论断
+	`  # 十二宫逐宫详表、主题论断与全盘报告（Markdown，13 板块一次出全）
   node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --palaces
-  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --topic love`,
+  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --topic love
+  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --report`,
 	"",
 	`  # 合盘：先排两张盘，再逗号分隔交给 synastry（甲先乙后）
   node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json > /tmp/a.json
@@ -108,6 +110,7 @@ const COMMAND_EXAMPLES: Record<CommandName, readonly string[]> = {
 		"  node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州",
 		"  node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --pattern --mutagen",
 		"  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --topic love --view liunian",
+		"  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --report",
 		"  # 完全零输入不报错：以虚构示例演示基本信息面板 + 运限速览 + 专题指路",
 		"  node scripts/purple-star.ts astrology",
 		"",

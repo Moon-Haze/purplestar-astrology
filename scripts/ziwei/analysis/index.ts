@@ -39,6 +39,7 @@
  * 拆分的分界线是**「算」与「写」**：状态算一次（`context.ts`），文案各节自己写（`views/`）。
  *
  *   index.ts          装配点：getTopicAnalysis 编排层 + 公开面 re-export
+ *   report.ts         第二编排层：getTopicReport —— --report 的 Markdown 形态
  *   context.ts        跨节共享状态的**唯一**产出点（`makeContext`）
  *   palace-query.ts   只读查询：按宫名取宫 / 取三方四正 / 渲染一行星曜
  *   lookups.ts        文案查表 + 性别过滤 + 格局投影
@@ -72,6 +73,12 @@ import { renderSanFang } from "./views/surround";
 import { renderMutagen } from "./views/mutagen";
 import { renderSuggestions } from "./views/suggestions";
 import { renderYearStem } from "./views/year-stem";
+import {
+	getTopicReport,
+	getTopicReportMeta,
+	type ReportCitation,
+	type ReportOptions,
+} from "./report";
 
 // ─── 核心分析函数（总分结构 + 三方四正 + 本命四化会照 + 大限）───────────────────
 
@@ -123,5 +130,7 @@ export function getTopicAnalysis(
 // 拆分前从本模块导出的 5 个名字，拆分后**逐名仍可从这里 import**。
 // `./data` 是它们的实际归属地，此处只做转发，调用方一行不用改。
 // 这 5 个名字本文件的实现也要用，故上方已 import，这里再 export 一次。
-export { TOPIC_LABEL, TOPIC_PALACE_NAME };
-export type { AnalysisOptions, AnalysisView, TopicKey };
+// `./report` 的两个名字（--report 全盘报告的编排层）同走这张公开面 ——
+// CLI 不直插 analysis 内部模块。
+export { TOPIC_LABEL, TOPIC_PALACE_NAME, getTopicReport, getTopicReportMeta };
+export type { AnalysisOptions, AnalysisView, TopicKey, ReportCitation, ReportOptions };

@@ -35,6 +35,7 @@ import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
 import { getMutagenByStem, getYearlyMutagen, getMonthlyMutagen } from "@/ziwei/mutagen";
 import { STEMS, BRANCHES } from "@/ziwei/constants";
+import { buildReport } from "./report";
 import {
 	getTopicAnalysis,
 	TOPIC_LABEL,
@@ -191,7 +192,9 @@ export function buildAnalyzeJson(input: {
 
 /**
  * 可被独占分支吞掉的功能参数集合——从声明表**派生**：专题深入组的全部参数
- * （palaces 自身除外）加上输出与选题组里的 yearly / monthly / focus。
+ * （palaces 自身除外）加上输出与选题组里的 yearly / monthly / focus / topic /
+ * report。后三个独占参数也在集合里，是为了让「两个独占分支同给」被指路而非静默
+ * 吞掉低优先级的那个（自指由调用处的 `n !== exclusive` 过滤兜住）。
  */
 const SHADOWABLE = new Set(
 	OPTION_GROUPS.flatMap(g => {
@@ -199,7 +202,7 @@ const SHADOWABLE = new Set(
 			return g.options.map(o => o.name).filter(n => n !== "palaces");
 		if (g.title === "输出与选题")
 			return g.options
-				.filter(o => ["yearly", "monthly", "focus"].includes(o.name))
+				.filter(o => ["yearly", "monthly", "focus", "topic", "report"].includes(o.name))
 				.map(o => o.name);
 		return [];
 	})
@@ -218,8 +221,8 @@ const BIRTH_KEYS = OPTION_GROUPS.flatMap(g =>
  * 表达了输出意图的功能参数（camelCase）—— 从声明表派生：专题深入组与输出选题组的
  * 全部参数，刨去 `info`（零输入时它正是演示目标）与 `config`（它是参数来源而非输出
  * 形态，配置里没写出生信息时同样允许落演示）。零输入 + 这些参数在场 = 用户要特定
- * 输出，不替他排虚构盘 —— 交回原路径按「缺一问一」报错（`--json` 尤其如此：机器
- * 接口不喂虚构数据）。
+ * 输出，不替他排虚构盘 —— 交回原路径按「缺一问一」报错（`--json` / `--report`
+ * 尤其如此：机器接口与全盘报告都不喂虚构数据）。
  */
 const INTENT_KEYS = OPTION_GROUPS.flatMap(g =>
 	g.title.startsWith("专题深入") || g.title === "输出与选题"
@@ -249,14 +252,15 @@ const SAMPLE_TRAILER = [
 ];
 
 /**
- * 独占分支（--palaces / --topic / --info）激活时，其余功能参数不会生效——静默吞违反
- * 「宁可启动失败，也不静默产出错盘」，在这里指路。优先级链：
- * --palaces > --topic > 其他功能参数（--info 属于链上的「其他功能参数」，但它自身
- * 也是独占分支——只输出面板一节；--json 仅与 --palaces 组合，见各自分支）。
+ * 独占分支（--palaces / --topic / --report / --info）激活时，其余功能参数不会生效——
+ * 静默吞违反「宁可启动失败，也不静默产出错盘」，在这里指路。优先级链：
+ * --palaces > --topic > --report > 其他功能参数（--info 属于链上的「其他功能参数」，
+ * 但它自身也是独占分支——只输出面板一节；--json 仅与完整概览或 --palaces 组合，
+ * 见各自分支）。
  */
 function assertNoShadowedFeatures(
 	args: CliArgs,
-	exclusive: "--palaces" | "--topic" | "--info"
+	exclusive: "--palaces" | "--topic" | "--report" | "--info"
 ): void {
 	// --topic 自身**消费** --yearly / --monthly（流年/流月视角的年份与农历月，见 topic
 	// 分支的 parseYearlyArg / parseMonthlyArg）——它们不是被吞参数，检测必须放行，
@@ -271,7 +275,7 @@ function assertNoShadowedFeatures(
 	if (shadowed.length)
 		throw new Error(
 			`${exclusive} 是独占分支，以下功能参数不会生效：${shadowed.map(n => `--${n}`).join("、")}。` +
-				`独占分支请单独使用（优先级：--palaces > --topic > 其他功能参数）。`
+				`独占分支请单独使用（优先级：--palaces > --topic > --report > 其他功能参数）。`
 		);
 }
 
@@ -279,7 +283,8 @@ function assertNoShadowedFeatures(
  * `astrology` 命令：解读用的完整输入包（本 CLI 最常用的一条）。
  *
  * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--pattern` / `--mutagen` /
- *   `--decadal [虚岁]` / `--ages [虚岁]` / `--yearly [年]` / `--monthly` / `--focus`
+ *   `--decadal [虚岁]` / `--ages [虚岁]` / `--yearly [年]` / `--monthly` / `--focus` /
+ *   `--report`
  * @returns 已渲染好的文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 字符串
  *
  * @remarks
@@ -337,14 +342,20 @@ export function cmdAstrology(args: CliArgs) {
 			throw new Error(
 				"--info 是独占分支，与 --json 不可同给：--info 只输出文本面板（--json 仅与完整概览或 --palaces 组合）。"
 			);
-		// 优先级链落地：--palaces / --topic 在场时，若放行到下面各分支，独占分支会被
-		// 本分支**抢跑**吞掉（本分支排在它们之前）——指路，不静默。--info 属于链上的
-		// 「其他功能参数」：--palaces > --topic > --info。
-		const higher = args.palaces ? "--palaces" : args.topic !== undefined ? "--topic" : null;
+		// 优先级链落地：--palaces / --topic / --report 在场时，若放行到下面各分支，
+		// 独占分支会被本分支**抢跑**吞掉（本分支排在它们之前）——指路，不静默。--info
+		// 属于链上的「其他功能参数」：--palaces > --topic > --report > --info。
+		const higher = args.palaces
+			? "--palaces"
+			: args.topic !== undefined
+				? "--topic"
+				: args.report
+					? "--report"
+					: null;
 		if (higher)
 			throw new Error(
 				`${higher} 是独占分支，以下功能参数不会生效：--info。` +
-					`独占分支请单独使用（优先级：--palaces > --topic > 其他功能参数）。`
+					`独占分支请单独使用（优先级：--palaces > --topic > --report > 其他功能参数）。`
 			);
 		// 其余功能参数（--pattern / --mutagen / --decadal / --ages / --yearly / --monthly /
 		// --focus）与本分支同给同样不会生效——静默吞违反启动纪律，统一走独占检测指路。
@@ -443,6 +454,26 @@ export function cmdAstrology(args: CliArgs) {
 			"   风格化转述，不一定是《天纪》逐字原话（verified / traditional / methodology / suspect 四级），",
 			"   引用下断语时请注明口径。",
 		].join("\n");
+	}
+
+	// --report：全盘主题报告（Markdown，独占分支）。13 个板块一次出全，
+	// 本命静态口径 —— 视角 / 流年 / 流月参数不属于它，由独占检测与 --view 检查指路。
+	if (args.report) {
+		if (args.json)
+			throw new Error(
+				"--report 是独占分支，与 --json 不可同给：全盘报告只有 Markdown 文本形态（--json 仅与完整概览或 --palaces 组合）。"
+			);
+		assertNoShadowedFeatures(args, "--report");
+		if (args.view !== undefined)
+			throw new Error(
+				"--report 为本命静态口径，不接受 --view（运限视角的单主题论断见 --topic <key> --view daxian|liunian|liuyue）。"
+			);
+		return buildReport(chart, info, {
+			lngNote,
+			lngAmbiguous,
+			isLateZi,
+			lateZiCandidate,
+		});
 	}
 
 	if (args.json) {

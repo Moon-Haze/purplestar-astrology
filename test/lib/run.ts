@@ -153,6 +153,7 @@ const LAYERS = [
 		suites: ["排盘对标（基准：iztro 2.5.8 样本）"],
 	},
 	{ label: "层 2 CLI 端到端", file: "cli.test.ts", suites: ["CLI 端到端"] },
+	{ label: "层 2 CLI 端到端", file: "report.test.ts", suites: ["astrology --report 全盘报告"] },
 	{ label: "层 3 排盘结构不变量", file: "invariants.test.ts", suites: ["排盘结构不变量"] },
 	{ label: "层 4 三合派约束", file: "school.test.ts", suites: ["三合派体系约束"] },
 	{
