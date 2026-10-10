@@ -51,3 +51,7 @@ db/ziwei.duckdb*
 npm-debug.log*
 samples-out/
 .mimosa/
+docs/cli-samples.md
+tools/samples/chart-a.json
+tools/samples/chart-b.json
+tools/samples/config.example.json
