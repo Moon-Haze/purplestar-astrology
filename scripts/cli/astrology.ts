@@ -44,6 +44,22 @@ import {
 } from "@/ziwei/analysis";
 
 /**
+ * `--view` 取值别名：英文主名与参数别名表（`OPTION_ALIASES`）同名同义 ——
+ * decadal = daxian（当前大限）/ yearly = liunian（流年）/ monthly = liuyue（流月），
+ * 归一到内部拼音取值后走同一套 {@link AnalysisView}。
+ * mingpan（本命）在参数别名表中无英文对应，只有拼写本身。
+ */
+const VIEW_ALIASES: Record<string, AnalysisView> = {
+	mingpan: "mingpan",
+	daxian: "daxian",
+	liunian: "liunian",
+	liuyue: "liuyue",
+	decadal: "daxian",
+	yearly: "liunian",
+	monthly: "liuyue",
+};
+
+/**
  * `--yearly` 的年份校验（`analyze` 的流年专题与 `topic` 的流年论断共用）。
  *
  * @param args - CLI 参数表
@@ -398,6 +414,7 @@ export function cmdAstrology(args: CliArgs) {
 				...rows,
 				"",
 				"view 可选：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月）",
+				"　　　　 也可用同名英文：decadal / yearly / monthly",
 				"示例：node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州 --topic love（示例数据为虚构）",
 			].join("\n");
 		}
@@ -407,9 +424,11 @@ export function cmdAstrology(args: CliArgs) {
 				`--topic 应为 13 个主题之一（${Object.keys(TOPIC_LABEL).join("/")}），收到：${args.topic}`
 			);
 		const viewRaw = args.view !== undefined ? String(args.view) : "mingpan";
-		if (!["mingpan", "daxian", "liunian", "liuyue"].includes(viewRaw))
-			throw new Error(`--view 应为 mingpan/daxian/liunian/liuyue，收到：${args.view}`);
-		const view = viewRaw as AnalysisView;
+		const view = VIEW_ALIASES[viewRaw];
+		if (!view)
+			throw new Error(
+				`--view 应为 mingpan/daxian/liunian/liuyue（或同名英文 decadal/yearly/monthly），收到：${args.view}`
+			);
 		const text = getTopicAnalysis(chart, topic, {
 			view,
 			liunianYear: parseYearlyArg(args),

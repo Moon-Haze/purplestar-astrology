@@ -538,6 +538,26 @@ const SAMPLES: Sample[] = [
 	},
 	{
 		group: "astrology · 主题论断",
+		title: "--topic love --view decadal",
+		desc: "英文取值与 daxian 等价（yearly=liunian / monthly=liuyue 同理）",
+		args: [
+			"astrology",
+			"--date",
+			"1999-11-3",
+			"--time",
+			"15:20",
+			"--city",
+			"成都",
+			"--gender",
+			"female",
+			"--topic",
+			"love",
+			"--view",
+			"decadal",
+		],
+	},
+	{
+		group: "astrology · 主题论断",
 		title: "--topic love --view liuyue",
 		desc: "流月口径展示",
 		args: [

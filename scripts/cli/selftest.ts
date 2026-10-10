@@ -1513,11 +1513,40 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		if (!/(化禄|化权|化科|化忌)/.test(r.out)) throw new Error("详表应含四化标注");
 		return "十二宫详表在";
 	});
-	ok("astrology：--topic love 出主题论断；--view 越界报错", () => {
+	ok("astrology：--topic love 出主题论断；--view 英文取值与拼音等价；--view 越界报错", () => {
 		const r = call(["astrology", "1990-5-15", "9:30", "男", "--topic", "love"]);
 		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 		if (!r.out.includes("【主题论断")) throw new Error("缺主题论断标题");
 		if (!r.out.includes("知识来源分级")) throw new Error("缺知识来源分级披露");
+		// 英文取值与拼音逐一等价（输出应完全一致）
+		for (const [en, py] of [
+			["decadal", "daxian"],
+			["yearly", "liunian"],
+			["monthly", "liuyue"],
+		] as const) {
+			const byEn = call([
+				"astrology",
+				"1990-5-15",
+				"9:30",
+				"男",
+				"--topic",
+				"love",
+				"--view",
+				en,
+			]);
+			const byPy = call([
+				"astrology",
+				"1990-5-15",
+				"9:30",
+				"男",
+				"--topic",
+				"love",
+				"--view",
+				py,
+			]);
+			if (byEn.code !== 0) throw new Error(`--view ${en} 应可用，stderr：${byEn.err.trim()}`);
+			if (byEn.out !== byPy.out) throw new Error(`--view ${en} 与 ${py} 输出应逐字一致`);
+		}
 		const bad = call([
 			"astrology",
 			"1990-5-15",
@@ -1530,7 +1559,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		]);
 		if (bad.code === 0 || !bad.err.includes("--view"))
 			throw new Error("--view 越界应报错并点名");
-		return "主题论断与 view 校验在";
+		return "主题论断、view 英文等价与越界校验在";
 	});
 	ok("astrology：旧命令名已删（命令表键集层面；stderr/exit 指路由冒烟断言覆盖）", () => {
 		for (const old of ["analyze", "chart", "topic", "insight", "cities"]) {
