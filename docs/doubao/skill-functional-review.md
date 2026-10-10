@@ -10,14 +10,14 @@
 
 ## 一、实测现状（数字先行）
 
-| 项 | 实测值 | 说明 |
-|---|---|---|
-| `.git` 体积 | **398M** | 其中 392M 是 db/ 的 parquet |
-| git 跟踪的 db 文件 | 13 个 parquet（392M） | palaces 12M + samples 0.8M + topics×11 ≈ 379M |
-| 运行时代码对 duckdb 的引用 | **0** | `scripts/` 全仓零 duckdb import；data.ts 仅注释提及 |
-| node_modules | 126M | 全量（含 devDeps）；运行时依赖 iztro 5.9M + lunar 1.6M ≈ **7.5M** |
-| Node 硬约束 | **≥ 22.18** | `module.registerHooks` + 原生 TS 类型擦除，README:49 声明 |
-| 安装指引 | README ✅ / troubleshooting ✅ / **SKILL.md ❌** | agent 首次必读的是 SKILL.md，正文没有 |
+| 项                         | 实测值                                        | 说明                                                              |
+| -------------------------- | --------------------------------------------- | ----------------------------------------------------------------- |
+| `.git` 体积                | **398M**                                      | 其中 392M 是 db/ 的 parquet                                       |
+| git 跟踪的 db 文件         | 13 个 parquet（392M）                         | palaces 12M + samples 0.8M + topics×11 ≈ 379M                     |
+| 运行时代码对 duckdb 的引用 | **0**                                         | `scripts/` 全仓零 duckdb import；data.ts 仅注释提及               |
+| node_modules               | 126M                                          | 全量（含 devDeps）；运行时依赖 iztro 5.9M + lunar 1.6M ≈ **7.5M** |
+| Node 硬约束                | **≥ 22.18**                                   | `module.registerHooks` + 原生 TS 类型擦除，README:49 声明         |
+| 安装指引                   | README ✅ / troubleshooting ✅ / **SKILL.md ❌** | agent 首次必读的是 SKILL.md，正文没有                             |
 
 ---
 
@@ -26,6 +26,7 @@
 ### F1 【最重】392M 遗留 db/ 被 git 跟踪 —— 仓库被撑到 398M
 
 **证据链**：
+
 - `git ls-files db/` → 13 个 parquet 全部被跟踪；`.gitignore` 只忽略 `db/dataset.staging/` 与 `db/ziwei.duckdb*`，**漏了 `db/dataset/*.parquet`**
 - 运行时零依赖：`scripts/` 无 duckdb import；`data.ts` 里唯一提及是注释（说明 TOPIC_KEYS 与 `tools/db/db.ts` 的转出关系）
 - 该数据路线已被代码路线取代（此前分析：topics 三表占 90%，运行时不读）——用户打包时也早已说过"可以去除 db 文件夹"
@@ -34,10 +35,12 @@
 **影响**：每次 clone 拉 398M（其中 97% 是没人读的 parquet）；分发 zip 若含 git 目录会同样膨胀；仓库协作时 diff/status 都变慢。
 
 **建议**：
+
 1. ~~`git rm -r --cached db/` + `.gitignore` 补 `db/dataset/*.parquet`（保留 tools/db 建库脚本与文档，仅去数据）~~
 2. 彻底瘦身需 `git filter-repo` 改写历史（仅当要公开分发、在意 clone 体验时做；历史已在远端，改写会动所有 clone）
 
 **✅ 2026-10-09 已落地（commit f01c08d，独立项目 ../purplestar-db-slim 承载），范围有一处实读修正**：
+
 - 出库的是 `topics-*.parquet` 11 片（约 379M，占 97%）——已下线数据路线遗留；`samples.parquet + palaces.parquet`（12.8M）**保留入库**：实读发现它们是 `test/lib/sample-source.ts`（语料基准工具数据源）的活依赖，评审「运行时零依赖」只对 scripts/ 成立。
 - 实测浅克隆（--depth 1）787M → **30M**；磁盘文件保留、历史未改写（size-pack 不变，瘦身体现在新 clone）。
 
@@ -46,9 +49,11 @@
 **证据**：README.md:38（`cd … && npm install`）与 references/troubleshooting.md:11-12（失败排查）都有，但 **SKILL.md 正文没有**。豆包运行时 agent 只读 SKILL.md；依赖未装时第一次跑 `node scripts/purple-star.ts` 必失败，只能靠 boot-hooks 的报错兜底（"Cannot find module 'iztro' → 在 skill 根 npm install"），是**失败后补救**而非**事前预防**。
 
 **建议**：SKILL.md「路径约定」节补一行：
-```
+
+```txt
 首次使用：在 skill 根执行 npm install（Node ≥ 22.18，依赖清单见 package.json）。
 ```
+
 一行改动，agent 首次运行的成功率显著提升。注意：SKILL.md 有 selftest 文档-代码断言盯着，但该行不涉及旗标名，不会触发。**✅ 2026-10-09 已落地（a12f245）**。
 
 ### F3 运行依赖与开发依赖未分离 —— 打包体积 126M vs 7.5M
@@ -56,6 +61,7 @@
 **证据**：`node_modules` 126M，其中运行时只需 iztro + lunar-typescript ≈ 7.5M；devDependencies（tsx / typescript / @duckdb/node-api）是 test / build:db 等开发脚本用的。
 
 **建议**（二选一）：
+
 - 分发 zip 用 `npm install --omit=dev` 后再打包 → 约 7.5M，zip 直接可用；
 - 或 zip 不带 node_modules，只带 package.json + package-lock.json，用户 `npm install`（F2 的指引就位后这条路也通）。
 - 数据路线彻底下线后，devDeps 里可移除 @duckdb/node-api（连带 tools/db 若保留则为开发专用）。
@@ -78,13 +84,13 @@
 
 ## 三、推荐路线
 
-| 优先级 | 动作 | 影响 |
-|---|---|---|
-| **P0** | `git rm -r --cached db/` + `.gitignore` 补 `db/dataset/*.parquet` | 仓库 398M → 约 6M（新 clone 快 ~60 倍）；不动代码与工具脚本 |
-| **P1** | SKILL.md 补一行首次安装指引（Node ≥ 22.18 + npm install） | agent 首次使用成功路径闭环 |
-| **P2** | 分发 zip 按 `--omit=dev` 打包（≈7.5M）；或带安装指引不带 node_modules | zip 体积 126M → 7.5M |
-| P3 | （可选）git filter-repo 改写历史彻底移除 db | 公开分发时 clone 体验最佳；动历史需团队共识 |
-| P4 | 数据路线下线后清理 devDeps 与 scripts | 维护噪音 |
+| 优先级 | 动作                                                                  | 影响                                                        |
+| ------ | --------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **P0** | `git rm -r --cached db/` + `.gitignore` 补 `db/dataset/*.parquet`     | 仓库 398M → 约 6M（新 clone 快 ~60 倍）；不动代码与工具脚本 |
+| **P1** | SKILL.md 补一行首次安装指引（Node ≥ 22.18 + npm install）             | agent 首次使用成功路径闭环                                  |
+| **P2** | 分发 zip 按 `--omit=dev` 打包（≈7.5M）；或带安装指引不带 node_modules | zip 体积 126M → 7.5M                                        |
+| P3     | （可选）git filter-repo 改写历史彻底移除 db                           | 公开分发时 clone 体验最佳；动历史需团队共识                 |
+| P4     | 数据路线下线后清理 devDeps 与 scripts                                 | 维护噪音                                                    |
 
 ---
 

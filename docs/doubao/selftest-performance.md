@@ -17,24 +17,24 @@
 
 selftest 内用 `spawnSync` 起真子进程跑 CLI，分布在三处：
 
-| 位置 | 子进程数 |
-|---|---|
-| `scripts/cli/selftest.ts`（runCli） | 15 |
-| `scripts/classics/selftest-asserts.ts`（run） | 2 |
-| `scripts/synastry/selftest-asserts.ts`（run） | 10 |
-| **合计** | **27** |
+| 位置                                          | 子进程数 |
+| --------------------------------------------- | -------- |
+| `scripts/cli/selftest.ts`（runCli）           | 15       |
+| `scripts/classics/selftest-asserts.ts`（run） | 2        |
+| `scripts/synastry/selftest-asserts.ts`（run） | 10       |
+| **合计**                                      | **27**   |
 
 ### 单次子进程启动开销分解
 
-| 环节 | 耗时 |
-|---|---|
-| node 空启动 | 43 ms |
-| 任意命令（含 `help`）整体 | **3.2–3.4 s** |
-| 其中 `iztro` 加载（冷启动，波动 1–3 s） | **≈全部** |
-| `@/ziwei/algorithm` 整体 | 2.7 s |
-| 其中 iztro 已缓存后再加载 algorithm | **45 ms** |
-| constants / palace-relations | 4–5 ms |
-| lunar-typescript | 20 ms |
+| 环节                                    | 耗时          |
+| --------------------------------------- | ------------- |
+| node 空启动                             | 43 ms         |
+| 任意命令（含 `help`）整体               | **3.2–3.4 s** |
+| 其中 `iztro` 加载（冷启动，波动 1–3 s） | **≈全部**     |
+| `@/ziwei/algorithm` 整体                | 2.7 s         |
+| 其中 iztro 已缓存后再加载 algorithm     | **45 ms**     |
+| constants / palace-relations            | 4–5 ms        |
+| lunar-typescript                        | 20 ms         |
 
 **结论**：启动开销几乎全部来自 `iztro` 加载。`iztro` 是 5.9 MB 的命理库（打包成单 bundle，内含大量星曜 / 历法 / 五行局数据表），模块求值时整块解析执行。
 
@@ -54,14 +54,15 @@ selftest 内用 `spawnSync` 起真子进程跑 CLI，分布在三处：
 
 **实测对比（同一进程）：**
 
-| 方式 | 15 次排盘耗时 | 平均 |
-|---|---|---|
-| spawnSync 子进程 | ≈ 48 s | 3.2 s/次 |
-| 进程内直调 | **377 ms** | 25 ms/次 |
+| 方式             | 15 次排盘耗时 | 平均     |
+| ---------------- | ------------- | -------- |
+| spawnSync 子进程 | ≈ 48 s        | 3.2 s/次 |
+| 进程内直调       | **377 ms**    | 25 ms/次 |
 
 **约 127 倍提升。**
 
 落地原则：
+
 - 把 27 个 spawnSync 中的**绝大多数**（约 24–25 个）改为进程内直调，断言内容不变。
 - 仅保留 **1–2 个**真子进程冒烟（例如 1 个 `astrology`、1 个 `help`），用来守住"入口 → 钩子 → 分发"链路——这正是子进程唯一不可替代的价值。
 - 预期 selftest 总耗时：**100 s → 约 5–10 s**。
@@ -74,6 +75,7 @@ selftest 内用 `spawnSync` 起真子进程跑 CLI，分布在三处：
 ### 方案 B：让 `help` 懒加载，不拉起 iztro（改善 UX）✅ 已落地
 
 当前连 `help` 都要 3.3 秒，因为入口在 `main()` 之前加载了 `@/cli/commands`（静态依赖链 → algorithm → iztro）。
+
 - 改为只在真正执行排盘 / 合盘命令时才动态加载 commands；`help` 走独立的轻量命令表。
 - 收益：`help` 近瞬时返回（3.3 s → 约 0.1 s）。
 - **✅ 2026-10-09 已落地（同 commit 761c365）**：新建 `cli/command-meta.ts`（命令名清单与 HELP 文案，零命令实现依赖），`help.ts` 直连它；`purple-star.ts` 把内核加载与启动自检包进 `loadCore()`，help / 未知命令路径只加载 command-meta + help。**实测 `help` 与 `<命令> --help` 均约 0.06 秒**，排盘命令照常（懒加载后才做启动自检）。
@@ -99,5 +101,6 @@ selftest 内用 `spawnSync` 起真子进程跑 CLI，分布在三处：
 - 最终：selftest 全绿（128/128，断言项随收敛调整），且总耗时 ≤ 10 s。
 
 ## 六、复核记录（2026-10-09，master `ec29992`）
+
 - 已落地：子进程 27 → 6，selftest 128/128 全绿，约 75 s。
 - 未解决：6 个子进程冷启动仍在（约 19 s），继续方案 A 可降到 5–10 s。

@@ -33,10 +33,12 @@
 ### Task 1: 独占分支不静默——检测与指路 throw
 
 **Files:**
+
 - Modify: `scripts/cli/astrology.ts`（cmdAstrology 的 --info / --palaces / --topic 三个分支入口）
 - Modify: `scripts/cli/selftest.ts`（命令面断言区，追加 4 条）
 
 **Interfaces:**
+
 - Consumes: `OPTION_GROUPS`（`./args`，按组标题派生可被吞参数集合）；`cmdAstrology`（已有）。
 - Produces: 模块级函数 `assertNoShadowedFeatures(args: CliArgs, exclusive: "--palaces" | "--topic"): void`（Task 5 的 selftest 断言依赖它产生的报错文案含「独占分支」与被吞参数名）。
 
@@ -147,6 +149,7 @@ git commit -m "fix(cli): 独占分支（--palaces/--topic）检测被吞功能�
 ### Task 2: 文档承诺对齐批（options/SKILL/README/CLAUDE/test-README）
 
 **Files:**
+
 - Modify: `references/options.md`（可叠加收窄、独占分支小节、--monthly 强制、--late-zi 互斥）
 - Modify: `SKILL.md`（「可叠加」措辞、晚子时节互斥句）
 - Modify: `README.md`（Node ≥ 22.18）
@@ -155,6 +158,7 @@ git commit -m "fix(cli): 独占分支（--palaces/--topic）检测被吞功能�
 - Modify: `scripts/cli/selftest.ts`（文档一致性断言 2 条）
 
 **Interfaces:**
+
 - Consumes: Task 1 的报错文案（「独占分支」关键词，文档描述要与之一致）。
 - Produces: 文档一致性断言钉住的关键句——「Node ≥ 22.18」（README/CLAUDE.md）、「独占分支」（options.md）、「禁止 npm install iztro@latest」（test/README.md）。
 
@@ -199,10 +203,12 @@ git commit -m "docs: 文档承诺对齐——Node 下限 22.18、独占分支优
 ### Task 3: 知识分级登记表（grades.ts + 28 条引句 + 机检）
 
 **Files:**
+
 - Create: `scripts/ziwei/analysis/grades.ts`
 - Modify: `scripts/cli/selftest.ts`（文档一致性区之后追加机检断言）
 
 **Interfaces:**
+
 - Consumes: `data.ts` 文本（机检读源码文本抽引句，与登记表双向匹配）。
 - Produces: `NI_GRADES: readonly NiGradeEntry[]` 与 `type KnowledgeGrade = "verified" | "traditional" | "suspect" | "methodology"`（Task 4 的 synastry 口径统一引用同一枚举）。
 
@@ -295,12 +301,14 @@ git commit -m "feat(analysis): 知识分级登记表——28 条倪师引句逐�
 ### Task 4: 两库口径统一 + 飞星派断语清除
 
 **Files:**
+
 - Modify: `scripts/ziwei/analysis/data.ts`（3 处：409 廉贞丙火→丁火、422/429 火木→丁火、305 武曲二十八岁→30 岁后）
 - Modify: `scripts/synastry/synastry-knowledge.ts`（:154-155 七杀 ni_quote 降级 suspect、:77 太阳「必有」→「需格外注意」、:179 自化禄断语删除）
 - Modify: `scripts/classics/data/quanji.ts`（:38 补口径注）
 - Modify: `scripts/cli/selftest.ts`（机检断言 2 条）
 
 **Interfaces:**
+
 - Consumes: Task 3 的 `KnowledgeGrade` 枚举。
 - Produces: synastry-knowledge 的 `ni_quote` 字段语义收窄——**只承载 verified/traditional 档**，suspect 档内容降级为普通文案并在句首带「（坊间流传，未核实倪师原话）」；selftest 断言依赖 synastry 输出**不再含**「自化禄」。
 
@@ -353,12 +361,14 @@ git commit -m "fix(analysis): 两库引句口径统一、自化禄断语清除�
 ### Task 5: 合盘双盘四化互参节 + 交付模板补齐
 
 **Files:**
+
 - Modify: `scripts/cli/synastry.ts`（渲染层：在「生年四化入夫妻宫」节之后追加「双盘四化互参」节）
 - Modify: `scripts/cli/selftest.ts`（断言 2 条）
 - Modify: `references/output-contract.md`（补「流年解读」「合盘」两种交付模板）
 - Modify: `references/workflow.md`（合盘段补「`--json` 输出走 stdout 重定向落盘」）
 
 **Interfaces:**
+
 - Consumes: `ca` / `cb`（cmdSynastry 已加载的两份 `AnalyzeJson`，其 `nativeSiHua.located` 数组元素含 `{ hua, star, palace, branch }`，`chart.palaces` 提供 branch → 宫名）。
 - Produces: 合盘文本输出新增一节，标题 `【双盘四化互参】`；output-contract 的两种新模板（Markdown 小节）。
 
@@ -438,6 +448,7 @@ git commit -m "feat(synastry): 双盘四化互参节——五步法第 4 步数�
 ### Task 6: 终验与收尾
 
 **Files:**
+
 - 无新改动（验证 + 汇总）。
 
 - [ ] **Step 1: 三层全量验证**
@@ -448,6 +459,7 @@ Expected: selftest 全通过（含本计划新增全部断言）· npm test 520/
 - [ ] **Step 2: 端到端抽查**
 
 Run（应全部指路/正常，无静默）:
+
 ```bash
 node scripts/purple-star.ts astrology --date 1990-05-15 --branch 5 --gender male --city 杭州 --palaces --pattern 2>&1 | head -2
 node scripts/purple-star.ts astrology --date 1990-05-15 --branch 5 --gender male --city 杭州 --json --info 2>&1 | head -2

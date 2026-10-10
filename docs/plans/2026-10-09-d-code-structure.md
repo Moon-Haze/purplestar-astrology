@@ -25,6 +25,7 @@
 ### Task 1：P1a——buildAnalyzeJson 提流年地支局部变量
 
 **Files:**
+
 - Modify: `scripts/cli/astrology.ts:146-152`
 
 **Steps:**
@@ -51,6 +52,7 @@
 ### Task 2：P1b——yearlySection 复用大限三方名
 
 **Files:**
+
 - Modify: `scripts/cli/fortune.ts:398-408`
 
 **Steps:**
@@ -78,6 +80,7 @@
 ### Task 3：F6——删数据路线 npm scripts
 
 **Files:**
+
 - Modify: `package.json`（scripts 段）
 
 **Steps:**

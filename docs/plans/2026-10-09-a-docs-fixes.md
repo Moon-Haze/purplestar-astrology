@@ -25,6 +25,7 @@
 ### Task 1：修 D1——synastry-troubleshooting 内核来源表述
 
 **Files:**
+
 - Modify: `references/synastry-troubleshooting.md:63-65`
 
 **Steps:**
@@ -40,6 +41,7 @@
 ### Task 2：修 D2——自检项数漂移
 
 **Files:**
+
 - Modify: `references/synastry-troubleshooting.md:70`
 
 **Steps:**
@@ -49,6 +51,7 @@
 ### Task 3：修 D3——「四化飞化互参」改名「四化互参」
 
 **Files:**
+
 - Modify: `references/synastry-guide.md:82-89`（第四步节）
 
 **Steps:**
@@ -60,6 +63,7 @@
 ### Task 4：修 D5/F2——SKILL.md 补首次安装指引
 
 **Files:**
+
 - Modify: `SKILL.md:10-20`（「路径约定」节）
 
 **Steps:**

@@ -25,6 +25,7 @@
 ### Task 1：R1——「其他已知事实」拆小标题
 
 **Files:**
+
 - Modify: `SKILL.md:104-112`
 
 **Steps:**
@@ -60,6 +61,7 @@
 ### Task 2：R2——别名收敛到 options.md
 
 **Files:**
+
 - Modify: `SKILL.md:124`（高频参数段）
 
 **Steps:**
@@ -69,6 +71,7 @@
 ### Task 3：R3——知识源指引优先 CLI 命令
 
 **Files:**
+
 - Modify: `SKILL.md:71`（工作流第 2 步）
 
 **Steps:**

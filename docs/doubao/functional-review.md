@@ -41,15 +41,16 @@ liuNianPalace: {
 
 **证据**：全仓 `chart.palaces.find(p => p.branch === X)` 出现 **10+ 处**，散落在 6 个文件：
 
-| 文件 | 处数 |
-|---|---|
-| `cli/fortune.ts` | 5 |
-| `cli/render.ts` | 2 |
-| `cli/astrology.ts` | 1 |
-| `ziwei/analysis/palace-query.ts` | 2 |
-| `ziwei/patterns/basic.ts` + `helpers.ts` | 2 |
+| 文件                                     | 处数 |
+| ---------------------------------------- | ---- |
+| `cli/fortune.ts`                         | 5    |
+| `cli/render.ts`                          | 2    |
+| `cli/astrology.ts`                       | 1    |
+| `ziwei/analysis/palace-query.ts`         | 2    |
+| `ziwei/patterns/basic.ts` + `helpers.ts` | 2    |
 
 **分析**：十二宫只有 12 个，线性 find 是 O(12)，**性能上完全不是问题**（实测排盘 + 全专题 1.6s 中此占比可忽略）。真正的价值是：
+
 - 消除散落的 `?.name ?? "?"` 与 `find(...)?.name ?? null` 这类**口径不一的兜底**（有的退化 `"?"`、有的 `null`、有的抛错）；
 - 建一个 `palaceByBranch(chart): Map<number, Palace>`（或在 `render.ts` 加 `palaceIndex(chart)`），各文件共用。
 
@@ -77,12 +78,12 @@ liuNianPalace: {
 
 ## 三、明确"不优化"项（及理由）
 
-| 项 | 理由 |
-|---|---|
+| 项                                         | 理由                                                                                              |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | 合盘 `chart-view.ts` 自写 `BRANCHES` 12 字 | 有意为之（注释声明）：消费方自带宇宙常量，避免拖进 500 行常量表；且两个 `BRANCHES` 不会同时被读到 |
-| 每次 CLI 同步读盘 | 一次性进程 + 小文件，异步化无收益 |
-| `--json` 全量算 patterns/四化 | 是 JSON 输出契约的一部分（消费方依赖），不能懒 |
-| 虚岁用 `new Date()` 每次实时算 | 语义如此（虚岁随当前日期走），跨年自动正确 |
+| 每次 CLI 同步读盘                          | 一次性进程 + 小文件，异步化无收益                                                                 |
+| `--json` 全量算 patterns/四化              | 是 JSON 输出契约的一部分（消费方依赖），不能懒                                                    |
+| 虚岁用 `new Date()` 每次实时算             | 语义如此（虚岁随当前日期走），跨年自动正确                                                        |
 
 ---
 
@@ -94,5 +95,6 @@ liuNianPalace: {
 4. **F6 补记**：数据路线 npm scripts（build:db / verify:db / query）已于 2026-10-09 删除（同 commit 9318a80）。
 
 ## 五、验证方式
+
 - P1：改后 `selftest` 128/128 全绿 + `--json` 输出与改前逐字节一致（golden snapshot 思维）。
 - P2：改后 `npm test` 全绿（语料回归盯着格局/论断链路）+ selftest 全绿。

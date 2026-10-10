@@ -27,6 +27,7 @@
 ### Task 1：O3——四柱去重
 
 **Files:**
+
 - Modify: `scripts/cli/fortune.ts:177-199`（infoSection）
 - Test: `scripts/cli/selftest.ts:1191-1215`（专题渲染断言组）
 
@@ -79,6 +80,7 @@
 ### Task 2：O6——面板与运限之间补空行
 
 **Files:**
+
 - Modify: `scripts/cli/astrology.ts:386`
 
 **Steps:**
@@ -89,6 +91,7 @@
 ### Task 3：P3——缺项校验顺序 日期→时辰→性别
 
 **Files:**
+
 - Modify: `scripts/cli/birth-info.ts:318-329`（性别校验块）与 438 行附近（时辰校验处）
 
 **Steps:**

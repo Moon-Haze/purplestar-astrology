@@ -28,9 +28,11 @@
 ### Task 1：selftest-kit 增加进程内直调 helper
 
 **Files:**
+
 - Modify: `scripts/cli/selftest-kit.ts`（60 行，harness 共用层）
 
 **Interfaces:**
+
 - Produces: `runDirect(cmd: string, argv: string[], ctx: CliContext): Promise<{ code: number; out: string; err: string }>` —— 直调命令表；成功 code 0，throw 时 code 1 且 `err` 为 `错误：${message}`（与引导层 catch 的呈现同形）；未知命令 code 1 且 err 为「未知命令…」文案。
 
 **Steps:**
@@ -77,6 +79,7 @@ export async function runDirect(
 ### Task 2：主 selftest 的 runCli 断言组改直调 + 保留冒烟
 
 **Files:**
+
 - Modify: `scripts/cli/selftest.ts:1338-1470+`（runCli 定义与 17 处调用）
 
 **Steps:**
@@ -135,6 +138,7 @@ export async function runDirect(
 ### Task 3：classics / synastry 断言组同法收敛
 
 **Files:**
+
 - Modify: `scripts/classics/selftest-asserts.ts`（2 处 run 调用）
 - Modify: `scripts/synastry/selftest-asserts.ts`（11 处 run 调用）
 
@@ -148,11 +152,13 @@ export async function runDirect(
 ### Task 4：方案 B——command-meta 拆分
 
 **Files:**
+
 - Create: `scripts/cli/command-meta.ts`
 - Modify: `scripts/cli/commands.ts`（COMMAND_DESC/COMMAND_HELP/CommandName 改从 command-meta 取并 re-export）
 - Modify: `scripts/cli/help.ts:21-22`（改 import command-meta）
 
 **Interfaces:**
+
 - Produces: `command-meta.ts` 导出 `type CommandName`、`COMMAND_DESC: Record<CommandName, string>`、`COMMAND_HELP: Record<CommandName, string>`、`COMMAND_NAMES: readonly CommandName[]`。零依赖（不 import 任何 cmd 实现）。
 - commands.ts / help.ts 的既有导出面不变（commands.ts re-export 保旧调用方）。
 
@@ -165,6 +171,7 @@ export async function runDirect(
 ### Task 5：方案 B——purple-star.ts 懒加载内核
 
 **Files:**
+
 - Modify: `scripts/purple-star.ts:172-284`
 
 **Steps:**
@@ -210,6 +217,7 @@ async function loadCore(): Promise<{ COMMANDS: CommandsModule["COMMANDS"] }> {
 ```
 
   并在文件顶部类型层补 `type MetaModule = typeof import("@/cli/command-meta");`。
+
 - [ ] 顶层删去原 172-231 行（含 args/commands/help 的顶层加载与 `const { parseArgs }` / `const { COMMANDS, COMMAND_DESC }` 解构——main 内自取）。
 - [ ] `npm run typecheck` 通过。
 - [ ] 实测启动：`time node scripts/purple-star.ts help` ≤ 0.5 秒；`node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州` 正常出盘（懒加载后首次排盘仍做启动自检——故意删一个导出模拟内核重构的场景不在本步验证范围，靠既有断言兜底）。
