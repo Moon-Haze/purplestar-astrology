@@ -199,7 +199,7 @@ export function getTopicReport(
 		overviewLines.push(`${ctx.palaceName}空宫，需借对宫论事，整体以三方四正综合判断。`);
 	}
 	if (overviewLines.length > 0) {
-		lines.push("**总览**");
+		lines.push("### 总览");
 		lines.push("");
 		lines.push(...overviewLines, "");
 	}
@@ -225,7 +225,7 @@ export function getTopicReport(
 			verdictLines.push(`同宫第二主星：**${starBadge(s2)}**——${STAR_BRIEF[s2.name] ?? ""}`);
 	}
 	if (verdictLines.length > 0) {
-		lines.push("**核心论断**");
+		lines.push("### 核心论断");
 		lines.push("");
 		lines.push(...verdictLines, "");
 	}
@@ -242,12 +242,12 @@ export function getTopicReport(
 
 	// ── 三方四正联动（叶子 view，剥头）──
 	lines.push("### 三方四正联动");
-	lines.push("");
+	// lines.push("");
 	lines.push(...stripViewHeader(renderSanFang(ctx)));
 
 	// ── 四化路径分析：本命四化会照 + 魁钺贵人 ──
 	lines.push("### 四化路径分析");
-	lines.push("");
+	// lines.push("");
 	lines.push(...stripViewHeader(renderMutagen(ctx)));
 	const kuiYue = renderKuiYue(ctx);
 	if (kuiYue.length > 0) {
