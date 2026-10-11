@@ -21,7 +21,7 @@
 import type { ZiweiChart, Palace, Star, Mutagen } from "../types";
 import type { PatternVerdict } from "./types";
 import { SHA_NAMES, SHA_HARD, SHA_KONG } from "../../corpus/data/patterns";
-import { oppositeBranch, surroundBranches } from "../palace-relations";
+import { oppositeBranch, palaceAtBranch, surroundBranches } from "../palace-relations";
 
 // ────────────────── 辅助函数 ──────────────────
 
@@ -95,11 +95,12 @@ export function findStarPalace(chart: ZiweiChart, name: string): Palace | undefi
  * @returns 该地支对应的宫位；无匹配时返回 `undefined`
  *
  * @remarks
- * `((branch % 12) + 12) % 12` 是两步取模，把入参规整到 0–11。调用点因此可以直接写
+ * 实现已收敛至 `../palace-relations` 的 `palaceAtBranch`（候选 8）—— 本函数是薄壳，
+ * 保持既有调用方与导出名不变。两步取模把入参规整到 0–11，调用点因此可以直接写
  * `(branch + 11) % 12` 这类偏移算式而不必再判界（对宫偏移另见 `oppositeBranch`）。
  */
 export function getPalaceByBranch(chart: ZiweiChart, branch: number): Palace | undefined {
-	return chart.palaces.find(p => p.branch === ((branch % 12) + 12) % 12);
+	return palaceAtBranch(chart, branch);
 }
 /**
  * 数一宫内的煞星个数。

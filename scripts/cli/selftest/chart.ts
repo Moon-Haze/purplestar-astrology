@@ -12,6 +12,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns } from "@/ziwei/patterns";
+import { palaceAtBranch } from "@/ziwei/palace-relations";
+import { getPalaceByBranch } from "@/ziwei/patterns/helpers";
 import { getMutagenByStem, getYearStemIndex, getMonthlyMutagen } from "@/ziwei/mutagen";
 import { STEMS, BRANCHES } from "@/ziwei/constants";
 import { yearlyBranchOf, agePalaceOf, parseAgesArg } from "../fortune";
@@ -37,6 +39,18 @@ export function runChartInvariants({ ok }: Pick<SelftestDeps, "ok">): void {
 				throw new Error(`空宫 ${p.name} 缺 borrowedFromName / borrowedStars`);
 			}
 		}
+	});
+	ok("宫位查询：helpers 与 palace-relations 同源（候选 8）", () => {
+		// 两实现曾各写查表（helpers 两步取模可缺省 / render 不取模必得），改一处
+		// 不会有任何东西发现 —— 逐宫断言引用同一实现（收敛后此断言恒真，
+		// 收敛前钉住「搬移无损」）。
+		const c = generateChart(SAMPLE);
+		for (const p of c.palaces) {
+			const a = getPalaceByBranch(c, p.branch);
+			const b = palaceAtBranch(c, p.branch);
+			if (a !== b) throw new Error(`branch ${p.branch} 两实现不同源`);
+		}
+		return "12 宫两实现同源";
 	});
 }
 

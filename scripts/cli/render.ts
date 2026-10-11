@@ -13,7 +13,7 @@
 import type { BirthInfo, Palace, Star, ZiweiChart, Mutagen } from "@/ziwei/types";
 import type { CaliberBasis } from "./birth-info-defs";
 import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/ziwei/constants";
-import { surroundBranches } from "@/ziwei/palace-relations";
+import { mustPalaceAtBranch, surroundBranches } from "@/ziwei/palace-relations";
 import { generateChart } from "@/ziwei/algorithm";
 
 // ══════════════════════ 共用格式化 ══════════════════════
@@ -71,11 +71,12 @@ for (const [iztroName, projectName] of Object.entries(IZTRO_TO_PROJECT_PALACE)) 
  * @remarks
  * 命宫 / 身宫地支必定落在 `palaces` 内，这是排盘不变量；取不到即说明内核输出已损坏。
  * 此处遵循项目一贯立场：宁可当场失败，也不要渲染出一张缺了命宫的盘。
+ *
+ * 实现已收敛至 `@/ziwei/palace-relations` 的 `mustPalaceAtBranch`（候选 8）——
+ * 本函数是薄壳，保持既有调用方与导出名不变。
  */
 export function palaceAtBranch(chart: ZiweiChart, branch: number, what: string): Palace {
-	const p = chart.palaces.find(x => x.branch === branch);
-	if (!p) throw new Error(`排盘异常：${what}（地支 ${BRANCHES[branch] ?? branch}）不在十二宫内`);
-	return p;
+	return mustPalaceAtBranch(chart, branch, what);
 }
 
 /**

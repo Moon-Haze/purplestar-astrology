@@ -33,8 +33,14 @@
  *
  * ## 依赖
  *
- * **无**（连 `./types` 都不引，入参与返回值全是 `number`）—— 可独立成型、可单测。
+ * 偏移函数**纯算术**（入参与返回值全是 `number`，无任何 import）；按地支取宫的
+ * 两个查询函数（{@link palaceAtBranch} / {@link mustPalaceAtBranch}，候选 8 新增）
+ * 引 `./types` 的类型（type-only，运行时擦除）与 `./constants` 的 `BRANCHES`
+ * （纯表零依赖）—— 无环，本模块仍处内核依赖图叶子附近。
  */
+
+import type { ZiweiChart, Palace } from "./types";
+import { BRANCHES } from "./constants";
 
 /**
  * 取对宫地支。
@@ -73,4 +79,50 @@ export const SAN_FANG_OFFSETS: readonly number[] = [0, 4, 8, 6];
  */
 export function surroundBranches(branch: number): number[] {
 	return SAN_FANG_OFFSETS.map(o => (branch + o) % 12);
+}
+
+// ────────────────── 按地支取宫（候选 8 收敛）──────────────────
+//
+// 此前同一查表写在两处且语义各半：`patterns/helpers.getPalaceByBranch` 两步取模、
+// 可缺省返回；`cli/render.palaceAtBranch` 不取模、取不到必得（抛错文案含 `what`）。
+// 两函数现收进本模块，各自的语义原样保留 —— 薄壳留在原处，调用方一行不用改。
+
+/**
+ * 按地支取宫，取不到返回 `undefined`（两步取模，入参可为任意整数）。
+ *
+ * @param chart - 命盘
+ * @param branch - 地支索引；可为任意整数（含负数、超出 0–11）
+ * @returns 该地支对应的宫位；无匹配时返回 `undefined`
+ *
+ * @remarks
+ * `((branch % 12) + 12) % 12` 把入参规整到 0–11。调用点因此可以直接写
+ * `(branch + 11) % 12` 这类偏移算式而不必再判界。
+ *
+ * 与 {@link mustPalaceAtBranch} 的分工：**可能缺席**的查询用本函数（对宫/夹宫的
+ * 极端输入），**必在盘上**的语义用必得版（命宫/身宫的排盘不变量）。
+ */
+export function palaceAtBranch(chart: ZiweiChart, branch: number): Palace | undefined {
+	return chart.palaces.find(p => p.branch === ((branch % 12) + 12) % 12);
+}
+
+/**
+ * 按地支取宫，取不到直接抛错（**不取模**，入参应在 0–11）。
+ *
+ * @param chart - 命盘
+ * @param branch - 地支索引 0–11（0=子 … 11=亥）
+ * @param what - 该地支的语义（「命宫」「身宫」「甲方命宫」…），只用于错误文案
+ * @returns 落在该地支上的宫位
+ * @throws 当地支不在 `chart.palaces` 内时，文案与旧 `cli/render.palaceAtBranch` 逐字一致
+ *
+ * @remarks
+ * 命宫 / 身宫地支必定落在 `palaces` 内，这是排盘不变量；取不到即说明内核输出已损坏。
+ * 项目一贯立场：宁可当场失败，也不要渲染出一张缺了命宫的盘。
+ *
+ * ⚠️ 与 {@link palaceAtBranch} 不同，本函数**不做取模**：越界入参会按原样匹配不到
+ * 而抛错（文案里 `BRANCHES[branch]` 越界时回退显示数字），与旧 render 实现一致。
+ */
+export function mustPalaceAtBranch(chart: ZiweiChart, branch: number, what: string): Palace {
+	const p = chart.palaces.find(x => x.branch === branch);
+	if (!p) throw new Error(`排盘异常：${what}（地支 ${BRANCHES[branch] ?? branch}）不在十二宫内`);
+	return p;
 }
