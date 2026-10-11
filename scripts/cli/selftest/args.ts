@@ -17,6 +17,8 @@ import { ALL_OPTION_NAMES, OPTION_ALIASES } from "../args-table";
 import * as table from "../args-table";
 import { OPTION_SCOPE } from "../option-scope";
 import { renderCommandHelp } from "../help";
+// namespace：断言要检查 help 是否仍手抄 OPTION_OWNERSHIP（不存在的导出用 `in` 探测）
+import * as helpNs from "../help";
 import { eq, type SelftestDeps } from "../selftest-kit";
 
 /** 解析引擎：util.parseArgs tokens 底座、重复参数报错、拼音别名归一、三连删除。 */
@@ -186,6 +188,26 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 		const unmarked = (table.OPTION_GROUPS ?? []).filter(g => !g.role).map(g => g.title);
 		if (unmarked.length) throw new Error(`存在未标 role 的选项组：${unmarked.join("、")}`);
 		return "role 标注齐、四套派生与优先级链同源";
+	});
+	ok("归属：OPTION_OWNERSHIP 从声明投影而非手抄（候选 4）", () => {
+		// 同步断言：kit 的 ok 不 await async 断言体（Promise 恒 truthy = 假绿），
+		// 依赖一律走本文件已有的静态 import（table / helpNs）。
+		if (typeof table.ownedOptions !== "function")
+			throw new Error("args-table 缺 ownedOptions 投影（候选 4 未实现）");
+		if (!table.GLOBAL_OPTIONS?.includes("out"))
+			throw new Error("--out 应为全局参数（GLOBAL_OPTIONS）");
+		if (!table.ownedOptions("knowledge")?.includes("search"))
+			throw new Error("knowledge 应含 --search");
+		if (!table.ownedOptions("synastry")?.includes("charts"))
+			throw new Error("synastry 应含 --charts");
+		if ((table.ownedOptions("selftest") ?? []).length !== 0)
+			throw new Error("selftest 无专属参数");
+		if (!table.ownedOptions("astrology")?.includes("config"))
+			throw new Error("astrology 应含 --config");
+		if (table.ownedOptions("astrology")?.includes("out"))
+			throw new Error("--out 已升全局，不应留在 astrology 专属投影里");
+		if ("OPTION_OWNERSHIP" in helpNs) throw new Error("help.ts 仍手抄归属表 OPTION_OWNERSHIP");
+		return "投影探针 + --out 全局 + help 无第二表";
 	});
 	ok("声明表：可选值参数 help 显示 <[x]>，必值参数保持 <x>（值语法不再混用）", () => {
 		const s = renderCommandHelp("astrology");

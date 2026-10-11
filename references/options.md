@@ -88,4 +88,4 @@ node scripts/purple-star.ts help            # 总览（man 八节结构）
 node scripts/purple-star.ts astrology --help # 每命令（man 七节 + 归属参数子集）
 ```
 
-`help` 的参数段由 `scripts/cli/args.ts` 的 `OPTION_GROUPS` 派生，与解析器同源——**它列出的就是本 CLI 的全部合法参数**，本文件不重复维护一份清单；每命令 `--help` 的参数子集由命令 → 参数归属表（`scripts/cli/help.ts` 的 `OPTION_OWNERSHIP`）过滤，是 help 视图而非硬校验（作用域仍是 skill 级）。
+`help` 的参数段由 `scripts/cli/args-table.ts` 的 `OPTION_GROUPS` 派生，与解析器同源——**它列出的就是本 CLI 的全部合法参数**，本文件不重复维护一份清单；每命令 `--help` 的参数子集由声明表 `cmds` 标志的投影（`args-table.ts` 的 `ownedOptions`）过滤，是 help 视图而非硬校验（作用域仍是 skill 级）；全局参数（`--out`）不属任何命令，help 在每命令 OPTIONS 节尾单列一行。

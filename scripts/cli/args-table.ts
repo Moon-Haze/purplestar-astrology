@@ -51,6 +51,11 @@ export interface OptionSpec {
 	deep?: true;
 	/** 排除出「输出意图」判据（info 是零输入演示目标本身；config 是参数来源而非输出形态） */
 	noIntent?: true;
+	// ── 归属标志（候选 4）：help 归属投影的真相源，取代 help.ts 手抄 OPTION_OWNERSHIP ──
+	/** 读取本参数的命令（kebab 主名）；help 的每命令 OPTIONS 节据此过滤 */
+	cmds?: readonly string[];
+	/** 全局参数（任意命令可用）—— 不进任何命令的专属列表，help 在节尾单列一行 */
+	global?: true;
 }
 
 /**
@@ -86,17 +91,19 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		options: [
 			{
 				name: "date",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "YYYY-MM-DD",
 				desc: "公历生日（格式宽松，月日不补零）",
 			},
 			{
 				name: "lunar",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "YYYY-MM-DD",
 				desc: "农历生日（脚本自动换算，勿与 --date 同用）",
 			},
-			{ name: "leap", kind: "switch", desc: "配合 --lunar，表示闰月" },
+			{ name: "leap", cmds: ["astrology"], kind: "switch", desc: "配合 --lunar，表示闰月" },
 		],
 	},
 	{
@@ -105,23 +112,27 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		options: [
 			{
 				name: "time",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "HH:MM",
 				desc: "钟表时间（配合 --lng / --city 自动换算真太阳时）",
 			},
 			{
 				name: "branch",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "0-12",
 				desc: "直接指定时辰支（0=子 … 11=亥；12=晚子时），与 --time 二选一",
 			},
 			{
 				name: "late-zi",
+				cmds: ["astrology"],
 				kind: "switch",
 				desc: "配合 --time：23:00–23:59 出生改按「晚子时算次日」排",
 			},
 			{
 				name: "eot",
+				cmds: ["astrology"],
 				kind: "switch",
 				desc: "配合 --time：真太阳时额外计入均时差（±16 分），默认不计",
 			},
@@ -131,26 +142,29 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		title: "其他出生信息",
 		role: "birth",
 		options: [
-			{ name: "gender", kind: "value", value: "male|female|男|女", desc: "性别" },
+			{ name: "gender", cmds: ["astrology"], kind: "value", value: "male|female|男|女", desc: "性别" },
 			{
 				name: "lng",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "116.4",
 				desc: "出生地经度（默认 120，即不做经度校正）",
 			},
 			{
 				name: "city",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "北京",
 				desc: "用城市名代替 --lng（容错「石家庄市」「山东青岛」等写法）",
 			},
 			{
 				name: "province",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "山东",
 				desc: "用省份代替 --lng（按省会计）",
 			},
-			{ name: "name", kind: "value", value: "张三", desc: "可选，只影响输出抬头" },
+			{ name: "name", cmds: ["astrology"], kind: "value", value: "张三", desc: "可选，只影响输出抬头" },
 		],
 	},
 	{
@@ -159,6 +173,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		options: [
 			{
 				name: "charts",
+				cmds: ["synastry"],
 				kind: "value",
 				value: "/tmp/a.json,/tmp/b.json",
 				desc: "合盘输入：逗号分隔恰好两份 astrology --json 的输出（甲先乙后）",
@@ -171,24 +186,28 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		options: [
 			{
 				name: "info",
+				cmds: ["astrology"],
 				noIntent: true,
 				kind: "switch",
 				desc: "只出基本信息面板 + 运限速览 + 专题指路（与无功能参数的概览同尾，不展开专题详版）",
 			},
 			{
 				name: "pattern",
+				cmds: ["astrology"],
 				deep: true,
 				kind: "switch",
 				desc: "格局识别专题（格局判词 / 成立与破格条件 / 出处）",
 			},
 			{
 				name: "mutagen",
+				cmds: ["astrology"],
 				deep: true,
 				kind: "switch",
 				desc: "四化专题（生年 / 流年 / 流月四化落宫与叠宫）",
 			},
 			{
 				name: "decadal",
+				cmds: ["astrology"],
 				deep: true,
 				kind: "value",
 				value: "虚岁",
@@ -197,6 +216,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "ages",
+				cmds: ["astrology"],
 				deep: true,
 				kind: "value",
 				value: "虚岁",
@@ -205,6 +225,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "palaces",
+				cmds: ["astrology"],
 				noShadow: true,
 				kind: "switch",
 				desc: "十二宫逐宫详表",
@@ -215,15 +236,17 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		title: "输出与选题",
 		role: "output-select",
 		options: [
-			{ name: "json", kind: "switch", desc: "输出原始 JSON（供程序消费）" },
+			{ name: "json", cmds: ["astrology", "synastry"], kind: "switch", desc: "输出原始 JSON（供程序消费）" },
 			{
 				name: "out",
+				global: true,
 				kind: "value",
 				value: "out.md",
 				desc: "把输出写入文件（覆盖写，末尾恰一个换行；进度提示走 stderr，stdout 不再打印正文）",
 			},
 			{
 				name: "yearly",
+				cmds: ["astrology"],
 				shadow: true,
 				deep: true,
 				kind: "value",
@@ -233,6 +256,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "monthly",
+				cmds: ["astrology"],
 				shadow: true,
 				kind: "value",
 				value: "1-12",
@@ -240,18 +264,21 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "daily",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "1-30",
 				desc: "配合 --mutagen --monthly：追加该农历日的流日四化（日干由 lunar-typescript 现算）",
 			},
 			{
 				name: "hourly",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "0-12",
 				desc: "配合 --mutagen --monthly --daily：追加该时支的流时四化（五鼠遁，由日干推；12=晚子时按当日日干）",
 			},
 			{
 				name: "focus",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "财帛",
 				shadow: true,
@@ -260,6 +287,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "topic",
+				cmds: ["astrology", "knowledge"],
 				shadow: true,
 				kind: "value",
 				value: "key",
@@ -268,43 +296,50 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "view",
+				cmds: ["astrology"],
 				kind: "value",
 				value: "mingpan",
 				desc: "主题论断展示口径：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月），后三者也接受同名英文 decadal/yearly/monthly",
 			},
 			{
 				name: "report",
+				cmds: ["astrology"],
 				shadow: true,
 				kind: "switch",
 				desc: "全盘主题报告（Markdown）：13 个板块一次出全，本命静态口径，独占分支（单独使用）",
 			},
 			{
 				name: "search",
+				cmds: ["knowledge"],
 				kind: "value",
 				value: "机月同梁",
 				desc: "knowledge 检索关键字（也可用位置参数）",
 			},
-			{ name: "limit", kind: "value", value: "15", desc: "knowledge 命中条数上限（正整数）" },
+			{ name: "limit", cmds: ["knowledge"], kind: "value", value: "15", desc: "knowledge 命中条数上限（正整数）" },
 			{
 				name: "source",
+				cmds: ["knowledge"],
 				kind: "value",
 				value: "books",
 				desc: "knowledge 知识域：books 古籍（默认）/ stars 星曜释义 / tianji 天纪判语 / oracle 断语手册",
 			},
 			{
 				name: "book",
+				cmds: ["knowledge"],
 				kind: "value",
 				value: "01-stars",
 				desc: "knowledge tianji 域限册（册代号或中文名，如 主星/十二宫/格局/四化/疾厄）",
 			},
 			{
 				name: "star",
+				cmds: ["knowledge"],
 				kind: "value",
 				value: "七杀",
 				desc: "knowledge oracle 域选星（配合 --topic；缺省列 14 星概览）",
 			},
 			{
 				name: "config",
+				cmds: ["astrology"],
 				noIntent: true,
 				kind: "value",
 				value: "my.json",
@@ -312,6 +347,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "template",
+				cmds: ["astrology"],
 				kind: "switch",
 				desc: "打印可直接使用的配置模板到 stdout（--template > my.json 落盘）",
 			},
@@ -411,3 +447,32 @@ export const DEEP_DIVE_KEYS: readonly string[] = OPTION_GROUPS.flatMap(g =>
 
 /** 独占分支优先级链文案 —— astrology 报错与 help 说明共用的唯一真相源。 */
 export const EXCLUSIVE_PRIORITY_LABEL = "--palaces > --topic > --report > 其他功能参数";
+
+// ══════════════════ 归属投影（候选 4）══════════════════
+// 「哪个参数归哪条命令」此前是 help.ts 手抄的第二真相源（OPTION_OWNERSHIP，
+// 零正向测试，--out 的承诺与 main 的实际行为早已漂移）。现收进声明表：
+// 每个参数标 `cmds`（读取它的命令），全局参数标 `global`，help 只做投影。
+
+/**
+ * 全局参数（kebab 名）—— 标了 `global: true` 的参数，任意命令可用。
+ * 现仅 `--out`（落盘通道在引导层 main，对每条命令都生效）。
+ */
+export const GLOBAL_OPTIONS: readonly string[] = OPTION_GROUPS.flatMap(g => g.options)
+	.filter(o => o.global === true)
+	.map(o => o.name);
+
+/**
+ * 命令 → 该命令实际读取的专属参数（kebab 名，投影非转录）。
+ *
+ * @param cmd - 命令名（kebab 主名）
+ * @returns 标了 `cmds` 含该命令、且非全局的参数名，按声明表顺序
+ *
+ * @remarks
+ * help 视图：未列出的参数对该命令无害（skill 级作用域收下不用），但 help 不展示
+ * —— 用户照 help 敲不会被误导。作用域仍是 skill 级，本投影不做硬校验。
+ */
+export function ownedOptions(cmd: string): readonly string[] {
+	return OPTION_GROUPS.flatMap(g => g.options)
+		.filter(o => o.global !== true && (o.cmds ?? []).includes(cmd))
+		.map(o => o.name);
+}

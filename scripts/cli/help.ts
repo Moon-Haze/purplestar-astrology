@@ -5,7 +5,7 @@
  *   NOTES / SEE ALSO 八节（比每命令版多一节 COMMANDS），节标题大写、节序固定 ——
  *   `less purple-star.ts help` 的观感即 man。
  * - **`<命令> --help`**：同一结构减 COMMANDS 节；OPTIONS 按命令 → 参数归属表
- *   （{@link OPTION_OWNERSHIP}）过滤成该命令实际读取的子集。
+ *   （{@link ownedOptions} 投影，源数据在声明表的 `cmds` 标志）过滤成该命令实际读取的子集。
  * - **归属表是 help 视图**，不做硬校验（作用域仍 skill 级）：「哪条命令读哪个参数」
  *   的诚实边界收窄只发生在 help 层。
  *
@@ -14,52 +14,13 @@
  */
 
 import { COMMAND_DESC, COMMAND_HELP, COMMAND_NAMES, type CommandName } from "./command-meta";
-import { OPTION_GROUPS, OPTION_ALIASES, type OptionSpec } from "./args-table";
-
-/**
- * 命令 → 专属参数名表（help 视图）。
- *
- * @remarks
- * 列出的名字是该命令**实际读取**的参数；未列出的参数对它无害（skill 级作用域收下
- * 不用），但 help 不展示 —— 用户照 help 敲不会被误导。
- */
-export const OPTION_OWNERSHIP: Record<CommandName, readonly string[]> = {
-	astrology: [
-		"date",
-		"lunar",
-		"leap",
-		"time",
-		"branch",
-		"late-zi",
-		"eot",
-		"gender",
-		"lng",
-		"city",
-		"province",
-		"name",
-		"info",
-		"pattern",
-		"mutagen",
-		"decadal",
-		"ages",
-		"palaces",
-		"yearly",
-		"monthly",
-		"daily",
-		"hourly",
-		"focus",
-		"topic",
-		"view",
-		"report",
-		"json",
-		"out",
-		"config",
-		"template",
-	],
-	knowledge: ["search", "limit", "source", "book", "star", "topic"],
-	synastry: ["charts", "json"],
-	selftest: [],
-};
+import {
+	GLOBAL_OPTIONS,
+	OPTION_ALIASES,
+	OPTION_GROUPS,
+	ownedOptions,
+	type OptionSpec,
+} from "./args-table";
 
 /** 两条最容易排出错盘的口径（NOTES 节的核心，原文与旧 help 一致）。 */
 const HELP_CAUTION = [
@@ -245,7 +206,8 @@ export function renderOverviewHelp(): string {
 
 /** 每命令 help（man 七节：无 COMMANDS 节）。 */
 export function renderCommandHelp(cmd: CommandName): string {
-	const owned = new Set(OPTION_OWNERSHIP[cmd]);
+	// 归属 = 声明表投影（候选 4）：cmds 标志单点声明，help 不再持有第二张表
+	const owned = new Set(ownedOptions(cmd));
 	const lines: string[] = [];
 	lines.push("NAME", `  ${cmd} —— ${COMMAND_DESC[cmd]}`, "");
 	lines.push("SYNOPSIS");
@@ -263,7 +225,13 @@ export function renderCommandHelp(cmd: CommandName): string {
 	lines.push("");
 	lines.push("DESCRIPTION", ...(COMMAND_HELP[cmd] ?? []).map(l => (l ? `  ${l}` : l)), "");
 	lines.push("OPTIONS");
-	lines.push(...renderOptions(owned), "");
+	lines.push(...renderOptions(owned));
+	// 全局参数单列（不进任何命令的专属投影）：--out 的落盘通道在引导层 main，
+	// 对每条命令都生效 —— 只写在 astrology 名下是旧手抄表与实际行为的漂移点。
+	lines.push(
+		`  · 全局：${GLOBAL_OPTIONS.map(o => `--${o} <路径>`).join(" ")} —— 任意命令可用（输出落盘）`,
+		""
+	);
 	lines.push("EXAMPLES", ...(COMMAND_EXAMPLES[cmd] ?? []), "");
 	// NOTES 按命令裁剪：四必问 / 晚子时 / 真太阳时跨午夜都是**排盘**铁律 —— synastry
 	// 不排盘、knowledge 不涉出生信息，全量模板会让命令级 help 教人用对它无效的
