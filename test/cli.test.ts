@@ -1677,19 +1677,28 @@ describe("CLI 端到端", () => {
 	// ── oracle 断语手册 ──
 	// 消费 analysis/manual/ 的生成数据（懒加载）。测的是命令层三形态与错误指路；
 	// 数据本身的正确性由生成链（export-manual code）与 classifyOracle 的 other=0 兜底保证。
-	describe("oracle 断语手册命令", () => {
+	// 旧独立命令 stars / oracle 已并入 classics --source（tianji 域同期加入），
+	// 用例全部走 classics 路径。
+	describe("classics 四域：oracle 域（断语手册）", () => {
 		it("裸调用列出 13 主题与用法", async () => {
-			const t = await cliCmd("oracle", []);
+			const t = await cliCmd("classics", ["--source", "oracle"]);
 			assert.ok(t.includes("career") && t.includes("用法"), "应列主题 key 与用法");
 		});
 
 		it("主题概览列出 14 主星与断语计数", async () => {
-			const t = await cliCmd("oracle", ["career"]);
+			const t = await cliCmd("classics", ["--source", "oracle", "--topic", "career"]);
 			assert.ok(t.includes("七杀") && t.includes("断语"), "应含主星与计数");
 		});
 
 		it("单星展开含全部分类小节（手册数据被程序消费的主路径）", async () => {
-			const t = await cliCmd("oracle", ["career", "七杀"]);
+			const t = await cliCmd("classics", [
+				"--source",
+				"oracle",
+				"--topic",
+				"career",
+				"--star",
+				"七杀",
+			]);
 			for (const key of [
 				"命盘关键定制",
 				"星曜深层特质",
@@ -1701,14 +1710,65 @@ describe("CLI 端到端", () => {
 		});
 
 		it("非法主题与未收录星名都报错指路", async () => {
-			const noTopic = await cliCmd("oracle", ["nope"]).catch(
-				(e: { stderr?: string }) => e.stderr ?? ""
-			);
+			const noTopic = await cliCmd("classics", [
+				"--source",
+				"oracle",
+				"--topic",
+				"nope",
+			]).catch((e: { stderr?: string }) => e.stderr ?? "");
 			assert.ok(noTopic.includes("13 个之一"), `非法主题应指路，实得：${noTopic}`);
-			const noStar = await cliCmd("oracle", ["career", "武曲贪狼"]).catch(
-				(e: { stderr?: string }) => e.stderr ?? ""
-			);
+			const noStar = await cliCmd("classics", [
+				"--source",
+				"oracle",
+				"--topic",
+				"career",
+				"--star",
+				"武曲贪狼",
+			]).catch((e: { stderr?: string }) => e.stderr ?? "");
 			assert.ok(noStar.includes("未收录"), `未收录星名应指路，实得：${noStar}`);
+		});
+	});
+
+	// ── classics 四域：stars 域（星曜释义）与 tianji 域（天纪判语）──
+	describe("classics 四域：stars 与 tianji 域", () => {
+		it("stars 域：位置参数与 --search 等价，未收录星名给清单", async () => {
+			const hit = await cliCmd("classics", ["--source", "stars", "--search", "紫微"]);
+			assert.ok(hit.includes("紫微：关键词"), `释义缺失：${hit.slice(0, 40)}`);
+			const miss = await cliCmd("classics", [
+				"--source",
+				"stars",
+				"--search",
+				"不存在星",
+			]).catch((e: { stderr?: string }) => e.stderr ?? "");
+			assert.ok(miss.includes("未收录"), "未收录星名应给清单");
+		});
+
+		it("tianji 域：检索命中带秒级溯源与回放链接，限册生效", async () => {
+			const t = await cliCmd("classics", ["--source", "tianji", "半空折翅"]);
+			for (const key of ["半空折翅", "bilibili.com/video", "CC BY-NC-SA"])
+				assert.ok(t.includes(key), `应含「${key}」`);
+			const scoped = await cliCmd("classics", [
+				"--source",
+				"tianji",
+				"半空折翅",
+				"--book",
+				"格局",
+			]);
+			assert.ok(scoped.includes("限 格局"), "中文名限册应生效");
+		});
+
+		it("旧命令名 stars / oracle 不再是合法命令（未知命令提示给迁移写法）", async () => {
+			// 迁移提示住在引导层 main()（进程内直调绕过它），故走真子进程。
+			const old = await execFileAsync(
+				"node",
+				[join(SKILL_ROOT, "scripts/purple-star.ts"), "stars", "--search", "紫微"],
+				{ cwd: SKILL_ROOT }
+			).catch((e: { stderr?: string }) => e);
+			const stderr = old.stderr ?? "";
+			assert.ok(
+				stderr.includes("未知命令") && stderr.includes("classics --source stars"),
+				`旧命令应指路迁移写法，实得：${stderr}`
+			);
 		});
 	});
 

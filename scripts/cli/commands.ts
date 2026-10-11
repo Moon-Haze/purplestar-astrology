@@ -14,9 +14,7 @@
 import type { CliArgs, CliContext } from "./args";
 import { cmdSelftest } from "./selftest";
 import { cmdAstrology } from "./astrology";
-import { cmdStars } from "./stars";
 import { cmdClassics } from "./classics";
-import { cmdOracle } from "./oracle";
 import { cmdSynastry } from "./synastry";
 // 命令名清单与 HELP 描述文案住在 command-meta（轻模块，不 import 命令实现）——
 // help / 未知命令路径只需要它们，不必拉起 iztro（见 purple-star.ts 的懒加载）。
@@ -50,9 +48,7 @@ type Cmd = (args: CliArgs, ctx: CliContext) => string | Promise<string>;
  */
 const COMMAND_TABLE = {
 	astrology: cmdAstrology,
-	stars: cmdStars,
 	classics: cmdClassics,
-	oracle: cmdOracle,
 	synastry: cmdSynastry,
 	selftest: (_args: CliArgs, ctx: CliContext) => cmdSelftest(ctx),
 } satisfies Record<CommandName, Cmd>;

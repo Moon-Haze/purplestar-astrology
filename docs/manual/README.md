@@ -36,17 +36,18 @@ const oracle = await loadTopicOracle("career"); // 主星 → 分类断语集
 
 生成物带 DO-NOT-EDIT 头，**不要手改**；改内核断语 → `npm run build:db` → 重导。
 
-## 程序消费：oracle 命令
+## 程序消费：classics --source oracle
 
-手册数据由 **`oracle` 命令**消费（CLI 主链路不静态 import，命令内动态加载，零启动开销）：
+手册数据由 **`classics` 命令的 oracle 域**消费（CLI 主链路不静态 import，命令内动态加载，零启动开销）：
 
 ```bash
-node scripts/purple-star.ts oracle              # 列 13 主题与用法
-node scripts/purple-star.ts oracle career       # 事业主题 14 主星概览（格局数/断语数）
-node scripts/purple-star.ts oracle career 七杀   # 七杀的分类断语全展开
+node scripts/purple-star.ts classics --source oracle                            # 列 13 主题与用法
+node scripts/purple-star.ts classics --source oracle --topic career             # 事业主题 14 主星概览
+node scripts/purple-star.ts classics --source oracle --topic career --star 七杀  # 七杀的分类断语全展开
 ```
 
 代码内消费走 `loadTopicOracle(topic)`（同目录 `index.ts`，按主题懒加载）。
+（旧独立命令 `oracle` 已并入 `classics --source oracle`，原命令名不再保留。）
 
 ## 已知口径与版本注意
 

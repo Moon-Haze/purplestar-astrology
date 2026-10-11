@@ -11,14 +11,8 @@
  */
 
 /** 合法命令名（顺序即 help COMMANDS 节的展示序）。 */
-export const COMMAND_NAMES = [
-	"astrology",
-	"stars",
-	"classics",
-	"oracle",
-	"synastry",
-	"selftest",
-] as const;
+/** 合法命令名（顺序即 help COMMANDS 节的展示序）。 */
+export const COMMAND_NAMES = ["astrology", "classics", "synastry", "selftest"] as const;
 
 /** 合法命令名类型。 */
 export type CommandName = (typeof COMMAND_NAMES)[number];
@@ -46,18 +40,16 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 		"部分输入按「缺一问一」报错。",
 		"⚠️ 排盘四必问：日期、时间、性别、出生地 —— 缺一问一，不要猜。",
 	],
-	stars: ["星曜释义查询：不给关键词列出全部已收录星曜，给定时出该星的「关键词 · 星性 · 五行」。"],
 	classics: [
-		"古籍原文检索（骨髓赋 / 紫微斗数全集 / 紫微斗数全书三部全文）。",
-		"逐段子串匹配（不分词、繁简不转换）；--limit 控制命中条数上限（默认 15，正整数）。",
-		"解读需要引原句佐证时用本命令，不要凭记忆转写古籍。",
-	],
-	oracle: [
-		"断语手册检索（13 主题 × 十四主星，分析数据库预计算快照）。",
-		"oracle <主题> 列该主题 14 主星概览（格局数 / 断语行数）；",
-		"oracle <主题> <星名> 全展开该星的分类断语（关键定制 / 深层特质 / 格局 / 本宫论断 /",
-		"三方四正 / 四化 / 贵人 / 主题专属节）。",
-		"⚠️ 快照为本命静态口径，解读仍需结合具体命盘（astrology --topic）；数据修订走内核，勿改手册文件。",
+		"统一知识检索，四域合一（--source 选域，缺省 books）。",
+		"books（默认）：古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书三部全文），逐段子串匹配，",
+		"  --limit 控制命中上限（默认 15）——解读需要引原句佐证时用它，不要凭记忆转写古籍。",
+		"stars：星曜释义（--search <星名>，或位置参数；缺省列全部星曜的「关键词 · 星性 · 五行」）。",
+		"tianji：天纪判语检索（《天纪》讲稿原话 + 秒级回放溯源，紫微五册：主星 / 十二宫 / 格局 /",
+		"  四化 / 疾厄；--book 限册、--limit 限条），引用「倪师说」时用它找原话出处；语料 CC BY-NC-SA 4.0。",
+		"oracle：断语手册（13 主题 × 十四主星的分类断语快照；--topic <key> [--star <星名>]，",
+		"  缺 --star 时列 14 星概览）；快照为本命静态口径，解读仍需结合具体命盘。",
+		"⚠️ 旧命令 stars / oracle 已并入本命令（classics --source …），原命令名不再保留。",
 	],
 	synastry: [
 		"合盘（双宫联参）：看婚姻不能只看夫妻宫，必须同时看福德宫（倪海夏口径）。",
@@ -81,9 +73,8 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
  */
 export const COMMAND_DESC: Record<CommandName, string> = {
 	astrology: "排盘分析一条命令（概览默认 + 功能参数：专题/--palaces/--topic）★ 最常用",
-	stars: "星曜释义",
-	classics: "古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）",
-	oracle: "断语手册检索（13 主题 × 十四主星，分类断语快照）",
+	classics:
+		"统一知识检索（--source 四域：books 古籍默认 / stars 星曜释义 / tianji 天纪判语 / oracle 断语手册）",
 	synastry: "合盘（双宫联参 + 夫妻宫断语 + 四化入夫妻宫）",
 	selftest:
 		"回归自检（排盘 / 古籍 / 合盘三段：农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",

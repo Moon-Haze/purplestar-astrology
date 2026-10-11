@@ -56,9 +56,7 @@ export const OPTION_OWNERSHIP: Record<CommandName, readonly string[]> = {
 		"config",
 		"template",
 	],
-	stars: ["search"],
-	classics: ["search", "limit"],
-	oracle: [],
+	classics: ["search", "limit", "source", "book", "star", "topic"],
 	synastry: ["charts", "json"],
 	selftest: [],
 };
@@ -101,10 +99,11 @@ const OVERVIEW_EXAMPLES = [
   node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --json --out /tmp/b.json
   node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`,
 	"",
-	`  # 古籍原文检索、星曜释义与断语手册
+	`  # 知识检索四域：古籍 / 星曜释义 / 天纪判语 / 断语手册（--source 选域，缺省 books）
   node scripts/purple-star.ts classics --search 机月同梁
-  node scripts/purple-star.ts stars --search 紫微
-  node scripts/purple-star.ts oracle career 七杀`,
+  node scripts/purple-star.ts classics --source stars --search 紫微
+  node scripts/purple-star.ts classics --source tianji 半空折翅
+  node scripts/purple-star.ts classics --source oracle --topic career --star 七杀`,
 	"",
 	FICTION_NOTE,
 ];
@@ -121,17 +120,11 @@ const COMMAND_EXAMPLES: Record<CommandName, readonly string[]> = {
 		"",
 		FICTION_NOTE,
 	],
-	stars: ["  node scripts/purple-star.ts stars --search 紫微", "", FICTION_NOTE],
 	classics: [
 		"  node scripts/purple-star.ts classics --search 机月同梁",
-		"  node scripts/purple-star.ts classics --search 紫微 --limit 5",
-		"",
-		FICTION_NOTE,
-	],
-	oracle: [
-		"  node scripts/purple-star.ts oracle",
-		"  node scripts/purple-star.ts oracle career",
-		"  node scripts/purple-star.ts oracle career 七杀",
+		"  node scripts/purple-star.ts classics --source stars --search 紫微",
+		"  node scripts/purple-star.ts classics --source tianji 半空折翅 --book 主星",
+		"  node scripts/purple-star.ts classics --source oracle --topic career --star 七杀",
 		"",
 		FICTION_NOTE,
 	],
@@ -261,10 +254,10 @@ export function renderCommandHelp(cmd: CommandName): string {
 			"  node scripts/purple-star.ts astrology <日期> <时刻> <性别> [<城市>]",
 			"  node scripts/purple-star.ts astrology --date … --time … --gender … [--city …] [专题参数…]"
 		);
-	else if (cmd === "classics" || cmd === "stars")
+	else if (cmd === "classics")
 		lines.push(
-			`  node scripts/purple-star.ts ${cmd} [--search <关键词>] [--limit N]`,
-			`  node scripts/purple-star.ts ${cmd} <关键词>`
+			"  node scripts/purple-star.ts classics [--search <关键词>] [--limit N]",
+			"  node scripts/purple-star.ts classics --source <books|stars|tianji|oracle> [域参数…]"
 		);
 	else lines.push(`  node scripts/purple-star.ts ${cmd} [options]`);
 	lines.push("");
@@ -273,7 +266,7 @@ export function renderCommandHelp(cmd: CommandName): string {
 	lines.push(...renderOptions(owned), "");
 	lines.push("EXAMPLES", ...(COMMAND_EXAMPLES[cmd] ?? []), "");
 	// NOTES 按命令裁剪：四必问 / 晚子时 / 真太阳时跨午夜都是**排盘**铁律 —— synastry
-	// 不排盘、stars/classics 不涉出生信息，全量模板会让命令级 help 教人用对它无效的
+	// 不排盘、classics 不涉出生信息，全量模板会让命令级 help 教人用对它无效的
 	// 参数（如 synastry --help 里的 --late-zi）。全量铁律保留在总览 help。
 	if (cmd === "astrology") {
 		lines.push("NOTES");

@@ -11,7 +11,7 @@
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
  *   cli/astrology.ts   排盘分析一条命令（四命令合一：概览默认 + 功能参数分发）
- *   cli/{classics,synastry,stars}.ts  各命令实现；cli/commands.ts 只做注册薄层
+ *   cli/{classics,synastry}.ts        各命令实现（classics 四域附加域在 cli/knowledge/）；cli/commands.ts 只做注册薄层
  *   cli/config.ts      --config / --template 配置输入；cli/help.ts  help 渲染（man 七节）
  *   cli/out.ts         --out 落盘通道（写文件唯一写点，路径校验在内）
  *   cli/selftest.ts    回归自检（排盘 / 古籍 / 合盘三段合一）
@@ -290,8 +290,16 @@ async function main() {
 	const { COMMANDS, parseArgs } = await loadCore();
 	const fn = COMMANDS[cmd];
 	if (!fn) {
+		// 旧命令并入提示：stars / oracle 已并入 classics（--source 选域），敲旧名给一条
+		// 可直接照抄的迁移写法，而不是让用户自己从 help 里找。
+		const merged =
+			cmd === "stars"
+				? `—— 星曜释义已并入：classics --source stars --search <星名>`
+				: cmd === "oracle"
+					? `—— 断语手册已并入：classics --source oracle --topic <主题> [--star <星名>]`
+					: "";
 		console.error(
-			`未知命令「${cmd}」。可用：${Object.keys(COMMANDS).join(" / ")}\n运行 help 查看完整用法。`
+			`未知命令「${cmd}」。可用：${Object.keys(COMMANDS).join(" / ")}${merged ? "\n" + merged : ""}\n运行 help 查看完整用法。`
 		);
 		process.exit(1);
 	}

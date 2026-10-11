@@ -34,8 +34,8 @@ export interface CallResult {
 
 /**
  * 进程内直调一条命令（等价于走一遍 main 的分发，但不起子进程）。**同步版**：
- * 断言组测的命令（astrology / stars / classics / synastry）都是同步返回文本，
- * harness 的 `ok` 无需为直调改异步签名。
+ * 断言组测的命令（astrology / synastry）都是同步返回文本（classics 已改 async 分发
+ * 四域，async 命令的直调探针走各自组内的 await），harness 的 `ok` 无需为直调改异步签名。
  *
  * @param cmd - 命令名（须已在命令表内；未知命令由调用方先判键集）
  * @param argv - 命令参数（不含命令名本身）

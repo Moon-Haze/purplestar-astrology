@@ -22,8 +22,7 @@
 // 「汇总」节列明细并标 ⚠。
 //
 // 直调与子进程的两点口径差（都不影响输出形态核对）：
-//   1. 错误路径：CLI 是 stderr「错误：<msg>」+ exit 1；直调由 cli/selftest-kit 的
-//      callDirect 复刻同一前缀与退出码。
+//   1. 错误路径：CLI 是 stderr「错误：<msg>」+ exit 1；这里由 try/catch 复刻同一前缀与退出码。
 //   2. 引导层路径：help / <cmd> --help 由 CLI 入口在命令表之前拦截，直调则直接
 //      调 help 模块的同一渲染函数。
 //
@@ -44,7 +43,6 @@ import { parseArgs, type CliContext } from "@/cli/args";
 import { COMMANDS } from "@/cli/commands";
 import { renderCommandHelp, renderOverviewHelp } from "@/cli/help";
 import { writeOutFile } from "@/cli/out";
-import { callDirect } from "@/cli/selftest-kit";
 import { cmdSelftest } from "@/cli/selftest";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <仓库根>/tools
@@ -695,26 +693,36 @@ const SAMPLES: Sample[] = [
 		args: ["astrology", "--config", "tools/samples/config.example.json"],
 	},
 
-	// ── stars ──
+	// ── classics：四域（books 默认 / stars / tianji / oracle）──
 	{
-		group: "stars · 星曜释义",
-		title: "--search 星曜释义",
-		desc: "星曜的体系内释义",
-		args: ["stars", "--search", "紫微"],
-	},
-	{
-		group: "stars · 星曜释义",
-		title: "位置参数形态",
-		desc: "检索词也可作位置参数（stars 擎羊）",
-		args: ["stars", "擎羊"],
-	},
-
-	// ── classics ──
-	{
-		group: "classics · 古籍检索",
-		title: "--search 古籍原文检索",
+		group: "classics · 知识检索",
+		title: "--search 古籍原文检索（books 域，默认）",
 		desc: "骨髓赋 / 紫微斗数全集 / 全书的原文段落",
 		args: ["classics", "--search", "机月同梁"],
+	},
+	{
+		group: "classics · 知识检索",
+		title: "--source stars 星曜释义",
+		desc: "星曜的体系内释义（原 stars 命令并入）",
+		args: ["classics", "--source", "stars", "--search", "紫微"],
+	},
+	{
+		group: "classics · 知识检索",
+		title: "--source stars 位置参数形态",
+		desc: "检索词也可作位置参数",
+		args: ["classics", "--source", "stars", "擎羊"],
+	},
+	{
+		group: "classics · 知识检索",
+		title: "--source tianji 天纪判语检索",
+		desc: "《天纪》讲稿原话 + 秒级回放溯源（nihai-tianji-corpus 语料，紫微五册）",
+		args: ["classics", "--source", "tianji", "半空折翅"],
+	},
+	{
+		group: "classics · 知识检索",
+		title: "--source oracle 断语手册",
+		desc: "13 主题 × 十四主星的分类断语快照（--topic 选主题 --star 选星）",
+		args: ["classics", "--source", "oracle", "--topic", "career", "--star", "七杀"],
 	},
 	{
 		group: "classics · 古籍检索",
@@ -953,10 +961,18 @@ async function main(): Promise<void> {
 				exitCode = 1;
 				stderr = `未知命令「${cmd}」。`;
 			} else {
-				const r = callDirect(cmd, rest, fn, parseArgs, CTX);
-				exitCode = r.code;
-				stdout = r.out;
-				stderr = r.err;
+				// cmdClassics 是 async（四域分发，tianji/oracle 懒加载）——
+				// async 命令直接 await，其余同步命令 await 同步值等价于原值。
+				try {
+					const out = await fn(parseArgs(rest, cmd), CTX);
+					stdout = String(out);
+					exitCode = 0;
+					stderr = "";
+				} catch (err) {
+					stdout = "";
+					exitCode = 1;
+					stderr = `错误：${(err as Error).message}`;
+				}
 			}
 		}
 		const ms = Date.now() - t0;

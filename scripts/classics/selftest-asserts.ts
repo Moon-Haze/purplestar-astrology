@@ -149,10 +149,11 @@ export async function asserts(): Promise<Assertion[]> {
 	ok("古籍参数面：非法 --limit 的值到达命令层，由它给出中文报错", () => {
 		// 三个探针全覆盖：`0` / `abc` 走常规值校验；`-3` 走**贪婪取值**
 		//（`-3` 是 `--limit` 的值，不是短参数）。
-		// 值域非法由命令层 throw：报错走 stderr 且退出码非零
-		//（参照 synastry-asserts 的 r.err 先例）。
+		// 值域非法由命令层 throw：报错走 stderr 且退出码非零。
+		// cmdClassics 已改 async（四域分发），直调探针（callDirect）只支持同步命令，
+		// 故走子进程 run —— async 分发的 rejection 子进程天然兜住。
 		for (const bad of ["0", "abc", "-3"]) {
-			const r = call(["classics", "--search", "紫微", "--limit", bad]);
+			const r = run(["classics", "--search", "紫微", "--limit", bad]);
 			if (r.code === 0)
 				throw new Error(`--limit ${bad} 未报错（退出码 0）—— 值域非法必须非零退出`);
 			if (!r.err.includes("--limit"))
