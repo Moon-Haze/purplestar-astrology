@@ -32,7 +32,7 @@ import { dirname, resolve } from "node:path";
 import { scanCitations } from "./lib/citation-guard.ts";
 import { ALL_SKILLS, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
 // ⚠️ 核对表是**唯一一份数据资产**，它留在内核里 —— 数据留原地，逻辑搬到测试侧。
-import { ANNOTATIONS } from "../scripts/corpus/annotations.ts";
+import { ANNOTATIONS } from "../scripts/corpus/data/annotations.ts";
 
 /**
  * 从核对表里现取一条未核实引文的核心，用作违例样本。
@@ -170,7 +170,7 @@ describe("引文守卫：扫全仓每个 skill 的 scripts/", () => {
 		const total = SCANS.reduce((n, s) => n + s.skipped.length, 0);
 		assert.ok(
 			total > 0,
-			`全仓没有跳过任何核对表 —— ${SOURCE_SKILL} 的 corpus/annotations.ts 是否仍导出 ANNOTATIONS？`
+			`全仓没有跳过任何核对表 —— ${SOURCE_SKILL} 的 corpus/data/annotations.ts 是否仍导出 ANNOTATIONS？`
 		);
 	});
 

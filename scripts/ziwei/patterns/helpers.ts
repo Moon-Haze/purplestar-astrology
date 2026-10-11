@@ -20,7 +20,7 @@
 
 import type { ZiweiChart, Palace, Star, Mutagen } from "../types";
 import type { PatternVerdict } from "./types";
-import { SHA_NAMES, SHA_HARD, SHA_KONG } from "../../corpus/patterns-data";
+import { SHA_NAMES, SHA_HARD, SHA_KONG } from "../../corpus/data/patterns";
 import { oppositeBranch, surroundBranches } from "../palace-relations";
 
 // ────────────────── 辅助函数 ──────────────────

@@ -16,7 +16,7 @@
  * @packageDocumentation
  */
 
-import type { GejuNameAlias, PatternVerdict } from "../ziwei/patterns/types";
+import type { GejuNameAlias, PatternVerdict } from "../../ziwei/patterns/types";
 
 export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
 	// ────────── 古籍词频裁决（真异名，两个不同的词）──────────

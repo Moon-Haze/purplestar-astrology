@@ -46,9 +46,9 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 // ⚠️ 字面相对路径 + 写全 `.ts` 扩展名：本模块靠 Node 的原生类型擦除加载，不走解析钩子。
-//    核对表是**唯一一份数据资产**，它留在内核里（`corpus/annotations.ts`）——
+//    核对表是**唯一一份数据资产**，它留在内核里（`corpus/data/annotations.ts`）——
 //    全仓的引文都对照它，故本模块 import 它而不是自存一份。
-import { ANNOTATIONS } from "../../scripts/corpus/annotations.ts";
+import { ANNOTATIONS } from "../../scripts/corpus/data/annotations.ts";
 
 /** 一次扫描的结果。 */
 export interface CitationScan {
@@ -60,7 +60,7 @@ export interface CitationScan {
 	 * 因是核对表自身而被跳过的文件。
 	 *
 	 * @remarks
-	 * 扫**单个** skill 的 `scripts/` 时正常恰好 1 个（源 skill 的 `corpus/annotations.ts`），
+	 * 扫**单个** skill 的 `scripts/` 时正常恰好 1 个（源 skill 的 `corpus/data/annotations.ts`），
 	 * 其余 skill 为 0 个（它们不持有核对表）。**两者都不是异常**，故调用方不该断言它非零 ——
 	 * 该断言的是「所有根合计至少有 1 个」，见 `test/citations.test.ts`。
 	 *

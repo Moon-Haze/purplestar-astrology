@@ -1,7 +1,7 @@
 /**
  * classics 的 **tianji 域**：天纪判语检索。
  *
- * 由 `knowledge --source tianji` 进入。数据（`corpus/tianji/entries.ts`，392KB、1125 条）
+ * 由 `knowledge --source tianji` 进入。数据（`corpus/data/tianji.ts`，392KB、1125 条）
  * 在函数体内动态 import 懒加载 —— 本模块被 classics.ts 静态 import，不能让 CLI 主链路
  * 吃这份语料。
  *
@@ -52,7 +52,7 @@ export async function renderTianji(args: CliArgs): Promise<string> {
 			) ?? bookStr)
 		: null;
 
-	const { TIANJI_ENTRIES, TIANJI_SOURCE, replayUrl } = await import("@/corpus/tianji/entries");
+	const { TIANJI_ENTRIES, TIANJI_SOURCE, replayUrl } = await import("@/corpus/data/tianji");
 
 	// 无检索词：列五册概览
 	if (!q) {
