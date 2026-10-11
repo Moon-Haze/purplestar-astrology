@@ -11,7 +11,14 @@
  */
 
 /** 合法命令名（顺序即 help COMMANDS 节的展示序）。 */
-export const COMMAND_NAMES = ["astrology", "stars", "classics", "synastry", "selftest"] as const;
+export const COMMAND_NAMES = [
+	"astrology",
+	"stars",
+	"classics",
+	"oracle",
+	"synastry",
+	"selftest",
+] as const;
 
 /** 合法命令名类型。 */
 export type CommandName = (typeof COMMAND_NAMES)[number];
@@ -45,6 +52,13 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 		"逐段子串匹配（不分词、繁简不转换）；--limit 控制命中条数上限（默认 15，正整数）。",
 		"解读需要引原句佐证时用本命令，不要凭记忆转写古籍。",
 	],
+	oracle: [
+		"断语手册检索（13 主题 × 十四主星，分析数据库预计算快照）。",
+		"oracle <主题> 列该主题 14 主星概览（格局数 / 断语行数）；",
+		"oracle <主题> <星名> 全展开该星的分类断语（关键定制 / 深层特质 / 格局 / 本宫论断 /",
+		"三方四正 / 四化 / 贵人 / 主题专属节）。",
+		"⚠️ 快照为本命静态口径，解读仍需结合具体命盘（astrology --topic）；数据修订走内核，勿改手册文件。",
+	],
 	synastry: [
 		"合盘（双宫联参）：看婚姻不能只看夫妻宫，必须同时看福德宫（倪海夏口径）。",
 		"输入 --charts 为逗号分隔恰好两份 astrology --json 的产物（甲先乙后；两路径相同 = 自盘对照，允许）。",
@@ -69,6 +83,7 @@ export const COMMAND_DESC: Record<CommandName, string> = {
 	astrology: "排盘分析一条命令（概览默认 + 功能参数：专题/--palaces/--topic）★ 最常用",
 	stars: "星曜释义",
 	classics: "古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书）",
+	oracle: "断语手册检索（13 主题 × 十四主星，分类断语快照）",
 	synastry: "合盘（双宫联参 + 夫妻宫断语 + 四化入夫妻宫）",
 	selftest:
 		"回归自检（排盘 / 古籍 / 合盘三段：农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",

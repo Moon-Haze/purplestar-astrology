@@ -55,6 +55,7 @@ export const OPTION_OWNERSHIP: Record<CommandName, readonly string[]> = {
 	],
 	stars: ["search"],
 	classics: ["search", "limit"],
+	oracle: [],
 	synastry: ["charts", "json"],
 	selftest: [],
 };
@@ -97,9 +98,10 @@ const OVERVIEW_EXAMPLES = [
   node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --json > /tmp/b.json
   node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`,
 	"",
-	`  # 古籍原文检索与星曜释义
+	`  # 古籍原文检索、星曜释义与断语手册
   node scripts/purple-star.ts classics --search 机月同梁
-  node scripts/purple-star.ts stars --search 紫微`,
+  node scripts/purple-star.ts stars --search 紫微
+  node scripts/purple-star.ts oracle career 七杀`,
 	"",
 	FICTION_NOTE,
 ];
@@ -120,6 +122,13 @@ const COMMAND_EXAMPLES: Record<CommandName, readonly string[]> = {
 	classics: [
 		"  node scripts/purple-star.ts classics --search 机月同梁",
 		"  node scripts/purple-star.ts classics --search 紫微 --limit 5",
+		"",
+		FICTION_NOTE,
+	],
+	oracle: [
+		"  node scripts/purple-star.ts oracle",
+		"  node scripts/purple-star.ts oracle career",
+		"  node scripts/purple-star.ts oracle career 七杀",
 		"",
 		FICTION_NOTE,
 	],

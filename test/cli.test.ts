@@ -235,7 +235,11 @@ describe("CLI 端到端", () => {
 				"male",
 			]);
 			assert.equal(o.chart.birthInfo.longitude, 116.4);
-			assert.equal(o.chart.birthInfo.timeIndex, 4, "校正后应为辰时（branch 4），与不校正时差一位");
+			assert.equal(
+				o.chart.birthInfo.timeIndex,
+				4,
+				"校正后应为辰时（branch 4），与不校正时差一位"
+			);
 		});
 
 		it("--eot 计入均时差，可把结果推过时辰边界；默认不计", async () => {
@@ -898,10 +902,7 @@ describe("CLI 端到端", () => {
 				"synastry"
 			);
 			assert.ok(t.includes("⚠️ 甲方出生时间落在 23:00–23:59"), "应提示甲方落在晚子时");
-			assert.ok(
-				t.includes("重排"),
-				"应把用户送回排盘命令用晚子时口径重排"
-			);
+			assert.ok(t.includes("重排"), "应把用户送回排盘命令用晚子时口径重排");
 			assert.ok(!t.includes("⚠️ 乙方出生时间"), "乙方不在晚子时，不应被提示");
 		});
 
@@ -1032,13 +1033,27 @@ describe("CLI 端到端", () => {
 		// 上一年）者两口径分叉：同屏出现「武曲化禄」（宫详表，农历口径）与「化权武曲」
 		// （区块，公历口径）互相矛盾。区块必须与盘面同源 —— 即 chart.lunarInfo.yearStem。
 		it("跨年月出生按农历年干（1990-01-15 = 农历己巳年腊月，非公历取模的庚）", async () => {
-			const chart = generateChart({ year: 1990, month: 1, day: 15, timeIndex: 5, gender: "male" });
+			const chart = generateChart({
+				year: 1990,
+				month: 1,
+				day: 15,
+				timeIndex: 5,
+				gender: "male",
+			});
 			assert.equal(
 				chart.lunarInfo.yearStem,
 				5,
 				"样本前提：1990-01-15 农历年干应为己（索引 5）"
 			);
-			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male", "--sihua"]);
+			const t = await cli([
+				"--date",
+				"1990-01-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--sihua",
+			]);
 			assert.ok(
 				t.includes("【生年四化】年干 己"),
 				"年干应取农历年干「己」，而非公历取模的「庚」"
@@ -1058,7 +1073,15 @@ describe("CLI 端到端", () => {
 				.filter(s => s.mutagen)
 				.map(s => `${s.mutagen}:${s.name}`)
 				.sort();
-			const t = await cli(["--date", "1990-01-15", "--branch", "5", "--gender", "male", "--sihua"]);
+			const t = await cli([
+				"--date",
+				"1990-01-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--sihua",
+			]);
 			// 只取【生年四化】区块 —— 流年/流月区块的行格式相同，混入会误判
 			const block = t.split("【生年四化】")[1]?.split("【")[0] ?? "";
 			const inBlock = [...block.matchAll(/化([禄权科忌]) (.+?) → /g)]
@@ -1093,7 +1116,13 @@ describe("CLI 端到端", () => {
 			const rows = [...block.matchAll(/化([禄权科忌]) (\S+) → (.+)$/gm)];
 			assert.equal(rows.length, 4, `${header} 区块应恰有 4 行，实得 ${rows.length}`);
 			const transforms = getMutagenByStem(stemIndex);
-			const chart = generateChart({ year: 1990, month: 5, day: 15, timeIndex: 5, gender: "male" });
+			const chart = generateChart({
+				year: 1990,
+				month: 5,
+				day: 15,
+				timeIndex: 5,
+				gender: "male",
+			});
 			for (const m of rows) {
 				const [hua, star, palace] = [m[1]!, m[2]!, m[3]!];
 				assert.equal(
@@ -1113,7 +1142,17 @@ describe("CLI 端到端", () => {
 		it("--liunian 2026：年干丙，四化落宫与独立复算一致", async () => {
 			// (2026−4) mod 10 = 2 → 丙。标题行钉干支，四行落宫走 assertRows 独立复算。
 			await assertRows(
-				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian", "2026", "--sihua"],
+				[
+					"--date",
+					"1990-05-15",
+					"--branch",
+					"5",
+					"--gender",
+					"male",
+					"--liunian",
+					"2026",
+					"--sihua",
+				],
 				"【2026 流年四化】",
 				2
 			);
@@ -1146,7 +1185,13 @@ describe("CLI 端到端", () => {
 		it("流月由流年干推，不串生年干（生年庚 × 流年甲 → 正月月干丙）", async () => {
 			// 1990-06-15 在农历庚午年内（生年干庚）；--liunian 2024 为甲年，正月丙寅。
 			// 若误用生年干庚推月干会得「戊」—— 两口径月干不同，此样本专钉不串台。
-			const chart = generateChart({ year: 1990, month: 6, day: 15, timeIndex: 5, gender: "male" });
+			const chart = generateChart({
+				year: 1990,
+				month: 6,
+				day: 15,
+				timeIndex: 5,
+				gender: "male",
+			});
 			assert.equal(
 				chart.lunarInfo.yearStem,
 				6,
@@ -1212,7 +1257,15 @@ describe("CLI 端到端", () => {
 		});
 
 		it("--liunian 裸开关 = 深入当前年（不报错）", async () => {
-			const t = await cli(["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--liunian"]);
+			const t = await cli([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--liunian",
+			]);
 			const thisYear = new Date().getFullYear();
 			assert.ok(
 				t.includes(`【${thisYear} 流年】`),
@@ -1239,7 +1292,13 @@ describe("CLI 端到端", () => {
 			assert.equal(j.liuNianSiHua.stem, "丙");
 			assert.equal(j.liuYueSiHua.month, 3);
 			assert.equal(j.liuYueSiHua.stem, "壬", "丙年正月起庚寅，三月壬（五虎遁顺推）");
-			const chart = generateChart({ year: 1990, month: 5, day: 15, timeIndex: 5, gender: "male" });
+			const chart = generateChart({
+				year: 1990,
+				month: 5,
+				day: 15,
+				timeIndex: 5,
+				gender: "male",
+			});
 			for (const [transforms, located] of [
 				[getMutagenByStem(2), j.liuNianSiHua.located],
 				[getMutagenByStem(8), j.liuYueSiHua.located],
@@ -1391,6 +1450,44 @@ describe("CLI 端到端", () => {
 				t.includes("转述") || t.includes("来源"),
 				"论断输出应披露来源分级，防止把转述当原话"
 			);
+		});
+	});
+
+	// ── oracle 断语手册 ──
+	// 消费 analysis/manual/ 的生成数据（懒加载）。测的是命令层三形态与错误指路；
+	// 数据本身的正确性由生成链（export-manual code）与 classifyOracle 的 other=0 兜底保证。
+	describe("oracle 断语手册命令", () => {
+		it("裸调用列出 13 主题与用法", async () => {
+			const t = await cliCmd("oracle", []);
+			assert.ok(t.includes("career") && t.includes("用法"), "应列主题 key 与用法");
+		});
+
+		it("主题概览列出 14 主星与断语计数", async () => {
+			const t = await cliCmd("oracle", ["career"]);
+			assert.ok(t.includes("七杀") && t.includes("断语"), "应含主星与计数");
+		});
+
+		it("单星展开含全部分类小节（手册数据被程序消费的主路径）", async () => {
+			const t = await cliCmd("oracle", ["career", "七杀"]);
+			for (const key of [
+				"命盘关键定制",
+				"星曜深层特质",
+				"本宫论断",
+				"三方四正联动",
+				"知识来源",
+			])
+				assert.ok(t.includes(key), `应含「${key}」节`);
+		});
+
+		it("非法主题与未收录星名都报错指路", async () => {
+			const noTopic = await cliCmd("oracle", ["nope"]).catch(
+				(e: { stderr?: string }) => e.stderr ?? ""
+			);
+			assert.ok(noTopic.includes("13 个之一"), `非法主题应指路，实得：${noTopic}`);
+			const noStar = await cliCmd("oracle", ["career", "武曲贪狼"]).catch(
+				(e: { stderr?: string }) => e.stderr ?? ""
+			);
+			assert.ok(noStar.includes("未收录"), `未收录星名应指路，实得：${noStar}`);
 		});
 	});
 
@@ -1649,7 +1746,10 @@ describe("CLI 端到端", () => {
 					stderr = (err as { stderr?: string }).stderr ?? (err as Error).message;
 				}
 				assert.ok(stderr, `--limit ${bad} 本应失败（非零退出），却成功了`);
-				assert.ok(!stderr.includes("未找到"), `--limit ${bad} 不该谎报未找到，实得：${stderr}`);
+				assert.ok(
+					!stderr.includes("未找到"),
+					`--limit ${bad} 不该谎报未找到，实得：${stderr}`
+				);
 				assert.ok(
 					stderr.includes("--limit"),
 					`--limit ${bad} 应指出是 limit 的问题，实得：${stderr}`

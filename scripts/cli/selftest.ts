@@ -66,6 +66,7 @@ import { asserts as synastryAsserts } from "@/synastry/selftest-asserts";
 import { cmdStars } from "./stars";
 import { cmdClassics } from "./classics";
 import { cmdAstrology, buildAnalyzeJson } from "./astrology";
+import { cmdOracle } from "./oracle";
 import { cmdSynastry } from "./synastry";
 import { renderCommandHelp, renderOverviewHelp } from "./help";
 import { createHarness, eq, callDirect } from "./selftest-kit";
@@ -977,6 +978,24 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	ok("命令面：classics --search 末尾缺值同样指路", () => {
 		const s = cmdClassics(parseArgs(["--limit", "3", "--search"], "classics"));
 		if (!s.includes("需要一个检索词")) throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);
+	});
+
+	ok("命令面：oracle 三形态（列主题 / 主题概览 / 单星展开）与非法主题指路", async () => {
+		const list = await cmdOracle(parseArgs([], "oracle"));
+		if (!list.includes("career") || !list.includes("用法")) throw new Error("列主题形态缺项");
+		const overview = await cmdOracle(parseArgs(["career"], "oracle"));
+		if (!overview.includes("七杀") || !overview.includes("断语"))
+			throw new Error(`概览形态缺项：${overview.slice(0, 40)}`);
+		const star = await cmdOracle(parseArgs(["career", "七杀"], "oracle"));
+		for (const key of ["命盘关键定制", "星曜深层特质", "本宫论断", "三方四正联动", "知识来源"])
+			if (!star.includes(key)) throw new Error(`单星展开缺「${key}」节`);
+		let msg = "";
+		try {
+			await cmdOracle(parseArgs(["nope"], "oracle"));
+		} catch (e) {
+			msg = (e as Error).message;
+		}
+		if (!msg.includes("13 个之一")) throw new Error(`非法主题未指路：${msg || "未报错"}`);
 	});
 
 	ok("命令面：--monthly 不带 --mutagen 必须指路（流月四化随四化专题输出）", () => {
