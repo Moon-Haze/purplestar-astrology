@@ -5,7 +5,7 @@
  * 倪师在《天纪》中多次援引此赋。
  */
 
-import type { Book } from "../types.ts";
+import type { Book } from "../types";
 
 /**
  * 《骨髓赋》数据。
@@ -25,7 +25,7 @@ export const guSuiFu: Book = {
 	slug: "gusuifu",
 	dynasty: "明代",
 	author: "紫微斗数古籍传承（无确切作者）",
-	intro: "紫微斗数最浓缩的核心口诀，全文约 1500 字。倪海夏《天纪》中多次援引此赋，是紫微学者必读经典。",
+	intro: "紫微斗数最浓缩的核心口诀，全文约 1500 字。倪海厦《天纪》中多次援引此赋，是紫微学者必读经典。",
 	wordCount: 1500,
 	chapters: [
 		{

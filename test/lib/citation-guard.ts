@@ -1,5 +1,5 @@
 /**
- * 引文守卫 —— 源码里凡以「倪海夏 / 倪师…说」带出的引文，不得与核对记录对不上。
+ * 引文守卫 —— 源码里凡以「倪海厦 / 倪师…说」带出的引文，不得与核对记录对不上。
  *
  * **位置**：本文件住在仓库的 `test/lib/` 下。移出的理由有三条：
  *
@@ -17,7 +17,7 @@
  *
  * ## 守卫在防什么
  *
- * `annotations.ts` 是对本仓源码中「倪师 / 倪海夏」引用的文献核对记录，标了四级
+ * `annotations.ts` 是对本仓源码中「倪师 / 倪海厦」引用的文献核对记录，标了四级
  * verified / traditional / methodology / suspect。此前清修时把全部 suspect / fabricated
  * 引文或删、或改归属（如「古诀云」「紫微斗数有云」）。本守卫锁住那次清修：**改归属保留
  * 引文是合法处置，把未核实的引文继续挂在倪师名下则不是。**
@@ -37,7 +37,7 @@
  * （它是核对表，不是被核对的对象）；判断依据是**它声明了 `ANNOTATIONS`**，而不是它的
  * 文件名，故改名或拆分后如果仍导出这张表，仍会被正确排除。见 {@link isChecklistSource}。
  *
- * 另一类是 `ziwei/analysis/manual/`（生成快照目录，见 {@link collectTsFiles}）——
+ * 另一类是 `corpus/data/manual/`（生成快照目录，见 {@link collectTsFiles}）——
  * 内容是内核表的渲染镜像而非手写断语，同样「不是被核对的对象」。
  *
  * @packageDocumentation
@@ -98,7 +98,7 @@ function isChecklistSource(source: string): boolean {
  * 跳过 `node_modules` 与点开头的目录：前者不该出现在内核根下（依赖装在 skill 根），
  * 后者是工具目录，都不属于被核对的源码。
  *
- * 还跳过 `ziwei/analysis/manual/`：那里是**生成快照**（`tools/db/export-manual.ts`
+ * 还跳过 `corpus/data/manual/`：那里是**生成快照**（`tools/db/export-manual.ts`
  * 把样本库的主题文本转印成 TS 数据），全部内容是内核数据表的渲染镜像，不含任何手写
  * 断语 —— 源头（`data.ts` 等）本就在扫描范围内。镜像可能带着旧版库的历史引文形态
  * （库落后于内核清修时），那是 db 版本问题、重建即消，不是新写的未核实引文。
@@ -109,7 +109,8 @@ function collectTsFiles(root: string, dir = ""): string[] {
 		const rel = dir ? `${dir}/${entry.name}` : entry.name;
 		if (entry.isDirectory()) {
 			if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
-			if (entry.name === "manual" && dir === "ziwei/analysis") continue;
+			// 生成快照（tools/db/export-manual.ts 转印）随知识数据聚拢迁至 corpus/data/manual
+			if (entry.name === "manual" && dir === "corpus/data") continue;
 			out.push(...collectTsFiles(root, rel));
 		} else if (entry.name.endsWith(".ts")) {
 			out.push(rel);
@@ -126,7 +127,7 @@ function collectTsFiles(root: string, dir = ""): string[] {
  *
  * @remarks
  * 比对方式：把 `ANNOTATIONS` 里 suspect / fabricated 条目的**引文核心**（书名号 / 引号内的
- * 部分）收成一个黑名单，再看源码里所有「倪海夏 / 倪师…说 / 言 / 警示…：『引文』」的引文核心
+ * 部分）收成一个黑名单，再看源码里所有「倪海厦 / 倪师…说 / 言 / 警示…：『引文』」的引文核心
  * 是否落在其中。
  *
  * ⚠️ **`violations` 为空不等于没问题**：目录为空、路径写歪、递归写坏，都会得到零违例。
@@ -152,9 +153,9 @@ export function scanCitations(root: string): CitationScan {
 			[...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1])
 		)
 	);
-	// 源码中所有「倪海夏/倪师…说/言/警示…：『引文』」的引文核心
+	// 源码中所有「倪海厦/倪师…说/言/警示…：『引文』」的引文核心
 	const citeRe =
-		/倪(?:海夏|师)[^。\n]{0,10}(?:说|言|称|警示|警告|明言|强调|描述|提醒)[：:]?\s*[「"『]([^」"』]{4,})[」"』]/g;
+		/倪(?:海厦|师)[^。\n]{0,10}(?:说|言|称|警示|警告|明言|强调|描述|提醒)[：:]?\s*[「"『]([^」"』]{4,})[」"』]/g;
 	const violations = [...chunks.join("\n").matchAll(citeRe)]
 		.filter(m => banned.has(m[1]))
 		.map(m => m[1].slice(0, 40));

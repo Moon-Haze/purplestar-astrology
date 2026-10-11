@@ -37,7 +37,7 @@
  * {@link getDaXianMutagen} 纯函数层（调用方传大限索引、返回四化记录），**不往 `Decadal`
  * 结构上加字段** —— `school.test.ts` 的「大限键集合全等」断言继续有效。
  *
- * 完整立场见 `.claude/CLAUDE.md` 的「体系硬约束」一节与 `SKILL.md` 的同名章节。
+ * 完整立场见仓库根 `CLAUDE.md` 的「体系口径」一节与 `SKILL.md` 的同名章节。
  *
  * @packageDocumentation
  */

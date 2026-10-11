@@ -24,7 +24,7 @@
  *   - [methodology] 倪师体系的方法论概念（非原话摘录）
  *   - [suspect]     来源存疑，疑似其他流派或后人整理
  *
- *   以「倪海夏/倪师说」开头的引号句，部分为 traditional 口诀的风格化转述，不一定是
+ *   以「倪海厦/倪师说」开头的引号句，部分为 traditional 口诀的风格化转述，不一定是
  *   倪师《天纪》逐字原话。CLI 的 topic 命令在输出末尾固定披露此点。
  *   引文主体在 `./data` 的 STAR_CONTENT_MAP，余下零星几处散在 `views/` 各节
  *   （如 `views/health.ts` 的疾厄论断）。

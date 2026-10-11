@@ -53,7 +53,7 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 		"已并入（--source …），原命令名不再保留。",
 	],
 	synastry: [
-		"合盘（双宫联参）：看婚姻不能只看夫妻宫，必须同时看福德宫（倪海夏口径）。",
+		"合盘（双宫联参）：看婚姻不能只看夫妻宫，必须同时看福德宫（倪海厦口径）。",
 		"输入 --charts 为逗号分隔恰好两份 astrology --json 的产物（甲先乙后；两路径相同 = 自盘对照，允许）。",
 		"输出两方命宫 / 夫妻宫 / 福德宫主星、天作之合判定、夫妻宫断语（空宫借对宫）、",
 		"生年四化入夫妻宫、桃花孤克星；方法论与评分标准见 references/synastry-guide.md。",

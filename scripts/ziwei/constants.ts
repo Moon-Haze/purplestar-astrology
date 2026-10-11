@@ -190,7 +190,7 @@ export const JU_NAMES: Record<number, string> = {
  * 生年四化表：年干索引（0–9）→ `[化禄, 化权, 化科, 化忌]` 四颗星名。
  *
  * ⚠️ 键是**年干**索引（0=甲 … 9=癸）。本表**不含**宫干四化、流年干四化、自化那种
- * 飞星派口径 —— 那些已主动下线（见 `.claude/CLAUDE.md`）。
+ * 飞星派口径 —— 那些已主动下线（见仓库根 `CLAUDE.md` 的「体系口径」一节）。
  *
  * 消费者：`sihua.ts` 的 `getMutagenByStem`（生年 / 流年 / 流月三层的公共出口），上承 `cli/commands.ts`
  * 的生年四化落宫与合盘四化分析。⚠️ 改本表会改变**所有**四化落宫、进而改变格局命中，
@@ -373,7 +373,7 @@ export const STAR_BRIGHTNESS: Record<string, Record<number, string>> = {
 };
 
 /**
- * 十四主星释义（倪海夏体系）：星名 → `{ keywords, nature, element }`。
+ * 十四主星释义（倪海厦体系）：星名 → `{ keywords, nature, element }`。
  *
  * 消费者：`cli/commands.ts` 的「主星释义」查询与关键词展示；`cli/selftest.ts` 的完整性
  * 断言（要求恰 14 条，且键集合与 iztro 的十四主星一致）。

@@ -6,7 +6,7 @@
  * 此处精选核心论述，未来可补全。
  */
 
-import type { Book } from "../types.ts";
+import type { Book } from "../types";
 
 /**
  * 《紫微斗数全集》数据 —— 精选章节。
@@ -25,7 +25,7 @@ export const ziWeiQuanJi: Book = {
 	slug: "quanji",
 	dynasty: "明代",
 	author: "相传陈抟祖师传",
-	intro: "紫微斗数最权威的古籍之一，相传由宋代陈抟祖师传授。倪海夏《天纪》体系的核心引证来源。",
+	intro: "紫微斗数最权威的古籍之一，相传由宋代陈抟祖师传授。倪海厦《天纪》体系的核心引证来源。",
 	wordCount: 80000,
 	chapters: [
 		{

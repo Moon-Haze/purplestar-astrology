@@ -216,7 +216,7 @@ export function renderOverviewHelp(): string {
 	lines.push(
 		"  单条 CLI 承载三个领域：astrology 排盘解读（四命令合一）、knowledge 统一知识检索、",
 		"  synastry 合盘（双宫联参）。内核住 scripts/ziwei|corpus|synastry/，排盘口径为",
-		"  倪海夏《天纪》三合派（不做宫干四化 / 自化 / 来因宫）。",
+		"  倪海厦《天纪》三合派（不做宫干四化 / 自化 / 来因宫）。",
 		""
 	);
 	lines.push("COMMANDS");

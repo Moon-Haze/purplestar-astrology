@@ -17,7 +17,7 @@ import type { ZiweiChart, Palace } from "../types";
 
 // ────────────────── 类型 ──────────────────
 /**
- * 格局的成立条件分层（v2 结构）。
+ * 格局的成立条件分层
  *
  * @remarks
  * ⚠️ 这三个数组是**回填已判定项**的结果记录，**不是判定依据**：识别器先用代码判完条件，
@@ -56,8 +56,8 @@ export interface Pattern {
 	 */
 	topicDescription?: string;
 	palaces: string[]; // 涉及宫位（**宫名**，非地支索引；可能含"身宫"或格局定名宫位）
-	conditions?: PatternCondition; // 成立条件分层（v2 新增）
-	source?: string; // 古籍出处（v2 新增）
+	conditions?: PatternCondition; // 成立条件分层
+	source?: string; // 古籍出处
 }
 /**
  * 识别器上下文：`detectPatterns` 一次组装、传给全部 51 个识别器的公共入参。
@@ -101,8 +101,8 @@ export type Detector = (ctx: DetectContext) => Pattern[];
  * 裁决依据分两种（见 {@link GejuNameAlias.basis}），**不可混为一谈**：
  *
  * - `corpus` —— **古籍词频裁决**：逐名统计三部古籍的出现次数，取高者。这几组是
- *   **真异名**（两个不同的词，如 `化禄入命` / `化禄守命`）。语料本体在
- *   `purplestar-classics` 技能里（`scripts/`）—— **口径没变，只是换了个 skill 住**。
+ *   **真异名**（两个不同的词，如 `化禄入命` / `化禄守命`）。语料本体已并入本仓
+ *   `scripts/corpus/`（原住 `purplestar-classics` 技能，三 skill 合一迁入）—— **口径没变**。
  * - `convention` —— **古籍不足以裁决**：两组都零见，或者两种写法古籍并用且样本量
  *   只有个位数（如 `紫府同宫` / `紫府同宫格` 实为一个词差一个「格」字，古籍里
  *   两种写法都在用）。这类改按书写约定统一，`note` 写明理由。

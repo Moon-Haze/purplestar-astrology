@@ -8,7 +8,7 @@
  * **口径照搬，不趁迁移"顺手修正"**：判定条件逐字对齐原 `detectGeJu`（含它偏宽或偏窄之处），
  * 差异要改就两侧一起改 —— `test/invariants.test.ts` 里这 13 个名字都有独立预言机盯着。
  *
- * `source` 照实标注：本仓古籍库（`purplestar-classics` 技能的 `classics --search`）
+ * `source` 照实标注：本仓古籍库（`knowledge --search`，语料住 `scripts/corpus/`）
  * 查得到直接出处的写书名与篇名，查不到的写「传统口诀（本仓古籍库无直接出处）」——
  * **不编造篇名**，等将来补录古籍再换。
  *

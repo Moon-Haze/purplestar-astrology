@@ -125,9 +125,9 @@ export function runGenderGuard({ ok }: Pick<SelftestDeps, "ok">): void {
 		eq(g("m"), "male", "m ");
 	});
 	// ⚠️ 这里原有「性别：heming 缺 --a-gender 时文案应指向 --a-gender」一条，已随合盘命令
-	//    搬去 `purplestar-synastry` 的 selftest —— 本 skill 既无 `synastry` 命令，也不认
-	//    `a-` / `b-` 前缀（`--a-chart` 在这里是**未知参数**，直接报错），那条文案护栏
-	//    在本 skill 里没有可复现的入口。
+	//    搬去 `synastry` 的断言组（`synastry/selftest-asserts.ts`）—— `a-` / `b-` 前缀
+	//    只有 `synastry` 命令认（`--a-chart` 在这里是**未知参数**，直接报错），那条文案护栏
+	//    在排盘侧没有可复现的入口。
 }
 
 /** 出生信息形态：位置参数归类、城市 token 边界、日期 round-trip 校验。 */

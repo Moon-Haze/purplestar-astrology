@@ -402,14 +402,14 @@ async function exportCombo(conn: DuckDBConnection): Promise<void> {
 	console.error(`combo-frequency.md：${rows.length} 组合`);
 }
 
-/** 生成 TS 数据文件的输出目录（内核域内 scripts/ziwei/analysis/manual）——**生成快照，不在 analysis/index.ts 公开面**（按需懒加载，不碰 CLI 启动）；引文守卫对它语义化排除（内容是内核表的渲染镜像）。 */
-const CODE_DIR = resolve(SKILL_ROOT, "scripts/ziwei/analysis/manual");
+/** 生成 TS 数据文件的输出目录（内核域内 scripts/corpus/data/manual）——**生成快照，不在 analysis/index.ts 公开面**（按需懒加载，不碰 CLI 启动）；引文守卫对它语义化排除（内容是内核表的渲染镜像）。 */
+const CODE_DIR = resolve(SKILL_ROOT, "scripts/corpus/data/manual");
 
 /** 生成 TS 字符串字面量：JSON.stringify 的双引号形态即合法 TS 字面量（转义齐全）。 */
 const lit = (s: string): string => JSON.stringify(s);
 
 /**
- * `code` 子命令：把手册内容**解析分类**成 TS 数据文件合并进代码（scripts/ziwei/analysis/manual/）。
+ * `code` 子命令：把手册内容**解析分类**成 TS 数据文件合并进代码（scripts/corpus/data/manual/）。
  *
  * 形态：每主题一个文件（`<topic>.ts`，`ORACLE: Record<主星, OracleStar>`——按
  * 定制/总述/格局/本宫/三方/四化/贵人/专属节归类，见 {@link OracleStar}）+ 组合频率 +
@@ -470,7 +470,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 			" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
 			` * 源：样本库 518,400 设计样本 × analysis 内核（${topic} 主题静态节，动态节不进数据）。`,
 			" * 断语修订：改内核 `scripts/ziwei/analysis/` → `npm run build:db` → 重导本目录。",
-			" * 查询入口：`analysis/manual/index.ts`（按主题懒加载，不在 CLI 主 import 链上）。",
+				" * 查询入口：`corpus/data/manual/index.ts`（按主题懒加载，不在 CLI 主 import 链上）。",
 			" */",
 			`import type { OracleStar } from "./types.ts";`,
 			"",

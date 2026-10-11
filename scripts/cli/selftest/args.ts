@@ -162,10 +162,10 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** SKILL.md 行为规范对拍：提到的旗标都在 args.ts 的声明表里。 */
+/** SKILL.md 行为规范对拍：提到的旗标都在 args-table.ts 的声明表里。 */
 export function runSkillArgsAudit({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {
-	ok("参数面：SKILL.md 提到的旗标都在 args.ts 的声明表里", () => {
-		// SKILL.md 是给助手读的**行为规范**（见 .claude/CLAUDE.md：改它就等于改 skill
+	ok("参数面：SKILL.md 提到的旗标都在 args-table.ts 的声明表里", () => {
+		// SKILL.md 是给助手读的**行为规范**（见仓库根 CLAUDE.md：改它就等于改 skill
 		// 的行为）。它提到的旗标若在解析层不存在，助手会照着敲一个被拒的参数。
 		//
 		// 只查「SKILL.md → 声明表」这一个方向。反向（声明表里的旗标都要写进 SKILL.md）

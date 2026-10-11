@@ -956,7 +956,7 @@ describe("CLI 端到端", () => {
 
 			// 下面两个锚点同时被 synastry 的 selftest 用着（同一对字面量，各守各的扫描根）。
 			for (const anchor of [
-				"## 合盘分析核心框架（倪海夏体系 + 《紫微斗数全书》综合）",
+				"## 合盘分析核心框架（倪海厦体系 + 《紫微斗数全书》综合）",
 				"双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉",
 			])
 				assert.ok(md.includes(anchor), `正文缺少锚点：${anchor}`);
@@ -973,7 +973,7 @@ describe("CLI 端到端", () => {
 			const synastry = await cliCmd("synastry", synastry_PAIR, "synastry");
 
 			for (const [label, needle] of [
-				["方法论首章标题", "## 合盘分析核心框架（倪海夏体系 + 《紫微斗数全书》综合）"],
+				["方法论首章标题", "## 合盘分析核心框架（倪海厦体系 + 《紫微斗数全书》综合）"],
 				[
 					"评分标准首档判词",
 					"双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉",
@@ -1675,7 +1675,7 @@ describe("CLI 端到端", () => {
 	});
 
 	// ── oracle 断语手册 ──
-	// 消费 analysis/manual/ 的生成数据（懒加载）。测的是命令层三形态与错误指路；
+	// 消费 corpus/data/manual/ 的生成数据（懒加载）。测的是命令层三形态与错误指路；
 	// 数据本身的正确性由生成链（export-manual code）与 classifyOracle 的 other=0 兜底保证。
 	// 旧独立命令 stars / oracle 已并入 knowledge --source（tianji 域同期加入），
 	// 用例全部走 knowledge 路径。

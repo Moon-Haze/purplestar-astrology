@@ -1,6 +1,6 @@
 // ── 层 4：三合派体系约束 ──
 //
-// 本项目严格遵循倪海夏《天纪》三合派。飞星派的**宫干自化**、**大限四化取宫干**、
+// 本项目严格遵循倪海厦《天纪》三合派。飞星派的**宫干自化**、**大限四化取宫干**、
 // **来因宫**均已主动下线 —— algorithm.ts 不再填充这些字段；types.ts 仍保留其类型定义，
 // 那是**刻意留下的绊线**（断言盯的是「有没有被填回」，字段删了就无从盯起）。
 // 会生产它们的那些函数（detectSelfSihua / findIncomingPalaces / getDecadalMutagen 等）
@@ -25,8 +25,13 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 
 const { generateChart } = await loadAlgorithm();
 const charts = samples.map(s => ({ birth: s.birthInfo, chart: generateChart({ ...s.birthInfo }) }));
-const label = (b: { year: number; month: number; day: number; timeIndex: number; gender: string }): string =>
-	`${b.year}-${b.month}-${b.day}/${b.timeIndex}/${b.gender}`;
+const label = (b: {
+	year: number;
+	month: number;
+	day: number;
+	timeIndex: number;
+	gender: string;
+}): string => `${b.year}-${b.month}-${b.day}/${b.timeIndex}/${b.gender}`;
 
 const DAXIAN_ALLOWED = ["startAge", "endAge", "palaceBranch", "palaceName"];
 
@@ -87,9 +92,19 @@ describe("三合派体系约束", () => {
 			for (const { birth, chart } of charts) {
 				const marks = chart.palaces
 					.flatMap(p => p.stars)
-					.filter(s => s.mutagen === "禄" || s.mutagen === "权" || s.mutagen === "科" || s.mutagen === "忌")
+					.filter(
+						s =>
+							s.mutagen === "禄" ||
+							s.mutagen === "权" ||
+							s.mutagen === "科" ||
+							s.mutagen === "忌"
+					)
 					.map(s => s.mutagen);
-				assert.equal(marks.length, 4, `${label(birth)}：生年四化应恰好 4 颗，实际 ${marks.length}`);
+				assert.equal(
+					marks.length,
+					4,
+					`${label(birth)}：生年四化应恰好 4 颗，实际 ${marks.length}`
+				);
 				assert.deepEqual(
 					[...marks].sort(),
 					["忌", "权", "禄", "科"].sort(),

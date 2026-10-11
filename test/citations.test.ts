@@ -42,8 +42,8 @@ import { ANNOTATIONS } from "../scripts/corpus/data/annotations.ts";
  * 那时「违例抓得到」的用例会变成假红 —— 而它的失败信息会指向守卫，不是指向样本本身。
  *
  * ⚠️ 必须**筛出带引号的那类**条目：核对表的 `text` 是整句引用（如
- * `倪海夏说「紫微在迁移，外地逢贵人」`），但并非每条都带引号 —— 实测第一条 suspect 是
- * 「紫微斗数分析数据库 v2 — 倪海夏三合派体系」这样的**标题句**，直接取 `[0]` 会得到空样本，
+ * `倪海厦说「紫微在迁移，外地逢贵人」`），但并非每条都带引号 —— 实测第一条 suspect 是
+ * 「紫微斗数分析数据库 — 倪海厦三合派体系」这样的**标题句**，直接取 `[0]` 会得到空样本，
  * 而空样本会让「违例抓得到」退化成「什么都没抓到也是对的」。
  */
 const QUOTE =
@@ -52,7 +52,7 @@ const QUOTE =
 		.find(q => q !== undefined) ?? "";
 
 /** 以倪师名义带出某段引文的伪造源码行。 */
-const fakeCitation = (quote: string): string => `// 倪海夏说：「${quote}」\n`;
+const fakeCitation = (quote: string): string => `// 倪海厦说：「${quote}」\n`;
 
 /** 造一棵假内核根，返回其路径；调用方负责在 finally 里 `rmSync` 掉。 */
 function makeTree(files: Record<string, string>): string {

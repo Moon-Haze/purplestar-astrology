@@ -234,15 +234,16 @@ export async function asserts(): Promise<Assertion[]> {
 				const r = run(["synastry", ...argv]);
 				if (r.code === 0) throw new Error(`${argv[1]} 未报错 —— 份数护栏失效`);
 				if (!r.err.includes("两个") || !r.err.includes("--charts"))
-					throw new Error(`报错应点名 --charts 与「两个文件路径」，实得：${r.err.trim()}`);
+					throw new Error(
+						`报错应点名 --charts 与「两个文件路径」，实得：${r.err.trim()}`
+					);
 			}
 			return "一份与三份均被拦下";
 		});
 
 		ok("合盘护栏：--charts 两路径相同允许（自盘对照有意义）", () => {
 			const r = run(["synastry", "--charts", `${fileA},${fileA}`]);
-			if (r.code !== 0)
-				throw new Error(`同路径应放行（自盘对照），实得：${r.err.trim()}`);
+			if (r.code !== 0) throw new Error(`同路径应放行（自盘对照），实得：${r.err.trim()}`);
 			if (!r.out.includes("甲方") || !r.out.includes("乙方"))
 				throw new Error("同路径输出应仍有甲乙两方");
 			return "同路径放行";
@@ -293,7 +294,7 @@ export async function asserts(): Promise<Assertion[]> {
 			const md = readFileSync(p, "utf8");
 			for (const anchor of [
 				"双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉",
-				"## 合盘分析核心框架（倪海夏体系 + 《紫微斗数全书》综合）",
+				"## 合盘分析核心框架（倪海厦体系 + 《紫微斗数全书》综合）",
 			]) {
 				if (!md.includes(anchor))
 					throw new Error(`references/synastry-guide.md 缺少锚点：${anchor}`);
@@ -313,10 +314,18 @@ export async function asserts(): Promise<Assertion[]> {
 			// 输入用 --charts 单参数（spec §2.3）：a- / b- 前缀体系整个不需要，
 			// 前缀旗标一律「未知参数」。spec 原文：原「前缀必须报错」断言改为
 			// 「--a-chart 是未知参数」。
-			const probes = ["--a-chart", "--b-chart", "--a-date", "--a-time", "--a-gender", "--a-city"];
+			const probes = [
+				"--a-chart",
+				"--b-chart",
+				"--a-date",
+				"--a-time",
+				"--a-gender",
+				"--a-city",
+			];
 			for (const flag of probes) {
 				const r = run(["synastry", flag, "x"]);
-				if (r.code === 0) throw new Error(`${flag} 在 synastry 上被接受了 —— 前缀漏回了作用域`);
+				if (r.code === 0)
+					throw new Error(`${flag} 在 synastry 上被接受了 —— 前缀漏回了作用域`);
 				if (!r.err.includes("未知参数"))
 					throw new Error(`${flag} 的报错不是「未知参数」，实得：${r.err.trim()}`);
 			}
@@ -353,18 +362,28 @@ export async function asserts(): Promise<Assertion[]> {
 		});
 
 		ok("契约闭环：astrology --json 的真实产物过 readAnalyzeJson 校验", () => {
-		// 交付包内唯一能跑的自检层要直接盯住生产端-消费端 seam：typecheck 对
-		// JSON 边界无能为力（JSON.parse 后 as 断言），假盘 fixture 又只是契约的
-		// 手写拷贝，接不住生产端键名漂移 —— 让 run（进程内直调）排一张真盘落临时
-		// 文件，喂给 readAnalyzeJson 逐项校验，闭环不依赖交付包外的 test/。
-			const r = run(["astrology", "--date", "1990-05-15", "--branch", "5", "--gender", "male", "--json"]);
+			// 交付包内唯一能跑的自检层要直接盯住生产端-消费端 seam：typecheck 对
+			// JSON 边界无能为力（JSON.parse 后 as 断言），假盘 fixture 又只是契约的
+			// 手写拷贝，接不住生产端键名漂移 —— 让 run（进程内直调）排一张真盘落临时
+			// 文件，喂给 readAnalyzeJson 逐项校验，闭环不依赖交付包外的 test/。
+			const r = run([
+				"astrology",
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--json",
+			]);
 			if (r.code !== 0) throw new Error(`astrology --json 非零退出：${r.err.trim()}`);
 			const tmp = mkdtempSync(join(tmpdir(), "synastry-contract-"));
 			try {
 				const p = join(tmp, "real.json");
 				writeFileSync(p, r.out, "utf8");
 				const parsed = readAnalyzeJson(p, "甲");
-				if (!parsed.chart?.palaces?.length) throw new Error("readAnalyzeJson 产物缺宫位 —— 契约校验形同虚设");
+				if (!parsed.chart?.palaces?.length)
+					throw new Error("readAnalyzeJson 产物缺宫位 —— 契约校验形同虚设");
 			} finally {
 				rmSync(tmp, { recursive: true, force: true });
 			}
@@ -378,7 +397,10 @@ export async function asserts(): Promise<Assertion[]> {
 				throw new Error("cli/commands.ts 的命令表里没有 synastry 条目 —— 合并接线断了");
 			if (!OPTION_NAMES.has("charts"))
 				throw new Error("cli 的 OPTION_NAMES 里没有 charts —— 合盘输入参数未声明");
-			if (OPTION_SCOPE.sidePrefixes.includes("a-") || OPTION_SCOPE.sidePrefixes.includes("b-"))
+			if (
+				OPTION_SCOPE.sidePrefixes.includes("a-") ||
+				OPTION_SCOPE.sidePrefixes.includes("b-")
+			)
 				throw new Error("a-/b- 前缀仍在 OPTION_SCOPE —— 应已退役（Task 7）");
 			return "命令表与作用域双侧接线在，前缀已退役";
 		});

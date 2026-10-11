@@ -35,9 +35,9 @@ node scripts/purple-star.ts astrology \
 # 合盘：先排两张盘，再逗号分隔交给 synastry（甲先乙后；本命令不排盘）
 node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json > /tmp/a.json
 node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json
-# 古籍原文检索与星曜释义
-node scripts/purple-star.ts classics --search 机月同梁
-node scripts/purple-star.ts stars --search 紫微
+# 知识检索四域合一（--source：books 古籍默认 / stars 星曜 / tianji 天纪 / oracle 断语）
+node scripts/purple-star.ts knowledge --search 机月同梁
+node scripts/purple-star.ts knowledge --source stars --search 紫微
 
 node scripts/purple-star.ts help             # 总览（man 八节结构）
 node scripts/purple-star.ts astrology --help # 每命令（归属参数子集）
@@ -70,33 +70,39 @@ npm run typecheck
     ├── purple-star.ts              引导层：定位内核根 → 注册 TS 钩子 → 启动自检 → 分发命令
     ├── boot-hooks.ts               引导**机制**（内核根定位 / 解析钩子 / 动态加载），CLI 与 test/ 共用
     │                               只 import node: 内置 —— 故可在钩子注册前被静态 import
-    ├── cli/args.ts                 参数面：声明表 OPTION_GROUPS + OPTION_ALIASES + 校验 +
-    │                               解析（util.parseArgs tokens 底座 + 薄适配层，cac 已退役）
+    ├── cli/args-table.ts           参数声明表：OPTION_GROUPS + OPTION_ALIASES + 全集派生
+    │                               （「有哪些参数」的唯一来源）
+    ├── cli/args.ts                 参数解析：校验 + 别名归一 + 判重 + 贪婪取值
+    │                               （util.parseArgs tokens 底座 + 薄适配层，cac 已退役）
     ├── cli/option-scope.ts         参数作用域：本 skill 认声明表里的哪些参数
     ├── cli/birth-info.ts           出生信息（真太阳时 / 农历 / 城市容错 / 省名回退）
     ├── cli/birth-info-defs.ts      出生信息层的声明：接口与常量
     ├── cli/render.ts               命盘渲染（宫位 / 星曜 / 四化 / 宫名口径）
     ├── cli/fortune.ts              运限专题（流年/大限/小限/信息/格局/四化/聚焦各节）
     ├── cli/astrology.ts            排盘分析一条命令（四命令合一：概览默认 + 功能参数分发）
-    ├── cli/classics.ts             古籍检索命令
+    ├── cli/knowledge/              知识检索命令（四域合一：books 古籍 / stars 星曜 /
+    │                               tianji 天纪 / oracle 断语；原 classics 改名）
     ├── cli/synastry.ts             合盘命令（--charts 输入）
-    ├── cli/stars.ts                星曜释义命令
     ├── cli/config.ts               --config / --template（JSON 配置输入）
-    ├── cli/help.ts                 help 渲染（man 七节 + 命令→参数归属表）
+    ├── cli/command-meta.ts         命令名与文案轻模块（help 路径专用，禁 import 命令实现）
+    ├── cli/out.ts                  --out 落盘通道（与 stdout 产物逐字对拍）
+    ├── cli/report.ts               --report 全盘主题报告的文档装配层
+    ├── cli/help.ts                 help 渲染（man 七节/总览八节 + 命令→参数归属表）
     ├── cli/commands.ts             命令注册薄层（COMMAND_TABLE + COMMAND_DESC + COMMAND_HELP）
     ├── cli/selftest.ts             回归断言（三段汇总，项数由首行自报）
     ├── cli/selftest-kit.ts         selftest 断言共用 harness（Assertion / eq / ok）——selftest 与
-    │                               classics / synastry 两个断言组共用
+    │                               corpus / synastry 两个断言组共用
     ├── ziwei/                      排盘内核：algorithm（iztro 主流程）/ patterns（格局层）/
     │                               mutagen（四化）/ analysis（主题论断数据库 v3）/ constants /
     │                               cities / palace-relations / annotations / types
-    ├── classics/                   古籍内核：data/（骨髓赋·全集·全书）+ index（检索纯函数）
+    ├── corpus/                     古籍与文献语料内核：data/（三部古籍 + 引文核对表 +
+    │                               格局判词）+ tianji/（天纪判语）+ index（检索纯函数）
     │                               + selftest-asserts（断言组，主 selftest 汇总执行）
     └── synastry/                   合盘内核：synastry-knowledge（断语库）/ chart-view（JSON 消费方
                                     契约）/ selftest-asserts（断言组）
 ```
 
-`cli/` 之间是**单向依赖**，没有环：`args` / `render`（`fmtDate` 的定义处）← `birth-info` ← 各命令 → `selftest`。要动哪一层，往上找它的消费者即可。
+`cli/` 之间是**单向依赖**，没有环：`args-table` / `args` / `render`（`fmtDate` 的定义处）← `birth-info` ← 各命令 → `selftest`；`command-meta` 与 `out` 是引导层按需加载的轻叶子。要动哪一层，往上找它的消费者即可。
 
 ### 为什么能直接跑 TypeScript（没有构建步骤）
 
@@ -110,7 +116,7 @@ npm run typecheck
 
 仓库里的 `tsconfig.json` 只服务于**类型检查**（`npx tsc --noEmit`），不参与运行：`paths` 的 `@/*` 映到 `./scripts/*`（与 CLI 运行期的别名同义）；`include` 是 `scripts/**`、`test/**`、`tools/**`。
 
-**`@/` 只在 `cli/` 与引导层用**；内核 `ziwei/*.ts` 内部一律相对路径 import（运行期 `@/` 解析到「当前正在跑的 CLI 的内核根」，两者只在源里重合）。`classics/` 与 `synastry/` 的内部 import 用省扩展名相对路径（`./data/quanshu`）与 `@/`（引排盘内核时），统一走同一套钩子。
+**`@/` 只在 `cli/` 与引导层用**；内核 `ziwei/*.ts` 内部一律相对路径 import（运行期 `@/` 解析到「当前正在跑的 CLI 的内核根」，两者只在源里重合）。`corpus/` 与 `synastry/` 的内部 import 用省扩展名相对路径（`./data/quanshu`）与 `@/`（引排盘内核时），统一走同一套钩子。
 
 ### CLI 如何既自举又拿到内核类型
 
@@ -127,13 +133,13 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 ### 三处启动期防御
 
-1. **`LOADED` 全量导出自检**：每个模块 load 一次存 namespace、收进 `LOADED` 表（含 classics/synastry 的入口模块），自检对**全部**导出做非空扫描（不再有手抄清单）——缺任何一个直接退出，**宁可启动失败，也不静默产出错盘**。
+1. **`LOADED` 全量导出自检**：主流程模块 load 一次存 namespace、收进 `LOADED` 表（含 corpus/synastry 的入口模块；help 轻路径的 command-meta / help 按需加载、不经此表），自检对**全部**导出做非空扫描（不再有手抄清单）——缺任何一个直接退出，**宁可启动失败，也不静默产出错盘**。
 2. **`selftest`**：CLI 自带的回归断言（三段汇总），整体执行。
 3. **`npm test`**：`test/` 下的基准回归（七层），失效的基准是负债而非保障——见 [test/README.md](test/README.md) 的「升级 iztro 的流程」。
 
 ## 体系口径：文墨排盘 + 倪师论断（混合口径）
 
-本项目的排盘与运限四化以文墨天机为准（亮度走文墨 SB 表覆写、运限四化含大限宫干层），论断框架仍严格按倪海夏《天纪》三合派。以下飞星派工具**继续禁用**，不得使用：
+本项目的排盘与运限四化以文墨天机为准（亮度走文墨 SB 表覆写、运限四化含大限宫干层），论断框架仍严格按倪海厦《天纪》三合派。以下飞星派工具**继续禁用**，不得使用：
 
 - ❌ **宫干自化** —— `algorithm.ts` 不填充 `Palace.selfMutagen`
 - ❌ **来因宫**
@@ -148,7 +154,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 1. **排盘内核**（`ziwei/` + `cli/` + 引导层）—— 排盘逻辑只改这里。
 2. **合盘断语**（`synastry/synastry-knowledge.ts`）—— 就地改。
-3. **古籍原文**（`classics/data/`）—— 就地改。
+3. **古籍原文**（`corpus/data/`）—— 就地改。
 
 合盘不排盘：`synastry --charts` 消费 `astrology --json` 的产物（`synastry/chart-view.ts` 自带消费方契约，只声明它真读到的字段子集）。
 
@@ -159,7 +165,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 | skill 自包含 + `type: module`       | `test/repo.test.ts`      | 根 `SKILL.md` / `package.json` / CLI 入口齐备      |
 | `SKILL.md` ↔ `references/` 双向一致 | `test/repo.test.ts`      | 骨架指了路、文件真的在                             |
 | 解析钩子候选序                      | `test/repo.test.ts`      | `boot-hooks.ts` 那对候选序（`.ts` 优先于同名目录） |
-| 引文守卫                            | `test/citations.test.ts` | 扫 `scripts/` 全树，比对 `ziwei/annotations.ts`    |
+| 引文守卫                            | `test/citations.test.ts` | 扫 `scripts/` 全树，比对 `corpus/data/annotations.ts` |
 
 `ALL_SKILLS` 由磁盘推导（判据：根下有 `SKILL.md`），单 skill 形态下只有一项；`CHART_LIKE` 手写——「排不排盘」是语义。
 
@@ -179,14 +185,14 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 **计数类事实一律不写死**：`selftest` 的断言数、`npm test` 的项数、测试层数——能自报的自报、能派生的派生、其余由断言盯双向一致。
 
-**参数面单点声明**：`cli/args.ts` 的 `OPTION_GROUPS` 是「有哪些参数」的唯一来源——help 的参数段据它派生、`parseArgs` 据它拒绝未知参数、`OPTION_ALIASES` 声明拼音别名（归一到英文主名）、`selftest` 断言 `SKILL.md` 提到的参数都有声明。拼错参数（`--ctiy 喀什`）报错并给最近邻建议，不再静默落回默认经度。
+**参数面单点声明**：`cli/args-table.ts` 的 `OPTION_GROUPS` 是「有哪些参数」的唯一来源（`args.ts` 解析器消费它）——help 的参数段据它派生、`parseArgs` 据它拒绝未知参数、`OPTION_ALIASES` 声明拼音别名（归一到英文主名）、`selftest` 断言 `SKILL.md` 提到的参数都有声明。拼错参数（`--ctiy 喀什`）报错并给最近邻建议，不再静默落回默认经度。
 
-**解析引擎**（2026-09-30 重写）：`util.parseArgs` `tokens` 模式做**底座**（token 化交给标准库），薄适配层做四件事——声明表校验（未知参数中文报错）、别名归一、判重（重复参数报错，旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值；Node 版本敏感，selftest 钉死）。`classics` / `synastry` 等命令的位置参数语义各自独立（检索词 / `--charts` 路径），`astrology` 的位置参数按形态归类（日期/时刻/性别/城市）。⚠️ `--charts` 与前缀退役后，`option-scope.ts` 的 `sidePrefixes` / `prefixedCommands` 是空表（概念保留，机制不可达）；作用域清单本身也已差量化（2026-10-01）：`excluded` 空表即默认全集、显式声明排除项，`OPTION_NAMES` 由 `args.ts` 从全集按排除项派生。
+**解析引擎**（2026-09-30 重写）：`util.parseArgs` `tokens` 模式做**底座**（token 化交给标准库），薄适配层做四件事——声明表校验（未知参数中文报错）、别名归一、判重（重复参数报错，旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值；Node 版本敏感，selftest 钉死）。`knowledge` / `synastry` 等命令的位置参数语义各自独立（检索词 / `--charts` 路径），`astrology` 的位置参数按形态归类（日期/时刻/性别/城市）。⚠️ `--charts` 与前缀退役后，`option-scope.ts` 的 `sidePrefixes` / `prefixedCommands` 是空表（概念保留，机制不可达）；作用域清单本身也已差量化（2026-10-01）：`excluded` 空表即默认全集、显式声明排除项，`OPTION_NAMES` 由 `args.ts` 从全集按排除项派生。
 
 三条约束，改动时别踩：
 
 - **键名是 camelCase**（`--late-zi` → `lateZi`）：换算只在 `camelKey()` 一处；`OPTION_GROUPS` 里的 `name` 一律写 kebab。
-- **不能给参数设「默认值」**：未给出的键根本不出现，调用方靠 `undefined` 判空取默认（`cmdClassics` 的 `--limit` 就靠它给默认 15）。
+- **不能给参数设「默认值」**：未给出的键根本不出现，调用方靠 `undefined` 判空取默认（`cmdKnowledge` 的 `--limit` 就靠它给默认 15）。
 - **归属表是 help 视图**：`help.ts` 的 `OPTION_OWNERSHIP`（命令 → 参数子集）只过滤 help 展示，不做硬校验——作用域仍是 skill 级。
 
 CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：

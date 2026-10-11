@@ -14,14 +14,18 @@ import {
 	palaceAtBranch,
 	readAnalyzeJson,
 } from "@/synastry/chart-view";
-import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "@/synastry/synastry-knowledge";
+import {
+	STAR_IN_FUQI_GU,
+	SIHUA_IN_FUQI_GU,
+	MARRIAGE_STARS_BRIEF,
+} from "@/synastry/synastry-knowledge";
 
 /**
  * @param args - CLI 参数表；`--charts a.json,b.json` 逗号分隔恰好两份 `astrology --json` 的输出（甲先乙后）
  * @returns 已渲染好的文本；带 `--json` 时返回两方命盘摘要的原始 JSON 字符串
  *
  * @remarks
- * 遵循倪海夏的双宫联参口径：看婚姻不能只看夫妻宫，必须同时看福德宫。输出两方命宫 / 夫妻宫 /
+ * 遵循倪海厦的双宫联参口径：看婚姻不能只看夫妻宫，必须同时看福德宫。输出两方命宫 / 夫妻宫 /
  * 福德宫主星、天作之合对应关系判定、夫妻宫断语（空宫借对宫主星论）、生年四化入夫妻宫、
  * 夫妻宫桃花孤克星；方法论与评分标准**不在本命令输出里**，末尾留一行指针指向
  * `references/synastry-guide.md`（恒定静态文本，按需读取）。
@@ -48,7 +52,10 @@ export function cmdSynastry(args: CliArgs): string {
 				`     node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`
 		);
 	}
-	const files = args.charts.split(",").map(f => f.trim()).filter(Boolean);
+	const files = args.charts
+		.split(",")
+		.map(f => f.trim())
+		.filter(Boolean);
 	if (files.length !== 2)
 		throw new Error(
 			`--charts 应给两个文件路径（甲,乙，逗号分隔），实得 ${files.length} 个：${args.charts}`
@@ -86,7 +93,7 @@ export function cmdSynastry(args: CliArgs): string {
 	}
 
 	const out: string[] = [];
-	out.push("【合盘 · 双宫联参】倪海夏：看婚姻不能只看夫妻宫，必须同时看福德宫");
+	out.push("【合盘 · 双宫联参】倪海厦：看婚姻不能只看夫妻宫，必须同时看福德宫");
 	out.push("");
 	out.push(
 		`甲方${biA.name ? ` ${biA.name}` : ""} ${fmtDate(biA)} ${A.basis.note} · ${genderCN(biA.gender)} · ${ca.fiveElementsClassName}`

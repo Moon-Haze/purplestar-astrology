@@ -223,7 +223,7 @@ export function parseWuxingJu(name: string): number {
  * → 补借对宫字段。命理逻辑一律不在此处重复实现。
  *
  * **大限四化已主动下线**：不再生成 `decadals[].mutagen` / `stemIndex`（飞星派口径）。
- * 体系立场见 `.claude/CLAUDE.md` 与 `SKILL.md`。
+ * 体系立场见仓库根 `CLAUDE.md` 与 `SKILL.md` 的「体系口径」章节。
  *
  * @example
  * ```ts

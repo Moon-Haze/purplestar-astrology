@@ -193,7 +193,7 @@ async function loadCore() {
 	const constantsNs = await load<ConstantsModule>("@/ziwei/constants");
 	const citiesNs = await load<CitiesModule>("@/ziwei/cities");
 	const lunarNs = await load<typeof import("lunar-typescript")>("lunar-typescript");
-	// classics / synastry 的入口模块：分别对应两条命令的内核
+	// corpus / synastry 的入口模块：分别对应知识检索与合盘两条命令的内核
 	const classicsNs = await load<ClassicsModule>("@/corpus");
 	const chartViewNs = await load<ChartViewModule>("@/synastry/chart-view");
 

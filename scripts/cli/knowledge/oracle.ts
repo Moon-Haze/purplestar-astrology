@@ -1,8 +1,8 @@
 /**
- * classics 的 **oracle 域**：断语手册检索。
+ * knowledge 的 **oracle 域**：断语手册检索。
  *
- * 由 `classics --source oracle` 进入（原独立 `oracle` 命令已并入，旧命令名不保留）。
- * 数据（`ziwei/analysis/manual/`，4.4MB 分类断语）在函数体内动态 import 懒加载。
+ * 由 `knowledge --source oracle` 进入（原独立 `oracle` 命令已并入，旧命令名不保留）。
+ * 数据（`corpus/data/manual/`，4.4MB 分类断语）在函数体内动态 import 懒加载。
  *
  * 三形态：裸（列 13 主题）/ 主题（14 星概览）/ 主题+星（分类断语全展开）。
  */
@@ -10,7 +10,7 @@
 import type { CliArgs } from "../args";
 import { TOPIC_LABEL, type TopicKey } from "@/ziwei/analysis";
 
-type OracleStar = import("@/ziwei/analysis/manual/types").OracleStar;
+type OracleStar = import("@/corpus/data/manual/types").OracleStar;
 
 /** 手册尾注：数据口径说明（每次查询输出都带，防止把快照断语当排盘结论）。 */
 const ORACLE_FOOTER = [
@@ -74,7 +74,7 @@ export async function renderOracle(args: CliArgs): Promise<string> {
 	if (typeof args.topic === "boolean")
 		throw new Error("--topic 需要一个主题 key（如 --topic career），或直接写位置参数。");
 
-	const { loadTopicOracle } = await import("@/ziwei/analysis/manual/index.ts");
+	const { loadTopicOracle } = await import("@/corpus/data/manual/index.ts");
 
 	// 无主题：列 13 主题与用法
 	if (!topicRaw) {
@@ -82,9 +82,9 @@ export async function renderOracle(args: CliArgs): Promise<string> {
 			"断语手册检索（13 主题 × 十四主星，分析数据库预计算快照）：",
 			...Object.keys(TOPIC_LABEL).map(k => `  ${k.padEnd(11)} ${TOPIC_LABEL[k as TopicKey]}`),
 			"",
-			"用法：classics --source oracle [--topic <主题>] [--star <星名>]",
-			"  classics --source oracle --topic career          # 事业主题 14 主星概览",
-			"  classics --source oracle --topic career --star 七杀  # 七杀的事业分类断语全展开",
+			"用法：knowledge --source oracle [--topic <主题>] [--star <星名>]",
+			"  knowledge --source oracle --topic career          # 事业主题 14 主星概览",
+			"  knowledge --source oracle --topic career --star 七杀  # 七杀的事业分类断语全展开",
 		].join("\n");
 	}
 	const topic = topicRaw as TopicKey;
@@ -111,7 +111,7 @@ export async function renderOracle(args: CliArgs): Promise<string> {
 			return `  ${star}：格局 ${o.patterns.length} · 断语 ${total} 条`;
 		});
 		return [
-			`【断语手册 · ${TOPIC_LABEL[topic]}】十四主星概览（查单星：classics --source oracle --topic ${topic} --star <星名>）`,
+			`【断语手册 · ${TOPIC_LABEL[topic]}】十四主星概览（查单星：knowledge --source oracle --topic ${topic} --star <星名>）`,
 			"",
 			...rows,
 			"",

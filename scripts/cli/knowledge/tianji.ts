@@ -1,8 +1,8 @@
 /**
- * classics 的 **tianji 域**：天纪判语检索。
+ * knowledge 的 **tianji 域**：天纪判语检索。
  *
  * 由 `knowledge --source tianji` 进入。数据（`corpus/data/tianji.ts`，392KB、1125 条）
- * 在函数体内动态 import 懒加载 —— 本模块被 classics.ts 静态 import，不能让 CLI 主链路
+ * 在函数体内动态 import 懒加载 —— 本模块被 `index.ts` 静态 import，不能让 CLI 主链路
  * 吃这份语料。
  *
  * 每条判语带 [part §section @时:分:秒] 溯源与 B 站回放直链；语料 CC BY-NC-SA 4.0。
@@ -30,7 +30,7 @@ const TIANJI_FOOTER = [
 export async function renderTianji(args: CliArgs): Promise<string> {
 	if (typeof args.search === "boolean")
 		throw new Error(
-			"--search 需要一个检索词（如 --search 半空折翅），也可直接写位置参数：classics --source tianji 半空折翅。"
+			"--search 需要一个检索词（如 --search 半空折翅），也可直接写位置参数：knowledge --source tianji 半空折翅。"
 		);
 	if (typeof args.limit === "boolean")
 		throw new Error("--limit 需要一个正整数（如 --limit 5）。");
@@ -64,7 +64,7 @@ export async function renderTianji(args: CliArgs): Promise<string> {
 				([b, n]) => `  ${b.padEnd(12)} ${TIANJI_BOOK_NAMES[b] ?? b}：${n} 条`
 			),
 			"",
-			"用法：classics --source tianji <关键词> [--book 册名] [--limit N]",
+			"用法：knowledge --source tianji <关键词> [--book 册名] [--limit N]",
 			`来源：${TIANJI_SOURCE.project}（${TIANJI_SOURCE.license}）`,
 		].join("\n");
 	}

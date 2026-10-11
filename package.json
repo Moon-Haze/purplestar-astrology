@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"private": true,
 	"type": "module",
-	"description": "紫微斗数 skill 仓库（倪海夏《天纪》三合派）。排盘内核只有一处实现，在 scripts/（仓库根 = skill 根）；classics 与 synastry 的搬入见实施计划。",
+	"description": "紫微斗数 skill 仓库（倪海厦《天纪》三合派）。",
 	"scripts": {
 		"test": "node test/lib/run.ts",
 		"test:corpus": "tsx test/tools/full-corpus.ts",

@@ -176,7 +176,7 @@ export async function runGradeRegistry({
 				throw new Error(`grades.ts 的「${e.quote}」档位非法：${e.grade}`);
 		}
 		const src = readFileSync(resolve(ctx.root, "ziwei", "analysis", "data.ts"), "utf8");
-		// 引句标记（与评估报告口径一致，按实测扩展）：「倪师 / 倪海夏」锚点
+		// 引句标记（与评估报告口径一致，按实测扩展）：「倪师 / 倪海厦」锚点
 		// + 少量过渡（星名、出处「天纪 03」、动词「说·言·明言·将…列为」等）+「」或英文
 		// 双引号内 ≥2 字引句；标记与引句须同在一行，注释行不参与；(?<!非) 排除「一说非
 		// 倪师原话」散注里的倪师字样 —— 那一处恰恰声明**不是**倪师引句。
@@ -184,7 +184,7 @@ export async function runGradeRegistry({
 		// 满 14 上限，文案增一字即漏抽；排除集已含句读引号，放宽的误抽会先触发下方
 		// missing 变红，安全。
 		const QUOTE_RE =
-			/((?<!非)倪师|倪海夏)[^「」"“”‘’；。—\n]{0,18}[：:]?[「"]([^「」"\n]{2,})[」"]/g;
+			/((?<!非)倪师|倪海厦)[^「」"“”‘’；。—\n]{0,18}[：:]?[「"]([^「」"\n]{2,})[」"]/g;
 		const marks = src
 			.split("\n")
 			.filter(l => !/^\s*(\/\/|\/\*|\*)/.test(l))

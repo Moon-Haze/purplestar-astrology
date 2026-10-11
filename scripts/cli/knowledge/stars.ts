@@ -1,7 +1,7 @@
 /**
- * classics 的 **stars 域**：星曜释义。
+ * knowledge 的 **stars 域**：星曜释义。
  *
- * 由 `classics --source stars` 进入（原独立 `stars` 命令已并入，旧命令名不保留）。
+ * 由 `knowledge --source stars` 进入（原独立 `stars` 命令已并入，旧命令名不保留）。
  * 数据是内核轻表（`STAR_DESCRIPTIONS`），静态 import 不影响启动。
  */
 
@@ -15,7 +15,7 @@ export function renderStars(args: CliArgs): string {
 	// 否则 String(true) = "true" 被当成星名，静默产出错结果。
 	if (typeof args.search === "boolean")
 		throw new Error(
-			"--search 需要一个检索词（如 --search 紫微），也可直接写位置参数：classics --source stars 紫微。"
+			"--search 需要一个检索词（如 --search 紫微），也可直接写位置参数：knowledge --source stars 紫微。"
 		);
 	// 位置参数与 --search 等价（与 books 域同款回退）。
 	const q = String(args.search ?? args._.join(" "));

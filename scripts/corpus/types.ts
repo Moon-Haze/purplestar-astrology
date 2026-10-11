@@ -12,7 +12,7 @@
  * 古籍的一个段落 —— 检索与展示的最小单位。
  *
  * @remarks
- * 段落是 `classics --search` 的命中单位：命中列表按段落计数，不是按词出现次数。
+ * 段落是 `knowledge --search`（`--source books`，默认域）的命中单位：命中列表按段落计数，不是按词出现次数。
  */
 export interface Paragraph {
 	/** 段落唯一 id（用于锚点跳转） */
