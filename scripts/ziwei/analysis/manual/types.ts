@@ -1,6 +1,6 @@
 /**
  * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。
- * 结构定义与 {@link ../../../../tools/db/export-manual.ts | export-manual} 的 classifyOracle 对应：
+ * 结构定义与 `tools/db/export-manual.ts` 的 classifyOracle 对应：
  * 字段序即渲染序，各数组内行保首现序去重（跨盘变体保留）。
  */
 export interface SanFangEntry {

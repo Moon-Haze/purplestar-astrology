@@ -1,12 +1,12 @@
 /**
- * 断语手册数据（export/manual/）的查询入口 —— 按主题懒加载。
+ * 断语手册数据（analysis/manual/）的查询入口 —— 按主题懒加载。
  *
- * ⚠️ 本目录是**生成数据**（仓库根 export/，不在内核 import 链上）：CLI 主链路不
+ * ⚠️ 本目录是**生成数据**（内核域 analysis/manual，不在 analysis/index.ts 公开面）：CLI 主链路不
  * import 这些文件（零启动开销），需要消费时经本入口动态引入。
  *
  * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。
  */
-import type { TopicKey } from "../../scripts/ziwei/analysis/data";
+import type { TopicKey } from "../data";
 import type { OracleStar } from "./types.ts";
 
 export type { OracleStar, SanFangEntry, SihuaEntry } from "./types.ts";

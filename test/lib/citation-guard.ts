@@ -30,12 +30,15 @@
  * 东西会拦。扫全树让「新增 / 拆分 / 移动的带引文模块」自动纳入覆盖，不再依赖有人记得
  * 改清单。
  *
- * ## 唯一被排除的文件
+ * ## 被排除的两类对象
  *
  * `annotations.ts` 自己。它存的就是 suspect 引文的原文，扫进去必然自我命中（实测 11~14 条
  * 误报）。这不是重蹈硬编码清单的覆辙 —— 排除的是唯一一个**语义上不该被扫**的文件
  * （它是核对表，不是被核对的对象）；判断依据是**它声明了 `ANNOTATIONS`**，而不是它的
  * 文件名，故改名或拆分后如果仍导出这张表，仍会被正确排除。见 {@link isChecklistSource}。
+ *
+ * 另一类是 `ziwei/analysis/manual/`（生成快照目录，见 {@link collectTsFiles}）——
+ * 内容是内核表的渲染镜像而非手写断语，同样「不是被核对的对象」。
  *
  * @packageDocumentation
  */
@@ -94,6 +97,11 @@ function isChecklistSource(source: string): boolean {
  * @remarks
  * 跳过 `node_modules` 与点开头的目录：前者不该出现在内核根下（依赖装在 skill 根），
  * 后者是工具目录，都不属于被核对的源码。
+ *
+ * 还跳过 `ziwei/analysis/manual/`：那里是**生成快照**（`tools/db/export-manual.ts`
+ * 把样本库的主题文本转印成 TS 数据），全部内容是内核数据表的渲染镜像，不含任何手写
+ * 断语 —— 源头（`data.ts` 等）本就在扫描范围内。镜像可能带着旧版库的历史引文形态
+ * （库落后于内核清修时），那是 db 版本问题、重建即消，不是新写的未核实引文。
  */
 function collectTsFiles(root: string, dir = ""): string[] {
 	const out: string[] = [];
@@ -101,6 +109,7 @@ function collectTsFiles(root: string, dir = ""): string[] {
 		const rel = dir ? `${dir}/${entry.name}` : entry.name;
 		if (entry.isDirectory()) {
 			if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+			if (entry.name === "manual" && dir === "ziwei/analysis") continue;
 			out.push(...collectTsFiles(root, rel));
 		} else if (entry.name.endsWith(".ts")) {
 			out.push(rel);
