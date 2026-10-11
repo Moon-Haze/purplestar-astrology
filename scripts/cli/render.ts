@@ -1,14 +1,17 @@
 /**
  * 命盘渲染层 —— 把排盘内核输出的结构化数据，渲染成给模型读的文本片段。
  *
- * 拆自 purple-star.ts。只依赖 `@/ziwei/` 内核，不依赖本目录的其他模块，
- * 因此处于依赖图底层（args / render 并列底层）。
+ * 拆自 purple-star.ts。只依赖 `@/ziwei/` 内核，不依赖本目录的其他模块 —— 唯一例外是
+ * `import type { CaliberBasis } from "./birth-info-defs"`（候选 6 的 basis 签名）：
+ * 类型 import 运行时被完全擦除，不形成运行时边，birth-info → render（fmtDate）的
+ * 依赖方向不破。故本文件仍处依赖图底层（args / render 并列底层）。
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故这里可以放心用
  *    静态 import 引内核与 `@/` 别名。但**不要**反过来让 purple-star.ts 静态引本文件。
  */
 
 import type { BirthInfo, Palace, Star, ZiweiChart, Mutagen } from "@/ziwei/types";
+import type { CaliberBasis } from "./birth-info-defs";
 import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/ziwei/constants";
 import { surroundBranches } from "@/ziwei/palace-relations";
 import { generateChart } from "@/ziwei/algorithm";
@@ -105,16 +108,18 @@ export function mustPalace(chart: ZiweiChart, palaceName: string): Palace {
 /**
  * 出生地解析提示（容错命中 / 省份近似 / 未给地点，三种都需让用户知道）。
  *
- * @param lngNote - 出生地解析说明；无需提示时为空串（如 `--lng` 直给、或 `--city` 精确命中且无同名候选）
- * @param lngAmbiguous - 同名候选城市的 `"名字(经度)"` 列表；无歧义时为 `null`
+ * @param basis - 口径载体（只读 `lngNote` / `lngAmbiguous` 两字段）—— 整包传入，
+ *   调用点不再逐字段手拆（候选 6）
  * @returns 待追加进输出数组的若干行，有内容时末尾多一个空行作分隔
  */
-export function birthplaceSection(lngNote: string, lngAmbiguous: string[] | null): string[] {
+export function birthplaceSection(
+	basis: Pick<CaliberBasis, "lngNote" | "lngAmbiguous">
+): string[] {
 	const out: string[] = [];
-	if (lngNote) out.push(`【出生地解析】${lngNote}`);
-	if (lngAmbiguous) {
+	if (basis.lngNote) out.push(`【出生地解析】${basis.lngNote}`);
+	if (basis.lngAmbiguous) {
 		out.push(
-			`  ⚠️ 存在同名候选：${lngAmbiguous.join("、")} —— 已取最短名，如有误请直接用 --lng 指定经度`
+			`  ⚠️ 存在同名候选：${basis.lngAmbiguous.join("、")} —— 已取最短名，如有误请直接用 --lng 指定经度`
 		);
 	}
 	if (out.length) out.push("");
@@ -294,8 +299,7 @@ function mingMajorBrief(c: ZiweiChart): string {
  *
  * @param chart - 本次实际排出的盘
  * @param info - 出生信息；重排对照盘时只改 `timeIndex`，其余照用
- * @param isLateZi - 本次是否真的按晚子时口径（即 `timeIndex === 12`）
- * @param lateZiCandidate - 校正后的真太阳时是否落在 23:00–23:59
+ * @param basis - 口径载体（只读 `isLateZi` 与 `lateZiCandidate` 两字段）—— 整包传入（候选 6）
  * @returns 待追加进输出数组的若干行；命中任一口径时末尾带一个空行作分隔
  *
  * @remarks
@@ -309,11 +313,10 @@ function mingMajorBrief(c: ZiweiChart): string {
 export function lateZiSection(
 	chart: ZiweiChart,
 	info: BirthInfo,
-	isLateZi: boolean,
-	lateZiCandidate: boolean
+	basis: Pick<CaliberBasis, "isLateZi" | "lateZiCandidate">
 ): string[] {
 	const out: string[] = [];
-	if (isLateZi) {
+	if (basis.isLateZi) {
 		out.push("【晚子时口径】");
 		out.push("  本次按【晚子时·算次日】排盘（--late-zi / --branch 12）。");
 		out.push(
@@ -326,7 +329,7 @@ export function lateZiSection(
 		out.push("");
 		return out;
 	}
-	if (!lateZiCandidate) return out;
+	if (!basis.lateZiCandidate) return out;
 	const alt = generateChart({ ...info, timeIndex: 12 });
 	out.push("【⚠️ 晚子时口径提醒】");
 	out.push(

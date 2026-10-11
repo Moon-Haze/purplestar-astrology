@@ -124,3 +124,67 @@ export interface BirthInfoResult {
 	/** 本次排盘是否真的按晚子时口径（timeIndex === 12） */
 	isLateZi: boolean;
 }
+
+/**
+ * 口径提示的**单一搬运载体**（候选 6）—— birthplaceSection / lateZiSection /
+ * infoSection / buildReport / buildAnalyzeJson 消费的字段打成一包。
+ *
+ * @remarks
+ * 此前这些字段在 astrology.ts 被解构成 8 个局部变量逐个传递，两处 `infoSection`
+ * 的 `{ clockTime: typeof args.time === "string" ? … }` 折算逐字重复 —— 改一处
+ * 漏一处没有任何断言会红。现收成 {@link toBasis} 单点折算 + 整包传递。
+ *
+ * `notes` 用 `readonly`：这是只读快照，消费方（JSON 序列化 / 渲染）都不改它。
+ */
+export interface CaliberBasis {
+	/** 时辰那一条说明（`notes` 的其中一项；infoSection 的 solarNote 来源） */
+	note: string;
+	/** 日期 / 出生地 / 时辰三类说明的合集，已滤掉空串 */
+	notes: readonly string[];
+	/** 本次实际采用的经度（东经为正） */
+	longitude: number;
+	/** 出生地解析提示，精确命中时为空串 */
+	lngNote: string;
+	/** 同名候选城市列表，无歧义时为 null */
+	lngAmbiguous: string[] | null;
+	/** 校正后的真太阳时落在 23:00–23:59 */
+	isLateZi: boolean;
+	/** 本次排盘是否真的按晚子时口径（timeIndex === 12） */
+	lateZiCandidate: boolean;
+	/** args.time 折算的钟表时刻展示串（非字符串给 null）——消灭两处逐字重复 */
+	clockTime: string | null;
+}
+
+/**
+ * {@link buildBirthInfo} 的结果 + 原始 `args.time` → {@link CaliberBasis}。
+ *
+ * @param r - 出生信息解析结果
+ * @param time - 原始 `args.time`（`--time` 的值；未给 / 非字符串 → `clockTime: null`）
+ * @returns 整包口径载体，`clockTime` 在此单点折算
+ */
+export function toBasis(r: BirthInfoResult, time: unknown): CaliberBasis {
+	return {
+		note: r.note,
+		notes: r.notes,
+		longitude: r.longitude,
+		lngNote: r.lngNote,
+		lngAmbiguous: r.lngAmbiguous,
+		isLateZi: r.isLateZi,
+		lateZiCandidate: r.lateZiCandidate,
+		clockTime: typeof time === "string" ? time : null,
+	};
+}
+
+/**
+ * {@link CaliberBasis} → `infoSection` 的 {@link InfoClockOpts}（形状对齐，调用点不再手拼）。
+ *
+ * @remarks
+ * `InfoClockOpts` 本身留在 fortune.ts 不动（render 测试面稳定）；转换只有本函数一处。
+ */
+export function clockOptsFromBasis(b: CaliberBasis): {
+	clockTime: string | null;
+	solarNote: string;
+	longitude: number;
+} {
+	return { clockTime: b.clockTime, solarNote: b.note, longitude: b.longitude };
+}

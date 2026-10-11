@@ -16,6 +16,7 @@ import {
 } from "./args-table";
 import { applyConfig, renderTemplate } from "./config";
 import { buildBirthInfo } from "./birth-info";
+import { clockOptsFromBasis, toBasis } from "./birth-info-defs";
 import {
 	birthplaceSection,
 	fmtDate,
@@ -174,8 +175,11 @@ export function buildAnalyzeJson(input: {
 	liuRiDay?: number | null;
 	/** 时支 0-12；`null`/`undefined` = 不算流时（须配 liuRiDay） */
 	liuShiHour?: number | null;
-	/** 排盘依据（日期换算 / 出生地解析 / 时辰校正的说明），原样进 `basis` 键 */
-	basis: { note: string; notes: string[]; lateZiCandidate: boolean; isLateZi: boolean };
+	/**
+	 * 排盘依据（日期换算 / 出生地解析 / 时辰校正的说明），原样进 `basis` 键。
+	 * 传整包 `CaliberBasis`（结构超集，变量传参无 excess 检查；JSON 只出四键，契约冻结）
+	 */
+	basis: { note: string; notes: readonly string[]; lateZiCandidate: boolean; isLateZi: boolean };
 }): string {
 	const { chart, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, basis } = input;
 	// 派生收进实现内部（caller 只给语义参数，_interface_ 上不存在「传错组合」的态空间）：
@@ -270,7 +274,15 @@ export function buildAnalyzeJson(input: {
 			// 「这张盘是怎么来的」，下游（合盘 skill）据此复述真太阳时与晚子时提示，
 			// 而不必自己重做一遍出生信息解析。
 			// 键名刻意不叫 trueSolar —— notes 里还含农历换算与出生地解析，与真太阳时无关。
-			basis,
+			// ⚠️ 显式四键是**冻结契约**（消费方 chart-view.ts 只声明这四键）：调用方
+			// 传整包 CaliberBasis 时整包序列化会多出 longitude/lngNote/clockTime 等键 ——
+			// 类型的「结构超集无 excess 检查」拦不住运行时，键集在此逐键声明。
+			basis: {
+				note: basis.note,
+				notes: basis.notes,
+				lateZiCandidate: basis.lateZiCandidate,
+				isLateZi: basis.isLateZi,
+			},
 		},
 		null,
 		2
@@ -363,8 +375,11 @@ export function cmdAstrology(args: CliArgs) {
 		BIRTH_KEYS.every(k => (args as Record<string, unknown>)[k] === undefined) &&
 		!INTENT_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
 	if (usingSample) args = { ...args, ...SAMPLE_BIRTH, info: true };
-	const { info, note, notes, longitude, lateZiCandidate, isLateZi, lngNote, lngAmbiguous } =
-		buildBirthInfo(args);
+	// 口径字段整包收进 basis（候选 6）：8 个局部变量逐个传递改为一包传递，
+	// clockTime 折算由 toBasis 单点完成（此前两处 infoSection 各自逐字重复）。
+	const built = buildBirthInfo(args);
+	const basis = toBasis(built, args.time);
+	const { info } = built;
 	const chart = generateChart(info);
 
 	// 生年四化的年干必须取**农历年干**（chart.lunarInfo.yearStem），与 iztro 落在
@@ -414,11 +429,7 @@ export function cmdAstrology(args: CliArgs) {
 		assertNoShadowedFeatures(args, "--info");
 		return [
 			...(usingSample ? [SAMPLE_HEADER, ""] : []),
-			...infoSection(chart, {
-				clockTime: typeof args.time === "string" ? args.time : null,
-				solarNote: note,
-				longitude,
-			}),
+			...infoSection(chart, clockOptsFromBasis(basis)),
 			// --info 与「无功能参数的概览」同尾：面板后跟运限速览与
 			// 专题指路 —— 两者都是「还没深入」的形态，指路正好；给了具体专题参数的
 			// 输出则不再带这两节（已在深入，指路是噪声）。
@@ -434,13 +445,13 @@ export function cmdAstrology(args: CliArgs) {
 		assertNoShadowedFeatures(args, "--palaces");
 		if (args.json) return JSON.stringify(chart, null, 2);
 		const out = [
-			`命盘  ${info.name ?? ""} ${fmtDate(info)} ${note} · ${genderCN(info.gender)}`,
+			`命盘  ${info.name ?? ""} ${fmtDate(info)} ${basis.note} · ${genderCN(info.gender)}`,
 			`农历：${chart.lunarInfo.lunarYear}年${chart.lunarInfo.isLeapMonth ? "闰" : ""}${chart.lunarInfo.lunarMonth}月${chart.lunarInfo.lunarDay}日 · 年柱${STEMS[chart.lunarInfo.yearStem]}${BRANCHES[chart.lunarInfo.yearBranch]}`,
 			`命宫：${BRANCHES[chart.soulBranch]} · 身宫：${BRANCHES[chart.bodyBranch]} · 五行局：${chart.fiveElementsClassName} · 紫微：${BRANCHES[chart.ziweiPos]}`,
 			"",
 		];
-		out.push(...birthplaceSection(lngNote, lngAmbiguous));
-		out.push(...lateZiSection(chart, info, isLateZi, lateZiCandidate));
+		out.push(...birthplaceSection(basis));
+		out.push(...lateZiSection(chart, info, basis));
 		out.push("─".repeat(56));
 		for (const p2 of chart.palaces) out.push(renderPalace(p2, chart), "");
 		out.push(
@@ -497,7 +508,7 @@ export function cmdAstrology(args: CliArgs) {
 			liuyueMonth: parseMonthlyArg(args) ?? undefined,
 		});
 		return [
-			chartHeader(`【主题论断 · ${TOPIC_LABEL[topic]}】`, info, note),
+			chartHeader(`【主题论断 · ${TOPIC_LABEL[topic]}】`, info, basis.note),
 			"",
 			text,
 			"",
@@ -519,12 +530,7 @@ export function cmdAstrology(args: CliArgs) {
 			throw new Error(
 				"--report 为本命静态口径，不接受 --view（运限视角的单主题论断见 --topic <key> --view daxian|liunian|liuyue）。"
 			);
-		return buildReport(chart, info, {
-			lngNote,
-			lngAmbiguous,
-			isLateZi,
-			lateZiCandidate,
-		});
+		return buildReport(chart, info, basis);
 	}
 
 	if (args.json) {
@@ -536,15 +542,15 @@ export function cmdAstrology(args: CliArgs) {
 			liuYueMonth,
 			liuRiDay,
 			liuShiHour,
-			basis: { note, notes, lateZiCandidate, isLateZi },
+			basis,
 		});
 	}
 
 	// ── 未深入形态的输出基底 ──
 	// 基本信息面板（公历生日 / 姓名 / 命宫 / 紫微落 / 三方四正，见 infoSection）──
 	const out: string[] = [];
-	out.push(...birthplaceSection(lngNote, lngAmbiguous));
-	out.push(...lateZiSection(chart, info, isLateZi, lateZiCandidate));
+	out.push(...birthplaceSection(basis));
+	out.push(...lateZiSection(chart, info, basis));
 	// ── 未深入形态的基底：基本信息面板 + 运限速览 + 专题指路
 	// 三者同进退，只在「无功能参数的概览」输出（--info 与零输入演示态同尾）。
 	// 给了具体专题参数的输出只保留命盘总览与口径提示 + 专题详版 ——
@@ -556,11 +562,7 @@ export function cmdAstrology(args: CliArgs) {
 	if (!deepDive)
 		out.push(
 			"",
-			...infoSection(chart, {
-				clockTime: typeof args.time === "string" ? args.time : null,
-				solarNote: note,
-				longitude,
-			}),
+			...infoSection(chart, clockOptsFromBasis(basis)),
 			"",
 			...overviewSection(chart, liuNianYear)
 		);

@@ -20,6 +20,7 @@ import { detectPatterns } from "@/ziwei/patterns";
 import { getMutagenByStem } from "@/ziwei/mutagen";
 import { BRANCHES, STEMS } from "@/ziwei/constants";
 import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua } from "./render";
+import type { CaliberBasis } from "./birth-info-defs";
 
 /**
  * 报告的 13 个板块及顺序 —— 与 `TOPIC_KEYS` 的存储序不同（那份数序是 parquet 列序，
@@ -88,20 +89,11 @@ function topicCitations(meta: {
  *
  * @param chart - 已排好的命盘
  * @param info - 出生信息（真太阳时校正后的口径）
- * @param basis - 口径三件套：出生地解析（lngNote/lngAmbiguous）与晚子时（isLateZi/
- *   lateZiCandidate），有内容时以引用块附在文档头 —— 口径提示必须随报告走，不能只在
- *   终端概览里出现
+ * @param basis - 口径载体（候选 6：整包 CaliberBasis；内部只读 lngNote /
+ *   lngAmbiguous / isLateZi / lateZiCandidate 四字段），有内容时以引用块附在文档头 ——
+ *   口径提示必须随报告走，不能只在终端概览里出现
  */
-export function buildReport(
-	chart: ZiweiChart,
-	info: BirthInfo,
-	basis: {
-		lngNote: string;
-		lngAmbiguous: string[] | null;
-		isLateZi: boolean;
-		lateZiCandidate: boolean;
-	}
-): string {
+export function buildReport(chart: ZiweiChart, info: BirthInfo, basis: CaliberBasis): string {
 	const yearStem = chart.lunarInfo.yearStem;
 	const native = getMutagenByStem(yearStem);
 	const sihuaLine = locateSihua(chart, native)
@@ -126,8 +118,8 @@ export function buildReport(
 
 	// 口径提示（出生地 / 晚子时）—— 有则随报告，作为引用块紧跟文档头
 	const basisNotes = [
-		...birthplaceSection(basis.lngNote, basis.lngAmbiguous),
-		...lateZiSection(chart, info, basis.isLateZi, basis.lateZiCandidate),
+		...birthplaceSection(basis),
+		...lateZiSection(chart, info, basis),
 	].filter(l => l.trim() !== "");
 	if (basisNotes.length > 0) {
 		header.push("", "> **口径提示**");
