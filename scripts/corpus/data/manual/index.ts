@@ -6,7 +6,7 @@
  *
  * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。
  */
-import type { TopicKey } from "../data";
+import type { TopicKey } from "../../../ziwei/analysis/data";
 import type { OracleStar } from "./types.ts";
 
 export type { OracleStar, SanFangEntry, SihuaEntry } from "./types.ts";

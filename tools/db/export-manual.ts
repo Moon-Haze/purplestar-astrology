@@ -5,7 +5,7 @@
  *   npx tsx tools/db/export-manual.ts topics   # 4 号：13 主题 × 十四主星断语全集（md）
  *   npx tsx tools/db/export-manual.ts combo    # 5 号：主星 × 辅煞同宫频率全表（md）
  *   npx tsx tools/db/export-manual.ts geju     # 格局名目对拍（db 渲染集 vs patterns 现库）
- *   npx tsx tools/db/export-manual.ts code     # 手册整理成 TS 数据，落 scripts/ziwei/analysis/manual/
+ *   npx tsx tools/db/export-manual.ts code     # 手册整理成 TS 数据，落 scripts/corpus/data/manual/
  *   npx tsx tools/db/export-manual.ts all      # 以上全部
  *
  * 数据血缘（重要）：库里的主题文本是**本仓 analysis 内核在 518,400 个设计样本上的
@@ -558,7 +558,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 		" *",
 		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
 		" */",
-		`import type { TopicKey } from "../data";`,
+		`import type { TopicKey } from "../../../ziwei/analysis/data";`,
 		`import type { OracleStar } from "./types.ts";`,
 		"",
 		`export type { OracleStar, SanFangEntry, SihuaEntry } from "./types.ts";`,
