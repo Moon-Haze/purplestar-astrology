@@ -18,18 +18,18 @@ npx tsx tools/db/export-manual.ts all    # 全量重导（topics / combo / geju 
 
 ## code 模式：同一份内容合并进代码
 
-`npx tsx tools/db/export-manual.ts code` 把手册内容整理成 **TS 数据文件**，落到
-`scripts/ziwei/analysis/generated/manual/`（与 md 版同源同生成链）：
+`npx tsx tools/db/export-manual.ts code` 把手册内容整理成 **TS 数据文件**，落到仓库根
+`export/manual/`（与 md 版同源同生成链；不在内核 import 链上，也不在引文守卫的
+扫描根 `scripts/` 内）：
 
 - `<topic>.ts` × 13：`ORACLE: Record<主星, string[]>`（每主题一份，避免单文件数 MB）
 - `combo-frequency.ts`：`COMBO_FREQUENCY: { star, aux, count }[]`（196 组合）
 - `index.ts`：`loadTopicOracle(topic)` 按主题**懒加载**入口
 
-生成物**不在 `analysis/index.ts` 公开面上**——CLI 主链路不 import，零启动开销；
-需要消费时动态引入：
+需要消费时动态引入（CLI 主链路零 import、零启动开销）：
 
 ```ts
-import { loadTopicOracle, COMBO_FREQUENCY } from "@/ziwei/analysis/generated/manual";
+import { loadTopicOracle, COMBO_FREQUENCY } from "../../export/manual/index.ts";
 const oracle = await loadTopicOracle("career"); // 主星 → 断语行
 ```
 

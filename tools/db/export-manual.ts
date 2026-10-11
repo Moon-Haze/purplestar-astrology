@@ -5,7 +5,7 @@
  *   npx tsx tools/db/export-manual.ts topics   # 4 号：13 主题 × 十四主星断语全集（md）
  *   npx tsx tools/db/export-manual.ts combo    # 5 号：主星 × 辅煞同宫频率全表（md）
  *   npx tsx tools/db/export-manual.ts geju     # 格局名目对拍（db 渲染集 vs patterns 现库）
- *   npx tsx tools/db/export-manual.ts code     # 手册整理成 TS 数据，合并进 scripts/（generated/manual/）
+ *   npx tsx tools/db/export-manual.ts code     # 手册整理成 TS 数据，落仓库根 export/manual/
  *   npx tsx tools/db/export-manual.ts all      # 以上全部
  *
  * 数据血缘（重要）：库里的主题文本是**本仓 analysis 内核在 518,400 个设计样本上的
@@ -203,14 +203,14 @@ async function exportCombo(conn: DuckDBConnection): Promise<void> {
 	console.error(`combo-frequency.md：${rows.length} 组合`);
 }
 
-/** 生成 TS 数据文件的输出目录 —— analysis 域内、**不进 index.ts 公开面**（按需懒加载，不碰 CLI 启动链）。 */
-const CODE_DIR = resolve(SKILL_ROOT, "scripts/ziwei/analysis/generated/manual");
+/** 生成 TS 数据文件的输出目录（仓库根 export/manual）——不进内核 import 链（按需懒加载，不碰 CLI 启动），也不在引文守卫的扫描根（scripts/）内。 */
+const CODE_DIR = resolve(SKILL_ROOT, "export/manual");
 
 /** 生成 TS 字符串字面量：JSON.stringify 的双引号形态即合法 TS 字面量（转义齐全）。 */
 const lit = (s: string): string => JSON.stringify(s);
 
 /**
- * `code` 子命令：把手册内容整理成 TS 数据文件合并进代码（scripts/ziwei/analysis/generated/manual/）。
+ * `code` 子命令：把手册内容整理成 TS 数据文件合并进代码（export/manual/）。
  *
  * 形态：每主题一个文件（`<topic>.ts`，`ORACLE: Record<主星, string[]>`）+ 组合频率 +
  * 懒加载索引。生成物带 DO-NOT-EDIT 头与生成命令；文档版（docs/manual/）继续并存 ——
@@ -226,7 +226,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 			" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
 			` * 源：样本库 518,400 设计样本 × analysis 内核（${topic} 主题静态节，动态节不进数据）。`,
 			" * 断语修订：改内核 `scripts/ziwei/analysis/` → `npm run build:db` → 重导本目录。",
-			" * 查询入口：`../manual/index.ts`（按主题懒加载，不在 CLI 主 import 链上）。",
+			" * 查询入口：`export/manual/index.ts`（按主题懒加载，不在内核 import 链上）。",
 			" */",
 			`export const ORACLE: Readonly<Record<string, readonly string[]>> = {`,
 		];
@@ -262,14 +262,14 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 	// 懒加载索引：显式 13 行映射（动态模板 import 在类型层拿不到形状）
 	const indexLines = [
 		"/**",
-		" * 断语手册数据（generated/manual/）的查询入口 —— 按主题懒加载。",
+		" * 断语手册数据（export/manual/）的查询入口 —— 按主题懒加载。",
 		" *",
-		" * ⚠️ 本目录是**生成数据**，不在 `analysis/index.ts` 公开面上：CLI 主链路不 import",
-		" * 这些文件（零启动开销），需要消费时经本入口动态引入。",
+		" * ⚠️ 本目录是**生成数据**（仓库根 export/，不在内核 import 链上）：CLI 主链路不",
+		" * import 这些文件（零启动开销），需要消费时经本入口动态引入。",
 		" *",
 		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
 		" */",
-		`import type { TopicKey } from "../../data";`,
+		`import type { TopicKey } from "../../scripts/ziwei/analysis/data";`,
 		"",
 		`/** 一个主题的断语全集：主星 → 静态断语行（保首现序去重）。 */`,
 		`export type StarTopicOracle = Readonly<Record<string, readonly string[]>>;`,
@@ -296,7 +296,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 	writeFileSync(join(CODE_DIR, "index.ts"), indexLines.join("\n"));
 
 	console.error(
-		`generated/manual/：${TOPIC_KEYS.length} 主题数据 + combo-frequency + index（${combo.length} 组合）`
+		`export/manual/：${TOPIC_KEYS.length} 主题数据 + combo-frequency + index（${combo.length} 组合）`
 	);
 }
 

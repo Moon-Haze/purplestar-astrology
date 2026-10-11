@@ -1,21 +1,21 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2023"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "isolatedModules": true,
-    "forceConsistentCasingInFileNames": true,
-    "types": ["node"],
-    "paths": {
-      "@/*": ["./scripts/*"]
-    }
-  },
-  "include": ["scripts/**/*.ts", "test/**/*.ts", "tools/**/*.ts"],
-  "exclude": ["node_modules", "reference"]
+	"compilerOptions": {
+		"target": "ES2022",
+		"lib": ["ES2023"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"strict": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"isolatedModules": true,
+		"forceConsistentCasingInFileNames": true,
+		"types": ["node"],
+		"paths": {
+			"@/*": ["./scripts/*"]
+		}
+	},
+	"include": ["scripts/**/*.ts", "test/**/*.ts", "tools/**/*.ts", "export/**/*.ts"],
+	"exclude": ["node_modules", "reference"]
 }
