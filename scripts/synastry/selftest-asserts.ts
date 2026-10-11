@@ -9,7 +9,9 @@
  *    后以「`--a-chart` 是未知参数」的形态重新钉死；
  * 3. 两条 SKILL.md 一致性断言换成「合并接线」断言（根 SKILL.md 的重写在 Task 10）。
  *
- * 与 `cli/selftest.ts` 的接口：导出 {@link asserts}，逐条结果由主 selftest 汇总。
+ * 与 `cli/selftest.ts` 的接口：导出 {@link asserts}（收主 selftest 注入的
+ * {@link SelftestDeps} —— call / ctx / ok 与排盘段同一套，不再本地手搓），
+ * 逐条结果由主 selftest 汇总。
  */
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -18,7 +20,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "./synastry-knowledge";
 import { readAnalyzeJson } from "./chart-view";
-import { createHarness, callDirect, type Assertion } from "../cli/selftest-kit";
+import { createHarness, type Assertion, type SelftestDeps } from "../cli/selftest-kit";
 
 /** 本内核目录（`scripts/synastry`）。 */
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -133,34 +135,24 @@ function makeFixture(o: {
 }
 
 /**
- * 合盘断言组：命令冒烟、输入护栏、参考文档、知识源与参数面（经子进程）。
+ * 合盘断言组：命令冒烟、输入护栏、参考文档、知识源与参数面（进程内直调）。
  *
+ * @param deps - 主 selftest 的注入面：`call` 进程内直调、`ctx` 内核根
  * @returns 逐条结果；由 `cli/selftest.ts` 并入主报告
  */
-export async function asserts(): Promise<Assertion[]> {
-	// harness（Assertion / ok）共用 cli/selftest-kit，此处不再有本地定义。
+export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
+	// harness（Assertion / ok）共用 cli/selftest-kit，此处不再有本地定义
+	//（results 是本组自己的收集数组，与主 harness 分开、文末整体返回）；
+	// call / ctx 由 deps 注入 —— 「argv → 三元组」与文案的真相源在 cli/dispatch.ts 一族。
+	// 本组调用点全部是进程内直调（原 spawnSync 每次约 3.2 秒 iztro 冷启动，11 个调用点
+	// ≈ 35 秒；直调复用本进程已加载的 iztro，判据同构）。「stderr 前缀 + exit 1」真链路
+	// 由主 selftest 的子进程冒烟覆盖。
 	const { results, ok } = createHarness();
 	// 命令表与作用域：动态 import 打断「commands → selftest → 本文件」静态环（Cmd 已
 	// 放宽为可返回 Promise），取代旧的「读源码文本做子串匹配」—— 物理排版退出契约。
 	const { COMMANDS } = await import("../cli/commands");
-	const { OPTION_NAMES, parseArgs } = await import("../cli/args");
+	const { OPTION_NAMES } = await import("../cli/args");
 	const { OPTION_SCOPE } = await import("../cli/option-scope");
-
-	/**
-	 * 进程内直调一条命令（原 spawnSync 子进程——每次约 3.2 秒 iztro 冷启动，本组
-	 * 11 个调用点 ≈ 35 秒；直调复用本进程已加载的 iztro，判据同构：code/out/err
-	 * 三元组、错误路径同一「错误：」前缀文案）。「stderr 前缀 + exit 1」真链路由
-	 * 主 selftest 的三条子进程冒烟覆盖。
-	 */
-	const run = (argv: string[]): { code: number; out: string; err: string } => {
-		const [cmd, ...rest] = argv;
-		const fn = COMMANDS[cmd as keyof typeof COMMANDS];
-		if (!fn) return { code: 1, out: "", err: `未知命令「${cmd}」。` };
-		return callDirect(cmd, rest, fn, parseArgs, {
-			root: resolve(ROOT, ".."),
-			rootLabel: "技能自带内核",
-		});
-	};
 
 	// 临时目录：两份假盘写在这里，喂给子进程。用 mkdtemp 而非固定名，避免并行跑时互相踩。
 	const tmp = mkdtempSync(join(tmpdir(), "synastry-selftest-"));
@@ -203,7 +195,7 @@ export async function asserts(): Promise<Assertion[]> {
 		const PAIR = ["--charts", `${fileA},${fileB}`];
 
 		ok("合盘冒烟：synastry 读两份命盘 JSON 跑得通，三个块标题都在", () => {
-			const r = run(["synastry", ...PAIR]);
+			const r = deps.call(["synastry", ...PAIR]);
 			if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 			// 三个块标题各盯一件事：「双宫联参」是倪师口径的标志、「夫妻宫断语」是唯一依赖
 			// STAR_IN_FUQI_GU 的输出、「生年四化入夫妻宫」是唯一依赖**排盘方给的**
@@ -215,7 +207,7 @@ export async function asserts(): Promise<Assertion[]> {
 		});
 
 		ok("合盘冒烟：双向对应的两方被判为「天作之合」，且晚子时提醒照常出现", () => {
-			const r = run(["synastry", ...PAIR]);
+			const r = deps.call(["synastry", ...PAIR]);
 			if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 			if (!r.out.includes("双向对应，符合「天作之合」最高级匹配"))
 				throw new Error("两方主星互映却未判为双向对应 —— 对应关系判定可能已坏");
@@ -231,7 +223,7 @@ export async function asserts(): Promise<Assertion[]> {
 				["--charts", fileA],
 				["--charts", `${fileA},${fileB},${fileA}`],
 			]) {
-				const r = run(["synastry", ...argv]);
+				const r = deps.call(["synastry", ...argv]);
 				if (r.code === 0) throw new Error(`${argv[1]} 未报错 —— 份数护栏失效`);
 				if (!r.err.includes("两个") || !r.err.includes("--charts"))
 					throw new Error(
@@ -242,7 +234,7 @@ export async function asserts(): Promise<Assertion[]> {
 		});
 
 		ok("合盘护栏：--charts 两路径相同允许（自盘对照有意义）", () => {
-			const r = run(["synastry", "--charts", `${fileA},${fileA}`]);
+			const r = deps.call(["synastry", "--charts", `${fileA},${fileA}`]);
 			if (r.code !== 0) throw new Error(`同路径应放行（自盘对照），实得：${r.err.trim()}`);
 			if (!r.out.includes("甲方") || !r.out.includes("乙方"))
 				throw new Error("同路径输出应仍有甲乙两方");
@@ -256,7 +248,7 @@ export async function asserts(): Promise<Assertion[]> {
 			writeFileSync(wrong, JSON.stringify({ birthInfo: {}, palaces: [], soulBranch: 0 }));
 			// ⚠️ 输入必须是 --charts 形态：--a-chart 在解析层就是未知参数，到不了读文件的
 			//    契约校验。
-			const r = run(["synastry", "--charts", `${wrong},${fileB}`]);
+			const r = deps.call(["synastry", "--charts", `${wrong},${fileB}`]);
 			if (r.code === 0) throw new Error("顶层无 chart 键却退出码为 0 —— 契约校验失效");
 			if (!r.err.includes("chart"))
 				throw new Error(`报错未提到缺失的 chart，实得：${r.err.trim()}`);
@@ -270,7 +262,7 @@ export async function asserts(): Promise<Assertion[]> {
 			delete partial.nativeSiHua;
 			const p = join(tmp, "partial.json");
 			writeFileSync(p, JSON.stringify(partial));
-			const r = run(["synastry", "--charts", `${p},${fileB}`]);
+			const r = deps.call(["synastry", "--charts", `${p},${fileB}`]);
 			if (r.code === 0) throw new Error("缺 nativeSiHua 却退出码为 0 —— 逐项校验失效");
 			if (!r.err.includes("nativeSiHua"))
 				throw new Error(`报错未点名 nativeSiHua，实得：${r.err.trim()}`);
@@ -280,7 +272,7 @@ export async function asserts(): Promise<Assertion[]> {
 		ok("合盘护栏：命盘文件不是合法 JSON 时报错", () => {
 			const broken = join(tmp, "broken.json");
 			writeFileSync(broken, "错误：未知命令「astrology」。\n");
-			const r = run(["synastry", "--charts", `${broken},${fileB}`]);
+			const r = deps.call(["synastry", "--charts", `${broken},${fileB}`]);
 			if (r.code === 0) throw new Error("文件不是 JSON 却退出码为 0");
 			if (!/JSON/.test(r.err)) throw new Error(`报错未提到 JSON，实得：${r.err.trim()}`);
 			return "坏 JSON 被拦下";
@@ -323,7 +315,7 @@ export async function asserts(): Promise<Assertion[]> {
 				"--a-city",
 			];
 			for (const flag of probes) {
-				const r = run(["synastry", flag, "x"]);
+				const r = deps.call(["synastry", flag, "x"]);
 				if (r.code === 0)
 					throw new Error(`${flag} 在 synastry 上被接受了 —— 前缀漏回了作用域`);
 				if (!r.err.includes("未知参数"))
@@ -341,7 +333,7 @@ export async function asserts(): Promise<Assertion[]> {
 			];
 			for (const [bad, want] of probes) {
 				if (bad === "--json") continue;
-				const r = run(["synastry", bad, "x"]);
+				const r = deps.call(["synastry", bad, "x"]);
 				if (r.code === 0) throw new Error(`${bad} 未报错 —— 未知旗标又变成静默忽略了`);
 				if (!r.err.includes(`--${want}`))
 					throw new Error(`${bad} 的提示应指向 --${want}，实得：${r.err.trim()}`);
@@ -353,7 +345,7 @@ export async function asserts(): Promise<Assertion[]> {
 			// 引擎把裸写归一为布尔 true / 单路径只有一份 —— 两种形态都过不了「恰好两份」
 			// 这道命令层护栏，报错点名 --charts。
 			for (const argv of [["--charts"], ["--charts", "only-one.json"]]) {
-				const r = run(["synastry", ...argv]);
+				const r = deps.call(["synastry", ...argv]);
 				if (r.code === 0) throw new Error(`${argv[0]} ${argv[1] ?? ""} 未报错`);
 				if (!r.err.includes("--charts"))
 					throw new Error(`报错未点名 --charts，实得：${r.err.trim()}`);
@@ -364,9 +356,9 @@ export async function asserts(): Promise<Assertion[]> {
 		ok("契约闭环：astrology --json 的真实产物过 readAnalyzeJson 校验", () => {
 			// 交付包内唯一能跑的自检层要直接盯住生产端-消费端 seam：typecheck 对
 			// JSON 边界无能为力（JSON.parse 后 as 断言），假盘 fixture 又只是契约的
-			// 手写拷贝，接不住生产端键名漂移 —— 让 run（进程内直调）排一张真盘落临时
+			// 手写拷贝，接不住生产端键名漂移 —— 让 deps.call（进程内直调）排一张真盘落临时
 			// 文件，喂给 readAnalyzeJson 逐项校验，闭环不依赖交付包外的 test/。
-			const r = run([
+			const r = deps.call([
 				"astrology",
 				"--date",
 				"1990-05-15",

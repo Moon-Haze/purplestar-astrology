@@ -141,8 +141,8 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	await runDispatchProbe(deps);
 
 	// 古籍 / 合盘断言组在断言流此处执行（async，故在 ok 断言体之外 await），并入主报告。
-	const classics = await classicAsserts();
-	const synastry = await synastryAsserts();
+	const classics = await classicAsserts(deps);
+	const synastry = await synastryAsserts(deps);
 
 	ok("合并自检：古籍 / 合盘断言组并入（三段合计）", () => {
 		// corpus 与 synastry 的自检断言各自住在
