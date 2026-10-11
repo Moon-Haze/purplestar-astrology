@@ -1,8 +1,13 @@
 // ── 层 1（主力）：排盘对标 ──
 //
 // 拿本项目 generateChart() 的输出去比 toolkit 样本里的 chart，逐字段全等比对。
-// 基准是 iztro 2.5.8 的行为快照，本项目用 2.6.1 —— 已知差异（太阳/太阴在酉宫的亮度）
-// 登记在 test/lib/compare.ts 的 KNOWN_DIVERGENCES，白名单**之外**的任何差异都会失败。
+// 基准是 iztro 2.5.8 的行为快照，本项目用 2.6.1。
+//
+// ⚠️ **亮度不参与对拍**（2026-10 口径切换）：本项目的亮度已整体改由文墨 SB 表覆写
+//    （XD2 默认，见 scripts/ziwei/wenmo-brightness.ts），与 iztro 快照的亮度不可比；
+//    其正确性由 test/invariants.test.ts 的「文墨亮度表」组保障。其余字段
+//    （星名 / type / mutagen / 宫位 / 大限 / 借宫）仍全量严格比对，白名单之外的任何
+//    差异都会失败（白名单机制保留、清单现为空，见 test/lib/compare.ts）。
 //
 // ⚠️ 这套测试是**回归锁定 / 跨版本差分**，不是独立正确性证明：样本与本项目内核同源
 //    （都调 iztro 的 bySolar），两边一起错的地方测不出来。详见 test/README.md。
@@ -14,7 +19,13 @@ import { fileURLToPath } from "node:url";
 
 import type { BirthInfo } from "@/ziwei/types";
 import { loadAlgorithm, ROOT } from "./lib/loader.ts";
-import { BRANCHES, compareChart, expectedAge, formatDiffs, type BaselineSample } from "./lib/compare.ts";
+import {
+	BRANCHES,
+	compareChart,
+	expectedAge,
+	formatDiffs,
+	type BaselineSample,
+} from "./lib/compare.ts";
 
 // 年份筛选（npm test -- --year 1953，由 test/lib/run.ts 经环境变量传入）。
 // 刻意用「空串视为无」而非 has 判断：run.ts 总是设置该变量（无筛选时置空），
@@ -116,25 +127,6 @@ describe("随年份漂移的字段", () => {
 			drift.some(d => d.path === "currentAge"),
 			`注入 ${nextYear} 年时间后应报出 currentAge 漂移；未报出说明期望值是照抄样本的`
 		);
-	});
-});
-
-// ── 报告已知差异的存在性 ──
-// 白名单里的两条差异应当**确实发生**（酉宫有太阳或太阴时）。
-// 若某天它不再发生（比如 iztro 回退了亮度表），说明白名单该清理了 —— 提示而非失败。
-describe("已知差异白名单", () => {
-	it("白名单条目在基准中确有体现", t => {
-		const hits = new Set<string>();
-		for (const s of samples) {
-			const you = s.chart.palaces?.find(p => p.branch === 9);
-			for (const st of you?.stars ?? []) {
-				if (st.name === "太阳" || st.name === "太阴") hits.add(st.name);
-			}
-		}
-		// 样本量足够大，酉宫必然出现过日月之一
-		assert.ok(hits.size > 0, "300 条基准中酉宫应至少出现过太阳或太阴");
-		// 尾部汇总引用的证据行：白名单不是死条目，基准里真的命中过
-		t.diagnostic(`白名单在基准中体现为：${[...hits].join("、")}`);
 	});
 });
 

@@ -214,14 +214,15 @@ export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 		if (!text.includes("英星入庙格")) throw new Error("缺样例盘必有格局（英星入庙）");
 		if (!text.includes("出处")) throw new Error("缺出处行");
 	});
-	ok("专题渲染：四化专题（生年 + 流年 + 同星引动；流月可选）", () => {
+	ok("专题渲染：四化专题（生年 + 大限宫干 + 流年 + 同星引动；流月可选）", () => {
 		const c = generateChart(SAMPLE);
-		const text = mutagenSection(c, 2026, null).join("\n");
+		const text = mutagenSection(c, { liuNianYear: 2026 }).join("\n");
 		if (!text.includes("【生年四化】")) throw new Error("缺生年四化节");
 		if (!text.includes("化禄 太阳 → 兄弟宫")) throw new Error("缺生年化禄落宫（兄弟宫）");
+		if (!text.includes("大限四化")) throw new Error("缺大限宫干四化节（文墨排盘口径）");
 		if (!text.includes("【2026 流年四化】")) throw new Error("缺流年四化节");
 		if (!text.includes("天同")) throw new Error("缺生年×流年同星引动标注");
-		const withMonth = mutagenSection(c, 2026, 6).join("\n");
+		const withMonth = mutagenSection(c, { liuNianYear: 2026, liuYueMonth: 6 }).join("\n");
 		if (!withMonth.includes("流月四化")) throw new Error("给了农历月却缺流月四化节");
 	});
 	ok("专题渲染：宫盘聚焦专题（三方四正会照 / 四化落宫 / 运限引动）", () => {

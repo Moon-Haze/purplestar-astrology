@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
-import { loadAlgorithm, loadSihua, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
+import { loadAlgorithm, loadSihua, loadConstants, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
 import { BRANCHES, chartSignature } from "./lib/compare.ts";
 
 const execFileAsync = promisify(execFile);
@@ -163,6 +163,7 @@ async function cliFails(args: string[]): Promise<string> {
 
 const { generateChart } = await loadAlgorithm();
 const { getMutagenByStem } = await loadSihua();
+const { STEMS } = await loadConstants();
 
 // ── synastry 的输入：两份 `analyze --json` 的输出文件 ──
 //
@@ -1314,6 +1315,226 @@ describe("CLI 端到端", () => {
 					);
 				}
 			}
+		});
+
+		it("--mutagen 默认带当前大限宫干四化（文墨排盘口径，落宫与独立复算一致）", async () => {
+			const t = await cli([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--liunian",
+				"2026",
+				"--sihua",
+			]);
+			assert.ok(t.includes("大限四化：宫干"), "缺大限宫干四化区块");
+			// 独立复算：盘面大限宫 → Palace.stem → SI_HUA_TABLE（与被测实现同源数据、独立路径）
+			const chart = generateChart({
+				year: 1990,
+				month: 5,
+				day: 15,
+				timeIndex: 5,
+				gender: "male",
+			});
+			const dx = chart.decadals[chart.currentDecadalIndex];
+			const dxPalace = chart.palaces.find(p => p.branch === dx.palaceBranch);
+			assert.ok(dxPalace, "当前大限宫应在盘上");
+			const dxStem = dxPalace.stem;
+			const block = (t.split("大限四化：宫干 ")[1] ?? "").split("【")[0];
+			const rows = [
+				...block
+					.split("\n")
+					.slice(1)
+					.join("\n")
+					.matchAll(/化([禄权科忌]) (\S+) → (.+)$/gm),
+			];
+			assert.equal(rows.length, 4, "大限四化区块应恰 4 行");
+			const transforms = getMutagenByStem(dxStem);
+			for (const m of rows) {
+				const [hua, star, palace] = [m[1]!, m[2]!, m[3]!];
+				assert.equal(
+					transforms[hua as "禄"],
+					star,
+					`大限化${hua}应为宫干四化的「${transforms[hua as "禄"]}」`
+				);
+				const p = chart.palaces.find(pp => pp.stars.some(s => s.name === star));
+				assert.equal(
+					palace,
+					p ? `${p.name}(${BRANCHES[p.branch]})` : "（未上盘）",
+					"落宫应与独立复算一致"
+				);
+			}
+		});
+
+		it("--daily / --hourly：流日流时区块与 lunar 日柱、五鼠遁口诀独立复算一致", async () => {
+			// 2026 丙年农历三月十五的日干由 lunar-typescript 直接复算；巳时（支 5）的
+			// 时干由五鼠遁口诀复算（壬子真途：日干 → 子时干 + 时支偏移）。
+			const { Lunar } = await import("lunar-typescript");
+			const lunar = Lunar.fromYmd(2026, 3, 15);
+			const dayIdx = STEMS.indexOf(lunar.getDayGan());
+			assert.ok(dayIdx >= 0, `农历 2026-3-15 的日干「${lunar.getDayGan()}」应合法`);
+			// 五鼠遁口诀独立表：甲己→甲、乙庚→丙、丙辛→戊、丁壬→庚、戊癸→壬
+			const ziStemByChant: Record<number, number> = {
+				0: 0,
+				5: 0,
+				1: 2,
+				6: 2,
+				2: 4,
+				7: 4,
+				3: 6,
+				8: 6,
+				4: 8,
+				9: 8,
+			};
+			const hourIdx = (ziStemByChant[dayIdx]! + 5) % 10;
+			const dayTitle = `【2026 年 农历3月15日 流日四化】日干 ${STEMS[dayIdx]}`;
+			await assertRows(
+				[
+					"--date",
+					"1990-05-15",
+					"--branch",
+					"5",
+					"--gender",
+					"male",
+					"--liunian",
+					"2026",
+					"--sihua",
+					"--liuyue",
+					"3",
+					"--liuri",
+					"15",
+				],
+				dayTitle,
+				dayIdx
+			);
+			await assertRows(
+				[
+					"--date",
+					"1990-05-15",
+					"--branch",
+					"5",
+					"--gender",
+					"male",
+					"--liunian",
+					"2026",
+					"--sihua",
+					"--liuyue",
+					"3",
+					"--liuri",
+					"15",
+					"--liushi",
+					"5",
+				],
+				"【流时四化 · 巳时】时干 " + STEMS[hourIdx],
+				hourIdx
+			);
+		});
+
+		it("--daily / --hourly 护栏：取值域与取值链逐级报错，报错点名归一后主名", async () => {
+			const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
+			for (const args of [
+				[...base, "--sihua", "--liuri"], // 裸开关（流日无「当前日」语义）
+				[...base, "--sihua", "--liuri", "0"], // 越界
+				[...base, "--sihua", "--liuri", "31"], // 越界
+				[...base, "--sihua", "--liuri", "abc"], // 非数字
+				[...base, "--sihua", "--liushi", "13"], // 时支越界
+				[...base, "--liuri", "15", "--liuyue", "3"], // 缺 --sihua（文本路径组合护栏）
+				[...base, "--sihua", "--liuri", "15"], // 缺 --liuyue（日挂月）
+				[...base, "--sihua", "--liushi", "5", "--liuyue", "3"], // 缺 --liuri（时挂日）
+			] as string[][]) {
+				const stderr = await cliFails(args);
+				const expects = args.includes("--liuri")
+					? "--daily"
+					: args.includes("--liushi")
+						? "--hourly"
+						: "--mutagen";
+				assert.ok(stderr.includes(expects), `报错应点名 ${expects}，实得：${stderr}`);
+			}
+			// 合法链路不报错：--sihua --liuyue 3 --liuri 15 --liushi 12（晚子时按当日日干）
+			const t = await cli([
+				...base,
+				"--liunian",
+				"2026",
+				"--sihua",
+				"--liuyue",
+				"3",
+				"--liuri",
+				"15",
+				"--liushi",
+				"12",
+			]);
+			assert.ok(t.includes("流时四化 · 晚子时"), "晚子时应按当日日干起遁并标注");
+		});
+
+		it("--json 的 daXianSiHua / liuRiSiHua / liuShiSiHua 与独立复算一致", async () => {
+			const { Lunar } = await import("lunar-typescript");
+			const dayIdx = STEMS.indexOf(Lunar.fromYmd(2026, 3, 15).getDayGan());
+			const ziStemByChant: Record<number, number> = {
+				0: 0,
+				5: 0,
+				1: 2,
+				6: 2,
+				2: 4,
+				7: 4,
+				3: 6,
+				8: 6,
+				4: 8,
+				9: 8,
+			};
+			const hourIdx = (ziStemByChant[dayIdx]! + 5) % 10;
+			const j = await cliJson<
+				AnalyzeJson & {
+					daXianSiHua: {
+						stem: string;
+						transforms: Record<string, string>;
+						located: unknown[];
+					};
+					liuRiSiHua: {
+						stem: string;
+						transforms: Record<string, string>;
+						located: unknown[];
+					};
+					liuShiSiHua: {
+						stem: string;
+						transforms: Record<string, string>;
+						located: unknown[];
+					};
+				}
+			>([
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--liunian",
+				"2026",
+				"--liuyue",
+				"3",
+				"--liuri",
+				"15",
+				"--liushi",
+				"5",
+			]);
+			// 大限：宫干来自盘面大限宫
+			const chart = generateChart({
+				year: 1990,
+				month: 5,
+				day: 15,
+				timeIndex: 5,
+				gender: "male",
+			});
+			const dx = chart.decadals[chart.currentDecadalIndex];
+			const dxPalace = chart.palaces.find(p => p.branch === dx.palaceBranch);
+			assert.ok(dxPalace && j.daXianSiHua, "样例盘已起运，daXianSiHua 应非空");
+			assert.equal(j.daXianSiHua.stem, STEMS[dxPalace.stem], "大限干应为大限宫宫干");
+			assert.equal(j.daXianSiHua.located.length, 4, "大限四化应恰 4 颗");
+			assert.equal(j.liuRiSiHua.stem, STEMS[dayIdx], "流日干应与 lunar 日柱一致");
+			assert.equal(j.liuRiSiHua.located.length, 4, "流日四化应恰 4 颗");
+			assert.equal(j.liuShiSiHua.stem, STEMS[hourIdx], "流时干应与五鼠遁口诀一致");
+			assert.equal(j.liuShiSiHua.located.length, 4, "流时四化应恰 4 颗");
 		});
 	});
 

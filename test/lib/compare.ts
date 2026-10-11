@@ -120,38 +120,29 @@ export { BRANCHES };
 
 // ── 已知差异白名单 ──
 //
-// 基准样本由 iztro **2.5.8** 生成，本项目用 **2.6.1**。两版之间 iztro 改了星曜亮度表，
-// 影响**太阳与太阴在酉宫**的庙旺利陷（跨 60 年抽样 360 条实测，差异仅此两条，此外零差异）。
-// 新版取值（酉宫日平、月旺）更合传统口径，故本项目是对的，样本是**旧版的陈旧值**。
+// ⚠️ **2026-10 起本清单为空，且亮度不再参与对拍**（compareStars 跳过 brightness 字段）。
 //
-// 白名单条目必须写明 `cause`：它是升级 iztro 时审阅差异的依据，不是掩盖差异的补丁。
-// 只放行**单个字段**（brightness）的差异，不是整颗星 —— 星曜名、type、mutagen 仍严格比对。
+// 历史沿革：基准样本由 iztro **2.5.8** 生成，本项目曾用 2.6.1 并以本白名单放行
+// 「太阳/太阴@酉」两处亮度差异。2026-10 混合口径落地后，本项目的亮度**整体改由文墨
+// SB 表覆写**（`scripts/ziwei/wenmo-brightness.ts`，XD2 默认）—— 与 iztro 快照的亮度
+// 几乎处处不同，逐值白名单不再有意义。亮度正确性的验证职责随之转移：
+//
+//   · 安星与结构（星名 / type / mutagen / 宫位 / 大限 / 借宫）→ 仍由本对拍全量严格保障；
+//   · 亮度口径 → `test/invariants.test.ts` 的「文墨亮度表」组（纸面学理锚点 + 维度自检）。
+//
+// 白名单**机制**保留（类型 / isWhitelisted / 空清单）：未来若出现新的「样本陈旧、
+// 本项目对」的单字段差异，仍走这里登记 `cause`，不另起炉灶。
 export interface KnownDivergence {
 	star: string;
 	branch: number;
 	/** 样本（iztro 2.5.8）侧的取值 */
 	baseline: string;
-	/** 本项目（iztro 2.6.1）侧的取值 */
+	/** 本项目侧的取值 */
 	current: string;
 	cause: string;
 }
 
-export const KNOWN_DIVERGENCES: KnownDivergence[] = [
-	{
-		star: "太阳",
-		branch: 9, // 酉
-		baseline: "dim", // 样本（iztro 2.5.8）
-		current: "normal", // 本项目（iztro 2.6.1）
-		cause: "iztro 2.5.8→2.6.1 亮度表变更：酉宫太阳由陷改判为平",
-	},
-	{
-		star: "太阴",
-		branch: 9,
-		baseline: "dim",
-		current: "bright",
-		cause: "iztro 2.5.8→2.6.1 亮度表变更：酉宫太阴由陷改判为旺",
-	},
-];
+export const KNOWN_DIVERGENCES: KnownDivergence[] = [];
 
 function isWhitelisted(
 	starName: string,
@@ -202,9 +193,14 @@ export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"
  * @param birthInfo 出生公历（只取年月日）
  * @param [now] 注入「当前时间」以便测试漂移逻辑，默认取真实时间
  */
-export function expectedAge(birthInfo: Pick<BirthInfo, "year" | "month" | "day">, now: Date = new Date()): number {
+export function expectedAge(
+	birthInfo: Pick<BirthInfo, "year" | "month" | "day">,
+	now: Date = new Date()
+): number {
 	const lunarYearAt = (d: Date): number =>
-		Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate()).getLunar().getYear();
+		Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate())
+			.getLunar()
+			.getYear();
 	const birth = new Date(birthInfo.year, birthInfo.month - 1, birthInfo.day);
 	return lunarYearAt(now) - lunarYearAt(birth) + 1;
 }
@@ -236,7 +232,11 @@ type PushDiff = (
  * @param [opts]
  * @returns 结构化 diff 列表，空数组表示完全一致
  */
-export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: CompareOptions = {}): ChartDiff[] {
+export function compareChart(
+	actual: ZiweiChart,
+	baseline: BaselineChart,
+	opts: CompareOptions = {}
+): ChartDiff[] {
 	const now = opts.now ?? new Date();
 	const diffs: ChartDiff[] = [];
 	const push: PushDiff = (path, expected, got, note, whitelisted) => {
@@ -248,14 +248,27 @@ export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: 
 	};
 
 	// ── 顶层标量 ──
-	for (const k of ["soulBranch", "bodyBranch", "fiveElementsClass", "fiveElementsClassName", "ziweiPos"] as const) {
+	for (const k of [
+		"soulBranch",
+		"bodyBranch",
+		"fiveElementsClass",
+		"fiveElementsClassName",
+		"ziweiPos",
+	] as const) {
 		if (actual[k] !== baseline[k]) push(k, baseline[k], actual[k]);
 	}
 
 	// ── 农历 ──
 	const aL = actual.lunarInfo;
 	const bL = baseline.lunarInfo ?? {};
-	for (const k of ["lunarYear", "lunarMonth", "lunarDay", "yearStem", "yearBranch", "isLeapMonth"] as const) {
+	for (const k of [
+		"lunarYear",
+		"lunarMonth",
+		"lunarDay",
+		"yearStem",
+		"yearBranch",
+		"isLeapMonth",
+	] as const) {
 		if (aL[k] !== bL[k]) push(`lunarInfo.${k}`, bL[k], aL[k]);
 	}
 
@@ -369,7 +382,7 @@ export function compareChart(actual: ZiweiChart, baseline: BaselineChart, opts: 
 	return diffs;
 }
 
-/** 比对一个宫内的星曜集合：按星名建索引，比对 type / brightness / mutagen。 */
+/** 比对一个宫内的星曜集合：按星名建索引，比对 type / mutagen。 */
 function compareStars(
 	aStars: Star[],
 	bStars: BaselineStar[],
@@ -392,18 +405,11 @@ function compareStars(
 		if (!aS) continue;
 		if (aS.type !== bS.type) push(`palaces[${label}].stars[${name}].type`, bS.type, aS.type);
 
-		const aB = val(aS.brightness);
-		const bB = val(bS.brightness);
-		if (aB !== bB) {
-			const wl = isWhitelisted(name, branch, bB, aB);
-			push(
-				`palaces[${label}].stars[${name}].brightness`,
-				bB,
-				aB,
-				wl ? "已知差异（白名单）" : undefined,
-				wl
-			);
-		}
+		// ⚠️ **brightness 不参与对拍**（2026-10 口径切换）：本项目的亮度已整体改由文墨
+		// SB 表覆写（XD2 默认），与 iztro 快照的亮度不可比；其正确性由
+		// `test/invariants.test.ts` 的「文墨亮度表」组保障（见 KNOWN_DIVERGENCES 头注）。
+		// branch 参数因此目前无消费者，保留签名以备未来按宫放行差异。
+		void branch;
 
 		const aH = val(aS.mutagen);
 		const bH = val(bS.mutagen);

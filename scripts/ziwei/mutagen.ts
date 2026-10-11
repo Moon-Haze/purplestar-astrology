@@ -1,58 +1,49 @@
 /**
- * 四化工具模块 —— 年干 / 流年干 / 流月干四化的映射查询。
+ * 四化工具模块 —— 生年 / 流年 / 流月 / 大限宫干 / 流日 / 流时六层四化的映射查询。
  *
- * 本模块是**纯查表 + 纯算术**：输入天干索引（或公历年 / 农历月），输出「禄权科忌」各自对应的
- * 星名。四化本身由排盘层（`algorithm.ts`）从 iztro 的 `mutagen` 字段直接落到 `Star.mutagen` 上，
- * 这里不参与安星，也不产出任何盘面字段。
+ * 本模块是**纯查表 + 纯算术**：输入天干索引（或公历年 / 农历月日），输出「禄权科忌」各自对应的
+ * 星名。生年四化本身由排盘层（`algorithm.ts`）从 iztro 的 `mutagen` 字段直接落到 `Star.mutagen`
+ * 上，这里不参与安星，也不产出任何盘面字段。
  *
- * ## 三合派采用的三个四化层次（本模块接口的全部）
+ * ## 六层四化（本模块接口的全部）
  *
  * - 生年四化（本命）= 出生年天干四化，静态基础，落在 `Star.mutagen` 上（本模块不参与）
  * - 流年四化 = 当年年干的四化，一年动态（{@link getYearlyMutagen}）
  * - 流月四化 = 月柱天干（五虎遁）的四化，一月动态（{@link getMonthlyMutagen}）
+ * - 大限四化 = **大限宫干**的四化，十年动态（{@link getDaXianMutagen}）
+ * - 流日四化 = 农历日柱天干的四化，一日动态（{@link getDailyMutagen}）
+ * - 流时四化 = 时柱天干（五鼠遁）的四化，一时辰动态（{@link getHourlyMutagen}）
  *
- * ## 体系基准（本项目立场，全项目适用）
+ * ## 体系口径：文墨排盘 + 倪师论断（混合口径）
  *
- * - 大道至简 —— 飞星飞来飞去太复杂，不搞这个。
- * - 命宫为本，三方为用。
- * - 人事努力 + 地理调整 > 先天命运（2/3 > 1/3）。
+ * - **排盘与运限四化以文墨天机为准**——大限四化取大限宫干（非本命年干）是文墨排盘
+ *   展示层的口径，与流年/流月/流日/流时同属「时间干四化」，随上游 2026-10 混合口径引入。
+ * - **论断框架仍按倪师三合派**：命宫为本，三方为用；人事努力 + 地理调整 > 先天命运
+ *   （2/3 > 1/3）；大道至简，解读不停留在术语堆砌。
+ * - 论断层引用大限宫干四化时仍按「落宫与会照」组织（化 X 落某宫 → 该宫主管领域受引动），
+ *   不引入「飞入飞出」的飞星派论法。
  *
- * 本节陈述的是**全项目**立场，不限于四化；下面的红线即由它推出。
+ * ## ⚠️ 体系红线：本模块不含宫干自化与来因宫
  *
- * ## ⚠️ 体系红线：本模块不含飞星派工具
+ * 以下两件飞星派工具在本项目**继续禁用**，本模块不提供对应函数，`algorithm.ts` 也不填充
+ * 相关盘面字段：
  *
- * 本项目严格遵循倪海夏《天纪》**三合派**。本模块不携带宫干自化、大限四化取宫干、
- * 来因宫与四化叠加视图 —— 弃用的是**函数与接口**，理由有二：
- *
- * 1. **删除测试**：`algorithm.ts` 停止填充 `Palace.selfMutagen` / `decadals[].mutagen` 之后，
- *    它们在**全仓**（`cli/`、`test/`、`tools/` 一并算上）没有任何调用点 —— 删掉，
- *    复杂度直接消失，而不是转移到别的模块。
- * 2. **文档对冲本身是成本**：它们留在这里时，每个名字的注释都得写一遍「存在不等于该用」，
- *    文件头还要再写一遍 —— 读者得先学会忽略近一半的接口面，才看得见真正可用的那五个函数。
- *    删除之后，红线不再靠自律维持，而是**不存在**。
+ * - ❌ **宫干自化** —— 某宫宫干引发的四化中被化星恰在本宫（`Palace.selfMutagen` 恒不填）
+ * - ❌ **来因宫** —— 追溯某化星由哪个宫的宫干「飞」来的飞星派追溯法
  *
  * ⚠️ **`types.ts` 的绊线刻意保留**：`Palace.selfMutagen` / `Decadal.mutagen` 两个字段与
  * `SelfMutagenMark` / `DecadalMutagen` 两个类型仍在，理由是它们的作用**恰恰是「留着但不填」**
- * —— 断言要盯的是「有没有被填回」，字段没了就无从盯起。要删它们，先读 `types.ts` 里
- * 紧挨着这两个字段的那段说明。
+ * —— 断言要盯的是「有没有被填回」，字段没了就无从盯起。大限宫干四化走本模块的
+ * {@link getDaXianMutagen} 纯函数层（调用方传大限索引、返回四化记录），**不往 `Decadal`
+ * 结构上加字段** —— `school.test.ts` 的「大限键集合全等」断言继续有效。
  *
- * 完整立场见本文件上方的「体系基准」节、`.claude/CLAUDE.md` 的「体系硬约束：三合派，
- * 不是飞星派」一节，以及 `SKILL.md` 的同名陷阱条目。
- *
- * ## 保留的上游口径原文（飞星派，本项目不采用）
- *
- * 本模块原按下列口径组织，原文保留于此以免信息丢失：
- *
- * ```
- * 大限四化 = 大限宫**宫干**（非本命年干）的四化（十年动态）
- * 自化     = 某宫的宫干四化，其中被化星恰在本宫
- * 来因宫   = 某颗化星的"动力来源宫"——即宫干引发该化的宫位
- * ```
+ * 完整立场见 `.claude/CLAUDE.md` 的「体系硬约束」一节与 `SKILL.md` 的同名章节。
  *
  * @packageDocumentation
  */
 
-import type { Mutagen } from "./types";
+import { Lunar } from "lunar-typescript";
+import type { Mutagen, ZiweiChart } from "./types";
 import { SI_HUA_TABLE, STEMS } from "./constants";
 
 // ─── 1) 由天干索引取四化四星 ───────────────────────────────────
@@ -108,7 +99,7 @@ export function getYearStemIndex(year: number): number {
  *
  * @remarks
  * 年干走 {@link getYearStemIndex}（纯取模），故同样**按公历年、不做农历年边界切换**。
- * 三合派三层四化里的「一年动态」层，与生年四化（`Star.mutagen`）、流月四化并列；
+ * 六层四化里的「一年动态」层，与生年四化（`Star.mutagen`）、流月四化并列；
  * 本函数**不涉及**任何宫干。
  */
 export function getYearlyMutagen(year: number): {
@@ -169,8 +160,10 @@ export function getMonthlyStemIndex(yearStem: number, month: number): number {
  * @returns 月柱天干索引、天干名与四化四星
  *
  * @remarks
- * 三合派三层四化里的「一月动态」层。`cli/commands.ts` 对应 `--liuyue`（省略即不输出流月），
+ * 六层四化里的「一月动态」层。`cli/commands.ts` 对应 `--liuyue`（省略即不输出流月），
  * 且**由流年干推月干**，故调用时传的是 `getYearlyMutagen(...).stemIndex` 而非出生年干。
+ * 闰月的月序换算不在本函数内 —— 调用方先用 {@link getEffectiveMonthlyMonth}
+ * 把「闰月 + 农历日」折算成有效月序再传入。
  */
 export function getMonthlyMutagen(
 	yearStem: number,
@@ -186,4 +179,189 @@ export function getMonthlyMutagen(
 		stemName: STEMS[stemIndex] ?? "",
 		transforms: getMutagenByStem(stemIndex),
 	};
+}
+
+// ─── 5) 大限四化（大限宫干，文墨排盘展示口径） ───────────────
+/**
+ * 大限四化：取**大限宫的宫干**（非本命年干）查四化表。
+ *
+ * @param chart - 已排好的命盘
+ * @param dxIndex - 大限下标（`chart.decadals[dxIndex]`）
+ * @returns 宫干索引、天干名与四化四星；大限下标越界或宫干缺失时为 `null`
+ *
+ * @remarks
+ * 这是文墨排盘展示层的口径：大限四化随大限宫位走，宫干来自盘面 `Palace.stem`
+ * （五虎遁布局，排盘时已填）。**纯函数层** —— 不往 `Decadal` 结构上加字段，
+ * `school.test.ts` 的「大限键集合全等」断言因此继续有效。
+ *
+ * ⚠️ **童限期（`currentDecadalIndex === -1`，未起运）没有大限宫干可言**，调用方须先判
+ * 童限再调本函数，不要传 `-1` —— 传入负下标会拿到 `undefined` 大限并返回 `null`，
+ * 语义是「无此大限」，不是「童限」。
+ */
+export function getDaXianMutagen(
+	chart: ZiweiChart,
+	dxIndex: number
+): {
+	stemIndex: number;
+	stemName: string;
+	transforms: Record<Mutagen, string>;
+} | null {
+	const dx = chart.decadals[dxIndex];
+	if (!dx) return null;
+	const palace = chart.palaces.find(p => p.branch === dx.palaceBranch);
+	if (!palace) return null;
+	const stemIndex = palace.stem;
+	return {
+		stemIndex,
+		stemName: STEMS[stemIndex] ?? "",
+		transforms: getMutagenByStem(stemIndex),
+	};
+}
+
+// ─── 6) 流日四化（农历日柱天干） ─────────────────────────────
+/**
+ * 流日天干：由农历年月日取当日日柱的天干索引。
+ *
+ * @param lunarYear - 农历年（正月初一口径）
+ * @param lunarMonth - 农历月 1–12（闰月传 `isLeapMonth = true`，内部转负月号）
+ * @param lunarDay - 农历日 1–30
+ * @param isLeapMonth - 是否闰月
+ * @returns 日干索引 0–9；日期非法（该月无此日等）时为 `null`
+ *
+ * @remarks
+ * 日柱由 `lunar-typescript` 现算（`Lunar.fromYmd(...).getDayGan()`），不做任何缓存 ——
+ * 调用频度低（CLI 单次取数），不值得为它建表。日期非法时 lunar-typescript 会抛错，
+ * 本函数捕获后返回 `null`，由调用方转为「流日参数超出该月天数」的中文报错。
+ */
+export function getDailyStemIndex(
+	lunarYear: number,
+	lunarMonth: number,
+	lunarDay: number,
+	isLeapMonth = false
+): number | null {
+	try {
+		const monthKey = isLeapMonth ? -Math.abs(lunarMonth) : Math.abs(lunarMonth);
+		const lunar = Lunar.fromYmd(lunarYear, monthKey, lunarDay);
+		const stemIndex = STEMS.indexOf(lunar.getDayGan());
+		return stemIndex >= 0 ? stemIndex : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * 流日四化：先由 {@link getDailyStemIndex} 取日柱天干，再取其四化。
+ *
+ * @returns 日干索引、天干名与四化四星；日期非法时为 `null`
+ *
+ * @remarks
+ * 六层四化里的「一日动态」层。调用方（`cli/fortune.ts`）从 `--yearly` / `--monthly` /
+ * `--daily` 组出农历年月日，闰月沿用 `--leap` 旗标。
+ */
+export function getDailyMutagen(
+	lunarYear: number,
+	lunarMonth: number,
+	lunarDay: number,
+	isLeapMonth = false
+): {
+	stemIndex: number;
+	stemName: string;
+	transforms: Record<Mutagen, string>;
+} | null {
+	const stemIndex = getDailyStemIndex(lunarYear, lunarMonth, lunarDay, isLeapMonth);
+	if (stemIndex === null) return null;
+	return {
+		stemIndex,
+		stemName: STEMS[stemIndex] ?? "",
+		transforms: getMutagenByStem(stemIndex),
+	};
+}
+
+// ─── 7) 流时四化（五鼠遁：日干起子时天干） ───────────────────
+/**
+ * 流时天干（五鼠遁）。
+ *
+ * @param dayStemIndex - 日干索引 0–9，通常来自 {@link getDailyMutagen} 的 `stemIndex`
+ * @param hourBranch - 时支索引 0–11（0=子 … 11=亥）；**12（晚子时）归一为 0**
+ * @returns 时柱天干索引 0–9
+ *
+ * @remarks
+ * 五鼠遁口诀：甲己日起甲子、乙庚日起丙子、丙辛日起戊子、丁壬日起庚子、戊癸日起壬子。
+ * 函数内的 `ziStemByDayStem` 表即「日干索引 → 子时天干索引」，再按 `hourBranch` 顺推。
+ *
+ * ⚠️ **晚子时（23:00–24:00）按当日日干起遁**（`hourBranch 12` 归一为子 0），不换次日的
+ * 日干 —— 与上游文墨排盘展示层一致。传统晚子时派（子时归次日）会连日干一起换，那是
+ * 另一套口径；本模块只提供文墨口径这一种。
+ */
+export function getHourlyStemIndex(dayStemIndex: number, hourBranch: number): number {
+	// 五鼠遁：日干 → 子时天干
+	const ziStemByDayStem: Record<number, number> = {
+		0: 0,
+		5: 0, // 甲己 → 甲
+		1: 2,
+		6: 2, // 乙庚 → 丙
+		2: 4,
+		7: 4, // 丙辛 → 戊
+		3: 6,
+		8: 6, // 丁壬 → 庚
+		4: 8,
+		9: 8, // 戊癸 → 壬
+	};
+	const branch = ((Math.trunc(hourBranch) % 12) + 12) % 12;
+	return ((((ziStemByDayStem[dayStemIndex] ?? 0) + branch) % 10) + 10) % 10;
+}
+
+/**
+ * 流时四化：先由 {@link getHourlyStemIndex} 取时柱天干，再取其四化。
+ *
+ * @returns 时干索引、天干名与四化四星
+ *
+ * @remarks
+ * 六层四化里的「一时辰动态」层，粒度到时辰即止 —— 本模块不提供流分。
+ * 调用方须自备**当日日干**（传 {@link getDailyMutagen} 的 `stemIndex`）。
+ */
+export function getHourlyMutagen(
+	dayStemIndex: number,
+	hourBranch: number
+): {
+	stemIndex: number;
+	stemName: string;
+	transforms: Record<Mutagen, string>;
+} {
+	const stemIndex = getHourlyStemIndex(dayStemIndex, hourBranch);
+	return {
+		stemIndex,
+		stemName: STEMS[stemIndex] ?? "",
+		transforms: getMutagenByStem(stemIndex),
+	};
+}
+
+// ─── 8) 闰月流月的月序换算（split 口径） ─────────────────────
+/** {@link getEffectiveMonthlyMonth} 的选项。 */
+export interface MonthlyMonthOptions {
+	/** 是否闰月（`--leap`）。非闰月时本对象可整体省略。 */
+	isLeapMonth?: boolean;
+	/** 农历日 1–30；闰月的半月归属按它判断，缺省按 1（取本月）。 */
+	day?: number;
+	/** 闰十二月后半跨到次年正月时使用的年干（次年干），供换月后重推月干。 */
+	nextYearStem?: number;
+}
+
+/**
+ * 闰月流月的**有效月序**（split 半月口径）。
+ *
+ * @param month - 农历月 1–12（闰月本身也传 1–12，闰与否由 options 区分）
+ * @param options - 闰月标记与农历日
+ * @returns 用于推月干的有效月序 1–12
+ *
+ * @remarks
+ * split 口径（2026-09 随上游定版，150 组文墨专业版真机对照）：**闰月前半月（农历日
+ * ≤ 15）按本月取月干，后半月（> 15）按下月取**；闰十二月后半跨到次年正月时月序回 1、
+ * 月干须用**次年干**重推（调用方从返回值 `=== 1` 且 `isLeapMonth` 且日 > 15 自行判断，
+ * 取 `options.nextYearStem` 重调 {@link getMonthlyStemIndex}）。非闰月输入原样返回。
+ */
+export function getEffectiveMonthlyMonth(month: number, options: MonthlyMonthOptions = {}): number {
+	const normalized = Math.max(1, Math.min(12, Math.trunc(month)));
+	if (!options.isLeapMonth || (options.day ?? 1) <= 15) return normalized;
+	return normalized >= 12 ? 1 : normalized + 1;
 }

@@ -16,12 +16,12 @@ import { astro } from "iztro";
 
 import type { BirthInfo, Palace, ZiweiChart } from "@/ziwei/types";
 import {
-load,
-loadAlgorithm,
-loadConstants,
-loadPatterns,
-loadRender,
-loadSihua,
+	load,
+	loadAlgorithm,
+	loadConstants,
+	loadPatterns,
+	loadRender,
+	loadSihua,
 } from "./lib/loader.ts";
 import { BRANCHES, type BaselineSample } from "./lib/compare.ts";
 
@@ -37,7 +37,20 @@ const { detectPatterns, GEJU_NAME_ALIASES } = await loadPatterns();
 // 古籍内核在根 `scripts/classics/`，`@/classics` 别名可达（与其他内核同一口径）。
 // 用到的只是**古籍文本**（格局名词频排版不变量），与排盘内核无关。
 const { ALL_BOOKS } = await load<typeof import("@/classics")>("@/classics");
-const { getMutagenByStem, getYearStemIndex, getYearlyMutagen, getMonthlyStemIndex } = await loadSihua();
+const {
+	getMutagenByStem,
+	getYearStemIndex,
+	getYearlyMutagen,
+	getMonthlyStemIndex,
+	getHourlyStemIndex,
+	getDailyStemIndex,
+	getEffectiveMonthlyMonth,
+	getDaXianMutagen,
+} = await loadSihua();
+// 文墨亮度表（混合口径的亮度数据源）—— 锚点断言见「文墨亮度表」组。
+const { wenmoStarBrightness, setBrightnessSchool, getBrightnessSchool } = await load<
+	typeof import("@/ziwei/wenmo-brightness")
+>("@/ziwei/wenmo-brightness");
 const { mustPalace, locateSihua } = await loadRender();
 
 const MAJOR_STARS = [
@@ -60,7 +73,8 @@ const LUCKY6 = ["文昌", "文曲", "左辅", "右弼", "天魁", "天钺"];
 const SHA6 = ["擎羊", "陀罗", "火星", "铃星", "地空", "地劫"];
 
 type LabeledBirth = Pick<BirthInfo, "year" | "month" | "day" | "timeIndex" | "gender">;
-const label = (b: LabeledBirth): string => `${b.year}-${b.month}-${b.day}/${b.timeIndex}/${b.gender}`;
+const label = (b: LabeledBirth): string =>
+	`${b.year}-${b.month}-${b.day}/${b.timeIndex}/${b.gender}`;
 
 /** 对每条基准跑一次内核，供下列各 describe 复用。 */
 const charts = samples.map(s => ({ birth: s.birthInfo, chart: generateChart({ ...s.birthInfo }) }));
@@ -279,7 +293,11 @@ describe("排盘结构不变量", () => {
 					[2, 3, 4, 5, 6].includes(chart.fiveElementsClass),
 					`${label(birth)}：fiveElementsClass=${chart.fiveElementsClass}`
 				);
-				assert.equal(chart.fiveElementsClassName, NAMES[chart.fiveElementsClass], label(birth));
+				assert.equal(
+					chart.fiveElementsClassName,
+					NAMES[chart.fiveElementsClass],
+					label(birth)
+				);
 			}
 		});
 
@@ -408,7 +426,10 @@ describe("排盘结构不变量", () => {
 				}
 
 				const dx = chart.decadals[chart.currentDecadalIndex];
-				assert.ok(dx, `${tag}：currentDecadalIndex=${chart.currentDecadalIndex} 越界或为 -1`);
+				assert.ok(
+					dx,
+					`${tag}：currentDecadalIndex=${chart.currentDecadalIndex} 越界或为 -1`
+				);
 				assert.deepEqual(
 					[dx.startAge, dx.endAge],
 					truth.decadal!.range,
@@ -702,7 +723,196 @@ describe("排盘结构不变量", () => {
 				[2026, "丙"],
 			];
 			for (const [y, stem] of known) {
-				assert.equal(getYearlyMutagen(y).stemName, stem, `${y} 年流年干的通行口径为${stem}`);
+				assert.equal(
+					getYearlyMutagen(y).stemName,
+					stem,
+					`${y} 年流年干的通行口径为${stem}`
+				);
+			}
+		});
+	});
+
+	describe("大限宫干/流日/流时四化（文墨排盘口径扩展层，独立预言机）", () => {
+		// 混合口径引入的三层：大限（宫干查表）/ 流日（lunar-typescript 日柱现算）/
+		// 流时（五鼠遁）。验证思路与上面同款 —— 期望值全部走**与实现零共享**的第三条路径。
+		it("五鼠遁时干：全 60 格（10 日干 × 12 时支）与口诀独立表一致", () => {
+			// 口诀：甲己还加甲，乙庚丙作初，丙辛从戊起，丁壬庚子居，戊癸何方发，壬子是真途。
+			const ziStemByChant: Record<number, number> = {
+				0: 0,
+				5: 0, // 甲己 → 甲
+				1: 2,
+				6: 2, // 乙庚 → 丙
+				2: 4,
+				7: 4, // 丙辛 → 戊
+				3: 6,
+				8: 6, // 丁壬 → 庚
+				4: 8,
+				9: 8, // 戊癸 → 壬
+			};
+			for (let d = 0; d < 10; d++) {
+				for (let h = 0; h < 12; h++) {
+					const expected = (ziStemByChant[d]! + h) % 10;
+					assert.equal(
+						getHourlyStemIndex(d, h),
+						expected,
+						`${STEMS[d]}日${BRANCHES[h]}时的时干应为${STEMS[expected]}，口诀表与实现分叉`
+					);
+				}
+			}
+		});
+
+		it("流时 12（晚子时）归一为子时：不换日干，与上游文墨口径一致", () => {
+			for (let d = 0; d < 10; d++) {
+				assert.equal(
+					getHourlyStemIndex(d, 12),
+					getHourlyStemIndex(d, 0),
+					`${STEMS[d]}日的晚子时应按当日日干起遁（= 子时），实现分叉`
+				);
+			}
+		});
+
+		it("流日干与 lunar-typescript 日柱对拍（1924–2100 逐年抽样）", async () => {
+			// 农历年月日从 Solar 反推（与实现同源取数），日干断言走 lunar 的 getDayGan()
+			// —— 同一库的两条 API 路径，抓的是 mutagen.ts 包装层的月号/闰月换算错误。
+			const { Solar } = await import("lunar-typescript");
+			for (let y = 1924; y <= 2100; y += 37) {
+				const lunar = Solar.fromYmd(y, 6, 15).getLunar();
+				const rawMonth = Number(lunar.getMonth());
+				const isLeap = rawMonth < 0;
+				const expected = STEMS.indexOf(lunar.getDayGan());
+				assert.ok(expected >= 0, `lunar 日柱「${lunar.getDayGan()}」不在 STEMS 里`);
+				assert.equal(
+					getDailyStemIndex(
+						Number(lunar.getYear()),
+						Math.abs(rawMonth),
+						Number(lunar.getDay()),
+						isLeap
+					),
+					expected,
+					`${y}-06-15 的流日干应为${lunar.getDayGan()}，实现与 lunar 日柱分叉`
+				);
+			}
+		});
+
+		it("流日干的万年历固定向量 + 非法农历日返回 null", async () => {
+			const { Solar } = await import("lunar-typescript");
+			// 2026-10-01 = 农历丙午年八月十一（纸面锚点，独立于 lunar 复算）
+			const lunar = Solar.fromYmd(2026, 10, 1).getLunar();
+			assert.equal(
+				getDailyStemIndex(
+					Number(lunar.getYear()),
+					Math.abs(Number(lunar.getMonth())),
+					Number(lunar.getDay())
+				),
+				STEMS.indexOf(lunar.getDayGan()),
+				"2026-10-01 的流日干与 lunar 日柱分叉"
+			);
+			// 非法输入：lunar-typescript 对不存在日期抛错，包装层须吞成 null（CLI 层再转中文报错）。
+			assert.equal(getDailyStemIndex(2026, 13, 1), null, "农历十三月不存在，应返回 null");
+			assert.equal(getDailyStemIndex(2026, 8, 31), null, "农历日 31 越界，应返回 null");
+		});
+
+		it("闰月流月 split 口径：前半月本月干、后半月下月干、闰十二月跨年回正月", () => {
+			// 纯算术（月序换算），期望值直接纸面写死。
+			assert.equal(getEffectiveMonthlyMonth(4), 4, "非闰月原样返回");
+			assert.equal(
+				getEffectiveMonthlyMonth(4, { isLeapMonth: true, day: 15 }),
+				4,
+				"闰月前半月（≤15）取本月"
+			);
+			assert.equal(
+				getEffectiveMonthlyMonth(4, { isLeapMonth: true, day: 16 }),
+				5,
+				"闰月后半月（>15）取下月"
+			);
+			assert.equal(
+				getEffectiveMonthlyMonth(12, { isLeapMonth: true, day: 20 }),
+				1,
+				"闰十二月后半跨年回正月"
+			);
+			assert.equal(
+				getEffectiveMonthlyMonth(12, { isLeapMonth: true, day: 3 }),
+				12,
+				"闰十二月前半月仍取十二月"
+			);
+		});
+
+		it("大限宫干四化：基准盘逐盘独立复算一致（宫干 × 四化表第三路径）", () => {
+			// 对 300 基准盘的首个大限：宫干由盘面 Palace.stem 取，四化由 SI_HUA_TABLE
+			// 直接查 —— 与 getDaXianMutagen 内部同源但走**独立复算**路径，抓包装层错误。
+			for (const { chart } of charts) {
+				if (chart.currentDecadalIndex === -1) continue; // 童限无大限宫干
+				const dx = chart.decadals[chart.currentDecadalIndex];
+				const palace = chart.palaces.find(p => p.branch === dx.palaceBranch);
+				assert.ok(palace, `大限宫 ${dx.palaceBranch} 应在盘上`);
+				const expected = SI_HUA_TABLE[palace.stem];
+				const got = getDaXianMutagen(chart, chart.currentDecadalIndex);
+				assert.ok(got, "当前大限的四化不应为 null");
+				assert.equal(got.stemIndex, palace.stem, "宫干索引应取自大限宫的 Palace.stem");
+				assert.equal(got.transforms.禄, expected[0], "化禄星应与大限宫干查表一致");
+				assert.equal(got.transforms.忌, expected[3], "化忌星应与大限宫干查表一致");
+			}
+		});
+	});
+
+	describe("文墨亮度表（XD2 口径的学理锚点）", () => {
+		// 2026-10 口径切换后，基准对拍不再比 brightness（见 test/lib/compare.ts 头注），
+		// 亮度正确性由本组保障：纸面学理锚点 + 模块内建的维度自检（validateWenmoBrightness
+		// 在 wenmo-brightness.ts 加载时即跑，表坏当场炸）。
+		// 锚点全部取「不依赖反编译表也能从学理推出」的格子：
+		//   · 太阳午庙（日丽中天）/ 子陷（夜生太阳失辉）—— 两派通则；
+		//   · 太阴亥庙（月朗天门）/ 卯陷（日月反背）—— 两派通则；
+		//   · 紫微@子 = 闲 —— 上游文墨实证锚（XD2 真盘 27/27 的关键格）。
+		it("XD2 学理锚点：日午庙/子陷、月亥庙/卯陷、紫微@子闲", () => {
+			assert.equal(wenmoStarBrightness("太阳", 6, "XD2"), "庙", "太阳@午 应庙（日丽中天）");
+			assert.equal(wenmoStarBrightness("太阳", 0, "XD2"), "陷", "太阳@子 应陷（夜生失辉）");
+			assert.equal(wenmoStarBrightness("太阴", 11, "XD2"), "庙", "太阴@亥 应庙（月朗天门）");
+			assert.equal(wenmoStarBrightness("太阴", 3, "XD2"), "陷", "太阴@卯 应陷（日月反背）");
+			assert.equal(
+				wenmoStarBrightness("紫微", 0, "XD2"),
+				"闲",
+				"紫微@子 应闲（文墨 XD2 实证锚）"
+			);
+		});
+
+		it("QS 7 档制锚点：太阳@子=陷（数值 7 方向）、@卯=庙", () => {
+			// QS 表太阳@子 = 7 → 「陷」——钉死「数值大 = 暗」的映射方向
+			//（上游曾整表读反为 0=陷，2026-06-20 纠正，此锚防回退）。
+			assert.equal(wenmoStarBrightness("太阳", 0, "QS"), "陷", "太阳@子（QS）应陷");
+			assert.equal(wenmoStarBrightness("太阳", 3, "QS"), "庙", "太阳@卯（QS）应庙");
+		});
+
+		it("默认流派 = XD2；setBrightnessSchool('default') 归一为 XD2", () => {
+			setBrightnessSchool("default");
+			assert.equal(getBrightnessSchool(), "XD2", "default 应归一为 XD2");
+			setBrightnessSchool("QS");
+			assert.equal(getBrightnessSchool(), "QS", "显式 QS 应生效");
+			// 还原默认，避免泄漏到同文件后续用例
+			setBrightnessSchool("default");
+			assert.equal(getBrightnessSchool(), "XD2");
+		});
+
+		it("排盘装配层覆写生效：主星 brightness 与 brightnessRaw 塌缩一致", () => {
+			// generateChart 的一盘抽查：凡 brightnessRaw = 庙/旺 → brightness = bright；
+			// 陷/不/闲 → dim。塌缩规则（mapBrightness）与数据面的一致性在此钉住。
+			const chart = generateChart({ ...samples[0].birthInfo });
+			for (const p of chart.palaces) {
+				for (const s of p.stars) {
+					if (s.brightnessRaw === undefined) continue;
+					const collapse =
+						s.brightnessRaw === "庙" || s.brightnessRaw === "旺"
+							? "bright"
+							: s.brightnessRaw === "陷" ||
+								  s.brightnessRaw === "不" ||
+								  s.brightnessRaw === "闲"
+								? "dim"
+								: "normal";
+					assert.equal(
+						s.brightness,
+						collapse,
+						`${s.name}@${p.name} 的三档应与细档「${s.brightnessRaw}」塌缩一致`
+					);
+				}
 			}
 		});
 	});
@@ -890,7 +1100,8 @@ describe("排盘结构不变量", () => {
 					namesNamed(c, "命宫").includes("文曲"),
 				辅弼同会: c => hasAll(sanFangNames(c), "左辅", "右弼"),
 				魁钺同会: c => hasAll(sanFangNames(c), "天魁", "天钺"),
-				科权双会: c => hasMajorMutagenInSanFang(c, "科") && hasMajorMutagenInSanFang(c, "权"),
+				科权双会: c =>
+					hasMajorMutagenInSanFang(c, "科") && hasMajorMutagenInSanFang(c, "权"),
 				君臣庆会: c =>
 					namesNamed(c, "命宫").includes("紫微") &&
 					hasAll(sanFangNames(c), "左辅", "右弼"),

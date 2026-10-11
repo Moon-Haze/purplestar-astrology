@@ -205,6 +205,18 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				value: "1-12",
 				desc: "配合 --mutagen 四化专题：追加该农历月的流月四化（流年缺省取当年）",
 			},
+			{
+				name: "daily",
+				kind: "value",
+				value: "1-30",
+				desc: "配合 --mutagen --monthly：追加该农历日的流日四化（日干由 lunar-typescript 现算）",
+			},
+			{
+				name: "hourly",
+				kind: "value",
+				value: "0-12",
+				desc: "配合 --mutagen --monthly --daily：追加该时支的流时四化（五鼠遁，由日干推；12=晚子时按当日日干）",
+			},
 			{ name: "focus", kind: "value", value: "财帛", desc: "额外展开指定宫位" },
 			{
 				name: "topic",
@@ -259,6 +271,8 @@ export const OPTION_ALIASES: Record<string, string> = {
 	sihua: "mutagen",
 	liunian: "yearly",
 	liuyue: "monthly",
+	liuri: "daily",
+	liushi: "hourly",
 	daxian: "decadal",
 	xiaoxian: "ages",
 };

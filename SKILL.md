@@ -83,21 +83,22 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 - **年龄一律虚岁** —— 报 CLI 给的数，**不要自行换算成周岁**（换算即错，且会连带说错当前大限）。
 - **口径转达** —— CLI 输出里的口径提示（真太阳时校正量、跨午夜改期、晚子时两盘对照、城市歧义候选）要**转达完才进入解读**。
 
-## 体系硬约束：三合派，不是飞星派
+## 体系口径：文墨排盘 + 倪师论断（混合口径）
 
-本项目**严格遵循倪海夏《天纪》三合派**。以下飞星派工具在本项目中已被**主动下线**，你**不得**使用，也不要从代码里把它们捡回来：
+本项目的**排盘与运限四化以文墨天机为准**（星曜亮度走文墨 SB 表覆写、运限四化含大限宫干层）；**论断框架仍严格按倪海夏《天纪》三合派**（命宫为本、三方为用，见下方倪师核心立场）。以下飞星派工具在本项目中**继续禁用**，你**不得**使用，也不要从代码里把它们捡回来：
 
-- ❌ **宫干自化** —— `algorithm.ts` 已停止填充 `Palace.selfSihua`（注释明确："倪师不主张飞星派宫干自化论"）
-- ❌ **大限四化取宫干** —— `algorithm.ts` 已停止生成 `decadals[].mutagen` / `stemIndex`
+- ❌ **宫干自化** —— 某宫宫干引发的四化中被化星恰在本宫；`algorithm.ts` 不填充 `Palace.selfMutagen`（注释明确："倪师不主张飞星派宫干自化论"）
 - ❌ **来因宫** —— 飞星派追溯法，不使用
 
-⚠️ **陷阱**：`scripts/ziwei/mutagen.ts` **只提供上面那三层四化**（`getMutagenByStem` / `getYearStemIndex` / `getYearlyMutagen` / `getMonthlyStemIndex` / `getMonthlyMutagen`）。飞星派的 `detectSelfMutagen` / `findIncomingPalaces` / `getDecadalMutagen`（旧名 sihua 时代的历史函数） 等函数已于 2026-09-27 从该模块**删除**——不是改名、不是移到别处，全仓零调用点。
+⚠️ **陷阱**：`scripts/ziwei/mutagen.ts` 提供六层四化（`getMutagenByStem` / `getYearStemIndex` / `getYearlyMutagen` / `getMonthlyMutagen` / `getDaXianMutagen` / `getDailyMutagen` / `getHourlyMutagen`）。飞星派的 `detectSelfMutagen` / `findIncomingPalaces`（宫干自化与来因宫）等函数已于 2026-09-27 从该模块**删除**——不是改名、不是移到别处，全仓零调用点。
 
-但 `types.ts` 里的 `Palace.selfMutagen` / `Decadal.mutagen` 字段与 `SelfMutagenMark` / `DecadalMutagen` 两个类型**仍在**，那是**刻意留下的绊线**：`selftest` 与 `test/school.test.ts` 各有断言盯着它们不被重新填回，字段删了就没东西可盯。**存在不等于该用**——用它们解读就是背叛本项目的体系立场。
+但 `types.ts` 里的 `Palace.selfMutagen` 字段与 `SelfMutagenMark` / `DecadalMutagen` 两个类型**仍在**，那是**刻意留下的绊线**：`selftest` 与 `test/school.test.ts` 各有断言盯着它们不被重新填回，字段删了就没东西可盯。**存在不等于该用**——用它们解读就是背叛本项目的体系立场。
 
-可用的是：**生年四化**（出生年干）、**流年四化**（当年年干）、**流月四化**（`--monthly 6`）。CLI 的 `astrology` 已按此口径输出。
+可用的是六层四化：**生年四化**（出生年干）、**大限宫干四化**（文墨排盘口径，`--mutagen` 与 `--decadal` 输出）、**流年四化**（当年年干）、**流月四化**（`--monthly 6`）、**流日四化**（`--daily 15`，须配 `--monthly`）、**流时四化**（`--hourly 5`，须配 `--daily`）。CLI 的 `astrology` 已按此口径输出。
 
-倪师核心立场（权威声明见 `scripts/ziwei/mutagen.ts` 的「体系基准」节）：
+解读引用大限宫干四化与流日/流时四化时，仍按**「落宫与会照」**组织（化 X 落某宫 → 该宫主管领域受引动），不引入「飞入飞出」的飞星派论法。
+
+倪师核心立场（权威声明见 `scripts/ziwei/mutagen.ts` 的「体系口径」节）：
 
 > 大道至简——飞星飞来飞去太复杂，不搞这个。
 > 命宫为本，三方为用。
@@ -112,7 +113,8 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 
 ### 亮度与星曜口径
 
-- **庙旺利陷口径**：iztro 的 7 级塌缩成 3 级——`bright` = 庙/旺，`dim` = 陷/不，**其余（`得`/`利`/`平`）一律 `normal`**。另注意 `brightness` 字段**只给主星填**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `tough` / `soft`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键），只有 `type === "major"` 的那 14 颗带 `brightness`，其余三类不带（信息比 iztro 原始输出少，是口径选择不是缺漏）。
+- **亮度走文墨口径（2026-10 混合口径）**：全盘星曜亮度由**文墨天机 SB 表**覆写（`scripts/ziwei/wenmo-brightness.ts` + 同名 JSON 数据，默认流派 **XD2 现代修订二**，主星/辅星/煞星/杂曜同表；数据源为文墨 v2.5.8 反编译表，与上游开源仓逐字同源）。`brightness` 仍是三档——`bright` = 庙/旺，`dim` = 陷/不/**闲**，其余（`得`/`利`/`平`）`normal`；细档中文（庙/旺/得/利/平/不/闲/陷）在 **`brightnessRaw`** 字段，仅进 `--json`，文本输出不显示。表未收录的星（如截路）无亮度，主星回落 iztro 原值。基准对拍（`test/chart.test.ts`）已**不比亮度**，亮度正确性由 invariants 的文墨锚点组保障。
+- **扁平星数组**：`chart.palaces[].stars[]` 是个**扁平数组**（每项带 `type`，取值为 `major` / `minor` / `tough` / `soft`，**不存在** iztro 原始的 `minorStars` / `adjectiveStars` 这两个键）。文本输出仍只对主星显示亮度标注，辅杂曜的亮度只在 `--json` 里。
 
 ### 年龄与运限口径
 
@@ -122,7 +124,7 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 ### 数据面布局
 
 - **十二宫顺序**：`chart.palaces` 按**地支数组序**排，实测为 `2,3,…,11,0,1`（**寅起**）——既不是 0-11（子起），也不是宫位顺序（命宫起）。定位某宫请按 `branch` 建索引，**不要依赖数组下标**。CLI 的「十二宫详表」（`--palaces`）也是这个序。
-- **流年 / 流月的月份**：`--monthly` 取**农历月** 1-12，月干由流年干按五虎遁推。
+- **流年 / 流月 / 流日 / 流时**：`--monthly` 取**农历月** 1-12，月干由流年干按五虎遁推；`--daily <农历日>` 须配 `--monthly`（日干由 lunar-typescript 日柱现算，农历年序 = 流年公历年）；`--hourly <时支 0-12>` 须配 `--daily`（时干五鼠遁，12=晚子时按当日日干起遁）。
 - **运限数据面**（2026-09-28 起）：`Palace.ages` 是小限岁数表（**虚岁**域，十二宫并集连续覆盖 1–120，每宫 10 个）；流年命宫 = **年支所在宫**（三合派不重排十二宫）；`chart.mingZhu` / `shenZhu` 是命主/身主（iztro 直给），`douJunBranch` 是子年斗君（自推，闰月按所闰月数计）。`--info` 里的节气/非节气四柱**仅为出生时刻记录，本技能不做八字论命**。
 
 ## 命令速查
@@ -136,7 +138,7 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 | `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后）。方法论与评分标准不在命令输出里，按 [references/synastry-guide.md](references/synastry-guide.md) 按需读取   |
 | `selftest`                            | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次                                                                                          |
 
-高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>` 可叠加（`--info` / `--palaces` / `--topic` / `--report` 是独占分支；拼音别名仍被识别，全表见 options.md）；输出 `--json`；输出落盘 `--out <路径>`（覆盖写，正文不再占 stdout —— 需要把报告 / JSON 存成文件时用它，代替 shell 重定向）。
+高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>` 可叠加（`--info` / `--palaces` / `--topic` / `--report` 是独占分支；拼音别名仍被识别，全表见 options.md）；四化细化 `--monthly <农历月>` / `--daily <农历日>` / `--hourly <时支>`（逐级依赖：日挂月、时挂日，均须配 `--mutagen`）；输出 `--json`；输出落盘 `--out <路径>`（覆盖写，正文不再占 stdout —— 需要把报告 / JSON 存成文件时用它，代替 shell 重定向）。
 
 完整参数面（英文主名 / 拼音别名 / 位置参数形态 / `--config` / `--charts`）、各专题的内容、`--focus` 的宫名口径（含「交友宫」不是「仆役」）见 [references/options.md](references/options.md)。
 

@@ -33,7 +33,14 @@ import {
 } from "./fortune";
 import { generateChart } from "@/ziwei/algorithm";
 import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
-import { getMutagenByStem, getYearlyMutagen, getMonthlyMutagen } from "@/ziwei/mutagen";
+import {
+	getMutagenByStem,
+	getYearlyMutagen,
+	getMonthlyMutagen,
+	getDaXianMutagen,
+	getDailyMutagen,
+	getHourlyMutagen,
+} from "@/ziwei/mutagen";
 import { STEMS, BRANCHES } from "@/ziwei/constants";
 import { buildReport } from "./report";
 import {
@@ -99,6 +106,39 @@ export function parseMonthlyArg(args: CliArgs): number | null {
 }
 
 /**
+ * `--daily` 的农历日校验。
+ *
+ * @returns 农历日 1-30；未给时为 `null`（表示「不算流日」）
+ * @throws 裸开关、非整数或超出 1-30 时
+ *
+ * @remarks
+ * 与 `--monthly` 同一纪律：流日的「当前日」没有明确语义（须先有农历年月才有日），
+ * 不设默认 —— 裸开关直接报错指路。
+ */
+export function parseDailyArg(args: CliArgs): number | null {
+	if (args.daily === true) throw new Error("--daily 需要一个农历日值（如 --daily 15）");
+	const d = args.daily !== undefined ? Number(args.daily) : null;
+	if (d !== null && (!Number.isInteger(d) || d < 1 || d > 30))
+		throw new Error("--daily 应为农历日 1-30");
+	return d;
+}
+
+/**
+ * `--hourly` 的时支校验。
+ *
+ * @returns 时支 0-12（12 = 晚子时）；未给时为 `null`（表示「不算流时」）
+ * @throws 裸开关、非整数或超出 0-12 时
+ */
+export function parseHourlyArg(args: CliArgs): number | null {
+	if (args.hourly === true)
+		throw new Error("--hourly 需要一个时支值（如 --hourly 5，12=晚子时）");
+	const h = args.hourly !== undefined ? Number(args.hourly) : null;
+	if (h !== null && (!Number.isInteger(h) || h < 0 || h > 12))
+		throw new Error("--hourly 应为时支 0-12（12 = 晚子时）");
+	return h;
+}
+
+/**
  * 抬头行（命盘总览式）：`【标题】[名字 ]日期 说明 · 性别` —— --info / --topic /
  * 默认概览三处专题分发共用；名字槽缺省时直接省略，不残留双空格。
  */
@@ -123,10 +163,14 @@ export function buildAnalyzeJson(input: {
 	liuNianYear: number;
 	/** 农历月 1-12；`null` = 不算流月 */
 	liuYueMonth: number | null;
+	/** 农历日 1-30；`null`/`undefined` = 不算流日（须配 liuYueMonth） */
+	liuRiDay?: number | null;
+	/** 时支 0-12；`null`/`undefined` = 不算流时（须配 liuRiDay） */
+	liuShiHour?: number | null;
 	/** 排盘依据（日期换算 / 出生地解析 / 时辰校正的说明），原样进 `basis` 键 */
 	basis: { note: string; notes: string[]; lateZiCandidate: boolean; isLateZi: boolean };
 }): string {
-	const { chart, liuNianYear, liuYueMonth, basis } = input;
+	const { chart, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, basis } = input;
 	// 派生收进实现内部（caller 只给语义参数，_interface_ 上不存在「传错组合」的态空间）：
 	// 年干取农历口径（与宫详表同源），生年四化与流年/流月四化由查表函数从年号重算 ——
 	// 全是纯函数，重算零成本，换来的是少 7 个参数与天然一致。
@@ -134,6 +178,17 @@ export function buildAnalyzeJson(input: {
 	const native = getMutagenByStem(yearStem);
 	const liuNian = getYearlyMutagen(liuNianYear);
 	const liuYue = liuYueMonth !== null ? getMonthlyMutagen(liuNian.stemIndex, liuYueMonth) : null;
+	// 大限四化（文墨排盘口径）：随当前大限宫干走；童限期（未起运）为 null。
+	const daXian =
+		chart.currentDecadalIndex === -1
+			? null
+			: getDaXianMutagen(chart, chart.currentDecadalIndex);
+	const liuRi =
+		liuYueMonth !== null && liuRiDay != null
+			? getDailyMutagen(liuNianYear, liuYueMonth, liuRiDay)
+			: null;
+	const liuShi =
+		liuRi && liuShiHour != null ? getHourlyMutagen(liuRi.stemIndex, liuShiHour) : null;
 	return JSON.stringify(
 		{
 			chart,
@@ -156,6 +211,31 @@ export function buildAnalyzeJson(input: {
 						stem: liuYue.stemName,
 						transforms: liuYue.transforms,
 						located: locateSihua(chart, liuYue.transforms),
+					}
+				: null,
+			daXianSiHua: daXian
+				? {
+						stem: daXian.stemName,
+						transforms: daXian.transforms,
+						located: locateSihua(chart, daXian.transforms),
+					}
+				: null,
+			liuRiSiHua: liuRi
+				? {
+						lunarYear: liuNianYear,
+						lunarMonth: liuYueMonth,
+						lunarDay: liuRiDay,
+						stem: liuRi.stemName,
+						transforms: liuRi.transforms,
+						located: locateSihua(chart, liuRi.transforms),
+					}
+				: null,
+			liuShiSiHua: liuShi
+				? {
+						hourBranch: liuShiHour,
+						stem: liuShi.stemName,
+						transforms: liuShi.transforms,
+						located: locateSihua(chart, liuShi.transforms),
 					}
 				: null,
 			// 流年命宫与小限宫（运限速览的结构化等价物，只加不删）
@@ -334,6 +414,10 @@ export function cmdAstrology(args: CliArgs) {
 	// 流月：农历月 1-12，取流年干推五虎遁（可选）
 	const liuYueMonth = parseMonthlyArg(args);
 	const liuYue = liuYueMonth !== null ? getMonthlyMutagen(liuNian.stemIndex, liuYueMonth) : null;
+	// 流日 / 流时：取值校验在此（数值域），组合护栏（须配 --mutagen / --monthly / --daily）
+	// 只守文本路径 —— --json 的对应顶层键是独立键，程序消费方自担取值链（基准对拍依赖裸 --json --monthly）。
+	const liuRiDay = parseDailyArg(args);
+	const liuShiHour = parseHourlyArg(args);
 
 	// ── 融合分支（spec §1）──
 	// --info：只输出信息面板这一节（面板本身在默认输出里无条件存在，本参数是「只看面板」）
@@ -483,6 +567,8 @@ export function cmdAstrology(args: CliArgs) {
 			chart,
 			liuNianYear,
 			liuYueMonth,
+			liuRiDay,
+			liuShiHour,
 			basis: { note, notes, lateZiCandidate, isLateZi },
 		});
 	}
@@ -515,13 +601,25 @@ export function cmdAstrology(args: CliArgs) {
 			...overviewSection(chart, liuNianYear)
 		);
 	if (args.pattern) out.push("", ...patternSection(chart));
-	// 流月四化随四化专题输出：单独给 --monthly（不带 --mutagen）会被静默吞掉，在这里指路。
-	// 只约束文本路径 —— --json 的 liuYueSiHua 是独立顶层键（基准对拍依赖裸 --json --monthly）。
-	if (args.monthly !== undefined && !args.mutagen)
+	// 流月/流日/流时四化随四化专题输出：单独给（不带 --mutagen）会被静默吞掉，在这里指路。
+	// 只约束文本路径 —— --json 的对应顶层键是独立键（基准对拍依赖裸 --json --monthly）。
+	if (
+		(args.monthly !== undefined || args.daily !== undefined || args.hourly !== undefined) &&
+		!args.mutagen
+	)
 		throw new Error(
-			"--monthly 需要 --mutagen：流月四化在四化专题中输出，请加 --mutagen（流年缺省取当年，可用 --yearly 指定）。"
+			"--monthly / --daily / --hourly 需要 --mutagen：运限四化在四化专题中输出，请加 --mutagen（流年缺省取当年，可用 --yearly 指定）。"
 		);
-	if (args.mutagen) out.push("", ...mutagenSection(chart, liuNianYear, liuYueMonth));
+	if (args.daily !== undefined && liuYueMonth === null)
+		throw new Error(
+			"--daily 需要 --monthly：流日干挂在农历年月日上，请用 --monthly 提供农历月（流年缺省取当年，可用 --yearly 指定）。"
+		);
+	if (args.hourly !== undefined && args.daily === undefined)
+		throw new Error(
+			"--hourly 需要 --daily：流时干由日干五鼠遁推，请用 --daily 提供农历日（时支 12 = 晚子时，按当日日干起遁）。"
+		);
+	if (args.mutagen)
+		out.push("", ...mutagenSection(chart, { liuNianYear, liuYueMonth, liuRiDay, liuShiHour }));
 	if (args.yearly !== undefined) out.push("", ...yearlySection(chart, liuNianYear));
 	if (args.decadal !== undefined)
 		out.push(

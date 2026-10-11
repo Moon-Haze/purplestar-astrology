@@ -12,6 +12,7 @@ import { Solar } from "lunar-typescript";
 import type { BirthInfo, LunarInfo, Star, Palace, Decadal, ZiweiChart } from "./types";
 import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE, ELEMENT_TO_JU } from "./constants";
 import { oppositeBranch } from "./palace-relations";
+import { wenmoStarBrightness } from "./wenmo-brightness";
 // 飞星派工具仅供导出，不再在排盘时调用（倪师《天纪 03》：四化星永远固定不动）
 // import { detectSelfSihua, getMutagenByStem } from './mutagen';
 
@@ -79,21 +80,22 @@ export function getLunarInfo(year: number, month: number, day: number): LunarInf
 
 // ─── 亮度映射 ────────────────────────────────────────────────────
 /**
- * 把 iztro 的中文亮度归并成三档。
+ * 把中文亮度字归并成三档。
  *
- * @param b - iztro 的亮度字（「庙」「旺」「得」「利」「平」「不」「陷」等），可缺省
- * @returns `bright`（庙 / 旺）、`dim`（陷 / 不），其余一切（含缺省）归 `normal`
+ * @param b - 亮度字（iztro 的「庙旺得利平不陷」或文墨 SB 表的「庙旺得利平不闲陷」），可缺省
+ * @returns `bright`（庙 / 旺）、`dim`（陷 / 不 / 闲），其余一切（含缺省）归 `normal`
  *
  * @remarks
  * 只归三档，是因为下游只问「够不够亮」这一个问题（`patterns/helpers.ts` 的 `isBright` / `isDim`）；
- * 「得 / 利 / 平」的细分差异在倪师体系里不进格局条件。
+ * 「得 / 利 / 平」的细分差异在倪师体系里不进格局条件。文墨 5 档制的「闲」归 `dim`
+ * —— 闲是比「不」还弱半档的负面亮度（中州派口径，XD2 默认流派含它）。
  *
  * ⚠️ 缺省值走 `normal` 而非 `dim` —— 拿不到亮度时不做负面假设。
  */
 function mapBrightness(b?: string): "bright" | "normal" | "dim" {
 	if (!b) return "normal";
 	if (b === "庙" || b === "旺") return "bright";
-	if (b === "陷" || b === "不") return "dim";
+	if (b === "陷" || b === "不" || b === "闲") return "dim";
 	return "normal";
 }
 
@@ -252,24 +254,40 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 					`内核输出已损坏，请核对 iztro 版本是否变更了干支口径`
 			);
 
-		// 合并所有星：主星 + 次星 + 杂耀
+		// 合并所有星：主星 + 次星 + 杂耀。亮度走文墨 SB 表覆写（混合口径，XD2 默认）：
+		// 查表命中 → brightness 按细档塌缩 + brightnessRaw 记中文细档（主辅杂曜同表）；
+		// 未收录 / 留白 → 主星回落 iztro 原值，辅杂曜不带亮度。
 		const allStars: Star[] = [
-			...(p.majorStars ?? []).map(s => ({
-				name: s.name as string,
-				type: "major" as const,
-				brightness: mapBrightness(s.brightness as string),
-				mutagen: s.mutagen as Star["mutagen"],
-			})),
-			...(p.minorStars ?? []).map(s => ({
-				name: s.name as string,
-				type: mapStarType(s.name as string, s.type as string),
-				mutagen: s.mutagen as Star["mutagen"],
-			})),
-			...(p.adjectiveStars ?? []).map(s => ({
-				name: s.name as string,
-				type: "minor" as const,
-				mutagen: s.mutagen as Star["mutagen"],
-			})),
+			...(p.majorStars ?? []).map(s => {
+				const raw = wenmoStarBrightness(s.name as string, branch);
+				return {
+					name: s.name as string,
+					type: "major" as const,
+					brightness: raw ? mapBrightness(raw) : mapBrightness(s.brightness as string),
+					brightnessRaw: raw,
+					mutagen: s.mutagen as Star["mutagen"],
+				};
+			}),
+			...(p.minorStars ?? []).map(s => {
+				const raw = wenmoStarBrightness(s.name as string, branch);
+				return {
+					name: s.name as string,
+					type: mapStarType(s.name as string, s.type as string),
+					brightness: raw ? mapBrightness(raw) : undefined,
+					brightnessRaw: raw,
+					mutagen: s.mutagen as Star["mutagen"],
+				};
+			}),
+			...(p.adjectiveStars ?? []).map(s => {
+				const raw = wenmoStarBrightness(s.name as string, branch);
+				return {
+					name: s.name as string,
+					type: "minor" as const,
+					brightness: raw ? mapBrightness(raw) : undefined,
+					brightnessRaw: raw,
+					mutagen: s.mutagen as Star["mutagen"],
+				};
+			}),
 		];
 
 		const range = p.decadal?.range;

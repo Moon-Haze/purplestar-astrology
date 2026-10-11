@@ -357,6 +357,54 @@ const SAMPLES: Sample[] = [
 	},
 	{
 		group: "astrology · 专题深入",
+		title: "--daily 15 追加流日四化",
+		desc: "须配 --mutagen --monthly：日干由 lunar-typescript 日柱现算（农历年序 = 流年公历年）",
+		args: [
+			"astrology",
+			"--date",
+			"2011-06-24",
+			"--time",
+			"07:45",
+			"--city",
+			"杭州",
+			"--gender",
+			"male",
+			"--mutagen",
+			"--yearly",
+			"2027",
+			"--monthly",
+			"5",
+			"--daily",
+			"15",
+		],
+	},
+	{
+		group: "astrology · 专题深入",
+		title: "--hourly 5 追加流时四化",
+		desc: "须配 --mutagen --monthly --daily：时干五鼠遁由日干推；12 = 晚子时按当日日干起遁",
+		args: [
+			"astrology",
+			"--date",
+			"2011-06-24",
+			"--time",
+			"07:45",
+			"--city",
+			"杭州",
+			"--gender",
+			"male",
+			"--mutagen",
+			"--yearly",
+			"2027",
+			"--monthly",
+			"5",
+			"--daily",
+			"15",
+			"--hourly",
+			"5",
+		],
+	},
+	{
+		group: "astrology · 专题深入",
 		title: "--decadal 大限专题（缺省当前虚岁）",
 		desc: "十年大运时间轴 + 当前虚岁所在限的三方四正深入",
 		args: [
@@ -851,9 +899,7 @@ async function main(): Promise<void> {
 	emit(
 		`> 由 \`tools/cli-samples.ts\` 生成：对 \`node scripts/purple-star.ts\` 各命令/参数逐条实跑并记录输出，`
 	);
-	emit(
-		`> 供测试人员核对各参数的输出形态。示例数据均为虚构（与 help 示例同款），无真实人物。`
-	);
+	emit(`> 供测试人员核对各参数的输出形态。示例数据均为虚构（与 help 示例同款），无真实人物。`);
 	emit(
 		`> 命令均为**进程内直调**（与 CLI 同一命令函数，输出一致；含 --yearly/--ages 等随时间漂移的样例，`
 	);
@@ -979,7 +1025,10 @@ async function main(): Promise<void> {
 
 	// ── 通道收尾：压平样例输出里偶发的连续空行、去掉尾空行（lint 规范形态），
 	// 再按通道输出 —— stdout 补的换行与 writeOutFile 的补换行同位，产物逐字一致 ──
-	const text = docLines.join("\n").replace(/\n{3,}/g, "\n\n").replace(/\n+$/, "");
+	const text = docLines
+		.join("\n")
+		.replace(/\n{3,}/g, "\n\n")
+		.replace(/\n+$/, "");
 	if (outPath !== null) {
 		writeOutFile(outPath, text);
 		console.error(`已写入 ${outPath}`);

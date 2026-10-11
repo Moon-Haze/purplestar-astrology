@@ -5,8 +5,9 @@
  * 相同：它被 commands.ts 与 selftest.ts **两方**调用，而 selftest 被 commands 静态引着，
  * 专题渲染若留在 cmdAnalyze 里，selftest 就测不到它（静态环）—— 独立成本层叶子即无环。
  *
- * 口径基准（三合派，倪师《天纪》）：运限分析 = **宫位移动 + 三方四正 + 生年/流年四化**。
- * 不做宫干四化、不做自化 —— 那是飞星派，见 `.claude/CLAUDE.md` 的「体系硬约束」。
+ * 口径基准（文墨排盘 + 倪师三合派论断的混合口径）：运限分析 = **宫位移动 + 三方四正 +
+ * 生年/流年/大限宫干/流月/流日/流时四化**。大限宫干四化是文墨排盘展示口径；宫干自化
+ * 与来因宫仍然不做 —— 那是飞星派禁列，见 `.claude/CLAUDE.md` 的「体系硬约束」。
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核
  *    与同层模块（`./render`）。
@@ -19,6 +20,9 @@ import {
 	getMonthlyMutagen,
 	getMutagenByStem,
 	getYearStemIndex,
+	getDaXianMutagen,
+	getDailyMutagen,
+	getHourlyMutagen,
 } from "@/ziwei/mutagen";
 import { surroundBranches, oppositeBranch } from "@/ziwei/palace-relations";
 import { detectPatterns } from "@/ziwei/patterns";
@@ -359,32 +363,97 @@ export function patternSection(chart: ZiweiChart): string[] {
 // ══════════════════════ 四化专题（--sihua）══════════════════════
 
 /**
- * `--sihua`：四化专题 —— 生年 / 流年（/ 流月）四化落宫 + 同星引动。
+ * `--mutagen` 的取数选项。
+ *
+ * @remarks
+ * 取值链**逐级依赖**：流日须有流月（日干挂在农历年月日上）、流时须有流日（时干由日干
+ * 五鼠遁）。护栏（谁缺谁报错）在 `cli/astrology.ts` 的分发层，本函数只按「给了才算」组装。
+ */
+export interface MutagenSectionOptions {
+	/** 流年公历年（`--yearly` 的值；缺省当年由 caller 经 parseYearlyArg 归一后传入） */
+	liuNianYear: number;
+	/** 农历月 1–12；`null`/`undefined` = 不算流月（其下的流日流时一并不算） */
+	liuYueMonth?: number | null;
+	/** 农历日 1–30（须配 {@link liuYueMonth}） */
+	liuRiDay?: number | null;
+	/** 时支 0–12（须配 {@link liuRiDay}；12 = 晚子时，按当日日干起遁） */
+	liuShiHour?: number | null;
+}
+
+/**
+ * `--mutagen`：四化专题 —— 生年 / 当前大限宫干 / 流年（/ 流月 / 流日 / 流时）四化落宫 +
+ * 生年×流年同星引动。
  *
  * @param chart - 命盘
- * @param liuNianYear - 流年公历年
- * @param liuYueMonth - 农历月 1–12；`null` 表示不算流月
+ * @param options - 取数选项（流年必给；月日时逐级可选）
+ * @returns 输出行
+ *
+ * @remarks
+ * 大限区块是**文墨排盘展示口径**（大限宫干四化，随大限宫位走）；流年/流月/流日/流时是
+ * 时间干四化。生年×流年同星引动保持三合派口径不变。童限期（未起运）大限区块只出
+ * 一行标注 —— 没有大限宫就没有宫干四化。
  */
-export function mutagenSection(
-	chart: ZiweiChart,
-	liuNianYear: number,
-	liuYueMonth: number | null
-): string[] {
+export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions): string[] {
+	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour } = options;
 	const native = nativeSiHuaOf(chart);
 	const liuNian = getYearlyMutagen(liuNianYear);
 
 	const out = [`【生年四化】年干 ${STEMS[chart.lunarInfo.yearStem]}`];
 	out.push(...sihuaLines(chart, native));
+
+	// 大限四化：大限宫的宫干查四化表（文墨排盘口径）。童限未起运时无宫干可取。
+	out.push("");
+	if (chart.currentDecadalIndex === -1) {
+		out.push(
+			`【当前大限四化】童限未起运（虚岁 ${chart.currentAge} 小于五行局数）—— 暂无大限宫干四化`
+		);
+	} else {
+		const daXian = getDaXianMutagen(chart, chart.currentDecadalIndex);
+		if (!daXian) {
+			out.push("【当前大限四化】（当前大限定位异常，跳过）");
+		} else {
+			const dx = chart.decadals[chart.currentDecadalIndex];
+			out.push(
+				`【当前大限 ${dx.startAge}–${dx.endAge}岁 · ${dx.palaceName}】大限四化：宫干 ${daXian.stemName}（文墨排盘口径，大限宫的宫干）`
+			);
+			out.push(...sihuaLines(chart, daXian.transforms));
+		}
+	}
+
 	out.push("");
 	out.push(`【${liuNianYear} 流年四化】年干 ${liuNian.stemName}`);
 	out.push(...sihuaLines(chart, liuNian.transforms));
-	if (liuYueMonth !== null) {
+	if (liuYueMonth != null) {
 		const liuYue = getMonthlyMutagen(liuNian.stemIndex, liuYueMonth);
 		out.push("");
 		out.push(
 			`【${liuNianYear} 年 农历${liuYueMonth}月 流月四化】月干 ${liuYue.stemName}（五虎遁，由流年干 ${liuNian.stemName} 推）`
 		);
 		out.push(...sihuaLines(chart, liuYue.transforms));
+		if (liuRiDay != null) {
+			// 流日取数口径：农历年序 = 流年公历年（--daily 的语义是「流年 Y 的农历 M 月 D 日」）。
+			// 闰月内核层支持（getDailyMutagen 的 isLeapMonth），CLI 暂未接旗标 —— 出生 --leap
+			// 是另一个概念，不能混用。
+			const liuRi = getDailyMutagen(liuNianYear, liuYueMonth, liuRiDay);
+			if (!liuRi)
+				throw new Error(
+					`--daily ${liuRiDay} 在 ${liuNianYear} 年农历 ${liuYueMonth} 月中不存在（该月天数不足），请核对农历日`
+				);
+			out.push("");
+			out.push(
+				`【${liuNianYear} 年 农历${liuYueMonth}月${liuRiDay}日 流日四化】日干 ${liuRi.stemName}（日柱现算）`
+			);
+			out.push(...sihuaLines(chart, liuRi.transforms));
+			if (liuShiHour != null) {
+				const liuShi = getHourlyMutagen(liuRi.stemIndex, liuShiHour);
+				const hourLabel = liuShiHour === 12 ? "晚子时" : `${BRANCHES[liuShiHour]}时`;
+				out.push("");
+				out.push(
+					`【流时四化 · ${hourLabel}】时干 ${liuShi.stemName}（五鼠遁，由日干 ${liuRi.stemName} 推）`
+				);
+				out.push(...sihuaLines(chart, liuShi.transforms));
+			}
+		}
 	}
 	const pairs = sameStarPairs(chart, native, liuNian.transforms);
 	if (pairs.length) {
@@ -471,8 +540,9 @@ export function yearlySection(chart: ZiweiChart, year: number): string[] {
  * @param age - 深查的虚岁；`--daxian` 缺省时传当前虚岁
  *
  * @remarks
- * 三合派口径：大限只看**宫位移动**，四化永远取生年干（不取大限宫干）；
- * 大限的三方四正即大限宫地支的三合 + 对宫（限之财官迁移）。
+ * 混合口径：三合派论断框架（大限看**宫位移动**、限三方四正、生年四化落点会照）+
+ * 文墨排盘展示层（本限**宫干**四化区块，随大限宫位走）。大限的三方四正即大限宫地支的
+ * 三合 + 对宫（限之财官迁移）。
  */
 export function decadalSection(chart: ZiweiChart, age: number): string[] {
 	const dxIndex = chart.decadals.findIndex(d => age >= d.startAge && age <= d.endAge);
@@ -514,6 +584,15 @@ export function decadalSection(chart: ZiweiChart, age: number): string[] {
 	out.push("生年四化落点（★ = 落大限三方四正）：");
 	const native = nativeSiHuaOf(chart);
 	out.push(...sihuaLines(chart, native, sanFang));
+
+	// 大限宫干四化（文墨排盘口径）：本限宫干查四化表，落宫照会照本限三方标 ★。
+	// 三合派论断框架（宫位移动 + 生年四化会照）保持不变，此节是排盘展示层的追加。
+	const dxMutagen = getDaXianMutagen(chart, dxIndex);
+	if (dxMutagen) {
+		out.push("");
+		out.push(`大限宫干四化（文墨排盘口径，本限宫干 ${dxMutagen.stemName}）：`);
+		out.push(...sihuaLines(chart, dxMutagen.transforms, sanFang));
+	}
 
 	out.push("");
 	out.push("限内十年逐年（流年命宫 = 年支宫；小限宫见岁数表）：");

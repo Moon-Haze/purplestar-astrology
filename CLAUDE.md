@@ -131,15 +131,14 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 2. **`selftest`**：CLI 自带的回归断言（三段汇总），整体执行。
 3. **`npm test`**：`test/` 下的基准回归（七层），失效的基准是负债而非保障——见 [test/README.md](test/README.md) 的「升级 iztro 的流程」。
 
-## 体系硬约束：三合派，不是飞星派
+## 体系口径：文墨排盘 + 倪师论断（混合口径）
 
-本项目严格遵循倪海夏《天纪》三合派。以下飞星派工具被**主动下线**，不得使用：
+本项目的排盘与运限四化以文墨天机为准（亮度走文墨 SB 表覆写、运限四化含大限宫干层），论断框架仍严格按倪海夏《天纪》三合派。以下飞星派工具**继续禁用**，不得使用：
 
-- ❌ **宫干自化** —— `algorithm.ts` 已停止填充 `Palace.selfMutagen`
-- ❌ **大限四化取宫干** —— 已停止生成 `decadals[].mutagen` / `stemIndex`
+- ❌ **宫干自化** —— `algorithm.ts` 不填充 `Palace.selfMutagen`
 - ❌ **来因宫**
 
-⚠️ `ziwei/mutagen.ts` 只导出三层四化（`getMutagenByStem` / `getYearStemIndex` / `getYearlyMutagen` / `getMonthlyStemIndex` / `getMonthlyMutagen`）；飞星派函数已删除，全仓零调用点。但 `types.ts` 的**绊线字段刻意保留**（`Palace.selfMutagen` / `Decadal.mutagen` 与 `SelfMutagenMark` / `DecadalMutagen` 类型）——断言要盯的正是「有没有被填回」。**要删这些字段，先读 `types.ts` 里紧挨着它们的说明。**
+⚠️ `ziwei/mutagen.ts` 导出六层四化（生年 / 大限宫干 `getDaXianMutagen` / 流年 / 流月 / 流日 `getDailyMutagen` / 流时 `getHourlyMutagen`）；宫干自化与来因宫函数已删除，全仓零调用点。`types.ts` 的**绊线字段刻意保留**（`Palace.selfMutagen` 与 `SelfMutagenMark` / `DecadalMutagen` 类型；`Decadal` 结构不加字段，大限宫干四化走纯函数层）——断言要盯的正是「有没有被填回」。**要删这些字段，先读 `types.ts` 里紧挨着它们的说明。**
 
 ## 单 skill 形态（2026-09-30 三 skill 合一）
 
@@ -155,12 +154,12 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 ### 仍然保留的守卫
 
-| 守卫                                | 位置                     | 盯什么                                            |
-| ----------------------------------- | ------------------------ | ------------------------------------------------- |
-| skill 自包含 + `type: module`       | `test/repo.test.ts`      | 根 `SKILL.md` / `package.json` / CLI 入口齐备     |
-| `SKILL.md` ↔ `references/` 双向一致 | `test/repo.test.ts`      | 骨架指了路、文件真的在                            |
-| 解析钩子候选序                      | `test/repo.test.ts`      | `boot-hooks.ts` 那对候选序（`.ts` 优先于同名目录）|
-| 引文守卫                            | `test/citations.test.ts` | 扫 `scripts/` 全树，比对 `ziwei/annotations.ts`   |
+| 守卫                                | 位置                     | 盯什么                                             |
+| ----------------------------------- | ------------------------ | -------------------------------------------------- |
+| skill 自包含 + `type: module`       | `test/repo.test.ts`      | 根 `SKILL.md` / `package.json` / CLI 入口齐备      |
+| `SKILL.md` ↔ `references/` 双向一致 | `test/repo.test.ts`      | 骨架指了路、文件真的在                             |
+| 解析钩子候选序                      | `test/repo.test.ts`      | `boot-hooks.ts` 那对候选序（`.ts` 优先于同名目录） |
+| 引文守卫                            | `test/citations.test.ts` | 扫 `scripts/` 全树，比对 `ziwei/annotations.ts`    |
 
 `ALL_SKILLS` 由磁盘推导（判据：根下有 `SKILL.md`），单 skill 形态下只有一项；`CHART_LIKE` 手写——「排不排盘」是语义。
 

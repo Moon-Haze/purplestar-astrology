@@ -45,6 +45,8 @@ export const OPTION_OWNERSHIP: Record<CommandName, readonly string[]> = {
 		"palaces",
 		"yearly",
 		"monthly",
+		"daily",
+		"hourly",
 		"focus",
 		"topic",
 		"view",

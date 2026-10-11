@@ -34,8 +34,8 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 	astrology: [
 		"排盘分析一条命令。",
 		"不带功能参数 = 概览：基本信息面板（含公历生日 / 命宫 / 身宫 / 紫微落 / 三方四正）+ 口径提示 + 运限速览 + 专题指路。",
-		"专题参数可叠加：--pattern 格局 / --mutagen 四化 / --yearly [年] 流年 / --monthly 流月（须配 --mutagen）/",
-		"--decadal [虚岁] 大限 / --ages [虚岁] 小限 / --focus <宫>（四项深化：三方四正逐宫全星曜、",
+		"专题参数可叠加：--pattern 格局 / --mutagen 四化（生年/大限宫干/流年，配 --monthly 流月、--daily 流日、--hourly 流时）/",
+		"--yearly [年] 流年 / --decadal [虚岁] 大限 / --ages [虚岁] 小限 / --focus <宫>（四项深化：三方四正逐宫全星曜、",
 		"对宫完整详表、涉及格局全列、运限引动年份）。给了专题参数则只出口径提示 + 专题详版",
 		"（基本信息面板 / 运限速览 / 专题指路均不带 —— 已在深入）。",
 		"--info（面板 + 运限速览 + 专题指路，与概览同尾）/ --palaces（十二宫逐宫详表）/ --topic（主题论断）是独占分支：",

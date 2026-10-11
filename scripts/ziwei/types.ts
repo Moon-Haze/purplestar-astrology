@@ -116,12 +116,21 @@ export interface Star {
 	 */
 	mutagen?: Mutagen;
 	/**
-	 * 亮度，已归并成三档：`bright` 庙/旺、`dim` 陷/不、其余（含**缺省**）`normal`。
+	 * 亮度，已归并成三档：`bright` 庙/旺、`dim` 陷/不/闲、其余（含**缺省**）`normal`。
 	 *
-	 * ⚠️ **只有主星会被填** —— `algorithm.ts` 仅对 iztro 的 `majorStars` 调 `mapBrightness`，
-	 * 次星与杂曜此字段为 `undefined`。下判决前记得判空。
+	 * ⚠️ **口径随混合口径切换（2026-10）**：主星 + 辅星 + 煞星（凡文墨 SB 表收录的星）
+	 * 都会填，取值来自文墨 XD2 表的细档塌缩（`algorithm.ts` 装配层覆写）；表未收录的
+	 * 星中，主星回落 iztro 原值、辅杂曜为 `undefined`。下判决前记得判空。
 	 */
 	brightness?: "bright" | "normal" | "dim";
+	/**
+	 * 亮度细档（文墨口径中文，如「庙」「旺」「得」「利」「平」「不」「闲」「陷」）。
+	 *
+	 * ⚠️ 只有文墨 SB 表收录且该宫非留白的星才有值；三档 {@link brightness} 由此细档
+	 * 塌缩而来（塌缩规则见 `algorithm.ts` 的 `mapBrightness`）。文本输出不显示此字段，
+	 * 仅进 `--json` 供细粒度消费。
+	 */
+	brightnessRaw?: string;
 }
 
 /**
