@@ -11,8 +11,9 @@
  * `getTopicAnalysis` 的第 2 点：跨行内子句的删除只能作用在整篇文本上）。
  *
  * 叶子 view 的行首带着自己的 `**【小节名】**` 头，报告里改用 Markdown 标题
- * （`### 三方四正联动`），故取用时经 {@link stripViewHeader} 剥掉原头 —— 只剥
- * **首个**匹配行，view 内部的子块头（如疾厄节的【星曜辅助】）保留。
+ * （`### 三方四正联动`），故取用时经 {@link asMarkdownBlock} 装配 —— 剥掉**首个**
+ * 匹配头，view 内部的子块头（如疾厄节的【星曜辅助】）转成 `####` 标题：Markdown
+ * 文档里强调行不能充当标题，也靠它保证各标题前后有空行。
  *
  * 「经典出处」的引文主体在古籍库（`../../classics`，另一知识域），本模块不引它 ——
  * 由 CLI 层经 {@link getTopicReportMeta} 拿到主宫主星后自查古籍、把结果从
@@ -57,21 +58,31 @@ export interface ReportCitation {
 export type ReportOptions = AnalysisOptions & { citations?: ReportCitation[] };
 
 /**
- * 剥掉叶子 view 输出首部的 `**【小节名】**` 头。
+ * 把叶子 view 输出装配成报告的 Markdown 块。
  *
  * @remarks
- * 只剥**首个**头：跳过开头的空行，若第一行非空行匹配 `**【…】**` 形态则删去它与其后
- * 的一个空行；内部子块头（同样形态但不在行首）不受影响。空数组与无头输出原样返回
- * （后者说明上游 view 改了排版，报告标题会与它自带的头并存 —— 那是应当被看见的漂移）。
+ * 剥掉**首个**头：跳过开头的空行，若第一行非空行匹配 `**【…】**` 形态则删去它与其后
+ * 的一个空行；view 内部的子块头（同样形态但不在行首）转成 `####` 标题并补足前后空行
+ * —— Markdown 文档里强调行不能当标题。空数组与无头输出按原行装配（后者说明上游
+ * view 改了排版，报告标题会与它自带的头并存 —— 那是应当被看见的漂移）。
  */
-function stripViewHeader(lines: string[]): string[] {
+function asMarkdownBlock(lines: string[]): string[] {
 	let i = 0;
 	while (i < lines.length && lines[i] === "") i++;
 	if (i < lines.length && /^\*\*【[^】]+】\*\*$/.test(lines[i])) {
 		i += 1;
 		while (i < lines.length && lines[i] === "") i++;
 	}
-	return lines.slice(i);
+	const out: string[] = [];
+	for (; i < lines.length; i++) {
+		const line = lines[i];
+		if (line.startsWith("**【") && line.endsWith("】**")) {
+			out.push("", `#### ${line.slice(3, -3)}`, "");
+		} else {
+			out.push(line);
+		}
+	}
+	return out;
 }
 
 /** 去掉行数组首尾的空行（拼接小节时统一由编排层控制间距）。 */
@@ -242,17 +253,17 @@ export function getTopicReport(
 
 	// ── 三方四正联动（叶子 view，剥头）──
 	lines.push("### 三方四正联动");
-	// lines.push("");
-	lines.push(...stripViewHeader(renderSanFang(ctx)));
+	lines.push("");
+	lines.push(...asMarkdownBlock(renderSanFang(ctx)));
 
 	// ── 四化路径分析：本命四化会照 + 魁钺贵人 ──
 	lines.push("### 四化路径分析");
-	// lines.push("");
-	lines.push(...stripViewHeader(renderMutagen(ctx)));
+	lines.push("");
+	lines.push(...asMarkdownBlock(renderMutagen(ctx)));
 	const kuiYue = renderKuiYue(ctx);
 	if (kuiYue.length > 0) {
 		lines.push("");
-		lines.push(...stripViewHeader(kuiYue));
+		lines.push(...asMarkdownBlock(kuiYue));
 	}
 
 	// ── 当前大限（未起运时给童限提示）──
@@ -260,7 +271,7 @@ export function getTopicReport(
 	lines.push("");
 	const decadal = renderDecadal(ctx);
 	if (decadal.length > 0) {
-		lines.push(...stripViewHeader(decadal));
+		lines.push(...asMarkdownBlock(decadal));
 	} else {
 		lines.push("（尚未起运 —— 虚岁小于五行局数时不入大限，按命宫论，见 SKILL「童限」口径。）");
 	}
@@ -276,7 +287,7 @@ export function getTopicReport(
 		lines.push("");
 		lines.push(topic === "health" ? "### 健康取象（宫位主轴 · 倪师原法）" : "### 性格深描");
 		lines.push("");
-		lines.push(...stripViewHeader(extra));
+		lines.push(...asMarkdownBlock(extra));
 	}
 
 	// ── 命盘依据：事实层 —— 主宫星曜全列 / 三方四正 / 本命四化会照 / 全盘骨架 ──
@@ -328,6 +339,10 @@ export function getTopicReport(
 	for (const s of TOPIC_SUGGESTIONS[topic]) lines.push(`→ ${s}`);
 	lines.push("");
 
+	// view 之间的多空行在 Markdown 里与单个空行同义，统一压平成规范形态；
 	// 性别过滤与 getTopicAnalysis 同口径：作用在整篇文本上（跨行内子句）
-	return filterGenderContent(trimBlanks(lines).join("\n"), chart.birthInfo.gender);
+	const text = trimBlanks(lines)
+		.join("\n")
+		.replace(/\n{3,}/g, "\n\n");
+	return filterGenderContent(text, chart.birthInfo.gender);
 }
