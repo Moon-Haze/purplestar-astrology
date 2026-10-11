@@ -1,18 +1,19 @@
 /**
- * `classics` 命令：统一知识检索 —— 四域合一（books 古籍 / stars 星曜释义 / tianji 天纪判语 / oracle 断语手册）。
+ * `knowledge` 命令：统一知识检索 —— 四域合一（books 古籍 / stars 星曜释义 / tianji 天纪判语 / oracle 断语手册）。
  *
- * 本文件是**分发入口 + books 域**；三个附加域的实现各住一文件（`knowledge/` 子目录）：
- *   stars  → ./knowledge/stars.ts（内核轻表，静态引）
- *   tianji → ./knowledge/tianji.ts（语料 392KB，函数内动态 import 懒加载）
- *   oracle → ./knowledge/oracle.ts（手册 4.4MB，函数内动态 import 懒加载）
- * 懒加载纪律：CLI 主链路（commands.ts → classics.ts）不静态引这两份大数据，
- * `classics --search …` 主路径与启动不吃它们。
+ * 本文件是**分发入口 + books 域**；三个附加域的实现各住本目录一文件：
+ *   stars  → ./stars.ts（内核轻表，静态引）
+ *   tianji → ./tianji.ts（语料 392KB，函数内动态 import 懒加载）
+ *   oracle → ./oracle.ts（手册 4.4MB，函数内动态 import 懒加载）
+ * 懒加载纪律：CLI 主链路（commands.ts → knowledge/index.ts）不静态引这两份大数据，
+ * `knowledge --search …` 主路径与启动不吃它们。
  *
  * 域由 `--source` 选择（缺省 `books`，与「classics 只搜古籍」的历史用法向后兼容）；
- * `stars` / `oracle` 两个旧命令已并入（原命令名不再保留），tianji 从未独立成命令。
+ * 旧命令 `stars` / `oracle` 已并入（原命令名不保留），`classics` 本命令原名（随四域
+ * 合并改名 knowledge，用法逐字不变）。
  */
 
-import type { CliArgs } from "./args";
+import type { CliArgs } from "../args";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics";
 
 // ══════════════════════ books 域：古籍原文检索（默认） ══════════════════════
@@ -29,7 +30,7 @@ function renderBooks(args: CliArgs): string {
 				b => `  ▸ ${b.title ?? b.slug}（${b.slug}）${b.chapters?.length ?? 0} 章`
 			),
 			"",
-			"用法：classics --search <关键词>",
+			"用法：knowledge --search <关键词>",
 			"其他域：--source stars（星曜释义）/ --source tianji（天纪判语）/ --source oracle（断语手册）",
 		].join("\n");
 	}
@@ -40,7 +41,7 @@ function renderBooks(args: CliArgs): string {
 	//
 	// `typeof ... === "boolean"` 那一支是裸写 `--limit`（没跟值）的第二道防线。
 	// 值域非法走 throw（引导层打「错误：」并 exit 1），与命令其它 throw 行为一致，
-	// 不再走 return——return 会把报错当正常输出打上 stdout 且 exit 0，机器路径无法感知。
+	// 不再走 return——return 会把报错当正常输出打 stdout 且 exit 0，机器路径无法感知。
 	if (typeof args.limit === "boolean" || Number.isNaN(limit) || limit < 1)
 		throw new Error(`--limit 需为正整数，实得 ${String(args.limit)}。`);
 	const hits = searchClassics(q, limit);
@@ -59,7 +60,7 @@ function renderBooks(args: CliArgs): string {
 // ══════════════════════ 四域分发 ══════════════════════
 
 /**
- * `classics` 命令：统一知识检索（四域）。
+ * `knowledge` 命令：统一知识检索（四域）。
  *
  * @param args - CLI 参数表；`--source` 选域（books 缺省 / stars / tianji / oracle），
  *   各域参数：books `--search/--limit`、stars `--search`、tianji `--search/--book/--limit`、
@@ -70,17 +71,17 @@ function renderBooks(args: CliArgs): string {
  * `--source books`（缺省）为古籍检索，行为与「classics 只搜古籍」的旧用法逐字兼容。
  * tianji / oracle 域的实现在各自域文件内动态 import（懒加载，见文件头）。
  */
-export async function cmdClassics(args: CliArgs): Promise<string> {
+export async function cmdKnowledge(args: CliArgs): Promise<string> {
 	const source = String(args.source ?? "books");
 	switch (source) {
 		case "books":
 			return renderBooks(args);
 		case "stars":
-			return (await import("./knowledge/stars")).renderStars(args);
+			return (await import("./stars")).renderStars(args);
 		case "tianji":
-			return (await import("./knowledge/tianji")).renderTianji(args);
+			return (await import("./tianji")).renderTianji(args);
 		case "oracle":
-			return (await import("./knowledge/oracle")).renderOracle(args);
+			return (await import("./oracle")).renderOracle(args);
 		default:
 			throw new Error(`--source 应为 books/stars/tianji/oracle，收到：${source}`);
 	}

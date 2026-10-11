@@ -2,7 +2,8 @@
  * 古籍检索自检断言组 —— 从 classics 自带的 selftest.ts 抽出。
  *
  * 断言体基本原样；适配点只有一类：**参数面断言改跑合并后的根 CLI**
- * （`node scripts/purple-star.ts classics …`），因为 classics 不再有独立入口。
+ * （`node scripts/purple-star.ts knowledge …`，命令原名 classics、四域合并时改名），
+ * 因为它不再有独立入口。
  * 合并引擎（cac 底座）在 `--limit -3` 贪婪取值与取值参数裸写拒收上与 classics
  * 原自研解析器不同 —— 那两条断言按 `util.parseArgs` 引擎的真实行为钉死
  * （见各断言注释）。
@@ -137,7 +138,7 @@ export async function asserts(): Promise<Assertion[]> {
 			["--searches", "search"], // 多字
 		];
 		for (const [bad, want] of probes) {
-			const r = call(["classics", bad, "x"]);
+			const r = call(["knowledge", bad, "x"]);
 			if (r.code === 0)
 				throw new Error(`${bad} 未报错（退出码 0）—— 未知旗标又变成静默忽略了`);
 			if (!r.err.includes(`--${want}`))
@@ -150,10 +151,10 @@ export async function asserts(): Promise<Assertion[]> {
 		// 三个探针全覆盖：`0` / `abc` 走常规值校验；`-3` 走**贪婪取值**
 		//（`-3` 是 `--limit` 的值，不是短参数）。
 		// 值域非法由命令层 throw：报错走 stderr 且退出码非零。
-		// cmdClassics 已改 async（四域分发），直调探针（callDirect）只支持同步命令，
+		// cmdKnowledge 已改 async（四域分发），直调探针（callDirect）只支持同步命令，
 		// 故走子进程 run —— async 分发的 rejection 子进程天然兜住。
 		for (const bad of ["0", "abc", "-3"]) {
-			const r = run(["classics", "--search", "紫微", "--limit", bad]);
+			const r = run(["knowledge", "--search", "紫微", "--limit", bad]);
 			if (r.code === 0)
 				throw new Error(`--limit ${bad} 未报错（退出码 0）—— 值域非法必须非零退出`);
 			if (!r.err.includes("--limit"))
@@ -162,22 +163,22 @@ export async function asserts(): Promise<Assertion[]> {
 		return "0 / abc / -3 均被命令层拦下（code1 + err 回显）";
 	});
 
-	ok("冒烟（子进程）：classics 成功链路 入口→解析→命令表→渲染 一次走通", () => {
-		const r = run(["classics", "--search", "紫微"]);
+	ok("冒烟（子进程）：knowledge 成功链路 入口→解析→命令表→渲染 一次走通", () => {
+		const r = run(["knowledge", "--search", "紫微"]);
 		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
 		if (!r.out.includes("紫微")) throw new Error("检索结果缺关键词");
 		return "子进程成功链路在";
 	});
 
-	ok("合并接线：classics 在主命令表有实现，其参数在主作用域已声明", () => {
+	ok("合并接线：knowledge 在主命令表有实现，其参数在主作用域已声明", () => {
 		// 三 skill 合一的接线守卫：命令进了 COMMAND_TABLE、参数进了 OPTION_NAMES，
-		// 任何一侧漏接，用户敲 `classics` 就是「未知命令」或 `--limit` 就是「未知参数」。
+		// 任何一侧漏接，用户敲 `knowledge` 就是「未知命令」或 `--limit` 就是「未知参数」。
 		// 键集来自函数顶部的动态 import（见彼处注释）。
-		if (!("classics" in COMMANDS))
-			throw new Error("cli/commands.ts 的命令表里没有 classics 条目 —— 合并接线断了");
+		if (!("knowledge" in COMMANDS))
+			throw new Error("cli/commands.ts 的命令表里没有 knowledge 条目 —— 合并接线断了");
 		for (const f of ["search", "limit"]) {
 			if (!OPTION_NAMES.has(f))
-				throw new Error(`cli 的 OPTION_NAMES 里没有 ${f} —— classics 参数未声明`);
+				throw new Error(`cli 的 OPTION_NAMES 里没有 ${f} —— knowledge 参数未声明`);
 		}
 		return "命令表与作用域双侧接线在";
 	});

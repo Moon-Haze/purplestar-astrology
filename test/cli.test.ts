@@ -33,7 +33,7 @@ const SKILL_ROOT = resolve(HERE, "..");
 const CLI = {
 	astrology: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
 	synastry: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
-	classics: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
+	knowledge: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
 } as const;
 /** 上面那张表的键。新增 skill 时这里会跟着报错，提醒把用例指过去。 */
 type Skill = keyof typeof CLI;
@@ -1677,21 +1677,21 @@ describe("CLI 端到端", () => {
 	// ── oracle 断语手册 ──
 	// 消费 analysis/manual/ 的生成数据（懒加载）。测的是命令层三形态与错误指路；
 	// 数据本身的正确性由生成链（export-manual code）与 classifyOracle 的 other=0 兜底保证。
-	// 旧独立命令 stars / oracle 已并入 classics --source（tianji 域同期加入），
-	// 用例全部走 classics 路径。
-	describe("classics 四域：oracle 域（断语手册）", () => {
+	// 旧独立命令 stars / oracle 已并入 knowledge --source（tianji 域同期加入），
+	// 用例全部走 knowledge 路径。
+	describe("knowledge 四域：oracle 域（断语手册）", () => {
 		it("裸调用列出 13 主题与用法", async () => {
-			const t = await cliCmd("classics", ["--source", "oracle"]);
+			const t = await cliCmd("knowledge", ["--source", "oracle"]);
 			assert.ok(t.includes("career") && t.includes("用法"), "应列主题 key 与用法");
 		});
 
 		it("主题概览列出 14 主星与断语计数", async () => {
-			const t = await cliCmd("classics", ["--source", "oracle", "--topic", "career"]);
+			const t = await cliCmd("knowledge", ["--source", "oracle", "--topic", "career"]);
 			assert.ok(t.includes("七杀") && t.includes("断语"), "应含主星与计数");
 		});
 
 		it("单星展开含全部分类小节（手册数据被程序消费的主路径）", async () => {
-			const t = await cliCmd("classics", [
+			const t = await cliCmd("knowledge", [
 				"--source",
 				"oracle",
 				"--topic",
@@ -1710,14 +1710,14 @@ describe("CLI 端到端", () => {
 		});
 
 		it("非法主题与未收录星名都报错指路", async () => {
-			const noTopic = await cliCmd("classics", [
+			const noTopic = await cliCmd("knowledge", [
 				"--source",
 				"oracle",
 				"--topic",
 				"nope",
 			]).catch((e: { stderr?: string }) => e.stderr ?? "");
 			assert.ok(noTopic.includes("13 个之一"), `非法主题应指路，实得：${noTopic}`);
-			const noStar = await cliCmd("classics", [
+			const noStar = await cliCmd("knowledge", [
 				"--source",
 				"oracle",
 				"--topic",
@@ -1729,12 +1729,12 @@ describe("CLI 端到端", () => {
 		});
 	});
 
-	// ── classics 四域：stars 域（星曜释义）与 tianji 域（天纪判语）──
-	describe("classics 四域：stars 与 tianji 域", () => {
+	// ── knowledge 四域：stars 域（星曜释义）与 tianji 域（天纪判语）──
+	describe("knowledge 四域：stars 与 tianji 域", () => {
 		it("stars 域：位置参数与 --search 等价，未收录星名给清单", async () => {
-			const hit = await cliCmd("classics", ["--source", "stars", "--search", "紫微"]);
+			const hit = await cliCmd("knowledge", ["--source", "stars", "--search", "紫微"]);
 			assert.ok(hit.includes("紫微：关键词"), `释义缺失：${hit.slice(0, 40)}`);
-			const miss = await cliCmd("classics", [
+			const miss = await cliCmd("knowledge", [
 				"--source",
 				"stars",
 				"--search",
@@ -1744,10 +1744,10 @@ describe("CLI 端到端", () => {
 		});
 
 		it("tianji 域：检索命中带秒级溯源与回放链接，限册生效", async () => {
-			const t = await cliCmd("classics", ["--source", "tianji", "半空折翅"]);
+			const t = await cliCmd("knowledge", ["--source", "tianji", "半空折翅"]);
 			for (const key of ["半空折翅", "bilibili.com/video", "CC BY-NC-SA"])
 				assert.ok(t.includes(key), `应含「${key}」`);
-			const scoped = await cliCmd("classics", [
+			const scoped = await cliCmd("knowledge", [
 				"--source",
 				"tianji",
 				"半空折翅",
@@ -1757,18 +1757,25 @@ describe("CLI 端到端", () => {
 			assert.ok(scoped.includes("限 格局"), "中文名限册应生效");
 		});
 
-		it("旧命令名 stars / oracle 不再是合法命令（未知命令提示给迁移写法）", async () => {
+		it("旧命令名 stars / oracle / classics 不再是合法命令（未知命令提示给迁移写法）", async () => {
 			// 迁移提示住在引导层 main()（进程内直调绕过它），故走真子进程。
-			const old = await execFileAsync(
-				"node",
-				[join(SKILL_ROOT, "scripts/purple-star.ts"), "stars", "--search", "紫微"],
-				{ cwd: SKILL_ROOT }
-			).catch((e: { stderr?: string }) => e);
-			const stderr = old.stderr ?? "";
-			assert.ok(
-				stderr.includes("未知命令") && stderr.includes("classics --source stars"),
-				`旧命令应指路迁移写法，实得：${stderr}`
-			);
+			const probes: Array<[string, string]> = [
+				["stars", "knowledge --source stars"],
+				["oracle", "knowledge --source oracle"],
+				["classics", "knowledge --search"], // 改名：用法逐字不变
+			];
+			for (const [old, hint] of probes) {
+				const r = await execFileAsync(
+					"node",
+					[join(SKILL_ROOT, "scripts/purple-star.ts"), old, "--search", "紫微"],
+					{ cwd: SKILL_ROOT }
+				).catch((e: { stderr?: string }) => e);
+				const stderr = r.stderr ?? "";
+				assert.ok(
+					stderr.includes("未知命令") && stderr.includes(hint),
+					`旧命令「${old}」应指路迁移写法（${hint}），实得：${stderr}`
+				);
+			}
 		});
 	});
 
@@ -1872,8 +1879,8 @@ describe("CLI 端到端", () => {
 		});
 	});
 
-	// ── classics 古籍检索 ──
-	describe("classics 古籍检索（searchClassics 分支）", () => {
+	// ── knowledge 古籍检索 ──
+	describe("knowledge 古籍检索（searchClassics 分支）", () => {
 		// ⚠️ 古籍内核在根 `scripts/classics/`，`@/classics` 别名可达 ——
 		//    与其他内核模块同一加载口径。本组测的是**古籍文本本身**（分词、limit 截断、
 		//    snippet 窗口）。
@@ -1999,17 +2006,17 @@ describe("CLI 端到端", () => {
 		});
 
 		it("无参数时列出全部书目；未命中给明确文案", async () => {
-			const t = await cliCmd("classics", [], "classics");
+			const t = await cliCmd("knowledge", [], "knowledge");
 			for (const b of ["gusuifu", "quanji", "quanshu"])
 				assert.ok(t.includes(b), `书目清单应含 ${b}`);
-			assert.ok(t.includes("用法：classics --search"), "应给出用法");
+			assert.ok(t.includes("用法：knowledge --search"), "应给出用法");
 
-			const miss = await cliCmd("classics", ["--search", "紫微星"], "classics");
+			const miss = await cliCmd("knowledge", ["--search", "紫微星"], "knowledge");
 			assert.equal(miss.trim(), "古籍中未找到「紫微星」。", "未命中应有明确文案");
 		});
 
 		it("CLI 把 <mark> 高亮转成『』（不透出 HTML 标签）", async () => {
-			const t = await cliCmd("classics", ["--search", "紫微", "--limit", "2"], "classics");
+			const t = await cliCmd("knowledge", ["--search", "紫微", "--limit", "2"], "knowledge");
 			assert.ok(t.includes("『紫微』"), `命中词应被『』裹住，实得：\n${t}`);
 			assert.ok(!t.includes("<mark>"), "不该把 <mark> 透给终端用户");
 		});
@@ -2022,7 +2029,7 @@ describe("CLI 端到端", () => {
 			for (const bad of ["0", "-3", "abc"]) {
 				let stderr = "";
 				try {
-					await cliCmd("classics", ["--search", "星", "--limit", bad], "classics");
+					await cliCmd("knowledge", ["--search", "星", "--limit", bad], "knowledge");
 				} catch (err) {
 					stderr = (err as { stderr?: string }).stderr ?? (err as Error).message;
 				}

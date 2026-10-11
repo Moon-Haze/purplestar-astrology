@@ -56,7 +56,7 @@ node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三
 
 ⚠️ **各 skill 的「自有知识」本来就不受上面这条规则管**：`purplestar-synastry` 的
 `synastry-knowledge.ts` 与 `purplestar-classics` 的 `scripts/`（原文数据与检索）**只存在于各自 skill 里**，
-源里没有对应文件、也就没有基准可跑。层 2 里那几组 `classics` 用例因此换加载口径
+源里没有对应文件、也就没有基准可跑。层 2 里那几组 `knowledge` 古籍用例因此换加载口径
 （`test/lib/loader.ts` 的 `loadFromSkill`）去直取那个 skill 的模块——它们测的是那份知识
 **本身**（古籍的段落计数单位与 snippet 窗口），不是「源的内核」。
 （合盘的方法论正文是 `references/synastry-guide.md` —— 同类「自有知识」，但它是**文档**
@@ -462,5 +462,5 @@ test/
    `birth-info.ts` 的 `g()` 键 ⊆ 源 / 两份派生 `args.ts` 逐字节相同」的层 6 断言，
    随派生关系一并退休；现在由各 skill 自己的 `selftest` 盯「`SKILL.md` 写的旗标 ⊆ 声明表」
    与「拼错旗标要报错并给最近邻建议」。
-   ⚠️ 行为上有一处**变严**：作用域外的旗标从前是静默忽略，现在一律报错（`classics --city 北京`
+   ⚠️ 行为上有一处**变严**：作用域外的旗标从前是静默忽略，现在一律报错（`knowledge --city 北京`
    会被拒）。这与本仓「宁可报错，也不静默产出错盘」一致。

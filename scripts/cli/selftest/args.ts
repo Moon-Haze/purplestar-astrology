@@ -22,7 +22,7 @@ export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {
 		// 解析引擎（spec §2.8）：底座为 Node 内置 util.parseArgs（tokens 模式）。
 		// ⚠️ 贪婪取值是**版本敏感**行为（Node ≥ 22.15 实测贪婪；早期 18.x 会把负数当短选项），
 		//    本断言钉死——Node 行为若回退立即变红。
-		const a = parseArgs(["--limit", "-3"], "classics");
+		const a = parseArgs(["--limit", "-3"], "knowledge");
 		eq(a.limit, "-3", "--limit -3 的值 ");
 		eq(parseArgs(["--focus=财帛"], "astrology").focus, "财帛", "等号式 ");
 		eq(parseArgs(["--", "-x", "y"], "astrology")._.join(","), "-x,y", "-- 之后全位置 ");
@@ -88,7 +88,7 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 				throw new Error(`${bad} 的提示应指向 --${want}，实得：${msg}`);
 		}
 		// 作用域收窄探针：**本 skill 不认**的旗标必须报错，而不是静默收下。
-		// 合并后 `--limit`（classics）与 `--chart`（synastry 的 --a-chart/--b-chart 裸底名）
+		// 合并后 `--limit`（knowledge）与 `--chart`（synastry 的 --a-chart/--b-chart 裸底名）
 		// 都进了本 skill 作用域，故收窄探针只剩**出生方前缀**这一维：`a-` / `b-` 前缀
 		// 只有 synastry 命令认，叠在 analyze 上必须报「前缀只有 synastry 命令认」。
 		//
@@ -169,7 +169,7 @@ export function runSkillArgsAudit({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 		// 的行为）。它提到的旗标若在解析层不存在，助手会照着敲一个被拒的参数。
 		//
 		// 只查「SKILL.md → 声明表」这一个方向。反向（声明表里的旗标都要写进 SKILL.md）
-		// 刻意不查：SKILL.md 是使用指南不是穷举清单，`topic` 的 13 个 key、`classics` 的
+		// 刻意不查：SKILL.md 是使用指南不是穷举清单，`topic` 的 13 个 key、`knowledge` 的
 		// 位置参数这类细节本就不该塞进去。
 		const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
 		const mentioned = [...md.matchAll(/--([a-z][a-z0-9-]*)/g)].map(m => m[1]);

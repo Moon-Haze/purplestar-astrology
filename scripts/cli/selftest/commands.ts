@@ -17,62 +17,65 @@ import { readAnalyzeJson } from "@/synastry/chart-view";
 import { buildBirthInfo } from "../birth-info";
 import { OPTION_GROUPS } from "../args-table";
 import { parseArgs } from "../args";
-import { cmdClassics } from "../classics";
+import { cmdKnowledge } from "../knowledge";
 import { cmdAstrology, buildAnalyzeJson } from "../astrology";
 import { cmdSynastry } from "../synastry";
 import { renderCommandHelp, renderOverviewHelp } from "../help";
 import { SAMPLE } from "./sample";
 import { eq, type SelftestDeps } from "../selftest-kit";
 
-/** 命令面：classics 四域（books/stars/tianji/oracle）的形态与指路、astrology 参数纪律、合盘交付。 */
+/** 命令面：knowledge 四域（books/stars/tianji/oracle）的形态与指路、astrology 参数纪律、合盘交付。 */
 export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
-	ok("命令面：classics stars 域位置参数与 --search 等价（SYNOPSIS 承诺的检索形态）", async () => {
-		const s = await cmdClassics(parseArgs(["--source", "stars", "紫微"], "classics"));
-		if (!s.includes("紫微：关键词") || s.includes("天机"))
-			throw new Error(`位置参数未生效，输出开头：${s.slice(0, 40)}`);
-	});
+	ok(
+		"命令面：knowledge stars 域位置参数与 --search 等价（SYNOPSIS 承诺的检索形态）",
+		async () => {
+			const s = await cmdKnowledge(parseArgs(["--source", "stars", "紫微"], "knowledge"));
+			if (!s.includes("紫微：关键词") || s.includes("天机"))
+				throw new Error(`位置参数未生效，输出开头：${s.slice(0, 40)}`);
+		}
+	);
 	ok("命令面：--search 末尾缺值（裸开关 true）必须指路，不把 true 当检索词", async () => {
 		// 值域非法走 throw（引导层打「错误：」上 stderr 并 exit 1），
 		// 不 return——return 会把报错当正常输出打 stdout 且 exit 0，机器路径无法感知。
 		let msg = "";
 		try {
-			await cmdClassics(parseArgs(["--source", "stars", "--search"], "classics"));
+			await cmdKnowledge(parseArgs(["--source", "stars", "--search"], "knowledge"));
 		} catch (e) {
 			msg = (e as Error).message;
 		}
 		if (!msg.includes("需要一个检索词"))
 			throw new Error(`缺值未指路（应 throw），实得：${msg || "未报错"}`);
 	});
-	ok("命令面：classics books 域 --search 末尾缺值同样指路", async () => {
-		const s = await cmdClassics(parseArgs(["--limit", "3", "--search"], "classics"));
+	ok("命令面：knowledge books 域 --search 末尾缺值同样指路", async () => {
+		const s = await cmdKnowledge(parseArgs(["--limit", "3", "--search"], "knowledge"));
 		if (!s.includes("需要一个检索词")) throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);
 	});
 	ok("命令面：oracle 域三形态（列主题 / 主题概览 / 单星展开）与非法主题指路", async () => {
-		const list = await cmdClassics(parseArgs(["--source", "oracle"], "classics"));
+		const list = await cmdKnowledge(parseArgs(["--source", "oracle"], "knowledge"));
 		if (!list.includes("career") || !list.includes("用法")) throw new Error("列主题形态缺项");
-		const overview = await cmdClassics(
-			parseArgs(["--source", "oracle", "--topic", "career"], "classics")
+		const overview = await cmdKnowledge(
+			parseArgs(["--source", "oracle", "--topic", "career"], "knowledge")
 		);
 		if (!overview.includes("七杀") || !overview.includes("断语"))
 			throw new Error(`概览形态缺项：${overview.slice(0, 40)}`);
-		const star = await cmdClassics(
-			parseArgs(["--source", "oracle", "--topic", "career", "--star", "七杀"], "classics")
+		const star = await cmdKnowledge(
+			parseArgs(["--source", "oracle", "--topic", "career", "--star", "七杀"], "knowledge")
 		);
 		for (const key of ["命盘关键定制", "星曜深层特质", "本宫论断", "三方四正联动", "知识来源"])
 			if (!star.includes(key)) throw new Error(`单星展开缺「${key}」节`);
 		let msg = "";
 		try {
-			await cmdClassics(parseArgs(["--source", "oracle", "--topic", "nope"], "classics"));
+			await cmdKnowledge(parseArgs(["--source", "oracle", "--topic", "nope"], "knowledge"));
 		} catch (e) {
 			msg = (e as Error).message;
 		}
 		if (!msg.includes("13 个之一")) throw new Error(`非法主题未指路：${msg || "未报错"}`);
 	});
 	ok("命令面：tianji 域概览与检索（回放链接 + 来源声明）", async () => {
-		const list = await cmdClassics(parseArgs(["--source", "tianji"], "classics"));
+		const list = await cmdKnowledge(parseArgs(["--source", "tianji"], "knowledge"));
 		if (!list.includes("01-stars") || !list.includes("CC BY-NC-SA"))
 			throw new Error("五册概览缺项");
-		const hit = await cmdClassics(parseArgs(["--source", "tianji", "半空折翅"], "classics"));
+		const hit = await cmdKnowledge(parseArgs(["--source", "tianji", "半空折翅"], "knowledge"));
 		for (const key of ["半空折翅", "bilibili.com/video", "§", "回放验证"])
 			if (!hit.includes(key)) throw new Error(`检索缺「${key}」`);
 	});
@@ -242,7 +245,7 @@ export function runHelpPrune({ ok }: Pick<SelftestDeps, "ok">): void {
 		const syn = renderCommandHelp("synastry");
 		if (syn.includes("排盘四必问") || syn.includes("--late-zi"))
 			throw new Error("synastry --help 仍在教排盘铁律 —— 它不排盘");
-		for (const cmd of ["classics"] as const) {
+		for (const cmd of ["knowledge"] as const) {
 			if (renderCommandHelp(cmd).includes("晚子时"))
 				throw new Error(`${cmd} --help 带着排盘 NOTES —— 应裁剪`);
 		}
@@ -290,7 +293,7 @@ export function runCommandSplit({
 	commandNames,
 }: Pick<SelftestDeps, "ok" | "ctx" | "commandNames">): void {
 	ok(
-		"命令拆分：cities 命令已删（数据表保留）；analyze → astrology 改名；stars/oracle 并入 classics",
+		"命令拆分：cities 命令已删（数据表保留）；analyze → astrology 改名；stars/oracle/classics 并入 knowledge",
 		async () => {
 			// 命令面（spec §3.1）：cities 只删查询命令（ziwei/cities.ts 数据表
 			// 仍是 --city 容错解析的依据，保留）；analyze 拆进 cli/astrology.ts 并改名 cmdAstrology。
@@ -305,23 +308,26 @@ export function runCommandSplit({
 				throw new Error(
 					"chart/topic 仍在 COMMAND_TABLE —— 已融合为 astrology 参数（Task 6）"
 				);
-			// stars / oracle 并入 classics（--source 选域），旧命令名退役
-			for (const old of ["stars", "oracle"])
+			// stars / oracle 并入 --source 选域；classics 随四域合并改名 knowledge —— 三个旧命令名都退役
+			for (const old of ["stars", "oracle", "classics"])
 				if (defined.includes(old))
-					throw new Error(`${old} 仍在 COMMAND_TABLE —— 已并入 classics --source ${old}`);
-			if (!defined.includes("astrology"))
-				throw new Error(`拆位不完整（应含 astrology），实得：${defined.join("、")}`);
+					throw new Error(
+						`${old} 仍在 COMMAND_TABLE —— stars/oracle 已并入 --source ${old === "classics" ? "各域" : old}，classics 改名 knowledge`
+					);
+			for (const must of ["astrology", "knowledge"])
+				if (!defined.includes(must))
+					throw new Error(`拆位不完整（应含 ${must}），实得：${defined.join("、")}`);
 			// cities 删除后的数据表仍在（--city 容错解析在用）
 			const cities = readFileSync(resolve(ctx.root, "ziwei", "cities.ts"), "utf8");
 			if (!/export const PROVINCES/.test(cities))
 				throw new Error("ziwei/cities.ts 的 PROVINCES 不在了");
-			// stars 释义经 classics --source stars 仍可检索（域实现搬进 cli/knowledge/）
-			const s = await cmdClassics(
-				parseArgs(["--source", "stars", "--search", "紫微"], "classics")
+			// stars 释义经 knowledge --source stars 仍可检索（域实现搬进 cli/knowledge/）
+			const s = await cmdKnowledge(
+				parseArgs(["--source", "stars", "--search", "紫微"], "knowledge")
 			);
 			if (!s.includes("紫微") || !s.includes("关键词"))
 				throw new Error(
-					`classics --source stars --search 紫微 的释义不见了，实得：${s.slice(0, 60)}`
+					`knowledge --source stars --search 紫微 的释义不见了，实得：${s.slice(0, 60)}`
 				);
 			return "命令面收敛中间态就位";
 		}
@@ -610,7 +616,7 @@ export function runHelpEnrich({ ok }: Pick<SelftestDeps, "ok">): void {
 		}
 		return `${SECTIONS.length} 节齐全且有序`;
 	});
-	ok("help 强化：每命令 --help 出归属参数子集（astrology 无 --search，classics 反之）", () => {
+	ok("help 强化：每命令 --help 出归属参数子集（astrology 无 --search，knowledge 反之）", () => {
 		const astro = renderCommandHelp("astrology");
 		for (const want of ["NAME", "OPTIONS", "EXAMPLES"])
 			if (!astro.includes(want)) throw new Error(`astrology --help 缺 ${want}`);
@@ -618,11 +624,11 @@ export function runHelpEnrich({ ok }: Pick<SelftestDeps, "ok">): void {
 			if (!astro.includes(own)) throw new Error(`astrology --help 应列 ${own}`);
 		if (astro.includes("--search"))
 			throw new Error("astrology --help 不该列 --search（归属过滤）");
-		const classics = renderCommandHelp("classics");
-		if (!classics.includes("--search") || !classics.includes("--source"))
-			throw new Error("classics --help 应列 --search 与 --source（四域）");
-		if (classics.includes("--pattern"))
-			throw new Error("classics --help 不该列 --pattern（归属过滤）");
+		const knowledge = renderCommandHelp("knowledge");
+		if (!knowledge.includes("--search") || !knowledge.includes("--source"))
+			throw new Error("knowledge --help 应列 --search 与 --source（四域）");
+		if (knowledge.includes("--pattern"))
+			throw new Error("knowledge --help 不该列 --pattern（归属过滤）");
 		return "归属过滤双向成立";
 	});
 	ok("help 强化：示例用新虚构组合且注明「示例数据为虚构」", () => {

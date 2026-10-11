@@ -70,7 +70,7 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 ```
 
 1. **排盘取数** —— `astrology`（四命令合一）默认输出**概览**：基本信息面板（含公历生日 / 命宫 / 身宫 / 紫微落 / 三方四正）+ 口径提示（出生地 / 晚子时）+ 运限速览 + 专题指路。深入全靠**功能参数**：`--pattern` 格局、`--mutagen` 四化（配 `--monthly` 流月）、`--yearly [年]` 流年、`--decadal [虚岁]` 十年大运、`--ages [虚岁]` 小限、`--focus <宫>` 宫盘四项深化、`--palaces` 十二宫逐宫详表、`--topic <key>` 主题论断、`--report` 全盘主题报告（Markdown，13 板块一次出全）—— **专题参数可叠加**（`--info` / `--palaces` / `--topic` / `--report` 是**独占分支**：给出即接管输出，与其余功能参数同给会报错指路；给了专题参数的输出只出口径提示 + 专题详版，基本信息面板 / 运限速览 / 专题指路均不带），全盘解读通常 `--pattern --mutagen --decadal` 一次拿齐。只给农历用 `--lunar`，只知时辰名用 `--branch`。批量排盘可用 `--config <my.json>`（配置是基底，命令行同名参数覆盖；`--template` 生成模板）。⚠️ 完全零输入（出生信息一项不给）时命令不报错，而是以内置虚构示例（2011-06-24 杭州）演示基本信息面板 + 运限速览 + 专题指路 —— 你**绝不可**把这份演示盘当作用户的命盘解读；部分输入则按「缺一问一」向用户补问（`--report` / `--json` / `--palaces` / `--topic` 等输出意图在场时不落演示，照常报错补问）。
-2. **按需深入知识源** —— 需要展开论证时，**能用 CLI 命令查的优先用命令**（古籍原文用 `classics --search`、星曜释义用 `classics --source stars`、天纪判语溯源用 `classics --source tianji`、主题断语用 `classics --source oracle --topic <key> --star <星名>`——命令输出即已校验形态）；命令查不到或需读源码语义时，再读 `scripts/` 下的权威文件（`ziwei/` 格局库与四化、`classics/` 古籍、`synastry/` 合盘断语），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则调本 CLI 的 `classics` 命令。
+2. **按需深入知识源** —— 需要展开论证时，**能用 CLI 命令查的优先用命令**（古籍原文用 `knowledge --search`、星曜释义用 `knowledge --source stars`、天纪判语溯源用 `knowledge --source tianji`、主题断语用 `knowledge --source oracle --topic <key> --star <星名>`——命令输出即已校验形态）；命令查不到或需读源码语义时，再读 `scripts/` 下的权威文件（`ziwei/` 格局库与四化、`classics/` 古籍、`synastry/` 合盘断语），不要凭记忆编造。各知识源与各自的用途见 [references/workflow.md](references/workflow.md)；引证古籍原文则调本 CLI 的 `knowledge` 命令。
 3. **解读** —— 命宫定基调 → 格局定性 → 四化定着力点 → 大限看阶段 → 结论落到具体建议，**不跳步**。
 
 ## 解读输出契约
@@ -129,12 +129,12 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 
 ## 命令速查
 
-| 命令                                  | 用途                                                                                                                                                                                                                                            |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `astrology`                           | **主力命令**（四命令合一）。概览默认含基本信息；`--palaces` 十二宫详表；`--topic` 主题论断；`--report` 全盘报告（Markdown）；专题参数可叠加（独占分支除外）                                                                                     |
-| `classics`                            | **统一知识检索**（`--source` 四域）：books 古籍（默认，`--search`/`--limit`）/ stars 星曜释义 / tianji 天纪判语（秒级回放溯源，`--book` 限册）/ oracle 断语手册（13 主题 × 十四主星分类断语，`--topic`/`--star`）。旧命令 stars / oracle 已并入 |
-| `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后）。方法论与评分标准不在命令输出里，按 [references/synastry-guide.md](references/synastry-guide.md) 按需读取                                                                            |
-| `selftest`                            | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次                                                                                                                                                                   |
+| 命令                                  | 用途                                                                                                                                                                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `astrology`                           | **主力命令**（四命令合一）。概览默认含基本信息；`--palaces` 十二宫详表；`--topic` 主题论断；`--report` 全盘报告（Markdown）；专题参数可叠加（独占分支除外）                                                                                                        |
+| `knowledge`                           | **统一知识检索**（`--source` 四域）：books 古籍（默认，`--search`/`--limit`）/ stars 星曜释义 / tianji 天纪判语（秒级回放溯源，`--book` 限册）/ oracle 断语手册（13 主题 × 十四主星分类断语，`--topic`/`--star`）。命令原名 classics，旧命令 stars / oracle 已并入 |
+| `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后）。方法论与评分标准不在命令输出里，按 [references/synastry-guide.md](references/synastry-guide.md) 按需读取                                                                                               |
+| `selftest`                            | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次                                                                                                                                                                                      |
 
 高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>` 可叠加（`--info` / `--palaces` / `--topic` / `--report` 是独占分支；拼音别名仍被识别，全表见 options.md）；四化细化 `--monthly <农历月>` / `--daily <农历日>` / `--hourly <时支>`（逐级依赖：日挂月、时挂日，均须配 `--mutagen`）；输出 `--json`；输出落盘 `--out <路径>`（覆盖写，正文不再占 stdout —— 需要把报告 / JSON 存成文件时用它，代替 shell 重定向）。
 

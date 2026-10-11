@@ -143,7 +143,7 @@ export function suggestOption(name: string): string | null {
  *    整个忽略（`analyze --a-city 北京` 排的是默认经度的盘）。
  * 3. 前缀后面接的仍必须是声明过的名字：`--a-ctiy` 同样要抓。
  *
- * ⚠️ 刻意**不**校验「这个参数属于这个命令」：`--json` 给 `classics` 是无害的多余参数，
+ * ⚠️ 刻意**不**校验「这个参数属于这个命令」：`--json` 给 `knowledge` 是无害的多余参数，
  *    而把归属做成硬约束会让每条命令的合法集合成为第二个需要维护的真相 —— 拼错才是要挡的。
  *    （Task 8 的 help 归属表是**视图**，不做硬校验。）
  */
@@ -270,7 +270,7 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 		// 取值参数：内联值直接取；空格式贪婪吃**紧随 token**（不论形状）。
 		// 紧随 token 是另一个 option / terminator / 结尾时，存布尔 true（可选值形态：
 		// `--decadal` 裸开关 = 默认当前虚岁、`--topic` 裸开关 = 列清单）——
-		// 是否接受裸开关由各命令自己的取值校验兜底（如 cmdClassics 把布尔判为非法）。
+		// 是否接受裸开关由各命令自己的取值校验兜底（如 cmdKnowledge 把布尔判为非法）。
 		if (t.inlineValue === true) {
 			args[storeKey] = String(t.value);
 			continue;
@@ -293,7 +293,7 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 	}
 
 	// ── astrology 命令的位置参数形态归类（spec §1.2）──
-	// 其他命令（classics / stars 的检索词）的 `_` 原样保留；astrology 的出生信息
+	// 其他命令（knowledge 各域的检索词）的 `_` 原样保留；astrology 的出生信息
 	// 可零参数给（`astrology 1990-5-15 9:30 男 北京`），按形态归类、顺序无关。
 	// `--` 之后的内容已进 `_` 且不归类（用户明确说了「这些是字面量」）。
 	if (command === "astrology" && args._.length && !afterTerminator) {

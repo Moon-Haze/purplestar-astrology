@@ -11,7 +11,8 @@
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
  *   cli/astrology.ts   排盘分析一条命令（四命令合一：概览默认 + 功能参数分发）
- *   cli/{classics,synastry}.ts        各命令实现（classics 四域附加域在 cli/knowledge/）；cli/commands.ts 只做注册薄层
+ *   cli/knowledge/index.ts     知识检索命令（四域各住一文件）；cli/synastry.ts 合盘；
+ *                              cli/commands.ts 只做注册薄层
  *   cli/config.ts      --config / --template 配置输入；cli/help.ts  help 渲染（man 七节）
  *   cli/out.ts         --out 落盘通道（写文件唯一写点，路径校验在内）
  *   cli/selftest.ts    回归自检（排盘 / 古籍 / 合盘三段合一）
@@ -26,7 +27,8 @@
  *
  * classics / synastry 的内核也住进本仓
  * `scripts/classics/` 与 `scripts/synastry/`，命令并入本 CLI —— 单 skill 单入口，
- * 排盘（astrology）、古籍（classics）、合盘（synastry）都在这里（见 `SKILL.md`）。
+ * 排盘（astrology）、知识检索（knowledge，命令原名 classics）、合盘（synastry）
+ * 都在这里（见 `SKILL.md`）。
  *
  * 依赖 Node ≥ 22.18（module.registerHooks + 原生 TS 类型擦除）。
  * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
@@ -290,14 +292,16 @@ async function main() {
 	const { COMMANDS, parseArgs } = await loadCore();
 	const fn = COMMANDS[cmd];
 	if (!fn) {
-		// 旧命令并入提示：stars / oracle 已并入 classics（--source 选域），敲旧名给一条
-		// 可直接照抄的迁移写法，而不是让用户自己从 help 里找。
+		// 旧命令并入提示：stars / oracle 已并入 --source 选域，classics 随四域合并改名
+		// knowledge —— 敲旧名给一条可直接照抄的迁移写法，而不是让用户自己从 help 里找。
 		const merged =
 			cmd === "stars"
-				? `—— 星曜释义已并入：classics --source stars --search <星名>`
+				? `—— 星曜释义已并入：knowledge --source stars --search <星名>`
 				: cmd === "oracle"
-					? `—— 断语手册已并入：classics --source oracle --topic <主题> [--star <星名>]`
-					: "";
+					? `—— 断语手册已并入：knowledge --source oracle --topic <主题> [--star <星名>]`
+					: cmd === "classics"
+						? "—— 本命令原名 classics，已改名：knowledge --search <词>（古籍用法逐字不变）"
+						: "";
 		console.error(
 			`未知命令「${cmd}」。可用：${Object.keys(COMMANDS).join(" / ")}${merged ? "\n" + merged : ""}\n运行 help 查看完整用法。`
 		);

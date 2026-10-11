@@ -56,7 +56,7 @@ export const OPTION_OWNERSHIP: Record<CommandName, readonly string[]> = {
 		"config",
 		"template",
 	],
-	classics: ["search", "limit", "source", "book", "star", "topic"],
+	knowledge: ["search", "limit", "source", "book", "star", "topic"],
 	synastry: ["charts", "json"],
 	selftest: [],
 };
@@ -100,10 +100,10 @@ const OVERVIEW_EXAMPLES = [
   node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`,
 	"",
 	`  # 知识检索四域：古籍 / 星曜释义 / 天纪判语 / 断语手册（--source 选域，缺省 books）
-  node scripts/purple-star.ts classics --search 机月同梁
-  node scripts/purple-star.ts classics --source stars --search 紫微
-  node scripts/purple-star.ts classics --source tianji 半空折翅
-  node scripts/purple-star.ts classics --source oracle --topic career --star 七杀`,
+  node scripts/purple-star.ts knowledge --search 机月同梁
+  node scripts/purple-star.ts knowledge --source stars --search 紫微
+  node scripts/purple-star.ts knowledge --source tianji 半空折翅
+  node scripts/purple-star.ts knowledge --source oracle --topic career --star 七杀`,
 	"",
 	FICTION_NOTE,
 ];
@@ -120,11 +120,11 @@ const COMMAND_EXAMPLES: Record<CommandName, readonly string[]> = {
 		"",
 		FICTION_NOTE,
 	],
-	classics: [
-		"  node scripts/purple-star.ts classics --search 机月同梁",
-		"  node scripts/purple-star.ts classics --source stars --search 紫微",
-		"  node scripts/purple-star.ts classics --source tianji 半空折翅 --book 主星",
-		"  node scripts/purple-star.ts classics --source oracle --topic career --star 七杀",
+	knowledge: [
+		"  node scripts/purple-star.ts knowledge --search 机月同梁",
+		"  node scripts/purple-star.ts knowledge --source stars --search 紫微",
+		"  node scripts/purple-star.ts knowledge --source tianji 半空折翅 --book 主星",
+		"  node scripts/purple-star.ts knowledge --source oracle --topic career --star 七杀",
 		"",
 		FICTION_NOTE,
 	],
@@ -214,7 +214,7 @@ export function renderOverviewHelp(): string {
 	);
 	lines.push("DESCRIPTION");
 	lines.push(
-		"  单条 CLI 承载三个领域：astrology 排盘解读（四命令合一）、classics 古籍原文检索、",
+		"  单条 CLI 承载三个领域：astrology 排盘解读（四命令合一）、knowledge 统一知识检索、",
 		"  synastry 合盘（双宫联参）。内核住 scripts/ziwei|classics|synastry/，排盘口径为",
 		"  倪海夏《天纪》三合派（不做宫干四化 / 自化 / 来因宫）。",
 		""
@@ -254,10 +254,10 @@ export function renderCommandHelp(cmd: CommandName): string {
 			"  node scripts/purple-star.ts astrology <日期> <时刻> <性别> [<城市>]",
 			"  node scripts/purple-star.ts astrology --date … --time … --gender … [--city …] [专题参数…]"
 		);
-	else if (cmd === "classics")
+	else if (cmd === "knowledge")
 		lines.push(
-			"  node scripts/purple-star.ts classics [--search <关键词>] [--limit N]",
-			"  node scripts/purple-star.ts classics --source <books|stars|tianji|oracle> [域参数…]"
+			"  node scripts/purple-star.ts knowledge [--search <关键词>] [--limit N]",
+			"  node scripts/purple-star.ts knowledge --source <books|stars|tianji|oracle> [域参数…]"
 		);
 	else lines.push(`  node scripts/purple-star.ts ${cmd} [options]`);
 	lines.push("");
@@ -266,7 +266,7 @@ export function renderCommandHelp(cmd: CommandName): string {
 	lines.push(...renderOptions(owned), "");
 	lines.push("EXAMPLES", ...(COMMAND_EXAMPLES[cmd] ?? []), "");
 	// NOTES 按命令裁剪：四必问 / 晚子时 / 真太阳时跨午夜都是**排盘**铁律 —— synastry
-	// 不排盘、classics 不涉出生信息，全量模板会让命令级 help 教人用对它无效的
+	// 不排盘、knowledge 不涉出生信息，全量模板会让命令级 help 教人用对它无效的
 	// 参数（如 synastry --help 里的 --late-zi）。全量铁律保留在总览 help。
 	if (cmd === "astrology") {
 		lines.push("NOTES");

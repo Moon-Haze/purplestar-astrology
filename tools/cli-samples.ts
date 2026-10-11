@@ -693,42 +693,42 @@ const SAMPLES: Sample[] = [
 		args: ["astrology", "--config", "tools/samples/config.example.json"],
 	},
 
-	// ── classics：四域（books 默认 / stars / tianji / oracle）──
+	// ── knowledge：四域（books 默认 / stars / tianji / oracle）──
 	{
-		group: "classics · 知识检索",
+		group: "knowledge · 知识检索",
 		title: "--search 古籍原文检索（books 域，默认）",
 		desc: "骨髓赋 / 紫微斗数全集 / 全书的原文段落",
-		args: ["classics", "--search", "机月同梁"],
+		args: ["knowledge", "--search", "机月同梁"],
 	},
 	{
-		group: "classics · 知识检索",
+		group: "knowledge · 知识检索",
 		title: "--source stars 星曜释义",
 		desc: "星曜的体系内释义（原 stars 命令并入）",
-		args: ["classics", "--source", "stars", "--search", "紫微"],
+		args: ["knowledge", "--source", "stars", "--search", "紫微"],
 	},
 	{
-		group: "classics · 知识检索",
+		group: "knowledge · 知识检索",
 		title: "--source stars 位置参数形态",
 		desc: "检索词也可作位置参数",
-		args: ["classics", "--source", "stars", "擎羊"],
+		args: ["knowledge", "--source", "stars", "擎羊"],
 	},
 	{
-		group: "classics · 知识检索",
+		group: "knowledge · 知识检索",
 		title: "--source tianji 天纪判语检索",
 		desc: "《天纪》讲稿原话 + 秒级回放溯源（nihai-tianji-corpus 语料，紫微五册）",
-		args: ["classics", "--source", "tianji", "半空折翅"],
+		args: ["knowledge", "--source", "tianji", "半空折翅"],
 	},
 	{
-		group: "classics · 知识检索",
+		group: "knowledge · 知识检索",
 		title: "--source oracle 断语手册",
 		desc: "13 主题 × 十四主星的分类断语快照（--topic 选主题 --star 选星）",
-		args: ["classics", "--source", "oracle", "--topic", "career", "--star", "七杀"],
+		args: ["knowledge", "--source", "oracle", "--topic", "career", "--star", "七杀"],
 	},
 	{
-		group: "classics · 古籍检索",
+		group: "knowledge · 古籍检索",
 		title: "--limit 命中条数上限",
 		desc: "正整数，截取前 N 条命中",
-		args: ["classics", "--search", "紫微", "--limit", "3"],
+		args: ["knowledge", "--search", "紫微", "--limit", "3"],
 	},
 
 	// ── synastry ──
