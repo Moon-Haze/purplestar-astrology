@@ -55,3 +55,4 @@ docs/cli-samples.md
 package-lock.json
 html/
 .zcodeignore
+.zcode/

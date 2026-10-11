@@ -9,12 +9,13 @@
 // markdown 打到 stdout。
 //
 // 用法（仓库根执行）：
-//   npx tsx tools/cli-samples.ts                          # markdown 打到终端
-//   npx tsx tools/cli-samples.ts > docs/cli-samples.md    # 重定向落盘成 markdown 文件
-//   npx tsx tools/cli-samples.ts -h                       # 本帮助
+//   npx tsx tools/cli-samples.ts                              # markdown 打到终端
+//   npx tsx tools/cli-samples.ts --out docs/cli-samples.md    # 直接落盘成 markdown 文件
+//   npx tsx tools/cli-samples.ts -h                           # 本帮助
 //
-// 落盘刻意交给 shell 重定向而非 --out 参数：本脚本因此没有「读参数 → 拼路径 →
-// 写文件」的链路，安全面最小（进度日志走 stderr，不污染重定向的 markdown）。
+// 落盘走 --out：写点收敛在 scripts/cli/out.ts 的 writeOutFile（路径 `..` 段校验在同一处），
+// 与主 CLI 的 `--out` 同一通道；正文不再占 stdout，进度日志走 stderr，不污染文档。
+// 两条通道产物逐字一致（stdout 逐行 console.log 补的换行 = 落盘末尾补的那个换行）。
 //
 // 退出码：0 = 全部样例的退出码符合预期；1 = 有意外（命令意外失败 / 错误样例
 // 意外成功）。意外不代表文档不生成 —— markdown 照常输出，意外条目在文末
@@ -31,8 +32,9 @@
 //    样例输入文件（config / 两份示例盘）静态放在 tools/samples/，文档里的命令
 //    测试人员可直接手敲复现。
 //
-// 结构说明：执行与渲染刻意**全部内联在 main 里流式打印**（不收进数组、不经过
-// 二次函数传递）—— 命令输出是外部数据，直连消费的形态最简单也最好审。
+// 结构说明：样例执行就地内联；渲染行统一收进 docLines，结束时压平连续空行后
+// 按通道一次性输出（--out 写盘 / stdout 打印）。命令输出是外部数据，收进数组
+// 只为两通道共用同一份产物 —— 不落任何中间结构。
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -41,6 +43,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs, type CliContext } from "@/cli/args";
 import { COMMANDS } from "@/cli/commands";
 import { renderCommandHelp, renderOverviewHelp } from "@/cli/help";
+import { writeOutFile } from "@/cli/out";
 import { callDirect } from "@/cli/selftest-kit";
 import { cmdSelftest } from "@/cli/selftest";
 
@@ -777,14 +780,32 @@ const SAMPLES: Sample[] = [
 	},
 ];
 
-// ── 主流程：执行与渲染全部内联在此，流式打印（见文件头「结构说明」）──
+// ── 主流程：样例执行就地内联，渲染行经 emit 输出（见文件头「结构说明」）──
 async function main(): Promise<void> {
 	if (process.argv.includes("-h") || process.argv.includes("--help")) {
-		console.log("用法：npx tsx tools/cli-samples.ts [> docs/cli-samples.md]");
-		console.log("  markdown 打到 stdout；落盘用 shell 重定向。进度日志走 stderr，不污染文档。");
+		console.log("用法：npx tsx tools/cli-samples.ts [--out docs/cli-samples.md]");
+		console.log("  markdown 打到 stdout，或 --out 直接落盘（覆盖写，末尾恰一个换行）。");
+		console.log("  进度日志走 stderr，不污染文档。");
 		console.log("  退出码 0 = 全部样例退出码符合预期；1 = 有意外（明细在文档「汇总」节）。");
 		process.exit(0);
 	}
+
+	// --out 落盘通道：给了值即结束一次写盘；没给则打 stdout。渲染行统一收集，
+	// 两个通道由同一份产物派生，逐字可对拍。
+	const outIdx = process.argv.indexOf("--out");
+	let outPath: string | null = null;
+	if (outIdx >= 0) {
+		outPath = process.argv[outIdx + 1];
+		if (!outPath) {
+			console.error("错误：--out 需要一个路径值");
+			process.exit(1);
+		}
+	}
+	const docLines: string[] = [];
+	/** 渲染行出口：先收集，结束时压平后按通道输出（见 main 尾部）。 */
+	const emit = (line = ""): void => {
+		docLines.push(line);
+	};
 
 	// ── 样例输入文件自检：样例表引用的 tools/samples/ 文件必须在场（缺了会让对应
 	// 样例以 ENOENT 意外失败，文档里只剩 ⚠ 却看不出原因）。它们刻意不入库（仅本地
@@ -802,13 +823,13 @@ async function main(): Promise<void> {
 		console.error("  它们仅本地存在（不入库），在仓库根执行以下命令重建：");
 		console.error("    mkdir -p tools/samples");
 		console.error(
-			"    node scripts/purple-star.ts astrology --template >| tools/samples/config.example.json"
+			"    node scripts/purple-star.ts astrology --template --out tools/samples/config.example.json"
 		);
 		console.error(
-			"    node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json >| tools/samples/chart-a.json"
+			"    node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json --out tools/samples/chart-a.json"
 		);
 		console.error(
-			"    node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成都 --gender female --json >| tools/samples/chart-b.json"
+			"    node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成都 --gender female --json --out tools/samples/chart-b.json"
 		);
 		process.exit(1);
 	}
@@ -825,22 +846,22 @@ async function main(): Promise<void> {
 	const pkg = JSON.parse(readFileSync(resolve(SKILL_ROOT, "package.json"), "utf8"));
 	const engines = `iztro ${pkg.dependencies?.iztro ?? "?"} + lunar-typescript ${pkg.dependencies?.["lunar-typescript"] ?? "?"}`;
 
-	console.log(`# purple-star CLI 参数输出样例`);
-	console.log(``);
-	console.log(
+	emit(`# purple-star CLI 参数输出样例`);
+	emit(``);
+	emit(
 		`> 由 \`tools/cli-samples.ts\` 生成：对 \`node scripts/purple-star.ts\` 各命令/参数逐条实跑并记录输出，`
 	);
-	console.log(
+	emit(
 		`> 供测试人员核对各参数的输出形态。示例数据均为虚构（与 help 示例同款），无真实人物。`
 	);
-	console.log(
+	emit(
 		`> 命令均为**进程内直调**（与 CLI 同一命令函数，输出一致；含 --yearly/--ages 等随时间漂移的样例，`
 	);
-	console.log(`> 复跑时对应字段可能随当天日期变化）。`);
-	console.log(``);
-	console.log(`- 生成时间：${stamp}　git：\`${commit}\`　Node：${process.version}`);
-	console.log(`- 引擎：${engines}　相对仓库根执行，文档里的命令可直接复制到终端复现`);
-	console.log(
+	emit(`> 复跑时对应字段可能随当天日期变化）。`);
+	emit(``);
+	emit(`- 生成时间：${stamp}　git：\`${commit}\`　Node：${process.version}`);
+	emit(`- 引擎：${engines}　相对仓库根执行，文档里的命令可直接复制到终端复现`);
+	emit(
 		`- 样例 ${SAMPLES.length} 条，输出全量；「错误路径」各条期待非 0 退出码，核对的是**报错文案**`
 	);
 
@@ -900,62 +921,71 @@ async function main(): Promise<void> {
 			unexpectedTitles.push(`${s.title} → 退出码 ${exitCode}`);
 		}
 
-		// 渲染（就地流式打印）
+		// 渲染（经 emit 出口：--out 收集，stdout 直打）
 		if (s.group !== group) {
 			group = s.group;
-			console.log(``);
-			console.log(`## ${group}`);
-			console.log(``);
+			emit(``);
+			emit(`## ${group}`);
+			emit(``);
 		}
-		console.log(`### ${n}. ${s.title}`);
-		console.log(``);
-		console.log("```bash");
-		console.log(`node scripts/purple-star.ts ${s.args.join(" ")}`);
-		console.log("```");
-		console.log(``);
-		console.log(`${s.desc}。`);
-		console.log(``);
+		emit(`### ${n}. ${s.title}`);
+		emit(``);
+		emit("```bash");
+		emit(`node scripts/purple-star.ts ${s.args.join(" ")}`);
+		emit("```");
+		emit(``);
+		emit(`${s.desc}。`);
+		emit(``);
 		const verdict = ok
 			? `退出码 **${exitCode}**`
 			: `退出码 **${exitCode}** ⚠ ${s.expectFail ? "错误样例意外成功" : "意外失败"}`;
-		console.log(`${verdict}　耗时 ${(ms / 1000).toFixed(2)}s`);
-		console.log(``);
+		emit(`${verdict}　耗时 ${(ms / 1000).toFixed(2)}s`);
+		emit(``);
 		const body = stdout.replace(/\n$/, "");
 		if (body) {
-			console.log("输出：");
-			console.log(``);
-			console.log("```text");
-			console.log(body);
-			console.log("```");
-			console.log(``);
+			emit("输出：");
+			emit(``);
+			emit("```text");
+			emit(body);
+			emit("```");
+			emit(``);
 		} else {
-			console.log(`（无 stdout）`);
-			console.log(``);
+			emit(`（无 stdout）`);
+			emit(``);
 		}
 		const errBody = stderr.replace(/\n$/, "");
 		if (errBody) {
-			console.log("stderr：");
-			console.log(``);
-			console.log("```text");
-			console.log(errBody);
-			console.log("```");
-			console.log(``);
+			emit("stderr：");
+			emit(``);
+			emit("```text");
+			emit(errBody);
+			emit("```");
+			emit(``);
 		}
 	}
 
 	// ── 汇总 ──
-	console.log(``);
-	console.log(`## 汇总`);
-	console.log(``);
-	console.log(
+	emit(``);
+	emit(`## 汇总`);
+	emit(``);
+	emit(
 		`- 样例 ${SAMPLES.length} 条，退出码符合预期 ${SAMPLES.length - unexpected}/${SAMPLES.length}，总耗时 ${(totalMs / 1000).toFixed(1)}s`
 	);
 	if (unexpectedTitles.length) {
-		console.log(`- ⚠ 意外 ${unexpectedTitles.length} 条：`);
-		for (const t of unexpectedTitles) console.log(`  - ${t}`);
+		emit(`- ⚠ 意外 ${unexpectedTitles.length} 条：`);
+		for (const t of unexpectedTitles) emit(`  - ${t}`);
 	}
-	console.log(``);
+	emit(``);
 
+	// ── 通道收尾：压平样例输出里偶发的连续空行、去掉尾空行（lint 规范形态），
+	// 再按通道输出 —— stdout 补的换行与 writeOutFile 的补换行同位，产物逐字一致 ──
+	const text = docLines.join("\n").replace(/\n{3,}/g, "\n\n").replace(/\n+$/, "");
+	if (outPath !== null) {
+		writeOutFile(outPath, text);
+		console.error(`已写入 ${outPath}`);
+	} else {
+		console.log(text);
+	}
 	console.error(
 		unexpected
 			? `✘ ${unexpected} 条样例退出码不符合预期（明细见文档「汇总」节）`
