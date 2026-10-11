@@ -2,9 +2,10 @@
  * 手册导出工具（tools/db）—— 从样本库（db/ziwei.duckdb 或 dataset/ parquet）
  * 导出可归档的资料产物到 docs/manual/：
  *
- *   npx tsx tools/db/export-manual.ts topics   # 4 号：13 主题 × 十四主星断语全集
- *   npx tsx tools/db/export-manual.ts combo    # 5 号：主星 × 辅煞同宫频率全表
+ *   npx tsx tools/db/export-manual.ts topics   # 4 号：13 主题 × 十四主星断语全集（md）
+ *   npx tsx tools/db/export-manual.ts combo    # 5 号：主星 × 辅煞同宫频率全表（md）
  *   npx tsx tools/db/export-manual.ts geju     # 格局名目对拍（db 渲染集 vs patterns 现库）
+ *   npx tsx tools/db/export-manual.ts code     # 手册整理成 TS 数据，合并进 scripts/（generated/manual/）
  *   npx tsx tools/db/export-manual.ts all      # 以上全部
  *
  * 数据血缘（重要）：库里的主题文本是**本仓 analysis 内核在 518,400 个设计样本上的
@@ -98,27 +99,40 @@ function staticLines(text: string): string[] {
 	return out;
 }
 
+/** 收集一个主题的断语：star → (行 → 频次，按首现序) + star → 样本盘数。 */
+async function collectTopic(
+	conn: DuckDBConnection,
+	topic: TopicKey
+): Promise<{
+	byStar: Map<string, Map<string, number>>;
+	starSamples: Map<string, number>;
+}> {
+	const palace = TOPIC_PALACE_COMPACT[topic];
+	// 主星取该主题主宫的首颗主星（major_stars[1]，DuckDB 列表 1-based）；空宫（空列表）不计
+	const sql = `SELECT major_stars[1] AS star, ${topic} AS text
+FROM topics JOIN palaces USING (sample_id)
+WHERE palace_name = '${palace}' AND len(major_stars) > 0`;
+	const result = await conn.run(sql);
+	const rows = (await result.getRowObjectsJS()) as Array<{ star: string; text: string }>;
+
+	const byStar = new Map<string, Map<string, number>>();
+	const starSamples = new Map<string, number>();
+	for (const r of rows) {
+		starSamples.set(r.star, (starSamples.get(r.star) ?? 0) + 1);
+		let lines = byStar.get(r.star);
+		if (!lines) {
+			lines = new Map();
+			byStar.set(r.star, lines);
+		}
+		for (const l of staticLines(r.text)) lines.set(l, (lines.get(l) ?? 0) + 1);
+	}
+	return { byStar, starSamples };
+}
+
 async function exportTopics(conn: DuckDBConnection): Promise<void> {
 	mkdirSync(TOPICS_DIR, { recursive: true });
 	for (const topic of TOPIC_KEYS) {
-		const palace = TOPIC_PALACE_COMPACT[topic];
-		// 主星取该主题主宫的首颗主星（major_stars[1]，DuckDB 列表 1-based）；空宫（空列表）不计
-		const sql = `SELECT major_stars[1] AS star, ${topic} AS text
-FROM topics JOIN palaces USING (sample_id)
-WHERE palace_name = '${palace}' AND len(major_stars) > 0`;
-		const result = await conn.run(sql);
-		const rows = (await result.getRowObjectsJS()) as Array<{ star: string; text: string }>;
-
-		// star → 行 → 频次（按首现序聚合）
-		const byStar = new Map<string, Map<string, number>>();
-		for (const r of rows) {
-			let lines = byStar.get(r.star);
-			if (!lines) {
-				lines = new Map();
-				byStar.set(r.star, lines);
-			}
-			for (const l of staticLines(r.text)) lines.set(l, (lines.get(l) ?? 0) + 1);
-		}
+		const { byStar, starSamples } = await collectTopic(conn, topic);
 
 		const head = [
 			`# ${topic} · 断语全集（十四主星）`,
@@ -131,8 +145,10 @@ WHERE palace_name = '${palace}' AND len(major_stars) > 0`;
 		];
 		const body: string[] = [];
 		for (const [star, lines] of [...byStar.entries()].sort()) {
-			const sampleCount = rows.filter(r => r.star === star).length;
-			body.push(`## ${star}（${sampleCount.toLocaleString("en-US")} 盘）`, "");
+			body.push(
+				`## ${star}（${(starSamples.get(star) ?? 0).toLocaleString("en-US")} 盘）`,
+				""
+			);
 			for (const [line] of lines) body.push(line, "");
 		}
 		writeFileSync(join(TOPICS_DIR, `${topic}.md`), [...head, ...body].join("\n"));
@@ -142,18 +158,25 @@ WHERE palace_name = '${palace}' AND len(major_stars) > 0`;
 	}
 }
 
-async function exportCombo(conn: DuckDBConnection): Promise<void> {
-	mkdirSync(OUT_DIR, { recursive: true });
+/** 196 组合频率行（md 与 ts 两种渲染共用的收集层）。 */
+async function collectCombo(
+	conn: DuckDBConnection
+): Promise<Array<{ star: string; aux: string; cnt: number }>> {
 	const sql = `SELECT s.star, a.aux, COUNT(*)::INT AS cnt
 FROM (SELECT sample_id, palace_name, UNNEST(major_stars) AS star FROM palaces) s
 JOIN (SELECT sample_id, palace_name, UNNEST(list_concat(lucky_stars, sha_stars)) AS aux FROM palaces) a
   ON s.sample_id = a.sample_id AND s.palace_name = a.palace_name
 GROUP BY 1, 2 ORDER BY 1, 3 DESC`;
-	const rows = (await (await conn.run(sql)).getRowObjectsJS()) as Array<{
+	return (await (await conn.run(sql)).getRowObjectsJS()) as Array<{
 		star: string;
 		aux: string;
 		cnt: number;
 	}>;
+}
+
+async function exportCombo(conn: DuckDBConnection): Promise<void> {
+	mkdirSync(OUT_DIR, { recursive: true });
+	const rows = await collectCombo(conn);
 	const stars = [...new Set(rows.map(r => r.star))].sort();
 	const auxes = [...new Set(rows.map(r => r.aux))];
 	const cell = new Map(rows.map(r => [`${r.star}|${r.aux}`, r.cnt] as const));
@@ -178,6 +201,103 @@ GROUP BY 1, 2 ORDER BY 1, 3 DESC`;
 	];
 	writeFileSync(join(OUT_DIR, "combo-frequency.md"), md.join("\n") + "\n");
 	console.error(`combo-frequency.md：${rows.length} 组合`);
+}
+
+/** 生成 TS 数据文件的输出目录 —— analysis 域内、**不进 index.ts 公开面**（按需懒加载，不碰 CLI 启动链）。 */
+const CODE_DIR = resolve(SKILL_ROOT, "scripts/ziwei/analysis/generated/manual");
+
+/** 生成 TS 字符串字面量：JSON.stringify 的双引号形态即合法 TS 字面量（转义齐全）。 */
+const lit = (s: string): string => JSON.stringify(s);
+
+/**
+ * `code` 子命令：把手册内容整理成 TS 数据文件合并进代码（scripts/ziwei/analysis/generated/manual/）。
+ *
+ * 形态：每主题一个文件（`<topic>.ts`，`ORACLE: Record<主星, string[]>`）+ 组合频率 +
+ * 懒加载索引。生成物带 DO-NOT-EDIT 头与生成命令；文档版（docs/manual/）继续并存 ——
+ * md 供人读，ts 供代码查询。
+ */
+async function exportCode(conn: DuckDBConnection): Promise<void> {
+	mkdirSync(CODE_DIR, { recursive: true });
+
+	for (const topic of TOPIC_KEYS) {
+		const { byStar } = await collectTopic(conn, topic);
+		const lines: string[] = [
+			"/**",
+			" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
+			` * 源：样本库 518,400 设计样本 × analysis 内核（${topic} 主题静态节，动态节不进数据）。`,
+			" * 断语修订：改内核 `scripts/ziwei/analysis/` → `npm run build:db` → 重导本目录。",
+			" * 查询入口：`../manual/index.ts`（按主题懒加载，不在 CLI 主 import 链上）。",
+			" */",
+			`export const ORACLE: Readonly<Record<string, readonly string[]>> = {`,
+		];
+		for (const [star, ls] of [...byStar.entries()].sort()) {
+			lines.push(`\t${lit(star)}: [`);
+			for (const [line] of ls) lines.push(`\t\t${lit(line)},`);
+			lines.push(`\t],`);
+		}
+		lines.push(`};`, "");
+		writeFileSync(join(CODE_DIR, `${topic}.ts`), lines.join("\n"));
+	}
+
+	// 组合频率数据
+	const combo = await collectCombo(conn);
+	const comboLines = [
+		"/**",
+		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
+		" * 主星 × 辅煞同宫频率（196 组合，518,400 设计样本 × 12 宫）。",
+		" * 用途：主辅煞组合断语矩阵的口径与完备性基线（每个组合都有万级样本兜底）。",
+		" */",
+		`export interface ComboFrequency {`,
+		`\tstar: string;`,
+		`\taux: string;`,
+		`\tcount: number;`,
+		`}`,
+		`export const COMBO_FREQUENCY: readonly ComboFrequency[] = [`,
+		...combo.map(r => `\t{ star: ${lit(r.star)}, aux: ${lit(r.aux)}, count: ${r.cnt} },`),
+		`];`,
+		"",
+	];
+	writeFileSync(join(CODE_DIR, "combo-frequency.ts"), comboLines.join("\n"));
+
+	// 懒加载索引：显式 13 行映射（动态模板 import 在类型层拿不到形状）
+	const indexLines = [
+		"/**",
+		" * 断语手册数据（generated/manual/）的查询入口 —— 按主题懒加载。",
+		" *",
+		" * ⚠️ 本目录是**生成数据**，不在 `analysis/index.ts` 公开面上：CLI 主链路不 import",
+		" * 这些文件（零启动开销），需要消费时经本入口动态引入。",
+		" *",
+		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
+		" */",
+		`import type { TopicKey } from "../../data";`,
+		"",
+		`/** 一个主题的断语全集：主星 → 静态断语行（保首现序去重）。 */`,
+		`export type StarTopicOracle = Readonly<Record<string, readonly string[]>>;`,
+		`export type { ComboFrequency } from "./combo-frequency.ts";`,
+		`export { COMBO_FREQUENCY } from "./combo-frequency.ts";`,
+		"",
+		`const LOADERS: Record<TopicKey, () => Promise<{ ORACLE: StarTopicOracle }>> = {`,
+		...TOPIC_KEYS.map(k => `\t${k}: () => import("./${k}.ts"),`),
+		`};`,
+		"",
+		`/** 加载一个主题的断语全集；文件缺失（未导出）时抛带指引的错误。 */`,
+		`export async function loadTopicOracle(topic: TopicKey): Promise<StarTopicOracle> {`,
+		`\ttry {`,
+		`\t\treturn (await LOADERS[topic]()).ORACLE;`,
+		`\t} catch (e) {`,
+		`\t\tthrow new Error(`,
+		`\t\t\t\`断语数据 \${topic} 未生成。先 npx tsx tools/db/export-manual.ts code（前置：npm run build:db）。\` +`,
+		`\t\t\t\t\` 原始错误：\${e instanceof Error ? e.message : String(e)}\`,`,
+		`\t\t);`,
+		`\t}`,
+		`}`,
+		"",
+	];
+	writeFileSync(join(CODE_DIR, "index.ts"), indexLines.join("\n"));
+
+	console.error(
+		`generated/manual/：${TOPIC_KEYS.length} 主题数据 + combo-frequency + index（${combo.length} 组合）`
+	);
 }
 
 /** 格局名目对拍：db 渲染集（⭐ 行）vs patterns 现库（多样本实测产出全集）。 */
@@ -291,8 +411,9 @@ async function main() {
 		if (cmd === "topics" || cmd === "all") await exportTopics(conn);
 		if (cmd === "combo" || cmd === "all") await exportCombo(conn);
 		if (cmd === "geju" || cmd === "all") await auditGeju(conn);
-		if (!["topics", "combo", "geju", "all"].includes(cmd)) {
-			console.error(`未知子命令「${cmd}」：topics / combo / geju / all`);
+		if (cmd === "code" || cmd === "all") await exportCode(conn);
+		if (!["topics", "combo", "geju", "code", "all"].includes(cmd)) {
+			console.error(`未知子命令「${cmd}」：topics / combo / geju / code / all`);
 			process.exitCode = 2;
 		}
 	} finally {

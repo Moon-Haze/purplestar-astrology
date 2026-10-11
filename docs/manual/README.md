@@ -5,7 +5,7 @@
 修订断语请改内核 `scripts/ziwei/analysis/`，重建库（`npm run build:db`）后重导。
 
 ```bash
-npx tsx tools/db/export-manual.ts all    # 全量重导（topics / combo / geju）
+npx tsx tools/db/export-manual.ts all    # 全量重导（topics / combo / geju / code）
 ```
 
 ## 内容与数据血缘
@@ -15,6 +15,25 @@ npx tsx tools/db/export-manual.ts all    # 全量重导（topics / combo / geju�
 | `topics/<key>.md`（13 份） | 13 主题 × 十四主星的静态断语全集（动态节不进册），每节标注主星样本盘数           | topics 表（51.84 万盘 × 13 主题文本），按主题主宫主星分组去重 |
 | `combo-frequency.md`       | 主星 × 辅煞同宫频率全表（14 × 14 = 196 组合），组合断语矩阵的口径与完备性基线    | palaces 表（622 万宫次）                                      |
 | `geju-audit.md`            | 格局名目对拍：patterns 现库实测名目 vs db 实际渲染过的名目，差集即补判词候选清单 | patterns 现库（抽样 2,000 盘实测）+ topics ⭐ 行              |
+
+## code 模式：同一份内容合并进代码
+
+`npx tsx tools/db/export-manual.ts code` 把手册内容整理成 **TS 数据文件**，落到
+`scripts/ziwei/analysis/generated/manual/`（与 md 版同源同生成链）：
+
+- `<topic>.ts` × 13：`ORACLE: Record<主星, string[]>`（每主题一份，避免单文件数 MB）
+- `combo-frequency.ts`：`COMBO_FREQUENCY: { star, aux, count }[]`（196 组合）
+- `index.ts`：`loadTopicOracle(topic)` 按主题**懒加载**入口
+
+生成物**不在 `analysis/index.ts` 公开面上**——CLI 主链路不 import，零启动开销；
+需要消费时动态引入：
+
+```ts
+import { loadTopicOracle, COMBO_FREQUENCY } from "@/ziwei/analysis/generated/manual";
+const oracle = await loadTopicOracle("career"); // 主星 → 断语行
+```
+
+生成物带 DO-NOT-EDIT 头，**不要手改**；改内核断语 → `npm run build:db` → 重导。
 
 ## 已知口径与版本注意
 
