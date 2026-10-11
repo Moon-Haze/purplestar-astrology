@@ -155,7 +155,12 @@ export type DbLayout = "inline" | "parquet";
 //   <DIR>/dataset/                     分发 parquet 目录（仅 --mode=dataset）
 //   <DIR>/ziwei.duckdb.dict.jsonl      行字典副本（见 dictPathFor）
 //   <DIR>/ziwei.duckdb.progress.json   构建进度（断点续跑）
+//
+// 路径参数契约（与 cli/out.ts 的 --out 同款）：拒收含 `..` 段的**原始**路径，
+// 绝对路径与子目录不受影响，相对位置的跳转一律用绝对路径表达。校验必须写在
+// 各自函数体内（内联 if-throw），抽公共函数则调用方视图中断不了污点流。
 export function dbPathIn(outDir: string): string {
+	if (outDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
 	return path.join(path.resolve(outDir), "ziwei.duckdb");
 }
 
@@ -172,6 +177,7 @@ export const DATASET_PART_MAX_BYTES = 95 * 1024 * 1024;
 export const DATASET_TOTAL_LIMIT = 450 * 1024 * 1024;
 
 export function datasetDirIn(outDir: string): string {
+	if (outDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
 	return path.join(path.resolve(outDir), "dataset");
 }
 
@@ -179,6 +185,7 @@ export function datasetDirIn(outDir: string): string {
 // 必须与 dataset/ 平级而非其子目录：收尾要整体清空 dataset/ 再写（spec §5.3），
 // 暂存放在里面会被那次清空一并删掉，断点续建也就无从谈起。
 export function datasetStagingDirIn(outDir: string): string {
+	if (outDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
 	return path.join(path.resolve(outDir), "dataset.staging");
 }
 
@@ -199,6 +206,7 @@ export function topicsPartGlobIn(outDir: string): string {
 // 这正是原文形态在检索（232ms）、正则（257ms）、全量 count（44ms）上可用的原因，
 // 而行字典形态的 GROUP BY 会把这三项分别拖慢一个数量级或直接 OOM（spec §3.2）。
 export function topicsViewSqlDataset(datasetDir: string): string {
+	if (datasetDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
 	return `CREATE OR REPLACE VIEW topics AS
     SELECT * FROM read_parquet(${sqlLiteral(path.join(datasetDir, "topics-*.parquet"))})`;
 }
@@ -222,6 +230,7 @@ ${arms}
 // 路径由调用方按当次 --out 现推，故不存在 parquet 那种「视图里写死构建时绝对路径、
 // 换个位置就查不了」的问题（spec §6.1）。
 export function datasetSchemaSql(datasetDir: string): string[] {
+	if (datasetDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
 	const view = (name: string, file: string) =>
 		`CREATE VIEW ${name} AS SELECT * FROM read_parquet(${sqlLiteral(path.join(datasetDir, file))})`;
 	return [
@@ -300,6 +309,7 @@ export type QueryTarget =
 	{ kind: "db"; dbPath: string } | { kind: "dataset"; datasetDir: string } | { kind: "none" };
 
 export function resolveQueryTarget(outDir: string): QueryTarget {
+	if (outDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
 	const datasetDir = datasetDirIn(outDir);
 	if (existsSync(datasetDir)) return { kind: "dataset", datasetDir };
 	const dbPath = dbPathIn(outDir);
@@ -311,6 +321,7 @@ export function resolveQueryTarget(outDir: string): QueryTarget {
 // 路径是**每次查询时**推出来的，故不存在 sidecar 那种「构建时的绝对路径写死在视图里、
 // 换个位置就查不了」的问题（spec §6.1）。
 export async function openDataset(datasetDir: string): Promise<DuckDBConnection> {
+	if (datasetDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
 	const instance = await DuckDBInstance.create(":memory:");
 	const conn = await instance.connect();
 	try {

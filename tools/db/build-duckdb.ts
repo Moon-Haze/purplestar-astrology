@@ -78,9 +78,16 @@ function parseArgs(argv: string[]): Args {
 		};
 		if (key === "--from-year") a.fromYear = Number(value());
 		else if (key === "--to-year") a.toYear = Number(value());
-		else if (key === "--src") a.src = path.resolve(value());
-		else if (key === "--out") a.out = path.resolve(value());
-		else if (key === "--mode") a.mode = parseMode(value());
+		// 路径参数在 resolve 之前先校验原始值：resolve 会把 .. 归一化掉，过了这一步就无从识别
+		else if (key === "--src") {
+			const v = value();
+			if (v.split(/[\\/]/).includes("..")) throw new Error("--src 路径不允许包含 .. 段");
+			a.src = path.resolve(v);
+		} else if (key === "--out") {
+			const v = value();
+			if (v.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
+			a.out = path.resolve(v);
+		} else if (key === "--mode") a.mode = parseMode(value());
 		else if (key === "--min-free-gb") a.minFreeGb = Number(value());
 		else if (key === "--batch-shards") a.batchShards = Math.max(1, Number(value()));
 		else if (key === "--db" || key === "--topics-dir") throw new Error(deletedArgHint(key));
@@ -335,6 +342,7 @@ export async function buildShard(
 }
 
 async function listShards(src: string, fromYear?: number, toYear?: number): Promise<string[]> {
+	if (src.split(/[\\/]/).includes("..")) throw new Error("--src 路径不允许包含 .. 段");
 	const out: string[] = [];
 	for (const dir of (await readdir(src, { withFileTypes: true }))
 		.filter(d => d.isDirectory())
@@ -369,6 +377,8 @@ export async function repackDataset(
 	totalSamples: number,
 	partSamples: number = DATASET_PART_SAMPLES
 ): Promise<{ files: string[]; maxBytes: number }> {
+	if (stagingDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
+	if (datasetDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
 	await conn.run("SET threads=4");
 	await conn.run("SET memory_limit='4GB'");
 	await conn.run("SET preserve_insertion_order=false");
@@ -408,6 +418,8 @@ export async function finalizeDataset(
 	datasetDir: string,
 	done: string[]
 ): Promise<void> {
+	if (stagingDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
+	if (datasetDir.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
 	try {
 		// 与 done 对账：每个已入库分片都必须有暂存 parquet，缺一个就重打包不出来
 		const missing = done.filter(

@@ -52,11 +52,16 @@ export function parseArgs(argv: string[]): ParsedArgs {
 			continue;
 		}
 		if (arg === "--out") {
-			a.out = path.resolve(argv[++i] ?? "");
+			// resolve 之前先校验原始值：resolve 会把 .. 归一化掉，过了这一步就无从识别
+			const v = argv[++i] ?? "";
+			if (v.split(/[\\/]/).includes("..")) throw new UsageError("--out 路径不允许包含 .. 段");
+			a.out = path.resolve(v);
 			continue;
 		}
 		if (arg.startsWith("--out=")) {
-			a.out = path.resolve(arg.slice(6));
+			const v = arg.slice(6);
+			if (v.split(/[\\/]/).includes("..")) throw new UsageError("--out 路径不允许包含 .. 段");
+			a.out = path.resolve(v);
 			continue;
 		}
 		// 旧参数显式报错：落到「未知参数」会丢掉「该改成什么」这半句
