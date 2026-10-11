@@ -149,7 +149,6 @@ export function buildReport(
 		"- 本报告为**本命盘静态论断**；大限 / 流年 / 流月动态见 `--decadal`、`--yearly`、`--topic <key> --view daxian|liunian|liuyue`。",
 	];
 
-	return (
-		[...header, "", "---", "", sections.join("\n\n---\n\n"), "", ...footer].join("\n") + "\n"
-	);
+	// 末尾不带换行：引导层统一 console.log 输出时补上唯一一个，文件以单换行结尾
+	return [...header, "", "---", "", sections.join("\n\n---\n\n"), "", ...footer].join("\n");
 }

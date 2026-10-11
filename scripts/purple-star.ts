@@ -12,6 +12,7 @@
  *   cli/astrology.ts   排盘分析一条命令（四命令合一：概览默认 + 功能参数分发）
  *   cli/{classics,synastry,stars}.ts  各命令实现；cli/commands.ts 只做注册薄层
  *   cli/config.ts      --config / --template 配置输入；cli/help.ts  help 渲染（man 七节）
+ *   cli/out.ts         --out 落盘通道（写文件唯一写点，路径校验在内）
  *   cli/selftest.ts    回归自检（排盘 / 古籍 / 合盘三段合一）
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
@@ -79,6 +80,8 @@ type ArgsModule = typeof import("@/cli/args");
 type CommandsModule = typeof import("@/cli/commands");
 /** 轻量命令元数据（名字与 HELP 文案，无命令实现依赖）——help 路径只需它。 */
 type MetaModule = typeof import("@/cli/command-meta");
+/** `--out` 落盘通道（writeFileSync 的唯一写点，路径校验在内）。 */
+type OutModule = typeof import("@/cli/out");
 
 // 历史注记：这里曾有一段 `process.emitWarning` 猴子补丁，用于过滤
 // `MODULE_TYPELESS_PACKAGE_JSON` 告警 —— 那是上游 ziwei-master（Next.js 项目，不能把
@@ -246,7 +249,8 @@ async function loadCore() {
  * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
  *
  * @remarks
- * `console.log` 只在这一处发生 —— 各 `cmdXxx` 一律**返回**已渲染好的文本字符串，由这里统一输出。
+ * 输出只在这一处分发 —— 各 `cmdXxx` 一律**返回**已渲染好的文本字符串：`--out <文件>`
+ * 走 {@link writeOutFile} 落盘（正文不占 stdout，进度提示走 stderr），否则 `console.log`。
  *
  * 无参数、`help`、`--help`、`-h` 都打印 {@link renderHelp} 的产物；未知命令与命令内部抛出的
  * 错误都以非零码退出（只打印 `err.message`，不打印栈）。传给命令的第二个参数是
@@ -289,7 +293,15 @@ async function main() {
 		// 命令名一并交给 parseArgs：参数面要按命令校验（前缀参数只有声明过的那几条命令认）
 		const args = parseArgs(argv.slice(1), cmd);
 		// Cmd 允许返回 Promise（cmdSelftest 异步化后动态 import 命令表），统一 await。
-		console.log(await fn(args, { root: ROOT, rootLabel: ROOT_LABEL }));
+		const text = await fn(args, { root: ROOT, rootLabel: ROOT_LABEL });
+		// 输出通道二选一：--out 落盘（正文不再占 stdout，进度提示走 stderr）或 console.log
+		if (typeof args.out === "string" && args.out !== "") {
+			const { writeOutFile } = await load<OutModule>("@/cli/out");
+			writeOutFile(args.out, text);
+			console.error(`已写入 ${args.out}`);
+		} else {
+			console.log(text);
+		}
 	} catch (err) {
 		console.error(`错误：${(err as Error).message}`);
 		process.exit(1);

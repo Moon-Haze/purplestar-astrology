@@ -249,6 +249,12 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		options: [
 			{ name: "json", kind: "switch", desc: "输出原始 JSON（供程序消费）" },
 			{
+				name: "out",
+				kind: "value",
+				value: "out.md",
+				desc: "把输出写入文件（覆盖写，末尾恰一个换行；进度提示走 stderr，stdout 不再打印正文）",
+			},
+			{
 				name: "yearly",
 				kind: "value",
 				value: "年",

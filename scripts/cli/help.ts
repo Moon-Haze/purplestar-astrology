@@ -50,6 +50,7 @@ export const OPTION_OWNERSHIP: Record<CommandName, readonly string[]> = {
 		"view",
 		"report",
 		"json",
+		"out",
 		"config",
 		"template",
 	],
@@ -94,8 +95,8 @@ const OVERVIEW_EXAMPLES = [
   node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --report`,
 	"",
 	`  # 合盘：先排两张盘，再逗号分隔交给 synastry（甲先乙后）
-  node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json > /tmp/a.json
-  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --json > /tmp/b.json
+  node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json --out /tmp/a.json
+  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --json --out /tmp/b.json
   node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`,
 	"",
 	`  # 古籍原文检索、星曜释义与断语手册
@@ -133,8 +134,8 @@ const COMMAND_EXAMPLES: Record<CommandName, readonly string[]> = {
 		FICTION_NOTE,
 	],
 	synastry: [
-		"  node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json > /tmp/a.json",
-		"  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --json > /tmp/b.json",
+		"  node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json --out /tmp/a.json",
+		"  node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --json --out /tmp/b.json",
 		"  node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json",
 		"",
 		FICTION_NOTE,
