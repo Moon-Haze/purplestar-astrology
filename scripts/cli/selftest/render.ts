@@ -12,7 +12,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { generateChart } from "@/ziwei/algorithm";
 import { STAR_DESCRIPTIONS } from "@/ziwei/constants";
-import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/ziwei/analysis";
+import {
+	filterGenderContent,
+	getTopicAnalysis,
+	TOPIC_LABEL,
+	type TopicKey,
+	type AnalysisView,
+} from "@/ziwei/analysis";
 import {
 	decadalSection,
 	focusSection,
@@ -233,5 +239,29 @@ export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 		// 命宫(子)的对宫是迁移宫(午) = 2026 流年命宫 → 应有引动标注
 		if (!text.includes("流年命宫")) throw new Error("缺流年引动标注");
 		if (!text.includes("大限")) throw new Error("缺大限年龄段标注");
+	});
+	// ── 性别过滤上公开面（候选 7）：filterGenderContent 此前只被内核自用，
+	// 外部（测试/消费方）无从直测 —— 断言**必须经 @/ziwei/analysis 公开面 import，
+	// 直插 ./lookups 即本组失败的意义（公开面缺导出 → 模块链接期就崩）。 ──
+	ok("性别过滤：male 的 getTopicAnalysis 不含女命残留（候选 7）", () => {
+		const c = generateChart(SAMPLE);
+		const out = getTopicAnalysis(c, "overview");
+		if (out.includes("；女命") || out.includes("（女命）"))
+			throw new Error("存在女命残留——整篇过滤未生效");
+		return "男命输出无女命残留";
+	});
+	ok("性别过滤：filterGenderContent 三条规则直测", () => {
+		const f = filterGenderContent("甲；女命宜静。乙\n（女命）丙\n女命主柔。", "male");
+		if (f.includes("女命")) throw new Error(`规则未生效：${JSON.stringify(f)}`);
+		const g = filterGenderContent("男命主刚。乙", "female");
+		if (g.includes("男命")) throw new Error("female 侧未过滤男命句");
+		return "male/female 两侧三规则在";
+	});
+	ok("性别过滤：整篇作用域——跨行子句在拼接后被删", () => {
+		// 构造跨行输入：「；女命」子句横跨 \n，逐行过滤会漏、整篇过滤会删
+		const input = "上句；女命\n下句继续。";
+		const f = filterGenderContent(input, "male");
+		if (f.includes("女命")) throw new Error("跨行子句残留——过滤未作用于整篇");
+		return "整篇作用域在";
 	});
 }

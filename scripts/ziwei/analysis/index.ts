@@ -127,10 +127,20 @@ export function getTopicAnalysis(
 }
 
 // ─── 公开面 re-export ────────────────────────────────────────────────────────
-// 拆分前从本模块导出的 5 个名字，拆分后**逐名仍可从这里 import**。
-// `./data` 是它们的实际归属地，此处只做转发，调用方一行不用改。
-// 这 5 个名字本文件的实现也要用，故上方已 import，这里再 export 一次。
+// 本公开面现导出 5 个值：拆分前即有的 4 个转发（TOPIC_LABEL / TOPIC_PALACE_NAME /
+// getTopicReport / getTopicReportMeta）+ filterGenderContent（候选 7 新增）。
+// 前 4 个 `./data` 是实际归属地，此处只做转发，调用方一行不用改；
+// 它们与 filterGenderContent 本文件的实现都要用，故上方已 import，这里再 export 一次。
 // `./report` 的两个名字（--report 全盘报告的编排层）同走这张公开面 ——
 // CLI 不直插 analysis 内部模块。
-export { TOPIC_LABEL, TOPIC_PALACE_NAME, getTopicReport, getTopicReportMeta };
+// `filterGenderContent`（候选 7）：本文件与 ./report 两处调用都保持 import
+// `./lookups`（避免 index ↔ report 成环），上公开面只为**外部可直测** ——
+// selftest 的性别过滤断言必须经这里 import，直插 lookups 即断言失效。
+export {
+	TOPIC_LABEL,
+	TOPIC_PALACE_NAME,
+	getTopicReport,
+	getTopicReportMeta,
+	filterGenderContent,
+};
 export type { AnalysisOptions, AnalysisView, TopicKey, ReportCitation, ReportOptions };
