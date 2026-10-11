@@ -14,7 +14,6 @@
  */
 
 import { SIHUA_CHAR_TO_KEY, TOPIC_KEY_PALACES, mutagenSymbol } from "../data";
-import { compactPalaceKey } from "../lookups";
 import type { AnalysisContext } from "../context";
 
 /** 渲染「三点五、年干四化·全局关键宫位影响」整节（无命中时返回空数组）。 */
@@ -44,9 +43,7 @@ export function renderYearStem(ctx: AnalysisContext): string[] {
 
 	keyPalaceRules.forEach(rule => {
 		allChartMutagen
-			// rule.palace 是紧凑口径（「官禄」「仆役」），经 compactPalaceKey 归一后与
-			// 项目口径的 Palace.name 比对 —— 此前直比导致非命宫规则全部静默失效。
-			.filter(sh => compactPalaceKey(sh.palace) === rule.palace)
+			.filter(sh => sh.palace === rule.palace)
 			.forEach(sh => {
 				const key = `${sh.star}-${sh.mutagen}-${sh.palace}`;
 				if (alreadyShown.has(key)) return; // 三方四正已展示，跳过
@@ -67,9 +64,7 @@ export function renderYearStem(ctx: AnalysisContext): string[] {
 		lines.push(`**【年干四化·关键宫位影响】**`);
 		lines.push("");
 		globalKeyFindings.forEach(({ palace, star, mutagen, meaning }) => {
-			lines.push(
-				`${mutagenSymbol(mutagen)} **${star}化${mutagen}**（落${palace}）→ ${meaning}`
-			);
+			lines.push(`${mutagenSymbol(mutagen)} **${star}化${mutagen}**（落${palace}）→ ${meaning}`);
 		});
 		lines.push("");
 	}

@@ -12,7 +12,8 @@
  * 不产新断语。断语的修订一律改内核（scripts/ziwei/analysis/），再重建库、再导出。
  *
  * 宫名口径：库内列值与 `./data` 散表同为紧凑口径（不带「宫」字、「仆役」），
- * 内核侧 `Palace.name` 是项目口径（带「宫」字）—— 两侧经 `compactPalaceKey` 归一。
+ * 内核侧 `Palace.name` 是项目口径（带「宫」字）—— 本工具内的 `compactPalaceKey`
+ * 负责这一处归一。
  *
  * 输出目录：docs/manual/（topics/ 子目录 + 两个独立 md）。只读库（spec §6），不落 SQL
  * 用户输入（全部固定字面量，与 query.ts 同纪律）。
@@ -31,11 +32,31 @@ const SKILL_ROOT = resolve(HERE, "../..");
 const OUT_DIR = resolve(SKILL_ROOT, "docs/manual");
 const TOPICS_DIR = join(OUT_DIR, "topics");
 
-// 内核 analysis 模块（紧凑键归一 + 格局判定）—— 相对导入，tools/ 不走 @/ 别名
-const analysis = await import("../../scripts/ziwei/analysis/lookups");
-const { compactPalaceKey } = analysis;
+// 内核 patterns / 排盘模块 —— 相对导入，tools/ 不走 @/ 别名
 const { generateChart } = await import("../../scripts/ziwei/algorithm");
 const patterns = await import("../../scripts/ziwei/patterns/index");
+
+/**
+ * 项目口径宫名（`Palace.name`，带「宫」字）→ 库内紧凑键。
+ * 库内列值（palace_name 等）与 `./data` 散表同为紧凑口径（不带「宫」字、「仆役」），
+ * 本工具在「项目口径主题主宫 → 库内值」这一处需要归一 —— 12 宫显式映射，未知原样返回。
+ */
+const COMPACT_PALACE_KEY: Record<string, string> = {
+	命宫: "命宫",
+	兄弟宫: "兄弟",
+	夫妻宫: "夫妻",
+	子女宫: "子女",
+	财帛宫: "财帛",
+	疾厄宫: "疾厄",
+	迁移宫: "迁移",
+	交友宫: "仆役",
+	官禄宫: "官禄",
+	田宅宫: "田宅",
+	福德宫: "福德",
+	父母宫: "父母",
+};
+const compactPalaceKey = (palaceName: string): string =>
+	COMPACT_PALACE_KEY[palaceName] ?? palaceName;
 
 // 主题 → 紧凑口径主宫名（库内 palace_name 值域）
 const TOPIC_PALACE_COMPACT: Record<TopicKey, string> = {

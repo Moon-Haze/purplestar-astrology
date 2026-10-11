@@ -11,7 +11,6 @@
  */
 
 import { KUI_YUE_GUIREN_MAP } from "../data";
-import { compactPalaceKey } from "../lookups";
 import type { AnalysisContext } from "../context";
 
 /** 渲染「五点六、魁钺贵人倾向细分」整节（主题不符或无命中时返回空数组）。 */
@@ -30,11 +29,11 @@ export function renderKuiYue(ctx: AnalysisContext): string[] {
 		const yuePalaceForTopic = chart.palaces.find(p => p.stars.some(s => s.name === "天钺"));
 		const notes: string[] = [];
 		if (kuiPalaceForTopic) {
-			const map = KUI_YUE_GUIREN_MAP[compactPalaceKey(kuiPalaceForTopic.name)];
+			const map = KUI_YUE_GUIREN_MAP[kuiPalaceForTopic.name];
 			if (map?.kui) notes.push(`**天魁在${kuiPalaceForTopic.name}**：${map.kui}`);
 		}
 		if (yuePalaceForTopic) {
-			const map = KUI_YUE_GUIREN_MAP[compactPalaceKey(yuePalaceForTopic.name)];
+			const map = KUI_YUE_GUIREN_MAP[yuePalaceForTopic.name];
 			if (map?.yue) notes.push(`**天钺在${yuePalaceForTopic.name}**：${map.yue}`);
 		}
 		if (notes.length > 0) {

@@ -86,38 +86,9 @@ export function getMutagenNote(starName: string, mutagen: string): string {
 	return profile.sihua[key] ?? "";
 }
 
-/**
- * 项目口径宫名 → 紧凑口径键。
- *
- * `./data` 里的四张散表（`MINOR_STAR_PALACE_CONTENT` / `KUI_YUE_GUIREN_MAP` /
- * `PALACE_TO_CONTENT_KEY` / `TOPIC_KEY_PALACES`）的宫名键沿用上游紧凑写法
- * （不带「宫」字、交友写作「仆役」），而 `Palace.name` 是项目口径（全带「宫」字、
- * 「交友宫」）。**查询侧**经本函数归一 —— 表保持紧凑格式不动，两套口径只在此处交接。
- * 「命宫」两口径同形，映射里显式列出全 12 宫，查不到原样返回（不静默造键）。
- */
-const COMPACT_PALACE_KEY: Record<string, string> = {
-	命宫: "命宫",
-	兄弟宫: "兄弟",
-	夫妻宫: "夫妻",
-	子女宫: "子女",
-	财帛宫: "财帛",
-	疾厄宫: "疾厄",
-	迁移宫: "迁移",
-	交友宫: "仆役",
-	官禄宫: "官禄",
-	田宅宫: "田宅",
-	福德宫: "福德",
-	父母宫: "父母",
-};
-
-/** 把项目口径宫名（`Palace.name`）归一成散表的紧凑键；未知名字原样返回。 */
-export function compactPalaceKey(palaceName: string): string {
-	return COMPACT_PALACE_KEY[palaceName] ?? palaceName;
-}
-
-/** 获取次星在某宫的详细文案（宫名入参按项目口径，内部归一成紧凑键查表） */
+/** 获取次星在某宫的详细文案 */
 export function getMinorStarNote(starName: string, palaceName: string): string {
-	return MINOR_STAR_PALACE_CONTENT[starName]?.[compactPalaceKey(palaceName)] ?? "";
+	return MINOR_STAR_PALACE_CONTENT[starName]?.[palaceName] ?? "";
 }
 
 /** 识别命盘中的重要格局 */
@@ -127,11 +98,11 @@ export function detectGeJu(chart: ZiweiChart): { name: string; description: stri
 	//   - analyze 侧短判词 + 等级：`Pattern.description` / `Pattern.level`
 	//   - topic 侧倪师口吻长判词：`Pattern.topicDescription`
 	//
-	// 本函数只是**投影**：把填了长判词的命中挑出来，供 `overview` / `personality` 展示。
-	// **新增格局只要在 patterns/ 的识别器里填 `topicDescription`，这边自动就能展示**，
-	// 不会有「判定加了、判词忘了补、topic 静默不显示」的漏。
-	//
-	// 展示顺序**按 level 降序**（同级保持识别器注册序）。
+		// 本函数只是**投影**：把填了长判词的命中挑出来，供 `overview` / `personality` 展示。
+		// **新增格局只要在 patterns/ 的识别器里填 `topicDescription`，这边自动就能展示**，
+		// 不会有「判定加了、判词忘了补、topic 静默不显示」的漏。
+		//
+		// 展示顺序**按 level 降序**（同级保持识别器注册序）。
 	return detectPatterns(chart)
 		.filter((p): p is Pattern & { topicDescription: string } => !!p.topicDescription)
 		.sort((a, b) => b.level - a.level)
