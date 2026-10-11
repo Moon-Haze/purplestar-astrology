@@ -82,8 +82,8 @@ const SECTION_HEAD_RE = /^\*\*【(.+?)】\*\*$/;
 
 /** 一条主题文本 → 静态节行数组（保首现序）。
  *
- * 另过滤 `▍` 开头的三方四正标签行 —— 那是渲染层拼的**结构行**（标签宫名配对），
- * 不是断语；且旧库（三合标签修复 407bc06 之前建）里带错位标签，不进册。
+ * ▍ 结构行**保留**：`classifyOracle` 需要它做三方四正的宫位结构头（palace 取标签
+ * 末段=真实宫名，旧库错位标签前缀自然丢弃）；md 渲染端（`exportTopics`）自行滤掉。
  */
 function staticLines(text: string): string[] {
 	const out: string[] = [];
@@ -92,19 +92,171 @@ function staticLines(text: string): string[] {
 		const head = line.match(SECTION_HEAD_RE);
 		if (head) {
 			keep = !DYNAMIC_SECTION_RE.test(head[1]);
+			if (keep) out.push(line);
 			continue;
 		}
-		if (keep && line.trim() !== "" && !line.startsWith("▍")) out.push(line);
+		if (keep && line.trim() !== "") out.push(line);
 	}
 	return out;
 }
 
-/** 收集一个主题的断语：star → (行 → 频次，按首现序) + star → 样本盘数。 */
+// ── 断语分类（code 模式）：把扁平行流解析成按情况归类的嵌套结构 ────────────────────
+
+/** 三方四正的一个宫位条目：▍ 头（宫名 + 星曜概览变体）+ 其后的断语行（语境段落/简述/次星）。 */
+export interface SanFangEntry {
+	palace: string;
+	/** 该宫跨盘的星曜概览变体（去重；「破军（庙旺）」/「破军」/「空宫借对宫」等） */
+	stars: string[];
+	items: string[];
+}
+
+/** 一条本命四化：主行（emoji 后的原文）+ 缩进说明（跨盘变体以换行合并）。 */
+export interface SihuaEntry {
+	text: string;
+	note?: string;
+}
+
+/** 一个主星在某个主题下的分类断语集。字段序即渲染序（custom → summary → …）。 */
+export interface OracleStar {
+	/** 【命盘关键定制】—— 亮度/化曜的专属开场 */
+	mods: string[];
+	/** 【星曜深层特质】—— 第二人称白话总述 */
+	summary: string[];
+	/** ⭐ 特殊格局（同名格局跨盘变体已合并 text） */
+	patterns: { name: string; text: string }[];
+	/** 【命盘推演】—— 本宫主星行（多盘亮度变体，去重）+ 语境段落/亮度补充/同宫第二主星 */
+	mainPalace: { stars: string[]; content: string[] };
+	/** 【三方四正联动】—— 按宫位聚合（palace 取标签末段，即真实宫名；跨盘变体并入同条目） */
+	sanFang: SanFangEntry[];
+	/** 四化行（本命四化会照 + 年干关键宫位两节），缩进说明归 note */
+	sihua: SihuaEntry[];
+	/** 【贵人倾向·魁钺细分】—— ◇ 行原文（去前缀） */
+	kuiYue: string[];
+	/** 主题专属节（性格深描 / 疾厄取象 / 女命妇科保养 …）—— 节名 → 行 */
+	extras: Record<string, string[]>;
+	/** 未归类兜底（正常应为空；非空说明渲染层新形态未被分类器认识，须排查） */
+	other: string[];
+}
+
+/**
+ * 把「行 → 首现节名」的有序映射解析成分类断语集（三方四正节已由 {@link collectTopic}
+ * 盘内解析并经 `sanFang` 聚合传入，此处的行流不含该节）。
+ *
+ * 状态机只做两件事：行模式识别（⭐/四化/本宫主星/◇/缩进）优先，其余按节名分派。
+ * 节内行保首现序；四化 note 变体换行合并。
+ */
+function classifyOracle(
+	lines: Map<string, string>,
+	sanFang: Map<string, { stars: Set<string>; items: Set<string> }>
+): OracleStar {
+	const oracle = {
+		mods: [] as string[],
+		summary: [] as string[],
+		patterns: [] as { name: string; text: string }[],
+		mainPalace: { stars: [] as string[], content: [] as string[] },
+		sihua: [] as SihuaEntry[],
+		kuiYue: [] as string[],
+		extras: new Map<string, string[]>(),
+		other: [] as string[],
+	};
+	let lastSihua: SihuaEntry | null = null;
+	const uniq = (arr: string[], line: string): void => {
+		if (!arr.includes(line)) arr.push(line);
+	};
+
+	for (const [line, section] of lines) {
+		const indent = line.match(/^\s+(.*)/);
+		const body = indent ? indent[1] : line;
+
+		// 缩进行：四化节的 note（同主行多变体换行合并）
+		if (indent) {
+			if ((section === "本命四化会照" || section === "年干四化·关键宫位影响") && lastSihua) {
+				lastSihua.note =
+					lastSihua.note === undefined
+						? body
+						: lastSihua.note.includes(body)
+							? lastSihua.note
+							: `${lastSihua.note}\n${body}`;
+			} else {
+				uniq(oracle.other, line);
+			}
+			continue;
+		}
+
+		let m: RegExpMatchArray | null;
+		// ⭐ 格局：同名跨盘变体合并（追加判词）
+		if ((m = line.match(/^⭐ \*\*(.+?)\*\*[：:](.*)$/))) {
+			const found = oracle.patterns.find(p => p.name === m![1]);
+			if (found) {
+				if (m[2] && !found.text.includes(m[2])) found.text += `\n${m[2]}`;
+			} else {
+				oracle.patterns.push({ name: m[1], text: m[2] });
+			}
+			continue;
+		}
+		// 四化主行（本命四化节与年干节同构：emoji + **星化X**（落宫）[→ 意义]）
+		if (/^[🔴🟡🔵🟢]/.test(line)) {
+			const existing = oracle.sihua.find(s => s.text === body);
+			lastSihua = existing ?? { text: body };
+			if (!existing) oracle.sihua.push(lastSihua);
+			continue;
+		}
+		if (line.startsWith("本宫主星")) {
+			uniq(oracle.mainPalace.stars, body);
+			continue;
+		}
+		if (line.startsWith("◇")) {
+			uniq(oracle.kuiYue, body);
+			continue;
+		}
+
+		// 节驱动的普通段落
+		if (section === "命盘关键定制") uniq(oracle.mods, line);
+		else if (section === "星曜深层特质") uniq(oracle.summary, line);
+		else if (section === "命盘推演") uniq(oracle.mainPalace.content, line);
+		else if (section === "本命四化会照" || section === "年干四化·关键宫位影响") {
+			lastSihua = { text: line };
+			oracle.sihua.push(lastSihua);
+		} else if (section !== "") {
+			if (!oracle.extras.has(section)) oracle.extras.set(section, []);
+			uniq(oracle.extras.get(section)!, line);
+		} else {
+			uniq(oracle.other, line);
+		}
+	}
+
+	return {
+		mods: oracle.mods,
+		summary: oracle.summary,
+		patterns: oracle.patterns,
+		mainPalace: oracle.mainPalace,
+		sanFang: [...sanFang.entries()].map(([palace, { stars, items }]) => ({
+			palace,
+			stars: [...stars],
+			items: [...items],
+		})),
+		sihua: oracle.sihua,
+		kuiYue: oracle.kuiYue,
+		extras: Object.fromEntries(oracle.extras),
+		other: oracle.other,
+	};
+}
+
+/** 收集一个主题的断语：star → (行 → 首现节名，按首现序) + star → 样本盘数。
+ *
+ * 行文本决定节归属（渲染是确定的：「本宫主星：X」永远在推演节），故**跨盘去重**
+ * 时记下首现节名，后续盘的同文本变体行天然继承该节。
+ *
+ * 例外是**三方四正节**：✦ 次星与缩进简述不带宫信息，同文本行在不同盘可能属于不同
+ * 宫 —— 行级去重会把宫归属搞错。故三方节在**盘内**解析（▍ 头与后续行的配对在单盘
+ * 内是精确的），跨盘聚合到 `sanFangByStar`；行级收集跳过该节。
+ */
 async function collectTopic(
 	conn: DuckDBConnection,
 	topic: TopicKey
 ): Promise<{
-	byStar: Map<string, Map<string, number>>;
+	byStar: Map<string, Map<string, string>>;
+	sanFangByStar: Map<string, Map<string, { stars: Set<string>; items: Set<string> }>>;
 	starSamples: Map<string, number>;
 }> {
 	const palace = TOPIC_PALACE_COMPACT[topic];
@@ -115,24 +267,62 @@ WHERE palace_name = '${palace}' AND len(major_stars) > 0`;
 	const result = await conn.run(sql);
 	const rows = (await result.getRowObjectsJS()) as Array<{ star: string; text: string }>;
 
-	const byStar = new Map<string, Map<string, number>>();
+	const byStar = new Map<string, Map<string, string>>();
+	const sanFangByStar = new Map<
+		string,
+		Map<string, { stars: Set<string>; items: Set<string> }>
+	>();
 	const starSamples = new Map<string, number>();
 	for (const r of rows) {
 		starSamples.set(r.star, (starSamples.get(r.star) ?? 0) + 1);
-		let lines = byStar.get(r.star);
-		if (!lines) {
-			lines = new Map();
-			byStar.set(r.star, lines);
+		if (!byStar.has(r.star)) {
+			byStar.set(r.star, new Map());
+			sanFangByStar.set(r.star, new Map());
 		}
-		for (const l of staticLines(r.text)) lines.set(l, (lines.get(l) ?? 0) + 1);
+		const lines = byStar.get(r.star)!;
+		const sanFang = sanFangByStar.get(r.star)!;
+
+		let section = "";
+		let currentPalace: string | null = null;
+		for (const l of staticLines(r.text)) {
+			const head = l.match(SECTION_HEAD_RE);
+			if (head) {
+				section = head[1];
+				currentPalace = null;
+				continue;
+			}
+			// 三方节：盘内解析 ▍ 配对（宫归属只在单盘内精确）
+			if (section === "三方四正联动") {
+				const bar = l.match(/^▍\*\*(.+?)\*\*[：:](.*)$/);
+				if (bar) {
+					currentPalace = bar[1].includes("·")
+						? bar[1].split("·").pop()!.trim()
+						: bar[1].trim();
+					const entry = sanFang.get(currentPalace) ?? {
+						stars: new Set<string>(),
+						items: new Set<string>(),
+					};
+					sanFang.set(currentPalace, entry);
+					if (bar[2]) entry.stars.add(bar[2]);
+					continue;
+				}
+				const kui = l.match(/^✦ \*\*(.+?)\*\*[：:](.*)$/);
+				const body = l.replace(/^\s+/, "");
+				if (!currentPalace) continue;
+				const entry = sanFang.get(currentPalace)!;
+				entry.items.add(kui ? `✦ ${kui[1]}：${kui[2]}` : body);
+				continue;
+			}
+			if (!lines.has(l)) lines.set(l, section);
+		}
 	}
-	return { byStar, starSamples };
+	return { byStar, sanFangByStar, starSamples };
 }
 
 async function exportTopics(conn: DuckDBConnection): Promise<void> {
 	mkdirSync(TOPICS_DIR, { recursive: true });
 	for (const topic of TOPIC_KEYS) {
-		const { byStar, starSamples } = await collectTopic(conn, topic);
+		const { byStar, sanFangByStar, starSamples } = await collectTopic(conn, topic);
 
 		const head = [
 			`# ${topic} · 断语全集（十四主星）`,
@@ -149,7 +339,16 @@ async function exportTopics(conn: DuckDBConnection): Promise<void> {
 				`## ${star}（${(starSamples.get(star) ?? 0).toLocaleString("en-US")} 盘）`,
 				""
 			);
-			for (const [line] of lines) body.push(line, "");
+			// md 保持扁平可读版：节头行（分类用）在这里滤掉
+			for (const line of lines.keys()) {
+				if (SECTION_HEAD_RE.test(line)) continue;
+				body.push(line, "");
+			}
+			// 三方四正（盘内已解析聚合）：按宫展开成「▍宫名：星曜概览 + 断语行」
+			for (const [palace, { stars, items }] of sanFangByStar.get(star) ?? []) {
+				body.push(`▍**${palace}**：${[...stars].join("、")}`, "");
+				for (const it of items) body.push(it, "");
+			}
 		}
 		writeFileSync(join(TOPICS_DIR, `${topic}.md`), [...head, ...body].join("\n"));
 		console.error(
@@ -210,17 +409,62 @@ const CODE_DIR = resolve(SKILL_ROOT, "export/manual");
 const lit = (s: string): string => JSON.stringify(s);
 
 /**
- * `code` 子命令：把手册内容整理成 TS 数据文件合并进代码（export/manual/）。
+ * `code` 子命令：把手册内容**解析分类**成 TS 数据文件合并进代码（export/manual/）。
  *
- * 形态：每主题一个文件（`<topic>.ts`，`ORACLE: Record<主星, string[]>`）+ 组合频率 +
+ * 形态：每主题一个文件（`<topic>.ts`，`ORACLE: Record<主星, OracleStar>`——按
+ * 定制/总述/格局/本宫/三方/四化/贵人/专属节归类，见 {@link OracleStar}）+ 组合频率 +
  * 懒加载索引。生成物带 DO-NOT-EDIT 头与生成命令；文档版（docs/manual/）继续并存 ——
- * md 供人读，ts 供代码查询。
+ * md 供人读（扁平），ts 供代码查询（结构化）。
  */
 async function exportCode(conn: DuckDBConnection): Promise<void> {
 	mkdirSync(CODE_DIR, { recursive: true });
 
+	// 共享类型文件（主题文件 import type，避免 index 与主题文件循环依赖）
+	const typeLines = [
+		"/**",
+		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
+		" * 结构定义与 {@link ../../../../tools/db/export-manual.ts | export-manual} 的 classifyOracle 对应：",
+		" * 字段序即渲染序，各数组内行保首现序去重（跨盘变体保留）。",
+		" */",
+		`export interface SanFangEntry {`,
+		`\t/** ▍ 标签最后一个「·」之后的段（真实宫名；旧库错位标签前缀已丢弃） */`,
+		`\tpalace: string;`,
+		`\t/** 该宫跨盘的星曜概览变体（去重：「破军（庙旺)」/「破军」/「空宫借对宫」等） */`,
+		`\tstars: string[];`,
+		`\t/** 该宫断语：语境段落 / 缩进简述 / 借宫提示 / ✦ 次星（原行） */`,
+		`\titems: string[];`,
+		`}`,
+		`export interface SihuaEntry {`,
+		`\t/** 四化主行（emoji 后的原文，含星名/落宫；年干节行带「→ 意义」尾巴） */`,
+		`\ttext: string;`,
+		`\t/** 主行下的缩进说明（同星同化的语义补充） */`,
+		`\tnote?: string;`,
+		`}`,
+		`export interface OracleStar {`,
+		`\t/** 【命盘关键定制】亮度/化曜专属开场 */`,
+		`\tmods: string[];`,
+		`\t/** 【星曜深层特质】第二人称白话总述 */`,
+		`\tsummary: string[];`,
+		`\t/** ⭐ 特殊格局（同名格局跨盘判词变体已换行合并） */`,
+		`\tpatterns: { name: string; text: string }[];`,
+		`\t/** 【命盘推演】本宫主星行（多盘亮度变体）+ 宫语境段落 / ▶ 亮度补充 / 同宫第二主星 */`,
+		`\tmainPalace: { stars: string[]; content: string[] };`,
+		`\t/** 【三方四正联动】按宫聚合 */`,
+		`\tsanFang: SanFangEntry[];`,
+		`\t/** 四化（本命四化会照 + 年干关键宫位两节） */`,
+		`\tsihua: SihuaEntry[];`,
+		`\t/** 【贵人倾向·魁钺细分】◇ 行原文（去前缀） */`,
+		`\tkuiYue: string[];`,
+		`\t/** 主题专属节（性格深描 / 疾厄取象 / 女命妇科保养 …）—— 节名 → 行 */`,
+		`\textras: Record<string, string[]>;`,
+		`\t/** 未归类兜底（正常为空；非空 = 渲染层出现分类器不认识的新形态，须排查） */`,
+		`\tother: string[];`,
+		`}`,
+	];
+	writeFileSync(join(CODE_DIR, "types.ts"), typeLines.join("\n"));
+
 	for (const topic of TOPIC_KEYS) {
-		const { byStar } = await collectTopic(conn, topic);
+		const { byStar, sanFangByStar } = await collectTopic(conn, topic);
 		const lines: string[] = [
 			"/**",
 			" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
@@ -228,12 +472,57 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 			" * 断语修订：改内核 `scripts/ziwei/analysis/` → `npm run build:db` → 重导本目录。",
 			" * 查询入口：`export/manual/index.ts`（按主题懒加载，不在内核 import 链上）。",
 			" */",
-			`export const ORACLE: Readonly<Record<string, readonly string[]>> = {`,
+			`import type { OracleStar } from "./types.ts";`,
+			"",
+			`export const ORACLE: Readonly<Record<string, OracleStar>> = {`,
 		];
 		for (const [star, ls] of [...byStar.entries()].sort()) {
-			lines.push(`\t${lit(star)}: [`);
-			for (const [line] of ls) lines.push(`\t\t${lit(line)},`);
-			lines.push(`\t],`);
+			const o = classifyOracle(ls, sanFangByStar.get(star)!);
+			lines.push(`\t${lit(star)}: {`);
+			lines.push(`\t\tmods: [${o.mods.map(lit).join(", ")}],`);
+			lines.push(`\t\tsummary: [`);
+			for (const l of o.summary) lines.push(`\t\t\t${lit(l)},`);
+			lines.push(`\t\t],`);
+			lines.push(`\t\tpatterns: [`);
+			for (const p of o.patterns)
+				lines.push(`\t\t\t{ name: ${lit(p.name)}, text: ${lit(p.text)} },`);
+			lines.push(`\t\t],`);
+			lines.push(`\t\tmainPalace: {`);
+			lines.push(`\t\t\tstars: [${o.mainPalace.stars.map(lit).join(", ")}],`);
+			lines.push(`\t\t\tcontent: [`);
+			for (const l of o.mainPalace.content) lines.push(`\t\t\t\t${lit(l)},`);
+			lines.push(`\t\t\t],`);
+			lines.push(`\t\t},`);
+			lines.push(`\t\tsanFang: [`);
+			for (const sf of o.sanFang) {
+				lines.push(
+					`\t\t\t{ palace: ${lit(sf.palace)}, stars: [${sf.stars.map(lit).join(", ")}], items: [`
+				);
+				for (const it of sf.items) lines.push(`\t\t\t\t${lit(it)},`);
+				lines.push(`\t\t\t] },`);
+			}
+			lines.push(`\t\t],`);
+			lines.push(`\t\tsihua: [`);
+			for (const s of o.sihua)
+				lines.push(
+					`\t\t\t{ text: ${lit(s.text)}${s.note !== undefined ? `, note: ${lit(s.note)}` : ""} },`
+				);
+			lines.push(`\t\t],`);
+			lines.push(`\t\tkuiYue: [${o.kuiYue.map(lit).join(", ")}],`);
+			const extraKeys = Object.keys(o.extras);
+			if (extraKeys.length === 0) {
+				lines.push(`\t\textras: {},`);
+			} else {
+				lines.push(`\t\textras: {`);
+				for (const k of extraKeys) {
+					lines.push(`\t\t\t${lit(k)}: [`);
+					for (const l of o.extras[k]) lines.push(`\t\t\t\t${lit(l)},`);
+					lines.push(`\t\t\t],`);
+				}
+				lines.push(`\t\t},`);
+			}
+			lines.push(`\t\tother: [${o.other.map(lit).join(", ")}],`);
+			lines.push(`\t},`);
 		}
 		lines.push(`};`, "");
 		writeFileSync(join(CODE_DIR, `${topic}.ts`), lines.join("\n"));
@@ -270,9 +559,11 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
 		" */",
 		`import type { TopicKey } from "../../scripts/ziwei/analysis/data";`,
+		`import type { OracleStar } from "./types.ts";`,
 		"",
-		`/** 一个主题的断语全集：主星 → 静态断语行（保首现序去重）。 */`,
-		`export type StarTopicOracle = Readonly<Record<string, readonly string[]>>;`,
+		`export type { OracleStar, SanFangEntry, SihuaEntry } from "./types.ts";`,
+		`/** 一个主题的断语全集：主星 → 分类断语集（mods/summary/patterns/mainPalace/sanFang/…）。 */`,
+		`export type StarTopicOracle = Readonly<Record<string, OracleStar>>;`,
 		`export type { ComboFrequency } from "./combo-frequency.ts";`,
 		`export { COMBO_FREQUENCY } from "./combo-frequency.ts";`,
 		"",

@@ -7,9 +7,11 @@
  * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。
  */
 import type { TopicKey } from "../../scripts/ziwei/analysis/data";
+import type { OracleStar } from "./types.ts";
 
-/** 一个主题的断语全集：主星 → 静态断语行（保首现序去重）。 */
-export type StarTopicOracle = Readonly<Record<string, readonly string[]>>;
+export type { OracleStar, SanFangEntry, SihuaEntry } from "./types.ts";
+/** 一个主题的断语全集：主星 → 分类断语集（mods/summary/patterns/mainPalace/sanFang/…）。 */
+export type StarTopicOracle = Readonly<Record<string, OracleStar>>;
 export type { ComboFrequency } from "./combo-frequency.ts";
 export { COMBO_FREQUENCY } from "./combo-frequency.ts";
 
