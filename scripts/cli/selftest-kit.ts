@@ -60,11 +60,35 @@ export function callDirect(
 	try {
 		const out = dispatch(parse(argv, cmd), ctx);
 		if (typeof out !== "string")
-			throw new Error(`kit 直调仅支持同步命令（${cmd} 返回了 Promise——本断言组不测 selftest 命令）`);
+			throw new Error(
+				`kit 直调仅支持同步命令（${cmd} 返回了 Promise——本断言组不测 selftest 命令）`
+			);
 		return { code: 0, out, err: "" };
 	} catch (err) {
 		return { code: 1, out: "", err: `错误：${(err as Error).message}` };
 	}
+}
+
+/**
+ * 主 selftest 各断言组的共享运行时。
+ *
+ * @remarks
+ * 主 selftest（`cli/selftest.ts`）构造一次、按源码断言顺序逐组传入 `selftest/` 下的
+ * 组函数。`call` / `runCli` / `commandNames` 只在这里构造：命令表 COMMANDS 由主 selftest
+ * 动态 import 取得（打断「commands → selftest → 组 → commands」静态环），组文件因此
+ * 一律不静态 import `cli/commands.ts` —— 需要命令表的一律走 deps。
+ */
+export interface SelftestDeps {
+	/** 运行期上下文（内核根与其来源）—— 读 SKILL.md / 数据文件等守护断言用 */
+	ctx: CliContext;
+	/** harness 的断言注册（来自 createHarness，结果直接进主报告） */
+	ok: (name: string, fn: () => unknown) => void;
+	/** 进程内直调一条命令（`{ code, out, err }` 同构三元组） */
+	call: (argv: string[]) => CallResult;
+	/** 子进程探针（仅冒烟断言用） */
+	runCli: (args: string[]) => CallResult;
+	/** 命令表键集（命令拆分 / 旧名退役 / SKILL.md 速查对拍用） */
+	commandNames: string[];
 }
 
 /**
