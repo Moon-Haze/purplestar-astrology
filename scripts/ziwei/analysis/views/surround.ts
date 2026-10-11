@@ -15,7 +15,7 @@
 import { PALACE_TO_CONTENT_KEY, STAR_BRIEF, STAR_CONTENT_MAP } from "../data";
 import { oppositeBranch } from "../../palace-relations";
 import type { AnalysisContext } from "../context";
-import { getMinorStarNote, getMutagenNote } from "../lookups";
+import { compactPalaceKey, getMinorStarNote, getMutagenNote } from "../lookups";
 import { descPalaceStars } from "../palace-query";
 
 /** 渲染「二、三方四正联动」整节。 */
@@ -41,7 +41,7 @@ export function renderSanFang(ctx: AnalysisContext): string[] {
 		if (!isMain && mainStarsOfP.length > 0) {
 			mainStarsOfP.forEach(s => {
 				const starProfile = STAR_CONTENT_MAP[s.name];
-				const palaceContentKey = PALACE_TO_CONTENT_KEY[p.name];
+				const palaceContentKey = PALACE_TO_CONTENT_KEY[compactPalaceKey(p.name)];
 				const fullContent =
 					starProfile && palaceContentKey
 						? (starProfile[palaceContentKey] as string | undefined)
