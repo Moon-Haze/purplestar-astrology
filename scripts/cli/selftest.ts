@@ -24,6 +24,7 @@ import { resolve } from "node:path";
 import { asserts as classicAsserts } from "@/corpus/selftest-asserts";
 import { asserts as synastryAsserts } from "@/synastry/selftest-asserts";
 import { createHarness, callDirect, type SelftestDeps } from "./selftest-kit";
+import { unknownCommandMessage } from "./dispatch";
 import { runLunar, runTrueSolar, runLateZi } from "./selftest/calc";
 import { runCityTolerance, runGenderGuard, runBirthInfoShape } from "./selftest/birth";
 import {
@@ -53,6 +54,7 @@ import {
 	runSkillCommandAudit,
 	runDocConsistency,
 	runGradeRegistry,
+	runDispatchProbe,
 } from "./selftest/guard";
 
 /**
@@ -101,7 +103,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 			return {
 				code: 1,
 				out: "",
-				err: `未知命令「${cmd}」。可用：${commandNames.join(" / ")}\n运行 help 查看完整用法。`,
+				err: unknownCommandMessage(cmd, commandNames),
 			};
 		return callDirect(cmd, rest, fn, parseArgs, ctx);
 	};
@@ -136,6 +138,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	runSkillCommandAudit(deps);
 	runDocConsistency(deps);
 	await runGradeRegistry(deps);
+	await runDispatchProbe(deps);
 
 	// 古籍 / 合盘断言组在断言流此处执行（async，故在 ok 断言体之外 await），并入主报告。
 	const classics = await classicAsserts();

@@ -210,3 +210,43 @@ export async function runGradeRegistry({
 		return `${marks.length} 条引句全部有分级登记`;
 	});
 }
+
+/**
+ * 分发 module 的进程内探针（候选 1）：未知命令文案与 help 拦截经同一 seam 可达。
+ *
+ * @remarks
+ * dispatch 与文案函数都**先 await 再断言**：ok 的断言体是同步回调，rejected
+ * Promise 不会被它捕获。两根桩的 loadCore 刻意返回空 COMMANDS —— 若 --help
+ * 拦截不先于查表执行，这里就会掉进未知分支而拿不到 CMDHELP。
+ */
+export async function runDispatchProbe(deps: SelftestDeps): Promise<void> {
+	const { dispatch, unknownCommandMessage } = await import("../dispatch");
+	const NAMES = ["astrology", "knowledge", "synastry", "selftest", "help"] as const;
+	const ports = {
+		ctx: deps.ctx,
+		// 键集必须与下方断言的 NAMES 同源：dispatch 的可用列表取自 Object.keys(COMMANDS)，
+		// 空表会让「可用：」后为空串、与 unknownCommandMessage(NAMES) 的产出失配。
+		loadCore: async () => ({
+			COMMANDS: Object.fromEntries(NAMES.map(n => [n, undefined])),
+			parseArgs: (() => ({})) as never,
+		}),
+		loadHelp: async () => ({
+			renderOverviewHelp: () => "OVERVIEW",
+			renderCommandHelp: () => "CMDHELP",
+			commandNames: [...NAMES],
+		}),
+	};
+	// ① 未知命令：code=1，且 err 必须 === 共享文案函数对同一列表的产出（同源断言）
+	const unknown = await dispatch(["bogus"], ports);
+	deps.ok("分发：未知命令 code=1 且文案出自共享函数", () => {
+		if (unknown.code !== 1) throw new Error(`code 应为 1，实得 ${unknown.code}`);
+		if (unknown.err !== unknownCommandMessage("bogus", NAMES))
+			throw new Error(`文案不同源：${unknown.err}`);
+	});
+	// ② help 拦截先于查表与 loadCore：桩的 COMMANDS 为空也能拿到 CMDHELP
+	const help = await dispatch(["astrology", "--help"], ports);
+	deps.ok("分发：--help 拦截在查表之前返回 code=0", () => {
+		if (help.code !== 0 || help.out !== "CMDHELP")
+			throw new Error(`实得 code=${help.code} out=${help.out}`);
+	});
+}

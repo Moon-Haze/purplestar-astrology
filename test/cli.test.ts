@@ -106,7 +106,12 @@ async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 	if (!parseArgsFn)
 		({ parseArgs: parseArgsFn } = await load<typeof import("@/cli/args")>("@/cli/args"));
 	const fn = commandsMod.COMMANDS[sub];
-	if (!fn) throw asCliFailure(`未知命令「${sub}」`);
+	if (!fn) {
+		const { unknownCommandMessage } = await load<typeof import("@/cli/dispatch")>(
+			"@/cli/dispatch"
+		);
+		throw asCliFailure(unknownCommandMessage(sub, Object.keys(commandsMod.COMMANDS)));
+	}
 	try {
 		return await fn(parseArgsFn(args, sub), { root: ROOT, rootLabel: ROOT_LABEL });
 	} catch (err) {

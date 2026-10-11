@@ -41,6 +41,7 @@ import { fileURLToPath } from "node:url";
 
 import { parseArgs, type CliContext } from "@/cli/args";
 import { COMMANDS } from "@/cli/commands";
+import { unknownCommandMessage } from "@/cli/dispatch";
 import { renderCommandHelp, renderOverviewHelp } from "@/cli/help";
 import { writeOutFile } from "@/cli/out";
 import { cmdSelftest } from "@/cli/selftest";
@@ -959,7 +960,7 @@ async function main(): Promise<void> {
 			if (!fn) {
 				stdout = "";
 				exitCode = 1;
-				stderr = `未知命令「${cmd}」。`;
+				stderr = unknownCommandMessage(cmd, Object.keys(COMMANDS));
 			} else {
 				// cmdClassics 是 async（四域分发，tianji/oracle 懒加载）——
 				// async 命令直接 await，其余同步命令 await 同步值等价于原值。

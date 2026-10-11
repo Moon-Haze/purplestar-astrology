@@ -2,7 +2,8 @@
 /**
  * purple-star.ts — 紫微斗数排盘与命盘解读 CLI（入口 / 引导层）
  *
- * 本文件只做四件事：**定位内核根 → 注册 TS 解析钩子 → 启动期内核自检 → 把命令分发出去**。
+ * 本文件只做四件事：**定位内核根 → 注册 TS 解析钩子 → 启动期内核自检 → 把命令分发出去**
+ * （分发协议本体在 `cli/dispatch.ts`，此处只组装端口并执行副作用）。
  * 命令实现、渲染、出生信息解析、自检都**不在**这里，见 scripts/cli/：
  *
  *   cli/args-table.ts  参数声明面 OPTION_GROUPS + OPTION_ALIASES（零依赖纯数据）
@@ -86,6 +87,8 @@ type CommandsModule = typeof import("@/cli/commands");
 type MetaModule = typeof import("@/cli/command-meta");
 /** `--out` 落盘通道（writeFileSync 的唯一写点，路径校验在内）。 */
 type OutModule = typeof import("@/cli/out");
+/** 分发协议（argv → 三元组的唯一真相源，见该文件头注释）。 */
+type DispatchModule = typeof import("@/cli/dispatch");
 
 // 历史注记：这里曾有一段 `process.emitWarning` 猴子补丁，用于过滤
 // `MODULE_TYPELESS_PACKAGE_JSON` 告警 —— 那是上游 ziwei-master（Next.js 项目，不能把
@@ -252,77 +255,60 @@ async function loadCore() {
 // ══════════════════════ 入口 ══════════════════════
 
 /**
- * CLI 入口：取命令名 → 查 `COMMANDS` 表 → 解析参数 → 打印命令的返回值。
+ * CLI 入口：把 argv 交给分发协议，按结果执行副作用（打印 / 落盘 / 退出）。
  *
  * @remarks
- * 输出只在这一处分发 —— 各 `cmdXxx` 一律**返回**已渲染好的文本字符串：`--out <文件>`
- * 走 {@link writeOutFile} 落盘（正文不占 stdout，进度提示走 stderr），否则 `console.log`。
+ * 分发协议本体（--help 拦截位置、查表、解析、错误前缀、退出码语义）在
+ * `cli/dispatch.ts` —— 进程内测试与子进程真链路消费同一 seam，此处只做宿主侧：
+ * 组装端口（惰性 loader + 上下文）→ 得到 `{ code, out, err, outFile }` →
+ * 失败打 stderr 并按 code 退出；成功时 `--out <文件>` 走 {@link writeOutFile} 落盘
+ * （正文不占 stdout，进度提示走 stderr），否则 `console.log`。
  *
- * 无参数、`help`、`--help`、`-h` 都打印 {@link renderHelp} 的产物；未知命令与命令内部抛出的
- * 错误都以非零码退出（只打印 `err.message`，不打印栈）。传给命令的第二个参数是
+ * 各 `cmdXxx` 一律**返回**已渲染好的文本字符串；传给命令的第二个参数是
  * `CliContext`（内核根及其来源），目前只有 `selftest` 用得上。
  *
- * ⚠️ 命令名直接来自 `argv`，故查表必然可能未命中 —— `COMMANDS` 的值类型显式带 `| undefined`。
- *
- * `--help` 出现在**任何位置**都打印 help，包括 `astrology --help` 这种。这是刻意的：
- * `--help` 不在参数声明表里，放它走到 `parseArgs` 只会得到一句「未知参数 --help」，
- * 而用户此刻想要的显然是用法。判定提前到分发之前，`parseArgs` 因此永远见不到它。
+ * ⚠️ `--help` 任何位置都生效、未知命令 exit 1 不带栈 —— 这些承诺的**定义处**在
+ * dispatch.ts，本函数不重复实现它们。
  */
 async function main() {
 	const argv = process.argv.slice(2);
-	const cmd = argv[0];
-	// help 路径只加载轻模块（command-meta + help，均不依赖命令实现），不为看一眼
-	// 用途付出 iztro 冷启动。
-	if (cmd && cmd !== "help" && (argv.includes("--help") || argv.includes("-h"))) {
-		const metaNs = await load<MetaModule>("@/cli/command-meta");
-		const helpLite = await load<typeof import("@/cli/help")>("@/cli/help");
-		if ((metaNs.COMMAND_NAMES as readonly string[]).includes(cmd)) {
-			console.log(
-				helpLite.renderCommandHelp(cmd as Parameters<typeof helpLite.renderCommandHelp>[0])
-			);
-			return;
-		}
+	const { dispatch, formatError } = await load<DispatchModule>("@/cli/dispatch");
+	const result = await dispatch(argv, {
+		ctx: { root: ROOT, rootLabel: ROOT_LABEL },
+		loadCore,
+		// help 路径只加载轻模块（command-meta + help，均不依赖命令实现），不为看一眼
+		// 用途付出 iztro 冷启动。
+		loadHelp: async () => {
+			const metaNs = await load<MetaModule>("@/cli/command-meta");
+			const helpLite = await load<typeof import("@/cli/help")>("@/cli/help");
+			return {
+				renderOverviewHelp: () => helpLite.renderOverviewHelp(),
+				renderCommandHelp: (cmd: string) =>
+					helpLite.renderCommandHelp(
+						cmd as Parameters<typeof helpLite.renderCommandHelp>[0]
+					),
+				commandNames: metaNs.COMMAND_NAMES as readonly string[],
+			};
+		},
+	});
+	if (result.code !== 0) {
+		console.error(result.err);
+		process.exit(result.code);
 	}
-	if (!cmd || cmd === "help" || argv.includes("--help") || argv.includes("-h")) {
-		const helpLite = await load<typeof import("@/cli/help")>("@/cli/help");
-		console.log(helpLite.renderOverviewHelp());
-		return;
-	}
-	// 真正要执行命令了：此刻才加载内核并做启动自检（见 loadCore 的注释）。
-	const { COMMANDS, parseArgs } = await loadCore();
-	const fn = COMMANDS[cmd];
-	if (!fn) {
-		// 旧命令并入提示：stars / oracle 已并入 --source 选域，classics 随四域合并改名
-		// knowledge —— 敲旧名给一条可直接照抄的迁移写法，而不是让用户自己从 help 里找。
-		const merged =
-			cmd === "stars"
-				? `—— 星曜释义已并入：knowledge --source stars --search <星名>`
-				: cmd === "oracle"
-					? `—— 断语手册已并入：knowledge --source oracle --topic <主题> [--star <星名>]`
-					: cmd === "classics"
-						? "—— 本命令原名 classics，已改名：knowledge --search <词>（古籍用法逐字不变）"
-						: "";
-		console.error(
-			`未知命令「${cmd}」。可用：${Object.keys(COMMANDS).join(" / ")}${merged ? "\n" + merged : ""}\n运行 help 查看完整用法。`
-		);
-		process.exit(1);
-	}
-	try {
-		// 命令名一并交给 parseArgs：参数面要按命令校验（前缀参数只有声明过的那几条命令认）
-		const args = parseArgs(argv.slice(1), cmd);
-		// Cmd 允许返回 Promise（cmdSelftest 异步化后动态 import 命令表），统一 await。
-		const text = await fn(args, { root: ROOT, rootLabel: ROOT_LABEL });
-		// 输出通道二选一：--out 落盘（正文不再占 stdout，进度提示走 stderr）或 console.log
-		if (typeof args.out === "string" && args.out !== "") {
+	// 输出通道二选一：--out 落盘（正文不再占 stdout，进度提示走 stderr）或 console.log。
+	// 落盘是宿主副作用，同样要包住：writeOutFile 的路径校验抛错必须走「错误：」+ exit 1，
+	// 裸栈出逃会让冒烟断言的 stderr 前缀断言变红。
+	if (result.outFile !== undefined) {
+		try {
 			const { writeOutFile } = await load<OutModule>("@/cli/out");
-			writeOutFile(args.out, text);
-			console.error(`已写入 ${args.out}`);
-		} else {
-			console.log(text);
+			writeOutFile(result.outFile, result.out);
+			console.error(`已写入 ${result.outFile}`);
+		} catch (err) {
+			console.error(formatError(err));
+			process.exit(1);
 		}
-	} catch (err) {
-		console.error(`错误：${(err as Error).message}`);
-		process.exit(1);
+	} else {
+		console.log(result.out);
 	}
 }
 
