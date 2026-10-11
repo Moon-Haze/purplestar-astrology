@@ -12,6 +12,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { OPTION_NAMES, SIDE_PREFIXES, parseArgs } from "../args";
 import { ALL_OPTION_NAMES, OPTION_ALIASES } from "../args-table";
+// namespace import：候选 2 的派生常量在实现落地前访问为 undefined，
+// 红发生在断言级（eq 报「实得 undefined」）而非模块加载崩溃 —— TDD 的红要看得到条目。
+import * as table from "../args-table";
 import { OPTION_SCOPE } from "../option-scope";
 import { renderCommandHelp } from "../help";
 import { eq, type SelftestDeps } from "../selftest-kit";
@@ -143,6 +146,46 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 		if (scope.length !== OPTION_NAMES.size)
 			throw new Error("OPTION_NAMES 与「全集 − excluded」的基数不一致 —— 派生逻辑或引用脱节");
 		return `全集 ${ALL_OPTION_NAMES.size} · 排除 ${OPTION_SCOPE.excluded.length} · 作用域 ${OPTION_NAMES.size}`;
+	});
+	ok("声明表：语义角色派生与原字符串反推等价（候选 2）", () => {
+		// 期望值 = 迁移前 astrology.ts 三处 startsWith 字符串反推的实测快照（Step 1）。
+		// B 为修漏组后的 12 项：「其他出生信息」组（gender / lng / city / province / name）
+		// 现状被 startsWith("出生") 漏掉，只给 --gender/--city 会误走零输入演示盘；
+		// 按 role 标 birth 后进集合，与注释承诺的「部分输入 → 缺一问一」一致（见 ledger Ruling）。
+		// 数组经 join 归一成串再比：kit 的 eq 是 !==，直接比数组恒红。
+		const snap = {
+			S: "ages,decadal,focus,info,monthly,mutagen,pattern,report,topic,yearly",
+			B: "branch,city,date,eot,gender,lateZi,leap,lng,lunar,name,province,time",
+			I: "ages,book,daily,decadal,focus,hourly,json,limit,monthly,mutagen,out,palaces,pattern,report,search,source,star,template,topic,view,yearly",
+		};
+		eq(
+			[...(table.SHADOWABLE_KEYS ?? [])].sort().join(","),
+			snap.S,
+			"SHADOWABLE_KEYS 与旧字符串反推等价 "
+		);
+		eq(
+			[...(table.BIRTH_KEYS ?? [])].sort().join(","),
+			snap.B,
+			"BIRTH_KEYS 与旧字符串反推等价（含修漏组）"
+		);
+		eq(
+			[...(table.INTENT_KEYS ?? [])].sort().join(","),
+			snap.I,
+			"INTENT_KEYS 与旧字符串反推等价 "
+		);
+		eq(
+			[...(table.DEEP_DIVE_KEYS ?? [])].sort().join(","),
+			"ages,decadal,focus,mutagen,pattern,yearly",
+			"DEEP_DIVE_KEYS 与 deepDive 六旗标等价 "
+		);
+		eq(
+			table.EXCLUSIVE_PRIORITY_LABEL,
+			"--palaces > --topic > --report > 其他功能参数",
+			"优先级链文案 "
+		);
+		const unmarked = (table.OPTION_GROUPS ?? []).filter(g => !g.role).map(g => g.title);
+		if (unmarked.length) throw new Error(`存在未标 role 的选项组：${unmarked.join("、")}`);
+		return "role 标注齐、四套派生与优先级链同源";
 	});
 	ok("声明表：可选值参数 help 显示 <[x]>，必值参数保持 <x>（值语法不再混用）", () => {
 		const s = renderCommandHelp("astrology");

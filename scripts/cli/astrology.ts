@@ -6,7 +6,14 @@
 
 import type { BirthInfo, Mutagen, ZiweiChart } from "@/ziwei/types";
 import type { CliArgs } from "./args";
-import { camelKey, OPTION_GROUPS } from "./args-table";
+import {
+	BIRTH_KEYS,
+	camelKey,
+	DEEP_DIVE_KEYS,
+	EXCLUSIVE_PRIORITY_LABEL,
+	INTENT_KEYS,
+	SHADOWABLE_KEYS,
+} from "./args-table";
 import { applyConfig, renderTemplate } from "./config";
 import { buildBirthInfo } from "./birth-info";
 import {
@@ -271,46 +278,6 @@ export function buildAnalyzeJson(input: {
 }
 
 /**
- * 可被独占分支吞掉的功能参数集合——从声明表**派生**：专题深入组的全部参数
- * （palaces 自身除外）加上输出与选题组里的 yearly / monthly / focus / topic /
- * report。后三个独占参数也在集合里，是为了让「两个独占分支同给」被指路而非静默
- * 吞掉低优先级的那个（自指由调用处的 `n !== exclusive` 过滤兜住）。
- */
-const SHADOWABLE = new Set(
-	OPTION_GROUPS.flatMap(g => {
-		if (g.title.startsWith("专题深入"))
-			return g.options.map(o => o.name).filter(n => n !== "palaces");
-		if (g.title === "输出与选题")
-			return g.options
-				.filter(o => ["yearly", "monthly", "focus", "topic", "report"].includes(o.name))
-				.map(o => o.name);
-		return [];
-	})
-);
-
-/**
- * 出生相关参数名（camelCase）—— 从声明表派生：前三组（出生日期 / 出生时辰 / 其他出生
- * 信息）的全部参数。零输入演示的判据之一：这些键**全部**缺席。位置参数归类与
- * `--config` 注入都发生在此之前（parseArgs / applyConfig），二者给出的出生信息均算「已输入」。
- */
-const BIRTH_KEYS = OPTION_GROUPS.flatMap(g =>
-	g.title.startsWith("出生") ? g.options.map(o => camelKey(o.name)) : []
-);
-
-/**
- * 表达了输出意图的功能参数（camelCase）—— 从声明表派生：专题深入组与输出选题组的
- * 全部参数，刨去 `info`（零输入时它正是演示目标）与 `config`（它是参数来源而非输出
- * 形态，配置里没写出生信息时同样允许落演示）。零输入 + 这些参数在场 = 用户要特定
- * 输出，不替他排虚构盘 —— 交回原路径按「缺一问一」报错（`--json` / `--report`
- * 尤其如此：机器接口与全盘报告都不喂虚构数据）。
- */
-const INTENT_KEYS = OPTION_GROUPS.flatMap(g =>
-	g.title.startsWith("专题深入") || g.title === "输出与选题"
-		? g.options.map(o => camelKey(o.name)).filter(k => k !== "info" && k !== "config")
-		: []
-);
-
-/**
  * 零输入演示的内置虚构样例 —— 与 help 示例、`--template` 配置模板同源
  * （2011-06-24 07:45 杭州 male），输出自带「虚构」声明，不会被误当真实排盘。
  */
@@ -346,7 +313,7 @@ function assertNoShadowedFeatures(
 	// 分支的 parseYearlyArg / parseMonthlyArg）——它们不是被吞参数，检测必须放行，
 	// 否则 `--topic love --yearly 2027`（流年论断指定年份）这一合法用法会被误伤。
 	const consumed = exclusive === "--topic" ? ["yearly", "monthly"] : [];
-	const shadowed = [...SHADOWABLE]
+	const shadowed = [...SHADOWABLE_KEYS]
 		// 排除独占参数自身：info 在 SHADOWABLE 集合里（专题深入组），不过滤会报出
 		// 「--info 不会生效：--info」的自指文案（palaces / topic 本就不在集合中，无影响）。
 		.filter(n => n !== exclusive.slice(2))
@@ -355,7 +322,7 @@ function assertNoShadowedFeatures(
 	if (shadowed.length)
 		throw new Error(
 			`${exclusive} 是独占分支，以下功能参数不会生效：${shadowed.map(n => `--${n}`).join("、")}。` +
-				`独占分支请单独使用（优先级：--palaces > --topic > --report > 其他功能参数）。`
+				`独占分支请单独使用（优先级：${EXCLUSIVE_PRIORITY_LABEL}）。`
 		);
 }
 
@@ -439,7 +406,7 @@ export function cmdAstrology(args: CliArgs) {
 		if (higher)
 			throw new Error(
 				`${higher} 是独占分支，以下功能参数不会生效：--info。` +
-					`独占分支请单独使用（优先级：--palaces > --topic > --report > 其他功能参数）。`
+					`独占分支请单独使用（优先级：${EXCLUSIVE_PRIORITY_LABEL}）。`
 			);
 		// 其余功能参数（--pattern / --mutagen / --decadal / --ages / --yearly / --monthly /
 		// --focus）与本分支同给同样不会生效——静默吞违反启动纪律，统一走独占检测指路。
@@ -582,13 +549,10 @@ export function cmdAstrology(args: CliArgs) {
 	// 三者同进退，只在「无功能参数的概览」输出（--info 与零输入演示态同尾）。
 	// 给了具体专题参数的输出只保留命盘总览与口径提示 + 专题详版 ——
 	// 已在深入，基底与指路都是噪声（--monthly 必配 --mutagen，归 mutagen 管）。
-	const deepDive =
-		args.pattern ||
-		args.mutagen ||
-		args.yearly !== undefined ||
-		args.decadal !== undefined ||
-		args.ages !== undefined ||
-		args.focus !== undefined;
+	// 深入态判据从声明派生（deep: true 六旗标）—— 新增专题参数标一个标志即被认出，
+	// 不再手抄第二份清单。`!== undefined` 与旧的 pattern||mutagen||… 逐语义等价：
+	// 未给的键不出现（parseArgs 无默认值），switch 给了即 true。
+	const deepDive = DEEP_DIVE_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
 	if (!deepDive)
 		out.push(
 			"",

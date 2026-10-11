@@ -41,11 +41,29 @@ export interface OptionSpec {
 	optionalValue?: boolean;
 	/** 一行说明，即 help 里那一行的描述列 */
 	desc: string;
+	// ── 语义标志（候选 2）：四套派生的真相源，均可选、缺省即「不属于」 ──
+	/** 可被独占分支吞掉（输出与选题组的 yearly / monthly / focus / topic / report） */
+	shadow?: true;
+	/** 显式排除出可吞集合（专题深入组的 palaces —— 它自身就是独占参数） */
+	noShadow?: true;
+	/** 专题深入旗标（pattern / mutagen / yearly / decadal / ages / focus）——
+	 *  深入态基底显隐的判据（旧 astrology 里硬编码的 deepDive 六旗标） */
+	deep?: true;
+	/** 排除出「输出意图」判据（info 是零输入演示目标本身；config 是参数来源而非输出形态） */
+	noIntent?: true;
 }
 
-/** 一组参数（`title` 是给读声明表的人看的分类，不进 help 参数段）。 */
+/**
+ * 选项组的语义角色（候选 2）—— 四套派生（shadow / birth / intent / deep）与优先级链
+ * 全部从 role + 参数标志投影，不再按中文 title 的 `startsWith` 反推。
+ */
+export type GroupRole = "birth" | "topic-deep" | "output-select" | "other";
+
+/** 一组参数（`title` 是给读声明表的人看的分类，不进 help 参数段；`role` 是派生用的语义角色）。 */
 export interface OptionGroup {
 	title: string;
+	/** 语义角色：出生信息三组 → `birth`；专题深入 → `topic-deep`；输出与选题 → `output-select`；其余 → `other` */
+	role: GroupRole;
 	options: readonly OptionSpec[];
 }
 
@@ -64,6 +82,7 @@ export interface OptionGroup {
 export const OPTION_GROUPS: readonly OptionGroup[] = [
 	{
 		title: "出生日期（二选一）",
+		role: "birth",
 		options: [
 			{
 				name: "date",
@@ -82,6 +101,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 	},
 	{
 		title: "出生时辰（二选一）",
+		role: "birth",
 		options: [
 			{
 				name: "time",
@@ -109,6 +129,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 	},
 	{
 		title: "其他出生信息",
+		role: "birth",
 		options: [
 			{ name: "gender", kind: "value", value: "male|female|男|女", desc: "性别" },
 			{
@@ -134,6 +155,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 	},
 	{
 		title: "命盘输入（synastry 专用）",
+		role: "other",
 		options: [
 			{
 				name: "charts",
@@ -145,24 +167,29 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 	},
 	{
 		title: "专题深入（可叠加；不带任何专题参数时只出精简概览）",
+		role: "topic-deep",
 		options: [
 			{
 				name: "info",
+				noIntent: true,
 				kind: "switch",
 				desc: "只出基本信息面板 + 运限速览 + 专题指路（与无功能参数的概览同尾，不展开专题详版）",
 			},
 			{
 				name: "pattern",
+				deep: true,
 				kind: "switch",
 				desc: "格局识别专题（格局判词 / 成立与破格条件 / 出处）",
 			},
 			{
 				name: "mutagen",
+				deep: true,
 				kind: "switch",
 				desc: "四化专题（生年 / 流年 / 流月四化落宫与叠宫）",
 			},
 			{
 				name: "decadal",
+				deep: true,
 				kind: "value",
 				value: "虚岁",
 				optionalValue: true,
@@ -170,6 +197,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "ages",
+				deep: true,
 				kind: "value",
 				value: "虚岁",
 				optionalValue: true,
@@ -177,6 +205,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "palaces",
+				noShadow: true,
 				kind: "switch",
 				desc: "十二宫逐宫详表",
 			},
@@ -184,6 +213,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 	},
 	{
 		title: "输出与选题",
+		role: "output-select",
 		options: [
 			{ name: "json", kind: "switch", desc: "输出原始 JSON（供程序消费）" },
 			{
@@ -194,6 +224,8 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "yearly",
+				shadow: true,
+				deep: true,
 				kind: "value",
 				value: "年",
 				optionalValue: true,
@@ -201,6 +233,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "monthly",
+				shadow: true,
 				kind: "value",
 				value: "1-12",
 				desc: "配合 --mutagen 四化专题：追加该农历月的流月四化（流年缺省取当年）",
@@ -217,9 +250,17 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				value: "0-12",
 				desc: "配合 --mutagen --monthly --daily：追加该时支的流时四化（五鼠遁，由日干推；12=晚子时按当日日干）",
 			},
-			{ name: "focus", kind: "value", value: "财帛", desc: "额外展开指定宫位" },
+			{
+				name: "focus",
+				kind: "value",
+				value: "财帛",
+				shadow: true,
+				deep: true,
+				desc: "额外展开指定宫位",
+			},
 			{
 				name: "topic",
+				shadow: true,
 				kind: "value",
 				value: "key",
 				optionalValue: true,
@@ -233,6 +274,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "report",
+				shadow: true,
 				kind: "switch",
 				desc: "全盘主题报告（Markdown）：13 个板块一次出全，本命静态口径，独占分支（单独使用）",
 			},
@@ -263,6 +305,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "config",
+				noIntent: true,
 				kind: "value",
 				value: "my.json",
 				desc: "读 JSON 配置文件（键 = 参数 camelCase 主名；命令行同名参数覆盖配置）",
@@ -314,3 +357,57 @@ export const ALL_OPTION_NAMES: ReadonlySet<string> = new Set(
 export function camelKey(name: string): string {
 	return name.replace(/-([a-z0-9])/g, (_m: string, c: string) => c.toUpperCase());
 }
+
+// ══════════════════ 语义派生（候选 2）══════════════════
+// 四套派生 + 优先级链同源于 role 与参数标志：改 help 标题不再静默拆掉任何一套；
+// 新增专题旗标只需标 `deep: true`，deepDive 自动认。域注意：SHADOWABLE 用 kebab
+// 原名（调用处按 `exclusive.slice(2)` 对拍），其余三个用 camelCase（消费 args 键）。
+
+/**
+ * 可被独占分支吞掉的功能参数（kebab 原名）—— 专题深入组除 `palaces`（noShadow）
+ * 之外的全部，加上输出与选题组标了 `shadow` 的五项（yearly / monthly / focus /
+ * topic / report）。独占参数自身也在集合里，是为了让「两个独占分支同给」被指路
+ * 而非静默吞掉低优先级的那个（自指由调用处的 `n !== exclusive` 过滤兜住）。
+ */
+export const SHADOWABLE_KEYS: ReadonlySet<string> = new Set(
+	OPTION_GROUPS.flatMap(g => {
+		if (g.role === "topic-deep")
+			return g.options.filter(o => o.noShadow !== true).map(o => o.name);
+		if (g.role === "output-select")
+			return g.options.filter(o => o.shadow === true).map(o => o.name);
+		return [];
+	})
+);
+
+/**
+ * 出生相关参数名（camelCase）—— `role: "birth"` 三个组的全部参数。零输入演示的
+ * 判据之一：这些键**全部**缺席。「其他出生信息」组（gender / lng / city /
+ * province / name）也在内 —— 只给 `--gender` 是部分输入，按「缺一问一」报错，
+ * 不该走演示盘。位置参数归类与 `--config` 注入都发生在 parseArgs / applyConfig，
+ * 二者给出的出生信息均算「已输入」。
+ */
+export const BIRTH_KEYS: readonly string[] = OPTION_GROUPS.filter(g => g.role === "birth").flatMap(
+	g => g.options.map(o => camelKey(o.name))
+);
+
+/**
+ * 表达了输出意图的功能参数（camelCase）—— 专题深入与输出选题两组，刨去标了
+ * `noIntent` 的 `info`（零输入时它正是演示目标）与 `config`（参数来源而非输出形态）。
+ * 零输入 + 这些参数在场 = 用户要特定输出，不替他排虚构盘 —— 交回原路径按「缺一问一」
+ * 报错（`--json` / `--report` 尤其如此：机器接口与全盘报告都不喂虚构数据）。
+ */
+export const INTENT_KEYS: readonly string[] = OPTION_GROUPS.filter(
+	g => g.role === "topic-deep" || g.role === "output-select"
+).flatMap(g => g.options.filter(o => o.noIntent !== true).map(o => camelKey(o.name)));
+
+/**
+ * 专题深入旗标（camelCase）—— 深入态基底（基本信息面板 / 运限速览 / 专题指路）的
+ * 显隐判据：任一在场即「已在深入，基底与指路是噪声」。旧 astrology 的 `deepDive`
+ * 硬编码六旗标由此收编；新增专题参数只需标 `deep: true`。
+ */
+export const DEEP_DIVE_KEYS: readonly string[] = OPTION_GROUPS.flatMap(g =>
+	g.options.filter(o => o.deep === true).map(o => camelKey(o.name))
+);
+
+/** 独占分支优先级链文案 —— astrology 报错与 help 说明共用的唯一真相源。 */
+export const EXCLUSIVE_PRIORITY_LABEL = "--palaces > --topic > --report > 其他功能参数";

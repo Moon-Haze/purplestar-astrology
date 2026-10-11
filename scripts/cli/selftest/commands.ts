@@ -420,7 +420,14 @@ export function runAstrologyShapes({
 			const partial = call(["astrology", "1990-5-15"]);
 			if (partial.code === 0 || !partial.err.includes("时辰"))
 				throw new Error(`部分输入应报缺时辰（缺一问一），实得：${partial.err.trim()}`);
-			return "零输入示例面板在；--json 与部分输入仍报错";
+			// 「其他出生信息」组也是出生信息：只给 --gender 不是零输入，走演示盘等于
+			// 无视用户输入（现状 startsWith("出生") 漏该组的后果，见候选 2 / ledger Ruling）。
+			const genderOnly = call(["astrology", "--gender", "male"]);
+			if (genderOnly.code === 0 || !genderOnly.err.includes("出生"))
+				throw new Error(
+					`只给 --gender 应按「缺一问一」报错，实得：code ${genderOnly.code} ${genderOnly.err.trim()}`
+				);
+			return "零输入示例面板在；--json 与部分输入（含 --gender 单给）仍报错";
 		}
 	);
 	ok("astrology：--palaces 出十二宫逐宫详表", () => {

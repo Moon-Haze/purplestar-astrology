@@ -10,7 +10,10 @@
  * 这边 `Record<CommandName, ...>` —— 任何一侧加命令漏改另一侧都编译不过。
  */
 
-/** 合法命令名（顺序即 help COMMANDS 节的展示序）。 */
+// 优先级链的真相源在声明表（纯数据零依赖，不破本文件的轻模块底线）——
+// 旧手抄文案漏了 `--report`，与 astrology 实际报错和 options.md 均不符，收拢即修正。
+import { EXCLUSIVE_PRIORITY_LABEL } from "./args-table";
+
 /** 合法命令名（顺序即 help COMMANDS 节的展示序）。 */
 export const COMMAND_NAMES = ["astrology", "knowledge", "synastry", "selftest"] as const;
 
@@ -33,7 +36,7 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 		"对宫完整详表、涉及格局全列、运限引动年份）。给了专题参数则只出口径提示 + 专题详版",
 		"（基本信息面板 / 运限速览 / 专题指路均不带 —— 已在深入）。",
 		"--info（面板 + 运限速览 + 专题指路，与概览同尾）/ --palaces（十二宫逐宫详表）/ --topic（主题论断）是独占分支：",
-		"给出即接管输出，与其余功能参数同给会报错指路；优先级 --palaces > --topic > 其他功能参数。",
+		`给出即接管输出，与其余功能参数同给会报错指路；优先级 ${EXCLUSIVE_PRIORITY_LABEL}。`,
 		"出生信息支持零参数快捷形态（按形态归类、顺序无关）与完整参数形态，二者可混用（参数优先）。",
 		"完全零输入（出生信息一项不给）时不报错：以虚构示例（2011-06-24 杭州）演示基本信息面板 +",
 		"运限速览 + 专题指路并附用法指引。--json 与其他功能参数仍要求出生信息，",
