@@ -10,7 +10,8 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ALL_OPTION_NAMES, OPTION_NAMES, OPTION_ALIASES, SIDE_PREFIXES, parseArgs } from "../args";
+import { OPTION_NAMES, SIDE_PREFIXES, parseArgs } from "../args";
+import { ALL_OPTION_NAMES, OPTION_ALIASES } from "../args-table";
 import { OPTION_SCOPE } from "../option-scope";
 import { renderCommandHelp } from "../help";
 import { eq, type SelftestDeps } from "../selftest-kit";

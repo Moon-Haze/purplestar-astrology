@@ -4,12 +4,13 @@
  * 拆自 purple-star.ts。这一层是一整个内聚单元：输入是 `CliArgs`，输出是 `BirthInfoResult`，
  * 中间的复杂之处全在「真太阳时」与「农历换算」两件事上，与渲染、命令分发无关。
  *
- * 依赖：./args（参数表）、./render（日期格式化）、@/ziwei/{constants,cities}、lunar-typescript
+ * 依赖：./args（CliArgs 类型）、./args-table（键名换算）、./render（日期格式化）、@/ziwei/{constants,cities}、lunar-typescript
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
  */
 
-import { camelKey, type CliArgs } from "./args";
+import type { CliArgs } from "./args";
+import { camelKey } from "./args-table";
 import { fmtDate } from "./render";
 import { BRANCHES, SHICHEN } from "@/ziwei/constants";
 import { PROVINCES } from "@/ziwei/cities";
@@ -288,7 +289,8 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(solarStr));
 		if (!m) throw new Error(`日期格式应为 YYYY-MM-DD，收到：${solarStr}`);
 		const [sy, sm, sd] = m.slice(1).map(Number);
-		if (sm < 1 || sm > 12) throw new Error(`日期不存在：${solarStr}（月份应为 1-12，收到 ${sm}）`);
+		if (sm < 1 || sm > 12)
+			throw new Error(`日期不存在：${solarStr}（月份应为 1-12，收到 ${sm}）`);
 		// 日历真值 round-trip 校验：宽松格式（1990-5-15）先归一再校验。JS Date 会把
 		// 2011-02-30 静默归一化为 03-02（Date.UTC 同样），直接下传就是一张「标题印着
 		// 02-30、实际排 03-02」的错盘（--json 的 birthInfo.day 与 lunarInfo 更会自相矛盾）。
@@ -381,7 +383,9 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		if (!Number.isInteger(timeIndex) || timeIndex < 0 || timeIndex > 12)
 			throw new Error("--branch 应为 0-11（0=子 … 11=亥）或 12（晚子时）");
 		hourNote =
-			timeIndex === 12 ? "直接指定 晚子时（子时，安星按次日）" : `直接指定 ${shichenLabel(timeIndex)}`;
+			timeIndex === 12
+				? "直接指定 晚子时（子时，安星按次日）"
+				: `直接指定 ${shichenLabel(timeIndex)}`;
 	} else if (g("time") !== undefined) {
 		const m = /^(\d{1,2}):(\d{2})$/.exec(String(g("time")));
 		if (!m) throw new Error(`时间格式应为 HH:MM，收到：${g("time")}`);

@@ -14,7 +14,8 @@
 
 import { readFileSync } from "node:fs";
 import type { CliArgs } from "./args";
-import { camelKey, OPTION_NAMES, OPTION_ALIASES, OPTION_GROUPS } from "./args";
+import { OPTION_NAMES } from "./args";
+import { camelKey, OPTION_ALIASES, OPTION_GROUPS } from "./args-table";
 
 /**
  * 把配置文件的键值合并进参数表（配置是基底，命令行已给的键不被覆盖）。
@@ -56,7 +57,9 @@ export function applyConfig(argv: CliArgs): CliArgs {
 		// `_` 前缀键是注释性说明（模板里的人类备注），跳过
 		if (key.startsWith("_")) continue;
 		// 拼音别名同被接受（与命令行一致，归一到主名）
-		const canonical = key.includes("-") ? key : (Object.entries(OPTION_ALIASES).find(([a]) => camelKey(a) === key)?.[1] ?? key);
+		const canonical = key.includes("-")
+			? key
+			: (Object.entries(OPTION_ALIASES).find(([a]) => camelKey(a) === key)?.[1] ?? key);
 		const storeKey = canonical.includes("-") ? camelKey(canonical) : canonical;
 		if (!legalKeys.has(storeKey))
 			throw new Error(
@@ -81,7 +84,7 @@ export function applyConfig(argv: CliArgs): CliArgs {
 export function renderTemplate(): string {
 	return JSON.stringify(
 		{
-			"_说明": [
+			_说明: [
 				"紫微斗数排盘配置模板（示例数据为虚构，无真实人物）。",
 				"键名与参数的 camelCase 主名同名；命令行同名参数会覆盖这里的值。",
 				"用法：node scripts/purple-star.ts astrology --config my.json",

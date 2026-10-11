@@ -10,11 +10,11 @@
  *   的诚实边界收窄只发生在 help 层。
  *
  * 两处数据源：`commands.ts` 的 COMMAND_HELP（逐命令多行说明）与本文件就近声明的
- * 示例与注意事项。参数清单从 `args.ts` 的 OPTION_GROUPS 派生（与实际接受面同源）。
+ * 示例与注意事项。参数清单从 `args-table.ts` 的 OPTION_GROUPS 派生（与实际接受面同源）。
  */
 
 import { COMMAND_DESC, COMMAND_HELP, COMMAND_NAMES, type CommandName } from "./command-meta";
-import { OPTION_GROUPS, OPTION_ALIASES, type OptionSpec } from "./args";
+import { OPTION_GROUPS, OPTION_ALIASES, type OptionSpec } from "./args-table";
 
 /**
  * 命令 → 专属参数名表（help 视图）。

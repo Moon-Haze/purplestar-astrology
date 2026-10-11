@@ -5,8 +5,9 @@
  * 本文件只做四件事：**定位内核根 → 注册 TS 解析钩子 → 启动期内核自检 → 把命令分发出去**。
  * 命令实现、渲染、出生信息解析、自检都**不在**这里，见 scripts/cli/：
  *
- *   cli/args.ts        参数声明表 OPTION_GROUPS + OPTION_ALIASES + 解析（util.parseArgs 底座）
- *   cli/option-scope.ts 参数作用域（前缀表已退役为空表）
+ *   cli/args-table.ts  参数声明面 OPTION_GROUPS + OPTION_ALIASES（零依赖纯数据）
+ *   cli/args.ts        参数解析引擎（util.parseArgs 底座 + 校验 + 薄适配层）
+ *   cli/option-scope.ts 参数作用域契约与差量排除值（前缀表已退役为空表）
  *   cli/render.ts      命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
  *   cli/birth-info.ts  出生信息解析（真太阳时、农历换算、城市容错）
  *   cli/astrology.ts   排盘分析一条命令（四命令合一：概览默认 + 功能参数分发）
@@ -77,6 +78,7 @@ type CitiesModule = typeof import("@/ziwei/cities");
 type ClassicsModule = typeof import("@/classics");
 type ChartViewModule = typeof import("@/synastry/chart-view");
 type ArgsModule = typeof import("@/cli/args");
+type ArgsTableModule = typeof import("@/cli/args-table");
 type CommandsModule = typeof import("@/cli/commands");
 /** 轻量命令元数据（名字与 HELP 文案，无命令实现依赖）——help 路径只需它。 */
 type MetaModule = typeof import("@/cli/command-meta");
@@ -194,6 +196,7 @@ async function loadCore() {
 	const chartViewNs = await load<ChartViewModule>("@/synastry/chart-view");
 
 	const argsNs = await load<ArgsModule>("@/cli/args");
+	const argsTableNs = await load<ArgsTableModule>("@/cli/args-table");
 	const commandsNs = await load<CommandsModule>("@/cli/commands");
 	const helpMod = await load<typeof import("@/cli/help")>("@/cli/help");
 
@@ -221,6 +224,7 @@ async function loadCore() {
 		["@/classics", classicsNs],
 		["@/synastry/chart-view", chartViewNs],
 		["@/cli/args", argsNs],
+		["@/cli/args-table", argsTableNs],
 		["@/cli/commands", commandsNs],
 		["@/cli/help", helpMod],
 	];
@@ -271,7 +275,9 @@ async function main() {
 		const metaNs = await load<MetaModule>("@/cli/command-meta");
 		const helpLite = await load<typeof import("@/cli/help")>("@/cli/help");
 		if ((metaNs.COMMAND_NAMES as readonly string[]).includes(cmd)) {
-			console.log(helpLite.renderCommandHelp(cmd as Parameters<typeof helpLite.renderCommandHelp>[0]));
+			console.log(
+				helpLite.renderCommandHelp(cmd as Parameters<typeof helpLite.renderCommandHelp>[0])
+			);
 			return;
 		}
 	}

@@ -6,7 +6,7 @@
 
 import type { BirthInfo, Mutagen, ZiweiChart } from "@/ziwei/types";
 import type { CliArgs } from "./args";
-import { camelKey, OPTION_GROUPS } from "./args";
+import { camelKey, OPTION_GROUPS } from "./args-table";
 import { applyConfig, renderTemplate } from "./config";
 import { buildBirthInfo } from "./birth-info";
 import {

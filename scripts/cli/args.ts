@@ -1,6 +1,10 @@
 /**
- * CLI 参数面 —— 参数声明表 + 校验 + 解析（`util.parseArgs` tokens 底座 + 薄适配层）。
+ * CLI 参数解析引擎 —— `util.parseArgs` tokens 底座 + 薄适配层。
  * 不依赖任何内核模块，也不使用 `@/` 别名。
+ *
+ * 与同目录两个模块的分工（三层自底向上）：`args-table.ts` 管**声明了什么**
+ * （参数表 / 别名 / 全集 / 键名换算，零依赖纯数据）、`option-scope.ts` 管
+ * **本 skill 认哪些**（作用域契约与差量排除值），本文件只管**怎么解析**：
  *
  * cac 已退役，底座换 Node 内置 `util.parseArgs`
  * （`tokens: true` 拿 token 流），输入格式适配全部在本文件的薄适配层：
@@ -11,7 +15,7 @@
  *   （见 {@link parseArgs} 的单趟扫描），这也是「薄适配层」存在的第一个理由。
  * - **声明表校验**：未知参数当场中文报错（不走 strict —— 其报错是 Node 写死的英文，
  *   与全中文报错约定冲突；自校验完全可控）。
- * - **{@link OPTION_ALIASES} 归一**（`--geju`→`--pattern`）与主名判重（重复参数报错，
+ * - **OPTION_ALIASES 归一**（`--geju`→`--pattern`）与主名判重（重复参数报错，
  *   旧 cac「取末值」废止）。
  *
  * ⚠️ 本文件由引导层（purple-star.ts）在 `registerHooks` **之后**动态加载。
@@ -19,19 +23,24 @@
  *
  * ## 为什么参数要有声明表
  *
- * 「有哪些参数」的唯一来源是 {@link OPTION_GROUPS}：{@link parseArgs} 据它拒绝未知参数、
- * help 据它渲染参数段、`SKILL.md` 则由 `selftest` 断言兜底。拼错参数名（`--ctiy 喀什`）
- * 曾静默落回默认经度排出错盘 —— 那正是这张表要消灭的失败模式。
+ * 「有哪些参数」的唯一来源是 `args-table.ts` 的 `OPTION_GROUPS`：{@link parseArgs} 据它
+ * 拒绝未知参数、help 据它渲染参数段、`SKILL.md` 则由 `selftest` 断言兜底。拼错参数名
+ * （`--ctiy 喀什`）曾静默落回默认经度排出错盘 —— 那正是这张表要消灭的失败模式。
  *
- * ⚠️ **键名是 camelCase**（`late-zi` → `lateZi`）。换算只有 {@link camelKey} 一处，
- *    声明表里的 `name` 仍写 kebab（它同时是用户敲的名字、help 的显示名）。
+ * ⚠️ **键名是 camelCase**（`late-zi` → `lateZi`）。换算只有 `args-table.ts` 的
+ *    `camelKey` 一处，声明表里的 `name` 仍写 kebab（它同时是用户敲的名字、help 的显示名）。
  */
 
 import { parseArgs as nodeParseArgs } from "node:util";
 
-// ⚠️ 运行期无环：本行是**值**导入，而 option-scope.ts 只以 `import type` 取下面的
-//    {@link OptionScope}（类型导入被完全擦除）。
 import { OPTION_SCOPE } from "./option-scope";
+import {
+	ALL_OPTION_NAMES,
+	camelKey,
+	OPTION_ALIASES,
+	OPTION_GROUPS,
+	type OptionSpec,
+} from "./args-table";
 
 /**
  * CLI 参数表：`_` 收位置参数，其余键对应 `--key`（camelCase）。
@@ -48,314 +57,18 @@ export interface CliArgs {
 	[key: string]: string | boolean | string[];
 }
 
-// ── 参数声明：CLI 参数面的唯一定义处 ──────────────────────────
-
-/**
- * 一个参数的完整声明。
- *
- * @remarks
- * 界面刻意只留四格 `name / kind / value / desc` —— 声明表要能被一眼扫完，
- * 免得「加参数」变成一件要读文档才敢做的事。
- */
-export interface OptionSpec {
-	/** 参数名，不含 `--`。`synastry` 可用 `a-` / `b-` 前缀叠在它前面（如 `--a-chart`） */
-	name: string;
-	/** `"value"` 取值、`"switch"` 纯开关（help 据此决定写不写值域占位） */
-	kind: "value" | "switch";
-	/** 值域占位，如 `"YYYY-MM-DD"`；`kind: "switch"` 时不给 */
-	value?: string;
-	/**
-	 * 可选值形态：裸开关（不带值）**合法**，由命令侧取缺省（`--yearly` = 当年）或
-	 * 列清单（`--topic`）。help 据此把值域显示成 `<[x]>`；不标注即必值，末尾缺值
-	 * 会以「需要一个值」被命令侧指路。
-	 */
-	optionalValue?: boolean;
-	/** 一行说明，即 help 里那一行的描述列 */
-	desc: string;
-}
-
-/** 一组参数（`title` 是给读声明表的人看的分类，不进 help 参数段）。 */
-export interface OptionGroup {
-	title: string;
-	options: readonly OptionSpec[];
-}
-
-/**
- * 本 skill 的**参数作用域** —— 声明「声明表里那些参数中，本 skill 认哪些」。
- *
- * @remarks
- * 单 skill 形态下这份清单即全量。声明是**裸参数名的正面清单**，不按「本 skill 认哪些
- * 命令」派生 —— 那会重建本文件刻意不维护的「参数属于哪个命令」归属表（Task 8 的
- * help 归属表是视图，不做硬校验）。
- */
-export interface OptionScope {
-	/**
-	 * 从声明表**排除**的参数名（差量形态：默认全集）。单 skill 形态下为空数组 ——
-	 * 全集即作用域，旧的「正面清单全量手抄」已退役（它恒等于全集，只付拼错静默失效
-	 * 与逐项维护两笔成本）。每一项都必须是 {@link OPTION_GROUPS} 里的名字。
-	 */
-	readonly excluded: readonly string[];
-	/** 本 skill 认的出生方前缀（合盘用 `["a-", "b-"]`）；不认就给空数组。 */
-	readonly sidePrefixes: readonly string[];
-	/**
-	 * 哪些命令接受 {@link sidePrefixes} 前缀。空数组表示本 skill 没有这种命令。
-	 *
-	 * @remarks
-	 * ⚠️ 这一维**不能省**：它是「前缀写在别的命令上」这条静默失败的判据。若只看
-	 * `sidePrefixes` 非空就放行，`selftest --a-chart` 会从「报错」变成「静默忽略」。
-	 */
-	readonly prefixedCommands: readonly string[];
-	/**
-	 * 按参数名覆盖 help 里的说明文案（声明表的 desc 是全集视角时用）。
-	 */
-	readonly descOverrides?: Readonly<Record<string, string>>;
-}
-
-/**
- * 全部参数（英文主名），按 help 的展示顺序分组。
- *
- * @remarks
- * - 专题参数族主名英文化（spec §1 表）：`pattern` / `mutagen` / `yearly` /
- *   `monthly` / `decadal` / `ages`；拼音原名成为 {@link OPTION_ALIASES} 别名。
- * - `--year` / `--month` / `--day` 三连**已删**：`--date 1990-5-15` 完全覆盖（格式宽松，
- *   月日不补零）。误敲 `--year` 由拼错建议引向 `--yearly`（编辑距离 2）。
- *
- * 分组标题里的「三选一」「二选一」是**口径**而非装饰：`buildBirthInfo` 对
- * `--date` / `--lunar` 与 `--time` / `--branch` 各取其一，同时给出时按该处的优先级处理。
- */
-export const OPTION_GROUPS: readonly OptionGroup[] = [
-	{
-		title: "出生日期（二选一）",
-		options: [
-			{
-				name: "date",
-				kind: "value",
-				value: "YYYY-MM-DD",
-				desc: "公历生日（格式宽松，月日不补零）",
-			},
-			{
-				name: "lunar",
-				kind: "value",
-				value: "YYYY-MM-DD",
-				desc: "农历生日（脚本自动换算，勿与 --date 同用）",
-			},
-			{ name: "leap", kind: "switch", desc: "配合 --lunar，表示闰月" },
-		],
-	},
-	{
-		title: "出生时辰（二选一）",
-		options: [
-			{
-				name: "time",
-				kind: "value",
-				value: "HH:MM",
-				desc: "钟表时间（配合 --lng / --city 自动换算真太阳时）",
-			},
-			{
-				name: "branch",
-				kind: "value",
-				value: "0-12",
-				desc: "直接指定时辰支（0=子 … 11=亥；12=晚子时），与 --time 二选一",
-			},
-			{
-				name: "late-zi",
-				kind: "switch",
-				desc: "配合 --time：23:00–23:59 出生改按「晚子时算次日」排",
-			},
-			{
-				name: "eot",
-				kind: "switch",
-				desc: "配合 --time：真太阳时额外计入均时差（±16 分），默认不计",
-			},
-		],
-	},
-	{
-		title: "其他出生信息",
-		options: [
-			{ name: "gender", kind: "value", value: "male|female|男|女", desc: "性别" },
-			{
-				name: "lng",
-				kind: "value",
-				value: "116.4",
-				desc: "出生地经度（默认 120，即不做经度校正）",
-			},
-			{
-				name: "city",
-				kind: "value",
-				value: "北京",
-				desc: "用城市名代替 --lng（容错「石家庄市」「山东青岛」等写法）",
-			},
-			{
-				name: "province",
-				kind: "value",
-				value: "山东",
-				desc: "用省份代替 --lng（按省会计）",
-			},
-			{ name: "name", kind: "value", value: "张三", desc: "可选，只影响输出抬头" },
-		],
-	},
-	{
-		title: "命盘输入（synastry 专用）",
-		options: [
-			{
-				name: "charts",
-				kind: "value",
-				value: "/tmp/a.json,/tmp/b.json",
-				desc: "合盘输入：逗号分隔恰好两份 astrology --json 的输出（甲先乙后）",
-			},
-		],
-	},
-	{
-		title: "专题深入（可叠加；不带任何专题参数时只出精简概览）",
-		options: [
-			{
-				name: "info",
-				kind: "switch",
-				desc: "只出基本信息面板 + 运限速览 + 专题指路（与无功能参数的概览同尾，不展开专题详版）",
-			},
-			{
-				name: "pattern",
-				kind: "switch",
-				desc: "格局识别专题（格局判词 / 成立与破格条件 / 出处）",
-			},
-			{
-				name: "mutagen",
-				kind: "switch",
-				desc: "四化专题（生年 / 流年 / 流月四化落宫与叠宫）",
-			},
-			{
-				name: "decadal",
-				kind: "value",
-				value: "虚岁",
-				optionalValue: true,
-				desc: "大限专题（十年大运时间轴 + 指定岁所在限的三方四正深入；缺省 = 当前虚岁）",
-			},
-			{
-				name: "ages",
-				kind: "value",
-				value: "虚岁",
-				optionalValue: true,
-				desc: "小限专题（指定岁小限宫 + 十二宫小限岁数表；缺省 = 当前虚岁）",
-			},
-			{
-				name: "palaces",
-				kind: "switch",
-				desc: "十二宫逐宫详表",
-			},
-		],
-	},
-	{
-		title: "输出与选题",
-		options: [
-			{ name: "json", kind: "switch", desc: "输出原始 JSON（供程序消费）" },
-			{
-				name: "out",
-				kind: "value",
-				value: "out.md",
-				desc: "把输出写入文件（覆盖写，末尾恰一个换行；进度提示走 stderr，stdout 不再打印正文）",
-			},
-			{
-				name: "yearly",
-				kind: "value",
-				value: "年",
-				optionalValue: true,
-				desc: "指定流年（默认今年）",
-			},
-			{
-				name: "monthly",
-				kind: "value",
-				value: "1-12",
-				desc: "配合 --mutagen 四化专题：追加该农历月的流月四化（流年缺省取当年）",
-			},
-			{ name: "focus", kind: "value", value: "财帛", desc: "额外展开指定宫位" },
-			{
-				name: "topic",
-				kind: "value",
-				value: "key",
-				optionalValue: true,
-				desc: "主题论断选主题（13 个 key 之一；不带值时列清单）",
-			},
-			{
-				name: "view",
-				kind: "value",
-				value: "mingpan",
-				desc: "主题论断展示口径：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月），后三者也接受同名英文 decadal/yearly/monthly",
-			},
-			{
-				name: "report",
-				kind: "switch",
-				desc: "全盘主题报告（Markdown）：13 个板块一次出全，本命静态口径，独占分支（单独使用）",
-			},
-			{
-				name: "search",
-				kind: "value",
-				value: "机月同梁",
-				desc: "classics / stars 检索关键字（也可用位置参数）",
-			},
-			{ name: "limit", kind: "value", value: "15", desc: "classics 命中条数上限（正整数）" },
-			{
-				name: "config",
-				kind: "value",
-				value: "my.json",
-				desc: "读 JSON 配置文件（键 = 参数 camelCase 主名；命令行同名参数覆盖配置）",
-			},
-			{
-				name: "template",
-				kind: "switch",
-				desc: "打印可直接使用的配置模板到 stdout（--template > my.json 落盘）",
-			},
-		],
-	},
-];
-
-/**
- * 拼音别名 → 英文主名（spec §1.1）。
- *
- * @remarks
- * 别名是**显式声明**的映射，不是拼错容错 —— `--patern` 仍然报错，
- * {@link suggestOption} 建议主名 `--pattern`。help / SKILL.md 一律用主名，
- * 别名在 help 的参数描述尾注。
- */
-export const OPTION_ALIASES: Record<string, string> = {
-	geju: "pattern",
-	sihua: "mutagen",
-	liunian: "yearly",
-	liuyue: "monthly",
-	daxian: "decadal",
-	xiaoxian: "ages",
-};
-
-/**
- * 声明表里的**全部**参数名（英文主名，不含别名）。
- *
- * @remarks
- * 单 skill 形态下作用域即全集。校验时先查 {@link OPTION_ALIASES} 归一，再查这张表。
- */
-export const ALL_OPTION_NAMES: ReadonlySet<string> = new Set(
-	OPTION_GROUPS.flatMap(g => g.options.map(o => o.name))
-);
-
 /**
  * **本 skill** 认的参数名（英文主名）—— {@link parseArgs} 的校验基准，
  * 同时是 {@link suggestOption} 的候选集。
  *
  * @remarks
- * 从全集按 {@link OPTION_SCOPE.excluded} **差量**派生：单 skill 形态下排除表为空，
- * 作用域即全集；「有哪些参数」因此真正只有 OPTION_GROUPS 一处声明。
+ * 从 `args-table.ts` 的全集（`ALL_OPTION_NAMES`）按 `OPTION_SCOPE.excluded`
+ * **差量**派生：单 skill 形态下排除表为空，作用域即全集；「有哪些参数」因此
+ * 真正只有 OPTION_GROUPS 一处声明。
  */
 export const OPTION_NAMES: ReadonlySet<string> = new Set(
 	[...ALL_OPTION_NAMES].filter(n => !OPTION_SCOPE.excluded.includes(n))
 );
-
-/**
- * kebab-case → camelCase：**键名换算的唯一一处**。
- *
- * @param name - 参数名，可带 `synastry` 的 `a-` / `b-` 前缀（如 `"a-late-zi"`）
- * @returns camelCase 形式（`"aLateZi"`）
- */
-export function camelKey(name: string): string {
-	return name.replace(/-([a-z0-9])/g, (_m: string, c: string) => c.toUpperCase());
-}
 
 /** 主名 → 声明（扫描循环里反复查，建一次索引）。 */
 const ALL_SPECS: ReadonlyMap<string, OptionSpec> = new Map(
@@ -366,8 +79,9 @@ const ALL_SPECS: ReadonlyMap<string, OptionSpec> = new Map(
  * 本 skill 认的出生方前缀（合盘是 `a-` / `b-`，它要分别读两方的命盘）。
  *
  * @remarks
- * 取自 {@link OPTION_SCOPE}。导出是给 `cli/selftest.ts` 用的：它扫 `SKILL.md` 里
- * 提到的参数，要先剥掉这层前缀再与 {@link OPTION_NAMES} 比对 —— 前缀表不该有第二份。
+ * 取自 `option-scope.ts` 的 `OPTION_SCOPE.sidePrefixes`。导出是给 `cli/selftest.ts`
+ * 用的：它扫 `SKILL.md` 里提到的参数，要先剥掉这层前缀再与 {@link OPTION_NAMES}
+ * 比对 —— 前缀表不该有第二份。
  */
 export const SIDE_PREFIXES: readonly string[] = OPTION_SCOPE.sidePrefixes;
 
@@ -419,7 +133,7 @@ export function suggestOption(name: string): string | null {
  * 校验参数名（先别名归一，再查主名表），不合法即抛错。
  *
  * @param key - 已剥掉 `--` 的参数名（可带出生方前缀）
- * @param command - 当前命令名；接受前缀的那几条由 {@link OptionScope.prefixedCommands} 声明
+ * @param command - 当前命令名；接受前缀的那几条由 `option-scope.ts` 的 `prefixedCommands` 声明
  *
  * @remarks
  * 三条规则各挡一种**静默失败**：
