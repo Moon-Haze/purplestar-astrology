@@ -84,7 +84,7 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		for (const [bad, want] of probes) {
 			let msg = "";
 			try {
-				parseArgs([bad, "x"], "analyze");
+				parseArgs([bad, "x"], "astrology");
 			} catch (e) {
 				msg = (e as Error).message;
 			}
@@ -95,10 +95,11 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		// 作用域收窄探针：**本 skill 不认**的旗标必须报错，而不是静默收下。
 		// 合并后 `--limit`（knowledge）与 `--chart`（synastry 的 --a-chart/--b-chart 裸底名）
 		// 都进了本 skill 作用域，故收窄探针只剩**出生方前缀**这一维：`a-` / `b-` 前缀
-		// 只有 synastry 命令认，叠在 analyze 上必须报「前缀只有 synastry 命令认」。
+		// 只有 synastry 命令认，叠在 astrology 上必须报错（当前前缀已退役，实际落
+		// 「未知参数」——报错非空即守住「不静默收下」这条底线）。
 		//
-		// ⚠️ 少了这一条，哪天有人把 args.ts 的前缀收窄摘掉，`analyze --a-chart x` 会静默
-		// 通过 —— 而没有任何断言变红。
+		// ⚠️ 少了这一条，哪天有人把 args.ts 的未知参数校验摘掉，`astrology --a-chart x`
+		// 会静默通过 —— 而没有任何断言变红。
 		const outOfScope: Array<[string, string]> = [
 			// 合盘的命盘前缀（真实存在、只是归 synastry 命令）：探针必须挑这种「存在但错位」
 			// 的旗标，不存在的旗标与上面那组拼写错误探针重叠。
@@ -108,11 +109,11 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		for (const [flag, value] of outOfScope) {
 			let msg = "";
 			try {
-				parseArgs([flag, value], "analyze");
+				parseArgs([flag, value], "astrology");
 			} catch (e) {
 				msg = (e as Error).message;
 			}
-			if (!msg) throw new Error(`${flag} 在 analyze 上未报错 —— 旗标作用域收窄失效`);
+			if (!msg) throw new Error(`${flag} 在 astrology 上未报错 —— 旗标作用域收窄失效`);
 		}
 		return `${probes.length} 个拼写错误均被拦下，${outOfScope.length} 个作用域外旗标被拒`;
 	});
@@ -121,15 +122,15 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		// 拼音别名见 OPTION_ALIASES）。switch 型裸开关给 true；decadal / ages 是可选值
 		// 形态，带值给字符串、裸开关（= 默认当前虚岁）给 true。
 		const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
-		const a = parseArgs([...base, "--info", "--pattern", "--mutagen"], "analyze");
+		const a = parseArgs([...base, "--info", "--pattern", "--mutagen"], "astrology");
 		eq(a.info, true, "--info ");
 		eq(a.pattern, true, "--pattern ");
 		eq(a.mutagen, true, "--mutagen ");
-		const b = parseArgs([...base, "--decadal", "37"], "analyze");
+		const b = parseArgs([...base, "--decadal", "37"], "astrology");
 		eq(b.decadal, "37", "--decadal 带值 ");
-		const c = parseArgs([...base, "--decadal"], "analyze");
+		const c = parseArgs([...base, "--decadal"], "astrology");
 		eq(c.decadal, true, "--decadal 裸开关 ");
-		const d = parseArgs([...base, "--ages", "45"], "analyze");
+		const d = parseArgs([...base, "--ages", "45"], "astrology");
 		eq(d.ages, "45", "--ages 带值 ");
 		return "5 个专题参数（3 开关 + 2 可选值）";
 	});

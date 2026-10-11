@@ -273,7 +273,7 @@ export function runContractProbe({ ok }: Pick<SelftestDeps, "ok">): void {
 				isLateZi: false,
 			},
 		});
-		const tmp = mkdtempSync(join(tmpdir(), "ziwei-analyze-json-"));
+		const tmp = mkdtempSync(join(tmpdir(), "ziwei-astro-json-"));
 		try {
 			const p = join(tmp, "out.json");
 			writeFileSync(p, json, "utf8");
@@ -595,6 +595,41 @@ export function runAstrologyShapes({
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });
 		}
+	});
+	// ── 组合层端到端（候选 3）：专题旗标 → section 接线，经 deps.call 全链 ──
+	// 此前 --decadal / --ages 的端到端用例为 0（守卫链也只有进程外探针）——旗标
+	// 解析通了但 section 没接上的回归，没有任何断言会红。期望文案取自实跑
+	// （Task 5 Step 2）；写入时先以假期望验红（四条同红、红因各指检查点），
+	// 再换实文案转绿 —— 保护性断言同样要证明它真的在读输出。
+	const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
+	ok("组合层：--decadal 端到端经 cmdAstrology 出大限节（候选 3）", () => {
+		const r = call(["astrology", ...base, "--decadal", "37"]);
+		eq(r.code, 0, r.err);
+		if (!r.out.includes("【大限 · 十年大运】")) throw new Error("缺大限节标题");
+		return "大限节在";
+	});
+	ok("组合层：--ages 端到端出小限节", () => {
+		const r = call(["astrology", ...base, "--ages", "45"]);
+		eq(r.code, 0, r.err);
+		if (!r.out.includes("【小限】")) throw new Error("缺小限节标题");
+		return "小限节在";
+	});
+	ok("组合层：守卫链 --monthly 无 --mutagen 报错并指路", () => {
+		const r = call(["astrology", ...base, "--monthly", "6"]);
+		eq(r.code, 1, `实得 code=${r.code} err=${r.err}`);
+		if (!r.err.includes("需要 --mutagen"))
+			throw new Error(`报错应指路 --mutagen，实得：${r.err}`);
+		return "守卫链在";
+	});
+	ok("组合层：deepDive 门——给 --pattern 时不输出基底节", () => {
+		// 深入形态输出 = 口径提示 + 专题详版；三块基底（基本信息 / 运限速览 /
+		// 专题指路）任一在场即门失效。实跑确认 --pattern / --decadal 均不含。
+		const r = call(["astrology", ...base, "--pattern"]);
+		eq(r.code, 0, r.err);
+		const baseSections = ["【基本信息】", "运限速览", "专题指路"].filter(s => r.out.includes(s));
+		if (baseSections.length)
+			throw new Error(`deepDive 门失效：深入形态仍输出基底 ${baseSections.join("、")}`);
+		return "deepDive 门在";
 	});
 }
 

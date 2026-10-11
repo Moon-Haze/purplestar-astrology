@@ -140,7 +140,7 @@ export function suggestOption(name: string): string | null {
  *
  * 1. 名字（归一后）不在 {@link OPTION_NAMES}：拼错。报错并给出最近的名字。
  * 2. `a-` / `b-` 前缀出现在不收它的命令上：那里读的是不带前缀的名字，带前缀的写法会被
- *    整个忽略（`analyze --a-city 北京` 排的是默认经度的盘）。
+ *    整个忽略（`astrology --a-city 北京` 排的是默认经度的盘）。
  * 3. 前缀后面接的仍必须是声明过的名字：`--a-ctiy` 同样要抓。
  *
  * ⚠️ 刻意**不**校验「这个参数属于这个命令」：`--json` 给 `knowledge` 是无害的多余参数，
