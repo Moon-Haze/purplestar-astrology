@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "./index";
 import { createHarness, eq, callDirect, type Assertion } from "../cli/selftest-kit";
 
-/** 本内核目录（`scripts/classics`）。 */
+/** 本内核目录（`scripts/corpus`，原 classics）。 */
 const ROOT = dirname(fileURLToPath(import.meta.url));
 
 /**

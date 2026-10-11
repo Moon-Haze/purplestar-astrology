@@ -5,7 +5,7 @@
  *
  * 识别器签名一律 `(ctx: DetectContext) => Pattern[]`：命中返回 `[one]`，未命中返回 `[]`，
  * 并进总表只发生在 `./index` 的 `detectPatterns` 那一行 for 里 —— 本文件不接触任何累积数组。
- * 判词一律从 `./data` 的 `PATTERN_VERDICTS` 取，收尾经 `./helpers` 的 `fillVerdict` 填占位符。
+ * 判词一律从 `corpus/patterns-data` 的 `PATTERN_VERDICTS` 取，收尾经 `./helpers` 的 `fillVerdict` 填占位符。
  *
  * 下方导出的数组**次序即 `detectPatterns` 的输出次序**，增删或调整组内次序都会改变输出排列。
  *
@@ -13,7 +13,7 @@
  */
 
 import type { Pattern, DetectContext, Detector } from "./types";
-import { SHA_KONG, PATTERN_VERDICTS, PATTERN_ASIDES } from "./data";
+import { SHA_KONG, PATTERN_VERDICTS, PATTERN_ASIDES } from "../../corpus/patterns-data";
 import {
 	hasStar,
 	hasShaInPalace,
@@ -40,13 +40,15 @@ function detectFuBiJiaMing({ chart }: DetectContext): Pattern[] {
 		bonus.push("再会魁钺");
 
 	const name = "辅弼夹命";
-	return [{
-		name,
-		level: 90,
-		palaces: ["命宫", prev.name, next.name],
-		conditions: { required, bonus, breaking },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: 90,
+			palaces: ["命宫", prev.name, next.name],
+			conditions: { required, bonus, breaking },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 /** 昌曲夹命 */
@@ -60,13 +62,15 @@ function detectChangQuJiaMing({ chart }: DetectContext): Pattern[] {
 	if (!((prevHasChang && nextHasQu) || (prevHasQu && nextHasChang))) return [];
 
 	const name = "昌曲夹命";
-	return [{
-		name,
-		level: 90,
-		palaces: ["命宫", prev.name, next.name],
-		conditions: { required: ["文昌文曲分居命宫前后两宫"] },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: 90,
+			palaces: ["命宫", prev.name, next.name],
+			conditions: { required: ["文昌文曲分居命宫前后两宫"] },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 /** 魁钺夹命 */
@@ -78,13 +82,15 @@ function detectKuiYueJiaMing({ chart }: DetectContext): Pattern[] {
 	if (!okA && !okB) return [];
 
 	const name = "魁钺夹命";
-	return [{
-		name,
-		level: 75,
-		palaces: ["命宫", prev.name, next.name],
-		conditions: { required: ["天魁天钺分居命宫前后两宫"] },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: 75,
+			palaces: ["命宫", prev.name, next.name],
+			conditions: { required: ["天魁天钺分居命宫前后两宫"] },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 /** 双禄朝垣：化禄 + 禄存 同会三方 */
@@ -99,18 +105,20 @@ function detectShuangLuChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	if (!huaLuFound || !luCunFound) return [];
 
 	const name = "双禄朝垣";
-	return [{
-		name,
-		level: 90,
-		palaces: sanFang.map(p => p.name),
-		conditions: {
-			required: ["化禄会照三方四正", "禄存会照三方四正"],
-			breaking: hasShaInPalace(ming, SHA_KONG)
-				? ["命坐空劫（双禄遇空，财来财去）"]
-				: undefined,
+	return [
+		{
+			name,
+			level: 90,
+			palaces: sanFang.map(p => p.name),
+			conditions: {
+				required: ["化禄会照三方四正", "禄存会照三方四正"],
+				breaking: hasShaInPalace(ming, SHA_KONG)
+					? ["命坐空劫（双禄遇空，财来财去）"]
+					: undefined,
+			},
+			...PATTERN_VERDICTS[name],
 		},
-		...PATTERN_VERDICTS[name],
-	}];
+	];
 }
 
 /** 三奇加会：化禄 化权 化科 同会三方 */
@@ -129,13 +137,15 @@ function detectSanQiJiaHui({ chart }: DetectContext): Pattern[] {
 	if (!(lu && quan && ke)) return [];
 
 	const name = "三奇加会";
-	return [{
-		name,
-		level: 90,
-		palaces: sanFangPalaces.map(p => p.name),
-		conditions: { required: ["化禄、化权、化科三吉化齐会命宫三方四正"] },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: 90,
+			palaces: sanFangPalaces.map(p => p.name),
+			conditions: { required: ["化禄、化权、化科三吉化齐会命宫三方四正"] },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 /** 化禄入命/官/财 */
@@ -144,16 +154,18 @@ function detectHuaLuRuMing({ chart, ming }: DetectContext): Pattern[] {
 	if (!huaLuStar) return [];
 
 	const name = `${huaLuStar.name}化禄入命`;
-	return [{
-		name,
-		level: 75,
-		palaces: ["命宫"],
-		conditions: { required: [`${huaLuStar.name}化禄坐命宫`] },
-		...fillVerdict(PATTERN_VERDICTS["化禄入命"], {
-			星: huaLuStar.name,
-			注: PATTERN_ASIDES["化禄入命"]?.[huaLuStar.name] ?? "",
-		}),
-	}];
+	return [
+		{
+			name,
+			level: 75,
+			palaces: ["命宫"],
+			conditions: { required: [`${huaLuStar.name}化禄坐命宫`] },
+			...fillVerdict(PATTERN_VERDICTS["化禄入命"], {
+				星: huaLuStar.name,
+				注: PATTERN_ASIDES["化禄入命"]?.[huaLuStar.name] ?? "",
+			}),
+		},
+	];
 }
 
 export const ZHU_LI_GE: ReadonlyArray<Detector> = [

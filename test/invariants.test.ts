@@ -34,9 +34,9 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 const { generateChart } = await loadAlgorithm();
 const { PALACE_NAMES_ORDER, IZTRO_TO_PROJECT_PALACE, SI_HUA_TABLE, STEMS } = await loadConstants();
 const { detectPatterns, GEJU_NAME_ALIASES } = await loadPatterns();
-// 古籍内核在根 `scripts/classics/`，`@/classics` 别名可达（与其他内核同一口径）。
+// 古籍内核在根 `scripts/corpus/`，`@/corpus` 别名可达（与其他内核同一口径）。
 // 用到的只是**古籍文本**（格局名词频排版不变量），与排盘内核无关。
-const { ALL_BOOKS } = await load<typeof import("@/classics")>("@/classics");
+const { ALL_BOOKS } = await load<typeof import("@/corpus")>("@/corpus");
 const {
 	getMutagenByStem,
 	getYearStemIndex,
@@ -1113,7 +1113,7 @@ describe("排盘结构不变量", () => {
 				紫府同宫: c => sharePalace(c, "紫微", "天府") && ziFuInMingOrQianYi(c),
 
 				// 名取古籍简称「廉相格」（全集·卷四「廉贞与天相同宫为『廉相格』」），
-				// 见 patterns/data.ts 的 GEJU_NAME_ALIASES。
+				// 见 corpus/patterns-data.ts 的 GEJU_NAME_ALIASES。
 				廉相格: c => sharePalace(c, "廉贞", "天相"),
 				武曲七杀: c => sharePalace(c, "武曲", "七杀"),
 				天同天梁格: c => sharePalace(c, "天同", "天梁"),
@@ -1382,7 +1382,7 @@ describe("排盘结构不变量", () => {
 // ── 层 3（续）：格局名的「同现象异名」裁决 ──
 //
 // 判定早已收敛到一处，但历史上 analyze 与 topic 各叫各的（实测星名集合 0/300
-// 不一致，纯命名差异）。显示名已统一，裁决结果记在 patterns/data.ts 的
+// 不一致，纯命名差异）。显示名已统一，裁决结果记在 corpus/patterns-data.ts 的
 // GEJU_NAME_ALIASES。
 //
 // 裁决依据分两种，**本组按 basis 分别设防**：

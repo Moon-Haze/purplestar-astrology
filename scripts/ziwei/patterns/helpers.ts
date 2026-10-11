@@ -20,7 +20,7 @@
 
 import type { ZiweiChart, Palace, Star, Mutagen } from "../types";
 import type { PatternVerdict } from "./types";
-import { SHA_NAMES, SHA_HARD, SHA_KONG } from "./data";
+import { SHA_NAMES, SHA_HARD, SHA_KONG } from "../../corpus/patterns-data";
 import { oppositeBranch, surroundBranches } from "../palace-relations";
 
 // ────────────────── 辅助函数 ──────────────────
@@ -316,7 +316,6 @@ export function palaceHasMutagen(palace: Palace, hua: Mutagen): boolean {
 export function sanFangHasMutagen(chart: ZiweiChart, hua: Mutagen): boolean {
 	return getSurroundPalaces(chart).some(p => palaceHasMutagen(p, hua));
 }
-
 
 // ────────────────── 判词填充 ──────────────────
 /**

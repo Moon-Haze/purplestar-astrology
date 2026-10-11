@@ -1,6 +1,6 @@
 /**
  * 天纪语料导入（tools/corpus）—— 把 nihai-tianji-corpus 的紫微五册判语转印成本仓
- * TS 数据（`scripts/ziwei/tianji/entries.ts`）。
+ * TS 数据（`scripts/corpus/tianji/entries.ts`）。
  *
  * 用法：npx tsx tools/corpus/import-tianji.ts
  * 语料库位置固定在下方 CORPUS_ROOT 常量——换语料位置时改常量重跑（刻意不收
@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url)); // tools/corpus
 // 本工具住在 skill 根的 tools/corpus/ 下，skill 根 = 上两级（dirname 链取根）
 const ROOT = resolve(dirname(dirname(HERE)));
-const OUT = join(ROOT, "scripts/ziwei", "tianji", "entries.ts");
+const OUT = join(ROOT, "scripts/corpus", "tianji", "entries.ts");
 const BOOKS = ["01-stars", "02-palaces", "03-patterns", "04-sihua", "05-illness"] as const;
 
 /** 语料库根目录（本地克隆位置；换机重导时改这里）。 */
@@ -120,6 +120,6 @@ const lines: string[] = [
 	"",
 ];
 
-mkdirSync(join(ROOT, "scripts/ziwei", "tianji"), { recursive: true });
+mkdirSync(join(ROOT, "scripts/corpus", "tianji"), { recursive: true });
 writeFileSync(OUT, lines.join("\n"));
-console.error(`scripts/ziwei/tianji/entries.ts：${rows.length} 条（${BOOKS.join(" / ")}）`);
+console.error(`scripts/corpus/tianji/entries.ts：${rows.length} 条（${BOOKS.join(" / ")}）`);

@@ -25,8 +25,8 @@
  *   scripts/ziwei/cities.ts      中国城市经纬度（真太阳时校正）
  *   scripts/ziwei/constants.ts   天干地支 / 四化表 / 星曜释义
  *
- * classics / synastry 的内核也住进本仓
- * `scripts/classics/` 与 `scripts/synastry/`，命令并入本 CLI —— 单 skill 单入口，
+ * 语料（corpus：古籍/天纪/核对表）与 synastry 的内核也住进本仓
+ * `scripts/corpus/` 与 `scripts/synastry/`，命令并入本 CLI —— 单 skill 单入口，
  * 排盘（astrology）、知识检索（knowledge，命令原名 classics）、合盘（synastry）
  * 都在这里（见 `SKILL.md`）。
  *
@@ -77,7 +77,7 @@ type PatternsModule = typeof import("@/ziwei/patterns");
 type SihuaModule = typeof import("@/ziwei/mutagen");
 type ConstantsModule = typeof import("@/ziwei/constants");
 type CitiesModule = typeof import("@/ziwei/cities");
-type ClassicsModule = typeof import("@/classics");
+type ClassicsModule = typeof import("@/corpus");
 type ChartViewModule = typeof import("@/synastry/chart-view");
 type ArgsModule = typeof import("@/cli/args");
 type ArgsTableModule = typeof import("@/cli/args-table");
@@ -194,7 +194,7 @@ async function loadCore() {
 	const citiesNs = await load<CitiesModule>("@/ziwei/cities");
 	const lunarNs = await load<typeof import("lunar-typescript")>("lunar-typescript");
 	// classics / synastry 的入口模块：分别对应两条命令的内核
-	const classicsNs = await load<ClassicsModule>("@/classics");
+	const classicsNs = await load<ClassicsModule>("@/corpus");
 	const chartViewNs = await load<ChartViewModule>("@/synastry/chart-view");
 
 	const argsNs = await load<ArgsModule>("@/cli/args");
@@ -223,7 +223,7 @@ async function loadCore() {
 		["@/ziwei/constants", constantsNs],
 		["@/ziwei/cities", citiesNs],
 		["lunar-typescript", lunarNs],
-		["@/classics", classicsNs],
+		["@/corpus", classicsNs],
 		["@/synastry/chart-view", chartViewNs],
 		["@/cli/args", argsNs],
 		["@/cli/args-table", argsTableNs],

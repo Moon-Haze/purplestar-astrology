@@ -93,7 +93,7 @@ import { SHOU_LIAN_GE } from "./converged";
 // `test/invariants.test.ts`（`GEJU_NAME_ALIASES`）的既有 import 一行都不用改 ——
 // 本模块的公开面与拆分前**逐名一致**（原先 module-private 的 `DetectContext` 不在此列）。
 export type { Pattern, PatternCondition, GejuNameAlias } from "./types";
-export { GEJU_NAME_ALIASES } from "./data";
+export { GEJU_NAME_ALIASES } from "../../corpus/patterns-data";
 export { getMingGongSummary } from "./soul-summary";
 
 /**

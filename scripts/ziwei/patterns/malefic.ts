@@ -5,7 +5,7 @@
  *
  * 识别器签名一律 `(ctx: DetectContext) => Pattern[]`：命中返回 `[one]`，未命中返回 `[]`，
  * 并进总表只发生在 `./index` 的 `detectPatterns` 那一行 for 里 —— 本文件不接触任何累积数组。
- * 判词一律从 `./data` 的 `PATTERN_VERDICTS` 取，收尾经 `./helpers` 的 `fillVerdict` 填占位符。
+ * 判词一律从 `corpus/patterns-data` 的 `PATTERN_VERDICTS` 取，收尾经 `./helpers` 的 `fillVerdict` 填占位符。
  *
  * 下方导出的数组**次序即 `detectPatterns` 的输出次序**，增删或调整组内次序都会改变输出排列。
  *
@@ -13,7 +13,7 @@
  */
 
 import type { Pattern, DetectContext, Detector } from "./types";
-import { PATTERN_VERDICTS } from "./data";
+import { PATTERN_VERDICTS } from "../../corpus/patterns-data";
 import { hasStar, getJiaPalaces, sanFangAllStars, fillVerdict } from "./helpers";
 import { oppositeBranch } from "../palace-relations";
 
@@ -58,13 +58,15 @@ function detectYangTuoJiaJi({ chart }: DetectContext): Pattern[] {
 		if (!aPrev && !aNext) continue;
 
 		const name = "羊陀夹忌";
-		return [{
-			name,
-			level: 40,
-			palaces: ["命宫", prev.name, next.name],
-			conditions: { required: ["化忌坐命", "擎羊陀罗分居命宫前后两宫"] },
-			...PATTERN_VERDICTS[name],
-		}];
+		return [
+			{
+				name,
+				level: 40,
+				palaces: ["命宫", prev.name, next.name],
+				conditions: { required: ["化忌坐命", "擎羊陀罗分居命宫前后两宫"] },
+				...PATTERN_VERDICTS[name],
+			},
+		];
 	}
 	return [];
 }
@@ -78,13 +80,15 @@ function detectHuoLingJiaMing({ chart }: DetectContext): Pattern[] {
 	if (!okA && !okB) return [];
 
 	const name = "火铃夹命";
-	return [{
-		name,
-		level: 40,
-		palaces: ["命宫", prev.name, next.name],
-		conditions: { required: ["火星铃星分居命宫前后两宫"] },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: 40,
+			palaces: ["命宫", prev.name, next.name],
+			conditions: { required: ["火星铃星分居命宫前后两宫"] },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 /** 空劫夹命：地空地劫分居命宫前后 */
@@ -96,13 +100,15 @@ function detectKongJieJiaMing({ chart }: DetectContext): Pattern[] {
 	if (!okA && !okB) return [];
 
 	const name = "空劫夹命";
-	return [{
-		name,
-		level: 40,
-		palaces: ["命宫", prev.name, next.name],
-		conditions: { required: ["地空地劫分居命宫前后两宫"] },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: 40,
+			palaces: ["命宫", prev.name, next.name],
+			conditions: { required: ["地空地劫分居命宫前后两宫"] },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 /** 廉杀羊：廉贞、七杀、擎羊三星会照（流年大限最凶） */
@@ -111,13 +117,15 @@ function detectLianShaYang({ chart }: DetectContext): Pattern[] {
 	if (!(sanFangSet.has("廉贞") && sanFangSet.has("七杀") && sanFangSet.has("擎羊"))) return [];
 
 	const name = "廉杀羊";
-	return [{
-		name,
-		level: 40,
-		palaces: ["命宫"],
-		conditions: { required: ["廉贞、七杀、擎羊三星会照三方四正"] },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: 40,
+			palaces: ["命宫"],
+			conditions: { required: ["廉贞、七杀、擎羊三星会照三方四正"] },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 /** 巨火羊：巨门、火星、擎羊会照 */
@@ -126,36 +134,38 @@ function detectJuHuoYang({ chart }: DetectContext): Pattern[] {
 	if (!(sanFangSet.has("巨门") && sanFangSet.has("火星") && sanFangSet.has("擎羊"))) return [];
 
 	const name = "巨火羊";
-	return [{
-		name,
-		level: 40,
-		palaces: ["命宫"],
-		conditions: { required: ["巨门、火星、擎羊三星会照三方四正"] },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: 40,
+			palaces: ["命宫"],
+			conditions: { required: ["巨门、火星、擎羊三星会照三方四正"] },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 /** 铃昌陀武：铃星、文昌、陀罗、武曲会照（限至投河） */
 function detectLingChangTuoWu({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (
-		!(
-			sanFangSet.has("铃星") &&
-			sanFangSet.has("文昌") &&
-			sanFangSet.has("陀罗") &&
-			sanFangSet.has("武曲")
-		)
-	)
+	if (!(
+		sanFangSet.has("铃星") &&
+		sanFangSet.has("文昌") &&
+		sanFangSet.has("陀罗") &&
+		sanFangSet.has("武曲")
+	))
 		return [];
 
 	const name = "铃昌陀武";
-	return [{
-		name,
-		level: 40,
-		palaces: ["命宫"],
-		conditions: { required: ["铃星、文昌、陀罗、武曲四星会照三方四正"] },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: 40,
+			palaces: ["命宫"],
+			conditions: { required: ["铃星、文昌、陀罗、武曲四星会照三方四正"] },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 /** 马头带箭：擎羊在午宫坐命 */
@@ -172,13 +182,15 @@ function detectMaTouDaiJian({ chart, ming }: DetectContext): Pattern[] {
 		bonus.push("魁钺加照");
 
 	const name = "马头带箭";
-	return [{
-		name,
-		level: bonus.length ? 75 : 40,
-		palaces: ["命宫"],
-		conditions: { required, bonus },
-		...PATTERN_VERDICTS[name],
-	}];
+	return [
+		{
+			name,
+			level: bonus.length ? 75 : 40,
+			palaces: ["命宫"],
+			conditions: { required, bonus },
+			...PATTERN_VERDICTS[name],
+		},
+	];
 }
 
 export const E_GE: ReadonlyArray<Detector> = [

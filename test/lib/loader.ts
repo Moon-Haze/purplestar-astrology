@@ -22,12 +22,7 @@ import { dirname, resolve } from "node:path";
 //
 // ⚠️ 内核在仓库根 scripts/（单 skill 形态：仓库根 = skill 根）。本行是**字面相对路径**，
 //    不受解析钩子照顾 —— 挪内核时它是会静默失效的方向之一（另一个是 tools/ 下同样写死路径的两处）。
-import {
-	installHooks,
-	loadFailureHint,
-	makeLoader,
-	pickRoot,
-} from "../../scripts/boot-hooks.ts";
+import { installHooks, loadFailureHint, makeLoader, pickRoot } from "../../scripts/boot-hooks.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <仓库根>/test/lib
 
@@ -88,7 +83,7 @@ export const loadAlgorithm = () => load<typeof import("@/ziwei/algorithm")>("@/z
 export const loadConstants = () => load<typeof import("@/ziwei/constants")>("@/ziwei/constants");
 export const loadPatterns = () => load<typeof import("@/ziwei/patterns")>("@/ziwei/patterns");
 export const loadSihua = () => load<typeof import("@/ziwei/mutagen")>("@/ziwei/mutagen");
-export const loadClassics = () => load<typeof import("@/classics")>("@/classics");
+export const loadClassics = () => load<typeof import("@/corpus")>("@/corpus");
 export const loadRender = () => load<typeof import("@/cli/render")>("@/cli/render");
 
 /** 一次性取回测试最常用的符号。 */

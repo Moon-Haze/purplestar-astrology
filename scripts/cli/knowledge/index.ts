@@ -14,7 +14,7 @@
  */
 
 import type { CliArgs } from "../args";
-import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/classics";
+import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/corpus";
 
 // ══════════════════════ books 域：古籍原文检索（默认） ══════════════════════
 

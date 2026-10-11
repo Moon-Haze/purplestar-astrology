@@ -1,8 +1,8 @@
 // ── skill 清单（仓库级，唯一源）──
 //
 // 三 skill 合一后的单 skill 形态：**仓库根 = skill 根**（根 `SKILL.md` + 根 `scripts/` +
-// 根 `references/` + 根 `package.json`），classics 与 synastry 的内核分别住在
-// `scripts/classics/` 与 `scripts/synastry/`，命令并入同一条 CLI。清单自此只有一项。
+// 根 `references/` + 根 `package.json`），corpus（古籍/天纪/核对表语料，原 classics）与 synastry 的内核分别住在
+// `scripts/corpus/` 与 `scripts/synastry/`，命令并入同一条 CLI。清单自此只有一项。
 //
 // ## 为什么清单仍从磁盘推导
 //
@@ -63,7 +63,6 @@ export const CHART_LIKE: readonly string[] = [SOURCE_SKILL];
  * @returns skill 根的绝对路径 = 仓库根
  */
 export function skillDir(name: string): string {
-	if (name !== SOURCE_SKILL)
-		throw new Error(`单 skill 形态下没有第二个 skill：${name}`);
+	if (name !== SOURCE_SKILL) throw new Error(`单 skill 形态下没有第二个 skill：${name}`);
 	return REPO_ROOT;
 }

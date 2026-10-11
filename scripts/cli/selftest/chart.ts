@@ -174,7 +174,7 @@ export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): v
 			throw new Error("太阳「三不见」在 synastry 侧被强化为「必有」——两库口径打架");
 		if (d.includes("二十八岁后"))
 			throw new Error("武曲晚婚门槛 data.ts 仍为 28 岁——应统一为 30 岁");
-		// classics/data 侧的飞星词白名单机检（spec §4.3，与上方 synastry-knowledge 禁词
+		// corpus/data 侧的飞星词白名单机检（spec §4.3，与上方 synastry-knowledge 禁词
 		// 对偶）：「自化 / 来因宫 / 飞化」只允许出现在否定 / 辨析语境——白名单按文件钉
 		// **稳定子串**而非行号（行号随文案增删漂移，子串跟着语境走）：quanshu 的辨析条
 		// （「北派飞星派之自化……倪师不主张使用」）与 quanji 的口径括注（「古籍原文如此」）。
@@ -187,7 +187,7 @@ export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): v
 			"quanshu.ts": ["北派飞星派之自化"],
 		};
 		for (const [file, pins] of Object.entries(CLASSICS_FLYING_WHITELIST)) {
-			const src = readFileSync(resolve(ctx.root, "classics", "data", file), "utf8");
+			const src = readFileSync(resolve(ctx.root, "corpus", "data", file), "utf8");
 			const offender = src
 				.split("\n")
 				.map((line, i) => ({ line: line.trim(), no: i + 1 }))
@@ -196,7 +196,7 @@ export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): v
 				.find(({ line }) => !pins.some(p => line.includes(p)));
 			if (offender)
 				throw new Error(
-					`classics/data/${file} L${offender.no} 出现白名单外飞星词（自化/来因宫/飞化）：` +
+					`corpus/data/${file} L${offender.no} 出现白名单外飞星词（自化/来因宫/飞化）：` +
 						`「${offender.line.slice(0, 40)}」——体系不计算宫干飞化，用户可见文案只允许` +
 						`否定/辨析语境（本文件白名单：${pins.join("、") || "无"}）`
 				);

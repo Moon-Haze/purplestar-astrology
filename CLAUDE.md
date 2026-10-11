@@ -142,7 +142,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 ## 单 skill 形态（2026-09-30 三 skill 合一）
 
-此前 `skills/` 下有三个自包含 skill（astrology 排盘 / synastry 合盘 / classics 古籍），2026-09-30 合并为仓库根的单 skill：内核上提根 `scripts/`，classics 与 synastry 的内核分别住 `scripts/classics/` 与 `scripts/synastry/`，命令并入同一条 CLI，selftest 三段合一。**`skills/` 目录已删除**，别照旧记忆找它。
+此前 `skills/` 下有三个自包含 skill（astrology 排盘 / synastry 合盘 / classics 古籍），2026-09-30 合并为仓库根的单 skill：内核上提根 `scripts/`，语料与 synastry 的内核分别住 `scripts/corpus/`（原 classics，2026-10-11 并入天纪语料与引文核对表后改名）与 `scripts/synastry/`，命令并入同一条 CLI，selftest 三段合一。**`skills/` 目录已删除**，别照旧记忆找它。
 
 **归属规则（三句话）**：
 

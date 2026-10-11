@@ -9,7 +9,7 @@
  */
 
 import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
-import { ALL_BOOKS, searchClassics } from "@/classics";
+import { ALL_BOOKS, searchClassics } from "@/corpus";
 import {
 	getTopicReport,
 	getTopicReportMeta,

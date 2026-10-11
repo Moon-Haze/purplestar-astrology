@@ -1881,10 +1881,10 @@ describe("CLI 端到端", () => {
 
 	// ── knowledge 古籍检索 ──
 	describe("knowledge 古籍检索（searchClassics 分支）", () => {
-		// ⚠️ 古籍内核在根 `scripts/classics/`，`@/classics` 别名可达 ——
+		// ⚠️ 古籍内核在根 `scripts/corpus/`，`@/corpus` 别名可达 ——
 		//    与其他内核模块同一加载口径。本组测的是**古籍文本本身**（分词、limit 截断、
 		//    snippet 窗口）。
-		const loadClassics = () => load<typeof import("@/classics")>("@/classics");
+		const loadClassics = () => load<typeof import("@/corpus")>("@/corpus");
 
 		it("空查询返回空数组（不把空白当关键词）", async () => {
 			const { searchClassics } = await loadClassics();

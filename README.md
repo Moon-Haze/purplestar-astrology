@@ -53,15 +53,15 @@ cd ~/<技能目录>/purplestar-astrology && npm install
 
 每份知识的**归属地**（权威那一份）：
 
-| 内容                                     | 位置                                    |
-| ---------------------------------------- | --------------------------------------- |
-| 排盘算法、格局库（含古籍出处与破格条件） | `scripts/ziwei/patterns/`               |
-| 四化体系、流年流月推法                   | `scripts/ziwei/mutagen.ts`              |
-| 主题论断（十四主星 × 13 主题动态推算）   | `scripts/ziwei/analysis/`               |
-| 中国城市经纬度（真太阳时校正）           | `scripts/ziwei/cities.ts`               |
-| 十四主星在夫妻宫断语、四化入夫妻宫       | `scripts/synastry/synastry-knowledge.ts`|
-| 合盘方法论与评分标准                     | `references/synastry-guide.md`          |
-| 三部古籍原文                             | `scripts/classics/data/`                |
+| 内容                                     | 位置                                     |
+| ---------------------------------------- | ---------------------------------------- |
+| 排盘算法、格局库（含古籍出处与破格条件） | `scripts/ziwei/patterns/`                |
+| 四化体系、流年流月推法                   | `scripts/ziwei/mutagen.ts`               |
+| 主题论断（十四主星 × 13 主题动态推算）   | `scripts/ziwei/analysis/`                |
+| 中国城市经纬度（真太阳时校正）           | `scripts/ziwei/cities.ts`                |
+| 十四主星在夫妻宫断语、四化入夫妻宫       | `scripts/synastry/synastry-knowledge.ts` |
+| 合盘方法论与评分标准                     | `references/synastry-guide.md`           |
+| 三部古籍原文                             | `scripts/corpus/data/`                   |
 
 **不含**线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/`——它们未随 skill 分发，解读请依赖上表知识源。
 
