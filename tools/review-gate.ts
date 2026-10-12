@@ -21,10 +21,13 @@
 //      判「有没有登记」交给 selftest —— 复制一份判据就是第二个真相源，下次必然漂移。
 //   2. **不替代 `npm test`**。工具只解析它的输出、核对内核层计数，不重跑任何断言。
 //   3. **不做风格判断**。本仓库格式化口径未统一，工具去管风格只会制造无关 diff。
+//   4. **逐字节对拍只在「重构（不改行为）」时成立**（`--byte-diff`）。行为新增类变更
+//      本来就该变输出，此时报差异是正常的 —— 分档那一问就是提醒评审者别误用。
 //
 // 退出码：0 = 无阻断项且闸门全绿；1 = 有阻断项或闸门未过；2 = 参数/环境问题。
 
 import { spawnSync } from "node:child_process";
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -348,6 +351,144 @@ function touchesDir(paths: string[], frag: string): boolean {
 	return paths.some(p => p.startsWith(frag));
 }
 
+
+// ══════════════════════════════════════════════════════════════════════
+// 逐字节对拍 —— 重构类变更的硬证据
+//
+// 本会话手工做过三次，每次都踩坑，故固化成工具：
+//   ① 快照落 /tmp → 它会被清空 → cmp 对**两个都不存在**的文件返回失败
+//      → 9 个场景全报 DIFFERS，差点当成「改动破坏了全部输出」否掉一次正确改动。
+//      故快照落**仓库内** .review-tmp/（已 .gitignore），并逐个校验快照非空。
+//   ② `cmd | grep -c X && next` 在零匹配时 grep 返回 1、next 根本不执行 ——
+//      闸门"跑过"是假的。故比对前**显式校验每个快照**，校验不过报「验证手段失准」
+//      并以失败退出，**绝不**报成 DIFFERS。
+//   ③ stash 必须保证还原。故用 try/finally，并核对还原后的工作区与 stash 前一致。
+// ══════════════════════════════════════════════════════════════════════
+
+/** 快照目录（仓库内；已进 .gitignore，故不会被 stash 卷进去、也不会被误提交）。 */
+const SNAP_DIR = resolve(SKILL_ROOT, ".review-tmp");
+
+/** 样例盘（虚构数据，与 help 的示例同款）。 */
+const SAMPLE_BIRTH = ["2011-06-24", "07:45", "男", "杭州"];
+
+interface Scenario {
+	name: string;
+	args: readonly string[];
+}
+
+/**
+ * 对拍场景。主题清单**由注册表派生**（`analysis/data.ts` 零 import，取它无开销），
+ * 故加主题时本表自动跟上 —— 与 tools/cli-samples.ts 那种手维护清单相反，
+ * 因为这里漏一个主题 = 少覆盖，而手维护的清单必然腐烂。
+ */
+async function buildScenarios(): Promise<Scenario[]> {
+	const { TOPIC_KEYS } = (await import("../scripts/analysis/data")) as {
+		TOPIC_KEYS: readonly string[];
+	};
+	const A = (extra: readonly string[]): string[] => ["astrology", ...SAMPLE_BIRTH, ...extra];
+	return [
+		{ name: "chart --json", args: A(["--json"]) },
+		{ name: "astrology --report", args: A(["--report"]) },
+		{ name: "astrology 默认概览", args: A([]) },
+		...TOPIC_KEYS.map(t => ({ name: `topic ${t}`, args: A(["--topic", t]) })),
+	];
+}
+
+/** 跑一批场景并把 stdout 落盘。返回「快照是否可信」——不可信时绝不进入比对。 */
+function snapshot(tag: string, scenarios: readonly Scenario[]): Map<string, string> {
+	const dir = resolve(SNAP_DIR, tag);
+	mkdirSync(dir, { recursive: true });
+	const out = new Map<string, string>();
+	for (const s of scenarios) {
+		const r = spawnSync(process.execPath, ["scripts/purple-star.ts", ...s.args], {
+			cwd: SKILL_ROOT,
+			encoding: "utf8",
+			maxBuffer: 1 << 26,
+		});
+		if (r.status !== 0) {
+			throw new Error(
+				`场景「${s.name}」退出码 ${r.status} —— 基线不可信，先修好再对拍：\n${(r.stderr ?? "").slice(0, 300)}`
+			);
+		}
+		const p = resolve(dir, `${s.name.replace(/[^\w.-]/g, "_")}.txt`);
+		writeFileSync(p, r.stdout ?? "", "utf8");
+		out.set(s.name, p);
+	}
+	return out;
+}
+
+/**
+ * 读快照并**校验它真的存在且非空**。
+ *
+ * ⚠️ 这一段是为堵「验证手段失准」而存在的：快照缺失/为空时，`cmp` 只会返回「不同」，
+ * 于是**工具失灵**会被读成**代码变了**。宁可直接失败，也不能给出方向相反的结论。
+ */
+function readShot(p: string): { ok: true; text: string } | { ok: false; why: string } {
+	try {
+		if (statSync(p).size === 0) {return { ok: false, why: "快照为空" };}
+	} catch {
+		return { ok: false, why: "快照文件不存在" };
+	}
+	try {
+		return { ok: true, text: readFileSync(p, "utf8") };
+	} catch (e) {
+		return { ok: false, why: `快照读取失败：${e instanceof Error ? e.message : String(e)}` };
+	}
+}
+
+interface ByteDiffResult {
+	same: string[];
+	diff: string[];
+	toolFault: string[];
+}
+
+async function runByteDiff(): Promise<ByteDiffResult> {
+	const scenarios = await buildScenarios();
+	const before = git(["status", "--porcelain"]).out;
+
+	rmSync(SNAP_DIR, { recursive: true, force: true });
+	const afterShot = snapshot("after", scenarios);
+
+	const stash = git(["stash", "push", "--include-untracked", "-m", "review-gate:byte-diff"]);
+	if (!stash.ok) {
+		return { same: [], diff: [], toolFault: ["git stash 失败，无法取得基线（工作区无变更？）"] };
+	}
+
+	let after: Map<string, string>;
+	try {
+		after = snapshot("before", scenarios);
+	} finally {
+		// 必须还原，且要**核对**还原成功 —— 否则这份「基线」是假的
+		git(["stash", "pop"]);
+	}
+	const restored = git(["status", "--porcelain"]).out;
+	if (restored !== before) {
+		return {
+			same: [],
+			diff: [],
+			toolFault: ["stash pop 后工作区与对拍前不一致 —— **请立即检查工作区**，别继续用本次结果"],
+		};
+	}
+
+	const same: string[] = [];
+	const diff: string[] = [];
+	const toolFault: string[] = [];
+	for (const s of scenarios) {
+		const a = readShot(afterShot.get(s.name)!);
+		const b = readShot(after.get(s.name)!);
+		if (!a.ok || !b.ok) {
+			toolFault.push(`${s.name}：${!a.ok ? `after ${a.why}` : ""}${!a.ok && !b.ok ? "；" : ""}${!b.ok ? `before ${b.why}` : ""}`);
+			continue;
+		}
+		if (a.text === b.text) {same.push(s.name);}
+		else {
+			diff.push(s.name);
+		}
+	}
+	rmSync(SNAP_DIR, { recursive: true, force: true });
+	return { same, diff, toolFault };
+}
+
 // ── 闸门执行 ──────────────────────────────────────────────────────────────────
 interface Gate {
 	name: string;
@@ -428,13 +569,14 @@ function printUsage(): void {
   npx tsx tools/review-gate.ts                # 对「工作区未提交改动」跑闸门
   npx tsx tools/review-gate.ts --base master  # 对某基线的差异跑（含已提交部分）
   npx tsx tools/review-gate.ts --no-run       # 只出分档与检查单，不执行闸门命令
+  npx tsx tools/review-gate.ts --byte-diff   # 追加「逐字节对拍」（重构类必做证据）
   npx tsx tools/review-gate.ts -h
 
 退出码：0 无阻断且闸门全绿 · 1 有阻断或闸门未过 · 2 参数/环境问题
 `);
 }
 
-function main(): void {
+async function main(): Promise<void> {
 	const argv = process.argv.slice(2);
 	if (argv.includes("-h") || argv.includes("--help")) {
 		printUsage();
@@ -447,6 +589,7 @@ function main(): void {
 		process.exit(2);
 	}
 	const noRun = argv.includes("--no-run");
+	const byteDiff = argv.includes("--byte-diff");
 
 	if (git(["rev-parse", "--git-dir"]).code !== 0) {
 		console.error("不在 git 仓库内，无法取差异。");
@@ -479,6 +622,7 @@ function main(): void {
 	}
 
 	let gates: Gate[] = [];
+	const bdCounters = { diff: 0, fault: 0 };
 	if (!noRun) {
 		gates = runGates(cls.tier);
 		console.log(`\n── 闸门（${cls.tier}档必跑）──`);
@@ -497,8 +641,31 @@ function main(): void {
 	for (const [k, q] of JUDGE_ITEMS) {console.log(`  ☐ [${k}] ${q}`);}
 	console.log(`  ☐ [分档] 本次是否属「重构（不改行为）」？是 → 必须补逐字节对拍证据`);
 
-	const blockers = findings.filter(f => f.level === "🔴").length;
-	const failed = gates.filter(g => !g.pass).length;
+	const blockers = findings.filter(f => f.level === "🔴").length + bdCounters.diff;
+	const failed = gates.filter(g => !g.pass).length + bdCounters.fault;
+	if (byteDiff) {
+		// 逐字节对拍：把改动 stash 掉取基线，跑同一批场景再逐字比对。
+		// 只在「本次确属重构（声明不改行为）」时有意义 —— 行为新增本来就该变。
+		console.log(`\n── 逐字节对拍 ──`);
+		const bd = await runByteDiff();
+		if (bd.toolFault.length) {
+			// 验证手段失准 → 直接失败，绝不报成「代码变了」
+			console.log(`  ❌ 验证手段失准，本次结果不可用：`);
+			for (const t of bd.toolFault) {console.log(`      ${t}`);}
+		} else if (bd.same.length) {
+			console.log(`  ✅ ${bd.same.length} 个场景逐字节一致：${bd.same.join("、")}`);
+		}
+		if (bd.diff.length) {
+			console.log(`  ❌ ${bd.diff.length} 个场景有差异：${bd.diff.join("、")}`);
+			console.log(`      重构类变更不允许输出变化；行为新增则本项不适用。`);
+		}
+		if (!bd.same.length && !bd.diff.length && !bd.toolFault.length) {
+			console.log("  （无场景可对拍）");
+		}
+		bdCounters.diff = bd.diff.length;
+		bdCounters.fault = bd.toolFault.length;
+	}
+
 	console.log(`\n${RULE}`);
 	const verdict =
 		blockers || failed
@@ -514,7 +681,7 @@ function main(): void {
 const isDirectRun = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isDirectRun) {
 	try {
-		main();
+		await main();
 	} catch (err) {
 		console.error(err);
 		process.exit(1);

@@ -45,6 +45,12 @@ db/dataset/topics-*.parquet
 db/dataset.staging/
 db/ziwei.duckdb*
 
+# ── 评审闸门的快照目录（tools/review-gate.ts --byte-diff 用）─────────────
+# 落仓库内而非 /tmp：/tmp 只有 10 MB 且会被清空，本会话因快照被清空导致
+# 「9 场景全报 DIFFERS」的假结论。进 .gitignore 才能既不被 stash 卷走、
+# 也不被 `git add -A` 误提交。
+.review-tmp/
+
 # ── 系统垃圾 ──────────────────────────────────────────────
 .DS_Store
 *.log
