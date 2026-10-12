@@ -29,10 +29,11 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 
-import { scanCitations } from "./lib/citation-guard.ts";
+import { scanCitations, scanCitationsForRoots } from "./lib/citation-guard.ts";
 import { ALL_SKILLS, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
 // ⚠️ 核对表是**唯一一份数据资产**，它留在内核里 —— 数据留原地，逻辑搬到测试侧。
 import { ANNOTATIONS } from "../scripts/corpus/data/annotations.ts";
+import { SCHOOLS, SCHOOL_IDS } from "../scripts/school/registry.ts";
 
 /**
  * 从核对表里现取一条未核实引文的核心，用作违例样本。
@@ -46,6 +47,8 @@ import { ANNOTATIONS } from "../scripts/corpus/data/annotations.ts";
  * 「紫微斗数分析数据库 — 倪海厦三合派体系」这样的**标题句**，直接取 `[0]` 会得到空样本，
  * 而空样本会让「违例抓得到」退化成「什么都没抓到也是对的」。
  */
+const DEFAULT_NI_SCHOOL = "wenmo-nishi";
+
 const QUOTE =
 	ANNOTATIONS.filter(e => e.status === "suspect" || e.status === "fabricated")
 		.map(e => e.text.match(/[「"『]([^」"』]{4,})[」"』]/)?.[1])
@@ -140,48 +143,83 @@ describe("引文守卫：扫描逻辑（喂构造的临时目录树）", () => {
 	});
 });
 
-describe("引文守卫：扫全仓每个 skill 的 scripts/", () => {
+describe("引文守卫：按流派分派（每校扫各自 citationRoots）", () => {
 	/**
-	 * 每个 skill 的扫描结果，进程内算一次（describe 回调只跑一次）。
+	 * 扫描结果按 (流派, 扫描根) 展开，进程内算一次（describe 回调只跑一次）。
 	 *
 	 * @remarks
-	 * 根取该 skill 的 `scripts/`（内核根），与从前各 skill 自扫时的根**完全一致** ——
-	 * 变的只是「谁来扫」。
+	 * Phase 3 / ADR-004：**扫谁、用哪份核对表，由流派适配器声明**，不再由本测试
+	 * 硬编码「全仓 + 唯一那份核对表」。新增流派时，它的 `citationRoots` 会被这里
+	 * 自动纳入扫描 —— 而它自带核对表，故不必、也不该借用倪师那份。
 	 */
-	const SCANS = ALL_SKILLS.map(name => {
-		const root = resolve(skillDir(name), "scripts");
-		return { name, root, exists: existsSync(root), ...scanCitations(root) };
-	});
+	const SCANS = SCHOOL_IDS.flatMap(id =>
+		SCHOOLS[id].citationRoots.map(root => ({
+			school: id,
+			root: root.scanRoot,
+			exists: existsSync(root.scanRoot),
+			...scanCitations(root.scanRoot, root.checklist),
+		}))
+	);
 
-	it("每个 skill 的 scripts/ 都真的扫到了文件 —— 根写歪时守卫会静默零违例", () => {
+	it("每个声明的 citationRoot 都真的扫到了文件 —— 根写歪时守卫会静默零违例", () => {
 		// 空转防护。少了这条，下面两条会在一份空结果上跑完全绿 —— 一条恒真的守卫比没有
 		// 守卫更坏，它会被当成保障。
-		assert.ok(SCANS.length > 0, "skills/ 下一个 skill 都没扫到 —— ALL_SKILLS 为空？");
+		assert.ok(SCANS.length > 0, "注册表里一个 citationRoots 都没有 —— 分派形同虚设");
 		const empty = SCANS.filter(s => s.checked.length === 0).map(
-			s => `${s.name}（${s.exists ? "scripts/ 在，但一个 .ts 都没扫到" : "scripts/ 不存在"}）`
+			s =>
+				`${s.school}@${s.root}（${s.exists ? "根在，但一个 .ts 都没扫到" : "根不存在"}）`
 		);
-		assert.deepEqual(empty, [], `以下 skill 的扫描范围是空的：\n${empty.join("\n")}`);
+		assert.deepEqual(empty, [], `以下扫描根的范围是空的：\n${empty.join("\n")}`);
 	});
 
-	it("全仓合计至少跳过一份核对表 —— 零份说明排除规则失配，其内容会自我命中", () => {
-		// 单看某个 skill 看不出问题：只有源持有核对表，另外两个本来就是 0。故查**全仓合计**。
-		// 若为零，`isChecklistSource` 已失配，那些 suspect 引文会把自己报成违例 —— 而下面
-		// 那条「零违例」会因此变红，报的却是一堆假违例。
+	it("合计至少跳过一份核对表 —— 零份说明排除规则失配，其内容会自我命中", () => {
 		const total = SCANS.reduce((n, s) => n + s.skipped.length, 0);
 		assert.ok(
 			total > 0,
-			`全仓没有跳过任何核对表 —— ${SOURCE_SKILL} 的 corpus/data/annotations.ts 是否仍导出 ANNOTATIONS？`
+			"没有任何扫描根跳过核对表 —— isChecklistSource 是否已失配？那些 suspect 引文会自我命中"
 		);
 	});
 
-	it("全仓零违例：没有未核实引文仍冒充倪师原话", () => {
+	it("全流派零违例：没有未核实引文仍冒充倪师原话", () => {
 		// ⚠️ 这条是**内容**断言，上面两条是**结构**断言，缺一不可：单独看这条，一个什么都没
 		// 扫到的守卫也会通过。三者的失败信息各自指向不同的故障，不要合并成一条。
-		const bad = SCANS.flatMap(s => s.violations.map(v => `${s.name}: ${v}`));
+		const bad = SCANS.flatMap(s => s.violations.map(v => `${s.school}@${s.root}: ${v}`));
 		assert.deepEqual(
 			bad,
 			[],
 			`以下未核实引文仍冒充倪师原话（应改古诀云/紫微斗数有云/一说，或补核对记录）：\n${bad.join("\n")}`
 		);
+	});
+
+	it("流派隔离：空壳流派不带倪师核对表 ⇒ 既不报违例，也确实抓不到那句引文", () => {
+		// 这是「按流派分派」的核心证据，且**双向**：
+		//   正向 —— 同一棵含违例的树，用**空核对表**的新流派扫 ⇒ 零违例（不误伤别家内容）；
+		//   反向 —— 同一棵树用**倪师核对表**扫 ⇒ 抓得到（证明不是「压根没扫到」造成的假绿）。
+		const tree = { "ziwei/a.ts": fakeCitation(QUOTE) };
+		const withNi = scanTree(tree);
+		assert.deepEqual(
+			withNi.violations,
+			[QUOTE.slice(0, 40)],
+			"倪师核对表应在本仓仍抓得到这句 —— 若抓不到，上面那条「零违例」就失去意义"
+		);
+		// 模拟一个新流派：扫同一棵树，但自带一份（此例为空的）核对表。
+		const root = makeTree(tree);
+		try {
+			const other = scanCitations(root, []);
+			assert.deepEqual(other.violations, [], "空核对表的流派不该替倪师背锅");
+			assert.deepEqual(
+				other.checked,
+				withNi.checked,
+				"两次扫描范围应一致 —— 否则「零违例」是扫得少而非不该报"
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("scanCitationsForRoots 合并多流派结果 —— 分派入口本身可用", () => {
+		const merged = scanCitationsForRoots(SCHOOLS[DEFAULT_NI_SCHOOL].citationRoots);
+		assert.ok(merged.checked.length > 0, "合并结果应含已扫文件");
+		assert.deepEqual(merged.violations, [], "合并结果应与单流派扫描一致（零违例）");
 	});
 });

@@ -55,6 +55,8 @@ import type { ZiweiChart } from "../types";
 // 本目录的元数据表与论断文案在
 // ./data（STAR_CONTENT_MAP，含「倪师…说」引文）。公开面由文末 re-export 兜住。
 import {
+	TOPIC_KEYS,
+	TOPIC_DEFS,
 	TOPIC_LABEL,
 	TOPIC_PALACE_NAME,
 	type AnalysisOptions,
@@ -106,7 +108,9 @@ export function getTopicAnalysis(
 	options: AnalysisOptions = {}
 ): string {
 	const ctx = makeContext(chart, topic, options);
-	if (!ctx) {return `无法找到${TOPIC_PALACE_NAME[topic]}相关信息。`;}
+	if (!ctx) {
+		return `无法找到${TOPIC_PALACE_NAME[topic]}相关信息。`;
+	}
 
 	const lines: string[] = [
 		...renderOverview(ctx), // 一、总论
@@ -127,8 +131,9 @@ export function getTopicAnalysis(
 }
 
 // ─── 公开面 re-export ────────────────────────────────────────────────────────
-// 本公开面现导出 5 个值：拆分前即有的 4 个转发（TOPIC_LABEL / TOPIC_PALACE_NAME /
-// getTopicReport / getTopicReportMeta）+ filterGenderContent（候选 7 新增）。
+// 本公开面现导出 7 个值：拆分前即有的 4 个转发（TOPIC_LABEL / TOPIC_PALACE_NAME /
+// getTopicReport / getTopicReportMeta）+ filterGenderContent（候选 7 新增）
+// + TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
 // 前 4 个 `./data` 是实际归属地，此处只做转发，调用方一行不用改；
 // 它们与 filterGenderContent 本文件的实现都要用，故上方已 import，这里再 export 一次。
 // `./report` 的两个名字（--report 全盘报告的编排层）同走这张公开面 ——
@@ -136,7 +141,12 @@ export function getTopicAnalysis(
 // `filterGenderContent`（候选 7）：本文件与 ./report 两处调用都保持 import
 // `./lookups`（避免 index ↔ report 成环），上公开面只为**外部可直测** ——
 // selftest 的性别过滤断言必须经这里 import，直插 lookups 即断言失效。
+// TOPIC_KEYS / TOPIC_DEFS（Phase 4）：主题注册表的**单一真相源**（Phase 2 收编的 8 张平行表
+// 已由它派生）。上公开面是为插件自证 —— 新增主题只需在此表加一个条目，
+// 外部守卫（selftest / 测试）经这里即可断言「某主题已注册且可用」，不必直插 `./data` 内部布局。
 export {
+	TOPIC_KEYS,
+	TOPIC_DEFS,
 	TOPIC_LABEL,
 	TOPIC_PALACE_NAME,
 	getTopicReport,

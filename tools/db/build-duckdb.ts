@@ -23,7 +23,7 @@ import {
 	searchTopicMacroSql,
 	sqlLiteral,
 	topicsViewSql,
-	TOPIC_KEYS,
+	STORAGE_TOPIC_KEYS,
 	TOPIC_LINES_INDEX_SQL,
 	datasetDirIn,
 	datasetStagingDirIn,
@@ -155,8 +155,8 @@ export function shardSql(): {
 	// 未落盘即崩溃）的分片可以安全重做，而不必撞主键冲突后被永久跳过。
 	// 正常路径上删 0 行，走主键索引，开销可忽略。
 	const idInShard = `SELECT ${SQL_SAMPLE_ID_EXPR} FROM shard`;
-	const topicNames = TOPIC_KEYS.map(k => `'${k}'`).join(", ");
-	const topicCols = TOPIC_KEYS.map(k => `topics.${k}`).join(", ");
+	const topicNames = STORAGE_TOPIC_KEYS.map(k => `'${k}'`).join(", ");
+	const topicCols = STORAGE_TOPIC_KEYS.map(k => `topics.${k}`).join(", ");
 	return {
 		temp: `CREATE OR REPLACE TEMP TABLE shard AS SELECT * FROM ${readJson}`,
 		cleanPalaces: `DELETE FROM palaces WHERE sample_id IN (${idInShard})`,

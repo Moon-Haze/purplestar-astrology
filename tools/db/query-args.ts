@@ -2,7 +2,7 @@
 // 纯逻辑模块，不碰 DuckDB，错误路径可独立测试。
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { TOPIC_KEYS, TOPIC_LABEL, type TopicKey } from "../../scripts/analysis/data";
+import { STORAGE_TOPIC_KEYS, TOPIC_LABEL, type TopicKey } from "../../scripts/analysis/data";
 import { deletedArgHint } from "./db";
 
 // ROOT 是 **skill 根**（仓库根），不是 tools/：本文件在 <skill 根>/tools/db/ 下，
@@ -94,7 +94,7 @@ function parsePositionals(p: string[]): QueryCommand {
 			const id = parseId(p[1], head);
 			const keys = p.slice(2);
 			for (const k of keys) {
-				if (!TOPIC_KEYS.includes(k as TopicKey)) {throw new UsageError(topicKeysHint(k));}
+				if (!STORAGE_TOPIC_KEYS.includes(k as TopicKey)) {throw new UsageError(topicKeysHint(k));}
 			}
 			return { kind: "topic", id, keys };
 		}
@@ -104,7 +104,7 @@ function parsePositionals(p: string[]): QueryCommand {
 					'search 需要主题与匹配模式两个参数，示例: search wealth "偏财"'
 				);
 			}
-			if (!TOPIC_KEYS.includes(p[1] as TopicKey)) {throw new UsageError(topicKeysHint(p[1]));}
+			if (!STORAGE_TOPIC_KEYS.includes(p[1] as TopicKey)) {throw new UsageError(topicKeysHint(p[1]));}
 			let limit = 100;
 			if (p[3] !== undefined) {
 				const n = Number(p[3]);
@@ -135,6 +135,6 @@ function parseId(v: string | undefined, cmd: string): number {
 }
 
 function topicKeysHint(got: string): string {
-	const valid = TOPIC_KEYS.map(k => `${k}（${TOPIC_LABEL[k]}）`).join(" ");
+	const valid = STORAGE_TOPIC_KEYS.map(k => `${k}（${TOPIC_LABEL[k]}）`).join(" ");
 	return `未知主题 "${got}"。可选: ${valid}`;
 }

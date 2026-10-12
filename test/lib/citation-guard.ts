@@ -48,7 +48,7 @@ import { resolve } from "node:path";
 // ⚠️ 字面相对路径 + 写全 `.ts` 扩展名：本模块靠 Node 的原生类型擦除加载，不走解析钩子。
 //    核对表是**唯一一份数据资产**，它留在内核里（`corpus/data/annotations.ts`）——
 //    全仓的引文都对照它，故本模块 import 它而不是自存一份。
-import { ANNOTATIONS } from "../../scripts/corpus/data/annotations.ts";
+import { ANNOTATIONS, type AnnotationEntry } from "../../scripts/corpus/data/annotations.ts";
 
 /** 一次扫描的结果。 */
 export interface CitationScan {
@@ -134,7 +134,7 @@ function collectTsFiles(root: string, dir = ""): string[] {
  * 调用方必须同时检查 `checked` 非空 —— 那样的「零违例」是假绿。`test/citations.test.ts`
  * 盯着这一条。
  */
-export function scanCitations(root: string): CitationScan {
+export function scanCitations(root: string, checklist: readonly AnnotationEntry[] = ANNOTATIONS): CitationScan {
 	const checked: string[] = [];
 	const skipped: string[] = [];
 	const chunks: string[] = [];
@@ -149,7 +149,7 @@ export function scanCitations(root: string): CitationScan {
 
 	// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
 	const banned = new Set(
-		ANNOTATIONS.filter(e => e.status === "suspect" || e.status === "fabricated").flatMap(e =>
+		checklist.filter(e => e.status === "suspect" || e.status === "fabricated").flatMap(e =>
 			[...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1])
 		)
 	);
@@ -160,5 +160,32 @@ export function scanCitations(root: string): CitationScan {
 		.filter(m => banned.has(m[1]))
 		.map(m => m[1].slice(0, 40));
 
+	return { violations, checked, skipped };
+}
+
+/** {@link scanCitations} 的多根分派入参（结构化子集，避免与 `SchoolAdapter` 成环）。 */
+export interface CitationRootLike {
+	scanRoot: string;
+	checklist: readonly AnnotationEntry[];
+}
+
+/**
+ * 按多个 (扫描根, 核对表) 对逐一扫描并合并结果 —— 多流派引文守卫的分派入口。
+ *
+ * @remarks
+ * 每个流派只审自己声明的核对表（ADR-004）：新增流派不得复用倪师核对表，
+ * 反之倪师内容也不该被别的流派的核对表放过。合并而非首个命中，是为了
+ * 「覆盖面非空 / 零违例」这类断言能一次看到全流派结果。
+ */
+export function scanCitationsForRoots(roots: readonly CitationRootLike[]): CitationScan {
+	const violations: string[] = [];
+	const checked: string[] = [];
+	const skipped: string[] = [];
+	for (const r of roots) {
+		const s = scanCitations(r.scanRoot, r.checklist);
+		violations.push(...s.violations);
+		checked.push(...s.checked);
+		skipped.push(...s.skipped);
+	}
 	return { violations, checked, skipped };
 }

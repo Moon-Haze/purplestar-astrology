@@ -26,7 +26,13 @@ import { fileURLToPath } from "node:url";
 import type { DuckDBConnection } from "@duckdb/node-api";
 
 import { resolveQueryTarget } from "./db";
-import { TOPIC_KEYS, type TopicKey } from "../../scripts/analysis/data";
+import {
+	TOPIC_KEYS,
+	TOPIC_DEFS,
+	TOPIC_CONTENT_SOURCE,
+	STORAGE_TOPIC_KEYS,
+	type TopicKey,
+} from "../../scripts/analysis/data";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // tools/db
 const SKILL_ROOT = resolve(HERE, "../..");
@@ -59,22 +65,12 @@ const COMPACT_PALACE_KEY: Record<string, string> = {
 const compactPalaceKey = (palaceName: string): string =>
 	COMPACT_PALACE_KEY[palaceName] ?? palaceName;
 
-// 主题 → 紧凑口径主宫名（库内 palace_name 值域）
-const TOPIC_PALACE_COMPACT: Record<TopicKey, string> = {
-	overview: "命宫",
-	personality: "命宫",
-	love: "夫妻",
-	career: "官禄",
-	wealth: "财帛",
-	health: "疾厄",
-	family: "兄弟",
-	children: "子女",
-	move: "迁移",
-	friends: "仆役",
-	home: "田宅",
-	spirit: "福德",
-	parents: "父母",
-};
+// 主题 → 紧凑口径主宫名（库内 palace_name 值域）。由 TOPIC_DEFS[topic].palace（项目口径）
+// 经 compactPalaceKey 归一**派生**，不再手抄 —— 与 Phase 2 的单一真相源同一纪律：
+// 加主题只改 TOPIC_DEFS 一处，此表自动跟上。
+const TOPIC_PALACE_COMPACT: Record<TopicKey, string> = Object.fromEntries(
+	TOPIC_KEYS.map(t => [t, compactPalaceKey(TOPIC_DEFS[t].palace)])
+) as Record<TopicKey, string>;
 
 /** 主题文本的静态节白名单/黑名单 —— 按节截取，动态节（大限/流年/流月）与交互尾巴不进手册。 */
 const DYNAMIC_SECTION_RE = /当前大限|流年|流月|综合建议|继续深度追问/;
@@ -261,7 +257,8 @@ async function collectTopic(
 }> {
 	const palace = TOPIC_PALACE_COMPACT[topic];
 	// 主星取该主题主宫的首颗主星（major_stars[1]，DuckDB 列表 1-based）；空宫（空列表）不计
-	const sql = `SELECT major_stars[1] AS star, ${topic} AS text
+	// 文本列取自 contentKey 的首个主题（别名视图共用源列，见 TOPIC_CONTENT_SOURCE）
+	const sql = `SELECT major_stars[1] AS star, ${TOPIC_CONTENT_SOURCE[topic]} AS text
 FROM topics JOIN palaces USING (sample_id)
 WHERE palace_name = '${palace}' AND len(major_stars) > 0`;
 	const result = await conn.run(sql);
@@ -464,6 +461,26 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 	writeFileSync(join(CODE_DIR, "types.ts"), typeLines.join("\n"));
 
 	for (const topic of TOPIC_KEYS) {
+		// 别名视图（contentKey 与他主题共用，如 study → career）：不重复生成一份大文件，
+		// 直接转出内容源的文件。**不复制数据**是这里的关键 —— career.ts 体积可观，
+		// 复制会让库内不存在的一列内容在代码侧翻倍，且两处日后必然漂移。
+		const source = TOPIC_CONTENT_SOURCE[topic];
+		if (source !== topic) {
+			writeFileSync(
+				join(CODE_DIR, `${topic}.ts`),
+				[
+					"/**",
+					" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
+					` * 本主题是**别名视图**：TOPIC_DEFS.${topic}.contentKey 与 ${source} 同源，`,
+					` * 故断语内容直接转出 ${source}.ts（库内亦共用 ${source} 一列，本主题无独立列）。`,
+					" * 内容修订请改 contentKey 所属主题的文件。",
+					" */",
+					`export { ORACLE } from "./${source}.ts";`,
+					"",
+				].join("\n")
+			);
+			continue;
+		}
 		const { byStar, sanFangByStar } = await collectTopic(conn, topic);
 		const lines: string[] = [
 			"/**",
@@ -548,7 +565,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 	];
 	writeFileSync(join(CODE_DIR, "combo-frequency.ts"), comboLines.join("\n"));
 
-	// 懒加载索引：显式 13 行映射（动态模板 import 在类型层拿不到形状）
+	// 懒加载索引：每个 TOPIC_KEYS 一行（动态模板 import 在类型层拿不到形状）
 	const indexLines = [
 		"/**",
 		" * 断语手册数据（analysis/manual/）的查询入口 —— 按主题懒加载。",
@@ -594,7 +611,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 /** 格局名目对拍：db 渲染集（⭐ 行）vs patterns 现库（多样本实测产出全集）。 */
 async function auditGeju(conn: DuckDBConnection): Promise<void> {
 	// db 侧：⭐ 行 → 名目
-	const sql = `WITH l AS (${TOPIC_KEYS.map(k => `SELECT unnest(string_split(${k}, chr(10))) AS line FROM topics`).join(" UNION ALL ")})
+	const sql = `WITH l AS (${STORAGE_TOPIC_KEYS.map(k => `SELECT unnest(string_split(${k}, chr(10))) AS line FROM topics`).join(" UNION ALL ")})
 SELECT DISTINCT line FROM l WHERE line LIKE '⭐%'`;
 	const rows = (await (await conn.run(sql)).getRowObjectsJS()) as Array<{ line: string }>;
 	const dbNameToLine = new Map<string, string>();

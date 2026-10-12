@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadAlgorithm } from "./lib/loader.ts";
+import { loadAlgorithm, load } from "./lib/loader.ts";
 import type { BaselineSample } from "./lib/compare.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -24,6 +24,11 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 	.map(line => JSON.parse(line) as BaselineSample);
 
 const { generateChart } = await loadAlgorithm();
+// Phase 3：绊线改为声明式 —— 禁忌项读 SchoolAdapter，不在本文件硬编码。
+const { checkForbiddenFeatures } = await load<typeof import("@/school/guard")>("@/school/guard");
+const { SCHOOLS, DEFAULT_SCHOOL_ID } = await load<typeof import("@/school/registry")>(
+	"@/school/registry"
+);
 const charts = samples.map(s => ({ birth: s.birthInfo, chart: generateChart({ ...s.birthInfo }) }));
 const label = (b: {
 	year: number;
@@ -37,14 +42,27 @@ const DAXIAN_ALLOWED = ["startAge", "endAge", "palaceBranch", "palaceName"];
 
 describe("三合派体系约束", () => {
 	it("宫干自化（Palace.selfMutagen）不被填充", () => {
+		const school = SCHOOLS[DEFAULT_SCHOOL_ID];
+		// 先确认适配器**声明了**该禁忌 —— 否则下面的空结果可能只是「没人查」造成的假绿。
+		assert.ok(
+			school.forbiddenFeatures?.includes("self-mutagen"),
+			"默认流派适配器应声明 self-mutagen 禁忌"
+		);
 		for (const { birth, chart } of charts) {
-			for (const p of chart.palaces) {
-				assert.equal(
-					p.selfMutagen,
-					undefined,
-					`${label(birth)}：${p.name} 填了 selfMutagen —— 飞星派宫干自化，本项目已下线`
-				);
-			}
+			const v = checkForbiddenFeatures(chart, school);
+			assert.deepEqual(
+				v,
+				[],
+				`${label(birth)}：体系禁用特征被触发 ${v.map(x => x.detail).join("；")}`
+			);
+		}
+	});
+
+	it("空壳流派（无 self-mutagen 禁忌）不报宫干自化违例 —— 多流派隔离的最小证据", () => {
+		// 反向对照：同一批盘，只因该流派没声明 self-mutagen，守卫即不触发。
+		// 这证明检查是**按声明分派**的，而非无条件扫字段。
+		for (const { chart } of charts) {
+			assert.deepEqual(checkForbiddenFeatures(chart, { forbiddenFeatures: [] }), []);
 		}
 	});
 

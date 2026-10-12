@@ -9,15 +9,18 @@ import { DuckDBInstance } from "@duckdb/node-api";
 // 改为「全局行字典 + 整数数组映射」，见 spec §5/§6。
 export const CREATE_DB_PRAGMAS = ["PRAGMA force_compression='zstd'"];
 
-// 13 个主题名的**唯一定义**在内核：scripts/analysis/data.ts
-// 的 TOPIC_KEYS。
+// 主题名的**唯一定义**在内核：scripts/analysis/data.ts 的 TOPIC_KEYS（运行时注册表）。
 // 此处只转出 —— 内核的 TopicKey 与这里的列序从此不可能漂移（此前是两份，靠注释提醒）。
 // 视图、构建、校验三处共用同一常量。
+//
+// ⚠️ **注意两个角色不同**：TOPIC_KEYS 是运行时注册表（可含无独立列的别名视图主题），
+// 而拼 SQL 取列必须用 STORAGE_TOPIC_KEYS（数据集物理列集合）。Phase 4 之前两者被混用，
+// 加一个别名主题会让所有这些地方报 `column not found`。
 // ⚠️ 用相对路径而非 `@/` 别名：tools/ 由 tsx 直接执行，不走 CLI 的解析钩子 ——
 //    故本行必须随内核位置手改（内核在仓库根 scripts/），**且 tools/ 不在 npm test 覆盖内**，
 //    漏改不会让任何测试变红，只会在实跑时报模块找不到。
-import { TOPIC_KEYS, type TopicKey } from "../../scripts/analysis/data";
-export { TOPIC_KEYS, type TopicKey };
+import { STORAGE_TOPIC_KEYS, TOPIC_KEYS, type TopicKey } from "../../scripts/analysis/data";
+export { STORAGE_TOPIC_KEYS, TOPIC_KEYS, type TopicKey };
 
 // spec §4.1：结构表两形态共用；主题文本的两张表只有 inline 才建。
 export const DDL_STRUCTURE_STATEMENTS: string[] = [
@@ -104,7 +107,7 @@ export function dictPathFor(dbPath: string): string {
 //    → 输出 NULL，正是源侧 NULL 的语义。
 //    实测 25,920 样本上两种写法耗时无差（全量重建 0.313s vs 0.334s，点查 0.017s vs 0.014s）。
 export function topicsViewSql(): string {
-	const cols = TOPIC_KEYS.map(
+	const cols = STORAGE_TOPIC_KEYS.map(
 		k =>
 			`      string_agg(CASE WHEN topic='${k}' THEN d.line END, chr(10) ORDER BY ord) AS ${k}`
 	).join(",\n");
@@ -219,7 +222,7 @@ export function topicsViewSqlDataset(datasetDir: string): string {
 // 原本不存在的行边界），原文形态下则相反：列里就是源文本，含换行模式有明确定义，
 // 报错才是错的。
 export function searchTopicMacroSqlDataset(): string {
-	const arms = TOPIC_KEYS.map(k => `    WHEN '${k}' THEN contains(${k}, p)`).join("\n");
+	const arms = STORAGE_TOPIC_KEYS.map(k => `    WHEN '${k}' THEN contains(${k}, p)`).join("\n");
 	return `CREATE OR REPLACE MACRO search_topic(t, p) AS TABLE
   SELECT sample_id FROM topics WHERE CASE t
 ${arms}

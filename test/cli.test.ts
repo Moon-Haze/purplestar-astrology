@@ -1584,7 +1584,7 @@ describe("CLI 端到端", () => {
 			assert.fail(`命令本应失败却成功了：purple-star.ts ${sub} ${args.join(" ")}`);
 		}
 
-		it("--topic 裸开关列出 13 个主题清单（不带 --topic 则是默认概览）", async () => {
+		it("--topic 裸开关列出全部主题清单（不带 --topic 则是默认概览）", async () => {
 			const t = await cliCmd("astrology", [
 				"--date",
 				"1990-05-15",

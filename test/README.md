@@ -407,6 +407,7 @@ test/
 ├── invariants.test.ts        层 3：排盘结构不变量
 ├── kernel-contract.test.ts    层 3：内核对外契约（冻结面守卫，Phase 1–4 插件化的稳定边界）
 ├── topic-defs.test.ts         层 3：主题注册表单一真相源（Phase 2 收编守卫：派生表不漂移）
+├── topic-study.test.ts        层 3：插件自证（Phase 4：加主题 = 只在 TOPIC_DEFS 加一条，内核/CLI 零改动）
 ├── school.test.ts            层 4：三合派体系约束
 ├── sample-source.test.ts     层 5：数据源纯函数
 ├── repo.test.ts              层 6：仓库自洽（登记一致性 / skill 自包含 / 底座哨兵 / 骨架接线 / 解析钩子候选序）

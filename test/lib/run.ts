@@ -167,6 +167,7 @@ const LAYERS = [
 	{ label: "层 3 排盘结构不变量", file: "invariants.test.ts", suites: ["排盘结构不变量"] },
 	{ label: "层 3 内核契约", file: "kernel-contract.test.ts", suites: ["内核对外契约（冻结 @ 2026-10-12）"] },
 	{ label: "层 3 主题注册表", file: "topic-defs.test.ts", suites: ["主题注册表：覆盖与 TOPIC_KEYS 完全一致", "主题注册表：每个主题字段齐备且类型合理", "主题注册表：派生具名表与 TOPIC_DEFS 同步"] },
+	{ label: "层 3 主题注册表", file: "topic-study.test.ts", suites: ["Phase 4 验证：第 14 主题 study 经 getTopicAnalysis 可用且产出非空文本"] },
 	{ label: "层 4 三合派约束", file: "school.test.ts", suites: ["三合派体系约束"] },
 	{
 		label: "层 5 数据源纯函数",
@@ -186,7 +187,7 @@ const LAYERS = [
 		file: "citations.test.ts",
 		suites: [
 			"引文守卫：扫描逻辑（喂构造的临时目录树）",
-			"引文守卫：扫全仓每个 skill 的 scripts/",
+			"引文守卫：按流派分派（每校扫各自 citationRoots）",
 		],
 	},
 ] as const;

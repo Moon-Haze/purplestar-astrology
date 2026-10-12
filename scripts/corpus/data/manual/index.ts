@@ -29,6 +29,7 @@ const LOADERS: Record<TopicKey, () => Promise<{ ORACLE: StarTopicOracle }>> = {
 	home: () => import("./home.ts"),
 	spirit: () => import("./spirit.ts"),
 	parents: () => import("./parents.ts"),
+	study: () => import("./study.ts"),
 };
 
 /** 加载一个主题的断语全集；文件缺失（未导出）时抛带指引的错误。 */

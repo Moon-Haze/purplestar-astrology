@@ -13,6 +13,8 @@ import { resolve } from "node:path";
 import { generateChart } from "@/algorithm";
 import { detectPatterns } from "@/patterns";
 import { palaceAtBranch } from "@/palace-relations";
+import { checkForbiddenFeatures } from "@/school/guard";
+import { SCHOOLS, DEFAULT_SCHOOL_ID } from "@/school/registry";
 import { getPalaceByBranch } from "@/patterns/helpers";
 import { getMutagenByStem, getYearStemIndex, getMonthlyMutagen } from "@/mutagen";
 import { STEMS, BRANCHES } from "@/constants";
@@ -146,12 +148,14 @@ export function runFortuneData({ ok }: Pick<SelftestDeps, "ok">): void {
 
 /** 三合派硬约束守护（防止飞星派逻辑回流）与两库引句口径合规。 */
 export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {
-	ok("三合派约束：宫干自化未被填充", () => {
+	// 绊线改为**声明式**：读 SchoolAdapter.forbiddenFeatures，不再硬编码「查 selfMutagen 字段」。
+	// 换流派只需换适配器；不含该禁忌的空壳流派天然不报此错（见 test/school.test.ts）。
+	ok("三合派约束：宫干自化未被填充（读 SchoolAdapter.forbiddenFeatures）", () => {
 		const c = generateChart(SAMPLE);
-		const dirty = c.palaces.filter(p => p.selfMutagen);
-		if (dirty.length)
+		const v = checkForbiddenFeatures(c, SCHOOLS[DEFAULT_SCHOOL_ID]);
+		if (v.length)
 			{throw new Error(
-				`检测到 selfMutagen 被填充：${dirty.map(p => p.name).join("、")}（飞星派逻辑疑似回流）`
+				`体系禁用特征被触发：${v.map(x => x.detail).join("；")}`
 			);}
 	});
 	ok("三合派约束：大限未携带宫干四化字段", () => {

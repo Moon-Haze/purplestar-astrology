@@ -568,7 +568,7 @@ export function cmdAstrology(args: CliArgs) {
 				k => `  ${k.padEnd(11)} ${TOPIC_LABEL[k]}（看${TOPIC_PALACE_NAME[k]}）`
 			);
 			return [
-				"13 个主题（--topic <key> 选其一）：",
+				"${Object.keys(TOPIC_LABEL).length} 个主题（--topic <key> 选其一）：",
 				...rows,
 				"",
 				"view 可选：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月）",
@@ -579,7 +579,7 @@ export function cmdAstrology(args: CliArgs) {
 		const topic = String(args.topic) as TopicKey;
 		if (!TOPIC_LABEL[topic])
 			{throw new Error(
-				`--topic 应为 13 个主题之一（${Object.keys(TOPIC_LABEL).join("/")}），收到：${args.topic}`
+				`--topic 应为 ${Object.keys(TOPIC_LABEL).length} 个主题之一（${Object.keys(TOPIC_LABEL).join("/")}），收到：${args.topic}`
 			);}
 		const viewRaw = args.view !== undefined ? String(args.view) : "mingpan";
 		const view = VIEW_ALIASES[viewRaw];

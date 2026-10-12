@@ -1,7 +1,7 @@
 // 封装子命令的查询与输出（tools/db）：每个子命令一条固定 SQL + 具名参数绑定，
 // 输入不进 SQL；行集统一走 getRowObjectsJS（list/struct 已转纯 JS 值）。
 import type { DuckDBConnection } from "@duckdb/node-api";
-import { TOPIC_KEYS, TOPIC_LABEL, type TopicKey } from "../../scripts/analysis/data";
+import { STORAGE_TOPIC_KEYS, TOPIC_LABEL, type TopicKey } from "../../scripts/analysis/data";
 import { dispWidth, jsonReplacer, renderTable } from "./render";
 import { GAN, ZHI, SAMPLE_LABELS, dash, formatSampleValue, sihuaCell, starList } from "./format";
 import { SEARCH_MAX_LIMIT, type ParsedArgs } from "./query-args";
@@ -67,7 +67,7 @@ async function runTopic(
 	const rows = await rowsOf(conn, "SELECT * FROM topics WHERE sample_id = $id", { id });
 	if (rows.length === 0) {throw new Error(`样本 ${id} 不存在`);}
 	const row = rows[0];
-	const selected = keys.length > 0 ? keys : [...TOPIC_KEYS];
+	const selected = keys.length > 0 ? keys : [...STORAGE_TOPIC_KEYS];
 	if (json) {
 		const out: Record<string, unknown> = { sample_id: Number(row.sample_id) };
 		for (const k of selected) {out[k] = row[k] ?? null;}

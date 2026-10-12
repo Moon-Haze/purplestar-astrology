@@ -888,16 +888,23 @@ export const STAR_CONTENT_MAP: Record<string, StarContent> = {
 };
 
 /**
- * 13 个主题键。**顺序即存储列序**，故这是一份格式定义，不是随手排的清单。
+ * 主题键 —— 运行时**主题注册表**的唯一定义处。{@link TopicKey} 由它推出。
  *
  * @remarks
- * 这是本项目主题词汇的**唯一定义处**：{@link TopicKey} 由它推出，`tools/db/db.ts` 的
- * samples / topics 视图列序也直接引用它（那边的原话：「顺序即 topics 视图的列序，
- * 也是编码时主题名列与文本列配对顺序」）。此前两边各写一份，只靠注释提醒不得漂移；
- * 合到一处后「同名同序」由类型系统保证 —— `tools/db/db.ts` 只转出该常量。
+ * 此前内核与 `tools/db/db.ts` 各写一份，只靠注释提醒不得漂移；合到一处后「同名同序」
+ * 由类型系统保证 —— `tools/db/db.ts` 只转出该常量。
  *
- * ⚠️ 因此**重排本数组等于改存储格式**：已入库的 parquet 会与新代码的列对不上。
- * 要改必须同时重建数据集（`npm run build:db`）。
+ * ⚠️ **它有两个消费者，角色不同，Phase 4 起显式分开**（此前两者被混为一谈，
+ * 加一个主题会让数据集查询整体报 `column not found`）：
+ *
+ * 1. **运行时注册表**（本数组全部元素）—— 主题元数据派生表、CLI `--topic` 分发、
+ *    oracle 域主题清单、测试断言。新增主题在此加一项即可。
+ * 2. **数据集物理列**（只有 {@link STORAGE_TOPIC_KEYS}）—— `topics` 表是**每主题一列**，
+ *    而**别名视图主题无独立列**（见 {@link TOPIC_CONTENT_SOURCE}）。所有拼 SQL 遍历
+ *    列的地方必须走 `STORAGE_TOPIC_KEYS`，不能走本数组。
+ *
+ * ⚠️ 对 {@link STORAGE_TOPIC_KEYS} 而言，**增删顺序等于改存储格式**：已入库的 parquet
+ * 会与新代码的列对不上，要改必须同时重建数据集（`npm run build:db`）。
  */
 export const TOPIC_KEYS = [
 	"overview",
@@ -913,6 +920,7 @@ export const TOPIC_KEYS = [
 	"home",
 	"spirit",
 	"parents",
+	"study",
 ] as const;
 
 /** 主题键。由 {@link TOPIC_KEYS} 推出，故两者永不脱节。 */
@@ -1273,6 +1281,33 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 			"父母宫化科则考试运佳，文书文教方面有喜。",
 		],
 	},
+	// Phase 4 纯插件验证：第 14 主题「学业科名」。仅在此加一个条目，内核 / CLI 分发零改动。
+	// 星曜主星论述复用 官禄（guanLu）——学业在紫微属官禄/文昌体系，主星内容共用；
+	// 本条目提供学业专属的四化解读与综合建议。真实学业断语（文昌/文曲专章）为后续内容工作。
+	study: {
+		palace: "官禄宫",
+		label: "学业科名",
+		sanFangLabels: ["官禄三合·夫妻", "官禄三合·财帛", "官禄对宫·迁移"],
+		contentKey: "guanLu",
+		summaryKey: "career",
+		isSummaryTopic: false,
+		keyPalaces: [
+			{
+				palace: "官禄",
+				lu: "官禄化禄，文昌文曲得力，考试科名顺遂，文书学业有喜",
+				quan: "官禄化权，竞争力强，学业上能争得头衔资格",
+				ji: "官禄化忌，考试易失利、文书出错，关键升学节点宜多备选方案",
+			},
+			{ palace: "命宫", lu: "自身聪慧，学习力强", ji: "自身状态影响学业发挥，宜调心" },
+			{ palace: "父母", lu: "长辈师长助力大，考试运佳", ji: "与父母师长关系紧张牵动学业" },
+			{ palace: "交友", lu: "同学朋辈互助，良师益友多", ji: "朋友圈分心，谨防玩伴误学" },
+		],
+		suggestions: [
+			"学业科名以官禄宫为主轴，文昌文曲为用——化科、化禄入官禄最利考试升学。",
+			"本主题属占位条目：学业科名的完整断语待文昌／文曲专章补齐后再定稿。",
+			"化忌入官禄宫的流年，重要考试宜提前准备、多手备案，勿押孤注。",
+		],
+	},
 };
 
 // ─── 由 TOPIC_DEFS 派生的具名表（消费方 import 路径不变）────────────────────────
@@ -1294,6 +1329,41 @@ export const TOPIC_SUGGESTIONS = projectTopicField(d => d.suggestions);
 export const SUMMARY_TOPICS: ReadonlySet<TopicKey> = new Set(
 	TOPIC_KEYS.filter(k => TOPIC_DEFS[k].isSummaryTopic)
 );
+
+/**
+ * 主题 → 其断语内容实际取自哪个主题（按 `contentKey` 归并，取**首个**声明者为内容源）。
+ *
+ * @remarks
+ * 并非每个注册主题都自带新内容：`contentKey` 就是**内容复用**的声明（`study` 复用
+ * `career` 的 `guanLu` —— 学业在紫微属官禄/文昌体系，主星内容本就同源）。
+ * 复用即同一份内容，故它**没有独立的存储列**，也不该有。
+ *
+ * 此前这个区分不存在：`TOPIC_KEYS` 同时当「注册表」与「列清单」用，加一个别名视图
+ * 主题会让所有拼 SQL 的地方（数据集检索宏、导出、校验）报 `column not found`。
+ * 现在两个角色各自有常量（{@link STORAGE_TOPIC_KEYS} 是列侧），别名视图与
+ * 「独立新内容」两种扩展形态被显式区分。
+ */
+export const TOPIC_CONTENT_SOURCE: Record<TopicKey, TopicKey> = (() => {
+	const firstByContentKey = new Map<string, TopicKey>();
+	const out = {} as Record<TopicKey, TopicKey>;
+	for (const k of TOPIC_KEYS) {
+		const ck = TOPIC_DEFS[k].contentKey;
+		if (!firstByContentKey.has(ck)) {firstByContentKey.set(ck, k);}
+		out[k] = firstByContentKey.get(ck)!;
+	}
+	return out;
+})();
+
+/**
+ * **数据集 `topics` 表的物理列集合**（顺序即列序）—— 内容源去重后的主题序列。
+ *
+ * ⚠️ 所有拼 SQL、按列取值的地方必须用它，**不能**用 {@link TOPIC_KEYS}：
+ * 后者含无独立列的别名视图主题（如 `study`），用它会让查询报 `column not found`。
+ * 反之，运行时注册表语义（主题清单、CLI 分发）用 {@link TOPIC_KEYS}。
+ */
+export const STORAGE_TOPIC_KEYS: readonly TopicKey[] = [
+	...new Set(TOPIC_KEYS.map(k => TOPIC_CONTENT_SOURCE[k])),
+];
 
 // ─── 星曜简述（用于三方四正的简短说明）────────────────────────────────────
 export const STAR_BRIEF: Record<string, string> = {

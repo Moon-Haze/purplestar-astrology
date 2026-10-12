@@ -294,8 +294,8 @@
 | Phase 0 退出（含 0C 契约守卫） | 0 | 全通过 | 554/554 | astrology/knowledge 一致 |
 | Phase 1 退出 | 0 | 全通过 | 564/564 | knowledge 4 源 8 场景一致 |
 | Phase 2 退出 | 0 | 全通过 | 567/567 | astrology --topic 13 主题 + yearly 变体（26 场景）逐字节一致 |
-| Phase 3 退出 | 0 | 全通过 | 564 + 插件自身项 | 排盘一致 |
-| Phase 4 退出 | 0 | 全通过 | 564 + 插件自身项 + 验证内容项 | 仅新增内容变化 |
+| Phase 3 退出 | 0 | 全通过 | 569/569 | 排盘一致（引文守卫按流派分派后重扫全仓） |
+| Phase 4 退出 | 0 | 全通过 | 571/571 | 既有 13 主题 + chart --json + --report 共 9 场景逐字节零差异 |
 
 > ⚠️ 「内核层计数」的精确口径：跨阶段护栏盯的是 **层 3（排盘结构不变量 + 内核契约）**，
 > 实测 = 112（invariants）+ 5（kernel-contract）= **117 项**，Phase 0/1 全程未动。
@@ -332,6 +332,72 @@
   原因：`corpus/annotations.ts` 是全局引文核对表，`citations.test.ts` 扫全仓依赖它；Phase 1 填充会破坏
   该测试。架构文档 §4.1 的 `citations` 扩展点已在 `KnowledgeSource` 接口预留（`citations?: CitationRef[]`），
   Phase 3（3B 按流派分派）落地时再填充并对齐 `annotations.ts`。
+
+### Phase 3 已完成（SchoolAdapter + 按流派引文守卫 · 2026-10-12）
+
+> ⚠️ **执行偏差（重要）：计划 3A-2 的「整体迁入」被否决，改为「引用而非迁移」。**
+> 计划要求把 `wenmo-brightness.ts` 亮度表、`mutagen.ts` 四化层、`annotations.ts` 核对表
+> **整体迁入** `schools/wenmo-nishi.ts`。那会直接撞上 Phase 0 立的 **0C 冻结内核契约**
+> （ADR-003）—— 亮度与四化查询函数是冻结面，插件不得修改；而当前只有倪师一个流派、
+> 无即时需求，按原计划迁移等于为「可能永远不来的第二流派」先破坏冻结面。
+> 故改为**引用**：适配器用 `defaultBrightnessSchool`（引用 `BrightnessSchool` 类型）
+> 与 `citationRoots[].checklist`（引用 `ANNOTATIONS` 常量）**指向**冻结数据，不复制、不搬家。
+> 将来真来了第二流派，届时才决定「复制一份」还是「按流派切表」—— 那时才有决策所需的信息。
+
+- 新增 `scripts/school/types.ts`（`SchoolAdapter` 接口 + `SchoolId` / `ForbiddenFeature` /
+  `CitationRoot` 类型）、`scripts/school/guard.ts`（纯函数 `checkForbiddenFeatures`）、
+  `scripts/school/registry.ts`（`SCHOOLS` / `SCHOOL_IDS` / `DEFAULT_SCHOOL_ID`）、
+  `scripts/school/schools/wenmo-nishi.ts`（默认适配器）。
+- 绊线从**硬编码字段检查**升级为**声明式** `forbiddenFeatures`：`guard.ts` 只查表里声明的
+  特征，不在表里就不报 —— 故「加一个不含 `self-mutagen` 的空壳流派」天然不触发倪师断言。
+  `test/school.test.ts` 与 `selftest/chart.ts` 均改为读适配器，不再读硬编码。
+- 引文守卫按流派分派：`test/lib/citation-guard.ts` 的 `scanCitations(root, checklist=ANNOTATIONS)`
+  参数化（默认值保持向后兼容）+ `scanCitationsForRoots`；`test/citations.test.ts` 改为遍历
+  `SCHOOLS[id].citationRoots` 并新增「空壳流派不触发倪师断言 + 反向确认倪师表仍能抓到该句」。
+- 验证：typecheck 0 · selftest 全通过 · `npm test` **569/569**（内核层 117 未动，+2 仅插件自身）。
+- ⚠️ `registry.ts` 内 import **必须带 `.ts` 后缀**（原生 ESM 解析钩子只在 CLI 运行时解析 `@/`；
+  测试经 `test/lib/loader.ts` 直连模块，`.ts` 省略即 `ERR_MODULE_NOT_FOUND`）。
+
+### Phase 4 已完成（端到端验证：第 14 主题 `study` · 2026-10-12）
+
+- 新增第 14 主题 `study`（学业科名）：**只在 `TOPIC_DEFS` 加一个条目** + `TOPIC_KEYS` 加一项，
+  内核 / CLI 分发零改动。星曜主星论述复用 `guanLu`（学业在紫微属官禄/文昌体系）。
+- `@/analysis` 公开面新增 re-export `TOPIC_KEYS` / `TOPIC_DEFS` —— 供插件自证
+  （新主题可从模块公开面断言，不必直插 `./data` 内部布局）。
+- 新增 `test/topic-study.test.ts`（层 3 主题注册表，1 项）；登记进 `run.ts` LAYERS 与 `test/README.md`。
+- CLI 两处写死「13 个主题」的字面量改为 `Object.keys(TOPIC_LABEL).length` 派生
+  （对齐跨阶段护栏第 5 条「计数不写死」）。
+
+> ⚠️ **本阶段撞出并修掉一个真实架构缺陷：`TOPIC_KEYS` 一名两用。**
+>
+> 它此前**同时**充当「运行时主题注册表」与「数据集 `topics` 表的物理列清单」。
+> Phase 4 加第 14 个主题后，数据集检索宏（`searchTopicMacroSqlDataset`）立刻报
+> `Referenced column "study" not found` —— 因为 `topics` 表是**每主题一列**，
+> 而 `study` **本就不该有独立列**：它复用 `career` 的 `contentKey`（`guanLu`），
+> 是同一份内容。两个角色被混为一谈，才让「加一个别名视图主题」炸掉整个数据集工具链。
+>
+> 修法（在 `analysis/data.ts` 里显式分开，工具侧一律改引用）：
+> - `TOPIC_KEYS` —— 运行时注册表（14，含无独立列的别名视图主题）
+> - `TOPIC_CONTENT_SOURCE: Record<TopicKey, TopicKey>` —— 按 `contentKey` 归并，
+>   取首个声明者为内容源（现仅 `study → career` 一例）
+> - `STORAGE_TOPIC_KEYS` —— 内容源去重后的**物理列集合**（13）。**所有拼 SQL / 按列取值
+>   的地方必须用它**，否则报 `column not found`
+>
+> 收益：不为一个别名视图付一列 378 MiB 文本 + 一次 518,400 样本全量建库；
+> 且「别名视图」与「独立新内容」两种扩展形态从此被显式区分，不再混为一谈。
+>
+> 连带改动：`tools/db/{db,build-duckdb,verify-duckdb,export-manual,query-args,query-commands}.ts`
+> 全部改引 `STORAGE_TOPIC_KEYS`；`export-manual.ts code` 对别名主题改生成**转出源文件**的
+> 薄壳（`study.ts` 转出 `career.ts`），**不复制数据**。
+
+- 验证：typecheck 0 · selftest 全通过 · `npm test` **571/571**（内核层 **117 未动**，+2 仅插件自身）·
+  既有 13 主题输出 + `chart --json` + `--report` 共 **9 场景逐字节零差异**（`git stash` 取基线对拍）·
+  冻结内核面（`types.ts` / `algorithm.ts` / `mutagen.ts` / `wenmo-brightness.ts` /
+  `palace-relations.ts` / `corpus/data/annotations.ts`）`git status` **0 改动** ·
+  `cli/knowledge/index.ts` 0 改动。
+- ⚠️ **`export-manual.ts code` 不要随手跑**：它产出的字面量未过 prettier，与库里已格式化的
+  同名文件会差出 6 万行纯排版 diff（内容一致）。入库前先 `npm run format`；只改生成器时
+  手工补对应的一行 loader + 薄壳文件即可。
 
 ---
 

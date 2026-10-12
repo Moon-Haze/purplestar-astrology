@@ -20,7 +20,7 @@ import {
 	dictPathFor,
 	openReadOnly,
 	sqlLiteral,
-	TOPIC_KEYS,
+	STORAGE_TOPIC_KEYS,
 	type DbLayout,
 } from "./db";
 import { decodeSampleId, sampleId, sqlSampleIdExpr } from "./sample-id";
@@ -368,12 +368,12 @@ function mismatchDetail(
 		}
 	}
 
-	// 13 主题。db.topics 可能整体缺失（该样本在 topic_lines 里根本没有行），
+	// 每个存储列一个主题。db.topics 可能整体缺失（该样本在 topic_lines 里根本没有行），
 	// 此时按「不一致」记录，而不是让 undefined 下标把整个校验脚本炸掉。
 	const T = db.topics;
 	if (!T) {out.push(`id=${id}: 主题行缺失（topic_lines 中无该样本）`);}
 	else
-		{for (const k of TOPIC_KEYS) {
+		{for (const k of STORAGE_TOPIC_KEYS) {
 			if (T[k] !== rec.topics[k]) {out.push(`id=${id}: 主题 ${k} 不一致`);}
 		}}
 }
@@ -588,11 +588,11 @@ export async function verifyTopicText(
 	).map(r => ({ year: Number(r[0]), month: Number(r[1]) }));
 	if (months.length === 0) {return { name: "文本对账", ok: false, detail: "库内 samples 为空" };}
 
-	const topicNames = TOPIC_KEYS.map(k => `'${k}'`).join(", ");
-	const topicCols = TOPIC_KEYS.map(k => `r.topics.${k}`).join(", ");
+	const topicNames = STORAGE_TOPIC_KEYS.map(k => `'${k}'`).join(", ");
+	const topicCols = STORAGE_TOPIC_KEYS.map(k => `r.topics.${k}`).join(", ");
 	// 'parquet' 布局的库侧取 Parquet 的平铺列（不是 r.topics.xxx）：13 列直接以列名引用。
-	// TOPIC_KEYS 顺序与构建期 topicsTo 的列序一致，共用同一常量不会漂移。
-	const topicColsParquet = TOPIC_KEYS.join(", ");
+	// STORAGE_TOPIC_KEYS 顺序与构建期 topicsTo 的列序一致，共用同一常量不会漂移。
+	const topicColsParquet = STORAGE_TOPIC_KEYS.join(", ");
 	let compared = 0;
 	const problems: string[] = [];
 	const totalChunks = Math.ceil(months.length / chunkShards);
