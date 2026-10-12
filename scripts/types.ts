@@ -13,6 +13,28 @@
  */
 
 /**
+ * ════════════════════════════════════════════════════════════════════════════
+ * 内核对外契约（冻结 @ 2026-10-12）· 扩展 Phase 不得修改此面
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * 本区块是「知识内容插件化」（Phase 1–4）的稳定边界。插件层（KnowledgeSource /
+ * TopicProvider / SchoolAdapter）只消费以下纯函数面，不得修改、不得增删符号。
+ * `test/kernel-contract.test.ts` 把本面钉成可断言事实——内核签名一旦漂移，该测试先红。
+ *
+ * 冻结面（符号 → 所在模块）：
+ * - 排盘主流程：`generateChart(birthInfo) → ZiweiChart`（algorithm.ts）
+ * - 宫位关系查询：`oppositeBranch` / `surroundBranches` / `palaceAtBranch` / `mustPalaceAtBranch`（palace-relations.ts）
+ * - 四化查询：`getYearStemIndex` / `getMutagenByStem` / `getYearlyMutagen` / `getMonthlyMutagen` /
+ *   `getDaXianMutagen` / `getDailyMutagen` / `getHourlyMutagen`（mutagen.ts）
+ * - 亮度查询：`wenmoStarBrightness(starName, branchIdx)` / `getBrightnessSchool` / `setBrightnessSchool`（wenmo-brightness.ts）
+ *
+ * ⚠️ 体系立场（绊线，禁止回填）：本契约的类型仍保留飞星派遗留字段
+ * （`Palace.selfMutagen`、`Decadal.mutagen` 等），但运行时**必须恒为 undefined**——
+ * algorithm.ts 不再填充它们（倪师三合派）。插件不得「补回」这些字段。
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
  * 出生信息 —— 排盘的唯一输入。
  *
  * ⚠️ 本接口同时承载「出生时刻」与「出生地」两类数据，`timeIndex` 与 `longitude` 的单位

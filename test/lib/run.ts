@@ -153,8 +153,19 @@ const LAYERS = [
 		suites: ["排盘对标（基准：iztro 2.5.8 样本）"],
 	},
 	{ label: "层 2 CLI 端到端", file: "cli.test.ts", suites: ["CLI 端到端"] },
+	{
+		label: "层 2 CLI 端到端",
+		file: "knowledge-registry.test.ts",
+		suites: ["KnowledgeSource 注册表（Phase 1）"],
+	},
+	{
+		label: "层 2 CLI 端到端",
+		file: "astrology-sections.test.ts",
+		suites: ["专题旗标→section 接线（候选 3）"],
+	},
 	{ label: "层 2 CLI 端到端", file: "report.test.ts", suites: ["astrology --report 全盘报告"] },
 	{ label: "层 3 排盘结构不变量", file: "invariants.test.ts", suites: ["排盘结构不变量"] },
+	{ label: "层 3 内核契约", file: "kernel-contract.test.ts", suites: ["内核对外契约（冻结 @ 2026-10-12）"] },
 	{ label: "层 4 三合派约束", file: "school.test.ts", suites: ["三合派体系约束"] },
 	{
 		label: "层 5 数据源纯函数",

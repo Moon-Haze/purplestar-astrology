@@ -16,7 +16,7 @@ import {
 } from "./args-table";
 import { applyConfig, renderTemplate } from "./config";
 import { buildBirthInfo } from "./birth-info";
-import { clockOptsFromBasis, toBasis } from "./birth-info-defs";
+import { clockOptsFromBasis, toBasis, type CaliberBasis } from "./birth-info-defs";
 import {
 	birthplaceSection,
 	fmtDate,
@@ -362,6 +362,91 @@ function assertNoShadowedFeatures(
  * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，`--json` 的消费方
  * （合盘 skill）自会处理；文本路径的宫详表见 `./fortune.ts` 各专题。
  */
+/**
+ * 「给定 args + 排盘上下文 → 产出专题 section 序列」——候选 3 把旗标→section 的接线
+ * 升为可直测 interface（原 `cmdAstrology` 默认路径的内联块）。
+ *
+ * 收益：接线本身成为被测物（`test/cli/astrology-sections.test.ts`），fortune 各
+ * `*Section` 退为 implementation 零件，守卫链（monthly/daily/hourly 须配 mutagen/层级）
+ * 与 `parseAgesArg` / `deepDive` 门沉进同一实现。调用方（cmdAstrology 默认/概览路径）
+ * 只消费返回的 `string[]`，不再手抄顺序与守卫。
+ *
+ * 行为契约：与迁移前的内联块逐字节等价（无深掘时带信息面板 + 运限速览；给了任一专题旗标
+ * 则跳过基底，按 pattern → mutagen → yearly → decadal → ages → focus 固定序追加）。
+ *
+ * @param chart - 已生成的命盘
+ * @param args - CLI 参数表
+ * @param opts - 派生好的上下文：流年/流月/流日/流时、口径 basis、出生信息 info
+ * @returns 已按顺序拼好的输出行（不含末尾 join）
+ */
+export function composeSections(
+	chart: ZiweiChart,
+	args: CliArgs,
+	opts: {
+		liuNianYear: number;
+		liuYueMonth: number | null;
+		liuRiDay: number | null;
+		liuShiHour: number | null;
+		basis: CaliberBasis;
+		info: BirthInfo;
+	}
+): string[] {
+	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour, basis, info } = opts;
+	const out: string[] = [];
+	out.push(...birthplaceSection(basis));
+	out.push(...lateZiSection(chart, info, basis));
+	// 深掘判据从声明派生（deep: true 六旗标），与 cmdAstrology 同源。
+	const deepDive = DEEP_DIVE_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
+	if (!deepDive)
+		{out.push(
+			"",
+			...infoSection(chart, clockOptsFromBasis(basis)),
+			"",
+			...overviewSection(chart, liuNianYear)
+		);}
+	if (args.pattern) {out.push("", ...patternSection(chart));}
+	// 流月/流日/流时四化随四化专题输出：单独给（不带 --mutagen）会被静默吞掉，在这里指路。
+	// 只约束文本路径 —— --json 的对应顶层键是独立键（基准对拍依赖裸 --json --monthly）。
+	if (
+		(args.monthly !== undefined || args.daily !== undefined || args.hourly !== undefined) &&
+		!args.mutagen
+	)
+		{throw new Error(
+			"--monthly / --daily / --hourly 需要 --mutagen：运限四化在四化专题中输出，请加 --mutagen（流年缺省取当年，可用 --yearly 指定）。"
+		);}
+	if (args.daily !== undefined && liuYueMonth === null)
+		{throw new Error(
+			"--daily 需要 --monthly：流日干挂在农历年月日上，请用 --monthly 提供农历月（流年缺省取当年，可用 --yearly 指定）。"
+		);}
+	if (args.hourly !== undefined && args.daily === undefined)
+		{throw new Error(
+			"--hourly 需要 --daily：流时干由日干五鼠遁推，请用 --daily 提供农历日（时支 12 = 晚子时，按当日日干起遁）。"
+		);}
+	if (args.mutagen)
+		{out.push("", ...mutagenSection(chart, { liuNianYear, liuYueMonth, liuRiDay, liuShiHour }));}
+	if (args.yearly !== undefined) {out.push("", ...yearlySection(chart, liuNianYear));}
+	if (args.decadal !== undefined)
+		{out.push(
+			"",
+			...decadalSection(chart, parseAgesArg(args.decadal, chart.currentAge, "--decadal"))
+		);}
+	if (args.ages !== undefined)
+		{out.push(
+			"",
+			...ageSection(chart, parseAgesArg(args.ages, chart.currentAge, "--ages"), liuNianYear)
+		);}
+	if (args.focus !== undefined) {
+		// typeof 判空挡掉「给了 --focus 却没跟值」（parseArgs 存布尔 true）的形态 ——
+		// focusSection 的归一表查不到 true，自然落到「聚焦失败」分支并列出可用宫名。
+		const focus = typeof args.focus === "string" ? args.focus : String(args.focus);
+		out.push("", ...focusSection(chart, focus, liuNianYear));
+	}
+	// 头部三行删除后，口径节可能为空（未给出生地且非晚子时）—— 清掉开头可能
+	// 残留的空行，让面板或专题节直接顶格。
+	while (out.length > 0 && out[0] === "") {out.shift();}
+	return out;
+}
+
 export function cmdAstrology(args: CliArgs) {
 	// --template：打印配置模板即止（不排盘）
 	if (args.template) {return renderTemplate();}
@@ -547,65 +632,14 @@ export function cmdAstrology(args: CliArgs) {
 	}
 
 	// ── 未深入形态的输出基底 ──
-	// 基本信息面板（公历生日 / 姓名 / 命宫 / 紫微落 / 三方四正，见 infoSection）──
-	const out: string[] = [];
-	out.push(...birthplaceSection(basis));
-	out.push(...lateZiSection(chart, info, basis));
-	// ── 未深入形态的基底：基本信息面板 + 运限速览 + 专题指路
-	// 三者同进退，只在「无功能参数的概览」输出（--info 与零输入演示态同尾）。
-	// 给了具体专题参数的输出只保留命盘总览与口径提示 + 专题详版 ——
-	// 已在深入，基底与指路都是噪声（--monthly 必配 --mutagen，归 mutagen 管）。
-	// 深入态判据从声明派生（deep: true 六旗标）—— 新增专题参数标一个标志即被认出，
-	// 不再手抄第二份清单。`!== undefined` 与旧的 pattern||mutagen||… 逐语义等价：
-	// 未给的键不出现（parseArgs 无默认值），switch 给了即 true。
-	const deepDive = DEEP_DIVE_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
-	if (!deepDive)
-		{out.push(
-			"",
-			...infoSection(chart, clockOptsFromBasis(basis)),
-			"",
-			...overviewSection(chart, liuNianYear)
-		);}
-	if (args.pattern) {out.push("", ...patternSection(chart));}
-	// 流月/流日/流时四化随四化专题输出：单独给（不带 --mutagen）会被静默吞掉，在这里指路。
-	// 只约束文本路径 —— --json 的对应顶层键是独立键（基准对拍依赖裸 --json --monthly）。
-	if (
-		(args.monthly !== undefined || args.daily !== undefined || args.hourly !== undefined) &&
-		!args.mutagen
-	)
-		{throw new Error(
-			"--monthly / --daily / --hourly 需要 --mutagen：运限四化在四化专题中输出，请加 --mutagen（流年缺省取当年，可用 --yearly 指定）。"
-		);}
-	if (args.daily !== undefined && liuYueMonth === null)
-		{throw new Error(
-			"--daily 需要 --monthly：流日干挂在农历年月日上，请用 --monthly 提供农历月（流年缺省取当年，可用 --yearly 指定）。"
-		);}
-	if (args.hourly !== undefined && args.daily === undefined)
-		{throw new Error(
-			"--hourly 需要 --daily：流时干由日干五鼠遁推，请用 --daily 提供农历日（时支 12 = 晚子时，按当日日干起遁）。"
-		);}
-	if (args.mutagen)
-		{out.push("", ...mutagenSection(chart, { liuNianYear, liuYueMonth, liuRiDay, liuShiHour }));}
-	if (args.yearly !== undefined) {out.push("", ...yearlySection(chart, liuNianYear));}
-	if (args.decadal !== undefined)
-		{out.push(
-			"",
-			...decadalSection(chart, parseAgesArg(args.decadal, chart.currentAge, "--decadal"))
-		);}
-	if (args.ages !== undefined)
-		{out.push(
-			"",
-			...ageSection(chart, parseAgesArg(args.ages, chart.currentAge, "--ages"), liuNianYear)
-		);}
-	if (args.focus !== undefined) {
-		// typeof 判空挡掉「给了 --focus 却没跟值」（parseArgs 存布尔 true）的形态 ——
-		// focusSection 的归一表查不到 true，自然落到「聚焦失败」分支并列出可用宫名。
-		const focus = typeof args.focus === "string" ? args.focus : String(args.focus);
-		out.push("", ...focusSection(chart, focus, liuNianYear));
-	}
-
-	// 头部三行删除后，口径节可能为空（未给出生地且非晚子时）—— 清掉开头可能
-	// 残留的空行，让面板或专题节直接顶格。
-	while (out.length > 0 && out[0] === "") {out.shift();}
-	return out.join("\n");
+	// 基本信息面板 + 运限速览 + 专题指路 / 深掘专题详版，统一交给 composeSections
+	// （候选 3：旗标→section 接线升为可测 interface，接线本身成为被测物）。
+	return composeSections(chart, args, {
+		liuNianYear,
+		liuYueMonth,
+		liuRiDay,
+		liuShiHour,
+		basis,
+		info,
+	}).join("\n");
 }
