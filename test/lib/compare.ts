@@ -16,12 +16,12 @@
 // 农历换算。刻意在此**独立**调用，不复用内核的 getLunarInfo —— 见 expectedAge 的注释。
 import { Solar } from "lunar-typescript";
 
-import type { BirthInfo, LunarInfo, Star, ZiweiChart } from "@/ziwei/types";
+import type { BirthInfo, LunarInfo, Star, ZiweiChart } from "@/types";
 import { loadConstants, loadRender } from "./loader.ts";
 
 // ── 基准样本的类型（iztro 2.5.8 的 JSON 快照） ──
 //
-// 刻意**不**复用 @/ziwei/types 的 Palace / ZiweiChart 来描述样本：那些是「本项目产出」的
+// 刻意**不**复用 @/types 的 Palace / ZiweiChart 来描述样本：那些是「本项目产出」的
 // 契约，样本是**外部数据**，字段集不同（宫名是 iztro 词汇、无借宫字段、可选键可能整键
 // 缺失或为空串 —— 见上面的四处归一化）。星曜的 type / brightness / mutagen 在此放宽为
 // string 也是刻意的：比对器对外部数据不做预设，任何取值先收进来、由断言与白名单去判。
@@ -81,12 +81,12 @@ export interface ChartDiff {
 }
 
 // 宫名映射**从内核取**，不在此另抄一份。
-// 宫名是项目自己的词汇，`scripts/ziwei/constants.ts` 是它唯一的定义处；比对器只是要把
+// 宫名是项目自己的词汇，`scripts/constants.ts` 是它唯一的定义处；比对器只是要把
 // 基准样本的 iztro 词汇翻译成项目词汇才比得起来，本身对宫名没有立场。
 // 另起一份转录只会制造第二个真相源 —— 认表错误的任务交给下面这条注释指向的预言机。
 //
 // ⚠️ 用顶层 await 而非静态 import：ESM 的静态 import 在 loader.ts 注册解析钩子
-//    **之前**就完成了链接，那时 `@/ziwei/constants`（.ts）还解析不了。
+//    **之前**就完成了链接，那时 `@/constants`（.ts）还解析不了。
 //
 // ⚠️⚠️ 共用同一张表意味着：**表若被写错（比如把「仆役」映射成「官禄宫」），
 // 本文件与内核会一起错，层 1 照旧全绿**。这与 test/README.md 记录的 02 号历史
@@ -124,7 +124,7 @@ export { BRANCHES };
 //
 // 历史沿革：基准样本由 iztro **2.5.8** 生成，本项目曾用 2.6.1 并以本白名单放行
 // 「太阳/太阴@酉」两处亮度差异。2026-10 混合口径落地后，本项目的亮度**整体改由文墨
-// SB 表覆写**（`scripts/ziwei/wenmo-brightness.ts`，XD2 默认）—— 与 iztro 快照的亮度
+// SB 表覆写**（`scripts/wenmo-brightness.ts`，XD2 默认）—— 与 iztro 快照的亮度
 // 几乎处处不同，逐值白名单不再有意义。亮度正确性的验证职责随之转移：
 //
 //   · 安星与结构（星名 / type / mutagen / 宫位 / 大限 / 借宫）→ 仍由本对拍全量严格保障；

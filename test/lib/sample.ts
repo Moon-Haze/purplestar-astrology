@@ -8,7 +8,7 @@
 // 整组换样本等于重写全部期望——那不是本文件的目的）。
 // **新写测试用例时**优先取这里的常量，不要再手写日期组合。
 
-import type { BirthInfo } from "../../scripts/ziwei/types";
+import type { BirthInfo } from "../../scripts/types";
 
 /** 甲方虚构样本：2011-06-24 辰时（07:45），男，杭州 */
 export const SAMPLE_A: BirthInfo = { year: 2011, month: 6, day: 24, timeIndex: 4, gender: "male" };

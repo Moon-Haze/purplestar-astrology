@@ -56,3 +56,4 @@ package-lock.json
 html/
 .zcodeignore
 .zcode/
+.workbuddy/

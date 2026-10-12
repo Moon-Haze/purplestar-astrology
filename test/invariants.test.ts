@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 import { astro } from "iztro";
 
-import type { BirthInfo, Palace, ZiweiChart } from "@/ziwei/types";
+import type { BirthInfo, Palace, ZiweiChart } from "@/types";
 import {
 	load,
 	loadAlgorithm,
@@ -49,8 +49,8 @@ const {
 } = await loadSihua();
 // 文墨亮度表（混合口径的亮度数据源）—— 锚点断言见「文墨亮度表」组。
 const { wenmoStarBrightness, setBrightnessSchool, getBrightnessSchool } = await load<
-	typeof import("@/ziwei/wenmo-brightness")
->("@/ziwei/wenmo-brightness");
+	typeof import("@/wenmo-brightness")
+>("@/wenmo-brightness");
 const { mustPalace, locateSihua } = await loadRender();
 
 const MAJOR_STARS = [

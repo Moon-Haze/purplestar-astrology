@@ -4,7 +4,7 @@
  * 各命令按文件拆分（spec §2.2）；chart/topic 融入参数（见 spec §1）。
  */
 
-import type { BirthInfo, Mutagen, ZiweiChart } from "@/ziwei/types";
+import type { BirthInfo, Mutagen, ZiweiChart } from "@/types";
 import type { CliArgs } from "./args";
 import {
 	BIRTH_KEYS,
@@ -39,8 +39,8 @@ import {
 	agePalaceOf,
 	ageSection,
 } from "./fortune";
-import { generateChart } from "@/ziwei/algorithm";
-import { detectPatterns, getMingGongSummary } from "@/ziwei/patterns";
+import { generateChart } from "@/algorithm";
+import { detectPatterns, getMingGongSummary } from "@/patterns";
 import {
 	getMutagenByStem,
 	getYearlyMutagen,
@@ -48,8 +48,8 @@ import {
 	getDaXianMutagen,
 	getDailyMutagen,
 	getHourlyMutagen,
-} from "@/ziwei/mutagen";
-import { STEMS, BRANCHES } from "@/ziwei/constants";
+} from "@/mutagen";
+import { STEMS, BRANCHES } from "@/constants";
 import { buildReport } from "./report";
 import {
 	getTopicAnalysis,
@@ -57,7 +57,7 @@ import {
 	TOPIC_PALACE_NAME,
 	type TopicKey,
 	type AnalysisView,
-} from "@/ziwei/analysis";
+} from "@/analysis";
 
 /**
  * `--view` 取值别名：英文主名与参数别名表（`OPTION_ALIASES`）同名同义 ——

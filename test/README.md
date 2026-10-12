@@ -1,7 +1,7 @@
 # 排盘基准测试
 
 本目录是本 skill 的回归测试，用 518,400 条紫微斗数样本作为 golden 基准，
-锁定 `scripts/ziwei/` 排盘内核的行为。
+锁定 `scripts/` 根的排盘内核的行为。
 
 语料有**三个等价载体，并存且互为验证**（不是备份关系，也不是孤本）：
 
@@ -79,7 +79,7 @@ node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三
 | [school.test.ts](school.test.ts)               | 4         | ✅           | 三合派体系约束：飞星派字段不得被回填                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | [sample-source.test.ts](sample-source.test.ts) | 5         | ❌           | 数据源纯函数：DuckDB 行 → BaselineSample 的映射（**合成行**逐条覆盖规则 + **真实行**逐字节复现 charts.jsonl）、12 行完整性守卫、流式遍历语义、三条失败路径的指引（缺依赖 / 缺库文件 / 库被其他进程锁住）（不碰任何数据文件）                                                                                                                                                                                                                                                                                                                                                            |
 | [repo.test.ts](repo.test.ts)                   | 6         | ❌           | 仓库自洽：test/ 的测试文件 ↔ README 层表 ↔ lib/run.ts 的 LAYERS 三处登记双向一致；**skill 自包含**：每个 skill 的 `SKILL.md` / `package.json` / CLI 入口齐备、`package.json` 声明 `type: module`（漏了它该 skill 的 `.ts` 会按 CJS 解析、当场崩）、`ALL_SKILLS` 与手写的 `CHART_LIKE` 对得上；**排盘类 skill 的底座哨兵**：这类 skill 的 `SKILL.md` 必须含四条哨兵句，抓的是整节漏抄（见 `test/lib/skills.ts` 的 `CHART_LIKE`）；**骨架接线**：`SKILL.md` ↔ `references/` 双向一致；解析钩子 `.` 与 `@/` 两条分支的候选序一致（用桩 nextResolve，含「`.ts` 优先于同名目录」的反向一条） |
-| [citations.test.ts](citations.test.ts)         | 7         | ❌           | 引文守卫：喂守卫**构造的临时目录树**，验扫描范围与排除规则本身（违例藏在两级子目录也抓得到、排除核对表按语义而非文件名、核对表未被排除时确实自我命中、空目录零违例、非 `.ts` 与 `node_modules` / 点目录不入范围）；再对**每个 skill 的 `scripts/`** 各跑一次真扫描——覆盖面非空、全仓合计至少跳过一份核对表、零违例，三重检查缺一不可（守卫本体在 [lib/citation-guard.ts](lib/citation-guard.ts)，核对表仍住在源 skill 的 `ziwei/annotations.ts`）                                                                                                                                       |
+| [citations.test.ts](citations.test.ts)         | 7         | ❌           | 引文守卫：喂守卫**构造的临时目录树**，验扫描范围与排除规则本身（违例藏在两级子目录也抓得到、排除核对表按语义而非文件名、核对表未被排除时确实自我命中、空目录零违例、非 `.ts` 与 `node_modules` / 点目录不入范围）；再对**每个 skill 的 `scripts/`** 各跑一次真扫描——覆盖面非空、全仓合计至少跳过一份核对表、零违例，三重检查缺一不可（守卫本体在 [lib/citation-guard.ts](lib/citation-guard.ts)，核对表住在 `scripts/corpus/data/annotations.ts`）                                                                                                                                       |
 
 层 2、3 刻意**不依赖基准样本**，因此不受 iztro 升级影响 —— 层 1 变红时，它们能帮你区分
 「是 iztro 行为变了」还是「内核真的排出了坏盘」。**更高编号的层**同样不读基准样本，
@@ -101,7 +101,7 @@ node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三
 
 ### 1. 它是回归锁定，不是正确性证明
 
-基准样本由 toolkit 的 `lib/ziwei/algorithm.ts` 生成，与本项目 `scripts/ziwei/algorithm.ts`
+基准样本由 toolkit 的 `lib/ziwei/algorithm.ts` 生成，与本项目 `scripts/algorithm.ts`
 **同源**（都调 iztro 的 `bySolar`）。所以这套测试能回答的是「行为有没有变」，
 **不能**回答「盘排得对不对」—— 两边一起错的地方（比如 iztro 自身某个安星算法有误）测不出来。
 
@@ -113,7 +113,7 @@ node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三
 （太阳/太阴@酉两处差异），曾以 `KNOWN_DIVERGENCES` 白名单放行。
 
 **2026-10 混合口径落地后**，本项目的亮度整体改由**文墨 SB 表覆写**
-（`scripts/ziwei/wenmo-brightness.ts` + 同名 JSON，XD2 默认，主辅杂曜同表）——
+（`scripts/wenmo-brightness.ts` + 同名 JSON，XD2 默认，主辅杂曜同表）——
 与 iztro 快照的亮度几乎处处不同，逐值白名单不再有意义。当前安排：
 
 - **对拍跳过 `brightness` 字段**（[lib/compare.ts](lib/compare.ts) 的 `compareStars`）；
@@ -131,7 +131,7 @@ node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三
 
 ### 5. 随运行年份漂移的字段，测试自己重算
 
-`scripts/ziwei/algorithm.ts` 的 `currentAge` 是**虚岁**（农历年差 +1，以正月初一为界），
+`scripts/algorithm.ts` 的 `currentAge` 是**虚岁**（农历年差 +1，以正月初一为界），
 影响 `chart.currentAge`、`chart.currentDaXianIndex`、`palace.isCurrentDaXian` 三处。
 
 样本生成于 2026 年，直接比对会在**跨过下一个正月初一后全线失败**。故比对器

@@ -59,7 +59,7 @@ export type RootPick = RootFound | RootMissing;
  * 按优先级定位内核根目录（`scripts/`）。
  *
  * @param candidates - `[目录, 来源描述]` 的有序候选；目录为 `undefined` 的项被跳过
- * @param probe - 该 skill 的内核入口文件（相对内核根），如排盘解读的 `ziwei/algorithm.ts`、
+ * @param probe - 该 skill 的内核入口文件（相对内核根），如排盘解读的 `algorithm.ts`、
  *   古籍检索的 `index.ts`
  * @returns 命中的第一个候选；`root` 为 `null` 表示全部不成立
  *
@@ -68,7 +68,7 @@ export type RootPick = RootFound | RootMissing;
  * —— 拷贝时漏带内核的目录会走到失败分支，且错误信息能点名缺的是哪一份内核。
  *
  * `probe` 由调用方给出而非在此写死，是**各 skill 各有各的内核**带来的：
- * 古籍检索 skill 里根本没有 `ziwei/`，拿排盘内核的入口去判定它，只会得到一句
+ * 古籍检索 skill 里没有排盘内核，拿 `algorithm.ts` 入口去判定它，只会得到一句
  * 「找不到排盘内核」的误导信息。判定规则（「入口在即命中」）仍然只有这一份实现。
  *
  * 候选**由调用方给出**同样是刻意的：CLI 的第一候选是脚本自身所在目录，
@@ -94,11 +94,11 @@ export function pickRoot(candidates: Array<[string | undefined, string]>, probe:
  *
  * @remarks
  * `@/xxx` 的 `@` 是**内核根**（`scripts/`）而非 skill 根：
- * `@/ziwei/algorithm` → `scripts/ziwei/algorithm.ts`。
+ * `@/algorithm` → `scripts/algorithm.ts`。
  *
  * ⚠️ **两条分支的候选序必须一致**：`<spec>.ts` 优先，`<spec>/index.ts` 兜底。
  * 相对分支原先只有前半条，于是「文件夹模块」在两条路径上行为分叉 ——
- * `@/ziwei/patterns` 能解析到 `patterns/index.ts`，而 `./patterns` 会在运行时
+ * `@/patterns` 能解析到 `patterns/index.ts`，而 `./patterns` 会在运行时
  * `ERR_UNSUPPORTED_DIR_IMPORT`。**且 tsc 抓不住**：`moduleResolution: "bundler"`
  * 会把 `./patterns` 正常解析到 `patterns/index.ts`，于是类型全绿、只有真跑才崩。
  * 补上兜底后，`.ts` 文件仍优先于同名目录，故既有引用一条都不会改变解析目标。

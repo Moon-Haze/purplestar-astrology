@@ -27,7 +27,7 @@ import { fileURLToPath } from "node:url";
 
 import { Solar, Lunar } from "lunar-typescript";
 
-import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
+import type { BirthInfo, ZiweiChart } from "@/types";
 import { loadAlgorithm, loadConstants, loadSihua } from "../lib/loader.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/tools

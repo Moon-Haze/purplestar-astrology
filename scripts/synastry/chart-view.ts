@@ -8,9 +8,9 @@
  * `astrology --json` 的输出。故本文件里没有一行排盘逻辑、也没有 `iztro` 依赖 ——
  * 它做三件事：解析那份 JSON、按宫名 / 地支查宫、把宫位里的主星取出来。
  *
- * ## 为什么类型契约是**本文件自带的**，而不是 import 源的 `ziwei/types.ts`
+ * ## 为什么类型契约是**本文件自带的**，而不是 import 源的 `types.ts`
  *
- * 本 skill 是纯消费方，不 import 源的 `ziwei/types.ts`，类型契约自带。整份全量类型副本有两个问题：
+ * 本 skill 是纯消费方，不 import 源的 `types.ts`，类型契约自带。整份全量类型副本有两个问题：
  *
  * 1. **它是内核的全量类型**（含 `Decadal` / `SelfMutagenMark` / `LunarInfo` 等本 skill
  *    一个字段都不读的类型），却要靠「与源逐字节相同」来维持 —— 而本 skill 只是**消费方**，
@@ -25,17 +25,17 @@
  *
  * ## 为什么不去 import 源的 `cli/render.ts`
  *
- * `render.ts` 是排盘 CLI 的渲染层，它 import `@/ziwei/algorithm`（真排盘）。本 skill
+ * `render.ts` 是排盘 CLI 的渲染层，它 import `@/algorithm`（真排盘）。本 skill
  * 一旦引它，排盘内核就得整份跟过来 —— 那正是本次改造要消灭的东西。这里只重建合盘真正
  * 用到的几个小函数。
  *
  * ## 为什么地支名在这里自写一份
  *
- * 源的 `ziwei/constants.ts` 也有 `BRANCHES`，但那是**运行期**导入（值是数组）——
+ * 源的 `constants.ts` 也有 `BRANCHES`，但那是**运行期**导入（值是数组）——
  * 引它会把 500 多行的常量表（四化表、星曜释义、时辰对照）整份拖进本 skill。
  * 地支名是**永不变化的宇宙常量**（子丑寅卯…），不是会漂移的排盘逻辑，故自带 12 个字
  * 比拖一整份内核划算。⚠️ 这是**自有的常量**，不是「漏了同步的副本」——
- * 改 `ziwei/constants.ts` 的 `BRANCHES` 时**不需要**同步这里（两者不会同时被读到：
+ * 改 `constants.ts` 的 `BRANCHES` 时**不需要**同步这里（两者不会同时被读到：
  * 本 skill 的盘是从 JSON 来的，地支索引与名字的对应关系由排盘方保证）。
  */
 
@@ -45,7 +45,7 @@ import { readFileSync } from "node:fs";
  * 十二地支，数组下标即全项目的**地支索引**（0=子、1=丑 … 11=亥）。
  *
  * @remarks
- * 与源的 `ziwei/constants.ts` 同名同值，理由见文件头。这里只用于把 `Palace.branch`
+ * 与源的 `constants.ts` 同名同值，理由见文件头。这里只用于把 `Palace.branch`
  * 渲染成「夫妻宫 卯」里的那个「卯」。
  */
 const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
@@ -60,7 +60,7 @@ export const branchName = (branch: number): string => BRANCHES[branch] ?? String
 
 // ══════════════════════ 命盘类型契约 ══════════════════════
 // ⚠️ 下面这组 interface 是**消费方声明**：只列本 skill 真的读到的字段。
-//    它们由 `astrology --json` 产出（源头是 `ziwei/types.ts`），
+//    它们由 `astrology --json` 产出（源头是 `types.ts`），
 //    但不是那份内核类型的副本 —— 见文件头「为什么类型契约是本文件自带的」。
 
 /** 四化名。 */

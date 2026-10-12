@@ -1,9 +1,9 @@
 /**
- * 格局层的**数据**：常量、名字裁决表与判词表（自 `ziwei/patterns/data.ts` 迁入语料域）。
+ * 格局层的**数据**：常量、名字裁决表与判词表（自 `patterns/data.ts` 迁入语料域）。
  *
  * @remarks
  * 本模块只放「有什么」，既不放形状也不放判定 —— 结构体与识别器入参在
- * `ziwei/patterns/types.ts`，识别器按分组散在 `ziwei/patterns/superior.ts` /
+ * `patterns/types.ts`，识别器按分组散在 `patterns/superior.ts` /
  * `medium.ts` / `enhancing.ts` / `basic.ts` / `converged.ts`，装配在 `index.ts`。
  * 分工是形状 / **数据** / 判定，改哪一层就只需读哪个文件。
  *
@@ -16,7 +16,7 @@
  * @packageDocumentation
  */
 
-import type { GejuNameAlias, PatternVerdict } from "@/ziwei/patterns/types";
+import type { GejuNameAlias, PatternVerdict } from "@/patterns/types";
 
 export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
 	// ────────── 古籍词频裁决（真异名，两个不同的词）──────────

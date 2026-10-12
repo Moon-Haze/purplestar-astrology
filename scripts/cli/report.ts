@@ -1,24 +1,24 @@
 /**
  * `astrology --report` 的文档装配层：把 13 个主题的 Markdown 报告节拼成一份全盘报告。
  *
- * 内核侧（`ziwei/analysis/report.ts` 的 getTopicReport）只管**单主题内容**；本文件管
+ * 内核侧（`analysis/report.ts` 的 getTopicReport）只管**单主题内容**；本文件管
  * 文档级的事：报告顺序（用户口径：财运在事业前、性格在感情后）、文档头（出生信息 /
  * 农历 / 全盘骨架 / 生年四化 / 格局 / 运限速览）、口径提示、经典出处的古籍检索，以及
  * 知识来源分级尾注。经典出处在本层查（`corpus` 是独立知识域、经 `knowledge` 命令出面，内核不反向依赖它），
  * 引文经 `options.citations` 递给内核逐节渲染。
  */
 
-import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
+import type { BirthInfo, ZiweiChart } from "@/types";
 import { ALL_BOOKS, searchClassics } from "@/corpus";
 import {
 	getTopicReport,
 	getTopicReportMeta,
 	type ReportCitation,
 	type TopicKey,
-} from "@/ziwei/analysis";
-import { detectPatterns } from "@/ziwei/patterns";
-import { getMutagenByStem } from "@/ziwei/mutagen";
-import { BRANCHES, STEMS } from "@/ziwei/constants";
+} from "@/analysis";
+import { detectPatterns } from "@/patterns";
+import { getMutagenByStem } from "@/mutagen";
+import { BRANCHES, STEMS } from "@/constants";
 import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua } from "./render";
 import type { CaliberBasis } from "./birth-info-defs";
 

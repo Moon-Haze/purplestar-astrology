@@ -33,7 +33,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { BirthInfo } from "@/ziwei/types"; // 仅参与 typecheck，运行时被擦除
+import type { BirthInfo } from "@/types"; // 仅参与 typecheck，运行时被擦除
 
 // HERE = <仓库根>/tools/bench，上溯两级即仓库根（口径同 tools/db/*.ts）
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -133,18 +133,18 @@ const LOAD_GROUPS: Array<{ label: string; specs: string[]; note: string }> = [
 	{
 		label: "核心",
 		specs: [
-			"@/ziwei/algorithm",
-			"@/ziwei/patterns",
-			"@/ziwei/mutagen",
-			"@/ziwei/constants",
-			"@/ziwei/cities",
+			"@/algorithm",
+			"@/patterns",
+			"@/mutagen",
+			"@/constants",
+			"@/cli/data/cities",
 			"@/cli/args",
 		],
 		note: "analyze 必需（含 iztro / lunar-typescript）",
 	},
 	{
 		label: "+ analysis",
-		specs: ["@/ziwei/analysis"],
+		specs: ["@/analysis"],
 		note: "仅 topic 命令需要（v3 分析数据库）",
 	},
 	{ label: "+ cli/commands", specs: ["@/cli/commands"], note: "命令表本体，analyze 必需" },
@@ -198,8 +198,8 @@ for (const g of groups) {
 	rows.push({ label: g.label, marginal: performance.now() - s });
 }
 
-const { generateChart } = await import("@/ziwei/algorithm");
-const { detectPatterns } = await import("@/ziwei/patterns");
+const { generateChart } = await import("@/algorithm");
+const { detectPatterns } = await import("@/patterns");
 const { findLongitude } = await import("@/cli/birth-info");
 
 const info = ${JSON.stringify(HOT_INFO)};

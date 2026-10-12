@@ -10,7 +10,7 @@
  *
  * 数据血缘（重要）：库里的主题文本是**本仓 analysis 内核在 518,400 个设计样本上的
  * 预计算产物**（`npm run build:db`），不是独立内容源 —— 本工具只做**导出与对拍**，
- * 不产新断语。断语的修订一律改内核（scripts/ziwei/analysis/），再重建库、再导出。
+ * 不产新断语。断语的修订一律改内核（scripts/analysis/），再重建库、再导出。
  *
  * 宫名口径：库内列值与 `./data` 散表同为紧凑口径（不带「宫」字、「仆役」），
  * 内核侧 `Palace.name` 是项目口径（带「宫」字）—— 本工具内的 `compactPalaceKey`
@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 import type { DuckDBConnection } from "@duckdb/node-api";
 
 import { resolveQueryTarget } from "./db";
-import { TOPIC_KEYS, type TopicKey } from "../../scripts/ziwei/analysis/data";
+import { TOPIC_KEYS, type TopicKey } from "../../scripts/analysis/data";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // tools/db
 const SKILL_ROOT = resolve(HERE, "../..");
@@ -34,8 +34,8 @@ const OUT_DIR = resolve(SKILL_ROOT, "docs/manual");
 const TOPICS_DIR = join(OUT_DIR, "topics");
 
 // 内核 patterns / 排盘模块 —— 相对导入，tools/ 不走 @/ 别名
-const { generateChart } = await import("../../scripts/ziwei/algorithm");
-const patterns = await import("../../scripts/ziwei/patterns/index");
+const { generateChart } = await import("../../scripts/algorithm");
+const patterns = await import("../../scripts/patterns/index");
 
 /**
  * 项目口径宫名（`Palace.name`，带「宫」字）→ 库内紧凑键。
@@ -330,7 +330,7 @@ async function exportTopics(conn: DuckDBConnection): Promise<void> {
 			"> 自动生成自样本库（518,400 设计样本 × 本仓 analysis 内核）——只导出静态节",
 			">（当前大限 / 流年 / 流月等动态节不进册）。每节一行不重复、按首现序，",
 			"> 标注该主星在主宫的样本盘数。生成：`npx tsx tools/db/export-manual.ts topics`。",
-			"> 修订断语请改内核 `scripts/ziwei/analysis/` 后重建库再导出，不要改本文件。",
+			"> 修订断语请改内核 `scripts/analysis/` 后重建库再导出，不要改本文件。",
 			"",
 		];
 		const body: string[] = [];
@@ -469,7 +469,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 			"/**",
 			" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
 			` * 源：样本库 518,400 设计样本 × analysis 内核（${topic} 主题静态节，动态节不进数据）。`,
-			" * 断语修订：改内核 `scripts/ziwei/analysis/` → `npm run build:db` → 重导本目录。",
+			" * 断语修订：改内核 `scripts/analysis/` → `npm run build:db` → 重导本目录。",
 				" * 查询入口：`corpus/data/manual/index.ts`（按主题懒加载，不在 CLI 主 import 链上）。",
 			" */",
 			`import type { OracleStar } from "./types.ts";`,
@@ -558,7 +558,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 		" *",
 		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
 		" */",
-		`import type { TopicKey } from "../../../ziwei/analysis/data";`,
+		`import type { TopicKey } from "../../../analysis/data";`,
 		`import type { OracleStar } from "./types.ts";`,
 		"",
 		`export type { OracleStar, SanFangEntry, SihuaEntry } from "./types.ts";`,

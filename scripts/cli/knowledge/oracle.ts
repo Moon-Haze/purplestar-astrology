@@ -8,7 +8,7 @@
  */
 
 import type { CliArgs } from "../args";
-import { TOPIC_LABEL, type TopicKey } from "@/ziwei/analysis";
+import { TOPIC_LABEL, type TopicKey } from "@/analysis";
 
 type OracleStar = import("@/corpus/data/manual/types").OracleStar;
 

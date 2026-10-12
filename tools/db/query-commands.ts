@@ -1,7 +1,7 @@
 // 封装子命令的查询与输出（tools/db）：每个子命令一条固定 SQL + 具名参数绑定，
 // 输入不进 SQL；行集统一走 getRowObjectsJS（list/struct 已转纯 JS 值）。
 import type { DuckDBConnection } from "@duckdb/node-api";
-import { TOPIC_KEYS, TOPIC_LABEL, type TopicKey } from "../../scripts/ziwei/analysis/data";
+import { TOPIC_KEYS, TOPIC_LABEL, type TopicKey } from "../../scripts/analysis/data";
 import { dispWidth, jsonReplacer, renderTable } from "./render";
 import { GAN, ZHI, SAMPLE_LABELS, dash, formatSampleValue, sihuaCell, starList } from "./format";
 import { SEARCH_MAX_LIMIT, type ParsedArgs } from "./query-args";

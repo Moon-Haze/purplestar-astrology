@@ -1,7 +1,7 @@
 /**
  * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。
  * 源：样本库 518,400 设计样本 × analysis 内核（move 主题静态节，动态节不进数据）。
- * 断语修订：改内核 `scripts/ziwei/analysis/` → `npm run build:db` → 重导本目录。
+ * 断语修订：改内核 `scripts/analysis/` → `npm run build:db` → 重导本目录。
  * 查询入口：`analysis/manual/index.ts`（按主题懒加载，不在 CLI 主 import 链上）。
  */
 import type { OracleStar } from "./types.ts";

@@ -6,6 +6,6 @@
  * 各断言组共用，由 `cli/selftest.ts` 与 `selftest/` 下组文件 import。
  */
 
-import type { BirthInfo } from "@/ziwei/types";
+import type { BirthInfo } from "@/types";
 
 export const SAMPLE: BirthInfo = { year: 1990, month: 5, day: 15, timeIndex: 5, gender: "male" };

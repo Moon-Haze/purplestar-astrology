@@ -9,14 +9,14 @@ import { DuckDBInstance } from "@duckdb/node-api";
 // 改为「全局行字典 + 整数数组映射」，见 spec §5/§6。
 export const CREATE_DB_PRAGMAS = ["PRAGMA force_compression='zstd'"];
 
-// 13 个主题名的**唯一定义**在内核：scripts/ziwei/analysis/data.ts
+// 13 个主题名的**唯一定义**在内核：scripts/analysis/data.ts
 // 的 TOPIC_KEYS。
 // 此处只转出 —— 内核的 TopicKey 与这里的列序从此不可能漂移（此前是两份，靠注释提醒）。
 // 视图、构建、校验三处共用同一常量。
 // ⚠️ 用相对路径而非 `@/` 别名：tools/ 由 tsx 直接执行，不走 CLI 的解析钩子 ——
 //    故本行必须随内核位置手改（内核在仓库根 scripts/），**且 tools/ 不在 npm test 覆盖内**，
 //    漏改不会让任何测试变红，只会在实跑时报模块找不到。
-import { TOPIC_KEYS, type TopicKey } from "../../scripts/ziwei/analysis/data";
+import { TOPIC_KEYS, type TopicKey } from "../../scripts/analysis/data";
 export { TOPIC_KEYS, type TopicKey };
 
 // spec §4.1：结构表两形态共用；主题文本的两张表只有 inline 才建。

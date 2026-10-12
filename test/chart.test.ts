@@ -4,7 +4,7 @@
 // 基准是 iztro 2.5.8 的行为快照，本项目用 2.6.1。
 //
 // ⚠️ **亮度不参与对拍**（2026-10 口径切换）：本项目的亮度已整体改由文墨 SB 表覆写
-//    （XD2 默认，见 scripts/ziwei/wenmo-brightness.ts），与 iztro 快照的亮度不可比；
+//    （XD2 默认，见 scripts/wenmo-brightness.ts），与 iztro 快照的亮度不可比；
 //    其正确性由 test/invariants.test.ts 的「文墨亮度表」组保障。其余字段
 //    （星名 / type / mutagen / 宫位 / 大限 / 借宫）仍全量严格比对，白名单之外的任何
 //    差异都会失败（白名单机制保留、清单现为空，见 test/lib/compare.ts）。
@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { BirthInfo } from "@/ziwei/types";
+import type { BirthInfo } from "@/types";
 import { loadAlgorithm, ROOT } from "./lib/loader.ts";
 import {
 	BRANCHES,

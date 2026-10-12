@@ -1,7 +1,7 @@
 /**
  * 命盘渲染层 —— 把排盘内核输出的结构化数据，渲染成给模型读的文本片段。
  *
- * 拆自 purple-star.ts。只依赖 `@/ziwei/` 内核，不依赖本目录的其他模块 —— 唯一例外是
+ * 拆自 purple-star.ts。只依赖 `@/` 内核，不依赖本目录的其他模块 —— 唯一例外是
  * `import type { CaliberBasis } from "./birth-info-defs"`（候选 6 的 basis 签名）：
  * 类型 import 运行时被完全擦除，不形成运行时边，birth-info → render（fmtDate）的
  * 依赖方向不破。故本文件仍处依赖图底层（args / render 并列底层）。
@@ -10,11 +10,11 @@
  *    静态 import 引内核与 `@/` 别名。但**不要**反过来让 purple-star.ts 静态引本文件。
  */
 
-import type { BirthInfo, Palace, Star, ZiweiChart, Mutagen } from "@/ziwei/types";
+import type { BirthInfo, Palace, Star, ZiweiChart, Mutagen } from "@/types";
 import type { CaliberBasis } from "./birth-info-defs";
-import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/ziwei/constants";
-import { mustPalaceAtBranch, surroundBranches } from "@/ziwei/palace-relations";
-import { generateChart } from "@/ziwei/algorithm";
+import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/constants";
+import { mustPalaceAtBranch, surroundBranches } from "@/palace-relations";
+import { generateChart } from "@/algorithm";
 
 // ══════════════════════ 共用格式化 ══════════════════════
 
@@ -72,7 +72,7 @@ for (const [iztroName, projectName] of Object.entries(IZTRO_TO_PROJECT_PALACE)) 
  * 命宫 / 身宫地支必定落在 `palaces` 内，这是排盘不变量；取不到即说明内核输出已损坏。
  * 此处遵循项目一贯立场：宁可当场失败，也不要渲染出一张缺了命宫的盘。
  *
- * 实现已收敛至 `@/ziwei/palace-relations` 的 `mustPalaceAtBranch`（候选 8）——
+ * 实现已收敛至 `@/palace-relations` 的 `mustPalaceAtBranch`（候选 8）——
  * 本函数是薄壳，保持既有调用方与导出名不变。
  */
 export function palaceAtBranch(chart: ZiweiChart, branch: number, what: string): Palace {

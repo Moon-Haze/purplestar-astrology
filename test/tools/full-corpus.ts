@@ -25,7 +25,7 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { BirthInfo } from "@/ziwei/types";
+import type { BirthInfo } from "@/types";
 import { loadAlgorithm } from "../lib/loader.ts";
 import { compareChart, formatDiffs, BRANCHES, type ChartDiff } from "../lib/compare.ts";
 import { forEachSample, openSource, closeSource, SourceError, DB_DIR } from "../lib/sample-source.ts";
@@ -187,7 +187,7 @@ function report(s: CorpusStats, expected: number, completed: boolean, ms: number
 	console.log(
 		"\n处理：先跑 npm test 定位是抽样内的变化，或 \n" +
 			"      · 若是 iztro 升级带来的预期行为变化 → 审阅后更新 test/lib/compare.ts 的 KNOWN_DIVERGENCES（须写明根因）\n" +
-			"      · 若不是预期变化 → 这是回归，检查 scripts/ziwei/ 下的内核改动"
+			"      · 若不是预期变化 → 这是回归，检查 scripts/ 下的内核改动"
 	);
 }
 

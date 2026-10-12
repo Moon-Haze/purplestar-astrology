@@ -29,7 +29,7 @@ import { createGunzip } from "node:zlib";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { BirthInfo } from "@/ziwei/types";
+import type { BirthInfo } from "@/types";
 import type { BaselineSample } from "../lib/compare.ts";
 import { fetchSample, openSource, closeSource, SourceError, DB_DIR } from "../lib/sample-source.ts";
 

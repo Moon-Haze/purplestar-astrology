@@ -19,12 +19,12 @@
  *   cli/selftest.ts    回归自检（排盘 / 古籍 / 合盘三段合一）
  *
  * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
- *   scripts/ziwei/algorithm.ts   排盘主流程
- *   scripts/ziwei/patterns/      格局识别（含古籍出处与破格条件）
- *   scripts/ziwei/mutagen.ts       四化（生年 / 流年 / 流月）
- *   scripts/ziwei/analysis/      分析数据库 v3（主题论断动态推算，topic 命令用）
- *   scripts/ziwei/cities.ts      中国城市经纬度（真太阳时校正）
- *   scripts/ziwei/constants.ts   天干地支 / 四化表 / 星曜释义
+ *   scripts/algorithm.ts   排盘主流程
+ *   scripts/patterns/      格局识别（含古籍出处与破格条件）
+ *   scripts/mutagen.ts       四化（生年 / 流年 / 流月）
+ *   scripts/analysis/      分析数据库 v3（主题论断动态推算，topic 命令用）
+ *   cli/data/cities.ts   中国城市经纬度（真太阳时校正）
+ *   scripts/constants.ts   天干地支 / 四化表 / 星曜释义
  *
  * 语料（corpus：古籍/天纪/核对表）与 synastry 的内核也住进本仓
  * `scripts/corpus/` 与 `scripts/synastry/`，命令并入本 CLI —— 单 skill 单入口，
@@ -73,11 +73,11 @@ import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hook
  * ⚠️ 这里只允许类型层的 `typeof import(...)`：任何**值导入**（含把内核模块或 `scripts/cli/*`
  * 写成普通静态 `import`）都会在钩子注册之前触发加载，直接崩掉。
  */
-type AlgorithmModule = typeof import("@/ziwei/algorithm");
-type PatternsModule = typeof import("@/ziwei/patterns");
-type SihuaModule = typeof import("@/ziwei/mutagen");
-type ConstantsModule = typeof import("@/ziwei/constants");
-type CitiesModule = typeof import("@/ziwei/cities");
+type AlgorithmModule = typeof import("@/algorithm");
+type PatternsModule = typeof import("@/patterns");
+type SihuaModule = typeof import("@/mutagen");
+type ConstantsModule = typeof import("@/constants");
+type CitiesModule = typeof import("@/cli/data/cities");
 type ClassicsModule = typeof import("@/corpus");
 type ChartViewModule = typeof import("@/synastry/chart-view");
 type ArgsModule = typeof import("@/cli/args");
@@ -107,7 +107,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  * 1. `ZIWEI_ROOT` 环境变量 —— 显式指定（想把内核指到别处时用）
  * 2. 技能自带内核 —— 就是本脚本所在目录 `<skill 根>/scripts/`
  *
- * 内核根 = `scripts/` **本身**：CLI（`purple-star.ts`、`cli/`）与内核目录（`ziwei/`）
+ * 内核根 = `scripts/` **本身**：CLI（`purple-star.ts`、`cli/`）与内核文件（`algorithm.ts` 等）
  * 同处一层。因此 `@/` 别名指向的是 `scripts/`，而**不是** skill 根。
  *
  * 这里刻意**没有**「宿主项目」候选：每个 skill 自带内核，不存在「实时内核 vs 分发副本」
@@ -123,9 +123,9 @@ const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
  *
  * @remarks
  * 由调用方传入而非写死在 `boot-hooks.ts`：各 skill 各有各的内核，古籍检索 skill 里
- * 根本没有 `ziwei/`（见 `CLAUDE.md` 的「skill 的布局」）。
+ * 根本没有内核入口 `algorithm.ts`（见 `CLAUDE.md` 的「skill 的布局」）。
  */
-const KERNEL_ENTRY = "ziwei/algorithm.ts";
+const KERNEL_ENTRY = "algorithm.ts";
 
 const picked = pickRoot(ROOT_CANDIDATES, KERNEL_ENTRY);
 
@@ -136,7 +136,7 @@ if (!picked.root) {
 			picked.tried.map(t => `    - ${t}`).join("\n") +
 			"\n" +
 			`  处理：\n` +
-			`    ① 确认 skill 目录完整 —— scripts/ 下应同时有 purple-star.ts、cli/ 与 ziwei/ 内核目录（拷贝时漏带内核会走到这里）；或\n` +
+			`    ① 确认 skill 目录完整 —— scripts/ 下应同时有 purple-star.ts、cli/ 与内核文件 algorithm.ts（拷贝时漏带内核会走到这里）；或\n` +
 			`    ② 用 ZIWEI_ROOT=<含 ziwei/ 的目录> 显式指定内核位置。`
 	);
 	process.exit(1);
@@ -190,11 +190,11 @@ const load = makeLoader(ROOT, ROOT_LABEL, f => {
  * 不再有「解构一份 + REQUIRED_EXPORTS 手抄第二份」的双登记。
  */
 async function loadCore() {
-	const algorithmNs = await load<AlgorithmModule>("@/ziwei/algorithm");
-	const patternsNs = await load<PatternsModule>("@/ziwei/patterns");
-	const sihuaNs = await load<SihuaModule>("@/ziwei/mutagen");
-	const constantsNs = await load<ConstantsModule>("@/ziwei/constants");
-	const citiesNs = await load<CitiesModule>("@/ziwei/cities");
+	const algorithmNs = await load<AlgorithmModule>("@/algorithm");
+	const patternsNs = await load<PatternsModule>("@/patterns");
+	const sihuaNs = await load<SihuaModule>("@/mutagen");
+	const constantsNs = await load<ConstantsModule>("@/constants");
+	const citiesNs = await load<CitiesModule>("@/cli/data/cities");
 	const lunarNs = await load<typeof import("lunar-typescript")>("lunar-typescript");
 	// corpus / synastry 的入口模块：分别对应知识检索与合盘两条命令的内核
 	const classicsNs = await load<ClassicsModule>("@/corpus");
@@ -220,11 +220,11 @@ async function loadCore() {
 	 * 与 `algorithm.ts` 的 `projectPalaceName` 同一理念：宁可启动失败，也不静默产出错盘。
 	 */
 	const LOADED: ReadonlyArray<readonly [string, Record<string, unknown>]> = [
-		["@/ziwei/algorithm", algorithmNs],
-		["@/ziwei/patterns", patternsNs],
-		["@/ziwei/mutagen", sihuaNs],
-		["@/ziwei/constants", constantsNs],
-		["@/ziwei/cities", citiesNs],
+		["@/algorithm", algorithmNs],
+		["@/patterns", patternsNs],
+		["@/mutagen", sihuaNs],
+		["@/constants", constantsNs],
+		["@/cli/data/cities", citiesNs],
 		["lunar-typescript", lunarNs],
 		["@/corpus", classicsNs],
 		["@/synastry/chart-view", chartViewNs],

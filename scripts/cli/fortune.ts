@@ -13,8 +13,8 @@
  *    与同层模块（`./render`）。
  */
 
-import type { Palace, ZiweiChart, Mutagen } from "@/ziwei/types";
-import { STEMS, BRANCHES } from "@/ziwei/constants";
+import type { Palace, ZiweiChart, Mutagen } from "@/types";
+import { STEMS, BRANCHES } from "@/constants";
 import {
 	getYearlyMutagen,
 	getMonthlyMutagen,
@@ -23,9 +23,9 @@ import {
 	getDaXianMutagen,
 	getDailyMutagen,
 	getHourlyMutagen,
-} from "@/ziwei/mutagen";
-import { surroundBranches, oppositeBranch } from "@/ziwei/palace-relations";
-import { detectPatterns } from "@/ziwei/patterns";
+} from "@/mutagen";
+import { surroundBranches, oppositeBranch } from "@/palace-relations";
+import { detectPatterns } from "@/patterns";
 import { FOCUS_ALIASES, locateSihua, renderPalace, starLine, surroundNames } from "./render";
 import { Solar } from "lunar-typescript";
 
@@ -38,7 +38,7 @@ import { Solar } from "lunar-typescript";
  * @returns 地支索引 0–11
  *
  * @remarks
- * 与 `ziwei/mutagen.ts` 的 `getYearStemIndex` 同一口径（`(year - 4) % 12`）。
+ * 与内核 `mutagen.ts` 的 `getYearStemIndex` 同一口径（`(year - 4) % 12`）。
  * 流年命宫就是**年支所在的那个宫**（三合派：不重排十二宫，以年支宫为流年命宫论三方四正）。
  */
 export function yearlyBranchOf(year: number): number {

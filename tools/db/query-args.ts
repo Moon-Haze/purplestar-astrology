@@ -2,7 +2,7 @@
 // 纯逻辑模块，不碰 DuckDB，错误路径可独立测试。
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { TOPIC_KEYS, TOPIC_LABEL, type TopicKey } from "../../scripts/ziwei/analysis/data";
+import { TOPIC_KEYS, TOPIC_LABEL, type TopicKey } from "../../scripts/analysis/data";
 import { deletedArgHint } from "./db";
 
 // ROOT 是 **skill 根**（仓库根），不是 tools/：本文件在 <skill 根>/tools/db/ 下，

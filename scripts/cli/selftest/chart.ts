@@ -10,12 +10,12 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { generateChart } from "@/ziwei/algorithm";
-import { detectPatterns } from "@/ziwei/patterns";
-import { palaceAtBranch } from "@/ziwei/palace-relations";
-import { getPalaceByBranch } from "@/ziwei/patterns/helpers";
-import { getMutagenByStem, getYearStemIndex, getMonthlyMutagen } from "@/ziwei/mutagen";
-import { STEMS, BRANCHES } from "@/ziwei/constants";
+import { generateChart } from "@/algorithm";
+import { detectPatterns } from "@/patterns";
+import { palaceAtBranch } from "@/palace-relations";
+import { getPalaceByBranch } from "@/patterns/helpers";
+import { getMutagenByStem, getYearStemIndex, getMonthlyMutagen } from "@/mutagen";
+import { STEMS, BRANCHES } from "@/constants";
 import { yearlyBranchOf, agePalaceOf, parseAgesArg } from "../fortune";
 import { SAMPLE } from "./sample";
 import { eq, type SelftestDeps } from "../selftest-kit";
@@ -170,7 +170,7 @@ export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): v
 			throw new Error(
 				"synastry-knowledge 仍含「自化」断语——体系不计算宫干自化，用户可见文案不得出现"
 			);
-		const d = readFileSync(resolve(ctx.root, "ziwei", "analysis", "data.ts"), "utf8");
+		const d = readFileSync(resolve(ctx.root, "analysis", "data.ts"), "utf8");
 		// 七杀「毁一半」引句是 suspect 档：两库各自引用时，引句前 40 字内必须带
 		// 「坊间流传」口径标注（data.ts 形态「坊间流传倪师笑言（未核实）」、
 		// synastry 形态「（坊间流传，未核实倪师原话）」）——两文件分开读、分开判，

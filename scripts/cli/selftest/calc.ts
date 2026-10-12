@@ -16,7 +16,7 @@ import {
 } from "../birth-info";
 import { parseArgs } from "../args";
 import { chartSignature, fmtDate } from "../render";
-import { generateChart } from "@/ziwei/algorithm";
+import { generateChart } from "@/algorithm";
 import { eq, type SelftestDeps } from "../selftest-kit";
 
 /** 农历 → 公历换算（含 --lunar 输入路径与闰月边界）。 */

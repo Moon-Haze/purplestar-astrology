@@ -166,7 +166,7 @@ export async function runGradeRegistry({
 }: Pick<SelftestDeps, "ok" | "ctx">): Promise<void> {
 	// 动态 import 在 ok 断言流之外 await（ok 断言体是同步回调，与 classics / synastry
 	// 断言组同一既定模式）。
-	const grades = await import("@/ziwei/analysis/grades");
+	const grades = await import("@/analysis/grades");
 
 	ok("知识分级：data.ts 全部倪师引句在 grades.ts 有登记且档位合法（零缺失）", () => {
 		const { NI_GRADES } = grades;
@@ -175,7 +175,7 @@ export async function runGradeRegistry({
 			if (!legal.has(e.grade))
 				throw new Error(`grades.ts 的「${e.quote}」档位非法：${e.grade}`);
 		}
-		const src = readFileSync(resolve(ctx.root, "ziwei", "analysis", "data.ts"), "utf8");
+		const src = readFileSync(resolve(ctx.root, "analysis", "data.ts"), "utf8");
 		// 引句标记（与评估报告口径一致，按实测扩展）：「倪师 / 倪海厦」锚点
 		// + 少量过渡（星名、出处「天纪 03」、动词「说·言·明言·将…列为」等）+「」或英文
 		// 双引号内 ≥2 字引句；标记与引句须同在一行，注释行不参与；(?<!非) 排除「一说非

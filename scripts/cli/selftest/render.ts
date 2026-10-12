@@ -10,15 +10,15 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { generateChart } from "@/ziwei/algorithm";
-import { STAR_DESCRIPTIONS } from "@/ziwei/constants";
+import { generateChart } from "@/algorithm";
+import { STAR_DESCRIPTIONS } from "@/constants";
 import {
 	filterGenderContent,
 	getTopicAnalysis,
 	TOPIC_LABEL,
 	type TopicKey,
 	type AnalysisView,
-} from "@/ziwei/analysis";
+} from "@/analysis";
 import {
 	decadalSection,
 	focusSection,
@@ -81,9 +81,9 @@ export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">
 		// 类型擦除加载，不触碰钩子 —— 这份豁免正是靠这一点成立。
 		//
 		// ⚠️ 越界有两种形态，只有一种会自己喊出来（两种都实测过）：
-		//   · 省略扩展名（`import … from "./ziwei/constants"`）→ 钩子尚未注册，CLI 当场崩
+		//   · 省略扩展名（`import … from "./constants"`）→ 钩子尚未注册，CLI 当场崩
 		//     ERR_MODULE_NOT_FOUND。吵，但不危险 —— 不需要本断言。
-		//   · 写全扩展名（`import … from "./ziwei/constants.ts"`）→ **照常跑通**，
+		//   · 写全扩展名（`import … from "./constants.ts"`）→ **照常跑通**，
 		//     因为那个文件恰好没有自己的依赖。实测此时 48/49：除本断言外全绿。
 		//     这是颗哑雷 —— 哪天该文件多一个 `@/` 或省略扩展名的 import，引导层就会在
 		//     钩子注册前崩掉，而崩因指向的是一次看似无关的改动。
@@ -241,7 +241,7 @@ export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 		if (!text.includes("大限")) throw new Error("缺大限年龄段标注");
 	});
 	// ── 性别过滤上公开面（候选 7）：filterGenderContent 此前只被内核自用，
-	// 外部（测试/消费方）无从直测 —— 断言**必须经 @/ziwei/analysis 公开面 import，
+	// 外部（测试/消费方）无从直测 —— 断言**必须经 @/analysis 公开面 import，
 	// 直插 ./lookups 即本组失败的意义（公开面缺导出 → 模块链接期就崩）。 ──
 	ok("性别过滤：male 的 getTopicAnalysis 不含女命残留（候选 7）", () => {
 		const c = generateChart(SAMPLE);

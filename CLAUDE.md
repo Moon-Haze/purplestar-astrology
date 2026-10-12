@@ -92,9 +92,11 @@ npm run typecheck
     ├── cli/selftest.ts             回归断言（三段汇总，项数由首行自报）
     ├── cli/selftest-kit.ts         selftest 断言共用 harness（Assertion / eq / ok）——selftest 与
     │                               corpus / synastry 两个断言组共用
-    ├── ziwei/                      排盘内核：algorithm（iztro 主流程）/ patterns（格局层）/
-    │                               mutagen（四化）/ analysis（主题论断数据库 v3）/ constants /
-    │                               cities / palace-relations / annotations / types
+    ├── algorithm.ts 等             排盘内核（原 ziwei/ 目录，2026-10-12 拆平至 scripts/ 根）：
+    │                               algorithm（iztro 主流程）/ patterns（格局层）/
+    │                               mutagen（四化）/ analysis（主题论断数据库 v3）/ data
+    │                               （干支/四化/星曜数据表）/ constants / wenmo-brightness /
+    │                               palace-relations / types
     ├── corpus/                     古籍与文献语料内核：data/（三部古籍 + 引文核对表 +
     │                               格局判词）+ tianji/（天纪判语）+ index（检索纯函数）
     │                               + selftest-asserts（断言组，主 selftest 汇总执行）
@@ -108,22 +110,22 @@ npm run typecheck
 
 `scripts/purple-star.ts` 用 Node ≥ 22.18 的 `module.registerHooks` 注册了解析钩子（22.15–22.17 需 `NODE_OPTIONS=--experimental-strip-types` 且子进程链路不可靠，不作承诺）：
 
-- `@/xxx` → 解析到 `<内核根>/xxx`，自动补 `.ts` 或 `/index.ts`。内核根是仓库的 `scripts/`，所以 `@/ziwei/algorithm` = `scripts/ziwei/algorithm.ts`
-- **`.` 相对说明符** → 同一条候选序：先补 `.ts`，再兜底 `<spec>/index.ts`。故内核里引**文件夹模块**时 `./patterns` 与 `@/ziwei/patterns` 等价
+- `@/xxx` → 解析到 `<内核根>/xxx`，自动补 `.ts` 或 `/index.ts`。内核根是仓库的 `scripts/`，所以 `@/algorithm` = `scripts/algorithm.ts`
+- **`.` 相对说明符** → 同一条候选序：先补 `.ts`，再兜底 `<spec>/index.ts`。故内核里引**文件夹模块**时 `./patterns` 与 `@/patterns` 等价
 - **裸包名**（`iztro`、`lunar-typescript`）→ 自内核根向上查找 `node_modules` 解析
 
 ⚠️ 两条分支的候选序**必须一致**：它们分叉过一次，症状是 **typecheck 全绿而运行时崩**。`test/repo.test.ts` 层 6 有断言用桩 `nextResolve` 钉死这条候选序。
 
 仓库里的 `tsconfig.json` 只服务于**类型检查**（`npx tsc --noEmit`），不参与运行：`paths` 的 `@/*` 映到 `./scripts/*`（与 CLI 运行期的别名同义）；`include` 是 `scripts/**`、`test/**`、`tools/**`。
 
-**`@/` 只在 `cli/` 与引导层用**；内核 `ziwei/*.ts` 内部一律相对路径 import（运行期 `@/` 解析到「当前正在跑的 CLI 的内核根」，两者只在源里重合）。`corpus/` 与 `synastry/` 的内部 import 用省扩展名相对路径（`./data/quanshu`）与 `@/`（引排盘内核时），统一走同一套钩子。
+**`@/` 只在 `cli/` 与引导层用**；内核（`scripts/` 根的 `algorithm.ts`、`patterns/` 等排盘模块）内部一律相对路径 import（运行期 `@/` 解析到「当前正在跑的 CLI 的内核根」，两者只在源里重合）。`corpus/` 与 `synastry/` 的内部 import 用省扩展名相对路径（`./data/quanshu`）与 `@/`（引排盘内核时），统一走同一套钩子。
 
 ### CLI 如何既自举又拿到内核类型
 
 CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会被提升——若用普通 `import` 引内核，钩子还没注册、内核的 `.ts` 就已经要加载了。解法是**类型走静态、值走动态**：
 
-- `import type { … } from "@/ziwei/types"` 与 `typeof import("…")` 在运行时被**完全擦除**，可安全地写在文件顶部
-- 所有内核模块用 `await load<XxxModule>("@/ziwei/...")` 动态导入
+- `import type { … } from "@/types"` 与 `typeof import("…")` 在运行时被**完全擦除**，可安全地写在文件顶部
+- 所有内核模块用 `await load<XxxModule>("@/...")` 动态导入
 
 **引导层铁律**：`purple-star.ts` 除 `node:` 内置与 `boot-hooks.ts`（它只依赖 `node:` 内置、调用点写全 `.ts` 扩展名，靠原生类型擦除加载）外，**不允许出现任何普通静态 import**。`cli/` 内部静态 import 内核是对的（它们只在钩子注册后才被加载）。
 
@@ -144,7 +146,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 - ❌ **宫干自化** —— `algorithm.ts` 不填充 `Palace.selfMutagen`
 - ❌ **来因宫**
 
-⚠️ `ziwei/mutagen.ts` 导出六层四化（生年 / 大限宫干 `getDaXianMutagen` / 流年 / 流月 / 流日 `getDailyMutagen` / 流时 `getHourlyMutagen`）；宫干自化与来因宫函数已删除，全仓零调用点。`types.ts` 的**绊线字段刻意保留**（`Palace.selfMutagen` 与 `SelfMutagenMark` / `DecadalMutagen` 类型；`Decadal` 结构不加字段，大限宫干四化走纯函数层）——断言要盯的正是「有没有被填回」。**要删这些字段，先读 `types.ts` 里紧挨着它们的说明。**
+⚠️ `mutagen.ts` 导出六层四化（生年 / 大限宫干 `getDaXianMutagen` / 流年 / 流月 / 流日 `getDailyMutagen` / 流时 `getHourlyMutagen`）；宫干自化与来因宫函数已删除，全仓零调用点。`types.ts` 的**绊线字段刻意保留**（`Palace.selfMutagen` 与 `SelfMutagenMark` / `DecadalMutagen` 类型；`Decadal` 结构不加字段，大限宫干四化走纯函数层）——断言要盯的正是「有没有被填回」。**要删这些字段，先读 `types.ts` 里紧挨着它们的说明。**
 
 ## 单 skill 形态（2026-09-30 三 skill 合一）
 
@@ -152,7 +154,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 **归属规则（三句话）**：
 
-1. **排盘内核**（`ziwei/` + `cli/` + 引导层）—— 排盘逻辑只改这里。
+1. **排盘内核**（`scripts/` 根的排盘模块 + `cli/` + 引导层）—— 排盘逻辑只改这里。
 2. **合盘断语**（`synastry/synastry-knowledge.ts`）—— 就地改。
 3. **古籍原文**（`corpus/data/`）—— 就地改。
 
@@ -205,4 +207,4 @@ CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 
 ## 内核的来源
 
-排盘内核提取自上游开源项目 `ziwei-master`（未发布到 npm），**在本项目内独立演化**。线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/` 不在其中；本仓自带分析数据库 v3（`ziwei/analysis/`）。
+排盘内核提取自上游开源项目 `ziwei-master`（未发布到 npm），**在本项目内独立演化**。线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/` 不在其中；本仓自带分析数据库 v3（`analysis/`）。

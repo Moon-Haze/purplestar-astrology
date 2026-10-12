@@ -12,7 +12,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { generateChart } from "@/ziwei/algorithm";
+import { generateChart } from "@/algorithm";
 import { readAnalyzeJson } from "@/synastry/chart-view";
 import { buildBirthInfo } from "../birth-info";
 import { OPTION_GROUPS } from "../args-table";
@@ -295,8 +295,8 @@ export function runCommandSplit({
 	ok(
 		"命令拆分：cities 命令已删（数据表保留）；analyze → astrology 改名；stars/oracle/classics 并入 knowledge",
 		async () => {
-			// 命令面（spec §3.1）：cities 只删查询命令（ziwei/cities.ts 数据表
-			// 仍是 --city 容错解析的依据，保留）；analyze 拆进 cli/astrology.ts 并改名 cmdAstrology。
+			// 命令面（spec §3.1）：cities 只删查询命令（数据表仍是 --city 容错解析的依据，
+			// 保留，2026-10-11 迁至 cli/data/cities.ts）；analyze 拆进 cli/astrology.ts 并改名 cmdAstrology。
 			// 键集取自主 selftest 的动态 import（见彼处注释）。
 			const defined = commandNames;
 			if (defined.includes("cities"))
@@ -318,9 +318,12 @@ export function runCommandSplit({
 				if (!defined.includes(must))
 					throw new Error(`拆位不完整（应含 ${must}），实得：${defined.join("、")}`);
 			// cities 删除后的数据表仍在（--city 容错解析在用）
-			const cities = readFileSync(resolve(ctx.root, "ziwei", "cities.ts"), "utf8");
+			// ⚠️ 读**真实定义处**而非门面：2026-10-11 数据表迁至 cli/data/cities.ts，
+			// （该门面已随 ziwei/ 拆除一并删除），里面才有 `export const PROVINCES`。
+			// 断言若继续读门面路径，会因数 + 文件内容不匹配而假红（且掩盖真正的丢失）。
+			const cities = readFileSync(resolve(ctx.root, "cli", "data", "cities.ts"), "utf8");
 			if (!/export const PROVINCES/.test(cities))
-				throw new Error("ziwei/cities.ts 的 PROVINCES 不在了");
+				throw new Error("cli/data/cities.ts 的 PROVINCES 不在了");
 			// stars 释义经 knowledge --source stars 仍可检索（域实现搬进 cli/knowledge/）
 			const s = await cmdKnowledge(
 				parseArgs(["--source", "stars", "--search", "紫微"], "knowledge")

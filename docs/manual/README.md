@@ -2,7 +2,7 @@
 
 从样本库（`db/ziwei.duckdb` / `db/dataset/`，518,400 设计样本 × 本仓 analysis 内核的
 预计算产物）导出的资料集。**全部内容由 `tools/db/export-manual.ts` 生成，不要手改**——
-修订断语请改内核 `scripts/ziwei/analysis/`，重建库（`npm run build:db`）后重导。
+修订断语请改内核 `scripts/analysis/`，重建库（`npm run build:db`）后重导。
 
 ```bash
 npx tsx tools/db/export-manual.ts all    # 全量重导（topics / combo / geju / code）
@@ -19,7 +19,7 @@ npx tsx tools/db/export-manual.ts all    # 全量重导（topics / combo / geju 
 ## code 模式：同一份内容合并进代码
 
 `npx tsx tools/db/export-manual.ts code` 把手册内容整理成 **TS 数据文件**，落到
-`scripts/ziwei/analysis/manual/`（与 md 版同源同生成链；**生成快照**，不在
+`scripts/analysis/manual/`（与 md 版同源同生成链；**生成快照**，不在
 `analysis/index.ts` 公开面上，引文守卫对其语义化排除）：
 
 - `<topic>.ts` × 13：`ORACLE: Record<主星, OracleStar>`（每主题一份，避免单文件数 MB）
@@ -30,7 +30,7 @@ npx tsx tools/db/export-manual.ts all    # 全量重导（topics / combo / geju 
 CLI 主链路不 import 这些文件（零启动开销），需要消费时动态引入：
 
 ```ts
-import { loadTopicOracle, COMBO_FREQUENCY } from "@/ziwei/analysis/manual/index.ts";
+import { loadTopicOracle, COMBO_FREQUENCY } from "@/corpus/data/manual/index.ts";
 const oracle = await loadTopicOracle("career"); // 主星 → 分类断语集
 ```
 

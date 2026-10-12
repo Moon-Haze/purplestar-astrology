@@ -34,7 +34,7 @@ const HERE = dirname(fileURLToPath(import.meta.url)); // <仓库根>/test/lib
  * 回归测试只对标**排盘** skill（另两个 skill 不排盘，由它们自己的 `selftest` 与
  * `test/cli.test.ts` 的子进程用例负责，不在这里重复跑一遍）。故这里写的是排盘内核的入口。
  */
-const KERNEL_ENTRY = "ziwei/algorithm.ts";
+const KERNEL_ENTRY = "algorithm.ts";
 
 const picked = pickRoot(
 	[
@@ -49,7 +49,7 @@ if (!picked.root) {
 		`找不到排盘内核（${KERNEL_ENTRY}）\n` +
 			`  已尝试：\n` +
 			picked.tried.map(t => `    - ${t}`).join("\n") +
-			`\n  处理：确认 scripts/ 下有 purple-star.ts 与 ziwei/，` +
+			`\n  处理：确认 scripts/ 下有 purple-star.ts 与 algorithm.ts 等内核文件，` +
 			`或用 ZIWEI_ROOT=<含 ziwei/ 的目录> 指定内核位置。`
 	);
 }
@@ -79,10 +79,10 @@ export const load = makeLoader(ROOT, ROOT_LABEL, f => {
 // 运行时该类型整体擦除，实际加载仍走上面的动态 import + 解析钩子。
 // ⚠️ `load<T>()` 是字符串动态导入，tsc 本不检查 —— 类型锚定全靠这里的 typeof import，
 //    这正是 CLI 引导层同款模式（详见 CLAUDE.md「CLI 如何既自举又拿到内核类型」）。
-export const loadAlgorithm = () => load<typeof import("@/ziwei/algorithm")>("@/ziwei/algorithm");
-export const loadConstants = () => load<typeof import("@/ziwei/constants")>("@/ziwei/constants");
-export const loadPatterns = () => load<typeof import("@/ziwei/patterns")>("@/ziwei/patterns");
-export const loadSihua = () => load<typeof import("@/ziwei/mutagen")>("@/ziwei/mutagen");
+export const loadAlgorithm = () => load<typeof import("@/algorithm")>("@/algorithm");
+export const loadConstants = () => load<typeof import("@/constants")>("@/constants");
+export const loadPatterns = () => load<typeof import("@/patterns")>("@/patterns");
+export const loadSihua = () => load<typeof import("@/mutagen")>("@/mutagen");
 export const loadClassics = () => load<typeof import("@/corpus")>("@/corpus");
 export const loadRender = () => load<typeof import("@/cli/render")>("@/cli/render");
 

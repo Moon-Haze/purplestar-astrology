@@ -50,8 +50,8 @@ chart / patterns / mingGongSummary / nativeSiHua / liuNianSiHua / liuYueSiHua / 
 依赖没装或 Node 版本过低时，引导层用统一格式拦下所有命令（实测原文，路径与版本随环境变）：
 
 ```
-[ziwei 启动失败] 无法加载 @/ziwei/algorithm
-  Cannot find package 'iztro' imported from <skill根>/scripts/ziwei/algorithm.ts
+[ziwei 启动失败] 无法加载 @/algorithm
+  Cannot find package 'iztro' imported from <skill根>/scripts/algorithm.ts
   当前内核根：<skill根>/scripts（来源：技能自带内核）
   → Cannot find module 'iztro' / 'lunar-typescript'：依赖未装。
      在 skill 根（<skill根>）执行 npm install 即可（依赖清单见该目录 package.json）

@@ -16,7 +16,7 @@ import { promisify } from "node:util";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { BirthInfo, ZiweiChart } from "@/ziwei/types";
+import type { BirthInfo, ZiweiChart } from "@/types";
 import { loadAlgorithm, loadSihua, loadConstants, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
 import { BRANCHES, chartSignature } from "./lib/compare.ts";
 
@@ -1785,7 +1785,7 @@ describe("CLI 端到端", () => {
 	});
 
 	// ── cities 容错解析 ──
-	// `ziwei/cities.ts` 只是数据表，没有分支；会「静默取错经度」的是 `cli/birth-info.ts`
+	// `cli/data/cities.ts` 只是数据表，没有分支；会「静默取错经度」的是 `cli/birth-info.ts`
 	// 的 findLongitude —— 经度差 1° 就是真太阳时差 4 分钟，足以把时辰推过边界、整张盘换掉。
 	describe("cities 容错解析（findLongitude 分支）", () => {
 		const loadFind = () => load<typeof import("@/cli/birth-info")>("@/cli/birth-info");
@@ -1807,7 +1807,7 @@ describe("CLI 端到端", () => {
 
 		it("歧义分支：命中项必是表内真实城市，且经度与表内一致（独立预言机）", async () => {
 			const { findLongitude } = await loadFind();
-			const { PROVINCES } = await load<typeof import("@/ziwei/cities")>("@/ziwei/cities");
+			const { PROVINCES } = await load<typeof import("@/cli/data/cities")>("@/cli/data/cities");
 			// 期望值取自 PROVINCES 数据表，不读 findLongitude 自己的返回值 ——
 			// 否则「取错城市」时两边一起错，断言照样全绿（本仓历史上栽过同一个跟头）。
 			const all = PROVINCES.flatMap(p => p.cities);
@@ -1967,11 +1967,11 @@ describe("CLI 端到端", () => {
 
 		it("snippet 两端都被截断时，前后上下文恰各 40 字", async () => {
 			const { searchClassics } = await loadClassics();
-			// 段落普遍短于 81 字，全库只有 qj-1-1（151 字，含飞化口径括注）容得下两端都截断的命中。
+			// 段落普遍短于 81 字，全库只有 qj-1-1（145 字，含飞化口径括注）容得下两端都截断的命中。
 			// 下列三条 guard 保证算术成立，任一失效都会指名道姓地报出来，而不是静默变松。
 			const hit = searchClassics("之", 10_000).find(h => h.paragraphId === "qj-1-1");
 			assert.ok(hit, "「之」应命中 qj-1-1");
-			assert.equal(hit.text.length, 151, "样本段长度变了，下面的 40+40 算术需重新核对");
+			assert.equal(hit.text.length, 145, "样本段长度变了，下面的 40+40 算术需重新核对");
 			assert.equal(hit.text.indexOf("之"), 41, "命中位置变了，同上");
 			assert.ok(!/[<>&"']/.test(hit.text), "该段含需转义字符，长度会被 &quot; 撑大");
 

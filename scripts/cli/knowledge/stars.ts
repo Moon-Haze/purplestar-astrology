@@ -6,7 +6,7 @@
  */
 
 import type { CliArgs } from "../args";
-import { STAR_DESCRIPTIONS } from "@/ziwei/constants";
+import { STAR_DESCRIPTIONS } from "@/constants";
 
 /** 渲染 stars 域：无关键词列全部星曜，有关键词出该星的「关键词 · 星性 · 五行」。 */
 export function renderStars(args: CliArgs): string {

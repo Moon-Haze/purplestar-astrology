@@ -10,7 +10,7 @@
 import { buildBirthInfo, findLongitude } from "../birth-info";
 import { parseArgs } from "../args";
 import { chartSignature } from "../render";
-import { generateChart } from "@/ziwei/algorithm";
+import { generateChart } from "@/algorithm";
 import { eq, type SelftestDeps } from "../selftest-kit";
 
 /** 城市容错：别名解析 / 未收录 / exact 标志 / 未给地点提示。 */

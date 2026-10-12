@@ -3,13 +3,13 @@
  *
  * 与 `./birth-info` 的分工：那边是「怎么算」（真太阳时、农历换算、城市名归一），
  *
- * 依赖：@/ziwei/types（BirthInfo）、@/ziwei/cities（CityInfo / PROVINCES）
+ * 依赖：@/types（BirthInfo）、@/cli/data/cities（CityInfo / PROVINCES）
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
  */
 
-import type { BirthInfo } from "@/ziwei/types";
-import { PROVINCES, type CityInfo } from "@/ziwei/cities";
+import type { BirthInfo } from "@/types";
+import { PROVINCES, type CityInfo } from "@/cli/data/cities";
 
 /**
  * {@link calcTrueSolar} 的可选项。

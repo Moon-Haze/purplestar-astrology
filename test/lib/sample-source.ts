@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url";
 
 import type { DuckDBConnection } from "@duckdb/node-api";
 
-import type { BirthInfo, Star } from "@/ziwei/types";
+import type { BirthInfo, Star } from "@/types";
 import { loadConstants } from "./loader.ts";
 import type {
 	BaselineChart, BaselineDecadal, BaselinePalace, BaselineSample, BaselineStar,
