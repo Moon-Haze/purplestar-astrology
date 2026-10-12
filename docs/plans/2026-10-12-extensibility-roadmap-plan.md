@@ -167,35 +167,48 @@
 
 ---
 
-## 4. Phase 2 · TopicProvider 接缝（重构不改行为）
+## 4. Phase 2 · 主题定义收编为单一真相源（重构不改行为）
 
-> 目标：13 主题从 `analysis/data.ts` 的 `switch` 迁到 `analysis/topics/` 后注册；`corpus/data/manual/` 13 文件成为内容载荷。
+> 目标：把 13 主题的扩展摩擦从「同步改 8 张平行 `TOPIC_*` 表」收敛为「只改一处」。
 > 依赖：Phase 1 完成。
 
-### 里程碑 2A：定义接口与注册表
-- 任务 2A-1：写 `TopicProvider` 接口（架构文档 §4.2）
-  - 文件路径：`scripts/analysis/topic-types.ts`（新建）
-  - 要做的：导出 `interface TopicProvider { key; palace; getAssertions(chart, ctx) }`
-  - 验证：`typecheck` exit 0。
-- 任务 2A-2：写注册表 `scripts/analysis/topics/registry.ts`（新建），同 1A-2 套路。
+### ⚠️ 执行偏差（重要）：计划的"抽 switch"前提不成立
+- 勘察结论（2026-10-12）：全仓 `scripts/analysis`、`scripts/corpus` **没有任何 `switch(topic)`**。
+  主题系统早已**数据驱动**——`getTopicAnalysis`（analysis/index.ts）是统一管线，按 `TopicKey`
+  查 `TOPIC_*` 常量表 + `STAR_CONTENT_MAP`（按宫名/星取内容）；`corpus/data/manual/index.ts`
+  的 `LOADERS`（生成文件）已是**内容注册表**。架构文档 §4.2 设想的 `TopicProvider.getAssertions`
+  对应的是"每主题独立论断逻辑"，而实际论断逻辑是统一的、没有 per-topic 分支。
+- 因此 **计划 2B-2~2B-14（造 13 个 `analysis/topics/<key>.ts` case 文件）被否决**——那会把"主题
+  定义"拆到两处（元数据在 `analysis/topics/`、重内容在已生成的 `corpus/data/manual/<key>.ts`），
+  降低内聚、纯属碎片，且违反"无架构宇航员：每处抽象须 justify 其复杂度"。topics 本质是"同一引擎
+  + 不同宫位/内容选择的参数化视图"，不是插件边界（真插件边界是已完成的 KnowledgeSource 与待做的
+  SchoolAdapter）。
+- **真正的扩展摩擦**是：`analysis/data.ts` 里 8 张平行手维护表（palace/label/sanFang/contentKey/
+  summaryKey/keyPalaces/suggestions + `SUMMARY_TOPICS`）必须同步改。Phase 2 收编它们为单一真相源。
 
-### 里程碑 2B：迁移 13 主题（TDD，行为不变）
-- 任务 2B-1：勘察 `analysis/data.ts` 的 `switch(key)` 与 `corpus/data/manual/` 13 文件映射。
-  - 文件路径：`scripts/analysis/data.ts`、`scripts/corpus/data/manual/`
-  - 要做的：产出"13 主题 → 源文件 → palace"对照表。
-  - 验证：13 项全覆盖。
-- 任务 2B-2~2B-14：逐主题迁到 `scripts/analysis/topics/<key>.ts`
-  - 要做的：把 `data.ts` 中该 `case` 的论断逻辑搬入 `getAssertions`；`corpus/data/manual/<key>.ts` 成为内容载荷 import。
-  - 验证（每主题）：`astrology <出生> --topic <key> --json` 输出与基线对应段逐字节一致。
+### 里程碑 2A：单一真相源 `TOPIC_DEFS`（已落地）
+- 任务 2A-1：在 `scripts/analysis/data.ts` 新增 `TopicDef` 接口（含 `palace`/`label`/`sanFangLabels`/
+  `contentKey`/`summaryKey`/`isSummaryTopic`/`keyPalaces`/`suggestions`），并保留 `TopicProvider = TopicDef`
+  类型别名以兼容架构文档 §4.2 词汇。
+- 任务 2A-2：新增 `TOPIC_DEFS: Record<TopicKey, TopicDef>`（单一真相源，13 条目全覆盖，含全部
+  keyPalaces/suggestions 文案），并加 `projectTopicField` 辅助函数，使 8 张具名表
+  （`TOPIC_PALACE_NAME`/`TOPIC_LABEL`/`TOPIC_SANFANG_LABELS`/`TOPIC_CONTENT_KEY`/`TOPIC_SUMMARY_KEY`/
+  `TOPIC_KEY_PALACES`/`TOPIC_SUGGESTIONS`/`SUMMARY_TOPICS`）改为**由 `TOPIC_DEFS` 派生**。
+  - 原 8 张字面量表（约 333 行）已删除，消费方 import 路径不变。
 
-### 里程碑 2C：聚合层改查注册表
-- 任务 2C-1：改写 `analysis/index.ts` 的 `getTopicAnalysis`
-  - 文件路径：`scripts/analysis/index.ts`
-  - 要做的：遍历 `TOPIC_PROVIDERS` 汇聚，删除 `data.ts` 内 `switch`；`data.ts` 退化为门面或删除。
-  - 验证：`astrology <出生> --topic overview` 等全主题输出逐字节不变；`npm test` 计数一致。
+### 里程碑 2B：逐字节对拍（已落地，TDD 行为不变）
+- 任务 2B：对 13 主题（含 `--yearly 2027` 变体，触发 keyPalaces/year-stem 视图）做重构前后
+  `git stash` 取基线逐字节对拍 → **26/26 场景 BYTE-DIFF-ZERO**。
 
-### Phase 2 总退出标准
-`typecheck` exit 0 · `selftest` 全通过 · `npm test` 计数一致 · `astrology --topic` 全 13 主题逐字节 diff=0 · 新增主题只需"加文件 + 一行注册"（后续 Phase 4 验证）。
+### 里程碑 2C：新增注册表守卫测试（已落地）
+- 任务 2C：新增 `test/topic-defs.test.ts`（层 3，3 项）：守卫 `TOPIC_DEFS` 恰好覆盖 `TOPIC_KEYS`、
+  每主题字段齐备、派生具名表与 `TOPIC_DEFS` 同步（防日后重加发散字面量表）。登记进 `run.ts`/`README`。
+
+### Phase 2 总退出标准（已达成）
+`typecheck` exit 0 · `selftest` 全通过 · `npm test` 564→567（内核层 117 未动）· `astrology --topic`
+全 13 主题（含 yearly 变体）逐字节 diff=0 · **加一个主题 = 只在 `TOPIC_DEFS` 加一个条目**
+（断语内容仍走 `corpus/data/manual/` 生成 + `LOADERS` 注册表）。固定退出标准里的"加文件+一行注册"
+在本项目语境下降级为"一处条目"，因为内容层已是按主题生成文件、无需再为元数据造空壳文件。
 
 ---
 
@@ -280,7 +293,7 @@
 | 开工基线 | 0 | 全通过 | 549/549 | — |
 | Phase 0 退出（含 0C 契约守卫） | 0 | 全通过 | 554/554 | astrology/knowledge 一致 |
 | Phase 1 退出 | 0 | 全通过 | 564/564 | knowledge 4 源 8 场景一致 |
-| Phase 2 退出 | 0 | 全通过 | 564 + 插件自身项 | astrology --topic 13 项一致 |
+| Phase 2 退出 | 0 | 全通过 | 567/567 | astrology --topic 13 主题 + yearly 变体（26 场景）逐字节一致 |
 | Phase 3 退出 | 0 | 全通过 | 564 + 插件自身项 | 排盘一致 |
 | Phase 4 退出 | 0 | 全通过 | 564 + 插件自身项 + 验证内容项 | 仅新增内容变化 |
 

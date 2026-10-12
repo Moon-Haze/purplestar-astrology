@@ -166,6 +166,7 @@ const LAYERS = [
 	{ label: "层 2 CLI 端到端", file: "report.test.ts", suites: ["astrology --report 全盘报告"] },
 	{ label: "层 3 排盘结构不变量", file: "invariants.test.ts", suites: ["排盘结构不变量"] },
 	{ label: "层 3 内核契约", file: "kernel-contract.test.ts", suites: ["内核对外契约（冻结 @ 2026-10-12）"] },
+	{ label: "层 3 主题注册表", file: "topic-defs.test.ts", suites: ["主题注册表：覆盖与 TOPIC_KEYS 完全一致", "主题注册表：每个主题字段齐备且类型合理", "主题注册表：派生具名表与 TOPIC_DEFS 同步"] },
 	{ label: "层 4 三合派约束", file: "school.test.ts", suites: ["三合派体系约束"] },
 	{
 		label: "层 5 数据源纯函数",

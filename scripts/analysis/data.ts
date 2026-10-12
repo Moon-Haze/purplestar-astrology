@@ -915,60 +915,385 @@ export const TOPIC_KEYS = [
 	"parents",
 ] as const;
 
-/** 主题键。由 {@link TOPIC_KEYS} 推出，故两者永不脱节 —— 加一个主题只需改那一处数组。 */
+/** 主题键。由 {@link TOPIC_KEYS} 推出，故两者永不脱节。 */
 export type TopicKey = (typeof TOPIC_KEYS)[number];
 
-// 本项目宫名口径（与 constants.ts 的 IZTRO_TO_PROJECT_PALACE 一致）：交友宫 = iztro 旧口径「仆役」
-export const TOPIC_PALACE_NAME: Record<TopicKey, string> = {
-	overview: "命宫",
-	personality: "命宫",
-	love: "夫妻宫",
-	career: "官禄宫",
-	wealth: "财帛宫",
-	health: "疾厄宫",
-	family: "兄弟宫",
-	children: "子女宫",
-	move: "迁移宫",
-	friends: "交友宫",
-	home: "田宅宫",
-	spirit: "福德宫",
-	parents: "父母宫",
+// ─── 主题定义（单一真相源 · Phase 2 收编）──────────────────────────────────────
+// 原 8 张平行 `TOPIC_*` 表（palace / label / sanFang / contentKey / summaryKey /
+// keyPalaces / suggestions + `SUMMARY_TOPICS`）统一收进 `TOPIC_DEFS`，下方 8 张具名表
+// 改为由它派生。**加一个主题 = 只在 TOPIC_DEFS 加一个条目**（断语内容仍走
+// `corpus/data/manual/` 生成管线 + `LOADERS` 注册表）。
+//
+// ⚠️ 与执行计划 §4 的偏差：计划假设 `analysis/data.ts` 存在 `switch(topic)` 分支、可
+// 抽成 13 个 `TopicProvider` 文件；实际代码早已数据驱动（`getTopicAnalysis` 是统一管线
+// + 查表），`corpus/data/manual/index.ts` 的 `LOADERS` 已是内容注册表。故 Phase 2 不造
+// 13 个 case 文件（那是纯碎片、且会把主题定义拆到两处），改为把 8 张平行表收为单一真相源
+// —— 这才是真正的扩展摩擦点。`TopicProvider` 之名保留为 `TopicDef` 的类型别名。
+
+/** 年干四化·全局关键宫位解读的单条。 */
+export interface KeyPalace {
+	palace: string;
+	lu?: string;
+	quan?: string;
+	ke?: string;
+	ji: string;
+}
+
+/** 一个主题的完整定义（原 8 张平行表的聚合）。 */
+export interface TopicDef {
+	/** 主宫名（带「宫」字，本项目口径） */
+	palace: string;
+	/** 展示名 */
+	label: string;
+	/** 三方四正相关宫位标注（[三合1, 三合2, 对宫]） */
+	sanFangLabels: [string, string, string];
+	/** 本主题主星内容在 {@link StarContent} 的字段键 */
+	contentKey: keyof StarContent;
+	/** 本主题星曜深层特质在 {@link StarSummaryGender} 的字段键 */
+	summaryKey: keyof StarSummaryGender;
+	/** 是否输出【星曜深层特质】段（核心 5 主题） */
+	isSummaryTopic: boolean;
+	/** 年干四化·全局关键宫位解读 */
+	keyPalaces: KeyPalace[];
+	/** 【综合建议】三条文案 */
+	suggestions: string[];
+}
+
+/** 与执行计划 §4.2 的 `TopicProvider` 对应——数据驱动引擎下无 per-topic `getAssertions`。 */
+export type TopicProvider = TopicDef;
+
+export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
+	overview: {
+		palace: "命宫",
+		label: "命格总览",
+		sanFangLabels: ["命宫三合·官禄", "命宫三合·财帛", "命宫对宫·迁移"],
+		contentKey: "mingGong",
+		summaryKey: "overview",
+		isSummaryTopic: true,
+		keyPalaces: [
+			{
+				palace: "命宫",
+				lu: "命中得禄，财禄双美，贵中带富",
+				quan: "命中得权，领导掌控力大增",
+				ke: "名声文书，贵人运极佳",
+				ji: "命格受挫，自尊心易受打击，是非多，宜低调行事",
+			},
+			{
+				palace: "迁移",
+				lu: "异乡有成，外出逢贵人",
+				ji: "迁移化忌对冲命宫——「半空折翅」之象，三十岁前后需防重大挫折，外出凶险",
+			},
+			{ palace: "官禄", lu: "事业格局高，职位顺遂", ji: "职场官非是非，仕途阻碍" },
+			{ palace: "财帛", lu: "财禄丰厚，正财旺", ji: "财运受阻，破财漏财风险" },
+			{ palace: "福德", lu: "精神福气厚，享受人生", ji: "精神层面多困扰，内心不安，幸福感受损" },
+		],
+		suggestions: [
+			"重点关注三方四正的星曜组合与本命四化会照，格局好坏由此决定。",
+			"当前大限所行宫位与本命四化会照处，是此十年最重要的机遇与风险节点。",
+			"倪师提醒：「命运不是人生的全部，加上地理位置和人念，才是」——本命盘是静态基础，大限流年是动态走势，仍要结合环境与人的选择。",
+		],
+	},
+	personality: {
+		palace: "命宫",
+		label: "性格特质",
+		sanFangLabels: ["命宫三合·官禄", "命宫三合·财帛", "命宫对宫·迁移"],
+		contentKey: "personality",
+		summaryKey: "overview",
+		isSummaryTopic: false,
+		keyPalaces: [
+			{
+				palace: "命宫",
+				lu: "性格积极，贵气旺，魅力强",
+				quan: "性格强势，主导欲旺，领袖气质突出",
+				ke: "性格儒雅，名声好，贵人缘佳",
+				ji: "性格中有是非困扰，自我怀疑，宜修炼内心稳定感",
+			},
+			{ palace: "迁移", ji: "命宫受冲，性格中有坎坷底色，宜谨防三十岁前后的重大考验" },
+			{ palace: "福德", lu: "精神世界丰富，幸福感强，享受生活", ji: "精神层面多阴郁，内心福分受损，需主动寻找精神出口" },
+			{ palace: "父母", lu: "长辈贵人多，家庭关系融洽", ji: "与父母或上司关系有阻，文书合约需谨慎" },
+		],
+		suggestions: [
+			"了解自身性格优势，在适合的环境中最大化发挥特长。",
+			"关注性格弱点，针对性地进行调适与成长。",
+			"命宫三方四正的组合决定了性格的深层驱动力，建议综合三方分析。",
+		],
+	},
+	love: {
+		palace: "夫妻宫",
+		label: "感情婚姻",
+		sanFangLabels: ["夫妻三合·福德", "夫妻三合·迁移", "夫妻对宫·官禄"],
+		contentKey: "fuQi",
+		summaryKey: "love",
+		isSummaryTopic: true,
+		keyPalaces: [
+			{
+				palace: "夫妻",
+				lu: "感情路顺遂，婚姻有福，另一半带财",
+				ji: "感情婚姻多阻，另一半带来是非，宜晚婚",
+			},
+			{
+				palace: "福德",
+				lu: "精神享受好，感情生活充实",
+				ji: "北派四化有云（来源存疑）：「福德宫化忌，夫妻宫未见生离，必定死别」——感情有重大变故风险，需特别谨慎",
+			},
+			{ palace: "命宫", lu: "自身魅力旺，感情缘分好", ji: "自身感情运受损，感情事务多阻碍" },
+			{
+				palace: "子女",
+				lu: "子女与感情关系融洽，家庭和谐",
+				ji: "感情纠纷牵连子女宫，桃花是非多，或子女缘分受影响",
+			},
+			{ palace: "迁移", lu: "外出有感情机遇，异乡有缘分", ji: "外出感情多波折，半空折翅之象影响感情" },
+			{ palace: "父母", lu: "长辈对感情支持，文书契约顺利", ji: "家长反对或文书问题影响婚姻" },
+		],
+		suggestions: [
+			"感情问题需看夫妻宫主星、本命四化与三方四正综合判断，不可只看一宫。",
+			"大限行至夫妻宫或会照夫妻三方，则此十年感情有重大变动或进展。",
+			"若流年红鸾天喜到，则该年婚恋动态明显，可重点关注。",
+		],
+	},
+	career: {
+		palace: "官禄宫",
+		label: "事业职业",
+		sanFangLabels: ["官禄三合·财帛", "官禄三合·命", "官禄对宫·夫妻"],
+		contentKey: "guanLu",
+		summaryKey: "career",
+		isSummaryTopic: true,
+		keyPalaces: [
+			{
+				palace: "官禄",
+				lu: "事业财禄双美，升职顺遂",
+				quan: "掌权做主，宜自主创业",
+				ke: "专业名声旺，考公考证吉",
+				ji: "职场官非是非，升职受阻，宜低调行事",
+			},
+			{ palace: "迁移", lu: "外出发展大吉，异地贵人多", ji: "外出事业受阻，外地是非，宜守不宜动" },
+			{ palace: "财帛", lu: "职位带动收入，财禄双旺", ji: "财运受阻，职场财务纠纷" },
+			{ palace: "父母", lu: "上司贵人助力，文书顺利", ji: "与上司关系有阻，文书合约有风险，宜低调配合" },
+			{ palace: "田宅", lu: "家业财库充盈，事业基础稳", ji: "家庭事务干扰事业，或不动产牵连工作" },
+		],
+		suggestions: [
+			"官禄宫是事业格局的核心，但命宫与迁移宫亦是三方四正中的重要组成。",
+			"大限若走官禄宫，则此十年是事业发展的关键期，宜主动出击争取机遇。",
+			"四化落官禄宫尤为重要：化禄则财从职业来，化权则掌握权位，化忌则职场波折。",
+		],
+	},
+	wealth: {
+		palace: "财帛宫",
+		label: "财富运势",
+		sanFangLabels: ["财帛三合·命", "财帛三合·官禄", "财帛对宫·福德"],
+		contentKey: "caiBo",
+		summaryKey: "wealth",
+		isSummaryTopic: true,
+		keyPalaces: [
+			{
+				palace: "财帛",
+				lu: "正财最旺，财来财顺",
+				quan: "财务掌控力强，宜自营",
+				ke: "专业技术换财，财名双收",
+				ji: "正财受阻，破财风险大，需谨慎理财",
+			},
+			{ palace: "田宅", lu: "财库充盈，房产运旺，积累顺遂", ji: "田宅受损，财库漏财，房产有纠纷" },
+			{ palace: "官禄", lu: "职位带动财运，事业越好财越旺", ji: "职场财运受损，收入不稳" },
+			{ palace: "命宫", lu: "财来自命，生财顺遂", ji: "命中财运受挫，需另谋财路" },
+			{ palace: "迁移", lu: "外出生财旺，越动越有财", ji: "外出破财，宜守不宜动，防旅途损失" },
+			{ palace: "福德", lu: "福禄双美，享受财富的过程", ji: "财运中精神层面多耗，享受不到财富带来的快乐" },
+		],
+		suggestions: [
+			"财帛宫主星是财运的核心，但命宫与官禄宫三方联动决定财的来路。",
+			"本命化禄所在宫位即是财源所在，重点经营该宫位代表的领域。",
+			"大限行至财帛或财帛三方且会照本命化禄，则此十年财运较旺，是积累财富的重要阶段。",
+		],
+	},
+	health: {
+		palace: "疾厄宫",
+		label: "健康状况",
+		sanFangLabels: ["疾厄三合·兄弟", "疾厄三合·田宅", "疾厄对宫·父母"],
+		contentKey: "jiE",
+		summaryKey: "health",
+		isSummaryTopic: true,
+		keyPalaces: [
+			{
+				palace: "疾厄",
+				lu: "健康状况改善，康复力强，体质佳",
+				ji: "健康风险最高，该星所主的脏腑部位需重点检查，化忌年份防手术",
+			},
+			{ palace: "迁移", ji: "外出意外风险，半空折翅之象——需特别注意交通安全和意外伤害" },
+			{ palace: "命宫", ji: "自身健康基础受损，免疫力下降，需调养" },
+			{ palace: "父母", ji: "文书合约问题，或体检报告需关注，与医疗相关的证件文书事务谨慎处理" },
+			{ palace: "子女", ji: "与生育、下腹部相关的健康需关注" },
+		],
+		suggestions: [
+			"倪师《天纪 05》：疾厄论以宫位地支为主轴（丑宫肝、酉宫肾…），星曜五行为辅。",
+			"化忌若落疾厄宫或冲照疾厄，则该年健康风险增加，宜主动体检。",
+			"煞星（擎羊陀罗火铃）入疾厄，倪师明言「开刀见血光」，流年逢化忌时尤须防手术。",
+		],
+	},
+	family: {
+		palace: "兄弟宫",
+		label: "兄弟合伙",
+		sanFangLabels: ["兄弟三合·田宅", "兄弟三合·疾厄", "兄弟对宫·交友"],
+		contentKey: "xiongDi",
+		summaryKey: "overview",
+		isSummaryTopic: false,
+		keyPalaces: [
+			{ palace: "兄弟", lu: "兄弟助力大，合伙顺遂带财", ji: "兄弟缘薄或合伙破财，需提防合伙纠纷" },
+			{ palace: "命宫", lu: "自身为兄弟贵人", ji: "与兄弟关系中自身情绪易受影响" },
+			{ palace: "交友", lu: "朋友中有兄弟情谊", ji: "合伙与交友是非多" },
+		],
+		suggestions: [
+			"兄弟宫代表兄弟姐妹与合伙人运，三方四正需综合看。",
+			"合伙前请看兄弟宫是否化忌——化忌则合伙大忌。",
+			"大限走兄弟宫时，合伙机会或兄弟关系变动加大。",
+		],
+	},
+	children: {
+		palace: "子女宫",
+		label: "子女缘分",
+		sanFangLabels: ["子女三合·父母", "子女三合·交友", "子女对宫·田宅"],
+		contentKey: "ziNv",
+		summaryKey: "overview",
+		isSummaryTopic: false,
+		keyPalaces: [
+			{ palace: "子女", lu: "子女聪慧有福，亲子关系好", ji: "子女缘薄或管教方式需调整，防生育波折" },
+			{ palace: "夫妻", lu: "夫妻共育子女运旺", ji: "感情问题牵连子女" },
+			{ palace: "田宅", lu: "子女为家庭带来活力", ji: "子女与家宅有冲突" },
+		],
+		suggestions: [
+			"子女宫主星决定与子女缘分和生育运。",
+			"夫妻宫与子女宫联动——感情问题常牵连子女宫。",
+			"化忌入子女宫宜关注下腹部健康与亲子相处方式。",
+		],
+	},
+	move: {
+		palace: "迁移宫",
+		label: "迁移外出",
+		sanFangLabels: ["迁移三合·夫妻", "迁移三合·福德", "迁移对宫·命"],
+		contentKey: "qianYi",
+		summaryKey: "overview",
+		isSummaryTopic: false,
+		keyPalaces: [
+			{
+				palace: "迁移",
+				lu: "外出逢贵人、异地发财",
+				quan: "出门掌权，异地开拓有力",
+				ji: "倪师警示：迁移化忌「半空折翅」，外出多意外波折，三十前后尤为关键",
+			},
+			{ palace: "命宫", lu: "自身魅力为迁移加分", ji: "命主自身的主观选择容易导致远行失利" },
+			{ palace: "官禄", lu: "外地事业发展大吉", ji: "外地工作多阻" },
+		],
+		suggestions: [
+			"迁移宫是命宫的对宫，外出运与命运整体息息相关。",
+			"倪师《天纪 06》原话：迁移化忌「半空折翅」——三十前后需特别注意交通与意外。",
+			"大限走迁移宫，适合主动出外发展或异地机遇。",
+		],
+	},
+	friends: {
+		palace: "交友宫",
+		label: "人际贵人",
+		sanFangLabels: ["交友三合·子女", "交友三合·父母", "交友对宫·兄弟"],
+		contentKey: "jiaoYou",
+		summaryKey: "overview",
+		isSummaryTopic: false,
+		keyPalaces: [
+			{ palace: "仆役", lu: "朋友下属多贵人，人脉带财", ji: "朋友反目或下属不利，宜慎交友" },
+			{ palace: "兄弟", lu: "兄弟朋友圈融为一体", ji: "兄弟与朋友圈互相牵扯生是非" },
+		],
+		suggestions: [
+			"交友（仆役）宫映照兄弟宫，人脉质量决定事业副线。",
+			"化禄入仆役则朋友带财；化忌入仆役则防下属或朋友背叛。",
+			"大限走仆役宫，注意人际圈层的洗牌。",
+		],
+	},
+	home: {
+		palace: "田宅宫",
+		label: "田宅不动产",
+		sanFangLabels: ["田宅三合·疾厄", "田宅三合·兄弟", "田宅对宫·子女"],
+		contentKey: "tianZhai",
+		summaryKey: "overview",
+		isSummaryTopic: false,
+		keyPalaces: [
+			{
+				palace: "田宅",
+				lu: "房产兴旺、家宅和谐、财库丰厚",
+				quan: "不动产掌控力强",
+				ji: "古诀云「田宅化忌，家破财散」——需防房产纠纷、家宅不宁",
+			},
+			{ palace: "子女", lu: "家中子女带来喜气", ji: "子女与家宅的矛盾浮现" },
+			{ palace: "疾厄", ji: "家人健康或居住环境影响身体" },
+		],
+		suggestions: [
+			"田宅宫是命盘的财库，正财能不能留得住看这里。",
+			"古诀云「田宅化忌，家破财散」——化忌入田宅需防房产纠纷。",
+			"大限行至田宅宫且会照本命化禄，是买房或家业扩张的好时机。",
+		],
+	},
+	spirit: {
+		palace: "福德宫",
+		label: "精神福德",
+		sanFangLabels: ["福德三合·迁移", "福德三合·夫妻", "福德对宫·财帛"],
+		contentKey: "fuDe",
+		summaryKey: "overview",
+		isSummaryTopic: false,
+		keyPalaces: [
+			{
+				palace: "福德",
+				lu: "精神福分厚，内心充实",
+				quan: "主导自己的精神生活",
+				ji: "紫微斗数有云（一说北派口诀，非倪师原话）：「福德宫化忌，夫妻宫未见生离，必定死别」——精神受损容易牵连婚姻与身体，需特别关注",
+			},
+			{ palace: "命宫", lu: "自我认同强，内心稳定", ji: "命宫与福德的双重受损，需主动寻求心理支撑" },
+			{ palace: "财帛", lu: "享受财富的过程，福禄兼美", ji: "因财务问题牵动精神" },
+		],
+		suggestions: [
+			"福德宫决定一个人的精神福分与享受能力。",
+			"古诀云「福德宫化忌，夫妻宫未见生离，必定死别」——此句来源需审慎标注，精神问题会反噬感情与健康。",
+			"大限行至福德宫且会照本命化禄，精神生活充实，心力最旺。",
+		],
+	},
+	parents: {
+		palace: "父母宫",
+		label: "父母长辈",
+		sanFangLabels: ["父母三合·交友", "父母三合·子女", "父母对宫·疾厄"],
+		contentKey: "fuMu",
+		summaryKey: "overview",
+		isSummaryTopic: false,
+		keyPalaces: [
+			{
+				palace: "父母",
+				lu: "父母贵气，长辈扶持多，文书合约顺",
+				ke: "考试运佳，与上司关系亦有加分",
+				ji: "与父母或上司关系有张力，文书合约需谨慎签署",
+			},
+			{ palace: "命宫", lu: "自身得到父母贵人之力", ji: "自身问题牵涉长辈关系" },
+			{ palace: "兄弟", lu: "家族关系融洽", ji: "家族内部矛盾浮出" },
+		],
+		suggestions: [
+			"父母宫映照与父母、上司、长辈的关系，也主文书合约。",
+			"化忌入父母宫宜避免签重要合约的关键时间点。",
+			"父母宫化科则考试运佳，文书文教方面有喜。",
+		],
+	},
 };
 
-export const TOPIC_LABEL: Record<TopicKey, string> = {
-	overview: "命格总览",
-	personality: "性格特质",
-	love: "感情婚姻",
-	career: "事业职业",
-	wealth: "财富运势",
-	health: "健康状况",
-	family: "兄弟合伙",
-	children: "子女缘分",
-	move: "迁移外出",
-	friends: "人际贵人",
-	home: "田宅不动产",
-	spirit: "精神福德",
-	parents: "父母长辈",
-};
+// ─── 由 TOPIC_DEFS 派生的具名表（消费方 import 路径不变）────────────────────────
+function projectTopicField<V>(pick: (d: TopicDef) => V): Record<TopicKey, V> {
+	const out = {} as Record<TopicKey, V>;
+	for (const k of TOPIC_KEYS) {
+		out[k] = pick(TOPIC_DEFS[k]);
+	}
+	return out;
+}
 
-// 三方四正相关宫位的主题标注（用于分析标题）。
-// 顺序对齐 getSanFangSiZheng 的偏移序（本宫 +4 +8 +6 去掉本宫）：前两条是三合宫、
-// 第三条是对宫——渲染层按数组下标一一配对，标签宫名与实际宫位不符时输出会自相矛盾。
-export const TOPIC_SANFANG_LABELS: Record<TopicKey, [string, string, string]> = {
-	overview: ["命宫三合·官禄", "命宫三合·财帛", "命宫对宫·迁移"],
-	personality: ["命宫三合·官禄", "命宫三合·财帛", "命宫对宫·迁移"],
-	love: ["夫妻三合·福德", "夫妻三合·迁移", "夫妻对宫·官禄"],
-	career: ["官禄三合·财帛", "官禄三合·命", "官禄对宫·夫妻"],
-	wealth: ["财帛三合·命", "财帛三合·官禄", "财帛对宫·福德"],
-	health: ["疾厄三合·兄弟", "疾厄三合·田宅", "疾厄对宫·父母"],
-	family: ["兄弟三合·田宅", "兄弟三合·疾厄", "兄弟对宫·交友"],
-	children: ["子女三合·父母", "子女三合·交友", "子女对宫·田宅"],
-	move: ["迁移三合·夫妻", "迁移三合·福德", "迁移对宫·命"],
-	friends: ["交友三合·子女", "交友三合·父母", "交友对宫·兄弟"],
-	home: ["田宅三合·疾厄", "田宅三合·兄弟", "田宅对宫·子女"],
-	spirit: ["福德三合·迁移", "福德三合·夫妻", "福德对宫·财帛"],
-	parents: ["父母三合·交友", "父母三合·子女", "父母对宫·疾厄"],
-};
+export const TOPIC_PALACE_NAME = projectTopicField(d => d.palace);
+export const TOPIC_LABEL = projectTopicField(d => d.label);
+export const TOPIC_SANFANG_LABELS = projectTopicField(d => d.sanFangLabels);
+export const TOPIC_CONTENT_KEY = projectTopicField(d => d.contentKey);
+export const TOPIC_SUMMARY_KEY = projectTopicField(d => d.summaryKey);
+export const TOPIC_KEY_PALACES = projectTopicField(d => d.keyPalaces);
+export const TOPIC_SUGGESTIONS = projectTopicField(d => d.suggestions);
+export const SUMMARY_TOPICS: ReadonlySet<TopicKey> = new Set(
+	TOPIC_KEYS.filter(k => TOPIC_DEFS[k].isSummaryTopic)
+);
 
 // ─── 星曜简述（用于三方四正的简短说明）────────────────────────────────────
 export const STAR_BRIEF: Record<string, string> = {
@@ -1344,202 +1669,6 @@ export const PALACE_TO_CONTENT_KEY: Partial<Record<string, keyof StarContent>> =
 	父母: "fuMu",
 };
 
-/** 各话题的关键宫位 × 四化意义（用于年干全局分析） */
-export const TOPIC_KEY_PALACES: Record<
-	TopicKey,
-	Array<{ palace: string; lu?: string; quan?: string; ke?: string; ji: string }>
-> = {
-	overview: [
-		{
-			palace: "命宫",
-			lu: "命中得禄，财禄双美，贵中带富",
-			quan: "命中得权，领导掌控力大增",
-			ke: "名声文书，贵人运极佳",
-			ji: "命格受挫，自尊心易受打击，是非多，宜低调行事",
-		},
-		{
-			palace: "迁移",
-			lu: "异乡有成，外出逢贵人",
-			ji: "迁移化忌对冲命宫——「半空折翅」之象，三十岁前后需防重大挫折，外出凶险",
-		},
-		{ palace: "官禄", lu: "事业格局高，职位顺遂", ji: "职场官非是非，仕途阻碍" },
-		{ palace: "财帛", lu: "财禄丰厚，正财旺", ji: "财运受阻，破财漏财风险" },
-		{ palace: "福德", lu: "精神福气厚，享受人生", ji: "精神层面多困扰，内心不安，幸福感受损" },
-	],
-	personality: [
-		{
-			palace: "命宫",
-			lu: "性格积极，贵气旺，魅力强",
-			quan: "性格强势，主导欲旺，领袖气质突出",
-			ke: "性格儒雅，名声好，贵人缘佳",
-			ji: "性格中有是非困扰，自我怀疑，宜修炼内心稳定感",
-		},
-		{ palace: "迁移", ji: "命宫受冲，性格中有坎坷底色，宜谨防三十岁前后的重大考验" },
-		{
-			palace: "福德",
-			lu: "精神世界丰富，幸福感强，享受生活",
-			ji: "精神层面多阴郁，内心福分受损，需主动寻找精神出口",
-		},
-		{
-			palace: "父母",
-			lu: "长辈贵人多，家庭关系融洽",
-			ji: "与父母或上司关系有阻，文书合约需谨慎",
-		},
-	],
-	love: [
-		{
-			palace: "夫妻",
-			lu: "感情路顺遂，婚姻有福，另一半带财",
-			ji: "感情婚姻多阻，另一半带来是非，宜晚婚",
-		},
-		{
-			palace: "福德",
-			lu: "精神享受好，感情生活充实",
-			ji: "北派四化有云（来源存疑）：「福德宫化忌，夫妻宫未见生离，必定死别」——感情有重大变故风险，需特别谨慎",
-		},
-		{ palace: "命宫", lu: "自身魅力旺，感情缘分好", ji: "自身感情运受损，感情事务多阻碍" },
-		{
-			palace: "子女",
-			lu: "子女与感情关系融洽，家庭和谐",
-			ji: "感情纠纷牵连子女宫，桃花是非多，或子女缘分受影响",
-		},
-		{
-			palace: "迁移",
-			lu: "外出有感情机遇，异乡有缘分",
-			ji: "外出感情多波折，半空折翅之象影响感情",
-		},
-		{ palace: "父母", lu: "长辈对感情支持，文书契约顺利", ji: "家长反对或文书问题影响婚姻" },
-	],
-	career: [
-		{
-			palace: "官禄",
-			lu: "事业财禄双美，升职顺遂",
-			quan: "掌权做主，宜自主创业",
-			ke: "专业名声旺，考公考证吉",
-			ji: "职场官非是非，升职受阻，宜低调行事",
-		},
-		{
-			palace: "迁移",
-			lu: "外出发展大吉，异地贵人多",
-			ji: "外出事业受阻，外地是非，宜守不宜动",
-		},
-		{ palace: "财帛", lu: "职位带动收入，财禄双旺", ji: "财运受阻，职场财务纠纷" },
-		{
-			palace: "父母",
-			lu: "上司贵人助力，文书顺利",
-			ji: "与上司关系有阻，文书合约有风险，宜低调配合",
-		},
-		{
-			palace: "田宅",
-			lu: "家业财库充盈，事业基础稳",
-			ji: "家庭事务干扰事业，或不动产牵连工作",
-		},
-	],
-	wealth: [
-		{
-			palace: "财帛",
-			lu: "正财最旺，财来财顺",
-			quan: "财务掌控力强，宜自营",
-			ke: "专业技术换财，财名双收",
-			ji: "正财受阻，破财风险大，需谨慎理财",
-		},
-		{
-			palace: "田宅",
-			lu: "财库充盈，房产运旺，积累顺遂",
-			ji: "田宅受损，财库漏财，房产有纠纷",
-		},
-		{ palace: "官禄", lu: "职位带动财运，事业越好财越旺", ji: "职场财运受损，收入不稳" },
-		{ palace: "命宫", lu: "财来自命，生财顺遂", ji: "命中财运受挫，需另谋财路" },
-		{ palace: "迁移", lu: "外出生财旺，越动越有财", ji: "外出破财，宜守不宜动，防旅途损失" },
-		{
-			palace: "福德",
-			lu: "福禄双美，享受财富的过程",
-			ji: "财运中精神层面多耗，享受不到财富带来的快乐",
-		},
-	],
-	health: [
-		{
-			palace: "疾厄",
-			lu: "健康状况改善，康复力强，体质佳",
-			ji: "健康风险最高，该星所主的脏腑部位需重点检查，化忌年份防手术",
-		},
-		{ palace: "迁移", ji: "外出意外风险，半空折翅之象——需特别注意交通安全和意外伤害" },
-		{ palace: "命宫", ji: "自身健康基础受损，免疫力下降，需调养" },
-		{ palace: "父母", ji: "文书合约问题，或体检报告需关注，与医疗相关的证件文书事务谨慎处理" },
-		{ palace: "子女", ji: "与生育、下腹部相关的健康需关注" },
-		{
-			palace: "福德",
-			lu: "精神健康佳，身心平衡",
-			ji: "精神层面的困扰影响身体健康，心因性疾病风险",
-		},
-	],
-	family: [
-		{
-			palace: "兄弟",
-			lu: "兄弟助力大，合伙顺遂带财",
-			ji: "兄弟缘薄或合伙破财，需提防合伙纠纷",
-		},
-		{ palace: "命宫", lu: "自身为兄弟贵人", ji: "与兄弟关系中自身情绪易受影响" },
-		{ palace: "交友", lu: "朋友中有兄弟情谊", ji: "合伙与交友是非多" },
-	],
-	children: [
-		{
-			palace: "子女",
-			lu: "子女聪慧有福，亲子关系好",
-			ji: "子女缘薄或管教方式需调整，防生育波折",
-		},
-		{ palace: "夫妻", lu: "夫妻共育子女运旺", ji: "感情问题牵连子女" },
-		{ palace: "田宅", lu: "子女为家庭带来活力", ji: "子女与家宅有冲突" },
-	],
-	move: [
-		{
-			palace: "迁移",
-			lu: "外出逢贵人、异地发财",
-			quan: "出门掌权，异地开拓有力",
-			ji: "倪师警示：迁移化忌「半空折翅」，外出多意外波折，三十前后尤为关键",
-		},
-		{ palace: "命宫", lu: "自身魅力为迁移加分", ji: "命主自身的主观选择容易导致远行失利" },
-		{ palace: "官禄", lu: "外地事业发展大吉", ji: "外地工作多阻" },
-	],
-	friends: [
-		{ palace: "仆役", lu: "朋友下属多贵人，人脉带财", ji: "朋友反目或下属不利，宜慎交友" },
-		{ palace: "兄弟", lu: "兄弟朋友圈融为一体", ji: "兄弟与朋友圈互相牵扯生是非" },
-	],
-	home: [
-		{
-			palace: "田宅",
-			lu: "房产兴旺、家宅和谐、财库丰厚",
-			quan: "不动产掌控力强",
-			ji: "古诀云「田宅化忌，家破财散」——需防房产纠纷、家宅不宁",
-		},
-		{ palace: "子女", lu: "家中子女带来喜气", ji: "子女与家宅的矛盾浮现" },
-		{ palace: "疾厄", ji: "家人健康或居住环境影响身体" },
-	],
-	spirit: [
-		{
-			palace: "福德",
-			lu: "精神福分厚，内心充实",
-			quan: "主导自己的精神生活",
-			ji: "紫微斗数有云（一说北派口诀，非倪师原话）：「福德宫化忌，夫妻宫未见生离，必定死别」——精神受损容易牵连婚姻与身体，需特别关注",
-		},
-		{
-			palace: "命宫",
-			lu: "自我认同强，内心稳定",
-			ji: "命宫与福德的双重受损，需主动寻求心理支撑",
-		},
-		{ palace: "财帛", lu: "享受财富的过程，福禄兼美", ji: "因财务问题牵动精神" },
-	],
-	parents: [
-		{
-			palace: "父母",
-			lu: "父母贵气，长辈扶持多，文书合约顺",
-			ke: "考试运佳，与上司关系亦有加分",
-			ji: "与父母或上司关系有张力，文书合约需谨慎签署",
-		},
-		{ palace: "命宫", lu: "自身得到父母贵人之力", ji: "自身问题牵涉长辈关系" },
-		{ palace: "兄弟", lu: "家族关系融洽", ji: "家族内部矛盾浮出" },
-	],
-};
 
 export type AnalysisView = "mingpan" | "daxian" | "liunian" | "liuyue";
 
@@ -1607,143 +1736,6 @@ export const SIHUA_CHAR_TO_KEY: Record<string, keyof MutagenModifier> = {
 	忌: "ji",
 };
 
-/**
- * 主题 → {@link StarContent} 的字段名（12 宫全覆盖）。
- *
- * @remarks
- * 值**一律不写 `as keyof StarContent`**。那 7 个辅助宫字段（`xiongDi` / `ziNv` / `qianYi` /
- * `jiaoYou` / `tianZhai` / `fuDe` / `fuMu`）在 {@link StarContent} 里都是显式声明过的，
- * 断言并不「补」任何类型，它只是**挡在类型检查前面**：实测把某个键写错成 `"xiongDiX"`，
- * 带 `as` 时一个错都不报，去掉后立刻 TS2322 并提示正确拼写。所以断言在这里的作用**纯粹
- * 是遮蔽**，删掉它才让这张表真正受检。
- */
-export const TOPIC_CONTENT_KEY: Record<TopicKey, keyof StarContent> = {
-	overview: "mingGong",
-	personality: "personality",
-	love: "fuQi",
-	career: "guanLu",
-	wealth: "caiBo",
-	health: "jiE",
-	family: "xiongDi",
-	children: "ziNv",
-	move: "qianYi",
-	friends: "jiaoYou",
-	home: "tianZhai",
-	spirit: "fuDe",
-	parents: "fuMu",
-};
 
-/**
- * 主题 → {@link StarSummaryGender} 的字段名。
- *
- * @remarks
- * `StarSummaryGender` 只覆盖核心 5 主题（overview / love / career / wealth / health），
- * 故其余 7 个辅助宫与 personality 一律**回落到 `overview`** 做整体描述 —— 这是有意的
- * 降级，不是漏配。
- */
-export const TOPIC_SUMMARY_KEY: Record<TopicKey, keyof StarSummaryGender> = {
-	overview: "overview",
-	personality: "overview",
-	love: "love",
-	career: "career",
-	wealth: "wealth",
-	health: "health",
-	family: "overview",
-	children: "overview",
-	move: "overview",
-	friends: "overview",
-	home: "overview",
-	spirit: "overview",
-	parents: "overview",
-};
 
-/**
- * 输出【星曜深层特质 = summary】段的主题。
- *
- * @remarks
- * 核心 5 主题（不含 `personality`）。`personality` 另走 `contentKey='personality'`
- * 加末尾的【性格深描】，避免与 `overview` 雷同 —— 故它不在本集合内，判定时单独补。
- */
-export const SUMMARY_TOPICS: ReadonlySet<TopicKey> = new Set<TopicKey>([
-	"overview",
-	"love",
-	"career",
-	"wealth",
-	"health",
-]);
 
-/**
- * 主题 → 【综合建议】的三条文案。
- *
- * @remarks
- * ⚠️ 内含 `倪师《天纪 NN》` 引文，受 `test/lib/citation-guard.ts` 的全树扫描盯着 ——
- * 搬动本表不影响判定（守卫按**内容**比对、范围是推导出来的全树），但**改归属或新增
- * 未核实引文会被拦下**。处置办法见 `corpus/data/annotations.ts`。
- */
-export const TOPIC_SUGGESTIONS: Record<TopicKey, string[]> = {
-	overview: [
-		"重点关注三方四正的星曜组合与本命四化会照，格局好坏由此决定。",
-		"当前大限所行宫位与本命四化会照处，是此十年最重要的机遇与风险节点。",
-		"倪师提醒：「命运不是人生的全部，加上地理位置和人念，才是」——本命盘是静态基础，大限流年是动态走势，仍要结合环境与人的选择。",
-	],
-	personality: [
-		"了解自身性格优势，在适合的环境中最大化发挥特长。",
-		"关注性格弱点，针对性地进行调适与成长。",
-		"命宫三方四正的组合决定了性格的深层驱动力，建议综合三方分析。",
-	],
-	love: [
-		"感情问题需看夫妻宫主星、本命四化与三方四正综合判断，不可只看一宫。",
-		"大限行至夫妻宫或会照夫妻三方，则此十年感情有重大变动或进展。",
-		"若流年红鸾天喜到，则该年婚恋动态明显，可重点关注。",
-	],
-	career: [
-		"官禄宫是事业格局的核心，但命宫与迁移宫亦是三方四正中的重要组成。",
-		"大限若走官禄宫，则此十年是事业发展的关键期，宜主动出击争取机遇。",
-		"四化落官禄宫尤为重要：化禄则财从职业来，化权则掌握权位，化忌则职场波折。",
-	],
-	wealth: [
-		"财帛宫主星是财运的核心，但命宫与官禄宫三方联动决定财的来路。",
-		"本命化禄所在宫位即是财源所在，重点经营该宫位代表的领域。",
-		"大限行至财帛或财帛三方且会照本命化禄，则此十年财运较旺，是积累财富的重要阶段。",
-	],
-	health: [
-		"倪师《天纪 05》：疾厄论以宫位地支为主轴（丑宫肝、酉宫肾…），星曜五行为辅。",
-		"化忌若落疾厄宫或冲照疾厄，则该年健康风险增加，宜主动体检。",
-		"煞星（擎羊陀罗火铃）入疾厄，倪师明言「开刀见血光」，流年逢化忌时尤须防手术。",
-	],
-	family: [
-		"兄弟宫代表兄弟姐妹与合伙人运，三方四正需综合看。",
-		"合伙前请看兄弟宫是否化忌——化忌则合伙大忌。",
-		"大限走兄弟宫时，合伙机会或兄弟关系变动加大。",
-	],
-	children: [
-		"子女宫主星决定与子女缘分和生育运。",
-		"夫妻宫与子女宫联动——感情问题常牵连子女宫。",
-		"化忌入子女宫宜关注下腹部健康与亲子相处方式。",
-	],
-	move: [
-		"迁移宫是命宫的对宫，外出运与命运整体息息相关。",
-		"倪师《天纪 06》原话：迁移化忌「半空折翅」——三十前后需特别注意交通与意外。",
-		"大限走迁移宫，适合主动出外发展或异地机遇。",
-	],
-	friends: [
-		"交友（仆役）宫映照兄弟宫，人脉质量决定事业副线。",
-		"化禄入仆役则朋友带财；化忌入仆役则防下属或朋友背叛。",
-		"大限走仆役宫，注意人际圈层的洗牌。",
-	],
-	home: [
-		"田宅宫是命盘的财库，正财能不能留得住看这里。",
-		"古诀云「田宅化忌，家破财散」——化忌入田宅需防房产纠纷。",
-		"大限行至田宅宫且会照本命化禄，是买房或家业扩张的好时机。",
-	],
-	spirit: [
-		"福德宫决定一个人的精神福分与享受能力。",
-		"古诀云「福德宫化忌，夫妻宫未见生离，必定死别」——此句来源需审慎标注，精神问题会反噬感情与健康。",
-		"大限行至福德宫且会照本命化禄，精神生活充实，心力最旺。",
-	],
-	parents: [
-		"父母宫映照与父母、上司、长辈的关系，也主文书合约。",
-		"化忌入父母宫宜避免签重要合约的关键时间点。",
-		"父母宫化科则考试运佳，文书文教方面有喜。",
-	],
-};
