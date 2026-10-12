@@ -599,6 +599,12 @@ async function main(): Promise<void> {
 	const files = changedFiles(base);
 	if (!files.length) {
 		console.log(`没有变更${base ? `（相对 ${base}）` : "（工作区）"}，评审无对象。`);
+		// 显式要了 --byte-diff 却什么都不说 = 看着像跑了其实没跑（见 §4.1）
+		if (byteDiff) {
+			console.log(
+				"逐字节对拍已跳过：逐字节对拍比的是「工作区 vs HEAD」，工作区无改动则无从比起。"
+			);
+		}
 		return;
 	}
 	const adds = addedLines(base, files);

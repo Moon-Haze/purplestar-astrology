@@ -186,7 +186,7 @@
 npm run review                                  # 对工作区未提交改动
 npm run review -- --base master                # 对某基线的差异（含已提交部分）
 npm run review -- --no-run                     # 只出分档与检查单，不执行闸门命令
-npm run review -- --byte-diff --no-run         # 追加「逐字节对拍」（重构类必做的那项证据）
+npx tsx tools/review-gate.ts --byte-diff --no-run # 追加「逐字节对拍」（重构类必做的证据）
 ```
 
 工具会给出：① 判定分档（严 / 中 / 轻）与依据；② 机检硬项（每条附文件与行号）；
@@ -200,6 +200,10 @@ git status --porcelain <冻结面文件列表>        # 应为空（工具也会
 ```
 
 把「跑了什么、结果是什么」写进提交信息。
+
+> ⚠️ **传参必须带 `--`**：`npm run review -- --byte-diff`（`--` 之后才是脚本参数）。
+> 写成 `npm run review --byte-diff` 会被 **npm 自己**吃掉并报 `EUNKNOWNCONFIG` ——
+> 看着像工具坏了，其实是 npm 的参数解析。同一坑也见 CLAUDE.md 的旗标面。
 
 > ⚠️ 工具的已知边界（它自己不做的事，别指望它）：不重复实现引文分级的**判据**
 > （那是 `selftest` 的权威，它只**指出新增行里哪些长得像倪师引句**）；不重跑任何断言；
