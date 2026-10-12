@@ -568,7 +568,7 @@ export function cmdAstrology(args: CliArgs) {
 				k => `  ${k.padEnd(11)} ${TOPIC_LABEL[k]}（看${TOPIC_PALACE_NAME[k]}）`
 			);
 			return [
-				"${Object.keys(TOPIC_LABEL).length} 个主题（--topic <key> 选其一）：",
+				`${Object.keys(TOPIC_LABEL).length} 个主题（--topic <key> 选其一）：`,
 				...rows,
 				"",
 				"view 可选：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月）",

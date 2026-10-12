@@ -19,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import type { BirthInfo, ZiweiChart } from "@/types";
 import { loadAlgorithm, loadSihua, loadConstants, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
 import { BRANCHES, chartSignature } from "./lib/compare.ts";
+// 主题数**派生**而非写死：加主题时本断言自动跟上，不必回来改数字。
+const { TOPIC_KEYS } = await load<typeof import("@/analysis/data")>("@/analysis/data");
 
 const execFileAsync = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -1597,6 +1599,20 @@ describe("CLI 端到端", () => {
 			assert.ok(
 				t.includes("overview") && t.includes("love") && t.includes("parents"),
 				"应列出全部主题 key"
+			);
+			// ⚠️ 下面两条是**曾经真实漏过**的护栏（2026-10-12 修 bug 时补记）：
+			// 表头那行原本写成 `"${Object.keys(TOPIC_LABEL).length} 个主题…"` —— **双引号**，
+			// 于是不插值、字面输出 `${Object.keys(TOPIC_LABEL).length}` 给用户看。
+			// 当时 571 项测试 + typecheck + selftest **全绿**，因为原断言只查主题 key 是否出现，
+			// 从不查表头。判据：断言**可观察输出**，不要断言源码形态。
+			assert.match(
+				t,
+				new RegExp(`^${TOPIC_KEYS.length} 个主题（--topic <key> 选其一）：`, "m"),
+				"表头的数量必须是插值后的真实主题数，而不是模板字面量"
+			);
+			assert.ok(
+				!t.includes("${"),
+				`输出里残留未插值的模板字面量：${t.split("\n").find(l => l.includes("${")) ?? ""}`
 			);
 		});
 

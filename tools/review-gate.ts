@@ -214,11 +214,24 @@ function classify(base: string | null, files: ChangedFile[], adds: AddedLine[]):
 		kinds.add("文档");
 	}
 
+	// ⚠️ **「轻」档的唯一豁免是「没碰代码」**。任何 scripts/ · test/ · tools/ 的改动
+	// 都必须跑全量回归 —— 尤其 test/：你在改的就是「验证一切的那个东西」，
+	// 跳过它等于让守卫自己给自己免检。
+	// 这条是实测补的：改 test/cli.test.ts 曾被判「轻」而跳过 npm test，
+	// 于是一处真失败从闸门底下溜了过去（红灯仍由 npm test 报出，不是静默）。
+	const touchesCode = paths.some(
+		p => /\.(ts|json)$/.test(p) && !p.endsWith(".md")
+	);
+	if (touchesCode) {kinds.add("代码");}
+
 	const tier: Tier = kinds.has("冻结面") || kinds.has("生成文件") || kinds.has("依赖") || kinds.has("重构")
 		? "严"
-		: kinds.has("真相源") || kinds.has("内容")
+		: touchesCode || kinds.has("真相源") || kinds.has("内容")
 			? "中"
 			: "轻";
+	if (tier !== "轻") {
+		reasons.push("碰到代码 → 必须跑全量回归（轻档只豁免纯文档改动）");
+	}
 	return { tier, kinds: [...kinds], reasons };
 }
 
