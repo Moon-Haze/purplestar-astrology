@@ -240,10 +240,10 @@ export function compareChart(
 	const now = opts.now ?? new Date();
 	const diffs: ChartDiff[] = [];
 	const push: PushDiff = (path, expected, got, note, whitelisted) => {
-		if (whitelisted && !opts.keepWhitelisted) return;
+		if (whitelisted && !opts.keepWhitelisted) {return;}
 		const d: ChartDiff = { path, expected, actual: got };
-		if (note) d.note = note;
-		if (whitelisted) d.whitelisted = true;
+		if (note) {d.note = note;}
+		if (whitelisted) {d.whitelisted = true;}
 		diffs.push(d);
 	};
 
@@ -255,7 +255,7 @@ export function compareChart(
 		"fiveElementsClassName",
 		"ziweiPos",
 	] as const) {
-		if (actual[k] !== baseline[k]) push(k, baseline[k], actual[k]);
+		if (actual[k] !== baseline[k]) {push(k, baseline[k], actual[k]);}
 	}
 
 	// ── 农历 ──
@@ -269,7 +269,7 @@ export function compareChart(
 		"yearBranch",
 		"isLeapMonth",
 	] as const) {
-		if (aL[k] !== bL[k]) push(`lunarInfo.${k}`, bL[k], aL[k]);
+		if (aL[k] !== bL[k]) {push(`lunarInfo.${k}`, bL[k], aL[k]);}
 	}
 
 	// ── 十二宫：按 branch 建索引，不依赖数组顺序 ──
@@ -288,7 +288,7 @@ export function compareChart(
 			continue;
 		}
 		for (const f of SHARED_PALACE_FIELDS) {
-			if (f === "branch") continue;
+			if (f === "branch") {continue;}
 			if (f === "name") {
 				// 宫名唯一需要翻译（见 normalizePalaceName）。翻译后仍是**严格相等**比对，
 				// 没有跳过任何字段 —— 性质是词汇翻译，不是放宽断言。
@@ -305,7 +305,7 @@ export function compareChart(
 			}
 			const a = f === "decadalRange" ? JSON.stringify(aP[f] ?? null) : aP[f];
 			const bb = f === "decadalRange" ? JSON.stringify(bP[f] ?? null) : bP[f];
-			if (a !== bb) push(`palaces[${label}].${f}`, bP[f] ?? null, aP[f] ?? null);
+			if (a !== bb) {push(`palaces[${label}].${f}`, bP[f] ?? null, aP[f] ?? null);}
 		}
 		compareStars(aP.stars ?? [], bP.stars ?? [], label, b, push);
 	}
@@ -333,7 +333,7 @@ export function compareChart(
 					}
 					continue;
 				}
-				if (aD[i][f] !== bD[i][f]) push(`decadals[${i}].${f}`, bD[i][f], aD[i][f]);
+				if (aD[i][f] !== bD[i][f]) {push(`decadals[${i}].${f}`, bD[i][f], aD[i][f]);}
 			}
 		}
 	}
@@ -343,7 +343,7 @@ export function compareChart(
 	// 直接比对会在跨过下一个农历年（正月初一）后全线失败。
 	// 受影响的共三处：currentAge、currentDecadalIndex、palace.isCurrentDecadal —— 都在下面重算。
 	const age = expectedAge(actual.birthInfo, now);
-	if (actual.currentAge !== age) push("currentAge", age, actual.currentAge, "按当前年份重算");
+	if (actual.currentAge !== age) {push("currentAge", age, actual.currentAge, "按当前年份重算");}
 	const expIdx = bD.findIndex(d => age >= d.startAge && age <= d.endAge);
 	if (actual.currentDecadalIndex !== expIdx) {
 		push("currentDecadalIndex", expIdx, actual.currentDecadalIndex, "按当前年份重算");
@@ -366,7 +366,7 @@ export function compareChart(
 	for (let b = 0; b < 12; b++) {
 		const aP = aByBranch.get(b);
 		const bP = bByBranch.get(b);
-		if (!aP || !bP) continue; // 宫位缺失已在上面报过，不重复计入
+		if (!aP || !bP) {continue;} // 宫位缺失已在上面报过，不重复计入
 		const range = bP.decadalRange;
 		const should = Array.isArray(range) && age >= range[0] && age <= range[1];
 		if (!!aP.isCurrentDecadal !== should) {
@@ -394,16 +394,16 @@ function compareStars(
 	const bByName = new Map(bStars.map(s => [s.name, s]));
 
 	for (const name of bByName.keys()) {
-		if (!aByName.has(name)) push(`palaces[${label}].stars`, `含 ${name}`, "缺该星");
+		if (!aByName.has(name)) {push(`palaces[${label}].stars`, `含 ${name}`, "缺该星");}
 	}
 	for (const name of aByName.keys()) {
-		if (!bByName.has(name)) push(`palaces[${label}].stars`, "无该星", `多出 ${name}`);
+		if (!bByName.has(name)) {push(`palaces[${label}].stars`, "无该星", `多出 ${name}`);}
 	}
 
 	for (const [name, bS] of bByName) {
 		const aS = aByName.get(name);
-		if (!aS) continue;
-		if (aS.type !== bS.type) push(`palaces[${label}].stars[${name}].type`, bS.type, aS.type);
+		if (!aS) {continue;}
+		if (aS.type !== bS.type) {push(`palaces[${label}].stars[${name}].type`, bS.type, aS.type);}
 
 		// ⚠️ **brightness 不参与对拍**（2026-10 口径切换）：本项目的亮度已整体改由文墨
 		// SB 表覆写（XD2 默认），与 iztro 快照的亮度不可比；其正确性由
@@ -413,20 +413,20 @@ function compareStars(
 
 		const aH = val(aS.mutagen);
 		const bH = val(bS.mutagen);
-		if (aH !== bH) push(`palaces[${label}].stars[${name}].mutagen`, bH, aH);
+		if (aH !== bH) {push(`palaces[${label}].stars[${name}].mutagen`, bH, aH);}
 	}
 }
 
 /** 把 diff 列表渲染成可读的失败信息（node:test 的断言消息里用）。 */
 export function formatDiffs(diffs: ChartDiff[], limit = 25): string {
-	if (!diffs.length) return "无差异";
+	if (!diffs.length) {return "无差异";}
 	const head = diffs
 		.slice(0, limit)
 		.map(
 			d =>
 				`  ${d.whitelisted ? "○" : "✗"} ${d.path}\n      基准=${JSON.stringify(d.expected)}  实际=${JSON.stringify(d.actual)}${d.note ? `  (${d.note})` : ""}`
 		);
-	if (diffs.length > limit) head.push(`  …… 另有 ${diffs.length - limit} 处差异未列出`);
+	if (diffs.length > limit) {head.push(`  …… 另有 ${diffs.length - limit} 处差异未列出`);}
 	return `共 ${diffs.length} 处差异：\n${head.join("\n")}`;
 }
 

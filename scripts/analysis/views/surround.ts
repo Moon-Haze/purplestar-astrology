@@ -92,7 +92,7 @@ export function renderSanFang(ctx: AnalysisContext): string[] {
 			.filter(s => s.type === "soft")
 			.forEach(ls => {
 				const note = getMinorStarNote(ls.name, p.name);
-				if (note) minorStarNotes.push(`✦ **${ls.name}**：${note}`);
+				if (note) {minorStarNotes.push(`✦ **${ls.name}**：${note}`);}
 			});
 		if (minorStarNotes.length > 0) {
 			minorStarNotes.forEach(n => lines.push(n));

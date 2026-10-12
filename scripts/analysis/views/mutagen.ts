@@ -23,7 +23,7 @@ export function renderMutagen(ctx: AnalysisContext): string[] {
 		lines.push("");
 		mutagenInSanFang.forEach(({ palaceName: pn, starName, mutagen, note }) => {
 			lines.push(`${mutagenSymbol(mutagen)} **${starName}化${mutagen}**（落${pn}）`);
-			if (note) lines.push(`   ${note}`);
+			if (note) {lines.push(`   ${note}`);}
 		});
 		lines.push("");
 	} else {

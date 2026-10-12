@@ -119,7 +119,7 @@ export function makeContext(
 
 	// 获取主宫
 	const result = getPalaceStars(chart, palaceName);
-	if (!result) return null;
+	if (!result) {return null;}
 
 	const { palace: mainPalace, mainStars, isLoan } = result;
 	const primaryStar = mainStars[0];

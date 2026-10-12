@@ -11,6 +11,6 @@ import { writeFileSync } from "node:fs";
 
 /** 把 `text` 写入 `path`（覆盖写，末尾恰一个换行）；路径含 `..` 段时抛错。 */
 export function writeOutFile(path: string, text: string): void {
-	if (path.split(/[\\/]/).includes("..")) throw new Error("--out 路径不允许包含 .. 段");
+	if (path.split(/[\\/]/).includes("..")) {throw new Error("--out 路径不允许包含 .. 段");}
 	writeFileSync(path, `${text}\n`, "utf8");
 }

@@ -101,7 +101,7 @@ console.log(
 			`· 覆盖 ${manifest.coverage.months.length}/12 月 · ${manifest.coverage.hours.length}/12 时辰 · ${manifest.coverage.leapYears.length} 闰月年`
 	)
 );
-if (year !== null) console.log(line("筛选", `${year} 年（层 1 仅该年基准，其余各层照常全跑）`));
+if (year !== null) {console.log(line("筛选", `${year} 年（层 1 仅该年基准，其余各层照常全跑）`));}
 console.log(RULE);
 
 // ── 跑：spec → stdout 照旧，聚合事件流 → 临时文件 ──
@@ -192,7 +192,7 @@ const bucket = new Map<string, LayerStat>();
 // 全局 summary（file 为空）是各文件汇总的再合计 —— 记下用于对账，不进分层数字
 let globalSummary: { total: number; passed: number; failed: number } | null = null;
 for (const r of records) {
-	if (r.type !== "summary" || !r.counts) continue;
+	if (r.type !== "summary" || !r.counts) {continue;}
 	if (!r.file) {
 		globalSummary = r.counts;
 		continue;
@@ -209,8 +209,8 @@ for (const r of records) {
 // 白名单命中总数：层 1 每条基准的诊断行自报（chart.test.ts 的 t.diagnostic，格式自控）
 let whitelisted = 0;
 for (const r of records) {
-	if (r.type !== "diagnostic" || !r.message) continue;
-	for (const m of r.message.matchAll(/白名单(\d+)/g)) whitelisted += Number(m[1]);
+	if (r.type !== "diagnostic" || !r.message) {continue;}
+	for (const m of r.message.matchAll(/白名单(\d+)/g)) {whitelisted += Number(m[1]);}
 }
 
 const fmtMs = (ms: number): string =>
@@ -240,7 +240,7 @@ console.log(`\n${RULE}`);
 console.log("分层汇总（层耗时 = 该文件墙钟）");
 for (const { label } of LAYERS) {
 	const b = bucket.get(label);
-	if (!b) continue;
+	if (!b) {continue;}
 	console.log(
 		`  ${label.padEnd(10, "　")} ${b.total} 项 ${b.failed ? `✗${b.failed}` : "✓"}   ${fmtMs(b.ms)}`
 	);
@@ -258,17 +258,17 @@ if (globalSummary && globalSummary.total !== total) {
 
 if (slowest.length) {
 	console.log("  最慢 5 项：");
-	for (const r of slowest) console.log(`    ${fmtMs(r.durationMs ?? 0).padStart(6)}  ${r.name}`);
+	for (const r of slowest) {console.log(`    ${fmtMs(r.durationMs ?? 0).padStart(6)}  ${r.name}`);}
 }
 if (whitelisted > 0)
-	console.log(`  白名单命中 ${whitelisted} 处（太阳/太阴@酉的已知亮度差异，比对器在工作）`);
+	{console.log(`  白名单命中 ${whitelisted} 处（太阳/太阴@酉的已知亮度差异，比对器在工作）`);}
 
 if (failed.length) {
 	console.log(`\n${RULE}\n失败明细（${failed.length} 项）`);
 	for (const r of failed) {
 		console.log(`  ✗ [${layerOf(r.file)}] ${r.name}`);
 		if (r.errorMessage)
-			console.log(`      ${r.errorMessage.split("\n").slice(0, 3).join("\n      ")}`);
+			{console.log(`      ${r.errorMessage.split("\n").slice(0, 3).join("\n      ")}`);}
 	}
 }
 console.log(RULE);

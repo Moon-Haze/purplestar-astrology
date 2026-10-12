@@ -45,7 +45,7 @@ export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {
 				msg = (e as Error).message;
 			}
 			if (!msg)
-				throw new Error(`${argv.join(" ")} 未报错——重复参数应报错（旧「取末值」废止）`);
+				{throw new Error(`${argv.join(" ")} 未报错——重复参数应报错（旧「取末值」废止）`);}
 		}
 	});
 	ok("解析引擎：拼音别名归一到英文主名", () => {
@@ -62,7 +62,7 @@ export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {
 			msg = (e as Error).message;
 		}
 		if (!msg.includes("未知参数") || !msg.includes("--yearly"))
-			throw new Error(`应报未知参数并建议 --yearly，实得：${msg}`);
+			{throw new Error(`应报未知参数并建议 --yearly，实得：${msg}`);}
 	});
 }
 
@@ -88,9 +88,9 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			} catch (e) {
 				msg = (e as Error).message;
 			}
-			if (!msg) throw new Error(`${bad} 未报错 —— 未知旗标又变成静默忽略了`);
+			if (!msg) {throw new Error(`${bad} 未报错 —— 未知旗标又变成静默忽略了`);}
 			if (!msg.includes(`--${want}`))
-				throw new Error(`${bad} 的提示应指向 --${want}，实得：${msg}`);
+				{throw new Error(`${bad} 的提示应指向 --${want}，实得：${msg}`);}
 		}
 		// 作用域收窄探针：**本 skill 不认**的旗标必须报错，而不是静默收下。
 		// 合并后 `--limit`（knowledge）与 `--chart`（synastry 的 --a-chart/--b-chart 裸底名）
@@ -113,7 +113,7 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			} catch (e) {
 				msg = (e as Error).message;
 			}
-			if (!msg) throw new Error(`${flag} 在 astrology 上未报错 —— 旗标作用域收窄失效`);
+			if (!msg) {throw new Error(`${flag} 在 astrology 上未报错 —— 旗标作用域收窄失效`);}
 		}
 		return `${probes.length} 个拼写错误均被拦下，${outOfScope.length} 个作用域外旗标被拒`;
 	});
@@ -143,11 +143,11 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 		// 而是从这里变红 —— excluded 每一项都必须能在全集里点到位。
 		for (const n of OPTION_SCOPE.excluded) {
 			if (!ALL_OPTION_NAMES.has(n))
-				throw new Error(`OPTION_SCOPE.excluded 里的「${n}」不在声明表 —— 拼写错误`);
+				{throw new Error(`OPTION_SCOPE.excluded 里的「${n}」不在声明表 —— 拼写错误`);}
 		}
 		const scope = [...ALL_OPTION_NAMES].filter(n => !OPTION_SCOPE.excluded.includes(n));
 		if (scope.length !== OPTION_NAMES.size)
-			throw new Error("OPTION_NAMES 与「全集 − excluded」的基数不一致 —— 派生逻辑或引用脱节");
+			{throw new Error("OPTION_NAMES 与「全集 − excluded」的基数不一致 —— 派生逻辑或引用脱节");}
 		return `全集 ${ALL_OPTION_NAMES.size} · 排除 ${OPTION_SCOPE.excluded.length} · 作用域 ${OPTION_NAMES.size}`;
 	});
 	ok("声明表：语义角色派生与原字符串反推等价（候选 2）", () => {
@@ -187,27 +187,27 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 			"优先级链文案 "
 		);
 		const unmarked = (table.OPTION_GROUPS ?? []).filter(g => !g.role).map(g => g.title);
-		if (unmarked.length) throw new Error(`存在未标 role 的选项组：${unmarked.join("、")}`);
+		if (unmarked.length) {throw new Error(`存在未标 role 的选项组：${unmarked.join("、")}`);}
 		return "role 标注齐、四套派生与优先级链同源";
 	});
 	ok("归属：OPTION_OWNERSHIP 从声明投影而非手抄（候选 4）", () => {
 		// 同步断言：kit 的 ok 不 await async 断言体（Promise 恒 truthy = 假绿），
 		// 依赖一律走本文件已有的静态 import（table / helpNs）。
 		if (typeof table.ownedOptions !== "function")
-			throw new Error("args-table 缺 ownedOptions 投影（候选 4 未实现）");
+			{throw new Error("args-table 缺 ownedOptions 投影（候选 4 未实现）");}
 		if (!table.GLOBAL_OPTIONS?.includes("out"))
-			throw new Error("--out 应为全局参数（GLOBAL_OPTIONS）");
+			{throw new Error("--out 应为全局参数（GLOBAL_OPTIONS）");}
 		if (!table.ownedOptions("knowledge")?.includes("search"))
-			throw new Error("knowledge 应含 --search");
+			{throw new Error("knowledge 应含 --search");}
 		if (!table.ownedOptions("synastry")?.includes("charts"))
-			throw new Error("synastry 应含 --charts");
+			{throw new Error("synastry 应含 --charts");}
 		if ((table.ownedOptions("selftest") ?? []).length !== 0)
-			throw new Error("selftest 无专属参数");
+			{throw new Error("selftest 无专属参数");}
 		if (!table.ownedOptions("astrology")?.includes("config"))
-			throw new Error("astrology 应含 --config");
+			{throw new Error("astrology 应含 --config");}
 		if (table.ownedOptions("astrology")?.includes("out"))
-			throw new Error("--out 已升全局，不应留在 astrology 专属投影里");
-		if ("OPTION_OWNERSHIP" in helpNs) throw new Error("help.ts 仍手抄归属表 OPTION_OWNERSHIP");
+			{throw new Error("--out 已升全局，不应留在 astrology 专属投影里");}
+		if ("OPTION_OWNERSHIP" in helpNs) {throw new Error("help.ts 仍手抄归属表 OPTION_OWNERSHIP");}
 		return "投影探针 + --out 全局 + help 无第二表";
 	});
 	ok("声明表：可选值参数 help 显示 <[x]>，必值参数保持 <x>（值语法不再混用）", () => {
@@ -219,12 +219,12 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 			"--ages <[虚岁]>",
 			"--topic <[key]>",
 		]) {
-			if (!s.includes(want)) throw new Error(`可选值语法缺失：${want}`);
+			if (!s.includes(want)) {throw new Error(`可选值语法缺失：${want}`);}
 		}
 		// 必值族：缺值会被指路，尖括号不吞方括号
-		if (!s.includes("--focus <宫>")) throw new Error("必值参数 --focus <宫> 的值语法变了");
+		if (!s.includes("--focus <宫>")) {throw new Error("必值参数 --focus <宫> 的值语法变了");}
 		if (s.includes("--monthly <[1-12]>"))
-			throw new Error("--monthly 被标成可选值 —— 它必须带值（裸开关会指路）");
+			{throw new Error("--monthly 被标成可选值 —— 它必须带值（裸开关会指路）");}
 	});
 }
 
@@ -241,7 +241,7 @@ export function runSkillArgsAudit({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 		const mentioned = [...md.matchAll(/--([a-z][a-z0-9-]*)/g)].map(m => m[1]);
 		// 先确认真扫到了东西：正则写歪或文件挪了位置都会得到空数组，那样的「零违规」是假绿。
 		if (!mentioned.length)
-			throw new Error("未从 SKILL.md 扫到任何旗标 —— 正则或路径可能已失效");
+			{throw new Error("未从 SKILL.md 扫到任何旗标 —— 正则或路径可能已失效");}
 		const names = [...new Set(mentioned)];
 		const unknown = names
 			.map(n => {
@@ -254,9 +254,9 @@ export function runSkillArgsAudit({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 			.map(n => OPTION_ALIASES[n] ?? n)
 			.filter(n => !OPTION_NAMES.has(n));
 		if (unknown.length)
-			throw new Error(
+			{throw new Error(
 				`SKILL.md 提到但 args.ts 未声明的参数：${unknown.map(n => "--" + n).join("、")}`
-			);
+			);}
 		return `${names.length} 种参数写法全部有声明`;
 	});
 }

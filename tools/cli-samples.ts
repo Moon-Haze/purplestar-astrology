@@ -871,9 +871,9 @@ async function main(): Promise<void> {
 	// 值是逗号拼接的两个路径，须拆开），删样例不误报。
 	const referenced = new Set<string>();
 	for (const s of SAMPLES)
-		for (const a of s.args)
-			for (const part of a.split(","))
-				if (part.startsWith("tools/samples/")) referenced.add(part);
+		{for (const a of s.args)
+			{for (const part of a.split(","))
+				{if (part.startsWith("tools/samples/")) {referenced.add(part);}}}}
 	const missing = [...referenced].filter(f => !existsSync(resolve(SKILL_ROOT, f)));
 	if (missing.length) {
 		console.error(`✘ 缺少样例输入文件：${missing.join("、")}`);
@@ -1036,7 +1036,7 @@ async function main(): Promise<void> {
 	);
 	if (unexpectedTitles.length) {
 		emit(`- ⚠ 意外 ${unexpectedTitles.length} 条：`);
-		for (const t of unexpectedTitles) emit(`  - ${t}`);
+		for (const t of unexpectedTitles) {emit(`  - ${t}`);}
 	}
 	emit(``);
 

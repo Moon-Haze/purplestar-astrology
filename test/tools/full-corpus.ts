@@ -37,7 +37,7 @@ const argv = process.argv.slice(2);
 const hasFlag = (name: string): boolean => argv.includes(`--${name}`);
 const optOf = (name: string): string | null => {
 	const i = argv.indexOf(`--${name}`);
-	if (i < 0) return null;
+	if (i < 0) {return null;}
 	const v = argv[i + 1];
 	return v && !v.startsWith("--") ? v : null;
 };
@@ -118,7 +118,7 @@ async function main(): Promise<void> {
 
 			if (real) {
 				stats.dirty++;
-				if (stats.detail.length < MAX_DETAIL) stats.detail.push({ birth: raw.birthInfo, diffs: real });
+				if (stats.detail.length < MAX_DETAIL) {stats.detail.push({ birth: raw.birthInfo, diffs: real });}
 			} else {
 				stats.clean++;
 			}

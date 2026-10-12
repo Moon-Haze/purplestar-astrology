@@ -196,23 +196,23 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 
 		ok("合盘冒烟：synastry 读两份命盘 JSON 跑得通，三个块标题都在", () => {
 			const r = deps.call(["synastry", ...PAIR]);
-			if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+			if (r.code !== 0) {throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);}
 			// 三个块标题各盯一件事：「双宫联参」是倪师口径的标志、「夫妻宫断语」是唯一依赖
 			// STAR_IN_FUQI_GU 的输出、「生年四化入夫妻宫」是唯一依赖**排盘方给的**
 			// nativeSiHua.located 的输出（缺了它说明 JSON 契约没接上）。
 			for (const sec of ["【合盘 · 双宫联参】", "【夫妻宫断语】", "【生年四化入夫妻宫】"]) {
-				if (!r.out.includes(sec)) throw new Error(`输出缺少「${sec}」`);
+				if (!r.out.includes(sec)) {throw new Error(`输出缺少「${sec}」`);}
 			}
 			return `${r.out.split("\n").length} 行`;
 		});
 
 		ok("合盘冒烟：双向对应的两方被判为「天作之合」，且晚子时提醒照常出现", () => {
 			const r = deps.call(["synastry", ...PAIR]);
-			if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+			if (r.code !== 0) {throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);}
 			if (!r.out.includes("双向对应，符合「天作之合」最高级匹配"))
-				throw new Error("两方主星互映却未判为双向对应 —— 对应关系判定可能已坏");
+				{throw new Error("两方主星互映却未判为双向对应 —— 对应关系判定可能已坏");}
 			if (!r.out.includes("晚子时"))
-				throw new Error("lateZi.candidate 为真却没出现晚子时提醒 —— 排盘依据的转述断了");
+				{throw new Error("lateZi.candidate 为真却没出现晚子时提醒 —— 排盘依据的转述断了");}
 			return "判定与提醒均按 JSON 里的标记产出";
 		});
 
@@ -224,20 +224,20 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 				["--charts", `${fileA},${fileB},${fileA}`],
 			]) {
 				const r = deps.call(["synastry", ...argv]);
-				if (r.code === 0) throw new Error(`${argv[1]} 未报错 —— 份数护栏失效`);
+				if (r.code === 0) {throw new Error(`${argv[1]} 未报错 —— 份数护栏失效`);}
 				if (!r.err.includes("两个") || !r.err.includes("--charts"))
-					throw new Error(
+					{throw new Error(
 						`报错应点名 --charts 与「两个文件路径」，实得：${r.err.trim()}`
-					);
+					);}
 			}
 			return "一份与三份均被拦下";
 		});
 
 		ok("合盘护栏：--charts 两路径相同允许（自盘对照有意义）", () => {
 			const r = deps.call(["synastry", "--charts", `${fileA},${fileA}`]);
-			if (r.code !== 0) throw new Error(`同路径应放行（自盘对照），实得：${r.err.trim()}`);
+			if (r.code !== 0) {throw new Error(`同路径应放行（自盘对照），实得：${r.err.trim()}`);}
 			if (!r.out.includes("甲方") || !r.out.includes("乙方"))
-				throw new Error("同路径输出应仍有甲乙两方");
+				{throw new Error("同路径输出应仍有甲乙两方");}
 			return "同路径放行";
 		});
 
@@ -249,9 +249,9 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 			// ⚠️ 输入必须是 --charts 形态：--a-chart 在解析层就是未知参数，到不了读文件的
 			//    契约校验。
 			const r = deps.call(["synastry", "--charts", `${wrong},${fileB}`]);
-			if (r.code === 0) throw new Error("顶层无 chart 键却退出码为 0 —— 契约校验失效");
+			if (r.code === 0) {throw new Error("顶层无 chart 键却退出码为 0 —— 契约校验失效");}
 			if (!r.err.includes("chart"))
-				throw new Error(`报错未提到缺失的 chart，实得：${r.err.trim()}`);
+				{throw new Error(`报错未提到缺失的 chart，实得：${r.err.trim()}`);}
 			return "拿 chart --json 顶替被拦下";
 		});
 
@@ -263,9 +263,9 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 			const p = join(tmp, "partial.json");
 			writeFileSync(p, JSON.stringify(partial));
 			const r = deps.call(["synastry", "--charts", `${p},${fileB}`]);
-			if (r.code === 0) throw new Error("缺 nativeSiHua 却退出码为 0 —— 逐项校验失效");
+			if (r.code === 0) {throw new Error("缺 nativeSiHua 却退出码为 0 —— 逐项校验失效");}
 			if (!r.err.includes("nativeSiHua"))
-				throw new Error(`报错未点名 nativeSiHua，实得：${r.err.trim()}`);
+				{throw new Error(`报错未点名 nativeSiHua，实得：${r.err.trim()}`);}
 			return "缺 nativeSiHua 被拦下";
 		});
 
@@ -273,8 +273,8 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 			const broken = join(tmp, "broken.json");
 			writeFileSync(broken, "错误：未知命令「astrology」。\n");
 			const r = deps.call(["synastry", "--charts", `${broken},${fileB}`]);
-			if (r.code === 0) throw new Error("文件不是 JSON 却退出码为 0");
-			if (!/JSON/.test(r.err)) throw new Error(`报错未提到 JSON，实得：${r.err.trim()}`);
+			if (r.code === 0) {throw new Error("文件不是 JSON 却退出码为 0");}
+			if (!/JSON/.test(r.err)) {throw new Error(`报错未提到 JSON，实得：${r.err.trim()}`);}
 			return "坏 JSON 被拦下";
 		});
 
@@ -289,14 +289,14 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 				"## 合盘分析核心框架（倪海厦体系 + 《紫微斗数全书》综合）",
 			]) {
 				if (!md.includes(anchor))
-					throw new Error(`references/synastry-guide.md 缺少锚点：${anchor}`);
+					{throw new Error(`references/synastry-guide.md 缺少锚点：${anchor}`);}
 			}
 			return `${md.split("\n").length} 行`;
 		});
 
 		ok("合盘知识源：合盘断语与四化断语非空", () => {
-			if (!Object.keys(STAR_IN_FUQI_GU).length) throw new Error("STAR_IN_FUQI_GU 为空");
-			if (!Object.keys(SIHUA_IN_FUQI_GU).length) throw new Error("SIHUA_IN_FUQI_GU 为空");
+			if (!Object.keys(STAR_IN_FUQI_GU).length) {throw new Error("STAR_IN_FUQI_GU 为空");}
+			if (!Object.keys(SIHUA_IN_FUQI_GU).length) {throw new Error("SIHUA_IN_FUQI_GU 为空");}
 			return `夫妻宫断语 ${Object.keys(STAR_IN_FUQI_GU).length} 星`;
 		});
 
@@ -317,9 +317,9 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 			for (const flag of probes) {
 				const r = deps.call(["synastry", flag, "x"]);
 				if (r.code === 0)
-					throw new Error(`${flag} 在 synastry 上被接受了 —— 前缀漏回了作用域`);
+					{throw new Error(`${flag} 在 synastry 上被接受了 —— 前缀漏回了作用域`);}
 				if (!r.err.includes("未知参数"))
-					throw new Error(`${flag} 的报错不是「未知参数」，实得：${r.err.trim()}`);
+					{throw new Error(`${flag} 的报错不是「未知参数」，实得：${r.err.trim()}`);}
 			}
 			return `${probes.length} 个前缀旗标全部按未知参数被拒`;
 		});
@@ -332,11 +332,11 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 				["--json", "json"], // 自身合法（对照：不报错的那组不在此测）
 			];
 			for (const [bad, want] of probes) {
-				if (bad === "--json") continue;
+				if (bad === "--json") {continue;}
 				const r = deps.call(["synastry", bad, "x"]);
-				if (r.code === 0) throw new Error(`${bad} 未报错 —— 未知旗标又变成静默忽略了`);
+				if (r.code === 0) {throw new Error(`${bad} 未报错 —— 未知旗标又变成静默忽略了`);}
 				if (!r.err.includes(`--${want}`))
-					throw new Error(`${bad} 的提示应指向 --${want}，实得：${r.err.trim()}`);
+					{throw new Error(`${bad} 的提示应指向 --${want}，实得：${r.err.trim()}`);}
 			}
 			return "拼写错误均被拦下";
 		});
@@ -346,9 +346,9 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 			// 这道命令层护栏，报错点名 --charts。
 			for (const argv of [["--charts"], ["--charts", "only-one.json"]]) {
 				const r = deps.call(["synastry", ...argv]);
-				if (r.code === 0) throw new Error(`${argv[0]} ${argv[1] ?? ""} 未报错`);
+				if (r.code === 0) {throw new Error(`${argv[0]} ${argv[1] ?? ""} 未报错`);}
 				if (!r.err.includes("--charts"))
-					throw new Error(`报错未点名 --charts，实得：${r.err.trim()}`);
+					{throw new Error(`报错未点名 --charts，实得：${r.err.trim()}`);}
 			}
 			return "裸写与单路径均被拦下";
 		});
@@ -368,14 +368,14 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 				"male",
 				"--json",
 			]);
-			if (r.code !== 0) throw new Error(`astrology --json 非零退出：${r.err.trim()}`);
+			if (r.code !== 0) {throw new Error(`astrology --json 非零退出：${r.err.trim()}`);}
 			const tmp = mkdtempSync(join(tmpdir(), "synastry-contract-"));
 			try {
 				const p = join(tmp, "real.json");
 				writeFileSync(p, r.out, "utf8");
 				const parsed = readAnalyzeJson(p, "甲");
 				if (!parsed.chart?.palaces?.length)
-					throw new Error("readAnalyzeJson 产物缺宫位 —— 契约校验形同虚设");
+					{throw new Error("readAnalyzeJson 产物缺宫位 —— 契约校验形同虚设");}
 			} finally {
 				rmSync(tmp, { recursive: true, force: true });
 			}
@@ -386,14 +386,14 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 			// 前缀表已清空（a-/b- 退役）—— 任何一侧漏接，用户敲 `synastry --charts` 就是「未知参数」。
 			// 键集来自函数顶部的动态 import（见彼处注释）。
 			if (!("synastry" in COMMANDS))
-				throw new Error("cli/commands.ts 的命令表里没有 synastry 条目 —— 合并接线断了");
+				{throw new Error("cli/commands.ts 的命令表里没有 synastry 条目 —— 合并接线断了");}
 			if (!OPTION_NAMES.has("charts"))
-				throw new Error("cli 的 OPTION_NAMES 里没有 charts —— 合盘输入参数未声明");
+				{throw new Error("cli 的 OPTION_NAMES 里没有 charts —— 合盘输入参数未声明");}
 			if (
 				OPTION_SCOPE.sidePrefixes.includes("a-") ||
 				OPTION_SCOPE.sidePrefixes.includes("b-")
 			)
-				throw new Error("a-/b- 前缀仍在 OPTION_SCOPE —— 应已退役（Task 7）");
+				{throw new Error("a-/b- 前缀仍在 OPTION_SCOPE —— 应已退役（Task 7）");}
 			return "命令表与作用域双侧接线在，前缀已退役";
 		});
 	} finally {

@@ -408,9 +408,9 @@ export function camelKey(name: string): string {
 export const SHADOWABLE_KEYS: ReadonlySet<string> = new Set(
 	OPTION_GROUPS.flatMap(g => {
 		if (g.role === "topic-deep")
-			return g.options.filter(o => o.noShadow !== true).map(o => o.name);
+			{return g.options.filter(o => o.noShadow !== true).map(o => o.name);}
 		if (g.role === "output-select")
-			return g.options.filter(o => o.shadow === true).map(o => o.name);
+			{return g.options.filter(o => o.shadow === true).map(o => o.name);}
 		return [];
 	})
 );

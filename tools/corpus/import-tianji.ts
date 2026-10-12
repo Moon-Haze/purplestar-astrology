@@ -46,7 +46,7 @@ interface RawEntry {
 const rows: RawEntry[] = [];
 for (const line of readFileSync(jsonl, "utf8").split("\n").filter(Boolean)) {
 	const d = JSON.parse(line) as RawEntry;
-	if ((BOOKS as readonly string[]).includes(d.book)) rows.push(d);
+	if ((BOOKS as readonly string[]).includes(d.book)) {rows.push(d);}
 }
 if (rows.length === 0) {
 	console.error("语料中未找到紫微五册条目——检查语料库版本");

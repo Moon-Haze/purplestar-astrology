@@ -100,11 +100,11 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		const [cmd, ...rest] = argv;
 		const fn = COMMANDS[cmd as keyof typeof COMMANDS];
 		if (!fn)
-			return {
+			{return {
 				code: 1,
 				out: "",
 				err: unknownCommandMessage(cmd, commandNames),
-			};
+			};}
 		return callDirect(cmd, rest, fn, parseArgs, ctx);
 	};
 
@@ -148,11 +148,11 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		// corpus 与 synastry 的自检断言各自住在
 		// scripts/corpus/selftest-asserts.ts 与 scripts/synastry/selftest-asserts.ts，
 		// 由本命令汇总执行 —— 报告分三段（排盘 / 古籍 / 合盘），首行「通过 N/N」为合计。
-		if (!classics.length || !synastry.length) throw new Error("断言组为空——搬移未完成");
+		if (!classics.length || !synastry.length) {throw new Error("断言组为空——搬移未完成");}
 		results.push({ pass: true, name: "── 古籍 ──", detail: "" });
-		for (const r of classics) results.push(r);
+		for (const r of classics) {results.push(r);}
 		results.push({ pass: true, name: "── 合盘 ──", detail: "" });
-		for (const r of synastry) results.push(r);
+		for (const r of synastry) {results.push(r);}
 		return `古籍 ${classics.filter(x => x.pass).length}/${classics.length} · 合盘 ${
 			synastry.filter(x => x.pass).length
 		}/${synastry.length}`;

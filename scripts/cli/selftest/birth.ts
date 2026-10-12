@@ -19,7 +19,7 @@ export function runCityTolerance({ ok }: Pick<SelftestDeps, "ok">): void {
 		const a = findLongitude("石家庄"),
 			b = findLongitude("石家庄市"),
 			c = findLongitude("河北省石家庄市");
-		if (!a || !b || !c) throw new Error("存在未解析的写法");
+		if (!a || !b || !c) {throw new Error("存在未解析的写法");}
 		eq(a.longitude, b.longitude, "石家庄 vs 石家庄市 ");
 		eq(a.longitude, c.longitude, "石家庄 vs 河北省石家庄市 ");
 	});
@@ -40,13 +40,13 @@ export function runCityTolerance({ ok }: Pick<SelftestDeps, "ok">): void {
 				"male",
 			])
 		);
-		if (!Number.isFinite(b.info.longitude)) throw new Error("经度未解析");
+		if (!Number.isFinite(b.info.longitude)) {throw new Error("经度未解析");}
 		eq(chartSignature(generateChart(b.info)).length > 0, true);
 	});
 	ok("城市容错：精确命中不提示，容错命中才提示（exact 标志）", () => {
 		const exactHit = findLongitude("石家庄"),
 			suffixHit = findLongitude("石家庄市");
-		if (!exactHit || !suffixHit) throw new Error("城市表查不到石家庄 / 石家庄市");
+		if (!exactHit || !suffixHit) {throw new Error("城市表查不到石家庄 / 石家庄市");}
 		eq(exactHit.exact, true, "原名 "); // 表里就是「石家庄」，无需提示
 		eq(suffixHit.exact, false, "带后缀 "); // 做了容错，需提示
 		const exact = buildBirthInfo(
@@ -74,7 +74,7 @@ export function runCityTolerance({ ok }: Pick<SelftestDeps, "ok">): void {
 			])
 		);
 		eq(exact.lngNote, "", "精确命中的 lngNote ");
-		if (!fuzzy.lngNote) throw new Error("容错命中应给出 lngNote");
+		if (!fuzzy.lngNote) {throw new Error("容错命中应给出 lngNote");}
 		return fuzzy.lngNote;
 	});
 	ok("出生地：未给地点时必须提示「按 120° 处理、未做校正」", () => {
@@ -83,7 +83,7 @@ export function runCityTolerance({ ok }: Pick<SelftestDeps, "ok">): void {
 		);
 		eq(b.info.longitude, 120);
 		if (!b.lngNote || !b.lngNote.includes("120"))
-			throw new Error(`未给地点时 lngNote 应提醒，实得：${JSON.stringify(b.lngNote)}`);
+			{throw new Error(`未给地点时 lngNote 应提醒，实得：${JSON.stringify(b.lngNote)}`);}
 		return b.lngNote;
 	});
 }
@@ -100,8 +100,8 @@ export function runGenderGuard({ ok }: Pick<SelftestDeps, "ok">): void {
 		} catch (e) {
 			msg = (e as Error).message;
 		}
-		if (!msg) throw new Error("缺 --gender 时未报错");
-		if (!msg.includes("--gender")) throw new Error(`报错文案应含 --gender，实得：${msg}`);
+		if (!msg) {throw new Error("缺 --gender 时未报错");}
+		if (!msg.includes("--gender")) {throw new Error(`报错文案应含 --gender，实得：${msg}`);}
 		return msg;
 	});
 	ok("性别：非法取值必须报错（不得静默落到 male）", () => {
@@ -152,14 +152,14 @@ export function runBirthInfoShape({ ok }: Pick<SelftestDeps, "ok">): void {
 		} catch (e) {
 			dup = (e as Error).message;
 		}
-		if (!dup) throw new Error("两个日期 token 未报错");
+		if (!dup) {throw new Error("两个日期 token 未报错");}
 		let badCity = "";
 		try {
 			buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "不存在的城市XYZ"], "astrology"));
 		} catch (e) {
 			badCity = (e as Error).message;
 		}
-		if (!badCity) throw new Error("未知城市 token 未报错（不得静默落 120°E）");
+		if (!badCity) {throw new Error("未知城市 token 未报错（不得静默落 120°E）");}
 	});
 	ok("出生信息：城市 token 三条边界（省市连写 / 裸省名按省会 / 带空格报错）", () => {
 		const cn = buildBirthInfo(parseArgs(["1990-5-15", "9:30", "男", "山东青岛"], "astrology"));
@@ -177,7 +177,7 @@ export function runBirthInfoShape({ ok }: Pick<SelftestDeps, "ok">): void {
 			spaced = (e as Error).message;
 		}
 		if (!spaced || !spaced.includes("连写"))
-			throw new Error(`省+市带空格应报错并提示连写，实得：${spaced}`);
+			{throw new Error(`省+市带空格应报错并提示连写，实得：${spaced}`);}
 	});
 	ok("出生信息：公历日期不存在的 round-trip 校验（不静默归一化出错盘）", () => {
 		// JS Date 会把 2011-02-30 静默归一化成 03-02：标题印 02-30、实际排 03-02 的错盘，
@@ -192,7 +192,7 @@ export function runBirthInfoShape({ ok }: Pick<SelftestDeps, "ok">): void {
 			}
 			// 文案判据按任务口径二选一：含原始输入（回显）或含「不存在」
 			if (!msg || !(msg.includes(bad) || msg.includes("不存在")))
-				throw new Error(`${bad} 未报错或文案未回显原始输入，实得：${msg || "未报错"}`);
+				{throw new Error(`${bad} 未报错或文案未回显原始输入，实得：${msg || "未报错"}`);}
 		}
 		// 位置参数形态与 --date 在 buildBirthInfo 汇合，必须同受校验（宽松格式 2011-2-30）
 		let posMsg = "";
@@ -202,7 +202,7 @@ export function runBirthInfoShape({ ok }: Pick<SelftestDeps, "ok">): void {
 			posMsg = (e as Error).message;
 		}
 		if (!posMsg.includes("2011-2-30"))
-			throw new Error(`位置参数 2011-2-30 未报错或未回显原文，实得：${posMsg || "未报错"}`);
+			{throw new Error(`位置参数 2011-2-30 未报错或未回显原文，实得：${posMsg || "未报错"}`);}
 		// 闰年边界不得误伤：2012-02-29 必须原样通过
 		const leap = buildBirthInfo(
 			parseArgs(["--date", "2012-02-29", "07:45", "杭州", "male"], "astrology")

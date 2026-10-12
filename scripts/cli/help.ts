@@ -140,14 +140,14 @@ function renderOptions(owned: ReadonlySet<string>): string[] {
 	const groups: Array<{ title: string; rows: Array<[string, string]> }> = [];
 	for (const g of OPTION_GROUPS) {
 		const opts = g.options.filter(o => owned.has(o.name));
-		if (!opts.length) continue;
+		if (!opts.length) {continue;}
 		const rows: Array<[string, string]> = opts.map(o => [
 			`  ${label(o)}${ALIAS_OF.get(o.name) ? `（别名 --${ALIAS_OF.get(o.name)}）` : ""}`,
 			o.desc,
 		]);
 		const last = groups[groups.length - 1];
-		if (last && last.title === g.title) last.rows.push(...rows);
-		else groups.push({ title: g.title, rows });
+		if (last && last.title === g.title) {last.rows.push(...rows);}
+		else {groups.push({ title: g.title, rows });}
 	}
 	const allRows: Array<[string, string]> = [
 		["  -h, --help", "显示本帮助（任何命令可用）"],
@@ -158,7 +158,7 @@ function renderOptions(owned: ReadonlySet<string>): string[] {
 	const lines: string[] = [pad("  -h, --help", "显示本帮助（任何命令可用）")];
 	for (const g of groups) {
 		lines.push(`  ${g.title}`);
-		for (const [l, d] of g.rows) lines.push(pad(l, d));
+		for (const [l, d] of g.rows) {lines.push(pad(l, d));}
 	}
 	return lines;
 }
@@ -183,7 +183,7 @@ export function renderOverviewHelp(): string {
 	lines.push("COMMANDS");
 	const names = Object.keys(COMMAND_DESC);
 	const cw = Math.max(...names.map(displayWidth)) + 2;
-	for (const n of names) lines.push(`  ${n.padEnd(cw)}${COMMAND_DESC[n as CommandName]}`);
+	for (const n of names) {lines.push(`  ${n.padEnd(cw)}${COMMAND_DESC[n as CommandName]}`);}
 	lines.push("  help".padEnd(cw + 2) + "本帮助");
 	lines.push("  各命令的专属用法：node scripts/purple-star.ts <command> --help", "");
 	lines.push("OPTIONS");
@@ -212,16 +212,16 @@ export function renderCommandHelp(cmd: CommandName): string {
 	lines.push("NAME", `  ${cmd} —— ${COMMAND_DESC[cmd]}`, "");
 	lines.push("SYNOPSIS");
 	if (cmd === "astrology")
-		lines.push(
+		{lines.push(
 			"  node scripts/purple-star.ts astrology <日期> <时刻> <性别> [<城市>]",
 			"  node scripts/purple-star.ts astrology --date … --time … --gender … [--city …] [专题参数…]"
-		);
+		);}
 	else if (cmd === "knowledge")
-		lines.push(
+		{lines.push(
 			"  node scripts/purple-star.ts knowledge [--search <关键词>] [--limit N]",
 			"  node scripts/purple-star.ts knowledge --source <books|stars|tianji|oracle> [域参数…]"
-		);
-	else lines.push(`  node scripts/purple-star.ts ${cmd} [options]`);
+		);}
+	else {lines.push(`  node scripts/purple-star.ts ${cmd} [options]`);}
 	lines.push("");
 	lines.push("DESCRIPTION", ...(COMMAND_HELP[cmd] ?? []).map(l => (l ? `  ${l}` : l)), "");
 	lines.push("OPTIONS");

@@ -92,10 +92,10 @@ function staticLines(text: string): string[] {
 		const head = line.match(SECTION_HEAD_RE);
 		if (head) {
 			keep = !DYNAMIC_SECTION_RE.test(head[1]);
-			if (keep) out.push(line);
+			if (keep) {out.push(line);}
 			continue;
 		}
-		if (keep && line.trim() !== "") out.push(line);
+		if (keep && line.trim() !== "") {out.push(line);}
 	}
 	return out;
 }
@@ -161,7 +161,7 @@ function classifyOracle(
 	};
 	let lastSihua: SihuaEntry | null = null;
 	const uniq = (arr: string[], line: string): void => {
-		if (!arr.includes(line)) arr.push(line);
+		if (!arr.includes(line)) {arr.push(line);}
 	};
 
 	for (const [line, section] of lines) {
@@ -188,17 +188,17 @@ function classifyOracle(
 		if ((m = line.match(/^⭐ \*\*(.+?)\*\*[：:](.*)$/))) {
 			const found = oracle.patterns.find(p => p.name === m![1]);
 			if (found) {
-				if (m[2] && !found.text.includes(m[2])) found.text += `\n${m[2]}`;
+				if (m[2] && !found.text.includes(m[2])) {found.text += `\n${m[2]}`;}
 			} else {
 				oracle.patterns.push({ name: m[1], text: m[2] });
 			}
 			continue;
 		}
 		// 四化主行（本命四化节与年干节同构：emoji + **星化X**（落宫）[→ 意义]）
-		if (/^[🔴🟡🔵🟢]/.test(line)) {
+		if (/^[🔴🟡🔵🟢]/u.test(line)) {
 			const existing = oracle.sihua.find(s => s.text === body);
 			lastSihua = existing ?? { text: body };
-			if (!existing) oracle.sihua.push(lastSihua);
+			if (!existing) {oracle.sihua.push(lastSihua);}
 			continue;
 		}
 		if (line.startsWith("本宫主星")) {
@@ -211,14 +211,14 @@ function classifyOracle(
 		}
 
 		// 节驱动的普通段落
-		if (section === "命盘关键定制") uniq(oracle.mods, line);
-		else if (section === "星曜深层特质") uniq(oracle.summary, line);
-		else if (section === "命盘推演") uniq(oracle.mainPalace.content, line);
+		if (section === "命盘关键定制") {uniq(oracle.mods, line);}
+		else if (section === "星曜深层特质") {uniq(oracle.summary, line);}
+		else if (section === "命盘推演") {uniq(oracle.mainPalace.content, line);}
 		else if (section === "本命四化会照" || section === "年干四化·关键宫位影响") {
 			lastSihua = { text: line };
 			oracle.sihua.push(lastSihua);
 		} else if (section !== "") {
-			if (!oracle.extras.has(section)) oracle.extras.set(section, []);
+			if (!oracle.extras.has(section)) {oracle.extras.set(section, []);}
 			uniq(oracle.extras.get(section)!, line);
 		} else {
 			uniq(oracle.other, line);
@@ -303,17 +303,17 @@ WHERE palace_name = '${palace}' AND len(major_stars) > 0`;
 						items: new Set<string>(),
 					};
 					sanFang.set(currentPalace, entry);
-					if (bar[2]) entry.stars.add(bar[2]);
+					if (bar[2]) {entry.stars.add(bar[2]);}
 					continue;
 				}
 				const kui = l.match(/^✦ \*\*(.+?)\*\*[：:](.*)$/);
 				const body = l.replace(/^\s+/, "");
-				if (!currentPalace) continue;
+				if (!currentPalace) {continue;}
 				const entry = sanFang.get(currentPalace)!;
 				entry.items.add(kui ? `✦ ${kui[1]}：${kui[2]}` : body);
 				continue;
 			}
-			if (!lines.has(l)) lines.set(l, section);
+			if (!lines.has(l)) {lines.set(l, section);}
 		}
 	}
 	return { byStar, sanFangByStar, starSamples };
@@ -341,13 +341,13 @@ async function exportTopics(conn: DuckDBConnection): Promise<void> {
 			);
 			// md 保持扁平可读版：节头行（分类用）在这里滤掉
 			for (const line of lines.keys()) {
-				if (SECTION_HEAD_RE.test(line)) continue;
+				if (SECTION_HEAD_RE.test(line)) {continue;}
 				body.push(line, "");
 			}
 			// 三方四正（盘内已解析聚合）：按宫展开成「▍宫名：星曜概览 + 断语行」
 			for (const [palace, { stars, items }] of sanFangByStar.get(star) ?? []) {
 				body.push(`▍**${palace}**：${[...stars].join("、")}`, "");
-				for (const it of items) body.push(it, "");
+				for (const it of items) {body.push(it, "");}
 			}
 		}
 		writeFileSync(join(TOPICS_DIR, `${topic}.md`), [...head, ...body].join("\n"));
@@ -481,16 +481,16 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 			lines.push(`\t${lit(star)}: {`);
 			lines.push(`\t\tmods: [${o.mods.map(lit).join(", ")}],`);
 			lines.push(`\t\tsummary: [`);
-			for (const l of o.summary) lines.push(`\t\t\t${lit(l)},`);
+			for (const l of o.summary) {lines.push(`\t\t\t${lit(l)},`);}
 			lines.push(`\t\t],`);
 			lines.push(`\t\tpatterns: [`);
 			for (const p of o.patterns)
-				lines.push(`\t\t\t{ name: ${lit(p.name)}, text: ${lit(p.text)} },`);
+				{lines.push(`\t\t\t{ name: ${lit(p.name)}, text: ${lit(p.text)} },`);}
 			lines.push(`\t\t],`);
 			lines.push(`\t\tmainPalace: {`);
 			lines.push(`\t\t\tstars: [${o.mainPalace.stars.map(lit).join(", ")}],`);
 			lines.push(`\t\t\tcontent: [`);
-			for (const l of o.mainPalace.content) lines.push(`\t\t\t\t${lit(l)},`);
+			for (const l of o.mainPalace.content) {lines.push(`\t\t\t\t${lit(l)},`);}
 			lines.push(`\t\t\t],`);
 			lines.push(`\t\t},`);
 			lines.push(`\t\tsanFang: [`);
@@ -498,15 +498,15 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 				lines.push(
 					`\t\t\t{ palace: ${lit(sf.palace)}, stars: [${sf.stars.map(lit).join(", ")}], items: [`
 				);
-				for (const it of sf.items) lines.push(`\t\t\t\t${lit(it)},`);
+				for (const it of sf.items) {lines.push(`\t\t\t\t${lit(it)},`);}
 				lines.push(`\t\t\t] },`);
 			}
 			lines.push(`\t\t],`);
 			lines.push(`\t\tsihua: [`);
 			for (const s of o.sihua)
-				lines.push(
+				{lines.push(
 					`\t\t\t{ text: ${lit(s.text)}${s.note !== undefined ? `, note: ${lit(s.note)}` : ""} },`
-				);
+				);}
 			lines.push(`\t\t],`);
 			lines.push(`\t\tkuiYue: [${o.kuiYue.map(lit).join(", ")}],`);
 			const extraKeys = Object.keys(o.extras);
@@ -516,7 +516,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 				lines.push(`\t\textras: {`);
 				for (const k of extraKeys) {
 					lines.push(`\t\t\t${lit(k)}: [`);
-					for (const l of o.extras[k]) lines.push(`\t\t\t\t${lit(l)},`);
+					for (const l of o.extras[k]) {lines.push(`\t\t\t\t${lit(l)},`);}
 					lines.push(`\t\t\t],`);
 				}
 				lines.push(`\t\t},`);
@@ -600,7 +600,7 @@ SELECT DISTINCT line FROM l WHERE line LIKE '⭐%'`;
 	const dbNameToLine = new Map<string, string>();
 	for (const r of rows) {
 		const m = r.line.match(/⭐ \*\*(.+?)\*\*/);
-		if (m) dbNameToLine.set(m[1], r.line);
+		if (m) {dbNameToLine.set(m[1], r.line);}
 	}
 
 	// patterns 侧：抽样 2000 盘实测 detectPatterns 全名目（跳过非法公历日期）
@@ -631,7 +631,7 @@ SELECT DISTINCT line FROM l WHERE line LIKE '⭐%'`;
 		}
 		ok++;
 		for (const p of patterns.detectPatterns(chart))
-			produced.set(p.name, (produced.get(p.name) ?? 0) + 1);
+			{produced.set(p.name, (produced.get(p.name) ?? 0) + 1);}
 	}
 
 	// 归一比对：去「格」字与括号注记；「守命→入命」按别名表裁决口径
@@ -644,9 +644,9 @@ SELECT DISTINCT line FROM l WHERE line LIKE '⭐%'`;
 	const normPool = patNames.map(n => norm(n));
 	const dbUnmatched: string[] = [];
 	const patUnmatched: string[] = [];
-	for (const n of dbNameToLine.keys()) if (!normPool.includes(norm(n))) dbUnmatched.push(n);
+	for (const n of dbNameToLine.keys()) {if (!normPool.includes(norm(n))) {dbUnmatched.push(n);}}
 	for (const p of patNames)
-		if (![...dbNameToLine.keys()].some(n => norm(n) === norm(p))) patUnmatched.push(p);
+		{if (![...dbNameToLine.keys()].some(n => norm(n) === norm(p))) {patUnmatched.push(p);}}
 
 	const md = [
 		"# 格局名目对拍（db 渲染集 vs patterns 现库）",
@@ -699,10 +699,10 @@ async function main() {
 			: await openDataset(target.datasetDir);
 	try {
 		const cmd = process.argv[2] ?? "all";
-		if (cmd === "topics" || cmd === "all") await exportTopics(conn);
-		if (cmd === "combo" || cmd === "all") await exportCombo(conn);
-		if (cmd === "geju" || cmd === "all") await auditGeju(conn);
-		if (cmd === "code" || cmd === "all") await exportCode(conn);
+		if (cmd === "topics" || cmd === "all") {await exportTopics(conn);}
+		if (cmd === "combo" || cmd === "all") {await exportCombo(conn);}
+		if (cmd === "geju" || cmd === "all") {await auditGeju(conn);}
+		if (cmd === "code" || cmd === "all") {await exportCode(conn);}
 		if (!["topics", "combo", "geju", "code", "all"].includes(cmd)) {
 			console.error(`未知子命令「${cmd}」：topics / combo / geju / code / all`);
 			process.exitCode = 2;

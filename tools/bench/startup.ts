@@ -110,7 +110,7 @@ function benchE2E(runs: number): E2ERow[] {
 			const t = performance.now();
 			const r = spawnSync(process.execPath, [CLI, ...args], { stdio: "ignore" });
 			const dt = performance.now() - t;
-			if (r.status !== 0) throw new Error(`CLI 退出码 ${r.status}：${args.join(" ")}`);
+			if (r.status !== 0) {throw new Error(`CLI 退出码 ${r.status}：${args.join(" ")}`);}
 			times.push(dt);
 		}
 		return { label, med: median(times), min: Math.min(...times), max: Math.max(...times) };
@@ -237,7 +237,7 @@ function runProbe(): ProbeResult {
 async function main(): Promise<void> {
 	const runsArg = process.argv.find(a => a.startsWith("--runs="));
 	const runs = runsArg ? Number(runsArg.slice(7)) : 9;
-	if (!Number.isInteger(runs) || runs < 1) throw new Error(`--runs 需要正整数，收到：${runsArg}`);
+	if (!Number.isInteger(runs) || runs < 1) {throw new Error(`--runs 需要正整数，收到：${runsArg}`);}
 
 	console.log(RULE);
 	console.log("紫微斗数 skill 启动耗时基准");
@@ -279,7 +279,7 @@ async function main(): Promise<void> {
 
 	console.log("\n【③ 热路径】");
 	console.log(`  ${"调用".padEnd(38)}${"首次".padStart(11)}${"暖机均摊".padStart(13)}`);
-	for (const r of hot) console.log(`  ${r.label.padEnd(38)}${ms(r.first, 11)}${ms(r.avg, 13)}`);
+	for (const r of hot) {console.log(`  ${r.label.padEnd(38)}${ms(r.first, 11)}${ms(r.avg, 13)}`);}
 
 	const analyze = e2e.find(r => r.label.startsWith("analyze"));
 	const pct = (v: number, base: number) => `${((v / base) * 100).toFixed(2)}%`;

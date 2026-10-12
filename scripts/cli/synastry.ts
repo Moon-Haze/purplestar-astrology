@@ -57,9 +57,9 @@ export function cmdSynastry(args: CliArgs): string {
 		.map(f => f.trim())
 		.filter(Boolean);
 	if (files.length !== 2)
-		throw new Error(
+		{throw new Error(
 			`--charts 应给两个文件路径（甲,乙，逗号分隔），实得 ${files.length} 个：${args.charts}`
-		);
+		);}
 	// 同路径允许：自盘对照（同一人两份相同盘）是有意义的用法。
 
 	const A = readAnalyzeJson(files[0], "甲");
@@ -158,7 +158,7 @@ export function cmdSynastry(args: CliArgs): string {
 			continue;
 		}
 		if (!stars.length)
-			out.push(`  ${label}方夫妻宫空宫，借对宫 ${fuqi.borrowedFromName ?? ""} 主星论：`);
+			{out.push(`  ${label}方夫妻宫空宫，借对宫 ${fuqi.borrowedFromName ?? ""} 主星论：`);}
 		for (const s of borrowed) {
 			const e = STAR_IN_FUQI_GU[s];
 			if (!e) {
@@ -170,7 +170,7 @@ export function cmdSynastry(args: CliArgs): string {
 			out.push(`      凶象：${e.bad}`);
 			out.push(`      配偶特质：${e.spouse_traits}`);
 			out.push(`      婚期：${e.timing}`);
-			if (e.ni_quote) out.push(`      倪师原话：「${e.ni_quote}」`);
+			if (e.ni_quote) {out.push(`      倪师原话：「${e.ni_quote}」`);}
 		}
 	}
 	out.push("");
@@ -184,7 +184,7 @@ export function cmdSynastry(args: CliArgs): string {
 		["乙", B, fuqiB],
 	] as const) {
 		for (const x of side.nativeSiHua.located) {
-			if (x.palace !== fuqi.name) continue;
+			if (x.palace !== fuqi.name) {continue;}
 			sihuaHit++;
 			out.push(
 				`  ${label}方 生年${side.nativeSiHua.stem}干 化${x.hua}（${x.star}）入夫妻宫：`
@@ -193,7 +193,7 @@ export function cmdSynastry(args: CliArgs): string {
 		}
 	}
 	if (!sihuaHit)
-		out.push("  双方夫妻宫均无生年四化落入 —— 婚姻非先天格局的着力点，随大限流年引动。");
+		{out.push("  双方夫妻宫均无生年四化落入 —— 婚姻非先天格局的着力点，随大限流年引动。");}
 	out.push("");
 
 	// 双盘四化互参（五步法第 4 步的数据底座）：甲方四化星落乙方何宫、乙方落甲方何宫。
@@ -227,7 +227,7 @@ export function cmdSynastry(args: CliArgs): string {
 			}
 		}
 	}
-	if (!marriageHit) out.push("  双方夫妻宫无收录的桃花/孤克星。");
+	if (!marriageHit) {out.push("  双方夫妻宫无收录的桃花/孤克星。");}
 	out.push("");
 	// 评分标准与完整方法论是**恒定静态文本** —— 与「这一对是谁」无关，排谁的盘都是同一份，
 	// 曾在此处无条件重印（实测占本命令输出 78%）。现住在 `references/synastry-guide.md`，

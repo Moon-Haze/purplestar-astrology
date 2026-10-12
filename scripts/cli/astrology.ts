@@ -92,7 +92,7 @@ export function parseYearlyArg(args: CliArgs): number {
 			? Number(args.yearly)
 			: new Date().getFullYear();
 	if (!Number.isInteger(y) || y < 1 || y > 9999)
-		throw new Error(`--yearly 应为 1-9999 的整数年份，收到：${args.yearly}`);
+		{throw new Error(`--yearly 应为 1-9999 的整数年份，收到：${args.yearly}`);}
 	return y;
 }
 
@@ -106,10 +106,10 @@ export function parseYearlyArg(args: CliArgs): number {
 export function parseMonthlyArg(args: CliArgs): number | null {
 	// 裸开关必须报错：Number(true) = 1 会让它被静默当成农历一月（与 --yearly 不同，
 	// 流月的「当前月」没有明确语义 —— 农历月随流年干五虎遁推，不设默认）。
-	if (args.monthly === true) throw new Error("--monthly 需要一个农历月值（如 --monthly 6）");
+	if (args.monthly === true) {throw new Error("--monthly 需要一个农历月值（如 --monthly 6）");}
 	const m = args.monthly !== undefined ? Number(args.monthly) : null;
 	if (m !== null && (!Number.isInteger(m) || m < 1 || m > 12))
-		throw new Error("--monthly 应为农历月 1-12");
+		{throw new Error("--monthly 应为农历月 1-12");}
 	return m;
 }
 
@@ -124,10 +124,10 @@ export function parseMonthlyArg(args: CliArgs): number | null {
  * 不设默认 —— 裸开关直接报错指路。
  */
 export function parseDailyArg(args: CliArgs): number | null {
-	if (args.daily === true) throw new Error("--daily 需要一个农历日值（如 --daily 15）");
+	if (args.daily === true) {throw new Error("--daily 需要一个农历日值（如 --daily 15）");}
 	const d = args.daily !== undefined ? Number(args.daily) : null;
 	if (d !== null && (!Number.isInteger(d) || d < 1 || d > 30))
-		throw new Error("--daily 应为农历日 1-30");
+		{throw new Error("--daily 应为农历日 1-30");}
 	return d;
 }
 
@@ -139,10 +139,10 @@ export function parseDailyArg(args: CliArgs): number | null {
  */
 export function parseHourlyArg(args: CliArgs): number | null {
 	if (args.hourly === true)
-		throw new Error("--hourly 需要一个时支值（如 --hourly 5，12=晚子时）");
+		{throw new Error("--hourly 需要一个时支值（如 --hourly 5，12=晚子时）");}
 	const h = args.hourly !== undefined ? Number(args.hourly) : null;
 	if (h !== null && (!Number.isInteger(h) || h < 0 || h > 12))
-		throw new Error("--hourly 应为时支 0-12（12 = 晚子时）");
+		{throw new Error("--hourly 应为时支 0-12（12 = 晚子时）");}
 	return h;
 }
 
@@ -332,10 +332,10 @@ function assertNoShadowedFeatures(
 		.filter(n => !consumed.includes(n))
 		.filter(n => (args as Record<string, unknown>)[camelKey(n)] !== undefined);
 	if (shadowed.length)
-		throw new Error(
+		{throw new Error(
 			`${exclusive} 是独占分支，以下功能参数不会生效：${shadowed.map(n => `--${n}`).join("、")}。` +
 				`独占分支请单独使用（优先级：${EXCLUSIVE_PRIORITY_LABEL}）。`
-		);
+		);}
 }
 
 /**
@@ -364,7 +364,7 @@ function assertNoShadowedFeatures(
  */
 export function cmdAstrology(args: CliArgs) {
 	// --template：打印配置模板即止（不排盘）
-	if (args.template) return renderTemplate();
+	if (args.template) {return renderTemplate();}
 	// --config：配置是基底，命令行同名键覆盖（spec §3.3）
 	args = applyConfig(args);
 	// ── 零输入演示契约：出生信息一项没给且未表达其他输出意图时，
@@ -374,7 +374,7 @@ export function cmdAstrology(args: CliArgs) {
 	const usingSample =
 		BIRTH_KEYS.every(k => (args as Record<string, unknown>)[k] === undefined) &&
 		!INTENT_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
-	if (usingSample) args = { ...args, ...SAMPLE_BIRTH, info: true };
+	if (usingSample) {args = { ...args, ...SAMPLE_BIRTH, info: true };}
 	// 口径字段整包收进 basis（候选 6）：8 个局部变量逐个传递改为一包传递，
 	// clockTime 折算由 toBasis 单点完成（此前两处 infoSection 各自逐字重复）。
 	const built = buildBirthInfo(args);
@@ -405,9 +405,9 @@ export function cmdAstrology(args: CliArgs) {
 	// --info：只输出信息面板这一节（面板本身在默认输出里无条件存在，本参数是「只看面板」）
 	if (args.info) {
 		if (args.json)
-			throw new Error(
+			{throw new Error(
 				"--info 是独占分支，与 --json 不可同给：--info 只输出文本面板（--json 仅与完整概览或 --palaces 组合）。"
-			);
+			);}
 		// 优先级链落地：--palaces / --topic / --report 在场时，若放行到下面各分支，
 		// 独占分支会被本分支**抢跑**吞掉（本分支排在它们之前）——指路，不静默。--info
 		// 属于链上的「其他功能参数」：--palaces > --topic > --report > --info。
@@ -419,10 +419,10 @@ export function cmdAstrology(args: CliArgs) {
 					? "--report"
 					: null;
 		if (higher)
-			throw new Error(
+			{throw new Error(
 				`${higher} 是独占分支，以下功能参数不会生效：--info。` +
 					`独占分支请单独使用（优先级：${EXCLUSIVE_PRIORITY_LABEL}）。`
-			);
+			);}
 		// 其余功能参数（--pattern / --mutagen / --decadal / --ages / --yearly / --monthly /
 		// --focus）与本分支同给同样不会生效——静默吞违反启动纪律，统一走独占检测指路。
 		// palaces / topic / json 三者由上方各自的检查负责（职责不重复）。
@@ -443,7 +443,7 @@ export function cmdAstrology(args: CliArgs) {
 	// --palaces --json 顶层即命盘本身（不带格局/四化包装）。
 	if (args.palaces) {
 		assertNoShadowedFeatures(args, "--palaces");
-		if (args.json) return JSON.stringify(chart, null, 2);
+		if (args.json) {return JSON.stringify(chart, null, 2);}
 		const out = [
 			`命盘  ${info.name ?? ""} ${fmtDate(info)} ${basis.note} · ${genderCN(info.gender)}`,
 			`农历：${chart.lunarInfo.lunarYear}年${chart.lunarInfo.isLeapMonth ? "闰" : ""}${chart.lunarInfo.lunarMonth}月${chart.lunarInfo.lunarDay}日 · 年柱${STEMS[chart.lunarInfo.yearStem]}${BRANCHES[chart.lunarInfo.yearBranch]}`,
@@ -453,7 +453,7 @@ export function cmdAstrology(args: CliArgs) {
 		out.push(...birthplaceSection(basis));
 		out.push(...lateZiSection(chart, info, basis));
 		out.push("─".repeat(56));
-		for (const p2 of chart.palaces) out.push(renderPalace(p2, chart), "");
+		for (const p2 of chart.palaces) {out.push(renderPalace(p2, chart), "");}
 		out.push(
 			"大限：" +
 				chart.decadals
@@ -472,9 +472,9 @@ export function cmdAstrology(args: CliArgs) {
 	// --topic：主题论断。不带值（或裸开关）= 列 13 主题清单。
 	if (args.topic !== undefined) {
 		if (args.json)
-			throw new Error(
+			{throw new Error(
 				"--topic 是独占分支，与 --json 不可同给：主题论断只有文本形态（--json 仅与完整概览或 --palaces 组合）。"
-			);
+			);}
 		// 检测在列清单判断之前：yearly / monthly 是 --topic 自己消费的参数（已放行），
 		// 其余被吞功能参数在列清单路径同样不会生效，一并指路。
 		assertNoShadowedFeatures(args, "--topic");
@@ -493,15 +493,15 @@ export function cmdAstrology(args: CliArgs) {
 		}
 		const topic = String(args.topic) as TopicKey;
 		if (!TOPIC_LABEL[topic])
-			throw new Error(
+			{throw new Error(
 				`--topic 应为 13 个主题之一（${Object.keys(TOPIC_LABEL).join("/")}），收到：${args.topic}`
-			);
+			);}
 		const viewRaw = args.view !== undefined ? String(args.view) : "mingpan";
 		const view = VIEW_ALIASES[viewRaw];
 		if (!view)
-			throw new Error(
+			{throw new Error(
 				`--view 应为 mingpan/daxian/liunian/liuyue（或同名英文 decadal/yearly/monthly），收到：${args.view}`
-			);
+			);}
 		const text = getTopicAnalysis(chart, topic, {
 			view,
 			liunianYear: parseYearlyArg(args),
@@ -522,14 +522,14 @@ export function cmdAstrology(args: CliArgs) {
 	// 本命静态口径 —— 视角 / 流年 / 流月参数不属于它，由独占检测与 --view 检查指路。
 	if (args.report) {
 		if (args.json)
-			throw new Error(
+			{throw new Error(
 				"--report 是独占分支，与 --json 不可同给：全盘报告只有 Markdown 文本形态（--json 仅与完整概览或 --palaces 组合）。"
-			);
+			);}
 		assertNoShadowedFeatures(args, "--report");
 		if (args.view !== undefined)
-			throw new Error(
+			{throw new Error(
 				"--report 为本命静态口径，不接受 --view（运限视角的单主题论断见 --topic <key> --view daxian|liunian|liuyue）。"
-			);
+			);}
 		return buildReport(chart, info, basis);
 	}
 
@@ -560,43 +560,43 @@ export function cmdAstrology(args: CliArgs) {
 	// 未给的键不出现（parseArgs 无默认值），switch 给了即 true。
 	const deepDive = DEEP_DIVE_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
 	if (!deepDive)
-		out.push(
+		{out.push(
 			"",
 			...infoSection(chart, clockOptsFromBasis(basis)),
 			"",
 			...overviewSection(chart, liuNianYear)
-		);
-	if (args.pattern) out.push("", ...patternSection(chart));
+		);}
+	if (args.pattern) {out.push("", ...patternSection(chart));}
 	// 流月/流日/流时四化随四化专题输出：单独给（不带 --mutagen）会被静默吞掉，在这里指路。
 	// 只约束文本路径 —— --json 的对应顶层键是独立键（基准对拍依赖裸 --json --monthly）。
 	if (
 		(args.monthly !== undefined || args.daily !== undefined || args.hourly !== undefined) &&
 		!args.mutagen
 	)
-		throw new Error(
+		{throw new Error(
 			"--monthly / --daily / --hourly 需要 --mutagen：运限四化在四化专题中输出，请加 --mutagen（流年缺省取当年，可用 --yearly 指定）。"
-		);
+		);}
 	if (args.daily !== undefined && liuYueMonth === null)
-		throw new Error(
+		{throw new Error(
 			"--daily 需要 --monthly：流日干挂在农历年月日上，请用 --monthly 提供农历月（流年缺省取当年，可用 --yearly 指定）。"
-		);
+		);}
 	if (args.hourly !== undefined && args.daily === undefined)
-		throw new Error(
+		{throw new Error(
 			"--hourly 需要 --daily：流时干由日干五鼠遁推，请用 --daily 提供农历日（时支 12 = 晚子时，按当日日干起遁）。"
-		);
+		);}
 	if (args.mutagen)
-		out.push("", ...mutagenSection(chart, { liuNianYear, liuYueMonth, liuRiDay, liuShiHour }));
-	if (args.yearly !== undefined) out.push("", ...yearlySection(chart, liuNianYear));
+		{out.push("", ...mutagenSection(chart, { liuNianYear, liuYueMonth, liuRiDay, liuShiHour }));}
+	if (args.yearly !== undefined) {out.push("", ...yearlySection(chart, liuNianYear));}
 	if (args.decadal !== undefined)
-		out.push(
+		{out.push(
 			"",
 			...decadalSection(chart, parseAgesArg(args.decadal, chart.currentAge, "--decadal"))
-		);
+		);}
 	if (args.ages !== undefined)
-		out.push(
+		{out.push(
 			"",
 			...ageSection(chart, parseAgesArg(args.ages, chart.currentAge, "--ages"), liuNianYear)
-		);
+		);}
 	if (args.focus !== undefined) {
 		// typeof 判空挡掉「给了 --focus 却没跟值」（parseArgs 存布尔 true）的形态 ——
 		// focusSection 的归一表查不到 true，自然落到「聚焦失败」分支并列出可用宫名。
@@ -606,6 +606,6 @@ export function cmdAstrology(args: CliArgs) {
 
 	// 头部三行删除后，口径节可能为空（未给出生地且非晚子时）—— 清掉开头可能
 	// 残留的空行，让面板或专题节直接顶格。
-	while (out.length > 0 && out[0] === "") out.shift();
+	while (out.length > 0 && out[0] === "") {out.shift();}
 	return out.join("\n");
 }

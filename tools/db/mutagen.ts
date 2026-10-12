@@ -18,7 +18,7 @@ export function extractSihua(chart: ZiweiChartLike): SihuaSummary {
   for (const p of chart.palaces) {
     for (const s of p.stars) {
       const si = s.mutagen ?? '';
-      if (si === '') continue;
+      if (si === '') {continue;}
       const key = (si === '禄' ? 'lu' : si === '权' ? 'quan' : si === '科' ? 'ke' : 'ji') as 'lu' | 'quan' | 'ke' | 'ji';
       out[`${key}_star`] = s.name;
       out[`${key}_palace`] = p.name;

@@ -42,9 +42,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 function parseArg(name: string, fallback: string): string {
 	const argv = process.argv.slice(2);
 	const eqHit = argv.find(a => a.startsWith(`--${name}=`));
-	if (eqHit) return path.resolve(eqHit.split("=")[1]);
+	if (eqHit) {return path.resolve(eqHit.split("=")[1]);}
 	const i = argv.indexOf(`--${name}`);
-	if (i >= 0 && argv[i + 1]) return path.resolve(argv[i + 1]);
+	if (i >= 0 && argv[i + 1]) {return path.resolve(argv[i + 1]);}
 	return fallback;
 }
 
@@ -269,7 +269,7 @@ async function readSourceRecord(src: string, id: number): Promise<Record<string,
 	const rl = readline.createInterface({ input: createReadStream(file).pipe(createGunzip()) });
 	try {
 		for await (const line of rl) {
-			if (!line.trim()) continue;
+			if (!line.trim()) {continue;}
 			const r = JSON.parse(line) as Record<string, any>;
 			const b = r.birthInfo;
 			if (
@@ -279,7 +279,7 @@ async function readSourceRecord(src: string, id: number): Promise<Record<string,
 				b.timeIndex === timeIndex &&
 				b.gender === gender
 			)
-				return r;
+				{return r;}
 		}
 	} finally {
 		rl.close();
@@ -336,7 +336,7 @@ function mismatchDetail(
 			"四化摘要",
 		],
 	];
-	for (const [ok, label] of checks) if (!ok) out.push(`id=${id}: ${label}不一致`);
+	for (const [ok, label] of checks) {if (!ok) {out.push(`id=${id}: ${label}不一致`);}}
 
 	// 12 宫
 	const byName = new Map(db.palaces.map(p => [p.palace_name as string, p]));
@@ -371,11 +371,11 @@ function mismatchDetail(
 	// 13 主题。db.topics 可能整体缺失（该样本在 topic_lines 里根本没有行），
 	// 此时按「不一致」记录，而不是让 undefined 下标把整个校验脚本炸掉。
 	const T = db.topics;
-	if (!T) out.push(`id=${id}: 主题行缺失（topic_lines 中无该样本）`);
+	if (!T) {out.push(`id=${id}: 主题行缺失（topic_lines 中无该样本）`);}
 	else
-		for (const k of TOPIC_KEYS) {
-			if (T[k] !== rec.topics[k]) out.push(`id=${id}: 主题 ${k} 不一致`);
-		}
+		{for (const k of TOPIC_KEYS) {
+			if (T[k] !== rec.topics[k]) {out.push(`id=${id}: 主题 ${k} 不一致`);}
+		}}
 }
 
 // 5. 体积报告（spec §9 第 3 项）：单文件后只统计库文件本身，
@@ -469,7 +469,7 @@ export async function verifyDictSelfCheck(
 	}
 	const file = new Map<number, string>();
 	for (const ln of (await readFile(dictPath, "utf8")).split("\n")) {
-		if (!ln.trim()) continue;
+		if (!ln.trim()) {continue;}
 		const o = JSON.parse(ln) as { line_id: number; line: string };
 		file.set(Number(o.line_id), o.line);
 	}
@@ -482,8 +482,8 @@ export async function verifyDictSelfCheck(
 	const dbRows = await (await conn.run("SELECT line_id, line FROM topic_dict")).getRowsJS();
 	const db = new Map(dbRows.map(r => [Number(r[0]), String(r[1])]));
 	const diff: string[] = [];
-	for (const [id, line] of file) if (db.get(id) !== line) diff.push(`line_id=${id}`);
-	for (const id of db.keys()) if (!file.has(id)) diff.push(`line_id=${id}（副本中不存在）`);
+	for (const [id, line] of file) {if (db.get(id) !== line) {diff.push(`line_id=${id}`);}}
+	for (const id of db.keys()) {if (!file.has(id)) {diff.push(`line_id=${id}（副本中不存在）`);}}
 	// 密集无空洞：id ∈ [1, count]。第 2 层的上下界推论依赖此性质
 	const dense = Number(n) === Number(maxId);
 	const ok = diff.length === 0 && dense && Number(nUniqLine) === Number(n);
@@ -586,7 +586,7 @@ export async function verifyTopicText(
 	const months = (
 		await (await conn.run("SELECT DISTINCT year, month FROM samples ORDER BY 1, 2")).getRowsJS()
 	).map(r => ({ year: Number(r[0]), month: Number(r[1]) }));
-	if (months.length === 0) return { name: "文本对账", ok: false, detail: "库内 samples 为空" };
+	if (months.length === 0) {return { name: "文本对账", ok: false, detail: "库内 samples 为空" };}
 
 	const topicNames = TOPIC_KEYS.map(k => `'${k}'`).join(", ");
 	const topicCols = TOPIC_KEYS.map(k => `r.topics.${k}`).join(", ");
@@ -711,7 +711,7 @@ export async function openVerifyTarget(
 		const conn = await instance.connect();
 		await conn.run("SET threads=4");
 		await conn.run("SET memory_limit='4GB'");
-		for (const stmt of datasetSchemaSql(datasetDir)) await conn.run(stmt);
+		for (const stmt of datasetSchemaSql(datasetDir)) {await conn.run(stmt);}
 		return { conn, viaDb: false, datasetDir };
 	}
 	return { conn: await openReadOnly(dbPath), viaDb: true, datasetDir };

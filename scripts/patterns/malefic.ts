@@ -25,9 +25,9 @@ function detectHuaJiRuMingQian({ chart }: DetectContext): Pattern[] {
 	// 实测**至多一条**：生年四化一年只有一颗化忌星，而命宫与迁移宫互为对宫，坐不满两宫。
 	const hits: Pattern[] = [];
 	for (const palace of chart.palaces) {
-		if (palace.branch !== chart.soulBranch && palace.branch !== qianBranch) continue;
+		if (palace.branch !== chart.soulBranch && palace.branch !== qianBranch) {continue;}
 		const jiStar = palace.stars.find(s => s.mutagen === "忌" && s.type === "major");
-		if (!jiStar) continue;
+		if (!jiStar) {continue;}
 
 		const inMing = palace.branch === chart.soulBranch;
 		// 迁移分支取名「冲命」而**不是**「入迁」：后者在本仓古籍库零见，前者有 1 处
@@ -48,14 +48,14 @@ function detectHuaJiRuMingQian({ chart }: DetectContext): Pattern[] {
 function detectYangTuoJiaJi({ chart }: DetectContext): Pattern[] {
 	for (const palace of chart.palaces) {
 		const jiStar = palace.stars.find(s => s.mutagen === "忌");
-		if (!jiStar) continue;
-		if (palace.branch !== chart.soulBranch) continue; // 只看命宫被夹
+		if (!jiStar) {continue;}
+		if (palace.branch !== chart.soulBranch) {continue;} // 只看命宫被夹
 
 		const { prev, next } = getJiaPalaces(chart, palace.branch);
-		if (!prev || !next) continue;
+		if (!prev || !next) {continue;}
 		const aPrev = hasStar(prev, "擎羊") && hasStar(next, "陀罗");
 		const aNext = hasStar(prev, "陀罗") && hasStar(next, "擎羊");
-		if (!aPrev && !aNext) continue;
+		if (!aPrev && !aNext) {continue;}
 
 		const name = "羊陀夹忌";
 		return [
@@ -74,10 +74,10 @@ function detectYangTuoJiaJi({ chart }: DetectContext): Pattern[] {
 /** 火铃夹命：火星铃星分居命宫前后 */
 function detectHuoLingJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
-	if (!prev || !next) return [];
+	if (!prev || !next) {return [];}
 	const okA = hasStar(prev, "火星") && hasStar(next, "铃星");
 	const okB = hasStar(prev, "铃星") && hasStar(next, "火星");
-	if (!okA && !okB) return [];
+	if (!okA && !okB) {return [];}
 
 	const name = "火铃夹命";
 	return [
@@ -94,10 +94,10 @@ function detectHuoLingJiaMing({ chart }: DetectContext): Pattern[] {
 /** 空劫夹命：地空地劫分居命宫前后 */
 function detectKongJieJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
-	if (!prev || !next) return [];
+	if (!prev || !next) {return [];}
 	const okA = hasStar(prev, "地空") && hasStar(next, "地劫");
 	const okB = hasStar(prev, "地劫") && hasStar(next, "地空");
-	if (!okA && !okB) return [];
+	if (!okA && !okB) {return [];}
 
 	const name = "空劫夹命";
 	return [
@@ -114,7 +114,7 @@ function detectKongJieJiaMing({ chart }: DetectContext): Pattern[] {
 /** 廉杀羊：廉贞、七杀、擎羊三星会照（流年大限最凶） */
 function detectLianShaYang({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!(sanFangSet.has("廉贞") && sanFangSet.has("七杀") && sanFangSet.has("擎羊"))) return [];
+	if (!(sanFangSet.has("廉贞") && sanFangSet.has("七杀") && sanFangSet.has("擎羊"))) {return [];}
 
 	const name = "廉杀羊";
 	return [
@@ -131,7 +131,7 @@ function detectLianShaYang({ chart }: DetectContext): Pattern[] {
 /** 巨火羊：巨门、火星、擎羊会照 */
 function detectJuHuoYang({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!(sanFangSet.has("巨门") && sanFangSet.has("火星") && sanFangSet.has("擎羊"))) return [];
+	if (!(sanFangSet.has("巨门") && sanFangSet.has("火星") && sanFangSet.has("擎羊"))) {return [];}
 
 	const name = "巨火羊";
 	return [
@@ -154,7 +154,7 @@ function detectLingChangTuoWu({ chart }: DetectContext): Pattern[] {
 		sanFangSet.has("陀罗") &&
 		sanFangSet.has("武曲")
 	))
-		return [];
+		{return [];}
 
 	const name = "铃昌陀武";
 	return [
@@ -170,16 +170,16 @@ function detectLingChangTuoWu({ chart }: DetectContext): Pattern[] {
 
 /** 马头带箭：擎羊在午宫坐命 */
 function detectMaTouDaiJian({ chart, ming }: DetectContext): Pattern[] {
-	if (ming.branch !== 6) return []; // 必须午
-	if (!hasStar(ming, "擎羊")) return [];
+	if (ming.branch !== 6) {return [];} // 必须午
+	if (!hasStar(ming, "擎羊")) {return [];}
 
 	const required = ["擎羊于午宫坐命"];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
 	if (sanFangAllStars(chart).has("七杀") || sanFangAllStars(chart).has("破军"))
-		bonus.push("再会七杀或破军（武职大贵）");
+		{bonus.push("再会七杀或破军（武职大贵）");}
 	if (sanFangAllStars(chart).has("天魁") || sanFangAllStars(chart).has("天钺"))
-		bonus.push("魁钺加照");
+		{bonus.push("魁钺加照");}
 
 	const name = "马头带箭";
 	return [

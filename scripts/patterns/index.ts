@@ -160,10 +160,10 @@ const DETECTORS: ReadonlyArray<Detector> = [
 export function detectPatterns(chart: ZiweiChart): Pattern[] {
 	const patterns: Pattern[] = [];
 	const ming = chart.palaces.find(p => p.branch === chart.soulBranch);
-	if (!ming) return patterns;
+	if (!ming) {return patterns;}
 
 	const ctx: DetectContext = { chart, ming };
-	for (const detect of DETECTORS) patterns.push(...detect(ctx));
+	for (const detect of DETECTORS) {patterns.push(...detect(ctx));}
 
 	return patterns;
 }

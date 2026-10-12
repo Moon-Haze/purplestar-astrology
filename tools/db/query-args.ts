@@ -54,19 +54,19 @@ export function parseArgs(argv: string[]): ParsedArgs {
 		if (arg === "--out") {
 			// resolve 之前先校验原始值：resolve 会把 .. 归一化掉，过了这一步就无从识别
 			const v = argv[++i] ?? "";
-			if (v.split(/[\\/]/).includes("..")) throw new UsageError("--out 路径不允许包含 .. 段");
+			if (v.split(/[\\/]/).includes("..")) {throw new UsageError("--out 路径不允许包含 .. 段");}
 			a.out = path.resolve(v);
 			continue;
 		}
 		if (arg.startsWith("--out=")) {
 			const v = arg.slice(6);
-			if (v.split(/[\\/]/).includes("..")) throw new UsageError("--out 路径不允许包含 .. 段");
+			if (v.split(/[\\/]/).includes("..")) {throw new UsageError("--out 路径不允许包含 .. 段");}
 			a.out = path.resolve(v);
 			continue;
 		}
 		// 旧参数显式报错：落到「未知参数」会丢掉「该改成什么」这半句
-		if (arg === "--db" || arg.startsWith("--db=")) throw new UsageError(deletedArgHint("--db"));
-		if (arg.startsWith("--")) throw new UsageError(`未知参数: ${arg}`);
+		if (arg === "--db" || arg.startsWith("--db=")) {throw new UsageError(deletedArgHint("--db"));}
+		if (arg.startsWith("--")) {throw new UsageError(`未知参数: ${arg}`);}
 		positionals.push(arg);
 	}
 	a.command = parsePositionals(positionals);
@@ -77,7 +77,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
 // 只有**完整等于**子命令名才触发（一个以 "count" 开头的 SQL 字符串不会误入）。
 function parsePositionals(p: string[]): QueryCommand {
 	const head = p[0];
-	if (head === undefined) throw new UsageError(USAGE);
+	if (head === undefined) {throw new UsageError(USAGE);}
 	if (!SUBCOMMANDS.has(head)) {
 		if (p.length > 1) {
 			throw new UsageError(
@@ -94,7 +94,7 @@ function parsePositionals(p: string[]): QueryCommand {
 			const id = parseId(p[1], head);
 			const keys = p.slice(2);
 			for (const k of keys) {
-				if (!TOPIC_KEYS.includes(k as TopicKey)) throw new UsageError(topicKeysHint(k));
+				if (!TOPIC_KEYS.includes(k as TopicKey)) {throw new UsageError(topicKeysHint(k));}
 			}
 			return { kind: "topic", id, keys };
 		}
@@ -104,7 +104,7 @@ function parsePositionals(p: string[]): QueryCommand {
 					'search 需要主题与匹配模式两个参数，示例: search wealth "偏财"'
 				);
 			}
-			if (!TOPIC_KEYS.includes(p[1] as TopicKey)) throw new UsageError(topicKeysHint(p[1]));
+			if (!TOPIC_KEYS.includes(p[1] as TopicKey)) {throw new UsageError(topicKeysHint(p[1]));}
 			let limit = 100;
 			if (p[3] !== undefined) {
 				const n = Number(p[3]);
@@ -116,7 +116,7 @@ function parsePositionals(p: string[]): QueryCommand {
 			return { kind: "search", topic: p[1], pattern: p[2], limit };
 		}
 		case "count":
-			if (p.length > 1) throw new UsageError("count 不接受参数");
+			if (p.length > 1) {throw new UsageError("count 不接受参数");}
 			return { kind: "count" };
 		// head 已过 SUBCOMMANDS 白名单，此分支不可达；补上只为 switch 穷尽性
 		default:

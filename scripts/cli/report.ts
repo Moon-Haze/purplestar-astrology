@@ -70,14 +70,14 @@ function topicCitations(meta: {
 	if (star) {
 		for (const book of ALL_BOOKS) {
 			for (const ch of book.chapters) {
-				if (!ch.title.includes(meta.palaceName)) continue;
+				if (!ch.title.includes(meta.palaceName)) {continue;}
 				for (const p of ch.paragraphs) {
-					if (p.text.includes(star)) push(`${book.title}·${ch.title}`, p.text);
+					if (p.text.includes(star)) {push(`${book.title}·${ch.title}`, p.text);}
 				}
 			}
 		}
 		for (const hit of searchClassics(star, CITATION_LIMIT * 2)) {
-			if (out.length >= CITATION_LIMIT) break;
+			if (out.length >= CITATION_LIMIT) {break;}
 			push(`${hit.bookTitle}·${hit.chapterTitle}`, hit.text);
 		}
 	}
@@ -111,7 +111,7 @@ export function buildReport(chart: ZiweiChart, info: BirthInfo, basis: CaliberBa
 		`- 生年四化（${STEMS[yearStem]}干）：${sihuaLine}`,
 	];
 	if (patterns.length > 0)
-		header.push(`- 已入格局：${patterns.map(p => `${p.name}（${p.level}）`).join("、")}`);
+		{header.push(`- 已入格局：${patterns.map(p => `${p.name}（${p.level}）`).join("、")}`);}
 	header.push(
 		`- 当前虚岁：${chart.currentAge} · 当前大限：${dx ? `${dx.palaceName}（${dx.startAge}–${dx.endAge}岁）` : "—（尚未起运）"}`
 	);

@@ -102,9 +102,9 @@ let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
  * 漏传就等于绕开校验，本文件里那些「未知旗标必须报错」的用例会静默变成空跑。
  */
 async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
-	if (!commandsMod) commandsMod = await load<typeof import("@/cli/commands")>("@/cli/commands");
+	if (!commandsMod) {commandsMod = await load<typeof import("@/cli/commands")>("@/cli/commands");}
 	if (!parseArgsFn)
-		({ parseArgs: parseArgsFn } = await load<typeof import("@/cli/args")>("@/cli/args"));
+		{({ parseArgs: parseArgsFn } = await load<typeof import("@/cli/args")>("@/cli/args"));}
 	const fn = commandsMod.COMMANDS[sub];
 	if (!fn) {
 		const { unknownCommandMessage } = await load<typeof import("@/cli/dispatch")>(
@@ -141,7 +141,7 @@ async function cliReal(args: string[]): Promise<string> {
  * 它们只有真起子进程才测得到自己那一份代码。
  */
 async function cliCmd(sub: string, args: string[], skill: Skill = "astrology"): Promise<string> {
-	if (skill === "astrology" && !process.env.CLI_SUBPROCESS) return cliCmdInProcess(sub, args);
+	if (skill === "astrology" && !process.env.CLI_SUBPROCESS) {return cliCmdInProcess(sub, args);}
 	const { stdout } = await execFileAsync("node", [CLI[skill], sub, ...args], { cwd: SKILL_ROOT });
 	return stdout;
 }
@@ -810,7 +810,7 @@ describe("CLI 端到端", () => {
 				["样本二", await crossText()],
 			] as const;
 			for (const [tag, t] of texts) {
-				const rows = [...t.matchAll(/^  (命宫|夫妻宫|福德宫) (.)：/gm)].map(m => ({
+				const rows = [...t.matchAll(/^ {2}(命宫|夫妻宫|福德宫) (.)：/gm)].map(m => ({
 					palace: m[1],
 					branch: BRANCHES.indexOf(m[2]),
 				}));
@@ -927,7 +927,7 @@ describe("CLI 端到端", () => {
 				"夫妻宫空宫时未按借宫口径出断语"
 			);
 			for (const s of fuqi.borrowedStars ?? [])
-				assert.ok(t.includes(`    ${s}：`), `借来的主星 ${s} 没有出断语`);
+				{assert.ok(t.includes(`    ${s}：`), `借来的主星 ${s} 没有出断语`);}
 		});
 	});
 
@@ -957,14 +957,14 @@ describe("CLI 端到端", () => {
 				tiers,
 				"评分标准五档缺失，或未按源序（五星 → 一星）排列 —— 顺序本身是这套标准的一部分"
 			);
-			for (const r of rows) assert.ok(r[2].length > 0, `「${r[1]}」的判据是空的`);
+			for (const r of rows) {assert.ok(r[2].length > 0, `「${r[1]}」的判据是空的`);}
 
 			// 下面两个锚点同时被 synastry 的 selftest 用着（同一对字面量，各守各的扫描根）。
 			for (const anchor of [
 				"## 合盘分析核心框架（倪海厦体系 + 《紫微斗数全书》综合）",
 				"双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉",
 			])
-				assert.ok(md.includes(anchor), `正文缺少锚点：${anchor}`);
+				{assert.ok(md.includes(anchor), `正文缺少锚点：${anchor}`);}
 
 			// 章节数用下限而非等号：日后补一节不该让守卫变红，被截断才该。
 			const sections = [...md.matchAll(/^### [一二三四五六七八九十]+、/gm)].length;
@@ -1711,7 +1711,7 @@ describe("CLI 端到端", () => {
 				"三方四正联动",
 				"知识来源",
 			])
-				assert.ok(t.includes(key), `应含「${key}」节`);
+				{assert.ok(t.includes(key), `应含「${key}」节`);}
 		});
 
 		it("非法主题与未收录星名都报错指路", async () => {
@@ -1751,7 +1751,7 @@ describe("CLI 端到端", () => {
 		it("tianji 域：检索命中带秒级溯源与回放链接，限册生效", async () => {
 			const t = await cliCmd("knowledge", ["--source", "tianji", "半空折翅"]);
 			for (const key of ["半空折翅", "bilibili.com/video", "CC BY-NC-SA"])
-				assert.ok(t.includes(key), `应含「${key}」`);
+				{assert.ok(t.includes(key), `应含「${key}」`);}
 			const scoped = await cliCmd("knowledge", [
 				"--source",
 				"tianji",
@@ -1798,7 +1798,7 @@ describe("CLI 端到端", () => {
 			assert.ok(hit, "「海」应容错解析出城市");
 			assert.equal(hit.ambiguous?.length, 5, "同长度候选超过 5 个时只应保留 5 个");
 			for (const c of hit.ambiguous ?? [])
-				assert.match(c, /^.+\(\d+(\.\d+)?\)$/, `候选应形如「城市(经度)」，实得：${c}`);
+				{assert.match(c, /^.+\(\d+(\.\d+)?\)$/, `候选应形如「城市(经度)」，实得：${c}`);}
 			assert.ok(
 				!(hit.ambiguous ?? []).some(c => c.startsWith(`${hit.matched}(`)),
 				"ambiguous 装的是「其余候选」，不能把命中项自己也算进去"
@@ -1894,7 +1894,7 @@ describe("CLI 端到端", () => {
 		it("空查询返回空数组（不把空白当关键词）", async () => {
 			const { searchClassics } = await loadClassics();
 			for (const q of ["", "   ", "\n", "\t "])
-				assert.deepEqual(searchClassics(q, 10), [], `「${JSON.stringify(q)}」不该有命中`);
+				{assert.deepEqual(searchClassics(q, 10), [], `「${JSON.stringify(q)}」不该有命中`);}
 		});
 
 		it("limit 截断命中数；命中不足时返回全部", async () => {
@@ -1911,7 +1911,7 @@ describe("CLI 端到端", () => {
 			// 修复前：上限判定排在 push 之后，limit=0/-3 恒返回 1 条；
 			// NaN 参与比较恒为假，反而返回全部。上限设了却给不出对应结果，两种都是错的。
 			for (const bad of [0, -1, -3, Number.NaN])
-				assert.deepEqual(searchClassics("星", bad), [], `limit=${bad} 应返回空`);
+				{assert.deepEqual(searchClassics("星", bad), [], `limit=${bad} 应返回空`);}
 			assert.equal(
 				searchClassics("星", Number.POSITIVE_INFINITY).length,
 				searchClassics("星", 10_000).length,
@@ -1997,7 +1997,7 @@ describe("CLI 端到端", () => {
 			// —— 故此处不写「snippet 无裸尖括号」那种永远为真的断言，只锁真正走得通的引号路径。
 			// 若将来书目引入 < 或 &，这里要补回尖括号断言。
 			for (const h of searchClassics("之", 10_000))
-				assert.ok(!h.snippet.includes('"'), `${h.paragraphId} 的 snippet 漏出裸引号`);
+				{assert.ok(!h.snippet.includes('"'), `${h.paragraphId} 的 snippet 漏出裸引号`);}
 		});
 
 		it("TOTAL_PARAGRAPHS 与书目结构自洽（独立复算）", async () => {
@@ -2013,7 +2013,7 @@ describe("CLI 端到端", () => {
 		it("无参数时列出全部书目；未命中给明确文案", async () => {
 			const t = await cliCmd("knowledge", [], "knowledge");
 			for (const b of ["gusuifu", "quanji", "quanshu"])
-				assert.ok(t.includes(b), `书目清单应含 ${b}`);
+				{assert.ok(t.includes(b), `书目清单应含 ${b}`);}
 			assert.ok(t.includes("用法：knowledge --search"), "应给出用法");
 
 			const miss = await cliCmd("knowledge", ["--search", "紫微星"], "knowledge");
@@ -2075,7 +2075,7 @@ describe("CLI 端到端", () => {
 				"大限：",
 				"当前年龄：",
 			])
-				assert.ok(t.includes(seg), `chart 输出应含「${seg}」，实得：\n${t.slice(0, 400)}`);
+				{assert.ok(t.includes(seg), `chart 输出应含「${seg}」，实得：\n${t.slice(0, 400)}`);}
 		});
 
 		it("--palaces --json 输出十二宫齐全，地支 0-11 各一次", async () => {

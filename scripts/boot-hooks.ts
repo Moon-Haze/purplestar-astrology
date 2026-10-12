@@ -77,8 +77,8 @@ export type RootPick = RootFound | RootMissing;
 export function pickRoot(candidates: Array<[string | undefined, string]>, probe: string): RootPick {
 	const tried: string[] = [];
 	for (const [dir, label] of candidates) {
-		if (!dir) continue;
-		if (existsSync(resolve(dir, probe))) return { root: dir, label, tried };
+		if (!dir) {continue;}
+		if (existsSync(resolve(dir, probe))) {return { root: dir, label, tried };}
 		tried.push(`${label}：${dir}`);
 	}
 	return { root: null, label: null, tried };

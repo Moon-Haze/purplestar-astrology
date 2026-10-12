@@ -117,13 +117,13 @@ export function birthplaceSection(
 	basis: Pick<CaliberBasis, "lngNote" | "lngAmbiguous">
 ): string[] {
 	const out: string[] = [];
-	if (basis.lngNote) out.push(`【出生地解析】${basis.lngNote}`);
+	if (basis.lngNote) {out.push(`【出生地解析】${basis.lngNote}`);}
 	if (basis.lngAmbiguous) {
 		out.push(
 			`  ⚠️ 存在同名候选：${basis.lngAmbiguous.join("、")} —— 已取最短名，如有误请直接用 --lng 指定经度`
 		);
 	}
-	if (out.length) out.push("");
+	if (out.length) {out.push("");}
 	return out;
 }
 
@@ -197,8 +197,8 @@ const BRIGHTNESS_CN: Record<NonNullable<Star["brightness"]>, string> = {
  */
 export const starLine = (s: Star): string => {
 	const parts = [s.name];
-	if (s.mutagen) parts.push(`化${s.mutagen}`);
-	if (s.brightness) parts.push(BRIGHTNESS_CN[s.brightness]);
+	if (s.mutagen) {parts.push(`化${s.mutagen}`);}
+	if (s.brightness) {parts.push(BRIGHTNESS_CN[s.brightness]);}
 	return parts.join("");
 };
 
@@ -232,15 +232,15 @@ export function renderPalace(p: Palace, chart: ZiweiChart): string {
 
 	const lines = [`${head}${marks ? "  — " + marks : ""}`];
 
-	if (major.length) lines.push(`  主星：${major.map(starLine).join("、")}`);
+	if (major.length) {lines.push(`  主星：${major.map(starLine).join("、")}`);}
 	else
-		lines.push(
+		{lines.push(
 			`  主星：（空宫）借对宫 ${p.borrowedFromName ?? ""} 的 ${(p.borrowedStars ?? []).join("、")}`
-		);
+		);}
 
-	if (lucky.length) lines.push(`  吉星：${lucky.map(s => s.name).join("、")}`);
-	if (sha.length) lines.push(`  煞星：${sha.map(s => s.name).join("、")}`);
-	if (minor.length) lines.push(`  杂曜：${minor.map(s => s.name).join("、")}`);
+	if (lucky.length) {lines.push(`  吉星：${lucky.map(s => s.name).join("、")}`);}
+	if (sha.length) {lines.push(`  煞星：${sha.map(s => s.name).join("、")}`);}
+	if (minor.length) {lines.push(`  杂曜：${minor.map(s => s.name).join("、")}`);}
 	lines.push(`  三方四正：${surroundNames(chart, p.branch).join(" / ")}`);
 
 	return lines.join("\n");
@@ -288,7 +288,7 @@ const ziweiBranchOf = (c: ZiweiChart): string => BRANCHES[c.ziweiPos];
  */
 function mingMajorBrief(c: ZiweiChart): string {
 	const m = c.palaces.find(p => p.branch === c.soulBranch);
-	if (!m) return "—";
+	if (!m) {return "—";}
 	const s = m.stars.filter(x => x.type === "major").map(x => x.name);
 	return s.length
 		? s.join("、")
@@ -330,7 +330,7 @@ export function lateZiSection(
 		out.push("");
 		return out;
 	}
-	if (!basis.lateZiCandidate) return out;
+	if (!basis.lateZiCandidate) {return out;}
 	const alt = generateChart({ ...info, timeIndex: 12 });
 	out.push("【⚠️ 晚子时口径提醒】");
 	out.push(

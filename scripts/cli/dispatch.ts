@@ -58,11 +58,11 @@ export interface DispatchResult {
  */
 export function unknownCommandMerged(cmd: string): string {
 	if (cmd === "stars")
-		return `—— 星曜释义已并入：knowledge --source stars --search <星名>`;
+		{return `—— 星曜释义已并入：knowledge --source stars --search <星名>`;}
 	if (cmd === "oracle")
-		return `—— 断语手册已并入：knowledge --source oracle --topic <主题> [--star <星名>]`;
+		{return `—— 断语手册已并入：knowledge --source oracle --topic <主题> [--star <星名>]`;}
 	if (cmd === "classics")
-		return "—— 本命令原名 classics，已改名：knowledge --search <词>（古籍用法逐字不变）";
+		{return "—— 本命令原名 classics，已改名：knowledge --search <词>（古籍用法逐字不变）";}
 	return "";
 }
 
@@ -110,7 +110,7 @@ export async function dispatch(
 	if (cmd && cmd !== "help" && hasHelpFlag) {
 		const help = await ports.loadHelp();
 		if (help.commandNames.includes(cmd))
-			return { code: 0, out: help.renderCommandHelp(cmd), err: "" };
+			{return { code: 0, out: help.renderCommandHelp(cmd), err: "" };}
 	}
 	if (!cmd || cmd === "help" || hasHelpFlag) {
 		const help = await ports.loadHelp();
@@ -120,7 +120,7 @@ export async function dispatch(
 	const { COMMANDS, parseArgs } = await ports.loadCore();
 	const fn = COMMANDS[cmd];
 	if (!fn)
-		return { code: 1, out: "", err: unknownCommandMessage(cmd, Object.keys(COMMANDS)) };
+		{return { code: 1, out: "", err: unknownCommandMessage(cmd, Object.keys(COMMANDS)) };}
 	try {
 		// 命令名一并交给 parseArgs：参数面要按命令校验
 		const args = parseArgs(argv.slice(1), cmd);

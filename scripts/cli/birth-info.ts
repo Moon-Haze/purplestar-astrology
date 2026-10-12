@@ -104,9 +104,9 @@ export function calcTrueSolar(
 			!Number.isInteger(opts.month) ||
 			!Number.isInteger(opts.day))
 	)
-		throw new Error(
+		{throw new Error(
 			"calcTrueSolar：开启 eot 时必须提供 year/month/day 三项（缺项会静默算出 NaN）"
-		);
+		);}
 	const longitudeRaw = (longitude - 120) * 4;
 	// 三项日期已由上一行校验为整数（as 断言只影响类型层），可安全下传
 	const eotRaw = opts.eot
@@ -178,7 +178,7 @@ const stripSuffix = (s: string) => String(s).trim().replace(ADMIN_SUFFIX, "");
  */
 export function findLongitude(cityName: string): LongitudeHit | null {
 	const raw = String(cityName).trim();
-	if (!raw) return null;
+	if (!raw) {return null;}
 	const bare = stripSuffix(raw);
 
 	const hit =
@@ -186,15 +186,15 @@ export function findLongitude(cityName: string): LongitudeHit | null {
 		(bare !== raw ? ALL_CITIES.find(c => c.name === bare) : null);
 	// exact 表示「用户写的就是表里那个名字」，用于上层决定要不要提示已做容错解析
 	if (hit)
-		return {
+		{return {
 			longitude: hit.longitude,
 			matched: hit.name,
 			exact: hit.name === raw,
 			ambiguous: null,
-		};
+		};}
 
 	const cands = ALL_CITIES.filter(c => c.name.includes(bare) || bare.includes(c.name));
-	if (!cands.length) return null;
+	if (!cands.length) {return null;}
 	// 命中最短的城市名（最短名最贴近用户所写），并记录同长度候选供提示
 	cands.sort((a, b) => a.name.length - b.name.length || a.name.localeCompare(b.name));
 	const best = cands[0];
@@ -248,17 +248,17 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	const solarStr = g("date");
 
 	if (lunarStr && solarStr)
-		throw new Error("--lunar 与 --date 不能同时使用（一个是农历，一个是公历）");
+		{throw new Error("--lunar 与 --date 不能同时使用（一个是农历，一个是公历）");}
 
 	if (lunarStr) {
 		const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(lunarStr));
-		if (!m) throw new Error(`农历日期格式应为 YYYY-MM-DD，收到：${lunarStr}`);
+		if (!m) {throw new Error(`农历日期格式应为 YYYY-MM-DD，收到：${lunarStr}`);}
 		const ly = Number(m[1]),
 			lm = Number(m[2]),
 			ld = Number(m[3]);
 		const isLeap = g("leap") === true || g("leap") === "true";
-		if (lm < 1 || lm > 12) throw new Error(`农历月份应为 1-12，收到：${lm}`);
-		if (ld < 1 || ld > 30) throw new Error(`农历日期应为 1-30，收到：${ld}`);
+		if (lm < 1 || lm > 12) {throw new Error(`农历月份应为 1-12，收到：${lm}`);}
+		if (ld < 1 || ld > 30) {throw new Error(`农历日期应为 1-30，收到：${ld}`);}
 		let solar: Solar;
 		try {
 			// lunar-typescript 约定：闰月用负数月份表示；该年若无此闰月会抛 "wrong lunar year ..."
@@ -287,10 +287,10 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		dateNote = `农历 ${ly}年${isLeap ? "闰" : ""}${lm}月${ld}日 → 公历 ${year}-${month}-${day}`;
 	} else if (solarStr) {
 		const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(solarStr));
-		if (!m) throw new Error(`日期格式应为 YYYY-MM-DD，收到：${solarStr}`);
+		if (!m) {throw new Error(`日期格式应为 YYYY-MM-DD，收到：${solarStr}`);}
 		const [sy, sm, sd] = m.slice(1).map(Number);
 		if (sm < 1 || sm > 12)
-			throw new Error(`日期不存在：${solarStr}（月份应为 1-12，收到 ${sm}）`);
+			{throw new Error(`日期不存在：${solarStr}（月份应为 1-12，收到 ${sm}）`);}
 		// 日历真值 round-trip 校验：宽松格式（1990-5-15）先归一再校验。JS Date 会把
 		// 2011-02-30 静默归一化为 03-02（Date.UTC 同样），直接下传就是一张「标题印着
 		// 02-30、实际排 03-02」的错盘（--json 的 birthInfo.day 与 lunarInfo 更会自相矛盾）。
@@ -314,7 +314,7 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	}
 	// ⚠️ 日期从此二选一（--date / --lunar，spec §1.2）：--date 完全覆盖（格式宽松）。
 	if (!year || !month || !day)
-		throw new Error("缺少出生日期：需 --date YYYY-MM-DD 或 --lunar YYYY-MM-DD");
+		{throw new Error("缺少出生日期：需 --date YYYY-MM-DD 或 --lunar YYYY-MM-DD");}
 
 	// ── 真太阳时口径：默认只做经度校正；--eot 额外计入均时差 ──
 	// 均时差与经度无关（--lng 120 时也不为 0），故这个开关独立于「出生地是否给出」。
@@ -326,7 +326,7 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		lngAmbiguous: string[] | null = null;
 	if (g("lng") !== undefined) {
 		longitude = Number(g("lng"));
-		if (!Number.isFinite(longitude)) throw new Error(`--lng 应为数字，收到：${g("lng")}`);
+		if (!Number.isFinite(longitude)) {throw new Error(`--lng 应为数字，收到：${g("lng")}`);}
 	} else if (g("city")) {
 		const cityRaw = String(g("city"));
 		const found = findLongitude(cityRaw);
@@ -334,9 +334,9 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 			longitude = found.longitude;
 			// 仅在「做了容错解析」或「存在同名歧义」时提示——用户写的就是表里的名字时不必打扰
 			if (!found.exact)
-				lngNote = `「${cityRaw}」按「${found.matched}」解析 → 东经 ${found.longitude}°`;
+				{lngNote = `「${cityRaw}」按「${found.matched}」解析 → 东经 ${found.longitude}°`;}
 			lngAmbiguous = found.ambiguous;
-			if (lngAmbiguous && !lngNote) lngNote = `「${cityRaw}」→ 东经 ${found.longitude}°`;
+			if (lngAmbiguous && !lngNote) {lngNote = `「${cityRaw}」→ 东经 ${found.longitude}°`;}
 		} else {
 			// 城市名未命中时的省名回退（spec §1.2 裸省名边界）：「山东」「内蒙古」按省会计
 			//（与 --province 同一实现）。--city 旗标路径同样受益（原先直接报未收录）。
@@ -375,23 +375,23 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	// 与之同用属于参数误用 —— 当场报错，而不是静默忽略（原先的校验放在时辰解析之后，
 	// 且条件含「两者皆缺」，而那时缺时辰早就在上方抛错 —— 实际不可达，等于没校验）。
 	if (wantLateZi && g("time") === undefined)
-		throw new Error("--late-zi 需配合 --time 使用；直接指定时辰时，晚子时请用 --branch 12");
+		{throw new Error("--late-zi 需配合 --time 使用；直接指定时辰时，晚子时请用 --branch 12");}
 
 	if (g("branch") !== undefined) {
 		timeIndex = Number(g("branch"));
 		// 12 = 晚子时（安星按次日），是本 CLI 对 iztro timeIndex 12 的显式暴露
 		if (!Number.isInteger(timeIndex) || timeIndex < 0 || timeIndex > 12)
-			throw new Error("--branch 应为 0-11（0=子 … 11=亥）或 12（晚子时）");
+			{throw new Error("--branch 应为 0-11（0=子 … 11=亥）或 12（晚子时）");}
 		hourNote =
 			timeIndex === 12
 				? "直接指定 晚子时（子时，安星按次日）"
 				: `直接指定 ${shichenLabel(timeIndex)}`;
 	} else if (g("time") !== undefined) {
 		const m = /^(\d{1,2}):(\d{2})$/.exec(String(g("time")));
-		if (!m) throw new Error(`时间格式应为 HH:MM，收到：${g("time")}`);
+		if (!m) {throw new Error(`时间格式应为 HH:MM，收到：${g("time")}`);}
 		const ch = Number(m[1]),
 			cm = Number(m[2]);
-		if (ch > 23 || cm > 59) throw new Error(`时间超出范围：${g("time")}`);
+		if (ch > 23 || cm > 59) {throw new Error(`时间超出范围：${g("time")}`);}
 		const t = calcTrueSolar(ch, cm, longitude, { eot: useEot, year, month, day });
 		lateZiCandidate = t.isLateZi;
 
@@ -421,7 +421,7 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		} else {
 			timeIndex = t.branch;
 			hourNote = `${clockText} → 真太阳时校正 ${corrText} → ${shichenLabel(timeIndex)}`;
-			if (t.isLateZi) hourNote += "（晚子时，按当日早子时口径）";
+			if (t.isLateZi) {hourNote += "（晚子时，按当日早子时口径）";}
 		}
 		hourNote += dayShiftText;
 	} else {
@@ -435,12 +435,12 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	//   只给日期时先报缺时辰，而不是跳过时辰直接报缺性别。）
 	const genderRaw = g("gender");
 	if (genderRaw === undefined)
-		throw new Error(
+		{throw new Error(
 			`缺少性别：需 --gender male|female|男|女（性别决定大限顺逆，缺失会排出错盘）`
-		);
+		);}
 	const genderValue = String(genderRaw).toLowerCase();
 	if (!["male", "m", "男", "female", "f", "女"].includes(genderValue))
-		throw new Error(`--gender 应为 male|female|男|女，收到：${genderRaw}`);
+		{throw new Error(`--gender 应为 male|female|男|女，收到：${genderRaw}`);}
 	const gender = ["female", "f", "女"].includes(genderValue) ? "female" : "male";
 
 	const notes = [dateNote, lngNote, hourNote].filter(Boolean);

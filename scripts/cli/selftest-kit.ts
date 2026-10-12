@@ -60,9 +60,9 @@ export function callDirect(
 	try {
 		const out = dispatch(parse(argv, cmd), ctx);
 		if (typeof out !== "string")
-			throw new Error(
+			{throw new Error(
 				`kit 直调仅支持同步命令（${cmd} 返回了 Promise——本断言组不测 selftest 命令）`
-			);
+			);}
 		return { code: 0, out, err: "" };
 	} catch (err) {
 		return { code: 1, out: "", err: `错误：${(err as Error).message}` };
@@ -103,7 +103,7 @@ export interface SelftestDeps {
  */
 export function eq(actual: unknown, expected: unknown, msg = ""): void {
 	if (actual !== expected)
-		throw new Error(`${msg}期望 ${JSON.stringify(expected)}，实得 ${JSON.stringify(actual)}`);
+		{throw new Error(`${msg}期望 ${JSON.stringify(expected)}，实得 ${JSON.stringify(actual)}`);}
 }
 
 /**

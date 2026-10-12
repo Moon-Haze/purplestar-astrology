@@ -108,9 +108,9 @@ function collectTsFiles(root: string, dir = ""): string[] {
 	for (const entry of readdirSync(resolve(root, dir), { withFileTypes: true })) {
 		const rel = dir ? `${dir}/${entry.name}` : entry.name;
 		if (entry.isDirectory()) {
-			if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+			if (entry.name === "node_modules" || entry.name.startsWith(".")) {continue;}
 			// 生成快照（tools/db/export-manual.ts 转印）随知识数据聚拢迁至 corpus/data/manual
-			if (entry.name === "manual" && dir === "corpus/data") continue;
+			if (entry.name === "manual" && dir === "corpus/data") {continue;}
 			out.push(...collectTsFiles(root, rel));
 		} else if (entry.name.endsWith(".ts")) {
 			out.push(rel);
@@ -140,7 +140,7 @@ export function scanCitations(root: string): CitationScan {
 	const chunks: string[] = [];
 	for (const rel of collectTsFiles(root)) {
 		const src = readFileSync(resolve(root, rel), "utf8");
-		if (isChecklistSource(src)) skipped.push(rel);
+		if (isChecklistSource(src)) {skipped.push(rel);}
 		else {
 			checked.push(rel);
 			chunks.push(src);

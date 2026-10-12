@@ -106,7 +106,7 @@ export function getTopicAnalysis(
 	options: AnalysisOptions = {}
 ): string {
 	const ctx = makeContext(chart, topic, options);
-	if (!ctx) return `无法找到${TOPIC_PALACE_NAME[topic]}相关信息。`;
+	if (!ctx) {return `无法找到${TOPIC_PALACE_NAME[topic]}相关信息。`;}
 
 	const lines: string[] = [
 		...renderOverview(ctx), // 一、总论

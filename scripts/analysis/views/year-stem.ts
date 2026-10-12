@@ -46,7 +46,7 @@ export function renderYearStem(ctx: AnalysisContext): string[] {
 			.filter(sh => sh.palace === rule.palace)
 			.forEach(sh => {
 				const key = `${sh.star}-${sh.mutagen}-${sh.palace}`;
-				if (alreadyShown.has(key)) return; // 三方四正已展示，跳过
+				if (alreadyShown.has(key)) {return;} // 三方四正已展示，跳过
 				const ruleKey = SIHUA_CHAR_TO_KEY[sh.mutagen];
 				const meaning = ruleKey ? rule[ruleKey] : undefined;
 				if (meaning) {

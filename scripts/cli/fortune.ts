@@ -134,10 +134,10 @@ function lunarMonthCN(m: number): string {
  */
 function lunarDayCN(d: number): string {
 	const ones = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
-	if (d <= 10) return `初${ones[d - 1]}`;
-	if (d < 20) return `十${ones[d - 11]}`;
-	if (d === 20) return "二十";
-	if (d < 30) return `廿${ones[d - 21]}`;
+	if (d <= 10) {return `初${ones[d - 1]}`;}
+	if (d < 20) {return `十${ones[d - 11]}`;}
+	if (d === 20) {return "二十";}
+	if (d < 30) {return `廿${ones[d - 21]}`;}
 	return "三十";
 }
 
@@ -246,9 +246,9 @@ function huiZhaoMajors(chart: ZiweiChart, branches: number[]): string[] {
 	const seen: string[] = [];
 	for (const b of branches) {
 		const p = chart.palaces.find(x => x.branch === b);
-		if (!p) continue;
+		if (!p) {continue;}
 		for (const s of p.stars.filter(x => x.type === "major")) {
-			if (!seen.includes(s.name)) seen.push(s.name);
+			if (!seen.includes(s.name)) {seen.push(s.name);}
 		}
 	}
 	return seen;
@@ -273,7 +273,7 @@ function sihuaLines(
 ): string[] {
 	return locateSihua(chart, transforms).map(x => {
 		const base = `  化${x.hua} ${x.star} → ${x.palace ?? "（未上盘）"}${x.branch ? `(${x.branch})` : ""}`;
-		if (!sanFang) return base;
+		if (!sanFang) {return base;}
 		const palace = chart.palaces.find(p => x.palace !== null && p.name === x.palace);
 		const hit = palace ? sanFang.includes(palace.branch) : false;
 		return base + (hit ? mark : "");
@@ -338,7 +338,7 @@ function sameStarPairs(
 export function patternSection(chart: ZiweiChart): string[] {
 	const patterns = detectPatterns(chart);
 	const out = [`【格局识别】共 ${patterns.length} 个`];
-	if (!patterns.length) out.push("  （未识别到已收录格局）");
+	if (!patterns.length) {out.push("  （未识别到已收录格局）");}
 	for (const p of patterns) {
 		out.push(`  ▸ ${p.name} [${p.level}分]  涉及：${p.palaces.join("、")}`);
 		out.push(`    ${p.description}`);
@@ -436,9 +436,9 @@ export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions
 			// 是另一个概念，不能混用。
 			const liuRi = getDailyMutagen(liuNianYear, liuYueMonth, liuRiDay);
 			if (!liuRi)
-				throw new Error(
+				{throw new Error(
 					`--daily ${liuRiDay} 在 ${liuNianYear} 年农历 ${liuYueMonth} 月中不存在（该月天数不足），请核对农历日`
-				);
+				);}
 			out.push("");
 			out.push(
 				`【${liuNianYear} 年 农历${liuYueMonth}月${liuRiDay}日 流日四化】日干 ${liuRi.stemName}（日柱现算）`
@@ -575,7 +575,7 @@ export function decadalSection(chart: ZiweiChart, age: number): string[] {
 	out.push(
 		`深查大限：${age} 岁 → ${dx.startAge}-${dx.endAge}岁 ${dx.palaceName}(${BRANCHES[dx.palaceBranch]})`
 	);
-	if (dxPalace) out.push(renderPalace(dxPalace, chart));
+	if (dxPalace) {out.push(renderPalace(dxPalace, chart));}
 	const sanFang = surroundBranches(dx.palaceBranch);
 	out.push(`大限三方四正（限之财官迁移）：${surroundNames(chart, dx.palaceBranch).join(" / ")}`);
 	out.push(huiZhaoLine(chart, sanFang));
@@ -678,21 +678,21 @@ export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: n
 	const out = [`【聚焦：${target.name}】`];
 	out.push(renderPalace(target, chart));
 	// 命主 / 身主星标注 + 身宫标记（spec §1 四项深化的第四件）
-	if (target.isSoulPalace) out.push(`  命宫 —— 命主星：${chart.mingZhu}`);
-	if (target.isBodyPalace) out.push(`  ⭐ 此宫为身宫 —— 身主星：${chart.shenZhu}`);
+	if (target.isSoulPalace) {out.push(`  命宫 —— 命主星：${chart.mingZhu}`);}
+	if (target.isBodyPalace) {out.push(`  ⭐ 此宫为身宫 —— 身主星：${chart.shenZhu}`);}
 	out.push("");
 
 	// ── 深化一：对宫完整详表（renderPalace 同规格）──
 	const oppPalace = chart.palaces.find(p => p.branch === oppBranch);
 	out.push(`对宫详表：${oppPalace?.name ?? "?"}`);
-	if (oppPalace) out.push(renderPalace(oppPalace, chart));
+	if (oppPalace) {out.push(renderPalace(oppPalace, chart));}
 	out.push("");
 
 	// ── 深化二：三方四正逐宫全星曜（主星含亮度四化 + 吉煞杂曜，不再只列主星）──
 	out.push("三方四正会照（逐宫全星曜）：");
 	for (const b of sanFang) {
 		const p = chart.palaces.find(x => x.branch === b);
-		if (!p) continue;
+		if (!p) {continue;}
 		const all = p.stars.map(starLine).join("、");
 		out.push(`  ${p.name}(${BRANCHES[b]})：${all || `空宫借${p.borrowedFromName ?? "?"}`}`);
 	}
@@ -727,8 +727,8 @@ export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: n
 		x => x.palace === target.name
 	);
 	if (liuNianHere.length)
-		for (const x of liuNianHere) out.push(`  ${liuNianYear} 流年化${x.hua} ${x.star} 落此宫`);
-	else out.push(`  ${liuNianYear} 流年四化：无落此宫`);
+		{for (const x of liuNianHere) {out.push(`  ${liuNianYear} 流年化${x.hua} ${x.star} 落此宫`);}}
+	else {out.push(`  ${liuNianYear} 流年四化：无落此宫`);}
 
 	out.push("");
 	out.push("运限引动：");
@@ -765,7 +765,7 @@ export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: n
 		const hits: number[] = [];
 		for (let y = y0; y <= y1; y++) {
 			const b = yearlyBranchOf(y);
-			if (b === target.branch || b === oppBranch || sanFang.includes(b)) hits.push(y);
+			if (b === target.branch || b === oppBranch || sanFang.includes(b)) {hits.push(y);}
 		}
 		out.push(
 			`  当前大限（${cur.startAge}-${cur.endAge} 岁，${y0}-${y1} 年）内流年引动此宫（含对冲/会照）：` +

@@ -63,6 +63,6 @@ export const CHART_LIKE: readonly string[] = [SOURCE_SKILL];
  * @returns skill 根的绝对路径 = 仓库根
  */
 export function skillDir(name: string): string {
-	if (name !== SOURCE_SKILL) throw new Error(`单 skill 形态下没有第二个 skill：${name}`);
+	if (name !== SOURCE_SKILL) {throw new Error(`单 skill 形态下没有第二个 skill：${name}`);}
 	return REPO_ROOT;
 }

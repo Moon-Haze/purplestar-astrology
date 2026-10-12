@@ -31,7 +31,7 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		async () => {
 			const s = await cmdKnowledge(parseArgs(["--source", "stars", "紫微"], "knowledge"));
 			if (!s.includes("紫微：关键词") || s.includes("天机"))
-				throw new Error(`位置参数未生效，输出开头：${s.slice(0, 40)}`);
+				{throw new Error(`位置参数未生效，输出开头：${s.slice(0, 40)}`);}
 		}
 	);
 	ok("命令面：--search 末尾缺值（裸开关 true）必须指路，不把 true 当检索词", async () => {
@@ -44,40 +44,40 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			msg = (e as Error).message;
 		}
 		if (!msg.includes("需要一个检索词"))
-			throw new Error(`缺值未指路（应 throw），实得：${msg || "未报错"}`);
+			{throw new Error(`缺值未指路（应 throw），实得：${msg || "未报错"}`);}
 	});
 	ok("命令面：knowledge books 域 --search 末尾缺值同样指路", async () => {
 		const s = await cmdKnowledge(parseArgs(["--limit", "3", "--search"], "knowledge"));
-		if (!s.includes("需要一个检索词")) throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);
+		if (!s.includes("需要一个检索词")) {throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);}
 	});
 	ok("命令面：oracle 域三形态（列主题 / 主题概览 / 单星展开）与非法主题指路", async () => {
 		const list = await cmdKnowledge(parseArgs(["--source", "oracle"], "knowledge"));
-		if (!list.includes("career") || !list.includes("用法")) throw new Error("列主题形态缺项");
+		if (!list.includes("career") || !list.includes("用法")) {throw new Error("列主题形态缺项");}
 		const overview = await cmdKnowledge(
 			parseArgs(["--source", "oracle", "--topic", "career"], "knowledge")
 		);
 		if (!overview.includes("七杀") || !overview.includes("断语"))
-			throw new Error(`概览形态缺项：${overview.slice(0, 40)}`);
+			{throw new Error(`概览形态缺项：${overview.slice(0, 40)}`);}
 		const star = await cmdKnowledge(
 			parseArgs(["--source", "oracle", "--topic", "career", "--star", "七杀"], "knowledge")
 		);
 		for (const key of ["命盘关键定制", "星曜深层特质", "本宫论断", "三方四正联动", "知识来源"])
-			if (!star.includes(key)) throw new Error(`单星展开缺「${key}」节`);
+			{if (!star.includes(key)) {throw new Error(`单星展开缺「${key}」节`);}}
 		let msg = "";
 		try {
 			await cmdKnowledge(parseArgs(["--source", "oracle", "--topic", "nope"], "knowledge"));
 		} catch (e) {
 			msg = (e as Error).message;
 		}
-		if (!msg.includes("13 个之一")) throw new Error(`非法主题未指路：${msg || "未报错"}`);
+		if (!msg.includes("13 个之一")) {throw new Error(`非法主题未指路：${msg || "未报错"}`);}
 	});
 	ok("命令面：tianji 域概览与检索（回放链接 + 来源声明）", async () => {
 		const list = await cmdKnowledge(parseArgs(["--source", "tianji"], "knowledge"));
 		if (!list.includes("01-stars") || !list.includes("CC BY-NC-SA"))
-			throw new Error("五册概览缺项");
+			{throw new Error("五册概览缺项");}
 		const hit = await cmdKnowledge(parseArgs(["--source", "tianji", "半空折翅"], "knowledge"));
 		for (const key of ["半空折翅", "bilibili.com/video", "§", "回放验证"])
-			if (!hit.includes(key)) throw new Error(`检索缺「${key}」`);
+			{if (!hit.includes(key)) {throw new Error(`检索缺「${key}」`);}}
 	});
 	ok("命令面：--monthly 不带 --mutagen 必须指路（流月四化随四化专题输出）", () => {
 		// 文本路径约束：--json 的 liuYueSiHua 是独立顶层键，不带 --mutagen 合法（基准对拍依赖）。
@@ -89,11 +89,11 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			msg = (e as Error).message;
 		}
 		if (!msg || !msg.includes("--mutagen"))
-			throw new Error(`缺 --mutagen 未指路：${msg ?? "未报错"}`);
+			{throw new Error(`缺 --mutagen 未指路：${msg ?? "未报错"}`);}
 		const withMutagen = cmdAstrology(
 			parseArgs([...base, "--mutagen", "--monthly", "6"], "astrology")
 		);
-		if (!withMutagen.includes("流月四化")) throw new Error("带 --mutagen 后流月节缺失");
+		if (!withMutagen.includes("流月四化")) {throw new Error("带 --mutagen 后流月节缺失");}
 	});
 	ok("命令面：独占分支激活时被吞的功能参数必须指路（不静默）", () => {
 		const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
@@ -118,7 +118,7 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 				msg = (e as Error).message;
 			}
 			if (!msg || !msg.includes("独占") || !msg.includes(keyword as string))
-				throw new Error(`独占分支未指路（${keyword}）：${msg ?? "未报错且静默输出"}`);
+				{throw new Error(`独占分支未指路（${keyword}）：${msg ?? "未报错且静默输出"}`);}
 		}
 		// 组合边界：--json + --palaces 是 synastry 契约，必须保留且出合法 JSON
 		const json = cmdAstrology(parseArgs([...base, "--palaces", "--json"], "astrology"));
@@ -132,10 +132,10 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 				"astrology"
 			)
 		);
-		if (!t.startsWith("# 紫微斗数全盘报告")) throw new Error("报告应以一级标题开头");
+		if (!t.startsWith("# 紫微斗数全盘报告")) {throw new Error("报告应以一级标题开头");}
 		const h2 = t.split("\n").filter(l => l.startsWith("## ")).length;
-		if (h2 !== 13) throw new Error(`## 二级标题应为 13 个板块，实得 ${h2}`);
-		if (!t.includes("知识来源分级")) throw new Error("报告尾注缺知识来源分级");
+		if (h2 !== 13) {throw new Error(`## 二级标题应为 13 个板块，实得 ${h2}`);}
+		if (!t.includes("知识来源分级")) {throw new Error("报告尾注缺知识来源分级");}
 		// 本命静态口径：--view / 运限参数同给必须指路，不静默切视角
 		for (const extra of [
 			["--view", "daxian"],
@@ -162,7 +162,7 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			} catch (e) {
 				msg = (e as Error).message;
 			}
-			if (!msg) throw new Error(`--report + ${extra.join(" ")} 未指路且静默输出`);
+			if (!msg) {throw new Error(`--report + ${extra.join(" ")} 未指路且静默输出`);}
 		}
 		return "13 板块齐全；--view / --yearly / --monthly 同给全部指路";
 	});
@@ -174,14 +174,14 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			msg = (e as Error).message;
 		}
 		if (!msg.includes("男") || !msg.includes("女"))
-			throw new Error(`报错文案未承认中文值域：${msg}`);
+			{throw new Error(`报错文案未承认中文值域：${msg}`);}
 	});
 	ok("命令面：参数描述不再引用已删除的 cities 命令", () => {
 		const descs = OPTION_GROUPS.flatMap(g => g.options.map(o => `${o.name} ${o.desc}`)).join(
 			"\n"
 		);
 		if (descs.includes("cities"))
-			throw new Error("desc 仍提 cities —— 该命令已删（spec §3.1），文案要跟上");
+			{throw new Error("desc 仍提 cities —— 该命令已删（spec §3.1），文案要跟上");}
 	});
 	ok("命令面：合盘抬头不因缺省 --name 残留双空格（astrology 抬头无此问题）", () => {
 		// 用真 CLI JSON 产物喂合盘（astrology --json 的输出是合法输入，进程内直调更轻）
@@ -197,7 +197,7 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			writeFileSync(b, json("1992-08-01", "female"), "utf8");
 			const s = cmdSynastry(parseArgs(["--charts", `${a},${b}`], "synastry"));
 			const bad = s.split("\n").filter(l => /^(甲方|乙方) {2}/.test(l));
-			if (bad.length) throw new Error(`抬头双空格：${bad[0]}`);
+			if (bad.length) {throw new Error(`抬头双空格：${bad[0]}`);}
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });
 		}
@@ -214,17 +214,17 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			writeFileSync(a, json("1990-05-15", "male"), "utf8");
 			writeFileSync(b, json("1992-08-01", "female"), "utf8");
 			const out = cmdSynastry(parseArgs(["--charts", `${a},${b}`], "synastry"));
-			if (!out.includes("【双盘四化互参】")) throw new Error("缺【双盘四化互参】节");
+			if (!out.includes("【双盘四化互参】")) {throw new Error("缺【双盘四化互参】节");}
 			if (
 				!out.includes("甲方") ||
 				!out.includes("落乙方") ||
 				!out.includes("乙方") ||
 				!out.includes("落甲方")
 			)
-				throw new Error("互参节缺双向对照行");
+				{throw new Error("互参节缺双向对照行");}
 			// 自盘对照：两路径相同时不得崩溃
 			const self2 = cmdSynastry(parseArgs(["--charts", `${a},${a}`], "synastry"));
-			if (!self2.includes("【双盘四化互参】")) throw new Error("自盘对照缺互参节");
+			if (!self2.includes("【双盘四化互参】")) {throw new Error("自盘对照缺互参节");}
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });
 		}
@@ -232,10 +232,10 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("命令面：help 的 OPTIONS 组标题与参数行同步输出（分组语义不失效）", () => {
 		const lines = renderCommandHelp("astrology").split("\n");
 		const i = lines.findIndex(l => l.includes("出生日期（二选一）"));
-		if (i < 0) throw new Error("找不到组标题");
+		if (i < 0) {throw new Error("找不到组标题");}
 		const next = lines[i + 1] ?? "";
 		if (next.trim() && !next.includes("--"))
-			throw new Error(`组标题堆叠：标题后紧跟另一标题「${next.trim()}」`);
+			{throw new Error(`组标题堆叠：标题后紧跟另一标题「${next.trim()}」`);}
 	});
 }
 
@@ -244,14 +244,14 @@ export function runHelpPrune({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("help 裁剪：命令级 NOTES 只带本命令相关的铁律，全量保留在总览", () => {
 		const syn = renderCommandHelp("synastry");
 		if (syn.includes("排盘四必问") || syn.includes("--late-zi"))
-			throw new Error("synastry --help 仍在教排盘铁律 —— 它不排盘");
+			{throw new Error("synastry --help 仍在教排盘铁律 —— 它不排盘");}
 		for (const cmd of ["knowledge"] as const) {
 			if (renderCommandHelp(cmd).includes("晚子时"))
-				throw new Error(`${cmd} --help 带着排盘 NOTES —— 应裁剪`);
+				{throw new Error(`${cmd} --help 带着排盘 NOTES —— 应裁剪`);}
 		}
 		const overview = renderOverviewHelp();
 		if (!overview.includes("排盘四必问") || !overview.includes("--late-zi"))
-			throw new Error("总览 help 的全量铁律被误裁 —— 排盘铁律只在总览保底");
+			{throw new Error("总览 help 的全量铁律被误裁 —— 排盘铁律只在总览保底");}
 	});
 }
 
@@ -279,7 +279,7 @@ export function runContractProbe({ ok }: Pick<SelftestDeps, "ok">): void {
 			writeFileSync(p, json, "utf8");
 			const parsed = readAnalyzeJson(p, "甲");
 			if (!parsed.chart?.palaces?.length)
-				throw new Error("对拍产物缺宫位 —— 契约校验形同虚设");
+				{throw new Error("对拍产物缺宫位 —— 契约校验形同虚设");}
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });
 		}
@@ -300,38 +300,38 @@ export function runCommandSplit({
 			// 键集取自主 selftest 的动态 import（见彼处注释）。
 			const defined = commandNames;
 			if (defined.includes("cities"))
-				throw new Error("cities 仍在 COMMAND_TABLE —— 应删（spec §3.1）");
+				{throw new Error("cities 仍在 COMMAND_TABLE —— 应删（spec §3.1）");}
 			if (defined.includes("analyze"))
-				throw new Error("analyze 仍在 COMMAND_TABLE —— 应改名 astrology");
+				{throw new Error("analyze 仍在 COMMAND_TABLE —— 应改名 astrology");}
 			// Task 6 融合后 chart/topic 也退役（职责成为 astrology 的 --palaces / --topic 参数）
 			if (defined.includes("chart") || defined.includes("topic"))
-				throw new Error(
+				{throw new Error(
 					"chart/topic 仍在 COMMAND_TABLE —— 已融合为 astrology 参数（Task 6）"
-				);
+				);}
 			// stars / oracle 并入 --source 选域；classics 随四域合并改名 knowledge —— 三个旧命令名都退役
 			for (const old of ["stars", "oracle", "classics"])
-				if (defined.includes(old))
-					throw new Error(
+				{if (defined.includes(old))
+					{throw new Error(
 						`${old} 仍在 COMMAND_TABLE —— stars/oracle 已并入 --source ${old === "classics" ? "各域" : old}，classics 改名 knowledge`
-					);
+					);}}
 			for (const must of ["astrology", "knowledge"])
-				if (!defined.includes(must))
-					throw new Error(`拆位不完整（应含 ${must}），实得：${defined.join("、")}`);
+				{if (!defined.includes(must))
+					{throw new Error(`拆位不完整（应含 ${must}），实得：${defined.join("、")}`);}}
 			// cities 删除后的数据表仍在（--city 容错解析在用）
 			// ⚠️ 读**真实定义处**而非门面：2026-10-11 数据表迁至 cli/data/cities.ts，
 			// （该门面已随 ziwei/ 拆除一并删除），里面才有 `export const PROVINCES`。
 			// 断言若继续读门面路径，会因数 + 文件内容不匹配而假红（且掩盖真正的丢失）。
 			const cities = readFileSync(resolve(ctx.root, "cli", "data", "cities.ts"), "utf8");
 			if (!/export const PROVINCES/.test(cities))
-				throw new Error("cli/data/cities.ts 的 PROVINCES 不在了");
+				{throw new Error("cli/data/cities.ts 的 PROVINCES 不在了");}
 			// stars 释义经 knowledge --source stars 仍可检索（域实现搬进 cli/knowledge/）
 			const s = await cmdKnowledge(
 				parseArgs(["--source", "stars", "--search", "紫微"], "knowledge")
 			);
 			if (!s.includes("紫微") || !s.includes("关键词"))
-				throw new Error(
+				{throw new Error(
 					`knowledge --source stars --search 紫微 的释义不见了，实得：${s.slice(0, 60)}`
-				);
+				);}
 			return "命令面收敛中间态就位";
 		}
 	);
@@ -363,7 +363,7 @@ export function runAstrologyShapes({
 			],
 		]) {
 			const r = call(argv);
-			if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+			if (r.code !== 0) {throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);}
 			for (const want of [
 				"【基本信息】",
 				"公历生日 : 1990-05-15",
@@ -373,9 +373,9 @@ export function runAstrologyShapes({
 				"【运限速览】",
 				"【专题深入】",
 			])
-				if (!r.out.includes(want)) throw new Error(`${argv.join(" ")} 缺 ${want}`);
+				{if (!r.out.includes(want)) {throw new Error(`${argv.join(" ")} 缺 ${want}`);}}
 			for (const gone of ["【命盘总览】", "【格局识别】", "【生年四化】"])
-				if (r.out.includes(gone)) throw new Error(`${argv.join(" ")} 不应出现 ${gone}`);
+				{if (r.out.includes(gone)) {throw new Error(`${argv.join(" ")} 不应出现 ${gone}`);}}
 		}
 		const deep = call([
 			"astrology",
@@ -386,12 +386,12 @@ export function runAstrologyShapes({
 			"--pattern",
 			"--mutagen",
 		]);
-		if (deep.code !== 0) throw new Error(`退出码 ${deep.code}，stderr：${deep.err.trim()}`);
+		if (deep.code !== 0) {throw new Error(`退出码 ${deep.code}，stderr：${deep.err.trim()}`);}
 		for (const want of ["【格局识别】", "【生年四化】"])
-			if (!deep.out.includes(want)) throw new Error(`专题叠加缺 ${want}`);
+			{if (!deep.out.includes(want)) {throw new Error(`专题叠加缺 ${want}`);}}
 		for (const gone of ["【命盘总览】", "【基本信息】", "【运限速览】", "【专题深入】"])
-			if (deep.out.includes(gone))
-				throw new Error(`专题叠加不应出现 ${gone}（已在深入，基底与指路是噪声）`);
+			{if (deep.out.includes(gone))
+				{throw new Error(`专题叠加不应出现 ${gone}（已在深入，基底与指路是噪声）`);}}
 		return "未深入形态带三节（无总览抬头）；专题形态只出专题详版";
 	});
 	ok(
@@ -404,9 +404,9 @@ export function runAstrologyShapes({
 			for (const argv of [["astrology"], ["astrology", "--info"]]) {
 				const r = call(argv);
 				if (r.code !== 0)
-					throw new Error(
+					{throw new Error(
 						`零输入 ${argv.join(" ")} 应演示面板，实得 code ${r.code}：${r.err.trim()}`
-					);
+					);}
 				for (const want of [
 					"【基本信息】",
 					"公历生日 : 2011-06-24",
@@ -415,39 +415,39 @@ export function runAstrologyShapes({
 					"【运限速览】",
 					"【专题深入】",
 				])
-					if (!r.out.includes(want)) throw new Error(`零输入输出缺 ${want}`);
+					{if (!r.out.includes(want)) {throw new Error(`零输入输出缺 ${want}`);}}
 			}
 			const json = call(["astrology", "--json"]);
 			if (json.code === 0 || !json.err.includes("出生"))
-				throw new Error("--json 零输入必须报错指路（机器接口不喂虚构数据）");
+				{throw new Error("--json 零输入必须报错指路（机器接口不喂虚构数据）");}
 			const partial = call(["astrology", "1990-5-15"]);
 			if (partial.code === 0 || !partial.err.includes("时辰"))
-				throw new Error(`部分输入应报缺时辰（缺一问一），实得：${partial.err.trim()}`);
+				{throw new Error(`部分输入应报缺时辰（缺一问一），实得：${partial.err.trim()}`);}
 			// 「其他出生信息」组也是出生信息：只给 --gender 不是零输入，走演示盘等于
 			// 无视用户输入（现状 startsWith("出生") 漏该组的后果，见候选 2 / ledger Ruling）。
 			const genderOnly = call(["astrology", "--gender", "male"]);
 			if (genderOnly.code === 0 || !genderOnly.err.includes("出生"))
-				throw new Error(
+				{throw new Error(
 					`只给 --gender 应按「缺一问一」报错，实得：code ${genderOnly.code} ${genderOnly.err.trim()}`
-				);
+				);}
 			return "零输入示例面板在；--json 与部分输入（含 --gender 单给）仍报错";
 		}
 	);
 	ok("astrology：--palaces 出十二宫逐宫详表", () => {
 		const r = call(["astrology", "1990-5-15", "9:30", "男", "--palaces"]);
-		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		if (r.code !== 0) {throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);}
 		// 十二宫逐宫详表：每宫名一块 + renderPalace 形态（星曜行）
 		for (const palace of ["命宫", "夫妻宫", "官禄宫", "福德宫", "田宅宫"])
-			if (!r.out.includes(palace)) throw new Error(`缺宫位块 ${palace}`);
-		if (!r.out.includes("大限")) throw new Error("缺大限一览");
-		if (!/(化禄|化权|化科|化忌)/.test(r.out)) throw new Error("详表应含四化标注");
+			{if (!r.out.includes(palace)) {throw new Error(`缺宫位块 ${palace}`);}}
+		if (!r.out.includes("大限")) {throw new Error("缺大限一览");}
+		if (!/(化禄|化权|化科|化忌)/.test(r.out)) {throw new Error("详表应含四化标注");}
 		return "十二宫详表在";
 	});
 	ok("astrology：--topic love 出主题论断；--view 英文取值与拼音等价；--view 越界报错", () => {
 		const r = call(["astrology", "1990-5-15", "9:30", "男", "--topic", "love"]);
-		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
-		if (!r.out.includes("【主题论断")) throw new Error("缺主题论断标题");
-		if (!r.out.includes("知识来源分级")) throw new Error("缺知识来源分级披露");
+		if (r.code !== 0) {throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);}
+		if (!r.out.includes("【主题论断")) {throw new Error("缺主题论断标题");}
+		if (!r.out.includes("知识来源分级")) {throw new Error("缺知识来源分级披露");}
 		// 英文取值与拼音逐一等价（输出应完全一致）
 		for (const [en, py] of [
 			["decadal", "daxian"],
@@ -474,8 +474,8 @@ export function runAstrologyShapes({
 				"--view",
 				py,
 			]);
-			if (byEn.code !== 0) throw new Error(`--view ${en} 应可用，stderr：${byEn.err.trim()}`);
-			if (byEn.out !== byPy.out) throw new Error(`--view ${en} 与 ${py} 输出应逐字一致`);
+			if (byEn.code !== 0) {throw new Error(`--view ${en} 应可用，stderr：${byEn.err.trim()}`);}
+			if (byEn.out !== byPy.out) {throw new Error(`--view ${en} 与 ${py} 输出应逐字一致`);}
 		}
 		const bad = call([
 			"astrology",
@@ -488,21 +488,21 @@ export function runAstrologyShapes({
 			"xxx",
 		]);
 		if (bad.code === 0 || !bad.err.includes("--view"))
-			throw new Error("--view 越界应报错并点名");
+			{throw new Error("--view 越界应报错并点名");}
 		return "主题论断、view 英文等价与越界校验在";
 	});
 	ok("astrology：旧命令名已删（命令表键集层面；stderr/exit 指路由冒烟断言覆盖）", () => {
 		for (const old of ["analyze", "chart", "topic", "insight", "cities"]) {
 			if (commandNames.includes(old))
-				throw new Error(`${old} 不应仍在命令表里 —— 应已收敛到 astrology`);
+				{throw new Error(`${old} 不应仍在命令表里 —— 应已收敛到 astrology`);}
 		}
 		return "5 个旧命令名已全部出表";
 	});
 	ok("astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运限引动）", () => {
 		const r = call(["astrology", "1990-5-15", "9:30", "男", "--focus", "命宫"]);
-		if (r.code !== 0) throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		if (r.code !== 0) {throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);}
 		for (const want of ["会照", "对宫", "格局", "小限"])
-			if (!r.out.includes(want)) throw new Error(`focus 深化缺 ${want}`);
+			{if (!r.out.includes(want)) {throw new Error(`focus 深化缺 ${want}`);}}
 		return "四项深化在";
 	});
 	ok("astrology：不存在的公历日期全链路报错（--json 机器路径同受校验）", () => {
@@ -523,13 +523,13 @@ export function runAstrologyShapes({
 				"male",
 				"--json",
 			]);
-			if (r.code === 0) throw new Error(`${bad} 未报错（退出码 0）—— 静默归一化又回来了`);
+			if (r.code === 0) {throw new Error(`${bad} 未报错（退出码 0）—— 静默归一化又回来了`);}
 			if (r.out.trim())
-				throw new Error(
+				{throw new Error(
 					`${bad} 报错时 stdout 应为空（不许输出半截 JSON），实得：${r.out.slice(0, 60)}`
-				);
+				);}
 			if (!(r.err.includes(bad) || r.err.includes("不存在")))
-				throw new Error(`${bad} 的报错未回显原始输入，实得：${r.err.trim()}`);
+				{throw new Error(`${bad} 的报错未回显原始输入，实得：${r.err.trim()}`);}
 		}
 		// 闰年边界不得误伤：2012-02-29 必须正常排出整盘
 		const leap = call([
@@ -543,9 +543,9 @@ export function runAstrologyShapes({
 			"--gender",
 			"male",
 		]);
-		if (leap.code !== 0) throw new Error(`2012-02-29（闰年）被误伤：${leap.err.trim()}`);
+		if (leap.code !== 0) {throw new Error(`2012-02-29（闰年）被误伤：${leap.err.trim()}`);}
 		if (!leap.out.includes("【基本信息】"))
-			throw new Error("2012-02-29 应正常排出基本信息面板");
+			{throw new Error("2012-02-29 应正常排出基本信息面板");}
 		return "非法日期 code1/out空/err回显（--json 同）；闰年 2-29 放行";
 	});
 	ok("--config：JSON 配置应用，命令行同名键覆盖，排盘正确", () => {
@@ -560,21 +560,21 @@ export function runAstrologyShapes({
 				"utf8"
 			);
 			const viaCfg = call(["astrology", "--config", cfg]);
-			if (viaCfg.code !== 0) throw new Error(`--config 排盘失败：${viaCfg.err.trim()}`);
+			if (viaCfg.code !== 0) {throw new Error(`--config 排盘失败：${viaCfg.err.trim()}`);}
 			if (!viaCfg.out.includes("2011-6-24") && !viaCfg.out.includes("2011-06-24"))
-				throw new Error("配置里的日期没生效");
+				{throw new Error("配置里的日期没生效");}
 			// ② 命令行覆盖：同键以命令行为准（换城市 → 经度行不同）
 			const mixed = call(["astrology", "--config", cfg, "--city", "成都"]);
-			if (mixed.code !== 0) throw new Error(`覆盖运行失败：${mixed.err.trim()}`);
+			if (mixed.code !== 0) {throw new Error(`覆盖运行失败：${mixed.err.trim()}`);}
 			if (!mixed.out.includes("成都") && !mixed.out.includes("104.1"))
-				throw new Error("命令行 --city 未覆盖配置的同名键");
+				{throw new Error("命令行 --city 未覆盖配置的同名键");}
 			// ③ 配置内未知键报错（与命令行同规则）
 			const bad = join(tmp, "bad.json");
 			writeFileSync(bad, JSON.stringify({ date: "2011-06-24", noSuchKey: 1 }), "utf8");
 			const r = call(["astrology", "--config", bad]);
-			if (r.code === 0) throw new Error("未知键未报错");
+			if (r.code === 0) {throw new Error("未知键未报错");}
 			if (!r.err.includes("noSuchKey"))
-				throw new Error(`报错未点名未知键，实得：${r.err.trim()}`);
+				{throw new Error(`报错未点名未知键，实得：${r.err.trim()}`);}
 			return "应用 / 覆盖 / 未知键三面成立";
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });
@@ -584,16 +584,16 @@ export function runAstrologyShapes({
 		const tmp = mkdtempSync(join(tmpdir(), "ziwei-tpl-"));
 		try {
 			const tpl = call(["astrology", "--template"]);
-			if (tpl.code !== 0) throw new Error(`--template 失败：${tpl.err.trim()}`);
-			if (!tpl.out.includes("_")) throw new Error("模板缺注释性 _ 前缀键");
+			if (tpl.code !== 0) {throw new Error(`--template 失败：${tpl.err.trim()}`);}
+			if (!tpl.out.includes("_")) {throw new Error("模板缺注释性 _ 前缀键");}
 			// 落盘后直接 --config 吃回（模板必须是合法可跑的配置）
 			const f = join(tmp, "my.json");
 			writeFileSync(f, tpl.out, "utf8");
 			const back = call(["astrology", "--config", f]);
-			if (back.code !== 0) throw new Error(`模板吃回失败：${back.err.trim()}`);
+			if (back.code !== 0) {throw new Error(`模板吃回失败：${back.err.trim()}`);}
 			// 模板自带 pattern/yearly/focus → 吃回即专题叠加形态（不带
 			// 面板），以格局详版在场证明配置吃回成功。
-			if (!back.out.includes("【格局识别】")) throw new Error("吃回后应排出示例盘专题详版");
+			if (!back.out.includes("【格局识别】")) {throw new Error("吃回后应排出示例盘专题详版");}
 			return "模板闭环成立";
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });
@@ -608,20 +608,20 @@ export function runAstrologyShapes({
 	ok("组合层：--decadal 端到端经 cmdAstrology 出大限节（候选 3）", () => {
 		const r = call(["astrology", ...base, "--decadal", "37"]);
 		eq(r.code, 0, r.err);
-		if (!r.out.includes("【大限 · 十年大运】")) throw new Error("缺大限节标题");
+		if (!r.out.includes("【大限 · 十年大运】")) {throw new Error("缺大限节标题");}
 		return "大限节在";
 	});
 	ok("组合层：--ages 端到端出小限节", () => {
 		const r = call(["astrology", ...base, "--ages", "45"]);
 		eq(r.code, 0, r.err);
-		if (!r.out.includes("【小限】")) throw new Error("缺小限节标题");
+		if (!r.out.includes("【小限】")) {throw new Error("缺小限节标题");}
 		return "小限节在";
 	});
 	ok("组合层：守卫链 --monthly 无 --mutagen 报错并指路", () => {
 		const r = call(["astrology", ...base, "--monthly", "6"]);
 		eq(r.code, 1, `实得 code=${r.code} err=${r.err}`);
 		if (!r.err.includes("需要 --mutagen"))
-			throw new Error(`报错应指路 --mutagen，实得：${r.err}`);
+			{throw new Error(`报错应指路 --mutagen，实得：${r.err}`);}
 		return "守卫链在";
 	});
 	ok("组合层：deepDive 门——给 --pattern 时不输出基底节", () => {
@@ -631,7 +631,7 @@ export function runAstrologyShapes({
 		eq(r.code, 0, r.err);
 		const baseSections = ["【基本信息】", "运限速览", "专题指路"].filter(s => r.out.includes(s));
 		if (baseSections.length)
-			throw new Error(`deepDive 门失效：深入形态仍输出基底 ${baseSections.join("、")}`);
+			{throw new Error(`deepDive 门失效：深入形态仍输出基底 ${baseSections.join("、")}`);}
 		return "deepDive 门在";
 	});
 }
@@ -655,8 +655,8 @@ export function runHelpEnrich({ ok }: Pick<SelftestDeps, "ok">): void {
 		for (const sec of SECTIONS) {
 			// 节标题独占一行：首节顶行，其余前置换行
 			const idx = out.startsWith(`${sec}\n`) ? 0 : out.indexOf(`\n${sec}\n`);
-			if (idx < 0) throw new Error(`help 缺节标题 ${sec}`);
-			if (idx < last) throw new Error(`节序错乱：${sec} 出现在前一节之前`);
+			if (idx < 0) {throw new Error(`help 缺节标题 ${sec}`);}
+			if (idx < last) {throw new Error(`节序错乱：${sec} 出现在前一节之前`);}
 			last = idx;
 		}
 		return `${SECTIONS.length} 节齐全且有序`;
@@ -664,28 +664,28 @@ export function runHelpEnrich({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("help 强化：每命令 --help 出归属参数子集（astrology 无 --search，knowledge 反之）", () => {
 		const astro = renderCommandHelp("astrology");
 		for (const want of ["NAME", "OPTIONS", "EXAMPLES"])
-			if (!astro.includes(want)) throw new Error(`astrology --help 缺 ${want}`);
+			{if (!astro.includes(want)) {throw new Error(`astrology --help 缺 ${want}`);}}
 		for (const own of ["--pattern", "--mutagen", "--yearly", "--palaces", "--topic"])
-			if (!astro.includes(own)) throw new Error(`astrology --help 应列 ${own}`);
+			{if (!astro.includes(own)) {throw new Error(`astrology --help 应列 ${own}`);}}
 		if (astro.includes("--search"))
-			throw new Error("astrology --help 不该列 --search（归属过滤）");
+			{throw new Error("astrology --help 不该列 --search（归属过滤）");}
 		const knowledge = renderCommandHelp("knowledge");
 		if (!knowledge.includes("--search") || !knowledge.includes("--source"))
-			throw new Error("knowledge --help 应列 --search 与 --source（四域）");
+			{throw new Error("knowledge --help 应列 --search 与 --source（四域）");}
 		if (knowledge.includes("--pattern"))
-			throw new Error("knowledge --help 不该列 --pattern（归属过滤）");
+			{throw new Error("knowledge --help 不该列 --pattern（归属过滤）");}
 		return "归属过滤双向成立";
 	});
 	ok("help 强化：示例用新虚构组合且注明「示例数据为虚构」", () => {
 		const out = renderOverviewHelp();
 		if (!out.includes("2011-06-24") || !out.includes("杭州"))
-			throw new Error("缺甲方虚构样例 2011-06-24 杭州");
+			{throw new Error("缺甲方虚构样例 2011-06-24 杭州");}
 		if (!out.includes("1999-11-03") || !out.includes("成都"))
-			throw new Error("缺乙方虚构样例 1999-11-03 成都");
-		if (!out.includes("虚构")) throw new Error("缺「示例数据为虚构」注记");
+			{throw new Error("缺乙方虚构样例 1999-11-03 成都");}
+		if (!out.includes("虚构")) {throw new Error("缺「示例数据为虚构」注记");}
 		// 旧组合清退：help 里不再出现 1990-05-15 / 1993-08-22 示例
 		for (const old of ["1990-05-15", "1993-08-22"])
-			if (out.includes(old)) throw new Error(`旧示例组合 ${old} 仍在 help 里`);
+			{if (out.includes(old)) {throw new Error(`旧示例组合 ${old} 仍在 help 里`);}}
 		return "虚构示例 + 注记在，旧组合已清退";
 	});
 }

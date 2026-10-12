@@ -62,7 +62,7 @@ import { SI_HUA_TABLE, STEMS } from "./constants";
  */
 export function getMutagenByStem(stemIndex: number): Record<Mutagen, string> {
 	const arr = SI_HUA_TABLE[stemIndex];
-	if (!arr) return { 禄: "", 权: "", 科: "", 忌: "" };
+	if (!arr) {return { 禄: "", 权: "", 科: "", 忌: "" };}
 	return { 禄: arr[0], 权: arr[1], 科: arr[2], 忌: arr[3] };
 }
 
@@ -207,9 +207,9 @@ export function getDaXianMutagen(
 	transforms: Record<Mutagen, string>;
 } | null {
 	const dx = chart.decadals[dxIndex];
-	if (!dx) return null;
+	if (!dx) {return null;}
 	const palace = chart.palaces.find(p => p.branch === dx.palaceBranch);
-	if (!palace) return null;
+	if (!palace) {return null;}
 	const stemIndex = palace.stem;
 	return {
 		stemIndex,
@@ -269,7 +269,7 @@ export function getDailyMutagen(
 	transforms: Record<Mutagen, string>;
 } | null {
 	const stemIndex = getDailyStemIndex(lunarYear, lunarMonth, lunarDay, isLeapMonth);
-	if (stemIndex === null) return null;
+	if (stemIndex === null) {return null;}
 	return {
 		stemIndex,
 		stemName: STEMS[stemIndex] ?? "",
@@ -362,6 +362,6 @@ export interface MonthlyMonthOptions {
  */
 export function getEffectiveMonthlyMonth(month: number, options: MonthlyMonthOptions = {}): number {
 	const normalized = Math.max(1, Math.min(12, Math.trunc(month)));
-	if (!options.isLeapMonth || (options.day ?? 1) <= 15) return normalized;
+	if (!options.isLeapMonth || (options.day ?? 1) <= 15) {return normalized;}
 	return normalized >= 12 ? 1 : normalized + 1;
 }

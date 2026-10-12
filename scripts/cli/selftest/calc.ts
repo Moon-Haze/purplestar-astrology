@@ -52,8 +52,8 @@ export function runLunar({ ok }: Pick<SelftestDeps, "ok">): void {
 		} catch (e) {
 			msg = (e as Error).message;
 		}
-		if (!msg) throw new Error("2021 年闰四月不存在，却未报错（静默滚动会让整盘皆错）");
-		if (!msg.includes("闰")) throw new Error(`错误信息未点明闰月问题：${msg}`);
+		if (!msg) {throw new Error("2021 年闰四月不存在，却未报错（静默滚动会让整盘皆错）");}
+		if (!msg.includes("闰")) {throw new Error(`错误信息未点明闰月问题：${msg}`);}
 		return msg.split("。")[0];
 	});
 	ok("农历输入：合法的闰月可正常换算（2020 年闰四月初一）", () => {
@@ -70,7 +70,7 @@ export function runLunar({ ok }: Pick<SelftestDeps, "ok">): void {
 			parseArgs(["--lunar", "2020-04-01", "--branch", "0", "--gender", "male"])
 		);
 		if (fmtDate(leap.info) === fmtDate(plain.info))
-			throw new Error("闰四月与四月被算成了同一天");
+			{throw new Error("闰四月与四月被算成了同一天");}
 	});
 }
 
@@ -94,11 +94,11 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 	ok("真太阳时：经度偏移按 (lng-120)*4 分钟计（石家庄 = -22 分）", () => {
 		const lx = findLongitude("石家庄");
-		if (!lx) throw new Error("城市表查不到石家庄");
+		if (!lx) {throw new Error("城市表查不到石家庄");}
 		const t = calcTrueSolar(12, 0, lx.longitude);
 		eq(t.offsetMinutes, Math.round((lx.longitude - 120) * 4));
 		if (t.offsetMinutes >= 0)
-			throw new Error(`石家庄经度应小于 120，实得 offset=${t.offsetMinutes}`);
+			{throw new Error(`石家庄经度应小于 120，实得 offset=${t.offsetMinutes}`);}
 	});
 	ok("真太阳时：默认口径只含经度项，不计均时差（--eot 关闭）", () => {
 		// 若默认误开均时差，这里就会多出几十分钟的偏差。锁住「默认 = 传统口径」这一承诺。
@@ -111,7 +111,7 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 		const t = calcTrueSolar(12, 0, 116.4, { eot: true, year: 1990, month: 5, day: 15 });
 		eq(t.longitudeMinutes, Math.round((116.4 - 120) * 4));
 		eq(t.offsetMinutes, t.longitudeMinutes + t.eotMinutes);
-		if (t.eotMinutes === 0) throw new Error("1990-05-15 的均时差不应为 0");
+		if (t.eotMinutes === 0) {throw new Error("1990-05-15 的均时差不应为 0");}
 		// 均时差与经度无关：标准经线上经度项为 0，开了 --eot 照样有校正
 		const onMeridian = calcTrueSolar(12, 0, 120, { eot: true, year: 1990, month: 5, day: 15 });
 		eq(onMeridian.longitudeMinutes, 0);
@@ -125,9 +125,9 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 			msg = (e as Error).message;
 		}
 		if (!msg)
-			throw new Error(
+			{throw new Error(
 				"缺 month/day 时未报错 —— NaN 会静默污染 branch / dayOffset 整条结果链"
-			);
+			);}
 		return msg;
 	});
 	ok("真太阳时：均时差全年幅度落在 -15 ~ +17 分（实测 -14.6 ~ +16.5）", () => {
@@ -137,11 +137,11 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 		for (let d = 0; d < 365; d++) {
 			const dt = new Date(Date.UTC(1990, 0, 1) + d * 86400000);
 			const v = equationOfTime(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
-			if (v < lo) lo = v;
-			if (v > hi) hi = v;
+			if (v < lo) {lo = v;}
+			if (v > hi) {hi = v;}
 		}
-		if (lo < -15 || lo > -14) throw new Error(`均时差下界异常：${lo.toFixed(1)} 分`);
-		if (hi < 16 || hi > 17) throw new Error(`均时差上界异常：${hi.toFixed(1)} 分`);
+		if (lo < -15 || lo > -14) {throw new Error(`均时差下界异常：${lo.toFixed(1)} 分`);}
+		if (hi < 16 || hi > 17) {throw new Error(`均时差上界异常：${hi.toFixed(1)} 分`);}
 	});
 	ok("真太阳时：西部凌晨校正后跨天回退（喀什 00:30 → 前一日 21:38 亥时）", () => {
 		// 喀什 75.99°E：经度项 (75.99-120)*4 = -176.04 分 + 均时差 +3.749 → 30-176.04+3.749 = -142.291
@@ -186,9 +186,9 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 			const total = clockMins + corridor;
 			const back = t.dayOffset * 1440 + t.solarMinutes;
 			if (Math.abs(back - total) > 1.5)
-				throw new Error(
+				{throw new Error(
 					`${h}:${m} @${lng} → dayOffset=${t.dayOffset} solar=${t.solarMinutes}，还原得 ${back}，应为 ${total}`
-				);
+				);}
 			// 日期确实跟着动了
 			const expectDay = t.dayOffset === 0 ? 15 : t.dayOffset > 0 ? 16 : 14;
 			eq(shifted.day, expectDay, `${h}:${m} @${lng} 的日期`);
@@ -231,7 +231,7 @@ export function runLateZi({ ok }: Pick<SelftestDeps, "ok">): void {
 			gender: "male",
 		});
 		if (chartSignature(early) === chartSignature(late))
-			throw new Error("两口径产出相同命盘，与「差异极大」的预期不符");
+			{throw new Error("两口径产出相同命盘，与「差异极大」的预期不符");}
 	});
 	ok("晚子时：--branch 12 与 --late-zi 两条路径等价", () => {
 		const viaBranch = buildBirthInfo(

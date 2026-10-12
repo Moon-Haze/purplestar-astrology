@@ -44,7 +44,7 @@ export function applyConfig(argv: CliArgs): CliArgs {
 		);
 	}
 	if (typeof raw !== "object" || raw === null || Array.isArray(raw))
-		throw new Error(`--config ${file} 的顶层应是 JSON 对象（键 = 参数的 camelCase 主名）。`);
+		{throw new Error(`--config ${file} 的顶层应是 JSON 对象（键 = 参数的 camelCase 主名）。`);}
 
 	// 合法键集合：主名的 camelCase 形态（键名与 parseArgs 产出的键同域）
 	const legalKeys = new Set<string>([...OPTION_NAMES].map(camelKey));
@@ -55,23 +55,23 @@ export function applyConfig(argv: CliArgs): CliArgs {
 
 	for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
 		// `_` 前缀键是注释性说明（模板里的人类备注），跳过
-		if (key.startsWith("_")) continue;
+		if (key.startsWith("_")) {continue;}
 		// 拼音别名同被接受（与命令行一致，归一到主名）
 		const canonical = key.includes("-")
 			? key
 			: (Object.entries(OPTION_ALIASES).find(([a]) => camelKey(a) === key)?.[1] ?? key);
 		const storeKey = canonical.includes("-") ? camelKey(canonical) : canonical;
 		if (!legalKeys.has(storeKey))
-			throw new Error(
+			{throw new Error(
 				`--config ${file} 含未知键「${key}」。键名与参数的 camelCase 主名同名（如 date / time / city / gender / pattern）。` +
 					`运行 help 查看全部参数。`
-			);
+			);}
 		if (typeof value !== "string" && typeof value !== "boolean" && !Array.isArray(value))
-			throw new Error(
+			{throw new Error(
 				`--config ${file} 的键「${key}」值类型非法（${typeof value}）：应为字符串 / 布尔 / 数组，与命令行同规则。`
-			);
+			);}
 		// 命令行优先：只在命令行未给该键时采用配置值
-		if (merged[storeKey] === undefined) merged[storeKey] = value as CliArgs[string];
+		if (merged[storeKey] === undefined) {merged[storeKey] = value as CliArgs[string];}
 	}
 	return merged;
 }
