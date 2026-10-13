@@ -7,11 +7,11 @@
  * 「出生信息形态」三条在主 selftest 的调用序里排在解析引擎之后，与源码顺序一致。
  */
 
-import { buildBirthInfo, findLongitude } from "../birth-info";
+import { buildBirthInfo, findLongitude } from "../birth/birth-info";
 import { parseArgs } from "../args";
-import { chartSignature } from "../render";
+import { chartSignature } from "../chart/render";
 import { generateChart } from "@/algorithm";
-import { eq, type SelftestDeps } from "../selftest-kit";
+import { eq, type SelftestDeps } from "./kit";
 
 /** 城市容错：别名解析 / 未收录 / exact 标志 / 未给地点提示。 */
 export function runCityTolerance({ ok }: Pick<SelftestDeps, "ok">): void {

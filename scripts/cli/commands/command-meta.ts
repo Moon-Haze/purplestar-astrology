@@ -12,7 +12,7 @@
 
 // 优先级链的真相源在声明表（纯数据零依赖，不破本文件的轻模块底线）——
 // 旧手抄文案漏了 `--report`，与 astrology 实际报错和 options.md 均不符，收拢即修正。
-import { EXCLUSIVE_PRIORITY_LABEL } from "./args-table";
+import { EXCLUSIVE_PRIORITY_LABEL } from "../args/table";
 
 /** 合法命令名（顺序即 help COMMANDS 节的展示序）。 */
 export const COMMAND_NAMES = ["astrology", "knowledge", "synastry", "selftest"] as const;

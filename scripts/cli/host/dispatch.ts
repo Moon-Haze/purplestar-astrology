@@ -10,7 +10,7 @@
  * 进程内测试（selftest）与子进程真链路（guard 冒烟）因此消费同一 seam。
  * `--out` 落盘也归宿主：dispatch 只把路径带出来（`outFile`），不碰文件系统。
  */
-import type { CliArgs, CliContext } from "./args";
+import type { CliArgs, CliContext } from "../args";
 
 /** 命令表条目：与 `cli/commands.ts` 的 `Cmd` 同形（Cmd 未导出，此处内联声明）。 */
 type CmdEntry = (args: CliArgs, ctx: CliContext) => string | Promise<string>;

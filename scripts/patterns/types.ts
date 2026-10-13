@@ -42,7 +42,7 @@ export interface PatternCondition {
 export interface Pattern {
 	name: string; // 格局名；部分识别器会拼入星名（如「武曲化禄入命」「太阴化忌冲命」）
 	level: 90 | 75 | 60 | 40; // 等级分数：90 上格 / 75 吉格 / 60 平格 / 40 凶格警示。触发破格条件时**降档**（如 90 → 75、75 → 40）
-	description: string; // 判词文案，由 cli/commands.ts 直接输出给用户（短判词 + level，analyze 用）
+	description: string; // 判词文案，由 cli/commands/index.ts 直接输出给用户（短判词 + level，analyze 用）
 	/**
 	 * topic 侧（`overview` / `personality` 两个主题）用的**倪师口吻长判词**。
 	 *

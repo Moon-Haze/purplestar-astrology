@@ -108,7 +108,7 @@ export const STAR_BRIGHTNESS: Record<string, Record<number, string>> = {
 /**
  * 十四主星释义（倪海厦体系）：星名 → `{ keywords, nature, element }`。
  *
- * 消费者：`cli/commands.ts` 的「主星释义」查询与关键词展示；`cli/selftest.ts` 的完整性
+ * 消费者：`cli/commands/index.ts` 的「主星释义」查询与关键词展示；`cli/selftest/index.ts` 的完整性
  * 断言（要求恰 14 条，且键集合与 iztro 的十四主星一致）。
  *
  * ⚠️ 本表**不参与安星，也不参与格局判定**，只影响文案。增删条目会让 `selftest` 的
@@ -118,7 +118,7 @@ export const STAR_BRIGHTNESS: Record<string, Record<number, string>> = {
 export const STAR_DESCRIPTIONS: Record<
 	string,
 	{
-		/** 关键词，以「·」分隔（`cli/commands.ts` 按「·」切开后逐条展示） */
+		/** 关键词，以「·」分隔（`cli/commands/index.ts` 按「·」切开后逐条展示） */
 		keywords: string;
 		/** 星性（如「吉星」「凶星」「中性」「中性偏吉」「凶中带吉」） */
 		nature: string;

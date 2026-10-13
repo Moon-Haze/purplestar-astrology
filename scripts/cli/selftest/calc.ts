@@ -13,11 +13,11 @@ import {
 	equationOfTime,
 	findLongitude,
 	shiftDate,
-} from "../birth-info";
+} from "../birth/birth-info";
 import { parseArgs } from "../args";
-import { chartSignature, fmtDate } from "../render";
+import { chartSignature, fmtDate } from "../chart/render";
 import { generateChart } from "@/algorithm";
-import { eq, type SelftestDeps } from "../selftest-kit";
+import { eq, type SelftestDeps } from "./kit";
 
 /** 农历 → 公历换算（含 --lunar 输入路径与闰月边界）。 */
 export function runLunar({ ok }: Pick<SelftestDeps, "ok">): void {

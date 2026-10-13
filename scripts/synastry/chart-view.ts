@@ -23,7 +23,7 @@
  * 这份契约窄而明确：上游若改了某个被读字段的名字或形状，`npm run typecheck` 会当场报错；
  * 上游若只是新增字段，这里**什么都不用改**（以前那份副本要跟着同步）。
  *
- * ## 为什么不去 import 源的 `cli/render.ts`
+ * ## 为什么不去 import 源的 `cli/chart/render.ts`
  *
  * `render.ts` 是排盘 CLI 的渲染层，它 import `@/algorithm`（真排盘）。本 skill
  * 一旦引它，排盘内核就得整份跟过来 —— 那正是本次改造要消灭的东西。这里只重建合盘真正

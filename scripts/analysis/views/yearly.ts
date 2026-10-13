@@ -14,7 +14,7 @@
  * @packageDocumentation
  */
 
-import { BRANCHES, STEMS } from "../../constants";
+import { BRANCHES, STEMS } from "@/data/ganzhi";
 import { surroundBranches } from "../../palace-relations";
 // getYearStemIndex 是**公历年取模**口径，本层只用于流年干（唯一合法用途；
 // 生年四化必须用 chart.lunarInfo.yearStem —— 两口径在 1-2 月出生者身上分叉，

@@ -58,7 +58,7 @@ const GENERATED = [/^scripts\/corpus\/data\/manual\/.+\.ts$/];
 /** 真相源：动它们等于动全仓的一致性，评审必看。 */
 const SOURCES_OF_TRUTH = [
 	"scripts/analysis/data.ts", // TOPIC_DEFS / TOPIC_KEYS / STORAGE_TOPIC_KEYS
-	"scripts/cli/args-table.ts", // 参数声明唯一来源
+	"scripts/cli/args/table.ts", // 参数声明唯一来源
 	"scripts/analysis/grades.ts", // 引文分级登记表
 ];
 

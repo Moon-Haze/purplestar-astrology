@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 
 import { load } from "./lib/loader.ts";
 
-const astrology = await load<typeof import("@/cli/astrology")>("@/cli/astrology");
+const astrology = await load<typeof import("@/cli/commands/astrology")>("@/cli/commands/astrology");
 const {
 	composeSections,
 	cmdAstrology,
@@ -26,8 +26,8 @@ const {
 	parseHourlyArg,
 } = astrology;
 const { parseArgs } = await load<typeof import("@/cli/args")>("@/cli/args");
-const { buildBirthInfo } = await load<typeof import("@/cli/birth-info")>("@/cli/birth-info");
-const { toBasis } = await load<typeof import("@/cli/birth-info-defs")>("@/cli/birth-info-defs");
+const { buildBirthInfo } = await load<typeof import("@/cli/birth/birth-info")>("@/cli/birth/birth-info");
+const { toBasis } = await load<typeof import("@/cli/birth/birth-info-defs")>("@/cli/birth/birth-info-defs");
 const { generateChart } = await load<typeof import("@/algorithm")>("@/algorithm");
 
 /** 用与 CLI 完全相同的管线造一份 chart + composeSections 所需上下文。 */

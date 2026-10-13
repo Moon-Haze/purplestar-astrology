@@ -136,8 +136,8 @@ const LOAD_GROUPS: Array<{ label: string; specs: string[]; note: string }> = [
 			"@/algorithm",
 			"@/patterns",
 			"@/mutagen",
-			"@/constants",
-			"@/cli/data/cities",
+			"@/data",
+			"@/cli/birth/cities",
 			"@/cli/args",
 		],
 		note: "analyze 必需（含 iztro / lunar-typescript）",
@@ -200,7 +200,7 @@ for (const g of groups) {
 
 const { generateChart } = await import("@/algorithm");
 const { detectPatterns } = await import("@/patterns");
-const { findLongitude } = await import("@/cli/birth-info");
+const { findLongitude } = await import("@/cli/birth/birth-info");
 
 const info = ${JSON.stringify(HOT_INFO)};
 const once = (fn) => { const t = performance.now(); fn(); return performance.now() - t; };

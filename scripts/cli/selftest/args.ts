@@ -11,15 +11,15 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { OPTION_NAMES, SIDE_PREFIXES, parseArgs } from "../args";
-import { ALL_OPTION_NAMES, OPTION_ALIASES } from "../args-table";
+import { ALL_OPTION_NAMES, OPTION_ALIASES } from "../args/table";
 // namespace import：候选 2 的派生常量在实现落地前访问为 undefined，
 // 红发生在断言级（eq 报「实得 undefined」）而非模块加载崩溃 —— TDD 的红要看得到条目。
-import * as table from "../args-table";
-import { OPTION_SCOPE } from "../option-scope";
-import { renderCommandHelp } from "../help";
+import * as table from "../args/table";
+import { OPTION_SCOPE } from "../args/scope";
+import { renderCommandHelp } from "../commands/help";
 // namespace：断言要检查 help 是否仍手抄 OPTION_OWNERSHIP（不存在的导出用 `in` 探测）
-import * as helpNs from "../help";
-import { eq, type SelftestDeps } from "../selftest-kit";
+import * as helpNs from "../commands/help";
+import { eq, type SelftestDeps } from "./kit";
 
 /** 解析引擎：util.parseArgs tokens 底座、重复参数报错、拼音别名归一、三连删除。 */
 export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {

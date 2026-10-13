@@ -4,7 +4,7 @@
  * 数据源：reference/ziwei-samples-toolkit/corpus/annotations.json
  * 本仓的 v3 已清掉全部 fabricated，存活 suspect 的强归属也已
  * 清修为「古诀云 / 紫微斗数有云 / 一说」—— 本模块因此转为**防回流禁语清单**，
- * 由 `scripts/cli/selftest.ts` 的「未核实引文不得冒充倪师原话」断言消费。
+ * 由 `scripts/cli/selftest/index.ts` 的「未核实引文不得冒充倪师原话」断言消费。
  */
 
 export type AnnotationStatus =

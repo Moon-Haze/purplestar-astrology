@@ -12,35 +12,41 @@
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
  *
+ * ⚠️ 本文件即 `@/cli/selftest` 的落点（原 `cli/selftest.ts`，2026-10-13 并入
+ * `cli/selftest/` 成为该目录的 index；同批把 `cli/selftest-kit.ts` 收为 `kit.ts`）。
+ * 这一步顺带消掉了一处隐患：此前 `selftest.ts` 与 `selftest/` 目录**同名并存**，
+ * 而 `boot-hooks` 的解析候选序是「同名 `.ts` 优先于同名目录」—— 两种形态同时存在时，
+ * `./selftest` 的落点依赖这个顺序，改名任一方都会静默改判解析目标。
+ *
  * 断言本体按主题住在 `./selftest/` 子目录（calc / birth / chart / render / args /
  * commands / guard 七组），本文件只做编排：构造 harness 与直调/子进程探针，按
  * 报告顺序逐组调用，再把 classics / synastry 断言组并入并渲染分段报告。
  */
 
-import type { CliContext } from "./args";
-import { parseArgs } from "./args";
+import type { CliContext } from "../args";
+import { parseArgs } from "../args";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { asserts as classicAsserts } from "@/corpus/selftest-asserts";
 import { asserts as synastryAsserts } from "@/synastry/selftest-asserts";
-import { createHarness, callDirect, type SelftestDeps } from "./selftest-kit";
-import { unknownCommandMessage } from "./dispatch";
-import { runLunar, runTrueSolar, runLateZi } from "./selftest/calc";
-import { runCityTolerance, runGenderGuard, runBirthInfoShape } from "./selftest/birth";
+import { createHarness, callDirect, type SelftestDeps } from "./kit";
+import { unknownCommandMessage } from "../host/dispatch";
+import { runLunar, runTrueSolar, runLateZi } from "./calc";
+import { runCityTolerance, runGenderGuard, runBirthInfoShape } from "./birth";
 import {
 	runChartInvariants,
 	runFortuneData,
 	runSchoolGuard,
 	runPatternMutagen,
 	runFortuneLocator,
-} from "./selftest/chart";
-import { runKnowledgeSource, runTopicRender } from "./selftest/render";
+} from "./chart";
+import { runKnowledgeSource, runTopicRender } from "./render";
 import {
 	runParseEngine,
 	runArgSurface,
 	runDeclarationTable,
 	runSkillArgsAudit,
-} from "./selftest/args";
+} from "./args";
 import {
 	runCommandSurface,
 	runHelpPrune,
@@ -48,14 +54,14 @@ import {
 	runCommandSplit,
 	runAstrologyShapes,
 	runHelpEnrich,
-} from "./selftest/commands";
+} from "./commands";
 import {
 	runSmoke,
 	runSkillCommandAudit,
 	runDocConsistency,
 	runGradeRegistry,
 	runDispatchProbe,
-} from "./selftest/guard";
+} from "./guard";
 
 /**
  * `selftest` 命令：跑一组排盘不变量与知识源可用性断言，返回逐项报告。
@@ -87,7 +93,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	// 取 COMMANDS 视图而非裸表：表本身刻意不导出（防止键集/描述对不上的中间态外泄），
 	// 而断言要的正是运行期真实键集。selftest/ 下组文件一律不静态 import commands，
 	// 需要命令表/键集/直调的经下方 deps 注入。
-	const { COMMANDS } = await import("./commands");
+	const { COMMANDS } = await import("../commands");
 	const commandNames = Object.keys(COMMANDS);
 
 	// 子进程探针只留给文末的冒烟（守住「入口 → 解析 → 命令表 → 渲染 + 错误出口」真链路）；
@@ -180,7 +186,10 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		"",
 	];
 	for (const r of results) {
-		out.push(`${r.pass ? "✅" : "❌"} ${r.name}${r.detail ? `\n     ${r.detail}` : ""}`);
+		// ⚠️ 跳过项**前置 ⏭**：它记 pass 但那条断言**根本没跑**，与「跑过且通过」是
+		// 两件事。不标出来就是恒真守卫伪装成通过 —— 最坏的那种假绿。
+		const mark = r.skipped ? "⏭" : r.pass ? "✅" : "❌";
+		out.push(`${mark} ${r.name}${r.detail ? `\n     ${r.detail}` : ""}`);
 	}
 	if (failed) {
 		out.push(

@@ -4,16 +4,17 @@
  * 拆自 purple-star.ts。这一层是一整个内聚单元：输入是 `CliArgs`，输出是 `BirthInfoResult`，
  * 中间的复杂之处全在「真太阳时」与「农历换算」两件事上，与渲染、命令分发无关。
  *
- * 依赖：./args（CliArgs 类型）、./args-table（键名换算）、./render（日期格式化）、@/{constants,cities}、lunar-typescript
+ * 依赖：`../args`（CliArgs 类型）、`../args/table`（键名换算）、`../chart/render`（日期格式化）、
+ * `./cities`（真太阳时经度校正的城市表）、`@/data/ganzhi`（干支 / 时辰）、lunar-typescript
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
  */
 
-import type { CliArgs } from "./args";
-import { camelKey } from "./args-table";
-import { fmtDate } from "./render";
-import { BRANCHES, SHICHEN } from "@/constants";
-import { PROVINCES } from "@/cli/data/cities";
+import type { CliArgs } from "../args";
+import { camelKey } from "../args/table";
+import { fmtDate } from "../chart/render";
+import { BRANCHES, SHICHEN } from "@/data/ganzhi";
+import { PROVINCES } from "./cities";
 import { Lunar, type Solar } from "lunar-typescript";
 // 四个接口与两个模块级常量住在 ./birth-info-defs，
 // 这里只为函数实现服务；公开面由文末 re-export 兜住，调用方一行未改。

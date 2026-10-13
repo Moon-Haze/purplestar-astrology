@@ -75,7 +75,7 @@ function testFiles(): string[] {
  *
  * 桩的行为与 Node 一致 —— 说明符相对 `parentURL` 解析，文件不存在即抛错，
  * 于是钩子的 try/catch 兜底链被真实地走一遍，而不是只断言源码里有某段正则。
- * 这正是不把这条断言放进 `cli/selftest.ts` 的原因：那里是同步函数，`await import()` 放不下。
+ * 这正是不把这条断言放进 `cli/selftest/index.ts` 的原因：那里是同步函数，`await import()` 放不下。
  */
 function resolveAttempts(specifier: string, files: Record<string, string>): string[] {
 	const root = makeTree(files);

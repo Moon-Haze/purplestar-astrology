@@ -20,7 +20,7 @@ import {
 	OPTION_GROUPS,
 	ownedOptions,
 	type OptionSpec,
-} from "./args-table";
+} from "../args/table";
 
 /** 两条最容易排出错盘的口径（NOTES 节的核心，原文与旧 help 一致）。 */
 const HELP_CAUTION = [

@@ -44,7 +44,8 @@
 
 import { Lunar } from "lunar-typescript";
 import type { Mutagen, ZiweiChart } from "./types";
-import { SI_HUA_TABLE, STEMS } from "./constants";
+import { SI_HUA_TABLE } from "@/data/sihua";
+import { STEMS } from "@/data/ganzhi";
 
 // ─── 1) 由天干索引取四化四星 ───────────────────────────────────
 /**
@@ -94,7 +95,7 @@ export function getYearStemIndex(year: number): number {
 /**
  * 流年四化：由**公历年份**推当年年干，再取其四化。
  *
- * @param year - 流年的公历年份（`cli/commands.ts` 取 `--liunian`，缺省为当前公历年）
+ * @param year - 流年的公历年份（`cli/commands/index.ts` 取 `--liunian`，缺省为当前公历年）
  * @returns 年干索引、年干名与四化四星
  *
  * @remarks
@@ -160,7 +161,7 @@ export function getMonthlyStemIndex(yearStem: number, month: number): number {
  * @returns 月柱天干索引、天干名与四化四星
  *
  * @remarks
- * 六层四化里的「一月动态」层。`cli/commands.ts` 对应 `--liuyue`（省略即不输出流月），
+ * 六层四化里的「一月动态」层。`cli/commands/index.ts` 对应 `--liuyue`（省略即不输出流月），
  * 且**由流年干推月干**，故调用时传的是 `getYearlyMutagen(...).stemIndex` 而非出生年干。
  * 闰月的月序换算不在本函数内 —— 调用方先用 {@link getEffectiveMonthlyMonth}
  * 把「闰月 + 农历日」折算成有效月序再传入。
@@ -255,7 +256,7 @@ export function getDailyStemIndex(
  * @returns 日干索引、天干名与四化四星；日期非法时为 `null`
  *
  * @remarks
- * 六层四化里的「一日动态」层。调用方（`cli/fortune.ts`）从 `--yearly` / `--monthly` /
+ * 六层四化里的「一日动态」层。调用方（`cli/commands/fortune.ts`）从 `--yearly` / `--monthly` /
  * `--daily` 组出农历年月日，闰月沿用 `--leap` 旗标。
  */
 export function getDailyMutagen(

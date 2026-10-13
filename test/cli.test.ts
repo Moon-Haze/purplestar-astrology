@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BirthInfo, ZiweiChart } from "@/types";
-import { loadAlgorithm, loadSihua, loadConstants, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
+import { loadAlgorithm, loadSihua, loadData, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
 import { BRANCHES, chartSignature } from "./lib/compare.ts";
 // 主题数**派生**而非写死：加主题时本断言自动跟上，不必回来改数字。
 const { TOPIC_KEYS } = await load<typeof import("@/analysis/data")>("@/analysis/data");
@@ -109,8 +109,8 @@ async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 		{({ parseArgs: parseArgsFn } = await load<typeof import("@/cli/args")>("@/cli/args"));}
 	const fn = commandsMod.COMMANDS[sub];
 	if (!fn) {
-		const { unknownCommandMessage } = await load<typeof import("@/cli/dispatch")>(
-			"@/cli/dispatch"
+		const { unknownCommandMessage } = await load<typeof import("@/cli/host/dispatch")>(
+			"@/cli/host/dispatch"
 		);
 		throw asCliFailure(unknownCommandMessage(sub, Object.keys(commandsMod.COMMANDS)));
 	}
@@ -170,7 +170,7 @@ async function cliFails(args: string[]): Promise<string> {
 
 const { generateChart } = await loadAlgorithm();
 const { getMutagenByStem } = await loadSihua();
-const { STEMS } = await loadConstants();
+const { STEMS } = await loadData();
 
 // ── synastry 的输入：两份 `analyze --json` 的输出文件 ──
 //
@@ -1801,10 +1801,10 @@ describe("CLI 端到端", () => {
 	});
 
 	// ── cities 容错解析 ──
-	// `cli/data/cities.ts` 只是数据表，没有分支；会「静默取错经度」的是 `cli/birth-info.ts`
+	// `cli/birth/cities.ts` 只是数据表，没有分支；会「静默取错经度」的是 `cli/birth/birth-info.ts`
 	// 的 findLongitude —— 经度差 1° 就是真太阳时差 4 分钟，足以把时辰推过边界、整张盘换掉。
 	describe("cities 容错解析（findLongitude 分支）", () => {
-		const loadFind = () => load<typeof import("@/cli/birth-info")>("@/cli/birth-info");
+		const loadFind = () => load<typeof import("@/cli/birth/birth-info")>("@/cli/birth/birth-info");
 
 		it("歧义分支：同长度候选记进 ambiguous，且最多 5 个（超出截断）", async () => {
 			const { findLongitude } = await loadFind();
@@ -1823,7 +1823,7 @@ describe("CLI 端到端", () => {
 
 		it("歧义分支：命中项必是表内真实城市，且经度与表内一致（独立预言机）", async () => {
 			const { findLongitude } = await loadFind();
-			const { PROVINCES } = await load<typeof import("@/cli/data/cities")>("@/cli/data/cities");
+			const { PROVINCES } = await load<typeof import("@/cli/birth/cities")>("@/cli/birth/cities");
 			// 期望值取自 PROVINCES 数据表，不读 findLongitude 自己的返回值 ——
 			// 否则「取错城市」时两边一起错，断言照样全绿（本仓历史上栽过同一个跟头）。
 			const all = PROVINCES.flatMap(p => p.cities);

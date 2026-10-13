@@ -11,7 +11,7 @@
 import { readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { eq, type SelftestDeps } from "../selftest-kit";
+import { eq, skipUnlessRepo, type SelftestDeps } from "./kit";
 
 /** 子进程冒烟（仅这五条用 runCli）：成功链路、错误出口、未知命令、--out 落盘与穿越防护。 */
 export function runSmoke({ ok, runCli }: Pick<SelftestDeps, "ok" | "runCli">): void {
@@ -134,29 +134,36 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 		}
 		return "workflow / synastry-troubleshooting / synastry-guide 三份与现行 CLI 口径一致";
 	});
-	ok("文档一致性：Node 下限、独占分支、升级警告三处承诺与实现同步", () => {
-		const readme = readFileSync(resolve(ctx.root, "..", "README.md"), "utf8");
-		const claude = readFileSync(resolve(ctx.root, "..", "CLAUDE.md"), "utf8");
-		const opts = readFileSync(resolve(ctx.root, "..", "references", "options.md"), "utf8");
-		const testReadme = readFileSync(resolve(ctx.root, "..", "test", "README.md"), "utf8");
-		// boot-hooks 的失败指引是**用户运行时真实看到**的报错文案——下限号写错（如仍写
-		// 22.15）会把低版本用户引向一条裸跑必失败的路径，纳入机检钉死（终审 D-1）。
-		const bootHooks = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
-		for (const [name, text] of [
-			["README.md", readme],
-			["CLAUDE.md", claude],
-			["scripts/boot-hooks.ts", bootHooks],
-		] as const) {
-			if (text.includes("22.15") && !text.includes("NODE_OPTIONS"))
-				{throw new Error(
-					`${name} 仍承诺 Node ≥ 22.15 —— 实测 22.15.0 裸跑 ERR_UNKNOWN_FILE_EXTENSION，下限应为 22.18`
-				);}
-		}
-		if (!opts.includes("独占分支") || !opts.includes("--palaces` > `--topic"))
-			{throw new Error("options.md 缺独占分支优先级链描述");}
-		if (!testReadme.includes("npm install iztro@latest"))
-			{throw new Error("test/README.md 缺升级 iztro 的 pin 改写警告");}
-	});
+	ok(
+		"文档一致性：Node 下限、独占分支、升级警告三处承诺与实现同步",
+		() => {
+			const readme = readFileSync(resolve(ctx.root, "..", "README.md"), "utf8");
+			const claude = readFileSync(resolve(ctx.root, "..", "CLAUDE.md"), "utf8");
+			const opts = readFileSync(resolve(ctx.root, "..", "references", "options.md"), "utf8");
+			const testReadme = readFileSync(resolve(ctx.root, "..", "test", "README.md"), "utf8");
+			// boot-hooks 的失败指引是**用户运行时真实看到**的报错文案——下限号写错（如仍写
+			// 22.15）会把低版本用户引向一条裸跑必失败的路径，纳入机检钉死（终审 D-1）。
+			const bootHooks = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
+			for (const [name, text] of [
+				["README.md", readme],
+				["CLAUDE.md", claude],
+				["scripts/boot-hooks.ts", bootHooks],
+			] as const) {
+				if (text.includes("22.15") && !text.includes("NODE_OPTIONS"))
+					{throw new Error(
+						`${name} 仍承诺 Node ≥ 22.15 —— 实测 22.15.0 裸跑 ERR_UNKNOWN_FILE_EXTENSION，下限应为 22.18`
+					);}
+			}
+			if (!opts.includes("独占分支") || !opts.includes("--palaces` > `--topic"))
+				{throw new Error("options.md 缺独占分支优先级链描述");}
+			if (!testReadme.includes("npm install iztro@latest"))
+				{throw new Error("test/README.md 缺升级 iztro 的 pin 改写警告");}
+		},
+		// ⚠️ README.md / CLAUDE.md / test/README.md 都是**仓库级**文档，不进分发包
+		// （包只含 SKILL.md / package.json / references/ / scripts/ 四项），
+		// 故在包形态下显式跳过 —— 判据与理由见 kit.skipUnlessRepo。
+		{ skip: skipUnlessRepo(ctx, "仓库级文档（README/CLAUDE/test-README）不入分发包") }
+	);
 }
 
 /** 知识分级登记表：data.ts 引句与 grades.ts 登记双向对拍（grades 动态 import）。 */
@@ -220,7 +227,7 @@ export async function runGradeRegistry({
  * 拦截不先于查表执行，这里就会掉进未知分支而拿不到 CMDHELP。
  */
 export async function runDispatchProbe(deps: SelftestDeps): Promise<void> {
-	const { dispatch, unknownCommandMessage } = await import("../dispatch");
+	const { dispatch, unknownCommandMessage } = await import("../host/dispatch");
 	const NAMES = ["astrology", "knowledge", "synastry", "selftest", "help"] as const;
 	const ports = {
 		ctx: deps.ctx,

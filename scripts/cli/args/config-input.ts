@@ -13,9 +13,9 @@
  */
 
 import { readFileSync } from "node:fs";
-import type { CliArgs } from "./args";
-import { OPTION_NAMES } from "./args";
-import { camelKey, OPTION_ALIASES, OPTION_GROUPS } from "./args-table";
+import type { CliArgs } from "./index";
+import { OPTION_NAMES } from "./index";
+import { camelKey, OPTION_ALIASES, OPTION_GROUPS } from "./table";
 
 /**
  * 把配置文件的键值合并进参数表（配置是基底，命令行已给的键不被覆盖）。

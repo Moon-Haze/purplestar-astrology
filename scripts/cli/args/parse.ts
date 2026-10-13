@@ -33,14 +33,14 @@
 
 import { parseArgs as nodeParseArgs } from "node:util";
 
-import { OPTION_SCOPE } from "./option-scope";
+import { OPTION_SCOPE } from "./scope";
 import {
 	ALL_OPTION_NAMES,
 	camelKey,
 	OPTION_ALIASES,
 	OPTION_GROUPS,
 	type OptionSpec,
-} from "./args-table";
+} from "./table";
 
 /**
  * CLI 参数表：`_` 收位置参数，其余键对应 `--key`（camelCase）。

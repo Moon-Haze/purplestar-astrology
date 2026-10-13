@@ -11,7 +11,7 @@
  */
 
 import { PALACE_BRANCH_ORGAN, ZIWU_LIUZHU } from "../../analysis/data";
-import { BRANCHES } from "../../constants";
+import { BRANCHES } from "@/data/ganzhi";
 import type { AnalysisContext } from "../../analysis/context";
 
 /**

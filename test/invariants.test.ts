@@ -18,7 +18,7 @@ import type { BirthInfo, Palace, ZiweiChart } from "@/types";
 import {
 	load,
 	loadAlgorithm,
-	loadConstants,
+	loadData,
 	loadPatterns,
 	loadRender,
 	loadSihua,
@@ -32,7 +32,7 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 	.map(line => JSON.parse(line) as BaselineSample);
 
 const { generateChart } = await loadAlgorithm();
-const { PALACE_NAMES_ORDER, IZTRO_TO_PROJECT_PALACE, SI_HUA_TABLE, STEMS } = await loadConstants();
+const { PALACE_NAMES_ORDER, IZTRO_TO_PROJECT_PALACE, SI_HUA_TABLE, STEMS } = await loadData();
 const { detectPatterns, GEJU_NAME_ALIASES } = await loadPatterns();
 // 古籍内核在根 `scripts/corpus/`，`@/corpus` 别名可达（与其他内核同一口径）。
 // 用到的只是**古籍文本**（格局名词频排版不变量），与排盘内核无关。
@@ -562,7 +562,7 @@ describe("排盘结构不变量", () => {
 
 		it("iztro 旧口径与去宫字简写一律抛错（不静默退化）", () => {
 			// `--focus` 确实接受「仆役」「夫妻」这类别名，但那是**参数解析层**的宽容
-			// （见 cli/birth-info.ts 的归一化）。宽容若渗进取宫层，写错的名字就不会当场失败，
+			// （见 cli/birth/birth-info.ts 的归一化）。宽容若渗进取宫层，写错的名字就不会当场失败，
 			// 而是悄悄取到「最像的那个宫」—— 正是本项目反复防的那种静默错盘。
 			const chart = charts[0].chart;
 			for (const bad of ["仆役", "仆役宫", "夫妻", "福德", "财帛", "兄弟", "命", ""])
@@ -576,8 +576,8 @@ describe("排盘结构不变量", () => {
 
 	// ── 生年四化落宫：合盘「四化入夫妻宫」的上游 ──
 	//
-	// cli/commands.ts 的 cmdsynastry 按 `x.palace === fuqi.name` 判断四化是否落进夫妻宫，
-	// 而 `x` 来自 cli/render.ts 的 locateSihua。这条链路上有两个**静默失效**口：
+	// cli/commands/index.ts 的 cmdsynastry 按 `x.palace === fuqi.name` 判断四化是否落进夫妻宫，
+	// 而 `x` 来自 cli/chart/render.ts 的 locateSihua。这条链路上有两个**静默失效**口：
 	//   1. 四化表（constants.ts 的 SI_HUA_TABLE）里某个星名写错 / 混进杂曜 ——
 	//      locateSihua 找不到该星，返回 `palace: null` 而**不抛错**；
 	//   2. locateSihua 的落宫口径漂移。

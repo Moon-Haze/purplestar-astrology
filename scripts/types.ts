@@ -2,7 +2,7 @@
  * 紫微斗数领域模型 —— 内核、CLI 与测试之间的公共类型契约。
  *
  * 本模块**只有类型，不含任何逻辑**。每个字段的取值域（索引基、是否可选、单位）在此定死：
- * `algorithm.ts` 按它产出，`cli/render.ts` 按它渲染，`test/lib/compare.ts` 按它比对。
+ * `algorithm.ts` 按它产出，`cli/chart/render.ts` 按它渲染，`test/lib/compare.ts` 按它比对。
  *
  * 贯穿全项目的三套索引约定（三者**不同域**，混用必错）：
  * - **天干索引** 0–9，序同 `constants.ts` 的 `STEMS`（0=甲 … 9=癸）
@@ -45,20 +45,20 @@ export interface BirthInfo {
 	year: number;
 	/** 公历月（1–12） */
 	month: number;
-	/** 公历日（1–31）。⚠️ 若真太阳时校正跨过午夜，此值已是**校正后**的日期（`cli/birth-info.ts` 用 `shiftDate` 调整） */
+	/** 公历日（1–31）。⚠️ 若真太阳时校正跨过午夜，此值已是**校正后**的日期（`cli/birth/birth-info.ts` 用 `shiftDate` 调整） */
 	day: number;
 	/**
 	 * **时辰序号**，取值 **0–12**：0=子 … 11=亥，**12=晚子时**。
 	 *
 	 * ⚠️ 这不是 0–23 的钟表时，也**不能**直接当 `BRANCHES` 的索引用（12 会越界）。
 	 * 钟表时 → 时辰序号的换算（真太阳时经度校正、可选均时差、跨午夜日期回退）全部在
-	 * `cli/birth-info.ts` 的 `calcTrueSolar` / `buildBirthInfo` 里完成，本字段消费的是其结果。
+	 * `cli/birth/birth-info.ts` 的 `calcTrueSolar` / `buildBirthInfo` 里完成，本字段消费的是其结果。
 	 *
 	 * 12 的语义是「子时，且要求按**晚子时算次日**安星」——它对应 iztro 的 `timeIndex` 12。
 	 * 同一时刻按晚子时（12）与早子时（0）排出的是**两张不同的盘**，不是微调
 	 * （实测：同一生日下 12 与 0 的紫微落宫都不同）。
 	 *
-	 * `cli/birth-info.ts` 只在两种情况下产出 12：`--branch 12` 直接指定，或 `--time` 的
+	 * `cli/birth/birth-info.ts` 只在两种情况下产出 12：`--branch 12` 直接指定，或 `--time` 的
 	 * 真太阳时落在 23:00–23:59 且同时给了 `--late-zi`。其余情形一律产出 0–11。
 	 */
 	timeIndex: number;
@@ -71,7 +71,7 @@ export interface BirthInfo {
 	name?: string;
 	/** 出生省份（如「河北省」）。`--province` 回退时取该省 `cities[0]`（省会）的经度，不参与安星 */
 	province?: string;
-	/** 出生城市（如「石家庄」）。`cli/birth-info.ts` 的 `findLongitude` 按名查经度，不参与安星 */
+	/** 出生城市（如「石家庄」）。`cli/birth/birth-info.ts` 的 `findLongitude` 按名查经度，不参与安星 */
 	city?: string;
 	/**
 	 * 出生地经度，**东经为正**（北京 116.4）。
@@ -134,7 +134,7 @@ export interface Star {
 	 *
 	 * ⚠️ 直接取自 iztro 的 `mutagen`：**无四化时它给的是空字符串 `""`**，而类型上写的是
 	 * 可选（`?`）——两种「无」在运行时都会出现。判空请用真值判断
-	 * （`cli/render.ts` 的 `starLine` 即 `if (s.mutagen)`），**不要**写 `=== undefined`。
+	 * （`cli/chart/render.ts` 的 `starLine` 即 `if (s.mutagen)`），**不要**写 `=== undefined`。
 	 */
 	mutagen?: Mutagen;
 	/**
@@ -162,7 +162,7 @@ export interface Star {
  *
  * 「绊线」是什么意思：`algorithm.ts` 已停止填充 {@link Palace.selfMutagen}（倪师不主张
  * 飞星派宫干自化论），而断言要盯的**正是「有没有被填回」** —— 字段与类型删了，就无从盯起。
- * 所以它们留着，`cli/selftest.ts` 与 `test/school.test.ts` 各有一条断言守着
+ * 所以它们留着，`cli/selftest/index.ts` 与 `test/school.test.ts` 各有一条断言守着
  * （断言名：「宫干自化未被填充」）。
  *
  * 会**生产**它的那些函数（`sihua.ts` 的 `detectSelfSihua` / `buildAllSelfSihua`）已删除 ——
@@ -220,7 +220,7 @@ export interface Palace {
 	 *
 	 * ⚠️ **飞星派字段，本项目（三合派）不使用，仅为兼容保留。**
 	 * `algorithm.ts` 已停止填充此字段（倪师不主张飞星派宫干自化论），运行时恒为 `undefined`；
-	 * `cli/selftest.ts` 与 `test/school.test.ts` 有断言盯着它不被重新填回。
+	 * `cli/selftest/index.ts` 与 `test/school.test.ts` 有断言盯着它不被重新填回。
 	 */
 	selfMutagen?: SelfMutagenMark[];
 	/** 对宫地支索引，由 `./palace-relations` 的 `oppositeBranch` 算出（该式为全仓单点） */
@@ -321,7 +321,7 @@ export interface ZiweiChart {
 	 * ⚠️ **数组顺序不是地支升序**，而是 iztro 的原生顺序：实测 `branch` 序列恒为
 	 * `2,3,4,5,6,7,8,9,10,11,0,1`（自寅宫起，绕到丑宫）。因此：
 	 * - **按 `branch` 建索引**（`palaces.find(p => p.branch === b)`），不要依赖数组下标；
-	 * - 要按「子→亥」或任何其它顺序展示，得自己排（`cli/render.ts` 就是显式 `sort` 后再渲染）。
+	 * - 要按「子→亥」或任何其它顺序展示，得自己排（`cli/chart/render.ts` 就是显式 `sort` 后再渲染）。
 	 */
 	palaces: Palace[];
 	/** 全部大限，按起始虚岁升序 */

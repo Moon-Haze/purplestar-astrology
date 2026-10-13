@@ -71,7 +71,7 @@
  * ## 回归与效力边界
  *
  * `test/invariants.test.ts` 的层 3 为全部约 82 个格局名建了**独立预言机**（按定义复算，
- * 不看实现），另有「化禄入财 / 化权入官」两条按偏移算术核对的断言；`cli/selftest.ts`
+ * 不看实现），另有「化禄入财 / 化权入官」两条按偏移算术核对的断言；`cli/selftest/index.ts`
  * 只断言返回结构与条目必备字段。⚠️ 该预言机复刻的是**实现当前的口径**，不是照命理理想
  * 口径重写，且 `level` 分级、`description` / `conditions` 文案均不在其覆盖范围内 ——
  * 详见 `test/README.md`。
@@ -127,7 +127,7 @@ const DETECTORS: ReadonlyArray<Detector> = [
  *   基础格局 → 收敛组）；无命中时为**空数组**
  *
  * @remarks
- * 本模块的唯一主入口，也是解读层的数据源头：`cli/commands.ts` 的 `analyze` 把它同时放进
+ * 本模块的唯一主入口，也是解读层的数据源头：`cli/commands/index.ts` 的 `analyze` 把它同时放进
  * 文本输出（`【格局识别】共 N 个`）与 `--json` 的 `patterns` 字段；`purple-star.ts` 的
  * `REQUIRED_EXPORTS` 自检盯着本导出存在。
  *

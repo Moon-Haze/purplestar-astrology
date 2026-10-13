@@ -14,7 +14,7 @@
 
 import type { Pattern, DetectContext, Detector } from "../patterns/types";
 import { SHA_HARD, SHA_KONG, PATTERN_VERDICTS } from "../corpus/data/patterns";
-import { BRANCHES } from "../constants";
+import { BRANCHES } from "@/data/ganzhi";
 import {
 	getMajorStarNames,
 	hasStar,

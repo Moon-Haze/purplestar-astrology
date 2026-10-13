@@ -11,8 +11,8 @@
  *
  * ⚠️ 索引基是 **0**；本文件的几张 `Record<number, ...>` 表（四化、天魁天钺、禄存）都以它为键。
  *
- * 消费者：`algorithm.ts`（由 iztro 的天干名反查索引）、`sihua.ts`、`cli/render.ts`
- * （渲染「寅戊」这类宫位干支）、`cli/commands.ts`、`cli/selftest.ts`。
+ * 消费者：`algorithm.ts`（由 iztro 的天干名反查索引）、`sihua.ts`、`cli/chart/render.ts`
+ * （渲染「寅戊」这类宫位干支）、`cli/commands/index.ts`、`cli/selftest/index.ts`。
  * `purple-star.ts` 的 `REQUIRED_EXPORTS` 启动自检也盯着它——**改名或删除会让 CLI 启动即失败**，
  * 这是有意的（宁可启动失败，也不静默产出错盘）。
  */
@@ -36,7 +36,7 @@ export const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未",
  * ⚠️ 本表只有 12 项、**不含「晚子时」** —— 晚子时不是第 13 个时辰，而是子时的另一种
  * 安星口径（时辰序号 12，见 `types.ts` 的 `BirthInfo.timeIndex`）。
  *
- * 消费者：`cli/birth-info.ts` 的 `shichenLabel`（拼「巳时(09:00-11:00)」这类提示文案）、
+ * 消费者：`cli/birth/birth-info.ts` 的 `shichenLabel`（拼「巳时(09:00-11:00)」这类提示文案）、
  * `purple-star.ts` 的 `REQUIRED_EXPORTS` 自检。**不参与安星**。
  */
 export const SHICHEN = [

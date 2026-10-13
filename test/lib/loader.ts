@@ -80,14 +80,14 @@ export const load = makeLoader(ROOT, ROOT_LABEL, f => {
 // ⚠️ `load<T>()` 是字符串动态导入，tsc 本不检查 —— 类型锚定全靠这里的 typeof import，
 //    这正是 CLI 引导层同款模式（详见 CLAUDE.md「CLI 如何既自举又拿到内核类型」）。
 export const loadAlgorithm = () => load<typeof import("@/algorithm")>("@/algorithm");
-export const loadConstants = () => load<typeof import("@/constants")>("@/constants");
+export const loadData = () => load<typeof import("@/data")>("@/data");
 export const loadPatterns = () => load<typeof import("@/patterns")>("@/patterns");
 export const loadSihua = () => load<typeof import("@/mutagen")>("@/mutagen");
 export const loadClassics = () => load<typeof import("@/corpus")>("@/corpus");
-export const loadRender = () => load<typeof import("@/cli/render")>("@/cli/render");
+export const loadRender = () => load<typeof import("@/cli/chart/render")>("@/cli/chart/render");
 
 /** 一次性取回测试最常用的符号。 */
 export async function loadKernel() {
-	const [algo, constants] = await Promise.all([loadAlgorithm(), loadConstants()]);
+	const [algo, constants] = await Promise.all([loadAlgorithm(), loadData()]);
 	return { ...algo, ...constants };
 }

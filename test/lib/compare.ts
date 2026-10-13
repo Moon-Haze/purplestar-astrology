@@ -17,7 +17,7 @@
 import { Solar } from "lunar-typescript";
 
 import type { BirthInfo, LunarInfo, Star, ZiweiChart } from "@/types";
-import { loadConstants, loadRender } from "./loader.ts";
+import { loadData, loadRender } from "./loader.ts";
 
 // ── 基准样本的类型（iztro 2.5.8 的 JSON 快照） ──
 //
@@ -92,7 +92,7 @@ export interface ChartDiff {
 // 本文件与内核会一起错，层 1 照旧全绿**。这与 test/README.md 记录的 02 号历史
 // 事故是同一个形状（比对器与内核同源同错）。堵这个盲区的是层 3 的两条**不读本表**
 // 的预言机：invariants.test.ts 的「iztro 直连词法」与「十二宫偏移位置」。
-const { IZTRO_TO_PROJECT_PALACE, BRANCHES } = await loadConstants();
+const { IZTRO_TO_PROJECT_PALACE, BRANCHES } = await loadData();
 
 /**
  * 把**基准样本**的宫名翻成项目口径。
@@ -112,7 +112,7 @@ const normalizePalaceName = (v: string): string => IZTRO_TO_PROJECT_PALACE[v] ??
  *
  * @remarks
  * 此前这里另抄了一份，理由是「比对器是同步函数，而内核模块是异步加载的」—— 但本模块从
- * 第一行起就用了顶层 `await loadConstants()`，那条理由从未成立；剩下的「这份表是常量、
+ * 第一行起就用了顶层 `await loadData()`，那条理由从未成立；剩下的「这份表是常量、
  * 不随内核演进而变」是个**假设**，而假设正是该被结构消除的东西。取同一份之后，
  * 内核若调整地支表，比对器的判据自动跟随。
  */
@@ -434,7 +434,7 @@ export function formatDiffs(diffs: ChartDiff[], limit = 25): string {
  * 盘指纹：快速判定两张盘是否逐宫一致（用于 CLI 的 --branch 12 ≡ 次日 --branch 0 之类断言）。
  *
  * @remarks
- * **唯一实现在 `scripts/cli/render.ts`**，此处只是转出 —— 本模块与 CLI 走同一份代码，
+ * **唯一实现在 `scripts/cli/chart/render.ts`**，此处只是转出 —— 本模块与 CLI 走同一份代码，
  * 不存在「改动其一时必须同步另一个」。此前这里另有一份逐行副本，两侧注释互相提醒却
  * **没有任何断言盯着**，只在一侧加排序就会静默分叉（指纹仍各不相同，断言照旧全绿）。
  *

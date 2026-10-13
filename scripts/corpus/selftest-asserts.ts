@@ -8,25 +8,25 @@
  * 原自研解析器不同 —— 那两条断言按 `util.parseArgs` 引擎的真实行为钉死
  * （见各断言注释）。
  *
- * 与 `cli/selftest.ts` 的接口：导出 {@link asserts}（收主 selftest 注入的
+ * 与 `cli/selftest/index.ts` 的接口：导出 {@link asserts}（收主 selftest 注入的
  * {@link SelftestDeps} —— call / runCli / ctx / ok 与排盘段同一套，不再本地手搓），
  * 逐条结果由主 selftest 汇总（报告分三段：排盘 / 古籍 / 合盘）。
  */
 
 import { readFileSync } from "node:fs";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "./index";
-import { createHarness, eq, type Assertion, type SelftestDeps } from "../cli/selftest-kit";
+import { createHarness, eq, type Assertion, type SelftestDeps } from "../cli/selftest/kit";
 
 /**
  * 古籍断言组：数据源可用性、检索行为、参数面（进程内直调 + 一条子进程冒烟）与合并接线。
  *
  * @param deps - 主 selftest 的注入面：`call` 进程内直调、`runCli` 真子进程、`ctx` 内核根
- * @returns 逐条结果；由 `cli/selftest.ts` 并入主报告
+ * @returns 逐条结果；由 `cli/selftest/index.ts` 并入主报告
  */
 export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 	// harness（Assertion / eq / ok）共用 cli/selftest-kit，此处不再有本地定义
 	//（results 是本组自己的收集数组，与主 harness 分开、文末整体返回）；
-	// call / runCli / ctx 由 deps 注入 —— 「argv → 三元组」与文案的真相源在 cli/dispatch.ts 一族。
+	// call / runCli / ctx 由 deps 注入 —— 「argv → 三元组」与文案的真相源在 cli/host/dispatch.ts 一族。
 	const { results, ok } = createHarness();
 	// 命令表与作用域键集：动态 import 打断「commands → selftest → 本文件」静态环
 	//（Cmd 已放宽为可返回 Promise），取代旧的「读源码文本做正则匹配」——
@@ -148,7 +148,7 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 		// 任何一侧漏接，用户敲 `knowledge` 就是「未知命令」或 `--limit` 就是「未知参数」。
 		// 键集来自函数顶部的动态 import（见彼处注释）。
 		if (!("knowledge" in COMMANDS))
-			{throw new Error("cli/commands.ts 的命令表里没有 knowledge 条目 —— 合并接线断了");}
+			{throw new Error("cli/commands/index.ts 的命令表里没有 knowledge 条目 —— 合并接线断了");}
 		for (const f of ["search", "limit"]) {
 			if (!OPTION_NAMES.has(f))
 				{throw new Error(`cli 的 OPTION_NAMES 里没有 ${f} —— knowledge 参数未声明`);}

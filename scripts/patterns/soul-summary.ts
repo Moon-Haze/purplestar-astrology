@@ -6,7 +6,7 @@
  * 两张映射表直接写在这里 —— 是格局层里最干净的一刀。
  *
  * 「保持向后兼容」指的是：它是格局层最早对外暴露的导出之一，
- * `cli/commands.ts` 的 `analyze` 至今按原样取用，签名与返回结构不得改动。
+ * `cli/commands/index.ts` 的 `analyze` 至今按原样取用，签名与返回结构不得改动。
  *
  * @packageDocumentation
  */
@@ -24,7 +24,7 @@ import type { ZiweiChart } from "../types";
  * @remarks
  * 为**向后兼容**保留的轻量摘要：两张大表（`keywordMap` / `natureMap`）是按 14 主星硬编码
  * 的中文词条，故与 `./helpers` 及各分组识别器都不同 —— 这里**不判条件，只做映射**，属纯文案层。
- * `cli/commands.ts` 的 `analyze`（文本与 `--json` 的 `mingGongSummary`）都取它，与
+ * `cli/commands/index.ts` 的 `analyze`（文本与 `--json` 的 `mingGongSummary`）都取它，与
  * `detectPatterns` 的输出拼成完整解读素材。
  *
  * 三处口径需要注意：
@@ -32,7 +32,7 @@ import type { ZiweiChart } from "../types";
  * 1. **只看主星**：`keywordMap` 与 `natureMap` 都只覆盖 14 主星，吉煞杂耀一概不参与
  * 2. **空宫给"空宫"**：`stars` 为空（命宫无主星）时 `nature` 直接是字面量 `"空宫"`，
  *    `keywords` 为空数组 —— 此时调用方需改为从**借入的对宫主星**取释义，
- *    `cli/commands.ts` 就是这么处理的（见 `Palace.borrowedStars`）
+ *    `cli/commands/index.ts` 就是这么处理的（见 `Palace.borrowedStars`）
  * 3. **`nature` 与 `keywords` 都锚在首颗主星**：`nature` 取 `starNames[0]`，而
  *    `keywords` 把**所有**主星的词条摊平后 `slice(0, 5)` —— 命宫坐双主星时，
  *    首星决定星性、两星共同贡献关键词

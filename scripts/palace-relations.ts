@@ -7,9 +7,9 @@
  * 同源」维持一致 —— 改一处不会有任何东西发现：
  *
  * - **对宫** `(x + 6) % 12`：`algorithm.ts`（填 `Palace.oppositeBranch` 字段）、
- *   `patterns.ts` 6 处、`analysis.ts` 6 处、`cli/commands.ts` 1 处
+ *   `patterns.ts` 6 处、`analysis.ts` 6 处、`cli/commands/index.ts` 1 处
  * - **三方四正** `[b, (b+4)%12, (b+8)%12, (b+6)%12]`：`patterns.ts` 2 处、
- *   `analysis.ts` 3 处（本命借对宫 / 大限会照 / 流年会照）、`cli/render.ts` 1 处
+ *   `analysis.ts` 3 处（本命借对宫 / 大限会照 / 流年会照）、`cli/chart/render.ts` 1 处
  *
  * 本模块是它们的单点：偏移算式**只在这里出现**，其余模块一律引用。
  *
@@ -40,7 +40,7 @@
  */
 
 import type { ZiweiChart, Palace } from "./types";
-import { BRANCHES } from "./constants";
+import { BRANCHES } from "@/data/ganzhi";
 
 /**
  * 取对宫地支。

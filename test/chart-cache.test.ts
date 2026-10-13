@@ -1,4 +1,4 @@
-// ── 层 3：排盘缓存层（scripts/cli/chart-cache.ts）──
+// ── 层 3：排盘缓存层（scripts/cli/chart/chart-cache.ts）──
 //
 // 缓存的正确性靠**行为断言**而不是「跑两次输出相同」来验：后者在缓存根本没生效时
 // 也成立（两次现排本来就一致），是零信号断言。故本文件的核心手法是**哨兵 chart** ——
@@ -25,7 +25,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(HERE, "..");
 const CLI = resolve(SKILL_ROOT, "scripts/purple-star.ts");
 
-const cacheNs = await load<typeof import("@/cli/chart-cache")>("@/cli/chart-cache");
+const cacheNs = await load<typeof import("@/cli/chart/chart-cache")>("@/cli/chart/chart-cache");
 const {
 	generateChartCached,
 	cacheFileFor,

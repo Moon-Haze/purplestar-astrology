@@ -19,7 +19,7 @@
  *
  * 本文件自身不依赖任何 `.ts` 解析：调用方必须用**带 `.ts` 扩展名**的说明符 import 它
  * （`import { … } from "./boot-hooks.ts"`），Node 的原生类型擦除即可加载，不需要钩子。
- * `cli/selftest.ts` 有一条断言盯着这条约束不被破坏。
+ * `cli/selftest/index.ts` 有一条断言盯着这条约束不被破坏。
  *
  * @packageDocumentation
  */

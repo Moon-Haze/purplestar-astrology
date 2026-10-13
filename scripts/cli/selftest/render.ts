@@ -11,7 +11,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { generateChart } from "@/algorithm";
-import { STAR_DESCRIPTIONS } from "@/constants";
+import { STAR_DESCRIPTIONS } from "@/data/stars";
 import {
 	filterGenderContent,
 	getTopicAnalysis,
@@ -28,9 +28,9 @@ import {
 	overviewSection,
 	mutagenSection,
 	ageSection,
-} from "../fortune";
+} from "../commands/fortune";
 import { SAMPLE } from "./sample";
-import { eq, type SelftestDeps } from "../selftest-kit";
+import { eq, type SelftestDeps } from "./kit";
 
 /** 知识源可用性：星曜释义、主题论断库、多视角产出、引导层依赖豁免。 */
 export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {

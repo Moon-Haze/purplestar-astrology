@@ -9,7 +9,7 @@
  *    后以「`--a-chart` 是未知参数」的形态重新钉死；
  * 3. 两条 SKILL.md 一致性断言换成「合并接线」断言（根 SKILL.md 的重写在 Task 10）。
  *
- * 与 `cli/selftest.ts` 的接口：导出 {@link asserts}（收主 selftest 注入的
+ * 与 `cli/selftest/index.ts` 的接口：导出 {@link asserts}（收主 selftest 注入的
  * {@link SelftestDeps} —— call / ctx / ok 与排盘段同一套，不再本地手搓），
  * 逐条结果由主 selftest 汇总。
  */
@@ -20,7 +20,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { STAR_IN_FUQI_GU, SIHUA_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } from "./synastry-knowledge";
 import { readAnalyzeJson } from "./chart-view";
-import { createHarness, type Assertion, type SelftestDeps } from "../cli/selftest-kit";
+import { createHarness, type Assertion, type SelftestDeps } from "../cli/selftest/kit";
 
 /** 本内核目录（`scripts/synastry`）。 */
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -138,12 +138,12 @@ function makeFixture(o: {
  * 合盘断言组：命令冒烟、输入护栏、参考文档、知识源与参数面（进程内直调）。
  *
  * @param deps - 主 selftest 的注入面：`call` 进程内直调、`ctx` 内核根
- * @returns 逐条结果；由 `cli/selftest.ts` 并入主报告
+ * @returns 逐条结果；由 `cli/selftest/index.ts` 并入主报告
  */
 export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 	// harness（Assertion / ok）共用 cli/selftest-kit，此处不再有本地定义
 	//（results 是本组自己的收集数组，与主 harness 分开、文末整体返回）；
-	// call / ctx 由 deps 注入 —— 「argv → 三元组」与文案的真相源在 cli/dispatch.ts 一族。
+	// call / ctx 由 deps 注入 —— 「argv → 三元组」与文案的真相源在 cli/host/dispatch.ts 一族。
 	// 本组调用点全部是进程内直调（原 spawnSync 每次约 3.2 秒 iztro 冷启动，11 个调用点
 	// ≈ 35 秒；直调复用本进程已加载的 iztro，判据同构）。「stderr 前缀 + exit 1」真链路
 	// 由主 selftest 的子进程冒烟覆盖。
@@ -152,7 +152,7 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 	// 放宽为可返回 Promise），取代旧的「读源码文本做子串匹配」—— 物理排版退出契约。
 	const { COMMANDS } = await import("../cli/commands");
 	const { OPTION_NAMES } = await import("../cli/args");
-	const { OPTION_SCOPE } = await import("../cli/option-scope");
+	const { OPTION_SCOPE } = await import("../cli/args/scope");
 
 	// 临时目录：两份假盘写在这里，喂给子进程。用 mkdtemp 而非固定名，避免并行跑时互相踩。
 	const tmp = mkdtempSync(join(tmpdir(), "synastry-selftest-"));
@@ -386,7 +386,7 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 			// 前缀表已清空（a-/b- 退役）—— 任何一侧漏接，用户敲 `synastry --charts` 就是「未知参数」。
 			// 键集来自函数顶部的动态 import（见彼处注释）。
 			if (!("synastry" in COMMANDS))
-				{throw new Error("cli/commands.ts 的命令表里没有 synastry 条目 —— 合并接线断了");}
+				{throw new Error("cli/commands/index.ts 的命令表里没有 synastry 条目 —— 合并接线断了");}
 			if (!OPTION_NAMES.has("charts"))
 				{throw new Error("cli 的 OPTION_NAMES 里没有 charts —— 合盘输入参数未声明");}
 			if (

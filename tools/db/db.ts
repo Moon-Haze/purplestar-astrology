@@ -159,7 +159,7 @@ export type DbLayout = "inline" | "parquet";
 //   <DIR>/ziwei.duckdb.dict.jsonl      行字典副本（见 dictPathFor）
 //   <DIR>/ziwei.duckdb.progress.json   构建进度（断点续跑）
 //
-// 路径参数契约（与 cli/out.ts 的 --out 同款）：拒收含 `..` 段的**原始**路径，
+// 路径参数契约（与 cli/host/out.ts 的 --out 同款）：拒收含 `..` 段的**原始**路径，
 // 绝对路径与子目录不受影响，相对位置的跳转一律用绝对路径表达。校验必须写在
 // 各自函数体内（内联 if-throw），抽公共函数则调用方视图中断不了污点流。
 export function dbPathIn(outDir: string): string {

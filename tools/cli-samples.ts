@@ -13,7 +13,7 @@
 //   npx tsx tools/cli-samples.ts --out docs/cli-samples.md    # 直接落盘成 markdown 文件
 //   npx tsx tools/cli-samples.ts -h                           # 本帮助
 //
-// 落盘走 --out：写点收敛在 scripts/cli/out.ts 的 writeOutFile（路径 `..` 段校验在同一处），
+// 落盘走 --out：写点收敛在 scripts/cli/host/out.ts 的 writeOutFile（路径 `..` 段校验在同一处），
 // 与主 CLI 的 `--out` 同一通道；正文不再占 stdout，进度日志走 stderr，不污染文档。
 // 两条通道产物逐字一致（stdout 逐行 console.log 补的换行 = 落盘末尾补的那个换行）。
 //
@@ -41,10 +41,10 @@ import { fileURLToPath } from "node:url";
 
 import { parseArgs, type CliContext } from "@/cli/args";
 import { COMMANDS } from "@/cli/commands";
-import { unknownCommandMessage } from "@/cli/dispatch";
-import { renderCommandHelp, renderOverviewHelp } from "@/cli/help";
-import { writeOutFile } from "@/cli/out";
-import { cmdSelftest } from "@/cli/selftest";
+import { unknownCommandMessage } from "@/cli/host/dispatch";
+import { renderCommandHelp, renderOverviewHelp } from "@/cli/commands/help";
+import { writeOutFile } from "@/cli/host/out";
+import { cmdSelftest } from "@/cli/selftest/index";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <仓库根>/tools
 const SKILL_ROOT = resolve(HERE, "..");

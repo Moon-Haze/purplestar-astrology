@@ -16,7 +16,7 @@
 
 ## 命令
 
-没有构建、没有 lint（`typecheck` 是类型检查，不是 lint），排盘与解读全部经由 CLI 入口（`npm test` 只跑测试，不参与运行）。
+**没有构建步骤**（`.ts` 直接跑，见「为什么能直接跑 TypeScript」）。代码风格闸门有两条：`npm run lint`（ESLint，规则见 `eslint.config.mjs`）与 `npm run format`（Prettier，见 `.prettierrc`），二者独立于 `typecheck` —— `typecheck` 只管类型自洽，不管风格。排盘与解读全部经由 CLI 入口（`npm test` 只跑测试，不参与运行）。
 
 以下在**仓库根**执行（示例数据为虚构）：
 
@@ -51,11 +51,50 @@ npm run test:corpus -- --year 1960    # 全量核验（需 reference/ 存在，�
 
 # 类型检查：必须 0 错误。运行不依赖它（Node 直接擦类型），改过类型就该跑
 npm run typecheck
+
+# 分发：打 zip（只收 SKILL.md / package.json / references/ / scripts/ 四项，scripts 不拍平）
+# 打完自动解压到临时目录跑一遍 selftest，必须全绿
+npm run pack
 ```
 
 **改过内核或升级 `iztro` 之后，两层都要跑；动过 `.ts` 的类型标注，`npm run typecheck` 也要跑。** `selftest` 测「代码逻辑自洽」，覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、性别护栏、排盘不变量、三合派体系约束、知识源可用性、古籍检索行为、合盘护栏与参数面契约；`npm test` 是**外部基准比对**，用 300 条真实盘逐字段对标，能抓住 `selftest` 那几条固定样例漏掉的行为漂移。测试的性质与效力边界见 [test/README.md](test/README.md)。
 
 三者分工不同，谁都替代不了谁：`typecheck` 只看类型**自洽**，不看类型**标得对不对**——把 `Star` 写成 `any` 它一样全绿，所以我们**不用 `any` 绕过报错**。
+
+### 分发：`npm run pack` 打 zip（`scripts/` 不拍平）
+
+产物 `dist/purplestar-astrology.zip`（约 1.2 MB / 121 条目），只含
+`SKILL.md` `package.json` `references/` `scripts/` 四项，顶层目录 `purplestar-astrology/`。
+`dist/` 在 `.gitignore` 内。
+
+⚠️ **不要为了「目录扁平」去拍平 `scripts/`**：内核定位走 `boot-hooks` 的 `pickRoot`
+（脚本自身所在目录），与目录层级**无关**。实测拍平前后 selftest 都是 151/151。
+拍平反而要重写 371 处 import 与动态 `load()` 字面量 —— 收益零、风险全是：
+`load<>("@/x")` 是**字符串字面量**不是 import 语句，正则抓不到，
+漏改的症状是「产物启动即无法加载 @/cli/dispatch」（而仓库 typecheck/selftest 全绿）。
+
+打包器是**自己写的最小 ZIP 写入器**（只依赖 `node:zlib`），三条理由与一条注意事项：
+
+- **时间戳固定 → 字节可复现**：同输入三次构建 sha256 相同，用户可校验包未被改动。
+  外层 `zip` 命令会把 mtime 写进包，同一份源码打两次字节就不同。
+- **零外部命令**：Windows / 无 Info-ZIP 的机器照样能跑。
+- `verify()` **会自动解压 + 跑 selftest** ——「zip 能生成」不等于「装上能用」。
+  但它自己解压自己验**不算自证**：改动打包逻辑后，另用 `unzip -t` 或
+  `python -c "import zipfile"` 交叉验一遍。
+- 只实现 deflate + 32 位 CRC，无 Zip64（条目 < 4 GB、名 < 64 KB，本仓离上限极远）。
+
+三条跨形态纪律：
+
+1. **不要在代码里写死目录层级**。要定位包内文件一律走 `ctx.root`（= `scripts/`），
+   不写 `ROOT/../..` 这类上溯——层数一变就静默找错文件。
+2. **仓库级文档不在分发件里**。`CLAUDE.md` / `test/` / `docs/` / `db/` 都不进包，
+   因此依赖它们的断言用 `skipUnlessRepo` 显式跳过（判据是包根有没有 `CLAUDE.md`）。
+   **跳过必须看得见**（报告上标 `⏭`）——与「跑过了」不可区分的恒真守卫比没有守卫更坏。
+   现状：仓库 0 跳过 / 分发 1 跳过。
+3. **zip 顶层目录名必须与 frontmatter `name` 一致**（`purplestar-astrology`），
+   宿主按目录名发现技能，不一致则永远唤不起。
+
+---
 
 ## 架构
 
@@ -70,32 +109,41 @@ npm run typecheck
     ├── purple-star.ts              引导层：定位内核根 → 注册 TS 钩子 → 启动自检 → 分发命令
     ├── boot-hooks.ts               引导**机制**（内核根定位 / 解析钩子 / 动态加载），CLI 与 test/ 共用
     │                               只 import node: 内置 —— 故可在钩子注册前被静态 import
-    ├── cli/args-table.ts           参数声明表：OPTION_GROUPS + OPTION_ALIASES + 全集派生
-    │                               （「有哪些参数」的唯一来源）
-    ├── cli/args.ts                 参数解析：校验 + 别名归一 + 判重 + 贪婪取值
-    │                               （util.parseArgs tokens 底座 + 薄适配层，cac 已退役）
-    ├── cli/option-scope.ts         参数作用域：本 skill 认声明表里的哪些参数
-    ├── cli/birth-info.ts           出生信息（真太阳时 / 农历 / 城市容错 / 省名回退）
-    ├── cli/birth-info-defs.ts      出生信息层的声明：接口与常量
-    ├── cli/render.ts               命盘渲染（宫位 / 星曜 / 四化 / 宫名口径）
-    ├── cli/fortune.ts              运限专题（流年/大限/小限/信息/格局/四化/聚焦各节）
-    ├── cli/astrology.ts            排盘分析一条命令（四命令合一：概览默认 + 功能参数分发）
-    ├── cli/knowledge/              知识检索命令（四域合一：books 古籍 / stars 星曜 /
-    │                               tianji 天纪 / oracle 断语；原 classics 改名）
-    ├── cli/synastry.ts             合盘命令（--charts 输入）
-    ├── cli/config.ts               --config / --template（JSON 配置输入）
-    ├── cli/command-meta.ts         命令名与文案轻模块（help 路径专用，禁 import 命令实现）
-    ├── cli/out.ts                  --out 落盘通道（与 stdout 产物逐字对拍）
-    ├── cli/report.ts               --report 全盘主题报告的文档装配层
-    ├── cli/help.ts                 help 渲染（man 七节/总览八节 + 命令→参数归属表）
-    ├── cli/commands.ts             命令注册薄层（COMMAND_TABLE + COMMAND_DESC + COMMAND_HELP）
-    ├── cli/selftest.ts             回归断言（三段汇总，项数由首行自报）
-    ├── cli/selftest-kit.ts         selftest 断言共用 harness（Assertion / eq / ok）——selftest 与
-    │                               corpus / synastry 两个断言组共用
+    ├── cli/args/                    参数面（声明 → 解析 → 作用域 → 文件输入）
+    │   ├── table.ts                 参数声明表：OPTION_GROUPS + OPTION_ALIASES + 全集派生
+    │   │                             （「有哪些参数」的唯一来源，零依赖纯数据）
+    │   ├── parse.ts                 参数解析：校验 + 别名归一 + 判重 + 贪婪取值
+    │   │                             （util.parseArgs tokens 底座 + 薄适配层，cac 已退役）
+    │   ├── scope.ts                 参数作用域：本 skill 认声明表里的哪些参数
+    │   ├── config-input.ts          --config / --template（JSON 配置输入）
+    │   └── index.ts                 `@/cli/args` 门面（CliArgs / CliContext 类型锚点落点）
+    ├── cli/birth/                   出生信息
+    │   ├── birth-info.ts            解析（真太阳时 / 农历 / 城市容错 / 省名回退）
+    │   ├── birth-info-defs.ts       出生信息层的声明：接口与常量
+    │   └── cities.ts                中国城市经纬度纯数据表（真太阳时经度校正的唯一来源）
+    ├── cli/chart/                   命盘产物
+    │   ├── render.ts                渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）
+    │   └── chart-cache.ts           排盘缓存层（键 = 出生信息 sha256）
+    ├── cli/commands/                命令层
+    │   ├── index.ts                 命令注册薄层（COMMAND_TABLE + COMMAND_DESC + COMMAND_HELP）
+    │   ├── command-meta.ts          命令名与文案轻模块（help 路径专用，禁 import 命令实现）
+    │   ├── help.ts                  help 渲染（man 七节/总览八节 + 命令→参数归属表）
+    │   ├── astrology.ts             排盘分析一条命令（四命令合一：概览默认 + 功能参数分发）
+    │   ├── fortune.ts               运限专题（流年/大限/小限/信息/格局/四化/聚焦各节）
+    │   ├── report.ts                --report 全盘主题报告的文档装配层
+    │   ├── synastry.ts              合盘命令（--charts 输入）
+    │   └── knowledge/               知识检索命令（四域合一：books 古籍 / stars 星曜 /
+    │                                 tianji 天纪 / oracle 断语；原 classics 改名）
+    ├── cli/host/                    宿主装配（引导层按需加载的端口）
+    │   ├── dispatch.ts              argv → { code, out, err, outFile } 的分发协议（唯一真相源）
+    │   └── out.ts                   --out 落盘通道（与 stdout 产物逐字对拍）
+    ├── cli/selftest/                回归自检（index = 主报告 + 八组断言；kit = 共用 harness）
+    │   └── kit.ts                   Assertion / eq / ok / createHarness ——selftest 与 corpus /
+    │                                 synastry 两个断言组共用
     ├── algorithm.ts 等             排盘内核（原 ziwei/ 目录，2026-10-12 拆平至 scripts/ 根）：
     │                               algorithm（iztro 主流程）/ patterns（格局层）/
     │                               mutagen（四化）/ analysis（主题论断数据库 v3）/ data
-    │                               （干支/四化/星曜数据表）/ constants / wenmo-brightness /
+    │                               （干支/五行/四化/星曜数据表）/ wenmo-brightness /
     │                               palace-relations / types
     ├── corpus/                     古籍与文献语料内核：data/（三部古籍 + 引文核对表 +
     │                               格局判词）+ tianji/（天纪判语）+ index（检索纯函数）
@@ -211,7 +259,7 @@ CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 
 ## 代码审查
 
-改动前后的自查闸门见上（`typecheck` / `selftest` / `npm test` 三件套，互不替代）。
+改动前后的自查闸门见上：`typecheck`（类型自洽）/ `selftest`（代码逻辑自洽）/ `npm test`（外部基准比对）三件套互不替代，另加 `lint` / `format` 两条风格闸门。
 **自查只确认「没红」，不确认「红得对不对、证据够不够」** —— 后者是代码审查的事，
 标准、分档、证据要求与流程见 [docs/code-review-20261012.md](docs/code-review-20261012.md)。
 

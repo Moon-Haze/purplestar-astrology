@@ -2,7 +2,7 @@
  * 本 skill 的**参数作用域** —— 单 skill 认哪些参数。
  *
  * @remarks
- * 与 `./args.ts` 的分工：那份是**声明表 + 解析骨架**（`util.parseArgs` tokens 底座 +
+ * 与 `./parse.ts` 的分工：那份是**声明表 + 解析骨架**（`util.parseArgs` tokens 底座 +
  * 薄适配层），本文件则是「本 skill 认声明表里的哪些参数」那一层 —— {@link OptionScope}
  * 契约与 {@link OPTION_SCOPE} 值同居于此，本文件不 import 任何模块（依赖图叶子）。
  *

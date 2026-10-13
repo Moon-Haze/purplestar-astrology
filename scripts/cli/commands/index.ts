@@ -1,20 +1,23 @@
 /**
  * 命令注册薄层 —— 只留 COMMAND_TABLE 与 COMMAND_DESC。
  *
- * 各命令实现按文件拆分（spec §2.2「cli/ 按命令一文件」）：
- * 各 `cmdXxx` 住在各自的 `cli/<命令名>.ts`，本文件只做注册 —— 改某条命令去它的文件，
- * 加命令则在这里挂一行（漏挂的命令敲了就是「未知命令」）。
+ * 各命令实现按文件拆分：`cmdXxx` 住在**同目录**下的 `<命令名>.ts`（astrology /
+ * fortune / report / synastry），知识检索在 `knowledge/` 子目录；本文件只做注册 ——
+ * 改某条命令去它的文件，加命令则在这里挂一行（漏挂的命令敲了就是「未知命令」）。
  *
- * `cities` 命令已删（spec §3.1）：`cli/data/cities.ts` 的数据表**保留**（`--city` 的容错
+ * ⚠️ 本文件即 `@/cli/commands` 的落点（原 `cli/commands.ts`，2026-10-13 重组时并入
+ * `cli/commands/` 并成为该目录的 index）—— 故外部对该目录的引用不需要改写。
+ *
+ * `cities` 命令已删（spec §3.1）：`cli/birth/cities.ts` 的数据表**保留**（`--city` 的容错
  * 解析与省名回退仍在用），删的只是查询命令。
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 各命令文件。
  */
 
-import type { CliArgs, CliContext } from "./args";
-import { cmdSelftest } from "./selftest";
+import type { CliArgs, CliContext } from "../args";
+import { cmdSelftest } from "../selftest";
 import { cmdAstrology } from "./astrology";
-import { cmdKnowledge } from "./knowledge";
+import { cmdKnowledge } from "../knowledge";
 import { cmdSynastry } from "./synastry";
 // 命令名清单与 HELP 描述文案住在 command-meta（轻模块，不 import 命令实现）——
 // help / 未知命令路径只需要它们，不必拉起 iztro（见 purple-star.ts 的懒加载）。
@@ -30,7 +33,7 @@ export type { CommandName } from "./command-meta";
  * 命令实现的签名：返回**已渲染好的文本**（或其 Promise），由引导层统一 `await` 后 `console.log`。
  *
  * @remarks
- * 允许 async 是给 `cmdSelftest` 的：它要 `await import("./commands")` 取命令表键集
+ * 允许 async 是给 `cmdSelftest` 的：它要 `await import("./index")` 取命令表键集
  * （替代旧的「读源码文本正则抽键」），动态 import 是打断「commands → selftest → commands」
  * 静态环的唯一手段 —— 同步签名下这条 seam 只能用对物理排版敏感的正则走第三条路。
  */

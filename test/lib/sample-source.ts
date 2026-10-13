@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 import type { DuckDBConnection } from "@duckdb/node-api";
 
 import type { BirthInfo, Star } from "@/types";
-import { loadConstants } from "./loader.ts";
+import { loadData } from "./loader.ts";
 import type {
 	BaselineChart, BaselineDecadal, BaselinePalace, BaselineSample, BaselineStar,
 } from "./compare.ts";
@@ -243,7 +243,7 @@ export interface PalaceRow {
 
 // 四化表从内核取，不在此另抄一份 —— 它是四化的唯一定义处。
 // ⚠️ 与 compare.ts 取 IZTRO_TO_PROJECT_PALACE 同理，必须动态获取（见文件头注释）。
-const { SI_HUA_TABLE } = await loadConstants();
+const { SI_HUA_TABLE } = await loadData();
 const SIHUA_STARS: ReadonlySet<string> = new Set(Object.values(SI_HUA_TABLE).flat());
 
 /**

@@ -2,7 +2,7 @@
  * 命盘渲染层 —— 把排盘内核输出的结构化数据，渲染成给模型读的文本片段。
  *
  * 拆自 purple-star.ts。只依赖 `@/` 内核，不依赖本目录的其他模块 —— 唯一例外是
- * `import type { CaliberBasis } from "./birth-info-defs"`（候选 6 的 basis 签名，
+ * `import type { CaliberBasis } from "../birth/birth-info-defs"`（候选 6 的 basis 签名，
  * 类型 import 运行时被完全擦除，不形成运行时边）与 `./chart-cache`（晚子时对照盘
  * 走排盘缓存，birth-info → render（fmtDate）的依赖方向同样不破）。
  * 故本文件仍处依赖图底层（args / render 并列底层）。
@@ -12,8 +12,8 @@
  */
 
 import type { BirthInfo, Palace, Star, ZiweiChart, Mutagen } from "@/types";
-import type { CaliberBasis } from "./birth-info-defs";
-import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/constants";
+import type { CaliberBasis } from "../birth/birth-info-defs";
+import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/data/ganzhi";
 import { mustPalaceAtBranch, surroundBranches } from "@/palace-relations";
 import { generateChartCached } from "./chart-cache";
 

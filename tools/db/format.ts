@@ -1,5 +1,5 @@
 // 库内编码值的中文译码（tools/db）：干支序、亮度归并、samples 字段名与各列的展示格式。
-import { cell } from "./render";
+import { cell } from "./../../scripts/cli/chart/render";
 
 // 干支码来自 iztro 的枚举序：天干 甲=0…癸=9、地支 子=0…亥=11
 // （对账样本 1：农历癸亥年 → year_stem=9 / year_branch=11，与库一致）。

@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url";
 import { Solar, Lunar } from "lunar-typescript";
 
 import type { BirthInfo, ZiweiChart } from "@/types";
-import { loadAlgorithm, loadConstants, loadSihua } from "../lib/loader.ts";
+import { loadAlgorithm, loadData, loadSihua } from "../lib/loader.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/tools
 const SKILL_ROOT = resolve(HERE, "../..");
@@ -183,7 +183,7 @@ async function main(): Promise<void> {
 	}
 
 	const { generateChart } = await loadAlgorithm();
-	const { PALACE_NAMES_ORDER, STEMS, BRANCHES } = await loadConstants();
+	const { PALACE_NAMES_ORDER, STEMS, BRANCHES } = await loadData();
 	const { getMutagenByStem } = await loadSihua();
 	const ctx: Ctx = { PALACE_NAMES_ORDER, STEMS, BRANCHES, getMutagenByStem };
 

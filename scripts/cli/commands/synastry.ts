@@ -1,10 +1,10 @@
 /**
  * `synastry` 命令：合盘（双宫联参 + 夫妻宫断语）。
  *
- * 实现逐字保留，只换 import 来源（`@/synastry` 内核）与命令注册（进 `./commands.ts` 的 COMMAND_TABLE）。
+ * 实现逐字保留，只换 import 来源（`@/synastry` 内核）与命令注册（进 `./index.ts` 的 COMMAND_TABLE（同目录））。
  */
 
-import type { CliArgs } from "./args";
+import type { CliArgs } from "../args";
 import {
 	branchName,
 	fmtDate,

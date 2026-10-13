@@ -14,7 +14,7 @@
  */
 
 import type { Palace, ZiweiChart, Mutagen } from "@/types";
-import { STEMS, BRANCHES } from "@/constants";
+import { STEMS, BRANCHES } from "@/data/ganzhi";
 import {
 	getYearlyMutagen,
 	getMonthlyMutagen,
@@ -26,7 +26,7 @@ import {
 } from "@/mutagen";
 import { surroundBranches, oppositeBranch } from "@/palace-relations";
 import { detectPatterns } from "@/patterns";
-import { FOCUS_ALIASES, locateSihua, renderPalace, starLine, surroundNames } from "./render";
+import { FOCUS_ALIASES, locateSihua, renderPalace, starLine, surroundNames } from "../chart/render";
 import { Solar } from "lunar-typescript";
 
 // ══════════════════════ 运限定位（纯函数）══════════════════════

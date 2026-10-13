@@ -17,10 +17,10 @@ import { checkForbiddenFeatures } from "@/school/guard";
 import { SCHOOLS, DEFAULT_SCHOOL_ID } from "@/school/registry";
 import { getPalaceByBranch } from "@/patterns/helpers";
 import { getMutagenByStem, getYearStemIndex, getMonthlyMutagen } from "@/mutagen";
-import { STEMS, BRANCHES } from "@/constants";
-import { yearlyBranchOf, agePalaceOf, parseAgesArg } from "../fortune";
+import { STEMS, BRANCHES } from "@/data/ganzhi";
+import { yearlyBranchOf, agePalaceOf, parseAgesArg } from "../commands/fortune";
 import { SAMPLE } from "./sample";
-import { eq, type SelftestDeps } from "../selftest-kit";
+import { eq, type SelftestDeps } from "./kit";
 
 /** 排盘不变量：十二宫齐全 / 地支不重复 / 命宫唯一 / 五行局合法 / 空宫借宫字段。 */
 export function runChartInvariants({ ok }: Pick<SelftestDeps, "ok">): void {

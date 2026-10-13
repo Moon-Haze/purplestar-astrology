@@ -40,7 +40,7 @@ import {
 import { makeContext } from "../analysis/context";
 import { detectGeJu, filterGenderContent } from "../analysis/lookups";
 import { descPalaceStars } from "../analysis/palace-query";
-import { BRANCHES } from "../constants";
+import { BRANCHES } from "@/data/ganzhi";
 import { renderDecadal } from "../analysis/views/decadal";
 import { renderHealth } from "../analysis/views/health";
 import { renderKuiYue } from "../analysis/views/patron";

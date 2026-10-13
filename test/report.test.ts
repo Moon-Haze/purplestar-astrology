@@ -1,7 +1,7 @@
 // ── 层 2.5：astrology --report 全盘主题报告 ──
 //
 // --report 是独占分支（本命静态口径、Markdown 文档形态），与 --topic（单主题、
-// 终端文本形态）共用同一套叶子 view 与数据表，但编排与装配在 cli/report.ts。
+// 终端文本形态）共用同一套叶子 view 与数据表，但编排与装配在 cli/commands/report.ts。
 // 本文件测三件事：
 //   1. 文档形态契约 —— 13 个板块齐全且顺序固定（用户口径，非 TOPIC_KEYS 存储序）、
 //      文档头骨架行、每节的定调 / 命盘依据 / 综合建议、知识来源分级尾注
@@ -22,7 +22,7 @@ const execFileAsync = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(HERE, "..");
 
-// ── 报告的板块序（与 scripts/cli/report.ts 的 REPORT_TOPICS 同一份用户口径）──
+// ── 报告的板块序（与 scripts/cli/commands/report.ts 的 REPORT_TOPICS 同一份用户口径）──
 // 存储序（TOPIC_KEYS）是 parquet 列序动不得；报告序是产品口径 —— 两者不同是有意的，
 // 这条清单钉住后者，编排层重排板块时此处必须同步改。
 const REPORT_TOPICS = [

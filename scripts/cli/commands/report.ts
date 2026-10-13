@@ -18,9 +18,9 @@ import {
 } from "@/analysis";
 import { detectPatterns } from "@/patterns";
 import { getMutagenByStem } from "@/mutagen";
-import { BRANCHES, STEMS } from "@/constants";
-import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua } from "./render";
-import type { CaliberBasis } from "./birth-info-defs";
+import { BRANCHES, STEMS } from "@/data/ganzhi";
+import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua } from "../chart/render";
+import type { CaliberBasis } from "../birth/birth-info-defs";
 
 /**
  * 报告的 13 个板块及顺序 —— 与 `TOPIC_KEYS` 的存储序不同（那份数序是 parquet 列序，

@@ -5,7 +5,7 @@
  */
 
 import type { BirthInfo, Mutagen, ZiweiChart } from "@/types";
-import type { CliArgs } from "./args";
+import type { CliArgs } from "../args";
 import {
 	BIRTH_KEYS,
 	camelKey,
@@ -13,10 +13,10 @@ import {
 	EXCLUSIVE_PRIORITY_LABEL,
 	INTENT_KEYS,
 	SHADOWABLE_KEYS,
-} from "./args-table";
-import { applyConfig, renderTemplate } from "./config";
-import { buildBirthInfo } from "./birth-info";
-import { clockOptsFromBasis, toBasis, type CaliberBasis } from "./birth-info-defs";
+} from "../args/table";
+import { applyConfig, renderTemplate } from "../args/config-input";
+import { buildBirthInfo } from "../birth/birth-info";
+import { clockOptsFromBasis, toBasis, type CaliberBasis } from "../birth/birth-info-defs";
 import {
 	birthplaceSection,
 	fmtDate,
@@ -25,7 +25,7 @@ import {
 	locateSihua,
 	renderPalace,
 	surroundNames,
-} from "./render";
+} from "../chart/render";
 import {
 	decadalSection,
 	focusSection,
@@ -39,7 +39,7 @@ import {
 	agePalaceOf,
 	ageSection,
 } from "./fortune";
-import { generateChartCached } from "./chart-cache";
+import { generateChartCached } from "../chart/chart-cache";
 import { detectPatterns, getMingGongSummary } from "@/patterns";
 import {
 	getMutagenByStem,
@@ -49,7 +49,7 @@ import {
 	getDailyMutagen,
 	getHourlyMutagen,
 } from "@/mutagen";
-import { STEMS, BRANCHES } from "@/constants";
+import { STEMS, BRANCHES } from "@/data/ganzhi";
 import { buildReport } from "./report";
 import {
 	getTopicAnalysis,
@@ -370,7 +370,7 @@ function assertNoShadowedFeatures(
  * 指路；部分输入不适用，继续按「缺一问一」报错。
  *
  * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，`--json` 的消费方
- * （合盘 skill）自会处理；文本路径的宫详表见 `./fortune.ts` 各专题。
+ * （合盘 skill）自会处理；文本路径的宫详表见 `./fortune.ts` 各专题（同目录）。
  */
 /**
  * 「给定 args + 排盘上下文 → 产出专题 section 序列」——候选 3 把旗标→section 的接线

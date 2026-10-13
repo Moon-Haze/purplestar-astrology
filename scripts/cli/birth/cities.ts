@@ -2,10 +2,15 @@
  * 中国城市经纬度表 —— **真太阳时经度校正**的查表数据源。
  *
  * 这是**纯数据文件**：只有「省级行政区 → 城市名 + 经度」两级数据，不含任何逻辑。
- * 检索与容错解析全在 `cli/birth-info.ts` 的 `findLongitude` / `buildBirthInfo`，
+ * 检索与容错解析全在同目录 `birth-info.ts` 的 `findLongitude` / `buildBirthInfo`，
  * 本文件只提供数据。
  *
- * 已知规模：31 个省级行政区、335 个城市（`cities` 命令会把它算出来并展示）。
+ * 已知规模：31 个省级行政区、335 个城市。
+ *
+ * ⚠️ **为什么住在这里而不是单开一个 `data/`**：本文件**只有一个消费者**（birth-info），
+ * 「数据层」这个模式的前提是多模块共享（对比 `scripts/data/`：ganzhi / wuxing / sihua /
+ * stars 被 algorithm、mutagen、palace-relations 与大量 CLI 模块共同消费）。为一个消费者
+ * 单开目录，会让「谁依赖了哪张表」在图上多一跳。2026-10-13 由 `cli/data/cities.ts` 迁入。
  *
  * ⚠️ 改数据前先读 {@link PROVINCES} 的说明：经度值直接决定真太阳时校正量，
  * 而校正量足以改变时辰判定（时辰一换，整张盘全变）。
@@ -23,7 +28,7 @@ export interface CityInfo {
 	 * 经度，**东经为正**（degrees East）。
 	 *
 	 * ⚠️ 表内全部为正值（约 75.9–131.2），没有西经条目 —— 中国大陆全在东半球。
-	 * 用途只有一个：`cli/birth-info.ts` 的 `calcTrueSolar` 用它算
+	 * 用途只有一个：`birth-info.ts` 的 `calcTrueSolar` 用它算
 	 * `(经度 − 120) × 4` 分钟的经度校正量，**不参与安星**。
 	 */
 	longitude: number;
@@ -36,7 +41,7 @@ export interface ProvinceInfo {
 	/**
 	 * 省级行政区全名（如「河北省」「广西壮族自治区」「北京市」）。
 	 *
-	 * `cli/birth-info.ts` 按**精确相等或前缀**匹配 `--province` 的入参
+	 * `birth-info.ts` 按**精确相等或前缀**匹配 `--province` 的入参
 	 * （`x.name === 入参 || x.name.startsWith(入参)`），故传「河北」也能命中「河北省」；
 	 * 未命中时按 120° 处理并在提示里说明「省份未收录」。
 	 */
@@ -44,7 +49,7 @@ export interface ProvinceInfo {
 	/**
 	 * 该省的城市列表。
 	 *
-	 * ⚠️ **不变量：`cities[0]` 必须是省会**（直辖市则为该市本身）—— `cli/birth-info.ts`
+	 * ⚠️ **不变量：`cities[0]` 必须是省会**（直辖市则为该市本身）—— `birth-info.ts`
 	 * 的 `--province` 分支直接取 `cities[0].longitude` 并按「按省会 X 计」向用户交代。
 	 * 重排任何一个省的 `cities` 都会静默改变该省的排盘结果。
 	 */
@@ -55,9 +60,9 @@ export interface ProvinceInfo {
  * 全部省级行政区 → 城市 → 经度。
  *
  * **用途**：`--city` / `--province` 查经度，供真太阳时校正；`cities` 命令的检索与展示。
- * 未收录时 `cli/birth-info.ts` 会报错并提示改用 `--lng`，不会静默兜底成某个值。
+ * 未收录时 `birth-info.ts` 会报错并提示改用 `--lng`，不会静默兜底成某个值。
  *
- * **城市名的容错**由 `cli/birth-info.ts` 负责，本表只存简称：
+ * **城市名的容错**由 `birth-info.ts` 负责，本表只存简称：
  * - 行政区划后缀（`特别行政区｜自治州｜自治县｜自治区｜地区｜盟｜市｜县｜区｜旗`）
  *   在匹配前被剥掉，故「石家庄市」「石家庄地区」都能命中表里的「石家庄」；
  * - 剥后缀后仍不中时退化为**双向包含**匹配，取最短的城市名（最短名最贴近用户所写），

@@ -10,7 +10,8 @@
 import { astro } from "iztro";
 import { Solar } from "lunar-typescript";
 import type { BirthInfo, LunarInfo, Star, Palace, Decadal, ZiweiChart } from "./types";
-import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE, ELEMENT_TO_JU } from "./constants";
+import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "@/data/ganzhi";
+import { ELEMENT_TO_JU } from "@/data/wuxing";
 import { oppositeBranch } from "./palace-relations";
 import { wenmoStarBrightness } from "./wenmo-brightness";
 // 飞星派工具仅供导出，不再在排盘时调用（倪师《天纪 03》：四化星永远固定不动）
@@ -214,7 +215,7 @@ export function parseWuxingJu(name: string): number {
  * 生成紫微斗数命盘。
  *
  * @param birthInfo - 出生信息。⚠️ `timeIndex` 是**时辰序号 0–12**（0=子 … 11=亥，12=晚子时），
- *   **不是** 0–23 的钟表时；钟表时到时辰序号的换算（含真太阳时校正）在 `cli/birth-info.ts` 完成
+ *   **不是** 0–23 的钟表时；钟表时到时辰序号的换算（含真太阳时校正）在 `cli/birth/birth-info.ts` 完成
  * @returns 完整命盘。`palaces` 按**地支数组序**排列（寅起），比对时按 `branch` 建索引
  * @throws 当 iztro 返回未知宫名时（见 {@link projectPalaceName}）
  *
@@ -349,7 +350,7 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	// ── 关键宫支 ──
 	const soulBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfSoulPalace as string);
 	const bodyBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfBodyPalace as string);
-	// 命宫 / 身宫地支必在十二宫内，这是排盘不变量（cli/render.ts 的 palaceAtBranch 同样
+	// 命宫 / 身宫地支必在十二宫内，这是排盘不变量（cli/chart/render.ts 的 palaceAtBranch 同样
 	// 依赖它）；查不到即内核输出已损坏，当场报错而非兜底 0（理由同上方宫循环的干支校验）。
 	if (soulBranch < 0 || bodyBranch < 0)
 		{throw new Error(
@@ -385,7 +386,7 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const shenZhu = astrolabe.body as string;
 	// 斗君：子起正月逆数至生月，生月宫起子时顺数至生时。iztro 静态盘不带，故按口诀自推。
 	// 闰月按所闰之月数计（lunarMonth 已 Math.abs）；晚子时（timeIndex 12）按子时论（%12）。
-	// 校准样例：2000-4-6 子时（三月）= 戌、1990-05-15 巳时（四月）= 寅（见 cli/selftest.ts）。
+	// 校准样例：2000-4-6 子时（三月）= 戌、1990-05-15 巳时（四月）= 寅（见 cli/selftest/index.ts）。
 	const douJunBranch = ((timeIndex % 12) + 12 - (lunarInfo.lunarMonth - 1)) % 12;
 
 	// 宫干自化已下线（倪师不主张飞星派宫干自化论）
