@@ -407,7 +407,12 @@ function snapshot(tag: string, scenarios: readonly Scenario[]): Map<string, stri
 		});
 		if (r.status !== 0) {
 			throw new Error(
-				`场景「${s.name}」退出码 ${r.status} —— 基线不可信，先修好再对拍：\n${(r.stderr ?? "").slice(0, 300)}`
+				[
+					`逐字节对拍中止：场景「${s.name}」退出码 ${r.status}，快照不可信。`,
+					`　命令：node scripts/purple-star.ts ${s.args.join(" ")}`,
+					`　先把这个命令单独跑通再对拍 —— 拿一份失真的基线比对，比对结果只会是噪声。`,
+					`　stderr：${(r.stderr ?? "").split("\n").slice(0, 3).join(" | ").slice(0, 300)}`,
+				].join("\n")
 			);
 		}
 		const p = resolve(dir, `${s.name.replace(/[^\w.-]/g, "_")}.txt`);
@@ -444,49 +449,61 @@ interface ByteDiffResult {
 
 async function runByteDiff(): Promise<ByteDiffResult> {
 	const scenarios = await buildScenarios();
-	const before = git(["status", "--porcelain"]).out;
+	// 对拍前的**工作区指纹**（不是快照）—— 用来核对 stash pop 是否真的还原回去了
+	const wsBefore = git(["status", "--porcelain"]).out;
 
+	// 快照目录的清理由 finally 统一保证。散落在成功路径上看着没问题，实测有两个早退
+	// （stash 失败 / 还原不一致）会跳过它 —— 而那恰恰是**最需要人看现场**的时候，
+	// 留一堆快照在 .review-tmp/ 里会让人误以为还能据此判断。
 	rmSync(SNAP_DIR, { recursive: true, force: true });
-	const afterShot = snapshot("after", scenarios);
-
-	const stash = git(["stash", "push", "--include-untracked", "-m", "review-gate:byte-diff"]);
-	if (!stash.ok) {
-		return { same: [], diff: [], toolFault: ["git stash 失败，无法取得基线（工作区无变更？）"] };
-	}
-
-	let after: Map<string, string>;
 	try {
-		after = snapshot("before", scenarios);
-	} finally {
-		// 必须还原，且要**核对**还原成功 —— 否则这份「基线」是假的
-		git(["stash", "pop"]);
-	}
-	const restored = git(["status", "--porcelain"]).out;
-	if (restored !== before) {
-		return {
-			same: [],
-			diff: [],
-			toolFault: ["stash pop 后工作区与对拍前不一致 —— **请立即检查工作区**，别继续用本次结果"],
-		};
-	}
+		const currentShots = snapshot("after", scenarios);
 
-	const same: string[] = [];
-	const diff: string[] = [];
-	const toolFault: string[] = [];
-	for (const s of scenarios) {
-		const a = readShot(afterShot.get(s.name)!);
-		const b = readShot(after.get(s.name)!);
-		if (!a.ok || !b.ok) {
-			toolFault.push(`${s.name}：${!a.ok ? `after ${a.why}` : ""}${!a.ok && !b.ok ? "；" : ""}${!b.ok ? `before ${b.why}` : ""}`);
-			continue;
+		const stash = git(["stash", "push", "--include-untracked", "-m", "review-gate:byte-diff"]);
+		if (!stash.ok) {
+			return {
+				same: [],
+				diff: [],
+				toolFault: ["git stash 失败，取不到基线（工作区无变更时本就无从比起）"],
+			};
 		}
-		if (a.text === b.text) {same.push(s.name);}
-		else {
-			diff.push(s.name);
+
+		let baselineShots: Map<string, string>;
+		try {
+			baselineShots = snapshot("before", scenarios);
+		} finally {
+			// 必须还原 —— 否则用户的改动就停在 stash 里了
+			git(["stash", "pop"]);
 		}
+		// 且要**核对**还原成功：pop 静默失败时工作区停在基线态，此时下面所有比对都是假的
+		if (git(["status", "--porcelain"]).out !== wsBefore) {
+			return {
+				same: [],
+				diff: [],
+				toolFault: [
+					"stash pop 之后工作区与对拍前不一致 —— **请立刻检查工作区**（`git stash list` 看有没有残留），本次结果一律作废",
+				],
+			};
+		}
+
+		const same: string[] = [];
+		const diff: string[] = [];
+		const toolFault: string[] = [];
+		for (const sc of scenarios) {
+			const now = readShot(currentShots.get(sc.name)!);
+			const base = readShot(baselineShots.get(sc.name)!);
+			if (!now.ok || !base.ok) {
+				const parts = [!now.ok && `改动侧 ${now.why}`, !base.ok && `基线侧 ${base.why}`].filter(Boolean);
+				toolFault.push(`${sc.name}：${parts.join("；")}`);
+				continue;
+			}
+			if (now.text === base.text) {same.push(sc.name);}
+			else {diff.push(sc.name);}
+		}
+		return { same, diff, toolFault };
+	} finally {
+		rmSync(SNAP_DIR, { recursive: true, force: true });
 	}
-	rmSync(SNAP_DIR, { recursive: true, force: true });
-	return { same, diff, toolFault };
 }
 
 // ── 闸门执行 ──────────────────────────────────────────────────────────────────
@@ -689,7 +706,9 @@ if (isDirectRun) {
 	try {
 		await main();
 	} catch (err) {
-		console.error(err);
+		// 只打 message，不打栈：这是一个给人看的评审工具，栈把「该怎么办」挤到屏幕外。
+		// 真·编程错误也会经过这里，但它们的 message 通常已经足够定位。
+		console.error(err instanceof Error ? err.message : String(err));
 		process.exit(1);
 	}
 }
