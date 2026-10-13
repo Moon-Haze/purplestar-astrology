@@ -51,6 +51,11 @@ db/ziwei.duckdb*
 # 也不被 `git add -A` 误提交。
 .review-tmp/
 
+# ── 分发产物（tools/pack.ts 生成）──────────────────────────────────
+# purplestar-astrology.zip：打给用户/宿主的分发件。每次构建重新生成
+# （时间戳固定故字节可复现），属构建产物，不入库。
+dist/
+
 # ── 系统垃圾 ──────────────────────────────────────────────
 .DS_Store
 *.log
@@ -63,3 +68,4 @@ html/
 .zcodeignore
 .zcode/
 .workbuddy/
+.Trash-**
