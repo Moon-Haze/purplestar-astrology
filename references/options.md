@@ -51,7 +51,7 @@
 
 ## `--no-cache`（排盘缓存开关）
 
-排盘默认**带缓存**（`scripts/cli/chart-cache.ts`）：`generateChart` 的结果按**出生信息的 sha256** 落到**系统临时目录**（`os.tmpdir()`）下的 `purplestar-astrology-v<版本>-<用户>` 子目录，同一农历年内再排同一份出生信息直接读文件。本 skill 一轮对话里常要换专题参数、换视角反复排同一张盘，缓存把这部分开销（约 30 ms/次）省掉，只留渲染。
+排盘默认**带缓存**（`scripts/cli/chart/chart-cache.ts`）：`generateChart` 的结果按**出生信息的 sha256** 落到**系统临时目录**（`os.tmpdir()`）下的 `purplestar-astrology-v<版本>-<用户>` 子目录，同一农历年内再排同一份出生信息直接读文件。本 skill 一轮对话里常要换专题参数、换视角反复排同一张盘，缓存把这部分开销（约 30 ms/次）省掉，只留渲染。
 
 - **为什么落系统临时目录**：本仓整个可拷进 `~/.claude/skills/` 使用，缓存是**机器级**的派生数据（随时可重建），写进包目录会让「拷走即干净」失效，还得为它加 .gitignore、防误提交。落到临时目录则包内零写入，且同机多份拷贝共享一份缓存。目录名带版本与用户标识（POSIX 的 `/tmp` 多用户共享，而缓存里是生辰命盘数据），建目录权限 `0700`。
 - **失效靠两个维度**：缓存格式版本（改排盘内核或升级 iztro 后递增 `CACHE_VERSION`）+ **农历年**。命盘 `currentAge` 是虚岁且以农历正月初一为界，故跨春节后首次调用自动重排，不会把去年的虚岁当成今年的。
@@ -99,4 +99,4 @@ node scripts/purple-star.ts help            # 总览（man 八节结构）
 node scripts/purple-star.ts astrology --help # 每命令（man 七节 + 归属参数子集）
 ```
 
-`help` 的参数段由 `scripts/cli/args-table.ts` 的 `OPTION_GROUPS` 派生，与解析器同源——**它列出的就是本 CLI 的全部合法参数**，本文件不重复维护一份清单；每命令 `--help` 的参数子集由声明表 `cmds` 标志的投影（`args-table.ts` 的 `ownedOptions`）过滤，是 help 视图而非硬校验（作用域仍是 skill 级）；全局参数（`--out`）不属任何命令，help 在每命令 OPTIONS 节尾单列一行。
+`help` 的参数段由 `scripts/cli/args/table.ts` 的 `OPTION_GROUPS` 派生，与解析器同源——**它列出的就是本 CLI 的全部合法参数**，本文件不重复维护一份清单；每命令 `--help` 的参数子集由声明表 `cmds` 标志的投影（`args-table.ts` 的 `ownedOptions`）过滤，是 help 视图而非硬校验（作用域仍是 skill 级）；全局参数（`--out`）不属任何命令，help 在每命令 OPTIONS 节尾单列一行。

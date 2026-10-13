@@ -18,24 +18,70 @@
 `references/` 下，由 `SKILL.md` 写明「何时读它」——**没被读到就不占上下文**。这是渐进披露：
 进上下文的只有 `SKILL.md` 本身，`scripts/` 下上万行内核一行都不进（它只在 Node 里执行）。
 
-## 安装
-
-把整个仓库拷贝到宿主环境的**技能目录**下（目录名 `purplestar-astrology`）：
+## 分发：`npm run pack`
 
 ```bash
-# 项目级：只在该项目内可用
-cp -r <本仓库> <项目>/<技能目录>/purplestar-astrology
-
-# 个人级：所有项目可用
-cp -r <本仓库> ~/<技能目录>/purplestar-astrology
+npm run pack
+# → dist/purplestar-astrology.zip（121 条目，约 1.2 MB）
 ```
 
-目录名必须与 `SKILL.md` frontmatter 的 `name` 一致，宿主环境据此发现技能。
+打完自动**解压到临时目录跑一遍 selftest**（应为 151/151，其中 1 条标 ⏭ 跳过——
+它要读 `CLAUDE.md`，该项不分发）。`--no-verify` 可跳过自检。
 
-`node_modules/` 不必拷（已在 `.gitignore` 中），落位后补一次依赖：
+产物只含 4 项，顶层目录 `purplestar-astrology/`：
+
+```text
+purplestar-astrology.zip
+└── purplestar-astrology/        ← 须与 frontmatter 的 name 一致
+    ├── SKILL.md
+    ├── package.json
+    ├── references/*.md
+    └── scripts/                 ← 多层子目录原样带走
+```
+
+**`scripts/` 不拍平。** 内核定位走 `boot-hooks` 的 `pickRoot`（脚本自身所在目录），
+与目录层级无关 —— 拍平要重写 371 处 import 与动态 `load()` 字面量，
+收益为零、风险全是（`load<>("@/x")` 是字符串字面量，正则抓不到）。
+
+顶层目录名**必须与 `SKILL.md` 的 `name` 一致**，宿主据此发现技能，不一致则永远唤不起。
+
+### 时间戳固定 → 字节可复现
+
+同一份源码打三次得到**完全相同的 sha256**。用户可据此校验手上的包没被改动：
+
+```bash
+npm run pack && sha256sum dist/purplestar-astrology.zip
+```
+
+（外层 `zip` 命令会把文件 mtime 写进包，同一份源码打两次字节就不同；本脚本全条目用
+固定 DOS 时间戳，故可复现。实现只依赖 `node:zlib`，无外部命令。）
+
+## 安装
+
+解压到宿主环境的**技能目录**下（解压出来的 `purplestar-astrology/` 就是最终形态）：
+
+```bash
+unzip purplestar-astrology.zip -d ~/<技能目录>/
+
+# 个人级：所有项目可用 → ~/<技能目录>/purplestar-astrology/
+# 项目级：只在该项目内可用 → <项目>/<技能目录>/purplestar-astrology/
+```
+
+落位后补一次依赖（`node_modules/` 不在包里，已在 `.gitignore` 中）：
 
 ```bash
 cd ~/<技能目录>/purplestar-astrology && npm install
+node scripts/purple-star.ts selftest   # 装完自检，应为 151/151
+```
+
+### 手动拷贝（不想用 zip 时）
+
+只拷这 4 项即可，**不要 `cp -r` 整个仓库**——工作区里有 `db/ziwei.duckdb` 641 MB、
+`.mimosa/` 30 MB 等开发缓存，它们在 `.gitignore` 里所以 `git clone` 不会带，
+但 `cp -r` 照样会：
+
+```bash
+cp -r SKILL.md package.json references scripts ~/<技能目录>/purplestar-astrology/
 ```
 
 ## 命令与验证

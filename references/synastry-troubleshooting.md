@@ -75,7 +75,7 @@ npm test                               # 仓库级回归：cli / 排盘不变量
 
 | 文件                                     | 管什么                                                     |
 | ---------------------------------------- | ---------------------------------------------------------- |
-| `scripts/cli/synastry.ts`                | `synastry` 命令的渲染（输入护栏 + 双宫联参 + 断语输出）    |
+| `scripts/cli/commands/synastry.ts`                | `synastry` 命令的渲染（输入护栏 + 双宫联参 + 断语输出）    |
 | `scripts/synastry/chart-view.ts`         | 读 `astrology --json` 并逐项校验；**合盘的类型契约**在这里 |
 | `scripts/synastry/synastry-knowledge.ts` | 合盘断语库（纯数据：夫妻宫断语 / 四化断语 / 婚姻星）       |
 | `scripts/synastry/selftest-asserts.ts`   | 合盘段回归自检断言                                         |
