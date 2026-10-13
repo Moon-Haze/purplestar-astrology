@@ -101,7 +101,9 @@ console.log(
 			`· 覆盖 ${manifest.coverage.months.length}/12 月 · ${manifest.coverage.hours.length}/12 时辰 · ${manifest.coverage.leapYears.length} 闰月年`
 	)
 );
-if (year !== null) {console.log(line("筛选", `${year} 年（层 1 仅该年基准，其余各层照常全跑）`));}
+if (year !== null) {
+	console.log(line("筛选", `${year} 年（层 1 仅该年基准，其余各层照常全跑）`));
+}
 console.log(RULE);
 
 // ── 跑：spec → stdout 照旧，聚合事件流 → 临时文件 ──
@@ -126,7 +128,13 @@ const testRun = spawnSync(
 	{
 		stdio: "inherit",
 		cwd: SKILL_ROOT,
-		env: { ...process.env, ZIWEI_TEST_YEAR: year === null ? "" : String(year) },
+		// ZIWEI_NO_CACHE=1：回归全程绕过排盘缓存。测试里有不少用例会跑 CLI 子进程
+		// （cli.test.ts 等），命中改动前写下的缓存条目就会假绿 —— 回归必须验当前内核。
+		env: {
+			...process.env,
+			ZIWEI_TEST_YEAR: year === null ? "" : String(year),
+			ZIWEI_NO_CACHE: "1",
+		},
 	}
 );
 const wallMs = Date.now() - t0;
@@ -164,10 +172,36 @@ const LAYERS = [
 		suites: ["专题旗标→section 接线（候选 3）"],
 	},
 	{ label: "层 2 CLI 端到端", file: "report.test.ts", suites: ["astrology --report 全盘报告"] },
+	{
+		label: "层 2 CLI 端到端",
+		file: "chart-cache.test.ts",
+		suites: [
+			"chart-cache · 落盘与命中",
+			"chart-cache · 五条失效路径（任何一条都必须重排，绝不返回坏盘）",
+			"chart-cache · 开关与时钟",
+			"chart-cache · CLI 端到端",
+		],
+	},
 	{ label: "层 3 排盘结构不变量", file: "invariants.test.ts", suites: ["排盘结构不变量"] },
-	{ label: "层 3 内核契约", file: "kernel-contract.test.ts", suites: ["内核对外契约（冻结 @ 2026-10-12）"] },
-	{ label: "层 3 主题注册表", file: "topic-defs.test.ts", suites: ["主题注册表：覆盖与 TOPIC_KEYS 完全一致", "主题注册表：每个主题字段齐备且类型合理", "主题注册表：派生具名表与 TOPIC_DEFS 同步"] },
-	{ label: "层 3 主题注册表", file: "topic-study.test.ts", suites: ["Phase 4 验证：第 14 主题 study 经 getTopicAnalysis 可用且产出非空文本"] },
+	{
+		label: "层 3 内核契约",
+		file: "kernel-contract.test.ts",
+		suites: ["内核对外契约（冻结 @ 2026-10-12）"],
+	},
+	{
+		label: "层 3 主题注册表",
+		file: "topic-defs.test.ts",
+		suites: [
+			"主题注册表：覆盖与 TOPIC_KEYS 完全一致",
+			"主题注册表：每个主题字段齐备且类型合理",
+			"主题注册表：派生具名表与 TOPIC_DEFS 同步",
+		],
+	},
+	{
+		label: "层 3 主题注册表",
+		file: "topic-study.test.ts",
+		suites: ["Phase 4 验证：第 14 主题 study 经 getTopicAnalysis 可用且产出非空文本"],
+	},
 	{ label: "层 4 三合派约束", file: "school.test.ts", suites: ["三合派体系约束"] },
 	{
 		label: "层 5 数据源纯函数",
@@ -205,7 +239,9 @@ const bucket = new Map<string, LayerStat>();
 // 全局 summary（file 为空）是各文件汇总的再合计 —— 记下用于对账，不进分层数字
 let globalSummary: { total: number; passed: number; failed: number } | null = null;
 for (const r of records) {
-	if (r.type !== "summary" || !r.counts) {continue;}
+	if (r.type !== "summary" || !r.counts) {
+		continue;
+	}
 	if (!r.file) {
 		globalSummary = r.counts;
 		continue;
@@ -222,8 +258,12 @@ for (const r of records) {
 // 白名单命中总数：层 1 每条基准的诊断行自报（chart.test.ts 的 t.diagnostic，格式自控）
 let whitelisted = 0;
 for (const r of records) {
-	if (r.type !== "diagnostic" || !r.message) {continue;}
-	for (const m of r.message.matchAll(/白名单(\d+)/g)) {whitelisted += Number(m[1]);}
+	if (r.type !== "diagnostic" || !r.message) {
+		continue;
+	}
+	for (const m of r.message.matchAll(/白名单(\d+)/g)) {
+		whitelisted += Number(m[1]);
+	}
 }
 
 const fmtMs = (ms: number): string =>
@@ -253,7 +293,9 @@ console.log(`\n${RULE}`);
 console.log("分层汇总（层耗时 = 该文件墙钟）");
 for (const { label } of LAYERS) {
 	const b = bucket.get(label);
-	if (!b) {continue;}
+	if (!b) {
+		continue;
+	}
 	console.log(
 		`  ${label.padEnd(10, "　")} ${b.total} 项 ${b.failed ? `✗${b.failed}` : "✓"}   ${fmtMs(b.ms)}`
 	);
@@ -271,17 +313,21 @@ if (globalSummary && globalSummary.total !== total) {
 
 if (slowest.length) {
 	console.log("  最慢 5 项：");
-	for (const r of slowest) {console.log(`    ${fmtMs(r.durationMs ?? 0).padStart(6)}  ${r.name}`);}
+	for (const r of slowest) {
+		console.log(`    ${fmtMs(r.durationMs ?? 0).padStart(6)}  ${r.name}`);
+	}
 }
-if (whitelisted > 0)
-	{console.log(`  白名单命中 ${whitelisted} 处（太阳/太阴@酉的已知亮度差异，比对器在工作）`);}
+if (whitelisted > 0) {
+	console.log(`  白名单命中 ${whitelisted} 处（太阳/太阴@酉的已知亮度差异，比对器在工作）`);
+}
 
 if (failed.length) {
 	console.log(`\n${RULE}\n失败明细（${failed.length} 项）`);
 	for (const r of failed) {
 		console.log(`  ✗ [${layerOf(r.file)}] ${r.name}`);
-		if (r.errorMessage)
-			{console.log(`      ${r.errorMessage.split("\n").slice(0, 3).join("\n      ")}`);}
+		if (r.errorMessage) {
+			console.log(`      ${r.errorMessage.split("\n").slice(0, 3).join("\n      ")}`);
+		}
 	}
 }
 console.log(RULE);

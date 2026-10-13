@@ -2,9 +2,10 @@
  * 命盘渲染层 —— 把排盘内核输出的结构化数据，渲染成给模型读的文本片段。
  *
  * 拆自 purple-star.ts。只依赖 `@/` 内核，不依赖本目录的其他模块 —— 唯一例外是
- * `import type { CaliberBasis } from "./birth-info-defs"`（候选 6 的 basis 签名）：
- * 类型 import 运行时被完全擦除，不形成运行时边，birth-info → render（fmtDate）的
- * 依赖方向不破。故本文件仍处依赖图底层（args / render 并列底层）。
+ * `import type { CaliberBasis } from "./birth-info-defs"`（候选 6 的 basis 签名，
+ * 类型 import 运行时被完全擦除，不形成运行时边）与 `./chart-cache`（晚子时对照盘
+ * 走排盘缓存，birth-info → render（fmtDate）的依赖方向同样不破）。
+ * 故本文件仍处依赖图底层（args / render 并列底层）。
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故这里可以放心用
  *    静态 import 引内核与 `@/` 别名。但**不要**反过来让 purple-star.ts 静态引本文件。
@@ -14,7 +15,7 @@ import type { BirthInfo, Palace, Star, ZiweiChart, Mutagen } from "@/types";
 import type { CaliberBasis } from "./birth-info-defs";
 import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/constants";
 import { mustPalaceAtBranch, surroundBranches } from "@/palace-relations";
-import { generateChart } from "@/algorithm";
+import { generateChartCached } from "./chart-cache";
 
 // ══════════════════════ 共用格式化 ══════════════════════
 
@@ -113,17 +114,19 @@ export function mustPalace(chart: ZiweiChart, palaceName: string): Palace {
  *   调用点不再逐字段手拆（候选 6）
  * @returns 待追加进输出数组的若干行，有内容时末尾多一个空行作分隔
  */
-export function birthplaceSection(
-	basis: Pick<CaliberBasis, "lngNote" | "lngAmbiguous">
-): string[] {
+export function birthplaceSection(basis: Pick<CaliberBasis, "lngNote" | "lngAmbiguous">): string[] {
 	const out: string[] = [];
-	if (basis.lngNote) {out.push(`【出生地解析】${basis.lngNote}`);}
+	if (basis.lngNote) {
+		out.push(`【出生地解析】${basis.lngNote}`);
+	}
 	if (basis.lngAmbiguous) {
 		out.push(
 			`  ⚠️ 存在同名候选：${basis.lngAmbiguous.join("、")} —— 已取最短名，如有误请直接用 --lng 指定经度`
 		);
 	}
-	if (out.length) {out.push("");}
+	if (out.length) {
+		out.push("");
+	}
 	return out;
 }
 
@@ -197,8 +200,12 @@ const BRIGHTNESS_CN: Record<NonNullable<Star["brightness"]>, string> = {
  */
 export const starLine = (s: Star): string => {
 	const parts = [s.name];
-	if (s.mutagen) {parts.push(`化${s.mutagen}`);}
-	if (s.brightness) {parts.push(BRIGHTNESS_CN[s.brightness]);}
+	if (s.mutagen) {
+		parts.push(`化${s.mutagen}`);
+	}
+	if (s.brightness) {
+		parts.push(BRIGHTNESS_CN[s.brightness]);
+	}
 	return parts.join("");
 };
 
@@ -232,15 +239,23 @@ export function renderPalace(p: Palace, chart: ZiweiChart): string {
 
 	const lines = [`${head}${marks ? "  — " + marks : ""}`];
 
-	if (major.length) {lines.push(`  主星：${major.map(starLine).join("、")}`);}
-	else
-		{lines.push(
+	if (major.length) {
+		lines.push(`  主星：${major.map(starLine).join("、")}`);
+	} else {
+		lines.push(
 			`  主星：（空宫）借对宫 ${p.borrowedFromName ?? ""} 的 ${(p.borrowedStars ?? []).join("、")}`
-		);}
+		);
+	}
 
-	if (lucky.length) {lines.push(`  吉星：${lucky.map(s => s.name).join("、")}`);}
-	if (sha.length) {lines.push(`  煞星：${sha.map(s => s.name).join("、")}`);}
-	if (minor.length) {lines.push(`  杂曜：${minor.map(s => s.name).join("、")}`);}
+	if (lucky.length) {
+		lines.push(`  吉星：${lucky.map(s => s.name).join("、")}`);
+	}
+	if (sha.length) {
+		lines.push(`  煞星：${sha.map(s => s.name).join("、")}`);
+	}
+	if (minor.length) {
+		lines.push(`  杂曜：${minor.map(s => s.name).join("、")}`);
+	}
 	lines.push(`  三方四正：${surroundNames(chart, p.branch).join(" / ")}`);
 
 	return lines.join("\n");
@@ -288,7 +303,9 @@ const ziweiBranchOf = (c: ZiweiChart): string => BRANCHES[c.ziweiPos];
  */
 function mingMajorBrief(c: ZiweiChart): string {
 	const m = c.palaces.find(p => p.branch === c.soulBranch);
-	if (!m) {return "—";}
+	if (!m) {
+		return "—";
+	}
 	const s = m.stars.filter(x => x.type === "major").map(x => x.name);
 	return s.length
 		? s.join("、")
@@ -306,7 +323,9 @@ function mingMajorBrief(c: ZiweiChart): string {
  * @remarks
  * 23:00–23:59 出生时，子时横跨两日：「当日早子时」与「晚子时算次日」排出的是两张不同的盘。
  * 故这里会**另排一张对照盘**并把两张盘的紫微位与命宫主星并列出来（`isLateZi` 时对照当日早子时
- * `timeIndex: 0`，否则对照晚子时 `timeIndex: 12`）。对照盘靠 `generateChart` 现排，不缓存。
+ * `timeIndex: 0`，否则对照晚子时 `timeIndex: 12`）。对照盘与主盘走**同一个缓存层**
+ * （`./chart-cache`，键是出生信息哈希）——它是另一份 BirthInfo，故占另一个缓存条目，
+ * 但同样只排一次。
  *
  * 措辞锚在「校正后」而非「你给的钟表时间」：开 `--eot` 或西部城市时，落在 23:00–23:59 的
  * 往往是校正后的真太阳时，钟表时间可能在别处（如喀什 02:30 校正后是前一日 23:37）。
@@ -323,15 +342,17 @@ export function lateZiSection(
 		out.push(
 			"  注意：安星依据的是次日的农历日数，故下方「农历」栏显示的是出生当日，与安星所用日相差一天，属正常。"
 		);
-		const alt = generateChart({ ...info, timeIndex: 0 });
+		const alt = generateChartCached({ ...info, timeIndex: 0 });
 		out.push(
 			`  对照【当日早子时】口径：紫微落 ${ziweiBranchOf(alt)} · 命宫主星 ${mingMajorBrief(alt)}`
 		);
 		out.push("");
 		return out;
 	}
-	if (!basis.lateZiCandidate) {return out;}
-	const alt = generateChart({ ...info, timeIndex: 12 });
+	if (!basis.lateZiCandidate) {
+		return out;
+	}
+	const alt = generateChartCached({ ...info, timeIndex: 12 });
 	out.push("【⚠️ 晚子时口径提醒】");
 	out.push(
 		"  校正后的真太阳时落在 23:00–23:59。子时横跨两日，两种口径排出的是**两张不同的盘**。"

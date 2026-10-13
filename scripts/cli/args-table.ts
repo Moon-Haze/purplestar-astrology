@@ -142,7 +142,13 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		title: "其他出生信息",
 		role: "birth",
 		options: [
-			{ name: "gender", cmds: ["astrology"], kind: "value", value: "male|female|男|女", desc: "性别" },
+			{
+				name: "gender",
+				cmds: ["astrology"],
+				kind: "value",
+				value: "male|female|男|女",
+				desc: "性别",
+			},
 			{
 				name: "lng",
 				cmds: ["astrology"],
@@ -164,7 +170,13 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				value: "山东",
 				desc: "用省份代替 --lng（按省会计）",
 			},
-			{ name: "name", cmds: ["astrology"], kind: "value", value: "张三", desc: "可选，只影响输出抬头" },
+			{
+				name: "name",
+				cmds: ["astrology"],
+				kind: "value",
+				value: "张三",
+				desc: "可选，只影响输出抬头",
+			},
 		],
 	},
 	{
@@ -236,7 +248,19 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 		title: "输出与选题",
 		role: "output-select",
 		options: [
-			{ name: "json", cmds: ["astrology", "synastry"], kind: "switch", desc: "输出原始 JSON（供程序消费）" },
+			{
+				name: "json",
+				cmds: ["astrology", "synastry"],
+				kind: "switch",
+				desc: "输出原始 JSON（供程序消费）",
+			},
+			{
+				name: "no-cache",
+				cmds: ["astrology"],
+				noIntent: true,
+				kind: "switch",
+				desc: "跳过排盘缓存，强制现排（默认同一农历年内复用 .cache/charts 里的排盘结果）",
+			},
 			{
 				name: "out",
 				global: true,
@@ -315,7 +339,13 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				value: "机月同梁",
 				desc: "knowledge 检索关键字（也可用位置参数）",
 			},
-			{ name: "limit", cmds: ["knowledge"], kind: "value", value: "15", desc: "knowledge 命中条数上限（正整数）" },
+			{
+				name: "limit",
+				cmds: ["knowledge"],
+				kind: "value",
+				value: "15",
+				desc: "knowledge 命中条数上限（正整数）",
+			},
 			{
 				name: "source",
 				cmds: ["knowledge"],
@@ -407,10 +437,12 @@ export function camelKey(name: string): string {
  */
 export const SHADOWABLE_KEYS: ReadonlySet<string> = new Set(
 	OPTION_GROUPS.flatMap(g => {
-		if (g.role === "topic-deep")
-			{return g.options.filter(o => o.noShadow !== true).map(o => o.name);}
-		if (g.role === "output-select")
-			{return g.options.filter(o => o.shadow === true).map(o => o.name);}
+		if (g.role === "topic-deep") {
+			return g.options.filter(o => o.noShadow !== true).map(o => o.name);
+		}
+		if (g.role === "output-select") {
+			return g.options.filter(o => o.shadow === true).map(o => o.name);
+		}
 		return [];
 	})
 );

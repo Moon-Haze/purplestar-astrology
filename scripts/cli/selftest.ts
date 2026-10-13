@@ -73,6 +73,10 @@ import {
  * `test/cli.test.ts` 依赖这个退出码判定自检是否全绿。
  */
 export async function cmdSelftest(ctx: CliContext): Promise<string> {
+	// 自检全程**强制直排、绕过排盘缓存**：回归要验的是「当前内核排出来的盘」，
+	// 若允许命中 .cache/charts 里改动前写下的条目，改完内核的回归会拿着旧盘全绿 ——
+	// 那比没有回归更坏（假绿）。本行同时覆盖下方 runCli 的子进程（env 随进程继承）。
+	process.env.ZIWEI_NO_CACHE = "1";
 	// harness（Assertion / eq / ok）抽在 ./selftest-kit —— 原先与 classics / synastry
 	// 两个断言组逐字同形的三份本地定义由此归一。
 	const { results, ok } = createHarness();
@@ -99,12 +103,13 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	const call = (argv: string[]): { code: number; out: string; err: string } => {
 		const [cmd, ...rest] = argv;
 		const fn = COMMANDS[cmd as keyof typeof COMMANDS];
-		if (!fn)
-			{return {
+		if (!fn) {
+			return {
 				code: 1,
 				out: "",
 				err: unknownCommandMessage(cmd, commandNames),
-			};}
+			};
+		}
 		return callDirect(cmd, rest, fn, parseArgs, ctx);
 	};
 
@@ -148,11 +153,17 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 		// corpus 与 synastry 的自检断言各自住在
 		// scripts/corpus/selftest-asserts.ts 与 scripts/synastry/selftest-asserts.ts，
 		// 由本命令汇总执行 —— 报告分三段（排盘 / 古籍 / 合盘），首行「通过 N/N」为合计。
-		if (!classics.length || !synastry.length) {throw new Error("断言组为空——搬移未完成");}
+		if (!classics.length || !synastry.length) {
+			throw new Error("断言组为空——搬移未完成");
+		}
 		results.push({ pass: true, name: "── 古籍 ──", detail: "" });
-		for (const r of classics) {results.push(r);}
+		for (const r of classics) {
+			results.push(r);
+		}
 		results.push({ pass: true, name: "── 合盘 ──", detail: "" });
-		for (const r of synastry) {results.push(r);}
+		for (const r of synastry) {
+			results.push(r);
+		}
 		return `古籍 ${classics.filter(x => x.pass).length}/${classics.length} · 合盘 ${
 			synastry.filter(x => x.pass).length
 		}/${synastry.length}`;
