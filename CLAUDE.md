@@ -69,7 +69,7 @@ npm run pack
 
 ⚠️ **不要为了「目录扁平」去拍平 `scripts/`**：内核定位走 `boot-hooks` 的 `pickRoot`
 （脚本自身所在目录），与目录层级**无关**。实测拍平前后 selftest 都是 151/151。
-拍平反而要重写 371 处 import 与动态 `load()` 字面量 —— 收益零、风险全是：
+拍平反而要重写**数百处** import 与动态 `load()` 字面量（不写死数字，随代码增长）—— 收益零、风险全是：
 `load<>("@/x")` 是**字符串字面量**不是 import 语句，正则抓不到，
 漏改的症状是「产物启动即无法加载 @/cli/dispatch」（而仓库 typecheck/selftest 全绿）。
 
@@ -103,7 +103,7 @@ npm run pack
 ```text
 <仓库根>/                                ← 仓库根 = skill 根
 ├── SKILL.md                        骨架（行为规范，非文档）
-├── references/                     细则（workflow / options / output-contract /
+├── references/                     细则（workflow / options / output-contract / example-reading /
 │                                   troubleshooting / synastry-guide / synastry-troubleshooting）
 └── scripts/                        内核根：CLI 与内核同处一层
     ├── purple-star.ts              引导层：定位内核根 → 注册 TS 钩子 → 启动自检 → 分发命令
@@ -131,9 +131,12 @@ npm run pack
     │   ├── astrology.ts             排盘分析一条命令（四命令合一：概览默认 + 功能参数分发）
     │   ├── fortune.ts               运限专题（流年/大限/小限/信息/格局/四化/聚焦各节）
     │   ├── report.ts                --report 全盘主题报告的文档装配层
-    │   ├── synastry.ts              合盘命令（--charts 输入）
-    │   └── knowledge/               知识检索命令（四域合一：books 古籍 / stars 星曜 /
-    │                                 tianji 天纪 / oracle 断语；原 classics 改名）
+    │   └── synastry.ts              合盘命令（--charts 输入）
+    ├── cli/knowledge/               知识检索命令（四域合一：books 古籍 / stars 星曜 /
+    │   ├── index.ts                 tianji 天纪 / oracle 断语；原 classics 改名）
+    │   ├── oracle.ts                ⚠️ 本目录与 `cli/commands/` **平级**，非其子目录
+    │   ├── stars.ts
+    │   └── tianji.ts
     ├── cli/host/                    宿主装配（引导层按需加载的端口）
     │   ├── dispatch.ts              argv → { code, out, err, outFile } 的分发协议（唯一真相源）
     │   └── out.ts                   --out 落盘通道（与 stdout 产物逐字对拍）
@@ -145,14 +148,25 @@ npm run pack
     │                               mutagen（四化）/ analysis（主题论断数据库 v3）/ data
     │                               （干支/五行/四化/星曜数据表）/ wenmo-brightness /
     │                               palace-relations / types
-    ├── corpus/                     古籍与文献语料内核：data/（三部古籍 + 引文核对表 +
-    │                               格局判词）+ tianji/（天纪判语）+ index（检索纯函数）
+    ├── corpus/                     古籍与文献语料内核：data/（三部古籍 quanshu/quanji/gusuifu
+    │                               + tianji.ts 天纪判语 + 引文核对表 annotations + 格局判词
+    │                               + manual/ 各主题断语）+ index（检索纯函数）
     │                               + selftest-asserts（断言组，主 selftest 汇总执行）
+    │                               ⚠️ 天纪语料在 data/tianji.ts，corpus 下**没有** tianji/ 目录
+    ├── knowledge/                  扩展点接缝 Phase 1（KnowledgeSource）：types.ts 接口 +
+    │   ├── registry.ts              registry.ts 清单注册四域（books/stars/tianji/oracle）
+    │   ├── types.ts                 + sources/ 各域实现（新增域 = 写源 + 加一行，不改 CLI）
+    │   └── sources/                 ⚠️ 重数据懒加载：tianji/oracle 在 search 内 await import
+    ├── school/                     扩展点接缝 Phase 3（SchoolAdapter）：types / registry +
+    │   ├── guard.ts                 guard 三合派约束守卫 + schools/wenmo-nishi（当前唯一流派）
+    │   ├── registry.ts              ⚠️ **引用而非迁移**：citationRoots 引用内核 ANNOTATIONS，
+    │   ├── types.ts                 适配器不持亮度表/四化表/核对表的副本（副本必漂移）
+    │   └── schools/
     └── synastry/                   合盘内核：synastry-knowledge（断语库）/ chart-view（JSON 消费方
                                     契约）/ selftest-asserts（断言组）
 ```
 
-`cli/` 之间是**单向依赖**，没有环：`args-table` / `args` / `render`（`fmtDate` 的定义处）← `birth-info` ← 各命令 → `selftest`；`command-meta` 与 `out` 是引导层按需加载的轻叶子。要动哪一层，往上找它的消费者即可。
+`cli/` 之间是**单向依赖**，没有环：`args/table` / `args/parse` / `chart/render`（`fmtDate` 的定义处）← `birth/birth-info` ← 各命令 → `selftest`；`command-meta` 与 `host/out` 是引导层按需加载的轻叶子。要动哪一层，往上找它的消费者即可。
 
 ### 为什么能直接跑 TypeScript（没有构建步骤）
 
@@ -235,15 +249,15 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 **计数类事实一律不写死**：`selftest` 的断言数、`npm test` 的项数、测试层数——能自报的自报、能派生的派生、其余由断言盯双向一致。
 
-**参数面单点声明**：`cli/args-table.ts` 的 `OPTION_GROUPS` 是「有哪些参数」的唯一来源（`args.ts` 解析器消费它）——help 的参数段据它派生、`parseArgs` 据它拒绝未知参数、`OPTION_ALIASES` 声明拼音别名（归一到英文主名）、`selftest` 断言 `SKILL.md` 提到的参数都有声明。拼错参数（`--ctiy 喀什`）报错并给最近邻建议，不再静默落回默认经度。
+**参数面单点声明**：`cli/args/table.ts` 的 `OPTION_GROUPS` 是「有哪些参数」的唯一来源（`cli/args/parse.ts` 解析器消费它）——help 的参数段据它派生、`parseArgs` 据它拒绝未知参数、`OPTION_ALIASES` 声明拼音别名（归一到英文主名）、`selftest` 断言 `SKILL.md` 提到的参数都有声明。拼错参数（`--ctiy 喀什`）报错并给最近邻建议，不再静默落回默认经度。
 
-**解析引擎**（2026-09-30 重写）：`util.parseArgs` `tokens` 模式做**底座**（token 化交给标准库），薄适配层做四件事——声明表校验（未知参数中文报错）、别名归一、判重（重复参数报错，旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值；Node 版本敏感，selftest 钉死）。`knowledge` / `synastry` 等命令的位置参数语义各自独立（检索词 / `--charts` 路径），`astrology` 的位置参数按形态归类（日期/时刻/性别/城市）。⚠️ `--charts` 与前缀退役后，`option-scope.ts` 的 `sidePrefixes` / `prefixedCommands` 是空表（概念保留，机制不可达）；作用域清单本身也已差量化（2026-10-01）：`excluded` 空表即默认全集、显式声明排除项，`OPTION_NAMES` 由 `args.ts` 从全集按排除项派生。
+**解析引擎**（2026-09-30 重写）：`util.parseArgs` `tokens` 模式做**底座**（token 化交给标准库），薄适配层做四件事——声明表校验（未知参数中文报错）、别名归一、判重（重复参数报错，旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值；Node 版本敏感，selftest 钉死）。`knowledge` / `synastry` 等命令的位置参数语义各自独立（检索词 / `--charts` 路径），`astrology` 的位置参数按形态归类（日期/时刻/性别/城市）。⚠️ `--charts` 与前缀退役后，`cli/args/scope.ts` 的 `sidePrefixes` / `prefixedCommands` 是空表（概念保留，机制不可达）；作用域清单本身也已差量化（2026-10-01）：`excluded` 空表即默认全集、显式声明排除项，`OPTION_NAMES` 由 `cli/args/parse.ts` 从全集按排除项派生。
 
 三条约束，改动时别踩：
 
-- **键名是 camelCase**（`--late-zi` → `lateZi`）：换算只在 `camelKey()` 一处；`OPTION_GROUPS` 里的 `name` 一律写 kebab。
+- **键名是 camelCase**（`--late-zi` → `lateZi`）：换算只在 `cli/args/table.ts` 的 `camelKey()` 一处；`OPTION_GROUPS` 里的 `name` 一律写 kebab。
 - **不能给参数设「默认值」**：未给出的键根本不出现，调用方靠 `undefined` 判空取默认（`cmdKnowledge` 的 `--limit` 就靠它给默认 15）。
-- **归属表是 help 视图**：`help.ts` 的 `OPTION_OWNERSHIP`（命令 → 参数子集）只过滤 help 展示，不做硬校验——作用域仍是 skill 级。
+- **归属投影是 help 视图**（2026-10-13 起）：**`OPTION_OWNERSHIP` 手抄表已删除**，归属收进声明表——每个参数标 `cmds`（读取它的命令）、全局参数标 `global`，`table.ts` 的 `ownedOptions(cmd)` 做投影、`GLOBAL_OPTIONS` 单列全局参数。原手抄表零正向测试，`--out` 的承诺与实际行为早已漂移。投影只过滤 help 展示，**不做硬校验**——作用域仍是 skill 级。
 
 CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 

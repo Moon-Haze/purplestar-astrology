@@ -26,7 +26,8 @@ npm run pack
 ```
 
 打完自动**解压到临时目录跑一遍 selftest**（应为 151/151，其中 1 条标 ⏭ 跳过——
-它要读 `CLAUDE.md`，该项不分发）。`--no-verify` 可跳过自检。
+它要读 `CLAUDE.md` / `README.md` / `test/README.md` 三份仓库级文档，都不进分发件）。
+`--no-verify` 可跳过自检。
 
 产物只含 4 项，顶层目录 `purplestar-astrology/`：
 
@@ -40,7 +41,8 @@ purplestar-astrology.zip
 ```
 
 **`scripts/` 不拍平。** 内核定位走 `boot-hooks` 的 `pickRoot`（脚本自身所在目录），
-与目录层级无关 —— 拍平要重写 371 处 import 与动态 `load()` 字面量，
+与目录层级无关 —— 拍平要重写**数百处** import 与动态 `load()` 字面量
+（实测数百处，随代码增长，故不写死数字），
 收益为零、风险全是（`load<>("@/x")` 是字符串字面量，正则抓不到）。
 
 顶层目录名**必须与 `SKILL.md` 的 `name` 一致**，宿主据此发现技能，不一致则永远唤不起。
@@ -101,13 +103,16 @@ cp -r SKILL.md package.json references scripts ~/<技能目录>/purplestar-astro
 
 | 内容                                     | 位置                                     |
 | ---------------------------------------- | ---------------------------------------- |
-| 排盘算法、格局库（含古籍出处与破格条件） | `scripts/patterns/`                |
-| 四化体系、流年流月推法                   | `scripts/mutagen.ts`               |
-| 主题论断（十四主星 × 13 主题动态推算）   | `scripts/analysis/`                |
-| 中国城市经纬度（真太阳时校正）           | `scripts/cities.ts`                |
+| 排盘算法、格局库（含古籍出处与破格条件） | `scripts/patterns/`                      |
+| 四化体系、流年流月推法                   | `scripts/mutagen.ts`                     |
+| 主题论断（十四主星 × 14 主题动态推算）   | `scripts/analysis/`                      |
+| 中国城市经纬度（真太阳时校正）           | `scripts/cli/birth/cities.ts`            |
 | 十四主星在夫妻宫断语、四化入夫妻宫       | `scripts/synastry/synastry-knowledge.ts` |
 | 合盘方法论与评分标准                     | `references/synastry-guide.md`           |
 | 三部古籍原文                             | `scripts/corpus/data/`                   |
+
+主题 key 共 14 个，其中 `study`（学业）是 `career`（事业）的**别名视图**——复用事业内容，
+不占独立存储列，故数据集物理主题为 13 个。
 
 **不含**线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/`——它们未随 skill 分发，解读请依赖上表知识源。
 
