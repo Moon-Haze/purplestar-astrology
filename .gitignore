@@ -16,6 +16,12 @@ node_modules/
 !.claude/CLAUDE.md
 .mcp.json
 
+# ── openspec CLI 生成物 ───────────────────────────────────
+# .agents/skills/openspec-* 是 openspec CLI 安装的技能定义（author: openspec，
+# generatedBy 见各 SKILL.md frontmatter），随时可经 CLI 重新生成，不入库。
+# 手写部分在 openspec/（specs/ 能力规范 + config.yaml 项目约束），已跟踪。
+.agents/
+
 # ── 上游参照仓库（只读快照，不入版本控制）────────────────
 # reference/ziwei-samples-toolkit/samples-out 是排盘基准的**原始语料**：
 # 5.5 GB / 720 个 jsonl.gz / 60 个年份目录（1924–1983）。

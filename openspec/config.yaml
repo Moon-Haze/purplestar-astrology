@@ -1,0 +1,92 @@
+schema: spec-driven
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+context: |
+  本仓是一个「仓库根 = skill 根」的紫微斗数 skill：排盘由确定性 CLI 产出，模型只负责解读。
+  下列约束来自已定决策（ADR / 评审），读代码看不出来，改动前必须先读。
+
+  ## 体系立场（不可动，C3）
+  - 排盘与运限四化以**文墨天机**为准；论断框架严格按**倪海厦《天纪》三合派**（命宫为本、三方为用）。
+  - **飞星派继续禁用**：宫干自化（`Palace.selfMutagen`）与来因宫不得实现、不得填回。
+    该字段与 `SelfMutagenMark` / `DecadalMutagen` 类型是**刻意保留的绊线**，
+    `test/school.test.ts` 有断言盯它们不被填回 —— 字段存在不等于该用，删它之前先读 `types.ts`。
+  - 年龄一律**虚岁**（以农历年正月初一为界），不得换算成周岁；`currentDecadalIndex === -1`
+    表示尚未起运，属正常，不得硬套大限。
+
+  ## 分层红线（ADR-003）
+  - 排盘内核（`algorithm.ts` / `mutagen.ts` / `patterns/` / `data/` / `wenmo-brightness.ts`）
+    与知识内容（`analysis/` / `corpus/` / `synastry/`）严格分层。
+    **插件层禁止反向依赖 `cli/`，禁止修改内核模块状态。**
+  - 新增知识内容（古籍 / 主题断语 / 新流派）**不得触碰排盘内核与 CLI 分发**，
+    也不因此需要重跑内核回归。
+
+  ## 引用而非迁移（ADR-004）
+  - 插件**不得复制**亮度表、四化表、引文核对表等内核数据，只能**引用**。
+    副本会漂移；`SchoolAdapter.citationRoots[].checklist` 引用全局唯一 `ANNOTATIONS` 即此意。
+
+  ## 注册表纪律（ADR-002）
+  - 插件一律**清单注册**（`registry.ts` 显式 import），不用文件系统自动发现。
+    新增插件 = 写文件 + 加一行；漏注册由 typecheck 兜底。
+
+  ## 冻结内核契约
+  - `test/kernel-contract.test.ts` 冻结内核对外形状（2026-10-12）。改动内核导出即破坏契约，
+    必须显式说明并同步该测试，不要顺手改断言迁就实现。
+
+  ## 分发形态（ADR-001 / G2）
+  - 保持「拷贝 + `npm install`」单 skill 形态：**不引入构建步骤、不引入外部插件包**。
+  - 分发件只含 `SKILL.md` / `package.json` / `references/` / `scripts/` 四项，
+    zip 顶层目录名必须与 frontmatter `name` 一致。
+  - **`scripts/` 的多层子目录原样收进包，不要拍平**：`boot-hooks` 的 `pickRoot` 按脚本自身
+    所在目录定位内核，与层级无关；拍平要重写数百处 import 与 `load<>()` 字符串字面量
+    （后者正则抓不到、typecheck 也抓不到，只在运行时炸），收益为零。
+  - 代码里定位包内文件一律走 `ctx.root`，不写 `ROOT/../..` 这类上溯。
+
+  ## 解析钩子（与 C4 同源）
+  - `@/xxx` 与相对说明符的候选序（先 `.ts`、再 `同名目录/index.ts`）已被 typecheck 与
+    `test/repo.test.ts` 双重钉死，任何目录重组不得破坏。
+
+  ## 引文纪律
+  - 凡出现「倪师 / 倪海厦 + 引号句」形态，必须在 `analysis/grades.ts` 登记档位，
+    否则 `npm test` 引文守卫变红。**占位或自撰内容绝不可挂倪师引语**（属伪造引文）。
+
+  ## 缓存
+  - 改排盘内核输出结构或升级 `iztro` 时**必须递增 `CACHE_VERSION`**，否则旧缓存被当有效读回。
+  - 回归链路恒设 `ZIWEI_NO_CACHE=1`，漏设会拿旧缓存**假绿**。
+
+  ## 计数不写死
+  - 断言数、测试项数、分发条目数这类计数**能自报就自报、能派生就派生**，
+    不要在文档或代码里写死数字；其余交给断言盯双向一致。
+
+  ## 验证闸门
+  - 三层互不替代：`npm run typecheck`（类型自洽）· `selftest`（代码逻辑自洽）·
+    `npm test`（外部基准比对）；风格另有 `npm run lint` / `npm run format`。
+  - 新增 `test/*.test.ts` 必须同时登记 `test/README.md` 层表与 `test/lib/run.ts` 的 `LAYERS`。
+  - 跳过断言只走 `kit.skipUnlessRepo`（判据：包根有没有 `CLAUDE.md`），
+    且跳过必须**看得见**（标 ⏭），不得给本就会随包分发的断言加跳过。
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+rules:
+  proposal:
+    - 明确写出「不做什么」，尤其当改动触及冻结内核契约或体系立场时
+    - 区分「内容扩展」与「内核改动」—— 前者不必重跑内核回归，后者必须
+  tasks:
+    - 每个任务给出可验证的完成判据（跑哪条命令、期望几个断言通过）
+    - 涉及文件物理位置变动的任务，必须包含三类字符串的排查：import 语句、
+      `load<>("@/…")` 字符串字面量、`resolve(ctx.root, …)` 拼路径
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+operations:
+  apply:
+    guidance:
+      - 改完先跑 `node scripts/purple-star.ts selftest`，全绿再跑 `npm test`
+      - 改动内核或依赖 iztro 后两层都要跑；动过类型标注另跑 `npm run typecheck`
+  archive:
+    guidance:
+      - 归档前确认文档中的计数类陈述与实跑末行一致
+      - 若本次改动改变了项目约束，同步更新本文件的 context
