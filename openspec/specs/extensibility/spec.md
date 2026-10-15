@@ -112,13 +112,16 @@ SHALL 只在被读到时进上下文，不进 `SKILL.md`。
 | --- | --- | --- |
 | KnowledgeSource | 已落地 | `scripts/knowledge/`（`types.ts` / `registry.ts` / `sources/*.ts`） |
 | SchoolAdapter | 已落地 | `scripts/school/`（`types.ts` / `registry.ts` / `schools/wenmo-nishi.ts` / `guard.ts`） |
-| TopicProvider | 部分落地 | 主题定义已收编为单一真相源 `TOPIC_DEFS`（`analysis/data.ts`），编排层已从 `data.ts` 拆到 `analysis/index.ts` + `analysis/views/` 各节文件；设计中规划的 `TopicProvider` 接口与 `analysis/topics/` 注册表**尚未落地** |
+| TopicProvider | 部分落地 | 主题定义已收编为单一真相源 `TOPIC_DEFS`（`analysis/data.ts`），编排层已拆到 `analysis/index.ts` + `analysis/views/`；接口与注册表**尚未落地** |
 
-`getTopicAnalysis` 的实际形态是**编排层**而非分发器：按固定小节序把十一个 `renderXxx`
-首尾相接（各节实现分布在 `views/` 下），最后整体过一遍性别过滤——
-过滤作用在拼接后的整篇文本上，逐节过滤会漏掉跨节边界的句子。
-这与设计文档 §4.2 假设的「`getTopicAnalysis` 遍历注册表汇聚、不在 `data.ts` 里 `switch(key)`」
-方向一致（确实没有 `switch`），但注册表本身尚未建立。
+`getTopicAnalysis` SHALL 按**编排层**描述，不得说成注册表分发器。
+
+#### Scenario: TopicProvider 的实际形态
+
+- **WHEN** 阅读 `getTopicAnalysis` 实现
+- **THEN** 它按固定小节序把 `views/` 下各 `renderXxx` 首尾相接，最后整体过一遍性别过滤
+  （过滤作用在拼接后的整篇文本上，逐节过滤会漏掉跨节边界的句子）；
+  与设计文档 §4.2 假设的方向一致——确实没有 `switch(key)`，但注册表本身尚未建立
 
 #### Scenario: 描述落地状态
 
