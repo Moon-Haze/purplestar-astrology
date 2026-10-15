@@ -5,7 +5,7 @@
  * 检索与容错解析全在同目录 `birth-info.ts` 的 `findLongitude` / `buildBirthInfo`，
  * 本文件只提供数据。
  *
- * 已知规模：31 个省级行政区、335 个城市。
+ * 已知规模：31 个省级行政区、418 个城市（直辖市含分区条目）。
  *
  * ⚠️ **为什么住在这里而不是单开一个 `data/`**：本文件**只有一个消费者**（birth-info），
  * 「数据层」这个模式的前提是多模块共享（对比 `scripts/data/`：ganzhi / wuxing / sihua /
@@ -73,25 +73,127 @@ export interface ProvinceInfo {
  */
 export const PROVINCES: ProvinceInfo[] = [
 	// ─── 直辖市 ───────────────────────────────────────────
+	// 市级条目（北京 / 天津 / 上海 / 重庆）始终保留在首位：老用户的排盘基线是它，
+	// 删掉会对不上。全市经度跨度换算成真太阳时的最大差：北京约 4.6 分（延庆↔平谷
+	// 跨 1.14°）、天津约 3.4 分、上海约 1.8 分 —— 出生时刻落在时辰交界 ±5 分钟内时，
+	// 选市中心与选边缘区会得到不同时辰，整盘皆变，故补分区条目。
 	{
 		name: "北京市",
-		cities: [{ name: "北京", longitude: 116.4 }],
+		cities: [
+			{ name: "北京", longitude: 116.4 },
+			{ name: "东城", longitude: 116.42 },
+			{ name: "西城", longitude: 116.37 },
+			// 东北另有朝阳市（本表「辽宁」节，120.5）。「朝阳」裸名自古命中辽宁，
+			// 北京区用带后缀条目避免同名静默改经度；写「朝阳区」精确命中本条，
+			// 容错路径下两者会同列歧义候选
+			{ name: "朝阳区", longitude: 116.49 },
+			{ name: "丰台", longitude: 116.29 },
+			{ name: "石景山", longitude: 116.22 },
+			{ name: "海淀", longitude: 116.3 },
+			{ name: "门头沟", longitude: 116.1 },
+			{ name: "房山", longitude: 116.14 },
+			{ name: "通州", longitude: 116.66 },
+			{ name: "顺义", longitude: 116.65 },
+			{ name: "昌平", longitude: 116.24 },
+			{ name: "大兴", longitude: 116.34 },
+			{ name: "怀柔", longitude: 116.64 },
+			{ name: "平谷", longitude: 117.12 },
+			{ name: "密云", longitude: 116.84 },
+			{ name: "延庆", longitude: 115.98 },
+		],
 	},
 	{
 		name: "天津市",
-		cities: [{ name: "天津", longitude: 117.2 }],
+		cities: [
+			{ name: "天津", longitude: 117.2 },
+			{ name: "和平", longitude: 117.21 },
+			{ name: "河东", longitude: 117.24 },
+			{ name: "河西", longitude: 117.22 },
+			{ name: "南开", longitude: 117.15 },
+			// 用带后缀条目：裸名「河北」是省名，且「省+市」连写容错（如「河北省石家庄市」）
+			// 的双向包含会取包含名里最短者，裸条目会把这类输入截胡到天津
+			{ name: "河北区", longitude: 117.2 },
+			{ name: "红桥", longitude: 117.15 },
+			{ name: "东丽", longitude: 117.31 },
+			{ name: "西青", longitude: 117.01 },
+			{ name: "津南", longitude: 117.36 },
+			{ name: "北辰", longitude: 117.13 },
+			{ name: "武清", longitude: 117.04 },
+			{ name: "宝坻", longitude: 117.31 },
+			{ name: "滨海新区", longitude: 117.7 },
+			{ name: "宁河", longitude: 117.83 },
+			{ name: "静海", longitude: 116.97 },
+			{ name: "蓟州", longitude: 117.41 },
+		],
 	},
 	{
 		name: "上海市",
-		cities: [{ name: "上海", longitude: 121.5 }],
+		cities: [
+			{ name: "上海", longitude: 121.5 },
+			{ name: "黄浦", longitude: 121.49 },
+			{ name: "徐汇", longitude: 121.44 },
+			{ name: "长宁", longitude: 121.42 },
+			{ name: "静安", longitude: 121.45 },
+			{ name: "普陀", longitude: 121.4 },
+			{ name: "虹口", longitude: 121.51 },
+			{ name: "杨浦", longitude: 121.53 },
+			{ name: "闵行", longitude: 121.38 },
+			{ name: "宝山", longitude: 121.49 },
+			{ name: "嘉定", longitude: 121.25 },
+			{ name: "浦东新区", longitude: 121.56 },
+			{ name: "金山", longitude: 121.34 },
+			{ name: "松江", longitude: 121.23 },
+			{ name: "青浦", longitude: 121.12 },
+			{ name: "奉贤", longitude: 121.47 },
+			{ name: "崇明", longitude: 121.4 },
+		],
 	},
 	{
 		name: "重庆市",
 		cities: [
 			{ name: "重庆", longitude: 106.6 },
+			// 主城九区
+			{ name: "渝中", longitude: 106.6 },
+			{ name: "大渡口", longitude: 106.5 },
+			{ name: "江北", longitude: 106.6 },
+			{ name: "沙坪坝", longitude: 106.5 },
+			{ name: "九龙坡", longitude: 106.5 },
+			{ name: "南岸", longitude: 106.6 },
+			{ name: "北碚", longitude: 106.4 },
+			{ name: "渝北", longitude: 106.6 },
+			{ name: "巴南", longitude: 106.5 },
+			// 远郊区
 			{ name: "万州", longitude: 108.4 },
 			{ name: "涪陵", longitude: 107.4 },
 			{ name: "黔江", longitude: 108.8 },
+			{ name: "长寿", longitude: 107.1 },
+			{ name: "江津", longitude: 106.3 },
+			{ name: "合川", longitude: 106.3 },
+			{ name: "永川", longitude: 105.9 },
+			{ name: "南川", longitude: 107.1 },
+			{ name: "綦江", longitude: 106.7 },
+			{ name: "大足", longitude: 105.7 },
+			{ name: "璧山", longitude: 106.2 },
+			{ name: "铜梁", longitude: 106.1 },
+			{ name: "潼南", longitude: 105.8 },
+			{ name: "荣昌", longitude: 105.6 },
+			{ name: "开州", longitude: 108.4 },
+			{ name: "梁平", longitude: 107.8 },
+			{ name: "武隆", longitude: 107.8 },
+			// 县
+			{ name: "城口", longitude: 108.7 },
+			{ name: "丰都", longitude: 107.7 },
+			{ name: "垫江", longitude: 107.4 },
+			{ name: "忠县", longitude: 108.1 },
+			{ name: "云阳", longitude: 108.7 },
+			{ name: "奉节", longitude: 109.5 },
+			{ name: "巫山", longitude: 109.9 },
+			{ name: "巫溪", longitude: 109.6 },
+			// 自治县
+			{ name: "石柱", longitude: 108.1 },
+			{ name: "秀山", longitude: 109.0 },
+			{ name: "酉阳", longitude: 108.8 },
+			{ name: "彭水", longitude: 108.2 },
 		],
 	},
 
@@ -165,7 +267,9 @@ export const PROVINCES: ProvinceInfo[] = [
 		name: "吉林省",
 		cities: [
 			{ name: "长春", longitude: 125.4 },
-			{ name: "吉林", longitude: 126.6 },
+			// 用带后缀条目：裸名「吉林」与省会「长春」同为两字，双向包含取最短时
+			// 同长按字典序会让「吉林省长春市」截胡到吉林市
+			{ name: "吉林市", longitude: 126.6 },
 			{ name: "四平", longitude: 124.4 },
 			{ name: "辽源", longitude: 125.1 },
 			{ name: "通化", longitude: 125.9 },
