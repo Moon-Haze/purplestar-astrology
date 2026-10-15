@@ -280,3 +280,20 @@ CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 一条总则：**机器已经查了的，人不要重复查。** 本仓库守卫密度很高（七层回归 + 冻结内核契约 +
 引文守卫 + 层 6 自洽），评审注意力应留给机器查不到的部分 —— 语义是否正确、抽象边界是否划在
 正确的位置、**常量是否身兼多职**、新断言的期望值是否来自**独立路径**、文案引文是否可溯。
+
+## 规范工作流（OpenSpec）
+
+仓内用 OpenSpec 做规范驱动开发。`openspec/specs/` 是各能力域的**当前规范**
+（chart-casting / distribution / extensibility / interpretation-contract /
+knowledge-retrieval / quality-gates / synastry），`openspec/config.yaml` 是**项目约束**
+（体系立场、分层红线、验证闸门等读代码看不出的已定决策，proposal 生成时会自动带上）。
+
+- **什么时候走**：触及规范面的改动（新能力、改输出契约、动扩展点、变验证纪律）先提案再动手；
+  纯实现修复与文案修订不必。
+- **怎么走**：宿主技能 `openspec-propose` / `openspec-explore` / `openspec-apply-change` /
+  `openspec-update-change` / `openspec-sync-specs` / `openspec-archive-change`，
+  或直接用 CLI（`openspec list` / `openspec show <名>` / `openspec validate --all`）。
+  propose 只产出规划工件**不动代码**，apply 才实现，archive 把变更折回 specs。
+- **产物纪律**：`openspec/` 已跟踪入 git，是手写真相源；`.agents/` 与 `.zcode/` 下的
+  `openspec-*` 技能目录是 CLI 生成物，已在 `.gitignore`，别手改、别提交。
+- 改完 specs 跑 `openspec validate --all`，须全部通过、零警告。
