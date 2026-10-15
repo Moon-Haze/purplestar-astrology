@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 落地 `docs/architecture-review-20261011.md` 的全部 8 个架构深化候选，把分发协议、声明语义、组合层测试面、归属表、断言组 harness、口径提示 basis、性别过滤公开面、宫位查询收敛为更深的 module。
+**Goal:** 落地 `docs/reviews/architecture-review-20261011.md` 的全部 8 个架构深化候选，把分发协议、声明语义、组合层测试面、归属表、断言组 harness、口径提示 basis、性别过滤公开面、宫位查询收敛为更深的 module。
 
 **Architecture:** 每个候选独立成任务，按依赖排序（分发 module → 断言组统一 → 声明语义 → 归属投影 → 组合层测试面 → basis → 公开面 → 宫位查询）。除任务显式声明的行为变更（T1 未知命令文案统一、T4 help 全局参数行）外，全部输出保持逐字节不变。
 
 **Tech Stack:** TypeScript（Node ≥ 22.18 直跑，无构建）、iztro 2.6.1、自研 selftest 断言框架（`scripts/cli/selftest-kit.ts`）、node:test（`npm test`）。
 
-**Spec:** `docs/architecture-review-20261011.md`（本计划的论证来源；执行者两份都读）。
+**Spec:** `docs/reviews/architecture-review-20261011.md`（本计划的论证来源；执行者两份都读）。
 
 ## Global Constraints
 

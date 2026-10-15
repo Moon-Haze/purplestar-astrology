@@ -1,8 +1,8 @@
 # 可扩展架构执行计划（Phase 0–5）· 2026-10-12
 
 > 来源链（设计已确认，本文件是其落地计划）：
-> - 设计规格：`docs/architecture-extensibility-20261012.md`（内容插件化、ADR-001~004）
-> - Phase 0 依赖：`docs/architecture-review-20261011.md`（8 候选深化）
+> - 设计规格：`docs/reviews/architecture-extensibility-20261012.md`（内容插件化、ADR-001~004）
+> - Phase 0 依赖：`docs/reviews/architecture-review-20261011.md`（8 候选深化）
 > - Phase 0 依赖：`docs/plans/2026-10-11-ziwei-three-layer-split.md`（契约/数据/计算三层拆分）
 > - 测试基线：`test/README.md`（七层 `npm test` + 启动期 `selftest`）
 >
@@ -75,7 +75,7 @@
 > （原估 2 周压缩为约 1 个候选的量）。记此伏笔，避免后续把已完成项当待做重做。
 
 ### 里程碑 0A：落地 8 候选深化（引用 architecture-review-20261011）
-- 详细任务见 `docs/architecture-review-20261011.md` 候选 1–8。
+- 详细任务见 `docs/reviews/architecture-review-20261011.md` 候选 1–8。
 - 执行顺序建议（按文档成对关系与首选推荐）：
   1. 候选 1（分发协议收成 module）——首选推荐，且是候选 3 的地基。
   2. 候选 3（旗标→section 接线成可测 interface）——依赖候选 1。
@@ -84,7 +84,7 @@
   5. 候选 6（口径提示 basis 收一处）、候选 7（filterGenderContent 上公开面）。
   6. 候选 8（宫位查询收敛）——文档列为"可缓"，等下次实质改动顺手做，**本阶段可不强制**。
 - 每候选验收：`typecheck` exit 0 · `selftest` 全通过 · `npm test` 计数不降。
-- 退出：`docs/architecture-review-20261011.md` 全部 Strong/Worth-exploring 候选落地或显式挂起。
+- 退出：`docs/reviews/architecture-review-20261011.md` 全部 Strong/Worth-exploring 候选落地或显式挂起。
 
 ### 里程碑 0B：三层拆分（引用 ziwei-three-layer-split）
 - 详细任务见 `docs/plans/2026-10-11-ziwei-three-layer-split.md` 第 3–6 节。
