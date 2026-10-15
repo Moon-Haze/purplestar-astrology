@@ -52,9 +52,13 @@ export function getBookBySlug(slug: string): Book | null {
  */
 export function getChapter(bookSlug: string, chapterIdx: number) {
 	const book = getBookBySlug(bookSlug);
-	if (!book) {return null;}
+	if (!book) {
+		return null;
+	}
 	const chapter = book.chapters[chapterIdx];
-	if (!chapter) {return null;}
+	if (!chapter) {
+		return null;
+	}
 	return { book, chapter, chapterIdx };
 }
 
@@ -89,38 +93,60 @@ export function getParagraphById(id: string) {
  * @returns 命中列表，按 {@link ALL_BOOKS} 的书序 → 章节序 → 段落序排列
  *
  * @remarks
- * 匹配方式是**逐段落的子串匹配**（`String.prototype.indexOf`，不分词，对中文 OK）：
+ * 匹配方式是**逐段落的子串匹配**（`String.prototype.indexOf`，对中文 OK）。
+ * 检索词按空白分词：多个关键词须**全部出现在同一段**才算命中（AND），
+ * 单个关键词即单串子串匹配：
  * - **大小写敏感** —— `indexOf` 不做大小写折叠，故 `"abc"` 不匹配 `"ABC"`
  * - **只搜原文** `paragraph.text`，不搜 `translation` / `niNote`
  * - 计数单位是**段落**而非出现次数：同一段落里命中词出现多次也只产出一条
  * - **无相关度排序**，纯文档顺序、先命中先收；凑满 `limit` 立刻返回，不再继续扫描
  * - 繁简转换不做，繁体检索词匹配不到简体原文
  *
- * `snippet` 取命中处**前后各 40 字**的上下文：命中词裹 `<mark>`，其余部分经
- * {@link escapeHtml} 转义，首尾若被截断则补 `…`。
+ * `snippet` 取锚点**前后各 40 字**的上下文：锚点是**最早出现**的关键词，
+ * 裹 `<mark>`，其余部分经 {@link escapeHtml} 转义，首尾若被截断则补 `…`。
  */
 export function searchClassics(query: string, limit = 30): SearchHit[] {
-	const q = query.trim();
-	if (q.length < 1) {return [];}
+	const keywords = query.trim().split(/\s+/).filter(Boolean);
+	if (keywords.length < 1) {
+		return [];
+	}
 	// 上限的合法性必须在扫描前判定：命中数是扫描中才累积的，放在循环里判会
 	// 让 limit<=0 至少漏出 1 条（上限判定排在 push 之后），而 NaN 参与比较恒为假、
 	// 等于没有上限。两种都会让「设了上限」与「给出的结果数」对不上。
 	// Infinity 不在此列 —— 它是「无上限」，走正常路径返回全部。
-	if (Number.isNaN(limit) || limit < 1) {return [];}
+	if (Number.isNaN(limit) || limit < 1) {
+		return [];
+	}
 
 	const hits: SearchHit[] = [];
 	for (const book of ALL_BOOKS) {
 		for (const chapter of book.chapters) {
 			for (const p of chapter.paragraphs) {
-				const idx = p.text.indexOf(q);
-				if (idx < 0) {continue;}
+				// 每个关键词都要在同一段命中；锚点取最早出现的那一个
+				let idx = -1;
+				let anchor = "";
+				let hit = true;
+				for (const kw of keywords) {
+					const at = p.text.indexOf(kw);
+					if (at < 0) {
+						hit = false;
+						break;
+					}
+					if (idx < 0 || at < idx) {
+						idx = at;
+						anchor = kw;
+					}
+				}
+				if (!hit) {
+					continue;
+				}
 
 				// 提取上下文（前后各 40 字）
 				const start = Math.max(0, idx - 40);
-				const end = Math.min(p.text.length, idx + q.length + 40);
+				const end = Math.min(p.text.length, idx + anchor.length + 40);
 				const before = p.text.slice(start, idx);
-				const matched = p.text.slice(idx, idx + q.length);
-				const after = p.text.slice(idx + q.length, end);
+				const matched = p.text.slice(idx, idx + anchor.length);
+				const after = p.text.slice(idx + anchor.length, end);
 
 				const snippet =
 					(start > 0 ? "…" : "") +
@@ -138,7 +164,9 @@ export function searchClassics(query: string, limit = 30): SearchHit[] {
 					text: p.text,
 				});
 
-				if (hits.length >= limit) {return hits;}
+				if (hits.length >= limit) {
+					return hits;
+				}
 			}
 		}
 	}

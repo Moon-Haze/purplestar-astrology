@@ -42,9 +42,13 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 		const want = ["gusuifu", "quanji", "quanshu"];
 		const got = ALL_BOOKS.map(b => b.slug);
 		for (const s of want) {
-			if (!got.includes(s)) {throw new Error(`缺少古籍 ${s}，实得 ${got.join("、")}`);}
+			if (!got.includes(s)) {
+				throw new Error(`缺少古籍 ${s}，实得 ${got.join("、")}`);
+			}
 		}
-		if (!(TOTAL_PARAGRAPHS > 0)) {throw new Error("段落总数为 0 —— 古籍数据可能未加载");}
+		if (!(TOTAL_PARAGRAPHS > 0)) {
+			throw new Error("段落总数为 0 —— 古籍数据可能未加载");
+		}
 		return `${ALL_BOOKS.length} 部 / ${TOTAL_PARAGRAPHS} 段`;
 	});
 
@@ -52,9 +56,13 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 		// 上面那条只看总数，这条看结构：某部书 chapters 为空时总数仍可能为正（别的书贡献的），
 		// 而检索会静默跳过它 —— 用户搜那部书里的词，得到的是「未找到」。
 		for (const b of ALL_BOOKS) {
-			if (!b.chapters?.length) {throw new Error(`${b.slug} 没有章节`);}
+			if (!b.chapters?.length) {
+				throw new Error(`${b.slug} 没有章节`);
+			}
 			const empty = b.chapters.filter(c => !c.paragraphs?.length).map(c => c.title);
-			if (empty.length) {throw new Error(`${b.slug} 下有空章节：${empty.join("、")}`);}
+			if (empty.length) {
+				throw new Error(`${b.slug} 下有空章节：${empty.join("、")}`);
+			}
 		}
 		return ALL_BOOKS.map(b => `${b.slug} ${b.chapters.length} 章`).join(" / ");
 	});
@@ -63,11 +71,16 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 
 	ok("古籍检索：命中已知词，且结果带书名 / 章节 / 摘要", () => {
 		const hits = searchClassics("机月同梁");
-		if (!hits.length) {throw new Error("「机月同梁」零命中 —— 数据源或匹配逻辑可能已失效");}
+		if (!hits.length) {
+			throw new Error("「机月同梁」零命中 —— 数据源或匹配逻辑可能已失效");
+		}
 		const bad = hits.filter(h => !h.bookTitle || !h.chapterTitle || !h.snippet);
-		if (bad.length) {throw new Error(`${bad.length} 条命中缺书名/章节/摘要`);}
-		if (!hits.some(h => String(h.snippet).includes("<mark>")))
-			{throw new Error("摘要里没有 <mark> 高亮 —— snippet 的拼装可能已失效");}
+		if (bad.length) {
+			throw new Error(`${bad.length} 条命中缺书名/章节/摘要`);
+		}
+		if (!hits.some(h => String(h.snippet).includes("<mark>"))) {
+			throw new Error("摘要里没有 <mark> 高亮 —— snippet 的拼装可能已失效");
+		}
 		return `${hits.length} 条命中，均带书名/章节/摘要`;
 	});
 
@@ -96,9 +109,32 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 	ok("古籍检索：命中数不受 limit 之外的隐式截断（Infinity = 无上限）", () => {
 		const all = searchClassics("紫微", Number.POSITIVE_INFINITY);
 		const capped = searchClassics("紫微", 2);
-		if (all.length <= capped.length)
-			{throw new Error(`无上限应多于有上限，实得 ${all.length} vs ${capped.length}`);}
+		if (all.length <= capped.length) {
+			throw new Error(`无上限应多于有上限，实得 ${all.length} vs ${capped.length}`);
+		}
 		return `无上限 ${all.length} 条 > 上限 2 条`;
+	});
+
+	ok("古籍检索：多关键词按空白分词，同段全含才命中（AND）", () => {
+		const multi = searchClassics("紫微 化权");
+		const single = searchClassics("紫微", Number.POSITIVE_INFINITY);
+		if (!multi.length) {
+			throw new Error("「紫微 化权」零命中 —— 分词 AND 可能已失效");
+		}
+		if (multi.length > single.length) {
+			throw new Error(`AND 命中（${multi.length}）多于单关键词（${single.length}），不可能`);
+		}
+		const bad = multi.filter(h => !h.text.includes("紫微") || !h.text.includes("化权"));
+		if (bad.length) {
+			throw new Error(`${bad.length} 条命中缺关键词 —— AND 判定可能已失效`);
+		}
+		const marks = multi.filter(h => (String(h.snippet).match(/<mark>/g) ?? []).length !== 1);
+		if (marks.length) {
+			throw new Error(`${marks.length} 条摘要的 <mark> 不止一个 —— snippet 拼装可能已失效`);
+		}
+		const miss = searchClassics("紫微 这句话在古籍里绝不可能出现zzzq");
+		eq(miss.length, 0, "任一关键词缺席应零命中，");
+		return `AND 收窄 ${multi.length} ≤ ${single.length}，全命中且各恰一个高亮`;
 	});
 
 	// ── 3. 参数面（子进程跑合并后的根 CLI，测用户真正敲的那条链）──
@@ -112,10 +148,12 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 		];
 		for (const [bad, want] of probes) {
 			const r = deps.call(["knowledge", bad, "x"]);
-			if (r.code === 0)
-				{throw new Error(`${bad} 未报错（退出码 0）—— 未知旗标又变成静默忽略了`);}
-			if (!r.err.includes(`--${want}`))
-				{throw new Error(`${bad} 的提示应指向 --${want}，实得：${r.err.trim()}`);}
+			if (r.code === 0) {
+				throw new Error(`${bad} 未报错（退出码 0）—— 未知旗标又变成静默忽略了`);
+			}
+			if (!r.err.includes(`--${want}`)) {
+				throw new Error(`${bad} 的提示应指向 --${want}，实得：${r.err.trim()}`);
+			}
 		}
 		return `${probes.length} 个拼写错误均被拦下`;
 	});
@@ -128,18 +166,24 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 		// 只支持同步命令，故走子进程 deps.runCli —— async 分发的 rejection 子进程天然兜住。
 		for (const bad of ["0", "abc", "-3"]) {
 			const r = deps.runCli(["knowledge", "--search", "紫微", "--limit", bad]);
-			if (r.code === 0)
-				{throw new Error(`--limit ${bad} 未报错（退出码 0）—— 值域非法必须非零退出`);}
-			if (!r.err.includes("--limit"))
-				{throw new Error(`--limit ${bad} 的报错未提到 --limit，实得：${r.err.trim()}`);}
+			if (r.code === 0) {
+				throw new Error(`--limit ${bad} 未报错（退出码 0）—— 值域非法必须非零退出`);
+			}
+			if (!r.err.includes("--limit")) {
+				throw new Error(`--limit ${bad} 的报错未提到 --limit，实得：${r.err.trim()}`);
+			}
 		}
 		return "0 / abc / -3 均被命令层拦下（code1 + err 回显）";
 	});
 
 	ok("冒烟（子进程）：knowledge 成功链路 入口→解析→命令表→渲染 一次走通", () => {
 		const r = deps.runCli(["knowledge", "--search", "紫微"]);
-		if (r.code !== 0) {throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);}
-		if (!r.out.includes("紫微")) {throw new Error("检索结果缺关键词");}
+		if (r.code !== 0) {
+			throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		}
+		if (!r.out.includes("紫微")) {
+			throw new Error("检索结果缺关键词");
+		}
 		return "子进程成功链路在";
 	});
 
@@ -147,11 +191,13 @@ export async function asserts(deps: SelftestDeps): Promise<Assertion[]> {
 		// 三 skill 合一的接线守卫：命令进了 COMMAND_TABLE、参数进了 OPTION_NAMES，
 		// 任何一侧漏接，用户敲 `knowledge` 就是「未知命令」或 `--limit` 就是「未知参数」。
 		// 键集来自函数顶部的动态 import（见彼处注释）。
-		if (!("knowledge" in COMMANDS))
-			{throw new Error("cli/commands/index.ts 的命令表里没有 knowledge 条目 —— 合并接线断了");}
+		if (!("knowledge" in COMMANDS)) {
+			throw new Error("cli/commands/index.ts 的命令表里没有 knowledge 条目 —— 合并接线断了");
+		}
 		for (const f of ["search", "limit"]) {
-			if (!OPTION_NAMES.has(f))
-				{throw new Error(`cli 的 OPTION_NAMES 里没有 ${f} —— knowledge 参数未声明`);}
+			if (!OPTION_NAMES.has(f)) {
+				throw new Error(`cli 的 OPTION_NAMES 里没有 ${f} —— knowledge 参数未声明`);
+			}
 		}
 		return "命令表与作用域双侧接线在";
 	});
