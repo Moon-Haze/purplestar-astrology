@@ -68,7 +68,6 @@ dist/
 npm-debug.log*
 samples-out/
 .mimosa/
-docs/cli-samples.md
 package-lock.json
 html/
 .zcodeignore
