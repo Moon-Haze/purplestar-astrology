@@ -8,6 +8,12 @@
  */
 
 import { astro } from "iztro";
+
+// 换年口径显式锁：`normal` = 以农历正月初一为界换年（虚岁口径）。
+// iztro 2.6.1 的默认值恰是它，但「恰好等于默认」是隐式契约 —— 库改默认、或任何
+// 代码误动全局配置，都会把流年/虚岁基准静默滑到「以立春为界」（exact），
+// 排出的盘农历年错位、生年四化全变。在此显式声明，使口径不随默认值漂移。
+astro.config({ yearDivide: "normal" });
 import { Solar } from "lunar-typescript";
 import type { BirthInfo, LunarInfo, Star, Palace, Decadal, ZiweiChart } from "./types";
 import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "@/data/ganzhi";
@@ -94,9 +100,15 @@ export function getLunarInfo(year: number, month: number, day: number): LunarInf
  * ⚠️ 缺省值走 `normal` 而非 `dim` —— 拿不到亮度时不做负面假设。
  */
 function mapBrightness(b?: string): "bright" | "normal" | "dim" {
-	if (!b) {return "normal";}
-	if (b === "庙" || b === "旺") {return "bright";}
-	if (b === "陷" || b === "不" || b === "闲") {return "dim";}
+	if (!b) {
+		return "normal";
+	}
+	if (b === "庙" || b === "旺") {
+		return "bright";
+	}
+	if (b === "陷" || b === "不" || b === "闲") {
+		return "dim";
+	}
 	return "normal";
 }
 
@@ -178,12 +190,22 @@ const SOFT_STARS = new Set([
  * iztro 的 `type` 给出 —— 两张名单里没有主星。
  */
 function mapStarType(starName: string, iztroType: string): Star["type"] {
-	if (TOUGH_STARS.has(starName)) {return "tough";}
-	if (SOFT_STARS.has(starName)) {return "soft";}
+	if (TOUGH_STARS.has(starName)) {
+		return "tough";
+	}
+	if (SOFT_STARS.has(starName)) {
+		return "soft";
+	}
 	const t = (iztroType ?? "").toLowerCase();
-	if (t === "主星" || t === "major") {return "major";}
-	if (t === "煞星" || t === "tough") {return "tough";}
-	if (t === "吉星" || t === "soft" || t === "禄存" || t === "天马") {return "soft";}
+	if (t === "主星" || t === "major") {
+		return "major";
+	}
+	if (t === "煞星" || t === "tough") {
+		return "tough";
+	}
+	if (t === "吉星" || t === "soft" || t === "禄存" || t === "天马") {
+		return "soft";
+	}
 	return "minor";
 }
 
@@ -249,11 +271,12 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 		// 查表失败若静默兜底 0，会出现「两宫同指子位」且零信号 —— 与下方 projectPalaceName
 		// 同一纪律：宁可当场失败，也不静默产出错盘。BRANCHES / STEMS 覆盖全部十二支十干，
 		// 正常情况下 indexOf 不可能失败；真失败即说明 iztro 输出已损坏。
-		if (branch < 0 || stem < 0)
-			{throw new Error(
+		if (branch < 0 || stem < 0) {
+			throw new Error(
 				`未知的 iztro 天干地支「${p.heavenlyStem}${p.earthlyBranch}」（宫名 ${p.name}）—— ` +
 					`内核输出已损坏，请核对 iztro 版本是否变更了干支口径`
-			);}
+			);
+		}
 
 		// 合并所有星：主星 + 次星 + 杂耀。亮度走文墨 SB 表覆写（混合口径，XD2 默认）：
 		// 查表命中 → brightness 按细档塌缩 + brightnessRaw 记中文细档（主辅杂曜同表）；
@@ -352,11 +375,12 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const bodyBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfBodyPalace as string);
 	// 命宫 / 身宫地支必在十二宫内，这是排盘不变量（cli/chart/render.ts 的 palaceAtBranch 同样
 	// 依赖它）；查不到即内核输出已损坏，当场报错而非兜底 0（理由同上方宫循环的干支校验）。
-	if (soulBranch < 0 || bodyBranch < 0)
-		{throw new Error(
+	if (soulBranch < 0 || bodyBranch < 0) {
+		throw new Error(
 			`命宫/身宫地支不在十二支内（命宫=${astrolabe.earthlyBranchOfSoulPalace}，` +
 				`身宫=${astrolabe.earthlyBranchOfBodyPalace}）—— 内核输出已损坏`
-		);}
+		);
+	}
 	const fiveElementsClassName = astrolabe.fiveElementsClass as string;
 	const fiveElementsClass = parseWuxingJu(fiveElementsClassName);
 
@@ -365,7 +389,9 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 		p.stars.some(s => s.name === "紫微" && s.type === "major")
 	);
 	// 紫微必上盘（安星法的锚点），找不到即内核输出已损坏 —— 兜底 0 会静默指向子位错盘
-	if (!ziweiPalace) {throw new Error("紫微星不在任何宫位 —— 内核输出已损坏，无法定位紫微");}
+	if (!ziweiPalace) {
+		throw new Error("紫微星不在任何宫位 —— 内核输出已损坏，无法定位紫微");
+	}
 	const ziweiPos = ziweiPalace.branch;
 
 	// ── 大限数组（倪师《天纪》正统：四化永远固定，大限只看宫位移动）──

@@ -10,6 +10,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { astro } from "iztro";
 import { generateChart } from "@/algorithm";
 import { detectPatterns } from "@/patterns";
 import { palaceAtBranch } from "@/palace-relations";
@@ -24,15 +25,26 @@ import { eq, type SelftestDeps } from "./kit";
 
 /** 排盘不变量：十二宫齐全 / 地支不重复 / 命宫唯一 / 五行局合法 / 空宫借宫字段。 */
 export function runChartInvariants({ ok }: Pick<SelftestDeps, "ok">): void {
+	ok("排盘不变量：换年口径显式锁在正月初一（yearDivide=normal）", () => {
+		// generateChart 所在模块加载时已 astro.config({ yearDivide: "normal" })；
+		// 这里读回全局配置钉住它 —— 库默认值漂移或全局配置被误改都会在此暴露
+		const cfg = astro.getConfig();
+		eq(cfg.yearDivide, "normal", "换年口径 ");
+	});
 	ok("排盘不变量：十二宫齐全 / 地支不重复 / 命宫唯一 / 五行局合法", () => {
 		const c = generateChart(SAMPLE);
 		eq(c.palaces.length, 12, "宫位数 ");
 		eq(new Set(c.palaces.map(p => p.branch)).size, 12, "地支去重后 ");
 		eq(c.palaces.filter(p => p.isSoulPalace).length, 1, "命宫数 ");
-		if (![2, 3, 4, 5, 6].includes(c.fiveElementsClass))
-			{throw new Error(`五行局异常：${c.fiveElementsClass}`);}
-		if (c.ziweiPos < 0 || c.ziweiPos > 11) {throw new Error(`紫微位异常：${c.ziweiPos}`);}
-		if (c.decadals.length !== 12) {throw new Error(`大限数异常：${c.decadals.length}`);}
+		if (![2, 3, 4, 5, 6].includes(c.fiveElementsClass)) {
+			throw new Error(`五行局异常：${c.fiveElementsClass}`);
+		}
+		if (c.ziweiPos < 0 || c.ziweiPos > 11) {
+			throw new Error(`紫微位异常：${c.ziweiPos}`);
+		}
+		if (c.decadals.length !== 12) {
+			throw new Error(`大限数异常：${c.decadals.length}`);
+		}
 	});
 	ok("排盘不变量：空宫均带借宫字段", () => {
 		const c = generateChart(SAMPLE);
@@ -50,7 +62,9 @@ export function runChartInvariants({ ok }: Pick<SelftestDeps, "ok">): void {
 		for (const p of c.palaces) {
 			const a = getPalaceByBranch(c, p.branch);
 			const b = palaceAtBranch(c, p.branch);
-			if (a !== b) {throw new Error(`branch ${p.branch} 两实现不同源`);}
+			if (a !== b) {
+				throw new Error(`branch ${p.branch} 两实现不同源`);
+			}
 		}
 		return "12 宫两实现同源";
 	});
@@ -74,18 +88,23 @@ export function runFortuneData({ ok }: Pick<SelftestDeps, "ok">): void {
 				timeIndex: Math.floor(rnd() * 13),
 				gender: rnd() > 0.5 ? "male" : "female",
 			});
-			if (c.palaces.length !== 12 || new Set(c.palaces.map(p => p.branch)).size !== 12)
-				{throw new Error(`${year}-${month}-${day} 十二宫不自洽`);}
+			if (c.palaces.length !== 12 || new Set(c.palaces.map(p => p.branch)).size !== 12) {
+				throw new Error(`${year}-${month}-${day} 十二宫不自洽`);
+			}
 			const ages = [...new Set(c.palaces.flatMap(p => p.ages ?? []))].sort((a, b) => a - b);
-			if (ages.length !== 120 || ages[0] !== 1 || ages[119] !== 120)
-				{throw new Error(`${year}-${month}-${day} ages 覆盖不自洽`);}
-			if (c.douJunBranch < 0 || c.douJunBranch > 11) {throw new Error("斗君越界");}
+			if (ages.length !== 120 || ages[0] !== 1 || ages[119] !== 120) {
+				throw new Error(`${year}-${month}-${day} ages 覆盖不自洽`);
+			}
+			if (c.douJunBranch < 0 || c.douJunBranch > 11) {
+				throw new Error("斗君越界");
+			}
 			if (
 				c.palaces.some(p =>
 					p.stars.some(st => !["major", "minor", "soft", "tough"].includes(st.type))
 				)
-			)
-				{throw new Error("星曜类型值不自洽");}
+			) {
+				throw new Error("星曜类型值不自洽");
+			}
 		}
 		return "20 个伪随机盘全部自洽";
 	});
@@ -94,21 +113,26 @@ export function runFortuneData({ ok }: Pick<SelftestDeps, "ok">): void {
 		// DaXian→Decadal；内核字段 wuxingJu→fiveElementsClass、mingGongBranch→soulBranch、
 		// shenGongBranch→bodyBranch、xiaoXianAges→ages、isMingGong→isSoulPalace 等。
 		const c = generateChart(SAMPLE);
-		if (!("fiveElementsClass" in c) || !("soulBranch" in c) || !("bodyBranch" in c))
-			{throw new Error("chart 字段未对齐 iztro");}
+		if (!("fiveElementsClass" in c) || !("soulBranch" in c) || !("bodyBranch" in c)) {
+			throw new Error("chart 字段未对齐 iztro");
+		}
 		const p = c.palaces.find(x => x.isSoulPalace);
-		if (!p) {throw new Error("isSoulPalace 不存在");}
+		if (!p) {
+			throw new Error("isSoulPalace 不存在");
+		}
 		// ⚠️ 探针拆串（"lu"+"cky"）：防止后续批量改名 sed 把断言探针连同实现一起替换，
 		//    那会让这条断言变成恒真（Task 3 实测踩过）。
 		const oldLucky = "lu" + "cky";
 		const oldSha = "s" + "ha";
-		if (c.palaces.some(x => x.stars.some(s => s.type === oldLucky || s.type === oldSha)))
-			{throw new Error("Star.type 仍有 lucky/sha 残留");}
+		if (c.palaces.some(x => x.stars.some(s => s.type === oldLucky || s.type === oldSha))) {
+			throw new Error("Star.type 仍有 lucky/sha 残留");
+		}
 		if (
 			c.palaces.some(x => x.stars.some(s => s.type === "soft" || s.type === "tough")) ===
 			false
-		)
-			{throw new Error("soft/tough 未出现");}
+		) {
+			throw new Error("soft/tough 未出现");
+		}
 		return "字段/类型值对齐";
 	});
 	ok("运限数据：小限岁数表 1–120 连续、每宫恰 10 个（iztro ages 提取）", () => {
@@ -116,15 +140,21 @@ export function runFortuneData({ ok }: Pick<SelftestDeps, "ok">): void {
 		const all = c.palaces.flatMap(p => p.ages ?? []);
 		const uniq = [...new Set(all)].sort((x, y) => x - y);
 		eq(uniq.length, 120, "岁数去重后 ");
-		for (let i = 0; i < 120; i++)
-			{if (uniq[i] !== i + 1)
-				{throw new Error(`岁数表不连续：第 ${i} 位是 ${uniq[i]}，应为 ${i + 1}`);}}
-		for (const p of c.palaces)
-			{if ((p.ages ?? []).length !== 10)
-				{throw new Error(`${p.name} 的小限岁数不是 10 个：${(p.ages ?? []).join(",")}`);}}
+		for (let i = 0; i < 120; i++) {
+			if (uniq[i] !== i + 1) {
+				throw new Error(`岁数表不连续：第 ${i} 位是 ${uniq[i]}，应为 ${i + 1}`);
+			}
+		}
+		for (const p of c.palaces) {
+			if ((p.ages ?? []).length !== 10) {
+				throw new Error(`${p.name} 的小限岁数不是 10 个：${(p.ages ?? []).join(",")}`);
+			}
+		}
 		// 校准锚点：1990 样例命宫(子)的小限自虚岁 9 起
 		const ming = c.palaces.find(p => p.isSoulPalace);
-		if (!ming) {throw new Error("找不到命宫");}
+		if (!ming) {
+			throw new Error("找不到命宫");
+		}
 		eq(ming.ages?.[0], 9, "命宫首岁 ");
 	});
 	ok("运限数据：命主 / 身主随盘输出（iztro soul / body）", () => {
@@ -153,27 +183,28 @@ export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): v
 	ok("三合派约束：宫干自化未被填充（读 SchoolAdapter.forbiddenFeatures）", () => {
 		const c = generateChart(SAMPLE);
 		const v = checkForbiddenFeatures(c, SCHOOLS[DEFAULT_SCHOOL_ID]);
-		if (v.length)
-			{throw new Error(
-				`体系禁用特征被触发：${v.map(x => x.detail).join("；")}`
-			);}
+		if (v.length) {
+			throw new Error(`体系禁用特征被触发：${v.map(x => x.detail).join("；")}`);
+		}
 	});
 	ok("三合派约束：大限未携带宫干四化字段", () => {
 		const c = generateChart(SAMPLE);
 		const dirty = c.decadals.filter(
 			d => d.mutagen !== undefined || d.stemIndex !== undefined || d.stemName !== undefined
 		);
-		if (dirty.length)
-			{throw new Error(
+		if (dirty.length) {
+			throw new Error(
 				`检测到大限携带四化/宫干字段：${dirty.length} 条（飞星派逻辑疑似回流）`
-			);}
+			);
+		}
 	});
 	ok("体系合规：合盘输出无飞星派断语，两库引句口径不打架", () => {
 		const k = readFileSync(resolve(ctx.root, "synastry", "synastry-knowledge.ts"), "utf8");
-		if (/自化(禄|权|科|忌)/.test(k))
-			{throw new Error(
+		if (/自化(禄|权|科|忌)/.test(k)) {
+			throw new Error(
 				"synastry-knowledge 仍含「自化」断语——体系不计算宫干自化，用户可见文案不得出现"
-			);}
+			);
+		}
 		const d = readFileSync(resolve(ctx.root, "analysis", "data.ts"), "utf8");
 		// 七杀「毁一半」引句是 suspect 档：两库各自引用时，引句前 40 字内必须带
 		// 「坊间流传」口径标注（data.ts 形态「坊间流传倪师笑言（未核实）」、
@@ -182,16 +213,21 @@ export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): v
 		const qiShaQuote = "差不多毁了一半";
 		const assertQiShaLabeled = (src: string, srcName: string) => {
 			const i = src.indexOf(qiShaQuote);
-			if (i < 0) {return;} // 该库不引用此句则无需标注
-			if (!src.slice(Math.max(0, i - 40), i).includes("坊间流传"))
-				{throw new Error(`${srcName} 七杀「毁了一半」引句丢失「坊间流传」未核实标注`);}
+			if (i < 0) {
+				return;
+			} // 该库不引用此句则无需标注
+			if (!src.slice(Math.max(0, i - 40), i).includes("坊间流传")) {
+				throw new Error(`${srcName} 七杀「毁了一半」引句丢失「坊间流传」未核实标注`);
+			}
 		};
 		assertQiShaLabeled(d, "data.ts");
 		assertQiShaLabeled(k, "synastry-knowledge");
-		if (k.includes("必有重大灾祸"))
-			{throw new Error("太阳「三不见」在 synastry 侧被强化为「必有」——两库口径打架");}
-		if (d.includes("二十八岁后"))
-			{throw new Error("武曲晚婚门槛 data.ts 仍为 28 岁——应统一为 30 岁");}
+		if (k.includes("必有重大灾祸")) {
+			throw new Error("太阳「三不见」在 synastry 侧被强化为「必有」——两库口径打架");
+		}
+		if (d.includes("二十八岁后")) {
+			throw new Error("武曲晚婚门槛 data.ts 仍为 28 岁——应统一为 30 岁");
+		}
 		// corpus/data 侧的飞星词白名单机检（spec §4.3，与上方 synastry-knowledge 禁词
 		// 对偶）：「自化 / 来因宫 / 飞化」只允许出现在否定 / 辨析语境——白名单按文件钉
 		// **稳定子串**而非行号（行号随文案增删漂移，子串跟着语境走）：quanshu 的辨析条
@@ -212,12 +248,13 @@ export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): v
 				.filter(({ line }) => FLYING_WORDS.test(line))
 				.filter(({ line }) => !/^(\/\/|\/\*|\*)/.test(line))
 				.find(({ line }) => !pins.some(p => line.includes(p)));
-			if (offender)
-				{throw new Error(
+			if (offender) {
+				throw new Error(
 					`corpus/data/${file} L${offender.no} 出现白名单外飞星词（自化/来因宫/飞化）：` +
 						`「${offender.line.slice(0, 40)}」——体系不计算宫干飞化，用户可见文案只允许` +
 						`否定/辨析语境（本文件白名单：${pins.join("、") || "无"}）`
-				);}
+				);
+			}
 		}
 	});
 }
@@ -226,10 +263,14 @@ export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): v
 export function runPatternMutagen({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("格局识别：返回数组且每条含 name / level", () => {
 		const ps = detectPatterns(generateChart(SAMPLE));
-		if (!Array.isArray(ps)) {throw new Error("detectPatterns 未返回数组");}
-		for (const p of ps)
-			{if (!p.name || !p.level)
-				{throw new Error(`格局条目缺字段：${JSON.stringify(p).slice(0, 80)}`);}}
+		if (!Array.isArray(ps)) {
+			throw new Error("detectPatterns 未返回数组");
+		}
+		for (const p of ps) {
+			if (!p.name || !p.level) {
+				throw new Error(`格局条目缺字段：${JSON.stringify(p).slice(0, 80)}`);
+			}
+		}
 		return `样本盘识别到 ${ps.length} 个格局`;
 	});
 	ok("四化：甲干 = 廉贞禄 / 破军权 / 武曲科 / 太阳忌", () => {
