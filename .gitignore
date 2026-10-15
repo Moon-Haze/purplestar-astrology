@@ -11,10 +11,6 @@ node_modules/
 .codegraph/
 .history/
 .vscode/
-.claude/skills/
-.codebuddy/skills/
-.zcode/skills/
-.zcode/plans/
 .zcodeignore
 
 # ── 本地配置 ──────────────────────────────────────────────
