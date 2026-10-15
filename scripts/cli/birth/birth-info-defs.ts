@@ -30,6 +30,12 @@ export interface TrueSolarOptions {
 	month?: number;
 	/** 公历日，`eot` 为真时应提供 */
 	day?: number;
+	/**
+	 * 夏令时回拨分钟数（中国 1986–91 为 60）。默认 `0` 即不做回拨。
+	 * 由调用点按出生日期用 {@link isChinaDstClock} 判定后传入，
+	 * 本函数自身不做日期 → DST 判定（保持纯换算）。
+	 */
+	dstMinutes?: number;
 }
 
 /** {@link calcTrueSolar} 的返回值。 */
@@ -53,9 +59,9 @@ export interface TrueSolarResult {
 	 */
 	dayOffset: number;
 	/**
-	 * 总校正（经度 + 均时差），分钟。
+	 * 总校正（经度 + 均时差 − 夏令时回拨），分钟。
 	 *
-	 * 算法是**分项各自取整后相加**，好让提示里的「经度 A + 均时差 B = C」自洽
+	 * 算法是**分项各自取整后相加**，好让提示里的「经度 A + 均时差 B − 夏令时 C = D」自洽
 	 * （若先相加再取整，-14.4 与 +3.8 会显示成 -14 + 4 = -11，看着像算错了）。
 	 */
 	offsetMinutes: number;
@@ -63,6 +69,8 @@ export interface TrueSolarResult {
 	longitudeMinutes: number;
 	/** 均时差项的贡献，取整后的分钟数；未开 `eot` 时恒为 0 */
 	eotMinutes: number;
+	/** 夏令时回拨项的贡献，分钟数；出生不在夏令时区间（或被 `--no-dst` 关闭）时恒为 0 */
+	dstMinutes: number;
 	/** 校正后的**当日分钟数** 0–1439（已按 1440 取模归一，故不含跨天信息），取整后 */
 	solarMinutes: number;
 }

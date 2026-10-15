@@ -104,18 +104,20 @@ export function calcTrueSolar(
 		(!Number.isInteger(opts.year) ||
 			!Number.isInteger(opts.month) ||
 			!Number.isInteger(opts.day))
-	)
-		{throw new Error(
+	) {
+		throw new Error(
 			"calcTrueSolar：开启 eot 时必须提供 year/month/day 三项（缺项会静默算出 NaN）"
-		);}
+		);
+	}
 	const longitudeRaw = (longitude - 120) * 4;
 	// 三项日期已由上一行校验为整数（as 断言只影响类型层），可安全下传
 	const eotRaw = opts.eot
 		? equationOfTime(opts.year as number, opts.month as number, opts.day as number)
 		: 0;
+	const dstRaw = opts.dstMinutes ?? 0;
 	// 判定一律用未取整的 offsetRaw —— 未开 --eot 时 eotRaw 恒为 0，
 	// 故默认口径与旧实现逐位相同，不存在行为漂移。
-	const totalRaw = clockMins + longitudeRaw + eotRaw;
+	const totalRaw = clockMins + longitudeRaw + eotRaw - dstRaw;
 	// dayOffset 也取未取整值：跨没跨过午夜由精确时刻决定，先取整再判断会在边界处翻车
 	const dayOffset = Math.floor(totalRaw / 1440);
 	const solar = ((totalRaw % 1440) + 1440) % 1440;
@@ -123,15 +125,85 @@ export function calcTrueSolar(
 	const branch = solar >= 1380 || solar < 60 ? 0 : Math.floor((solar - 60) / 120) + 1;
 	const longitudeMinutes = Math.round(longitudeRaw);
 	const eotMinutes = Math.round(eotRaw);
+	const dstMinutes = Math.round(dstRaw);
 	return {
 		branch,
 		isLateZi,
 		dayOffset,
-		offsetMinutes: longitudeMinutes + eotMinutes,
+		offsetMinutes: longitudeMinutes + eotMinutes - dstMinutes,
 		longitudeMinutes,
 		eotMinutes,
+		dstMinutes,
 		solarMinutes: Math.round(solar),
 	};
+}
+
+/**
+ * 中国夏令时的六年区间表。
+ *
+ * @remarks
+ * 来源以 IANA tzdata（`Asia/Shanghai`，Rule PRC）为准 —— 起为「4 月 11 日及之后的
+ * 第一个周日 02:00」，止为「9 月 11 日及之后的第一个周日 02:00」；1986 年因通知
+ * 较晚特例从 5 月 4 日开始。百科类来源在 1988 年起日上与 tzdata 有出入
+ * （04-10 vs 04-17），以 tzdata 为准（操作系统与排盘软件链的事实基准）。
+ * 表驱动而非动态算规则：首年特例让规则计算必须带分支，直接写六年更直白。
+ */
+const CHINA_DST_YEARS: ReadonlyArray<{
+	year: number;
+	start: readonly [number, number];
+	end: readonly [number, number];
+}> = [
+	{ year: 1986, start: [5, 4], end: [9, 14] },
+	{ year: 1987, start: [4, 12], end: [9, 13] },
+	{ year: 1988, start: [4, 17], end: [9, 11] },
+	{ year: 1989, start: [4, 16], end: [9, 17] },
+	{ year: 1990, start: [4, 15], end: [9, 16] },
+	{ year: 1991, start: [4, 14], end: [9, 15] },
+];
+
+/** 月日压成字典序可比较的整数（月日都不补零时，字典序即年内日序） */
+const mdKey = (month: number, day: number): number => month * 100 + day;
+
+/** 夏令时起止都发生在凌晨 02:00（拨快 / 拨回的切换时刻） */
+const DST_BOUNDARY_MIN = 2 * 60;
+
+/**
+ * 判定出生时刻（公历日 + 钟表时刻）是否落在中国夏令时期间。
+ *
+ * @param year - 公历年
+ * @param month - 公历月 1–12
+ * @param day - 公历日
+ * @param clockMins - 钟表时刻的当日分钟数（0–1439）
+ * @returns `true` 表示该钟表时刻按夏令时口径读数，排盘前应回拨 60 分
+ *
+ * @remarks
+ * 起止日**当天**都参与判定（区间含首尾）：起始日 02:00 起钟表被拨快（更早的
+ * 钟表读数仍是标准时间，不回拨）；结束日 02:00 起已拨回（更早的读数按拨回前
+ * 口径保守视为夏令时 —— 01:00–01:59 物理上出现两次，取第一次）。
+ * `--branch` 直给时辰支的路径不调用本函数 —— 那条路的钟表换算是用户的责任。
+ */
+export function isChinaDstClock(
+	year: number,
+	month: number,
+	day: number,
+	clockMins: number
+): boolean {
+	const rec = CHINA_DST_YEARS.find(r => r.year === year);
+	if (!rec) {
+		return false;
+	}
+	const md = mdKey(month, day);
+	// 闭区间放行首尾两日（各自再按 02:00 切换时刻细分），其余年份外日期直接排除
+	if (md < mdKey(rec.start[0], rec.start[1]) || md > mdKey(rec.end[0], rec.end[1])) {
+		return false;
+	}
+	if (md === mdKey(rec.start[0], rec.start[1])) {
+		return clockMins >= DST_BOUNDARY_MIN;
+	}
+	if (md === mdKey(rec.end[0], rec.end[1])) {
+		return clockMins < DST_BOUNDARY_MIN;
+	}
+	return true;
 }
 
 /**
@@ -179,23 +251,28 @@ const stripSuffix = (s: string) => String(s).trim().replace(ADMIN_SUFFIX, "");
  */
 export function findLongitude(cityName: string): LongitudeHit | null {
 	const raw = String(cityName).trim();
-	if (!raw) {return null;}
+	if (!raw) {
+		return null;
+	}
 	const bare = stripSuffix(raw);
 
 	const hit =
 		ALL_CITIES.find(c => c.name === raw) ??
 		(bare !== raw ? ALL_CITIES.find(c => c.name === bare) : null);
 	// exact 表示「用户写的就是表里那个名字」，用于上层决定要不要提示已做容错解析
-	if (hit)
-		{return {
+	if (hit) {
+		return {
 			longitude: hit.longitude,
 			matched: hit.name,
 			exact: hit.name === raw,
 			ambiguous: null,
-		};}
+		};
+	}
 
 	const cands = ALL_CITIES.filter(c => c.name.includes(bare) || bare.includes(c.name));
-	if (!cands.length) {return null;}
+	if (!cands.length) {
+		return null;
+	}
 	// 命中最短的城市名（最短名最贴近用户所写），并记录同长度候选供提示
 	cands.sort((a, b) => a.name.length - b.name.length || a.name.localeCompare(b.name));
 	const best = cands[0];
@@ -248,18 +325,25 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	const lunarStr = g("lunar");
 	const solarStr = g("date");
 
-	if (lunarStr && solarStr)
-		{throw new Error("--lunar 与 --date 不能同时使用（一个是农历，一个是公历）");}
+	if (lunarStr && solarStr) {
+		throw new Error("--lunar 与 --date 不能同时使用（一个是农历，一个是公历）");
+	}
 
 	if (lunarStr) {
 		const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(lunarStr));
-		if (!m) {throw new Error(`农历日期格式应为 YYYY-MM-DD，收到：${lunarStr}`);}
+		if (!m) {
+			throw new Error(`农历日期格式应为 YYYY-MM-DD，收到：${lunarStr}`);
+		}
 		const ly = Number(m[1]),
 			lm = Number(m[2]),
 			ld = Number(m[3]);
 		const isLeap = g("leap") === true || g("leap") === "true";
-		if (lm < 1 || lm > 12) {throw new Error(`农历月份应为 1-12，收到：${lm}`);}
-		if (ld < 1 || ld > 30) {throw new Error(`农历日期应为 1-30，收到：${ld}`);}
+		if (lm < 1 || lm > 12) {
+			throw new Error(`农历月份应为 1-12，收到：${lm}`);
+		}
+		if (ld < 1 || ld > 30) {
+			throw new Error(`农历日期应为 1-30，收到：${ld}`);
+		}
 		let solar: Solar;
 		try {
 			// lunar-typescript 约定：闰月用负数月份表示；该年若无此闰月会抛 "wrong lunar year ..."
@@ -288,10 +372,13 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		dateNote = `农历 ${ly}年${isLeap ? "闰" : ""}${lm}月${ld}日 → 公历 ${year}-${month}-${day}`;
 	} else if (solarStr) {
 		const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(solarStr));
-		if (!m) {throw new Error(`日期格式应为 YYYY-MM-DD，收到：${solarStr}`);}
+		if (!m) {
+			throw new Error(`日期格式应为 YYYY-MM-DD，收到：${solarStr}`);
+		}
 		const [sy, sm, sd] = m.slice(1).map(Number);
-		if (sm < 1 || sm > 12)
-			{throw new Error(`日期不存在：${solarStr}（月份应为 1-12，收到 ${sm}）`);}
+		if (sm < 1 || sm > 12) {
+			throw new Error(`日期不存在：${solarStr}（月份应为 1-12，收到 ${sm}）`);
+		}
 		// 日历真值 round-trip 校验：宽松格式（1990-5-15）先归一再校验。JS Date 会把
 		// 2011-02-30 静默归一化为 03-02（Date.UTC 同样），直接下传就是一张「标题印着
 		// 02-30、实际排 03-02」的错盘（--json 的 birthInfo.day 与 lunarInfo 更会自相矛盾）。
@@ -314,8 +401,9 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		day = sd;
 	}
 	// ⚠️ 日期从此二选一（--date / --lunar，spec §1.2）：--date 完全覆盖（格式宽松）。
-	if (!year || !month || !day)
-		{throw new Error("缺少出生日期：需 --date YYYY-MM-DD 或 --lunar YYYY-MM-DD");}
+	if (!year || !month || !day) {
+		throw new Error("缺少出生日期：需 --date YYYY-MM-DD 或 --lunar YYYY-MM-DD");
+	}
 
 	// ── 真太阳时口径：默认只做经度校正；--eot 额外计入均时差 ──
 	// 均时差与经度无关（--lng 120 时也不为 0），故这个开关独立于「出生地是否给出」。
@@ -327,17 +415,22 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		lngAmbiguous: string[] | null = null;
 	if (g("lng") !== undefined) {
 		longitude = Number(g("lng"));
-		if (!Number.isFinite(longitude)) {throw new Error(`--lng 应为数字，收到：${g("lng")}`);}
+		if (!Number.isFinite(longitude)) {
+			throw new Error(`--lng 应为数字，收到：${g("lng")}`);
+		}
 	} else if (g("city")) {
 		const cityRaw = String(g("city"));
 		const found = findLongitude(cityRaw);
 		if (found) {
 			longitude = found.longitude;
 			// 仅在「做了容错解析」或「存在同名歧义」时提示——用户写的就是表里的名字时不必打扰
-			if (!found.exact)
-				{lngNote = `「${cityRaw}」按「${found.matched}」解析 → 东经 ${found.longitude}°`;}
+			if (!found.exact) {
+				lngNote = `「${cityRaw}」按「${found.matched}」解析 → 东经 ${found.longitude}°`;
+			}
 			lngAmbiguous = found.ambiguous;
-			if (lngAmbiguous && !lngNote) {lngNote = `「${cityRaw}」→ 东经 ${found.longitude}°`;}
+			if (lngAmbiguous && !lngNote) {
+				lngNote = `「${cityRaw}」→ 东经 ${found.longitude}°`;
+			}
 		} else {
 			// 城市名未命中时的省名回退（spec §1.2 裸省名边界）：「山东」「内蒙古」按省会计
 			//（与 --province 同一实现）。--city 旗标路径同样受益（原先直接报未收录）。
@@ -375,25 +468,40 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	// --late-zi 只对 --time 有意义：--branch 直接指定时辰（晚子时就是 --branch 12），
 	// 与之同用属于参数误用 —— 当场报错，而不是静默忽略（原先的校验放在时辰解析之后，
 	// 且条件含「两者皆缺」，而那时缺时辰早就在上方抛错 —— 实际不可达，等于没校验）。
-	if (wantLateZi && g("time") === undefined)
-		{throw new Error("--late-zi 需配合 --time 使用；直接指定时辰时，晚子时请用 --branch 12");}
+	if (wantLateZi && g("time") === undefined) {
+		throw new Error("--late-zi 需配合 --time 使用；直接指定时辰时，晚子时请用 --branch 12");
+	}
 
 	if (g("branch") !== undefined) {
 		timeIndex = Number(g("branch"));
 		// 12 = 晚子时（安星按次日），是本 CLI 对 iztro timeIndex 12 的显式暴露
-		if (!Number.isInteger(timeIndex) || timeIndex < 0 || timeIndex > 12)
-			{throw new Error("--branch 应为 0-11（0=子 … 11=亥）或 12（晚子时）");}
+		if (!Number.isInteger(timeIndex) || timeIndex < 0 || timeIndex > 12) {
+			throw new Error("--branch 应为 0-11（0=子 … 11=亥）或 12（晚子时）");
+		}
 		hourNote =
 			timeIndex === 12
 				? "直接指定 晚子时（子时，安星按次日）"
 				: `直接指定 ${shichenLabel(timeIndex)}`;
 	} else if (g("time") !== undefined) {
 		const m = /^(\d{1,2}):(\d{2})$/.exec(String(g("time")));
-		if (!m) {throw new Error(`时间格式应为 HH:MM，收到：${g("time")}`);}
+		if (!m) {
+			throw new Error(`时间格式应为 HH:MM，收到：${g("time")}`);
+		}
 		const ch = Number(m[1]),
 			cm = Number(m[2]);
-		if (ch > 23 || cm > 59) {throw new Error(`时间超出范围：${g("time")}`);}
-		const t = calcTrueSolar(ch, cm, longitude, { eot: useEot, year, month, day });
+		if (ch > 23 || cm > 59) {
+			throw new Error(`时间超出范围：${g("time")}`);
+		}
+		// 1986–91 中国夏令时：钟表读数按夏令时口径时先回拨 60 分（--no-dst 关闭自动判定）
+		const noDst = g("no-dst") === true || g("no-dst") === "true";
+		const dstMinutes = !noDst && isChinaDstClock(year, month, day, ch * 60 + cm) ? 60 : 0;
+		const t = calcTrueSolar(ch, cm, longitude, {
+			eot: useEot,
+			year,
+			month,
+			day,
+			dstMinutes,
+		});
 		lateZiCandidate = t.isLateZi;
 
 		// 校正把时刻推出当天时，日期必须跟着走 —— 否则 (日, 时) 这个组合指向的不是出生时刻。
@@ -410,10 +518,14 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 			day = shifted.day;
 		}
 
-		// 校正量的构成：默认只有经度项；开了 --eot 则多一项均时差（与经度无关，可能反号）
+		// 校正量的构成：默认只有经度项；开了 --eot 多一项均时差，夏令时回拨再减一项。
+		// DST 生效时即使未开 --eot 也展开构成 —— 总数里混着 −60 分而不显示来源属于静默切换口径。
+		const dstText = t.dstMinutes ? ` − 夏令时 ${t.dstMinutes} 分` : "";
 		const corrText = useEot
-			? `经度 ${signed(t.longitudeMinutes)} 分 + 均时差 ${signed(t.eotMinutes)} 分 = ${signed(t.offsetMinutes)} 分`
-			: `${signed(t.offsetMinutes)} 分`;
+			? `经度 ${signed(t.longitudeMinutes)} 分 + 均时差 ${signed(t.eotMinutes)} 分${dstText} = ${signed(t.offsetMinutes)} 分`
+			: t.dstMinutes
+				? `经度 ${signed(t.longitudeMinutes)} 分${dstText} = ${signed(t.offsetMinutes)} 分`
+				: `${signed(t.offsetMinutes)} 分`;
 		const clockText = `钟表 ${String(ch).padStart(2, "0")}:${m[2]}`;
 
 		if (t.isLateZi && wantLateZi) {
@@ -422,9 +534,14 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		} else {
 			timeIndex = t.branch;
 			hourNote = `${clockText} → 真太阳时校正 ${corrText} → ${shichenLabel(timeIndex)}`;
-			if (t.isLateZi) {hourNote += "（晚子时，按当日早子时口径）";}
+			if (t.isLateZi) {
+				hourNote += "（晚子时，按当日早子时口径）";
+			}
 		}
 		hourNote += dayShiftText;
+		if (t.dstMinutes) {
+			hourNote += `；生于夏令时期间，钟表时间已回拨 1 小时（若出生证明时间当时已自行减过，加 --no-dst 复原）`;
+		}
 	} else {
 		throw new Error("缺少出生时辰：需 --time HH:MM 或 --branch 0-12");
 	}
@@ -435,13 +552,15 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	// （校验位置在时辰之后：缺项报错保持「日期 → 时辰 → 性别」的自然顺序——
 	//   只给日期时先报缺时辰，而不是跳过时辰直接报缺性别。）
 	const genderRaw = g("gender");
-	if (genderRaw === undefined)
-		{throw new Error(
+	if (genderRaw === undefined) {
+		throw new Error(
 			`缺少性别：需 --gender male|female|男|女（性别决定大限顺逆，缺失会排出错盘）`
-		);}
+		);
+	}
 	const genderValue = String(genderRaw).toLowerCase();
-	if (!["male", "m", "男", "female", "f", "女"].includes(genderValue))
-		{throw new Error(`--gender 应为 male|female|男|女，收到：${genderRaw}`);}
+	if (!["male", "m", "男", "female", "f", "女"].includes(genderValue)) {
+		throw new Error(`--gender 应为 male|female|男|女，收到：${genderRaw}`);
+	}
 	const gender = ["female", "f", "女"].includes(genderValue) ? "female" : "male";
 
 	const notes = [dateNote, lngNote, hourNote].filter(Boolean);

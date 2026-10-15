@@ -47,6 +47,7 @@ type Skill = keyof typeof CLI;
 /** analyze --json 的输出。 */
 interface AnalyzeJson {
 	chart: ZiweiChart;
+	basis?: { note: string; notes: string[] };
 }
 /** synastry --json 里一方（a / b）的输出。 */
 interface synastrySide {
@@ -104,14 +105,16 @@ let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
  * 漏传就等于绕开校验，本文件里那些「未知旗标必须报错」的用例会静默变成空跑。
  */
 async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
-	if (!commandsMod) {commandsMod = await load<typeof import("@/cli/commands")>("@/cli/commands");}
-	if (!parseArgsFn)
-		{({ parseArgs: parseArgsFn } = await load<typeof import("@/cli/args")>("@/cli/args"));}
+	if (!commandsMod) {
+		commandsMod = await load<typeof import("@/cli/commands")>("@/cli/commands");
+	}
+	if (!parseArgsFn) {
+		({ parseArgs: parseArgsFn } = await load<typeof import("@/cli/args")>("@/cli/args"));
+	}
 	const fn = commandsMod.COMMANDS[sub];
 	if (!fn) {
-		const { unknownCommandMessage } = await load<typeof import("@/cli/host/dispatch")>(
-			"@/cli/host/dispatch"
-		);
+		const { unknownCommandMessage } =
+			await load<typeof import("@/cli/host/dispatch")>("@/cli/host/dispatch");
 		throw asCliFailure(unknownCommandMessage(sub, Object.keys(commandsMod.COMMANDS)));
 	}
 	try {
@@ -143,7 +146,9 @@ async function cliReal(args: string[]): Promise<string> {
  * 它们只有真起子进程才测得到自己那一份代码。
  */
 async function cliCmd(sub: string, args: string[], skill: Skill = "astrology"): Promise<string> {
-	if (skill === "astrology" && !process.env.CLI_SUBPROCESS) {return cliCmdInProcess(sub, args);}
+	if (skill === "astrology" && !process.env.CLI_SUBPROCESS) {
+		return cliCmdInProcess(sub, args);
+	}
 	const { stdout } = await execFileAsync("node", [CLI[skill], sub, ...args], { cwd: SKILL_ROOT });
 	return stdout;
 }
@@ -208,7 +213,7 @@ async function pairArgs(a: string[], b: string[]): Promise<string[]> {
  * 用的就是这一对。
  */
 const synastry_PAIR = await pairArgs(
-	["--date", "1990-05-15", "--time", "09:30", "--gender", "male"],
+	["--date", "1990-05-15", "--time", "09:30", "--no-dst", "--gender", "male"],
 	["--date", "1992-08-20", "--time", "14:00", "--gender", "female"]
 );
 
@@ -222,6 +227,7 @@ describe("CLI 端到端", () => {
 				"1990-05-15",
 				"--time",
 				"09:10",
+				"--no-dst",
 				"--lng",
 				"120",
 				"--gender",
@@ -237,6 +243,7 @@ describe("CLI 端到端", () => {
 				"1990-05-15",
 				"--time",
 				"09:10",
+				"--no-dst",
 				"--city",
 				"北京",
 				"--gender",
@@ -292,6 +299,7 @@ describe("CLI 端到端", () => {
 					"1990-05-15",
 					"--time",
 					"00:30",
+					"--no-dst",
 					"--lng",
 					"75.99",
 					"--gender",
@@ -323,6 +331,7 @@ describe("CLI 端到端", () => {
 					"1990-05-15",
 					"--time",
 					"23:30",
+					"--no-dst",
 					"--lng",
 					"126.6",
 					"--gender",
@@ -354,6 +363,7 @@ describe("CLI 端到端", () => {
 					"1990-05-15",
 					"--time",
 					"12:00",
+					"--no-dst",
 					"--lng",
 					"75.99",
 					"--gender",
@@ -375,6 +385,7 @@ describe("CLI 端到端", () => {
 					"1990-05-15",
 					"--time",
 					"09:30",
+					"--no-dst",
 					"--city",
 					city,
 					"--gender",
@@ -399,12 +410,157 @@ describe("CLI 端到端", () => {
 				"1990-05-15",
 				"--time",
 				"09:30",
+				"--no-dst",
 				"--city",
 				"不存在的地名",
 				"--gender",
 				"male",
 			]);
 			assert.match(stderr, /城市|经度/, "应提示城市无法解析");
+		});
+	});
+
+	describe("1986–91 中国夏令时自动回拨", () => {
+		// 区间内钟表时间 = 北京标准时间 + 60 分，排盘前须回拨；--no-dst 为已自行
+		// 减过 1 小时的老用法保留逃生门。等价性基准沿用仓库风格：--time 排出的盘
+		// 必须等于 --branch 手输回拨后时辰的盘（两条输入路径互证）。
+		it("区间内默认回拨，且与 --branch 手输等价", async () => {
+			const viaTime = await cliJson([
+				"--date",
+				"1988-07-01",
+				"--time",
+				"09:50",
+				"--gender",
+				"male",
+			]);
+			// 09:50 回拨 60 分 → 标准 08:50 → 辰时(4)；不回拨是巳时(5)
+			assert.equal(viaTime.chart.birthInfo.timeIndex, 4, "09:50 回拨后应为辰时");
+			assert.ok(
+				String(viaTime.basis?.note ?? "").includes("夏令时"),
+				"回拨须在口径说明里显式可见，不得静默"
+			);
+			const viaBranch = await cliJson([
+				"--date",
+				"1988-07-01",
+				"--branch",
+				"4",
+				"--gender",
+				"male",
+			]);
+			assert.equal(
+				chartSignature(viaTime.chart),
+				chartSignature(viaBranch.chart),
+				"--time 自动回拨与 --branch 手输回拨后时辰，必须排出同一张盘"
+			);
+		});
+
+		it("--no-dst 关闭回拨（老用法逃生门）", async () => {
+			const o = await cliJson([
+				"--date",
+				"1988-07-01",
+				"--time",
+				"09:50",
+				"--no-dst",
+				"--gender",
+				"male",
+			]);
+			assert.equal(o.chart.birthInfo.timeIndex, 5, "关闭回拨后 09:50 归巳时");
+			assert.ok(
+				!String(o.basis?.note ?? "").includes("夏令时"),
+				"关闭后口径说明不应再出现夏令时字样"
+			);
+		});
+
+		it("区间外零影响（1992 年起无夏令时）", async () => {
+			const on = await cliJson([
+				"--date",
+				"1992-08-20",
+				"--time",
+				"14:00",
+				"--gender",
+				"female",
+			]);
+			const off = await cliJson([
+				"--date",
+				"1992-08-20",
+				"--time",
+				"14:00",
+				"--no-dst",
+				"--gender",
+				"female",
+			]);
+			assert.equal(on.chart.birthInfo.timeIndex, 7, "14:00 归未时");
+			assert.equal(
+				JSON.stringify(on),
+				JSON.stringify(off),
+				"区间外加不加 --no-dst 应完全一致"
+			);
+		});
+
+		it("切换时刻边界：起始日 02:00 起、结束日 02:00 止", async () => {
+			// 1991 起始日 04-14：01:59 仍是标准时间（不回拨），02:00 起钟表被拨快
+			const beforeOn = await cliJson([
+				"--date",
+				"1991-04-14",
+				"--time",
+				"01:59",
+				"--gender",
+				"male",
+			]);
+			const afterOn = await cliJson([
+				"--date",
+				"1991-04-14",
+				"--time",
+				"02:00",
+				"--gender",
+				"male",
+			]);
+			assert.ok(
+				!String(beforeOn.basis?.note ?? "").includes("夏令时"),
+				"起始日 01:59 不应回拨"
+			);
+			assert.ok(
+				String(afterOn.basis?.note ?? "").includes("夏令时"),
+				"起始日 02:00 起应回拨"
+			);
+			// 结束日 09-15：02:00 前按拨回前口径（回拨），02:00 起已是标准时间
+			const beforeOff = await cliJson([
+				"--date",
+				"1991-09-15",
+				"--time",
+				"01:59",
+				"--gender",
+				"male",
+			]);
+			const afterOff = await cliJson([
+				"--date",
+				"1991-09-15",
+				"--time",
+				"02:00",
+				"--gender",
+				"male",
+			]);
+			assert.ok(
+				String(beforeOff.basis?.note ?? "").includes("夏令时"),
+				"结束日 01:59 应回拨"
+			);
+			assert.ok(
+				!String(afterOff.basis?.note ?? "").includes("夏令时"),
+				"结束日 02:00 起不应回拨"
+			);
+			// 01:59 − 60 分 = 00:59（同日子时），02:00 不回拨仍在丑时 —— 但差 1 分钟
+			// 就从「回拨到子时」跳到「不回拨丑时」，边界两侧的口径分野已被钉住
+			assert.equal(beforeOff.chart.birthInfo.timeIndex, 0, "01:59 回拨后归子时");
+			assert.equal(afterOff.chart.birthInfo.timeIndex, 1, "02:00 不回拨归丑时");
+		});
+
+		it("--branch 直给时辰支不判定夏令时", async () => {
+			const o = await cliJson(["--date", "1990-05-15", "--branch", "5", "--gender", "male"]);
+			assert.equal(o.chart.birthInfo.timeIndex, 5, "branch 5 恒为巳时");
+			assert.ok(
+				!String(o.basis?.note ?? "").includes("夏令时"),
+				"branch 路径不做 DST 判定，说明里不应出现夏令时"
+			);
 		});
 	});
 
@@ -421,6 +577,7 @@ describe("CLI 端到端", () => {
 				"1990-05-15",
 				"--time",
 				"09:30",
+				"--no-dst",
 				"--gender",
 				"xyz",
 			]);
@@ -572,7 +729,7 @@ describe("CLI 端到端", () => {
 	// `--focus` 靠宫名字符串查找，`synastry` 靠宫名字符串取宫后立刻读 `.branch`
 	// （旧名会返回 undefined → TypeError，且 `--json` 分支更早 return，会**静默输出空数组**）。
 	describe("--focus 的宫名写法", () => {
-		const BIRTH = ["--date", "1990-05-15", "--time", "09:30", "--gender", "male"];
+		const BIRTH = ["--date", "1990-05-15", "--time", "09:30", "--no-dst", "--gender", "male"];
 
 		/**
 		 * 从 analyze 文本输出里取出聚焦到的宫名与地支 —— 取的是**渲染值**，不是查找键。
@@ -928,8 +1085,9 @@ describe("CLI 端到端", () => {
 				t.includes(`甲方夫妻宫空宫，借对宫 ${fuqi.borrowedFromName} 主星论：`),
 				"夫妻宫空宫时未按借宫口径出断语"
 			);
-			for (const s of fuqi.borrowedStars ?? [])
-				{assert.ok(t.includes(`    ${s}：`), `借来的主星 ${s} 没有出断语`);}
+			for (const s of fuqi.borrowedStars ?? []) {
+				assert.ok(t.includes(`    ${s}：`), `借来的主星 ${s} 没有出断语`);
+			}
 		});
 	});
 
@@ -959,14 +1117,17 @@ describe("CLI 端到端", () => {
 				tiers,
 				"评分标准五档缺失，或未按源序（五星 → 一星）排列 —— 顺序本身是这套标准的一部分"
 			);
-			for (const r of rows) {assert.ok(r[2].length > 0, `「${r[1]}」的判据是空的`);}
+			for (const r of rows) {
+				assert.ok(r[2].length > 0, `「${r[1]}」的判据是空的`);
+			}
 
 			// 下面两个锚点同时被 synastry 的 selftest 用着（同一对字面量，各守各的扫描根）。
 			for (const anchor of [
 				"## 合盘分析核心框架（倪海厦体系 + 《紫微斗数全书》综合）",
 				"双方夫妻宫互映天作之合，四化相互补益，大限同走旺运，福德宫双吉",
-			])
-				{assert.ok(md.includes(anchor), `正文缺少锚点：${anchor}`);}
+			]) {
+				assert.ok(md.includes(anchor), `正文缺少锚点：${anchor}`);
+			}
 
 			// 章节数用下限而非等号：日后补一节不该让守卫变红，被截断才该。
 			const sections = [...md.matchAll(/^### [一二三四五六七八九十]+、/gm)].length;
@@ -1726,8 +1887,9 @@ describe("CLI 端到端", () => {
 				"本宫论断",
 				"三方四正联动",
 				"知识来源",
-			])
-				{assert.ok(t.includes(key), `应含「${key}」节`);}
+			]) {
+				assert.ok(t.includes(key), `应含「${key}」节`);
+			}
 		});
 
 		it("非法主题与未收录星名都报错指路", async () => {
@@ -1766,8 +1928,9 @@ describe("CLI 端到端", () => {
 
 		it("tianji 域：检索命中带秒级溯源与回放链接，限册生效", async () => {
 			const t = await cliCmd("knowledge", ["--source", "tianji", "半空折翅"]);
-			for (const key of ["半空折翅", "bilibili.com/video", "CC BY-NC-SA"])
-				{assert.ok(t.includes(key), `应含「${key}」`);}
+			for (const key of ["半空折翅", "bilibili.com/video", "CC BY-NC-SA"]) {
+				assert.ok(t.includes(key), `应含「${key}」`);
+			}
 			const scoped = await cliCmd("knowledge", [
 				"--source",
 				"tianji",
@@ -1804,7 +1967,8 @@ describe("CLI 端到端", () => {
 	// `cli/birth/cities.ts` 只是数据表，没有分支；会「静默取错经度」的是 `cli/birth/birth-info.ts`
 	// 的 findLongitude —— 经度差 1° 就是真太阳时差 4 分钟，足以把时辰推过边界、整张盘换掉。
 	describe("cities 容错解析（findLongitude 分支）", () => {
-		const loadFind = () => load<typeof import("@/cli/birth/birth-info")>("@/cli/birth/birth-info");
+		const loadFind = () =>
+			load<typeof import("@/cli/birth/birth-info")>("@/cli/birth/birth-info");
 
 		it("歧义分支：同长度候选记进 ambiguous，且最多 5 个（超出截断）", async () => {
 			const { findLongitude } = await loadFind();
@@ -1813,8 +1977,9 @@ describe("CLI 端到端", () => {
 			const hit = findLongitude("海");
 			assert.ok(hit, "「海」应容错解析出城市");
 			assert.equal(hit.ambiguous?.length, 5, "同长度候选超过 5 个时只应保留 5 个");
-			for (const c of hit.ambiguous ?? [])
-				{assert.match(c, /^.+\(\d+(\.\d+)?\)$/, `候选应形如「城市(经度)」，实得：${c}`);}
+			for (const c of hit.ambiguous ?? []) {
+				assert.match(c, /^.+\(\d+(\.\d+)?\)$/, `候选应形如「城市(经度)」，实得：${c}`);
+			}
 			assert.ok(
 				!(hit.ambiguous ?? []).some(c => c.startsWith(`${hit.matched}(`)),
 				"ambiguous 装的是「其余候选」，不能把命中项自己也算进去"
@@ -1823,7 +1988,8 @@ describe("CLI 端到端", () => {
 
 		it("歧义分支：命中项必是表内真实城市，且经度与表内一致（独立预言机）", async () => {
 			const { findLongitude } = await loadFind();
-			const { PROVINCES } = await load<typeof import("@/cli/birth/cities")>("@/cli/birth/cities");
+			const { PROVINCES } =
+				await load<typeof import("@/cli/birth/cities")>("@/cli/birth/cities");
 			// 期望值取自 PROVINCES 数据表，不读 findLongitude 自己的返回值 ——
 			// 否则「取错城市」时两边一起错，断言照样全绿（本仓历史上栽过同一个跟头）。
 			const all = PROVINCES.flatMap(p => p.cities);
@@ -1909,8 +2075,9 @@ describe("CLI 端到端", () => {
 
 		it("空查询返回空数组（不把空白当关键词）", async () => {
 			const { searchClassics } = await loadClassics();
-			for (const q of ["", "   ", "\n", "\t "])
-				{assert.deepEqual(searchClassics(q, 10), [], `「${JSON.stringify(q)}」不该有命中`);}
+			for (const q of ["", "   ", "\n", "\t "]) {
+				assert.deepEqual(searchClassics(q, 10), [], `「${JSON.stringify(q)}」不该有命中`);
+			}
 		});
 
 		it("limit 截断命中数；命中不足时返回全部", async () => {
@@ -1926,8 +2093,9 @@ describe("CLI 端到端", () => {
 			const { searchClassics } = await loadClassics();
 			// 修复前：上限判定排在 push 之后，limit=0/-3 恒返回 1 条；
 			// NaN 参与比较恒为假，反而返回全部。上限设了却给不出对应结果，两种都是错的。
-			for (const bad of [0, -1, -3, Number.NaN])
-				{assert.deepEqual(searchClassics("星", bad), [], `limit=${bad} 应返回空`);}
+			for (const bad of [0, -1, -3, Number.NaN]) {
+				assert.deepEqual(searchClassics("星", bad), [], `limit=${bad} 应返回空`);
+			}
 			assert.equal(
 				searchClassics("星", Number.POSITIVE_INFINITY).length,
 				searchClassics("星", 10_000).length,
@@ -2012,8 +2180,9 @@ describe("CLI 端到端", () => {
 			// 也就是说 escapeHtml 的尖括号分支在当前数据下**不可达**，任何断言都触发不了它
 			// —— 故此处不写「snippet 无裸尖括号」那种永远为真的断言，只锁真正走得通的引号路径。
 			// 若将来书目引入 < 或 &，这里要补回尖括号断言。
-			for (const h of searchClassics("之", 10_000))
-				{assert.ok(!h.snippet.includes('"'), `${h.paragraphId} 的 snippet 漏出裸引号`);}
+			for (const h of searchClassics("之", 10_000)) {
+				assert.ok(!h.snippet.includes('"'), `${h.paragraphId} 的 snippet 漏出裸引号`);
+			}
 		});
 
 		it("TOTAL_PARAGRAPHS 与书目结构自洽（独立复算）", async () => {
@@ -2028,8 +2197,9 @@ describe("CLI 端到端", () => {
 
 		it("无参数时列出全部书目；未命中给明确文案", async () => {
 			const t = await cliCmd("knowledge", [], "knowledge");
-			for (const b of ["gusuifu", "quanji", "quanshu"])
-				{assert.ok(t.includes(b), `书目清单应含 ${b}`);}
+			for (const b of ["gusuifu", "quanji", "quanshu"]) {
+				assert.ok(t.includes(b), `书目清单应含 ${b}`);
+			}
 			assert.ok(t.includes("用法：knowledge --search"), "应给出用法");
 
 			const miss = await cliCmd("knowledge", ["--search", "紫微星"], "knowledge");
@@ -2076,6 +2246,7 @@ describe("CLI 端到端", () => {
 				"1990-05-15",
 				"--time",
 				"09:30",
+				"--no-dst",
 				"--city",
 				"北京",
 				"--gender",
@@ -2090,8 +2261,9 @@ describe("CLI 端到端", () => {
 				"紫微：",
 				"大限：",
 				"当前年龄：",
-			])
-				{assert.ok(t.includes(seg), `chart 输出应含「${seg}」，实得：\n${t.slice(0, 400)}`);}
+			]) {
+				assert.ok(t.includes(seg), `chart 输出应含「${seg}」，实得：\n${t.slice(0, 400)}`);
+			}
 		});
 
 		it("--palaces --json 输出十二宫齐全，地支 0-11 各一次", async () => {
@@ -2102,6 +2274,7 @@ describe("CLI 端到端", () => {
 					"1990-05-15",
 					"--time",
 					"09:30",
+					"--no-dst",
 					"--city",
 					"北京",
 					"--gender",

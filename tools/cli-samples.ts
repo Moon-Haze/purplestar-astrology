@@ -230,6 +230,27 @@ const SAMPLES: Sample[] = [
 	},
 	{
 		group: "astrology · 概览与出生信息",
+		title: "1986–91 夏令时自动回拨",
+		desc: "区间内钟表时间先回拨 1 小时再换算真太阳时（1988-07-01 09:50 → 辰时），输出说明含「夏令时 −60 分」",
+		args: ["astrology", "--date", "1988-07-01", "--time", "09:50", "--gender", "男"],
+	},
+	{
+		group: "astrology · 概览与出生信息",
+		title: "--no-dst 关闭夏令时回拨",
+		desc: "出生证明时间当时已自行减过 1 小时时用（同上一条对照：09:50 归巳时）",
+		args: [
+			"astrology",
+			"--date",
+			"1988-07-01",
+			"--time",
+			"09:50",
+			"--no-dst",
+			"--gender",
+			"男",
+		],
+	},
+	{
+		group: "astrology · 概览与出生信息",
 		title: "晚子时 --late-zi",
 		desc: "23:00–23:59 出生改按「晚子时算次日」排（与当日早子时是两张不同的盘）",
 		args: [

@@ -12,6 +12,7 @@ import {
 	calcTrueSolar,
 	equationOfTime,
 	findLongitude,
+	isChinaDstClock,
 	shiftDate,
 } from "../birth/birth-info";
 import { parseArgs } from "../args";
@@ -52,8 +53,12 @@ export function runLunar({ ok }: Pick<SelftestDeps, "ok">): void {
 		} catch (e) {
 			msg = (e as Error).message;
 		}
-		if (!msg) {throw new Error("2021 年闰四月不存在，却未报错（静默滚动会让整盘皆错）");}
-		if (!msg.includes("闰")) {throw new Error(`错误信息未点明闰月问题：${msg}`);}
+		if (!msg) {
+			throw new Error("2021 年闰四月不存在，却未报错（静默滚动会让整盘皆错）");
+		}
+		if (!msg.includes("闰")) {
+			throw new Error(`错误信息未点明闰月问题：${msg}`);
+		}
 		return msg.split("。")[0];
 	});
 	ok("农历输入：合法的闰月可正常换算（2020 年闰四月初一）", () => {
@@ -69,8 +74,9 @@ export function runLunar({ ok }: Pick<SelftestDeps, "ok">): void {
 		const plain = buildBirthInfo(
 			parseArgs(["--lunar", "2020-04-01", "--branch", "0", "--gender", "male"])
 		);
-		if (fmtDate(leap.info) === fmtDate(plain.info))
-			{throw new Error("闰四月与四月被算成了同一天");}
+		if (fmtDate(leap.info) === fmtDate(plain.info)) {
+			throw new Error("闰四月与四月被算成了同一天");
+		}
 	});
 }
 
@@ -94,11 +100,14 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 	ok("真太阳时：经度偏移按 (lng-120)*4 分钟计（石家庄 = -22 分）", () => {
 		const lx = findLongitude("石家庄");
-		if (!lx) {throw new Error("城市表查不到石家庄");}
+		if (!lx) {
+			throw new Error("城市表查不到石家庄");
+		}
 		const t = calcTrueSolar(12, 0, lx.longitude);
 		eq(t.offsetMinutes, Math.round((lx.longitude - 120) * 4));
-		if (t.offsetMinutes >= 0)
-			{throw new Error(`石家庄经度应小于 120，实得 offset=${t.offsetMinutes}`);}
+		if (t.offsetMinutes >= 0) {
+			throw new Error(`石家庄经度应小于 120，实得 offset=${t.offsetMinutes}`);
+		}
 	});
 	ok("真太阳时：默认口径只含经度项，不计均时差（--eot 关闭）", () => {
 		// 若默认误开均时差，这里就会多出几十分钟的偏差。锁住「默认 = 传统口径」这一承诺。
@@ -111,7 +120,9 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 		const t = calcTrueSolar(12, 0, 116.4, { eot: true, year: 1990, month: 5, day: 15 });
 		eq(t.longitudeMinutes, Math.round((116.4 - 120) * 4));
 		eq(t.offsetMinutes, t.longitudeMinutes + t.eotMinutes);
-		if (t.eotMinutes === 0) {throw new Error("1990-05-15 的均时差不应为 0");}
+		if (t.eotMinutes === 0) {
+			throw new Error("1990-05-15 的均时差不应为 0");
+		}
 		// 均时差与经度无关：标准经线上经度项为 0，开了 --eot 照样有校正
 		const onMeridian = calcTrueSolar(12, 0, 120, { eot: true, year: 1990, month: 5, day: 15 });
 		eq(onMeridian.longitudeMinutes, 0);
@@ -124,11 +135,57 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 		} catch (e) {
 			msg = (e as Error).message;
 		}
-		if (!msg)
-			{throw new Error(
+		if (!msg) {
+			throw new Error(
 				"缺 month/day 时未报错 —— NaN 会静默污染 branch / dayOffset 整条结果链"
-			);}
+			);
+		}
 		return msg;
+	});
+	ok("夏令时判定：六年区间表（tzdata 口径）逐年取样", () => {
+		// 每年起止日各取一个白天时刻，应全部判定为夏令时
+		const table: Array<[number, [number, number], [number, number]]> = [
+			[1986, [5, 4], [9, 14]],
+			[1987, [4, 12], [9, 13]],
+			[1988, [4, 17], [9, 11]],
+			[1989, [4, 16], [9, 17]],
+			[1990, [4, 15], [9, 16]],
+			[1991, [4, 14], [9, 15]],
+		];
+		for (const [year, start, end] of table) {
+			if (!isChinaDstClock(year, start[0], start[1], 720)) {
+				throw new Error(`${year} 起日 ${start.join("-")} 白天应判夏令时`);
+			}
+			if (!isChinaDstClock(year, end[0], end[1] - 1, 720)) {
+				throw new Error(`${year} 止日前一天应判夏令时`);
+			}
+		}
+		return "六年 12 个取样点全命中";
+	});
+	ok("夏令时判定：区间外整年、年内区间外、首尾年外一律不判", () => {
+		eq(isChinaDstClock(1985, 7, 1, 720), false, "1986 前整年非夏令时，");
+		eq(isChinaDstClock(1992, 7, 1, 720), false, "1991 后整年非夏令时，");
+		eq(isChinaDstClock(1990, 1, 7, 720), false, "1990 年 1 月在年内区间外，");
+		eq(isChinaDstClock(1988, 4, 16, 720), false, "1988 起日前一天不判，");
+		eq(isChinaDstClock(1987, 9, 14, 720), false, "1987 止日后一天不判，");
+		return "区间外全零命中";
+	});
+	ok("夏令时判定：切换时刻 02:00 参与（起始日起算、结束日止算）", () => {
+		eq(isChinaDstClock(1986, 5, 4, 119), false, "起始日 01:59 仍是标准时间，");
+		eq(isChinaDstClock(1986, 5, 4, 120), true, "起始日 02:00 起钟表被拨快，");
+		eq(isChinaDstClock(1991, 9, 15, 119), true, "结束日 01:59 按拨回前口径，");
+		eq(isChinaDstClock(1991, 9, 15, 120), false, "结束日 02:00 起已拨回，");
+		return "02:00 边界两侧口径分野正确";
+	});
+	ok("夏令时回拨：dstMinutes 参与换算，且默认（0）行为不变", () => {
+		const dst = calcTrueSolar(9, 50, 120, { year: 1988, month: 7, day: 1, dstMinutes: 60 });
+		eq(dst.dstMinutes, 60);
+		eq(dst.branch, 4, "09:50 回拨 60 分 → 08:50 辰时，");
+		eq(dst.offsetMinutes, -60, "总校正含回拨项，");
+		const none = calcTrueSolar(9, 50, 120, { year: 1988, month: 7, day: 1 });
+		eq(none.dstMinutes, 0, "不传 dstMinutes 不回拨，");
+		eq(none.branch, 5, "默认口径 09:50 仍归巳时，");
+		return "回拨与默认口径双钉";
 	});
 	ok("真太阳时：均时差全年幅度落在 -15 ~ +17 分（实测 -14.6 ~ +16.5）", () => {
 		// 区间同时卡住上下界：公式被改坏（符号反了、系数错了）都会掉出这个窗口
@@ -137,11 +194,19 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 		for (let d = 0; d < 365; d++) {
 			const dt = new Date(Date.UTC(1990, 0, 1) + d * 86400000);
 			const v = equationOfTime(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
-			if (v < lo) {lo = v;}
-			if (v > hi) {hi = v;}
+			if (v < lo) {
+				lo = v;
+			}
+			if (v > hi) {
+				hi = v;
+			}
 		}
-		if (lo < -15 || lo > -14) {throw new Error(`均时差下界异常：${lo.toFixed(1)} 分`);}
-		if (hi < 16 || hi > 17) {throw new Error(`均时差上界异常：${hi.toFixed(1)} 分`);}
+		if (lo < -15 || lo > -14) {
+			throw new Error(`均时差下界异常：${lo.toFixed(1)} 分`);
+		}
+		if (hi < 16 || hi > 17) {
+			throw new Error(`均时差上界异常：${hi.toFixed(1)} 分`);
+		}
 	});
 	ok("真太阳时：西部凌晨校正后跨天回退（喀什 00:30 → 前一日 21:38 亥时）", () => {
 		// 喀什 75.99°E：经度项 (75.99-120)*4 = -176.04 分 + 均时差 +3.749 → 30-176.04+3.749 = -142.291
@@ -185,10 +250,11 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 			const corridor = t.longitudeMinutes + t.eotMinutes;
 			const total = clockMins + corridor;
 			const back = t.dayOffset * 1440 + t.solarMinutes;
-			if (Math.abs(back - total) > 1.5)
-				{throw new Error(
+			if (Math.abs(back - total) > 1.5) {
+				throw new Error(
 					`${h}:${m} @${lng} → dayOffset=${t.dayOffset} solar=${t.solarMinutes}，还原得 ${back}，应为 ${total}`
-				);}
+				);
+			}
 			// 日期确实跟着动了
 			const expectDay = t.dayOffset === 0 ? 15 : t.dayOffset > 0 ? 16 : 14;
 			eq(shifted.day, expectDay, `${h}:${m} @${lng} 的日期`);
@@ -230,15 +296,25 @@ export function runLateZi({ ok }: Pick<SelftestDeps, "ok">): void {
 			timeIndex: 12,
 			gender: "male",
 		});
-		if (chartSignature(early) === chartSignature(late))
-			{throw new Error("两口径产出相同命盘，与「差异极大」的预期不符");}
+		if (chartSignature(early) === chartSignature(late)) {
+			throw new Error("两口径产出相同命盘，与「差异极大」的预期不符");
+		}
 	});
 	ok("晚子时：--branch 12 与 --late-zi 两条路径等价", () => {
 		const viaBranch = buildBirthInfo(
 			parseArgs(["--date", "1990-05-15", "--branch", "12", "--gender", "male"])
 		);
 		const viaFlag = buildBirthInfo(
-			parseArgs(["--date", "1990-05-15", "--time", "23:40", "--late-zi", "--gender", "male"])
+			parseArgs([
+				"--date",
+				"1990-05-15",
+				"--time",
+				"23:40",
+				"--no-dst",
+				"--late-zi",
+				"--gender",
+				"male",
+			])
 		);
 		eq(viaBranch.info.timeIndex, 12);
 		eq(viaFlag.info.timeIndex, 12);
@@ -249,7 +325,7 @@ export function runLateZi({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 	ok("晚子时：--time 23:40 默认走早子时口径并打上候选标记", () => {
 		const b = buildBirthInfo(
-			parseArgs(["--date", "1990-05-15", "--time", "23:40", "--gender", "male"])
+			parseArgs(["--date", "1990-05-15", "--time", "23:40", "--no-dst", "--gender", "male"])
 		);
 		eq(b.info.timeIndex, 0);
 		eq(b.lateZiCandidate, true);

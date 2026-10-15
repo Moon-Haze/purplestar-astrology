@@ -115,7 +115,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				cmds: ["astrology"],
 				kind: "value",
 				value: "HH:MM",
-				desc: "钟表时间（配合 --lng / --city 自动换算真太阳时）",
+				desc: "钟表时间（配合 --lng / --city 自动换算真太阳时；1986–91 夏令时区间自动回拨 1 小时）",
 			},
 			{
 				name: "branch",
@@ -135,6 +135,13 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				cmds: ["astrology"],
 				kind: "switch",
 				desc: "配合 --time：真太阳时额外计入均时差（±16 分），默认不计",
+			},
+			{
+				name: "no-dst",
+				cmds: ["astrology"],
+				noIntent: true,
+				kind: "switch",
+				desc: "配合 --time：不做 1986–91 中国夏令时自动回拨（出生证明时间已自行减过 1 小时时用）",
 			},
 		],
 	},

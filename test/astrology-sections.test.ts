@@ -26,14 +26,17 @@ const {
 	parseHourlyArg,
 } = astrology;
 const { parseArgs } = await load<typeof import("@/cli/args")>("@/cli/args");
-const { buildBirthInfo } = await load<typeof import("@/cli/birth/birth-info")>("@/cli/birth/birth-info");
-const { toBasis } = await load<typeof import("@/cli/birth/birth-info-defs")>("@/cli/birth/birth-info-defs");
+const { buildBirthInfo } =
+	await load<typeof import("@/cli/birth/birth-info")>("@/cli/birth/birth-info");
+const { toBasis } = await load<typeof import("@/cli/birth/birth-info-defs")>(
+	"@/cli/birth/birth-info-defs"
+);
 const { generateChart } = await load<typeof import("@/algorithm")>("@/algorithm");
 
 /** 用与 CLI 完全相同的管线造一份 chart + composeSections 所需上下文。 */
 function ctx(extra: string[]) {
 	const args = parseArgs(
-		["--date", "1990-05-15", "--time", "09:30", "--gender", "male", ...extra],
+		["--date", "1990-05-15", "--time", "09:30", "--no-dst", "--gender", "male", ...extra],
 		"astrology"
 	);
 	const built = buildBirthInfo(args);
@@ -54,7 +57,16 @@ function ctx(extra: string[]) {
 describe("专题旗标→section 接线（候选 3）", () => {
 	it("composeSections 顺序契约：pattern → mutagen → yearly → decadal → ages", () => {
 		// 五个互不重叠的锚点；任一顺序被改（如 decadal 落到 yearly 前）会立即变红。
-		const c = ctx(["--pattern", "--mutagen", "--yearly", "2027", "--decadal", "37", "--ages", "45"]);
+		const c = ctx([
+			"--pattern",
+			"--mutagen",
+			"--yearly",
+			"2027",
+			"--decadal",
+			"37",
+			"--ages",
+			"45",
+		]);
 		const out = composeSections(c.chart, c.args, {
 			liuNianYear: c.liuNianYear,
 			liuYueMonth: c.liuYueMonth,
@@ -78,10 +90,7 @@ describe("专题旗标→section 接线（候选 3）", () => {
 			assert.ok(i >= 0, `section 缺失：${name}`);
 		}
 		assert.ok(
-			iPattern < iMutagen &&
-				iMutagen < iYearly &&
-				iYearly < iDecadal &&
-				iDecadal < iAges,
+			iPattern < iMutagen && iMutagen < iYearly && iYearly < iDecadal && iDecadal < iAges,
 			"专题顺序应为 pattern → mutagen → yearly → decadal → ages"
 		);
 	});
@@ -117,7 +126,17 @@ describe("专题旗标→section 接线（候选 3）", () => {
 	it("端到端：--decadal 经 cmdAstrology 产出大限专题", () => {
 		const out = cmdAstrology(
 			parseArgs(
-				["--date", "1990-05-15", "--time", "09:30", "--gender", "male", "--decadal", "37"],
+				[
+					"--date",
+					"1990-05-15",
+					"--time",
+					"09:30",
+					"--no-dst",
+					"--gender",
+					"male",
+					"--decadal",
+					"37",
+				],
 				"astrology"
 			)
 		);
@@ -127,7 +146,17 @@ describe("专题旗标→section 接线（候选 3）", () => {
 	it("端到端：--ages 经 cmdAstrology 产出小限专题", () => {
 		const out = cmdAstrology(
 			parseArgs(
-				["--date", "1990-05-15", "--time", "09:30", "--gender", "male", "--ages", "45"],
+				[
+					"--date",
+					"1990-05-15",
+					"--time",
+					"09:30",
+					"--no-dst",
+					"--gender",
+					"male",
+					"--ages",
+					"45",
+				],
 				"astrology"
 			)
 		);
@@ -139,7 +168,17 @@ describe("专题旗标→section 接线（候选 3）", () => {
 			() =>
 				cmdAstrology(
 					parseArgs(
-						["--date", "1990-05-15", "--time", "09:30", "--gender", "male", "--monthly", "6"],
+						[
+							"--date",
+							"1990-05-15",
+							"--time",
+							"09:30",
+							"--no-dst",
+							"--gender",
+							"male",
+							"--monthly",
+							"6",
+						],
 						"astrology"
 					)
 				),
