@@ -5,7 +5,7 @@
 > 命令均为**进程内直调**（与 CLI 同一命令函数，输出一致；含 --yearly/--ages 等随时间漂移的样例，
 > 复跑时对应字段可能随当天日期变化）。
 
-- 生成时间：2026-10-15 08:53　git：`ad2befc`　Node：v26.11.1
+- 生成时间：2026-10-15 21:05　git：`9eccd3a`　Node：v26.11.1
 - 引擎：iztro 2.6.1 + lunar-typescript 1.8.6　相对仓库根执行，文档里的命令可直接复制到终端复现
 - 样例 60 条，输出全量；「错误路径」各条期待非 0 退出码，核对的是**报错文案**
 
@@ -242,7 +242,7 @@ node scripts/purple-star.ts astrology
 
 出生信息一项不给时不报错：以内置虚构示例演示基本信息面板并附用法指路（裸跑与 --info 同效）。
 
-退出码 **0**　耗时 0.00s
+退出码 **0**　耗时 0.01s
 
 输出：
 
@@ -4762,12 +4762,12 @@ node scripts/purple-star.ts selftest
 
 排盘 / 古籍 / 合盘自检：农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束。
 
-退出码 **0**　耗时 3.05s
+退出码 **0**　耗时 3.08s
 
 输出：
 
 ```text
-紫微斗数 skill 回归自检 —— 通过 159/159
+紫微斗数 skill 回归自检 —— 通过 160/160
 内核根：/home/swix/Code/TypeScriptProjects/purplestar-astrology/scripts （来源：仓库自带内核）
 
 ✅ 农历换算：1990年四月廿一 = 公历 1990-05-15
@@ -4819,6 +4819,7 @@ node scripts/purple-star.ts selftest
      缺少性别：需 --gender male|female|男|女（性别决定大限顺逆，缺失会排出错盘）
 ✅ 性别：非法取值必须报错（不得静默落到 male）
 ✅ 性别：别名等价（女 ≡ female，男 ≡ male）
+✅ 排盘不变量：换年口径显式锁在正月初一（yearDivide=normal）
 ✅ 排盘不变量：十二宫齐全 / 地支不重复 / 命宫唯一 / 五行局合法
 ✅ 排盘不变量：空宫均带借宫字段
 ✅ 宫位查询：helpers 与 palace-relations 同源（候选 8）

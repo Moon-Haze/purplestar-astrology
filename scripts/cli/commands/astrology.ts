@@ -370,7 +370,7 @@ function assertNoShadowedFeatures(
  * 指路；部分输入不适用，继续按「缺一问一」报错。
  *
  * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，`--json` 的消费方
- * （合盘 skill）自会处理；文本路径的宫详表见 `./fortune.ts` 各专题（同目录）。
+ * （合盘 skill）自会处理；文本路径的宫详表见 `../fortune/` 各专题。
  */
 /**
  * 「给定 args + 排盘上下文 → 产出专题 section 序列」——候选 3 把旗标→section 的接线
