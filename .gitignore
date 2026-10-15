@@ -3,32 +3,41 @@
 # 依赖目录就在仓库根下的 node_modules/，带前缀会漏掉它。
 node_modules/
 
-# ── 工具 / 编辑器缓存 ─────────────────────────────────────
+# ── 工具 / 编辑器本地目录 ─────────────────────────────────
+# .claude/、.codebuddy/、.zcode/、.workbuddy/ 是各工具在本仓库的本地视图：
+# skills/ 与 commands/opsx 均为 openspec CLI 生成的链接视图，可随时经 CLI
+# 重新生成，不入库；plans/ 是 IDE 会话计划落点，有价值的整理后并入
+# docs/plans/，源目录不留存。.claude/ 仅放行 CLAUDE.md（见下一节）。
 .codegraph/
 .history/
 .vscode/
+.claude/skills/
+.codebuddy/skills/
+.zcode/skills/
+.zcode/plans/
+.zcodeignore
 
 # ── 本地配置 ──────────────────────────────────────────────
 # 放行 CLAUDE.md —— 它是项目的协作约定，不随仓库分发就毫无意义（他人克隆后
-# 拿到的是写着已失效信息的旧版）。其余 .claude/ 内容（settings.json、本地
-# 缓存等）仍不入版本控制。
-.claude/*
-!.claude/CLAUDE.md
+# 拿到的是写着已失效信息的旧版）。其余 .claude/ 内容（settings.json、
+# skills/、commands/ 链接视图、本地缓存等）仍不入版本控制。
+
 .mcp.json
 
 # ── openspec CLI 生成物 ───────────────────────────────────
-# .agents/skills/openspec-* 是 openspec CLI 安装的技能定义（author: openspec，
+# .agents/skills/openspec-* 是 openspec CLI 安装的技能实体（author: openspec，
 # generatedBy 见各 SKILL.md frontmatter），随时可经 CLI 重新生成，不入库。
 # 手写部分在 openspec/（specs/ 能力规范 + config.yaml 项目约束），已跟踪。
 .agents/
 
 # ── 上游参照仓库（只读快照，不入版本控制）────────────────
-# reference/ziwei-samples-toolkit/samples-out 是排盘基准的**原始语料**：
+# reference/ziwei-samples-toolkit/samples-out 曾是排盘基准的**原始语料**：
 # 5.5 GB / 720 个 jsonl.gz / 60 个年份目录（1924–1983）。
-# ⚠️ 它与 db/ziwei.duckdb 是同一份语料的两个载体，语义等价、互为验证 —— 不是备份关系。
+# ⚠️ 该快照当前不在工作区（语料已加工为 db/dataset/ 下的 parquet 入库），
+#    此规则作为防护保留：快照一旦被重新链接回仓库，不会被 git add -A 卷入。
 # ⚠️ 核查本目录请用 find / stat / du，**不要用 ls**：本机 ls 是指向
 #    `eza -al --git-ignore` 的别名，会把整个目录显示成空的
-#    （2026-09-25 曾据此误判「语料已丢失」，见 docs/superpowers/specs/ 下的设计文档）。
+#    （2026-09-25 曾据此误判「语料已丢失」，见 docs/plans/ 下的设计文档）。
 reference/
 
 # ── 样本数据集（按用途分流，2026-10-09 起）────────────────
@@ -62,15 +71,12 @@ db/ziwei.duckdb*
 # （时间戳固定故字节可复现），属构建产物，不入库。
 dist/
 
-# ── 系统垃圾 ──────────────────────────────────────────────
+# ── 系统垃圾 / 本地工具产物 ───────────────────────────────
 .DS_Store
 *.log
 npm-debug.log*
-samples-out/
 .mimosa/
-package-lock.json
 html/
-.zcodeignore
-.zcode/
-.workbuddy/
+# 依赖锁文件：既有约定，不入库
+package-lock.json
 .Trash-**
