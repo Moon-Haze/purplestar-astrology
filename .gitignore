@@ -1,69 +1,52 @@
 # ── 依赖 ──────────────────────────────────────────────────
-# 注意：不能用 "skills/purplestar-astrology/node_modules/" 这类带前缀的写法，
-# 依赖目录就在仓库根下的 node_modules/，带前缀会漏掉它。
+# 就在仓库根下；勿写带前缀路径（会漏掉它）
 node_modules/
 
-# ── 工具 / 编辑器本地目录 ─────────────────────────────────
-# .claude/、.codebuddy/、.zcode/、.workbuddy/ 是各工具在本仓库的本地视图：
-# skills/ 与 commands/opsx 均为 openspec CLI 生成的链接视图，可随时经 CLI
-# 重新生成，不入库；plans/ 是 IDE 会话计划落点，有价值的整理后并入
-# docs/plans/，源目录不留存。.claude/ 仅放行 CLAUDE.md（见下一节）。
+# ── 工具 / 编辑器本地目录与配置 ───────────────────────────
+# 本机自有，不入库；.claude/ 的协作用件（CLAUDE.md / settings.json /
+# commands/、skills/ 链接视图）已纳管
 .codegraph/
 .history/
 .vscode/
 .zcodeignore
-
-# ── 本地配置 ──────────────────────────────────────────────
-# 放行 CLAUDE.md —— 它是项目的协作约定，不随仓库分发就毫无意义（他人克隆后
-# 拿到的是写着已失效信息的旧版）。其余 .claude/ 内容（本地缓存等）仍不入版本控制。
-
 .mcp.json
 
 # ── openspec CLI 生成物 ───────────────────────────────────
-# .agents/skills/openspec-* 是 openspec CLI 安装的技能实体（author: openspec，
-# generatedBy 见各 SKILL.md frontmatter），随时可经 CLI 重新生成，不入库。
-# 手写部分在 openspec/（specs/ 能力规范 + config.yaml 项目约束），已跟踪。
+# openspec CLI 安装的技能实体，可随时经 CLI 重新生成；手写真相源在
+# openspec/（specs/ 能力规范 + config.yaml），已跟踪
 .agents/
 
 # ── 上游参照仓库（只读快照，不入版本控制）────────────────
-# reference/ziwei-samples-toolkit/samples-out 曾是排盘基准的**原始语料**：
-# 5.5 GB / 720 个 jsonl.gz / 60 个年份目录（1924–1983）。
-# ⚠️ 该快照当前不在工作区（语料已加工为 db/dataset/ 下的 parquet 入库），
-#    此规则作为防护保留：快照一旦被重新链接回仓库，不会被 git add -A 卷入。
-# ⚠️ 核查本目录请用 find / stat / du，**不要用 ls**：本机 ls 是指向
-#    `eza -al --git-ignore` 的别名，会把整个目录显示成空的
-#    （2026-09-25 曾据此误判「语料已丢失」，见 docs/plans/ 下的设计文档）。
+# samples-out 曾是排盘基准的原始语料（5.5 GB / 720 个 jsonl.gz）；
+# 当前不在工作区，规则作为防护保留：快照一旦被重新链接回仓库，
+# 不会被 git add -A 卷入。
+# ⚠️ 核查用 find / stat / du，勿用 ls —— 本机 ls 是带 --git-ignore 的
+#    eza 别名，会把整个目录显示成空的（2026-09-25 曾据此误判「语料已丢失」，
+#    见 docs/plans/ 下的设计文档）。
 reference/
 
 # ── 样本数据集（按用途分流，2026-10-09 起）────────────────
-# 入库（保留）：db/dataset/ 下 samples.parquet + palaces.parquet（0.8 + 12.0 MiB）——
-#   test/lib/sample-source.ts 的数据源（排盘基准工具 full-corpus / build-fixtures /
-#   verify-source 读它；npm test 本身不依赖 db/，但语料回归链路依赖）。
-# 出库（忽略）：db/dataset/topics-*.parquet（11 片，约 379 MiB）—— 13 主题解读文本，
-#   属已下线的数据路线（分析数据库 v3 代码路线取代，见 scripts/ziwei/analysis/）。
-#   2026-10-09 起移出 git 跟踪：git 对二进制不做 delta，每次重建 topics 都要全量
-#   重传 379 MiB，而运行时（scripts/）对它零依赖。磁盘文件保留，需要时可重建
-#   （tools/db/build-duckdb.ts → 导出）。
+# 入库：db/dataset/ 下 samples + palaces parquet（排盘基准数据源）。
+# 出库：topics-*.parquet（11 片约 379 MiB，已下线的数据路线，由
+# scripts/analysis/ 代码路线取代）—— git 对二进制不做 delta、每次重建
+# 全量重传，且运行时零依赖；磁盘文件保留，需要时经 tools/db/build-duckdb.ts 重建。
 db/dataset/topics-*.parquet
 
 # ── 不入版本控制的数据 ────────────────────────────────────
-# db/ziwei.duckdb：上面那份数据集的**导出来源**（641.5 MiB，超 GitHub 单文件
-#   100 MiB 硬限），属构建中间物 —— 数据集本身已入库，所以它随时可弃。
-#   同名的 .wal / .progress.json / .dict.jsonl 都是它的边车，一并忽略。
-# db/dataset.staging/：构建期的暂存分片与半截产物，收尾即删。**必须忽略** ——
-#   构建进行中误跑 git add -A，会把半截 parquet 提交进历史。
+# db/ziwei.duckdb：数据集的导出来源（641.5 MiB，超 GitHub 单文件 100 MiB
+# 硬限），构建中间物随时可弃；.wal / .progress.json / .dict.jsonl 是边车。
+# db/dataset.staging/：构建期暂存分片与半截产物，误入 git add -A 会写进历史。
 db/dataset.staging/
 db/ziwei.duckdb*
 
-# ── 评审闸门的快照目录（tools/review-gate.ts --byte-diff 用）─────────────
-# 落仓库内而非 /tmp：/tmp 只有 10 MB 且会被清空，本会话因快照被清空导致
-# 「9 场景全报 DIFFERS」的假结论。进 .gitignore 才能既不被 stash 卷走、
-# 也不被 `git add -A` 误提交。
+# ── 评审闸门的快照目录（tools/review-gate.ts --byte-diff 用）──────────
+# 落仓库内而非 /tmp：/tmp 只有 10 MB 且会被清空（本会话曾因快照被清空
+# 误报「9 场景全报 DIFFERS」）；进 .gitignore 才能既不被 stash 卷走、
+# 也不被 git add -A 误提交。
 .review-tmp/
 
 # ── 分发产物（tools/pack.ts 生成）──────────────────────────────────
-# purplestar-astrology.zip：打给用户/宿主的分发件。每次构建重新生成
-# （时间戳固定故字节可复现），属构建产物，不入库。
+# purplestar-astrology.zip：每次构建重新生成（时间戳固定故字节可复现）。
 dist/
 
 # ── 系统垃圾 / 本地工具产物 ───────────────────────────────
