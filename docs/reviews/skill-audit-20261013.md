@@ -120,7 +120,7 @@ allowed-tools:
 | `docs/manual/` | 16 | `docs/manual/topics/overview.md` |
 | `tools/db/` | 11 | |
 | `scripts/patterns/` | 10 | |
-| `test/lib/` `docs/superpowers/` `scripts/data/` … | 余下 | |
+| `test/lib/` `docs/plans/` `scripts/data/` … | 余下 | |
 
 ### 三条出路（若将来真要上架平台）
 
@@ -227,7 +227,7 @@ allowed-tools:
 
 ## 六、无A/B 增益对照记录
 
-全仓 grep「A/B / 对照组 / 裸模型 / 增益」只命中 1 个文件（`docs/superpowers/specs/2026-10-09-review-fixes.md`），且是别的语境。
+全仓 grep「A/B / 对照组 / 裸模型 / 增益」只命中 1 个文件（`docs/plans/2026-10-09-review-fixes.md`），且是别的语境。
 
 上架口径要求**H3 · A/B 增益 ≥ 20%**：同题、同模型、同rubric，A 组挂本 `SKILL.md`，B 组无任何 system（模拟用户直接问通用模型）。
 

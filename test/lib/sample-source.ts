@@ -20,7 +20,7 @@
 //   · 每个文件都在 GitHub 单文件上限（100 MiB）内，可直接入库分发，不再依赖
 //     「本地重建」这一前提
 //   · 内存库 + 视图没有文件锁，编辑器里的 DuckDB 扩展再也占不住数据（旧库形态下这是
-//     真实撞到过的故障，见 docs/superpowers/specs/）
+//     真实撞到过的故障，见 docs/plans/）
 //   · 仍然能 SQL 探查，核对排盘不变量不必再写一次性脚本
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -81,7 +81,7 @@ export function missingDepHint(err: unknown): string {
  *    意味着克隆不完整或目录被清理，而不是「本来就没有」。但它仍不是唯一副本 ——
  *    `reference/` 下的 jsonl 语料是同一份数据的原始形态。
  *    曾因 `ls` 是带 `--git-ignore` 的 eza 别名而误判语料已失，
- *    见 docs/superpowers/specs/ 下的设计文档。
+ *    见 docs/plans/ 下的设计文档。
  */
 export function missingDbHint(dbDir: string = DB_DIR, missing: readonly string[] = []): string {
 	const which = missing.length > 0 ? `  缺少的表：${missing.join("、")}\n` : "";
@@ -194,7 +194,7 @@ export function closeSource(): void {
 //
 // 这里的每一条规则都是实测出来的，不是推断。最隐晦的一条是 `mutagen` 键的**存在性**
 // （见 hasMutagenKey），它搞错了 `npm test` 也不会红 —— 只有字节级比对能抓住。
-// 详见 docs/superpowers/specs/2026-09-25-duckdb-corpus-source-design.md 的 4.2。
+// 详见 docs/plans/2026-09-25-duckdb-corpus-source-design.md 的 4.2。
 
 /** `samples` 表的一行（只列本模块用到的列）。 */
 export interface SampleRow {
