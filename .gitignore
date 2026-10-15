@@ -1,10 +1,8 @@
 # ── 依赖 ──────────────────────────────────────────────────
-# 就在仓库根下；勿写带前缀路径（会漏掉它）
 node_modules/
 
 # ── 工具 / 编辑器本地目录与配置 ───────────────────────────
-# 本机自有，不入库；.claude/ 的协作用件（CLAUDE.md / settings.json /
-# commands/、skills/ 链接视图）已纳管
+# 本机自有，不入库（.claude/ 的协作用件已纳管）
 .codegraph/
 .history/
 .vscode/
@@ -12,41 +10,29 @@ node_modules/
 .mcp.json
 
 # ── openspec CLI 生成物 ───────────────────────────────────
-# openspec CLI 安装的技能实体，可随时经 CLI 重新生成；手写真相源在
-# openspec/（specs/ 能力规范 + config.yaml），已跟踪
+# 可随时经 CLI 重新生成；手写真相源在 openspec/，已跟踪
 .agents/
 
 # ── 上游参照仓库（只读快照，不入版本控制）────────────────
-# samples-out 曾是排盘基准的原始语料（5.5 GB / 720 个 jsonl.gz）；
-# 当前不在工作区，规则作为防护保留：快照一旦被重新链接回仓库，
-# 不会被 git add -A 卷入。
+# 快照当前不在工作区，规则作为防护保留，勿删。
 # ⚠️ 核查用 find / stat / du，勿用 ls —— 本机 ls 是带 --git-ignore 的
-#    eza 别名，会把整个目录显示成空的（2026-09-25 曾据此误判「语料已丢失」，
-#    见 docs/plans/ 下的设计文档）。
+#    eza 别名，会把目录显示成空的（2026-09-25 曾据此误判「语料已丢失」）。
 reference/
 
 # ── 样本数据集（按用途分流，2026-10-09 起）────────────────
-# 入库：db/dataset/ 下 samples + palaces parquet（排盘基准数据源）。
-# 出库：topics-*.parquet（11 片约 379 MiB，已下线的数据路线，由
-# scripts/analysis/ 代码路线取代）—— git 对二进制不做 delta、每次重建
-# 全量重传，且运行时零依赖；磁盘文件保留，需要时经 tools/db/build-duckdb.ts 重建。
+# 仅 topics-*.parquet 出库：已下线数据路线（二进制全量重传、运行时零依赖，磁盘保留、可经 tools/db/build-duckdb.ts 重建）。
 db/dataset/topics-*.parquet
 
 # ── 不入版本控制的数据 ────────────────────────────────────
-# db/ziwei.duckdb：数据集的导出来源（641.5 MiB，超 GitHub 单文件 100 MiB
-# 硬限），构建中间物随时可弃；.wal / .progress.json / .dict.jsonl 是边车。
-# db/dataset.staging/：构建期暂存分片与半截产物，误入 git add -A 会写进历史。
+# duckdb（641.5 MiB 超限）是构建中间物，随时可弃；.staging/ 半截产物误入 git add -A 会写进历史。
 db/dataset.staging/
 db/ziwei.duckdb*
 
 # ── 评审闸门的快照目录（tools/review-gate.ts --byte-diff 用）──────────
-# 落仓库内而非 /tmp：/tmp 只有 10 MB 且会被清空（本会话曾因快照被清空
-# 误报「9 场景全报 DIFFERS」）；进 .gitignore 才能既不被 stash 卷走、
-# 也不被 git add -A 误提交。
+# 落仓库内而非会被清空的 /tmp（曾致误报 DIFFERS）；防 stash 卷走与 git add -A 误提交。
 .review-tmp/
 
 # ── 分发产物（tools/pack.ts 生成）──────────────────────────────────
-# purplestar-astrology.zip：每次构建重新生成（时间戳固定故字节可复现）。
 dist/
 
 # ── 系统垃圾 / 本地工具产物 ───────────────────────────────
@@ -55,6 +41,5 @@ dist/
 npm-debug.log*
 .mimosa/
 html/
-# 依赖锁文件：既有约定，不入库
 package-lock.json
 .Trash-**
