@@ -17,24 +17,24 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > （分发协议本体在 `cli/host/dispatch.ts`，此处只组装端口并执行副作用）。
 > 命令实现、渲染、出生信息解析、自检都**不在**这里，见 scripts/cli/：
 >
->   cli/args/           参数面：table（声明面 OPTION_GROUPS + OPTION_ALIASES，零依赖纯数据）
->                       / parse（解析引擎，util.parseArgs 底座）/ scope（作用域契约）
->                       / config-input（--config / --template JSON 配置输入）
->   cli/birth/          出生信息解析（真太阳时、农历换算、城市容错）
->   cli/chart/          命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）+ 排盘缓存
->   cli/commands/       命令实现：astrology（四命令合一）/ fortune（运限）/ report（--report）
->                       / synastry（合盘）/ knowledge/（知识检索四域）/ help / command-meta /
->                       index（COMMAND_TABLE 注册薄层）
->   cli/host/           dispatch（argv → 三元组的分发协议）+ out（--out 落盘通道）
->   cli/selftest/       回归自检（index = 排盘 / 古籍 / 合盘三段合一；kit = 共用 harness）
+> cli/args/ 参数面：table（声明面 OPTION_GROUPS + OPTION_ALIASES，零依赖纯数据）
+> / parse（解析引擎，util.parseArgs 底座）/ scope（作用域契约）
+> / config-input（--config / --template JSON 配置输入）
+> cli/birth/ 出生信息解析（真太阳时、农历换算、城市容错）
+> cli/chart/ 命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）+ 排盘缓存
+> cli/commands/ 命令实现：astrology（四命令合一）/ fortune（运限）/ report（--report）
+> / synastry（合盘）/ knowledge/（知识检索四域）/ help / command-meta /
+> index（COMMAND_TABLE 注册薄层）
+> cli/host/ dispatch（argv → 三元组的分发协议）+ out（--out 落盘通道）
+> cli/selftest/ 回归自检（index = 排盘 / 古籍 / 合盘三段合一；kit = 共用 harness）
 >
 > 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
->   scripts/algorithm.ts   排盘主流程
->   scripts/patterns/      格局识别（含古籍出处与破格条件）
->   scripts/mutagen.ts       四化（生年 / 流年 / 流月）
->   scripts/analysis/      分析数据库 v3（主题论断动态推算，topic 命令用）
->   cli/birth/          出生信息解析（真太阳时、农历换算、城市容错）+ 城市经纬度表
->   scripts/data/          天干地支 / 纳音五行 / 四化表 / 星曜释义（数据层）
+> scripts/algorithm.ts 排盘主流程
+> scripts/patterns/ 格局识别（含古籍出处与破格条件）
+> scripts/mutagen.ts 四化（生年 / 流年 / 流月）
+> scripts/analysis/ 分析数据库 v3（主题论断动态推算，topic 命令用）
+> cli/birth/ 出生信息解析（真太阳时、农历换算、城市容错）+ 城市经纬度表
+> scripts/data/ 天干地支 / 纳音五行 / 四化表 / 星曜释义（数据层）
 >
 > 语料（corpus：古籍/天纪/核对表）与 synastry 的内核也住进本仓
 > `scripts/corpus/` 与 `scripts/synastry/`，命令并入本 CLI —— 单 skill 单入口，
@@ -42,7 +42,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 都在这里（见 `SKILL.md`）。
 >
 > 依赖 Node ≥ 22.18（module.registerHooks + 原生 TS 类型擦除）。
-> 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
+> 用法：node scripts/purple-star.ts <command> [options] （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
 > 帮助：node scripts/purple-star.ts help
 > 自检：node scripts/purple-star.ts selftest
 
@@ -53,13 +53,13 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 ### 2.1 铁律本身
 
 > ⚠️ 引导层**唯一**被允许的非 `node:` 静态 import，理由见下方「引导层为什么能静态 import
->    boot-hooks.ts」—— 该文件自身只依赖 `node:` 内置，且调用点用的是带 `.ts` 扩展名的
->    说明符，靠 Node 原生类型擦除即可加载，**不需要解析钩子**。除此之外本文件不允许出现
->    任何普通静态 import。
+> boot-hooks.ts」—— 该文件自身只依赖 `node:` 内置，且调用点用的是带 `.ts` 扩展名的
+> 说明符，靠 Node 原生类型擦除即可加载，**不需要解析钩子**。除此之外本文件不允许出现
+> 任何普通静态 import。
 
 > ⚠️ 因此：**本文件里除 `node:` 内置模块与 ./boot-hooks.ts 外，不允许出现任何普通静态 import**
->    —— `scripts/cli/` 下的自家子模块也不行（它们静态 import 内核，同样会触发提前加载）。
->    凡是要用的值，一律走下面的 load<T>()。这是本文件最容易被改坏的一处。
+> —— `scripts/cli/` 下的自家子模块也不行（它们静态 import 内核，同样会触发提前加载）。
+> 凡是要用的值，一律走下面的 load<T>()。这是本文件最容易被改坏的一处。
 
 ### 2.2 为什么类型层可以写在文件顶部
 
@@ -91,6 +91,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 ## 三、内核根候选：两级优先级
 
 > 优先级：
+>
 > 1. `ZIWEI_ROOT` 环境变量 —— 显式指定（想把内核指到别处时用）
 > 2. 技能自带内核 —— 就是本脚本所在目录 `<skill 根>/scripts/`
 >
@@ -141,8 +142,9 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 至于「失败之后是退出进程还是抛错」，由调用方以 `onFailure` 策略传入。
 >
 > 两个调用方让这个 seam 是**真实**的，而不是假想的：
->   - `scripts/purple-star.ts`（CLI）—— 失败即渲染指引并 `process.exit(1)`
->   - `test/lib/loader.ts`（回归测试）—— 失败即抛错，让 node:test 把失败归到具体用例
+>
+> - `scripts/purple-star.ts`（CLI）—— 失败即渲染指引并 `process.exit(1)`
+> - `test/lib/loader.ts`（回归测试）—— 失败即抛错，让 node:test 把失败归到具体用例
 >
 > 此前这两份是逐行副本，靠注释提醒「必须保持行为一致」，只有一条断言间接盯着。
 > 副本分叉不会被任何测试抓住：它只影响「怎么观察内核」，测试本身照旧全绿。

@@ -94,6 +94,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 合盘自检断言组 —— 从 synastry 自带的 selftest.ts 抽出。
 >
 > 断言体基本原样；适配点有三类：
+>
 > 1. **参数面断言改跑合并后的根 CLI**（`node scripts/purple-star.ts synastry …`）；
 > 2. 「出生信息旗标被整个拒收」一条在合并后**暂缓**：主引擎的参数面是 skill 级，
 >    `--a-date` 剥前缀后 `date` 在全量声明表里（synastry 命令不读它，仍会因缺

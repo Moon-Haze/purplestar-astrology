@@ -9,34 +9,34 @@
 
 ## 注释四分类（判据：消费者的可达场景）
 
-| 类 | 是什么 | 处置 | 为什么 |
-| --- | --- | --- | --- |
-| A | TSDoc 契约（`@param` / `@returns` / `@throws`） | **留在源码** | 消费者是 IDE 悬停里的**调用方**，写调用代码时才需要，必须就地 |
-| B | 模块头论文（`@packageDocumentation` 长文） | **搬到本目录** | 消费者是**要改这个模块的人**，`docs/` 可达且更适合整篇读 |
-| C | ⚠️ 防呆警告（「不要改这里」） | **搬到本目录** | 同上；源码留 ⚠️ 结论一行 + 指路牌 |
-| D | 口径锁（解释不直观算式 / 显式配置的一行注释） | **留在源码** | 「防将来人删掉显式配置」的钓鱼线，一行成本，留 |
+| 类  | 是什么                                          | 处置           | 为什么                                                        |
+| --- | ----------------------------------------------- | -------------- | ------------------------------------------------------------- |
+| A   | TSDoc 契约（`@param` / `@returns` / `@throws`） | **留在源码**   | 消费者是 IDE 悬停里的**调用方**，写调用代码时才需要，必须就地 |
+| B   | 模块头论文（`@packageDocumentation` 长文）      | **搬到本目录** | 消费者是**要改这个模块的人**，`docs/` 可达且更适合整篇读      |
+| C   | ⚠️ 防呆警告（「不要改这里」）                   | **搬到本目录** | 同上；源码留 ⚠️ 结论一行 + 指路牌                             |
+| D   | 口径锁（解释不直观算式 / 显式配置的一行注释）   | **留在源码**   | 「防将来人删掉显式配置」的钓鱼线，一行成本，留                |
 
 **本目录只收 B / C**，且是**搬运不是改写**——「文档一份、注释一份」的措辞分叉从起点就不允许发生。
 
 ## 导航表（15 篇）
 
-| 篇 | 覆盖的源码 | 单元 |
-| --- | --- | --- |
-| [README.md](README.md) | 本篇：导航 + 维护纪律 + 引文软纪律 | 目录入口 |
-| [boot-layer.md](boot-layer.md) | `scripts/purple-star.ts` · `scripts/boot-hooks.ts` | 引导层 |
-| [chart-kernel.md](chart-kernel.md) | `scripts/types.ts` · `algorithm.ts` · `palace-relations.ts` · `mutagen.ts` · `wenmo-brightness.ts` | 排盘内核 |
-| [patterns.md](patterns.md) | `scripts/patterns/` | 格局层 |
-| [analysis.md](analysis.md) | `scripts/analysis/` | 论断库 |
-| [data-tables.md](data-tables.md) | `scripts/data/` | 数据表 |
-| [corpus.md](corpus.md) | `scripts/corpus/` | 古籍语料 |
-| [knowledge.md](knowledge.md) | `scripts/knowledge/` | 知识源扩展点 |
-| [school.md](school.md) | `scripts/school/` | 流派适配器 |
-| [synastry.md](synastry.md) | `scripts/synastry/` | 合盘内核 |
-| [cli-args.md](cli-args.md) | `scripts/cli/args/` | CLI 参数面 |
-| [cli-birth.md](cli-birth.md) | `scripts/cli/birth/` | CLI 出生信息 |
-| [cli-chart.md](cli-chart.md) | `scripts/cli/chart/` · `scripts/cli/host/` | CLI 命盘产物与宿主装配 |
-| [cli-commands.md](cli-commands.md) | `scripts/cli/commands/` · `cli/fortune/` · `cli/knowledge/` | CLI 命令层 |
-| [cli-selftest.md](cli-selftest.md) | `scripts/cli/selftest/` | CLI 回归自检 |
+| 篇                                 | 覆盖的源码                                                                                         | 单元                   |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------- |
+| [README.md](README.md)             | 本篇：导航 + 维护纪律 + 引文软纪律                                                                 | 目录入口               |
+| [boot-layer.md](boot-layer.md)     | `scripts/purple-star.ts` · `scripts/boot-hooks.ts`                                                 | 引导层                 |
+| [chart-kernel.md](chart-kernel.md) | `scripts/types.ts` · `algorithm.ts` · `palace-relations.ts` · `mutagen.ts` · `wenmo-brightness.ts` | 排盘内核               |
+| [patterns.md](patterns.md)         | `scripts/patterns/`                                                                                | 格局层                 |
+| [analysis.md](analysis.md)         | `scripts/analysis/`                                                                                | 论断库                 |
+| [data-tables.md](data-tables.md)   | `scripts/data/`                                                                                    | 数据表                 |
+| [corpus.md](corpus.md)             | `scripts/corpus/`                                                                                  | 古籍语料               |
+| [knowledge.md](knowledge.md)       | `scripts/knowledge/`                                                                               | 知识源扩展点           |
+| [school.md](school.md)             | `scripts/school/`                                                                                  | 流派适配器             |
+| [synastry.md](synastry.md)         | `scripts/synastry/`                                                                                | 合盘内核               |
+| [cli-args.md](cli-args.md)         | `scripts/cli/args/`                                                                                | CLI 参数面             |
+| [cli-birth.md](cli-birth.md)       | `scripts/cli/birth/`                                                                               | CLI 出生信息           |
+| [cli-chart.md](cli-chart.md)       | `scripts/cli/chart/` · `scripts/cli/host/`                                                         | CLI 命盘产物与宿主装配 |
+| [cli-commands.md](cli-commands.md) | `scripts/cli/commands/` · `cli/fortune/` · `cli/knowledge/`                                        | CLI 命令层             |
+| [cli-selftest.md](cli-selftest.md) | `scripts/cli/selftest/`                                                                            | CLI 回归自检           |
 
 篇名 = 单元名，改到哪个目录就打开哪一篇。未在上表出现的源码文件，说明它没有 B/C 长注释
 （或密度未到搬迁线），其注释原地保留。

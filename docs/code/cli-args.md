@@ -22,11 +22,11 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 不做「整目录转手」：门面多导出一个符号，就多一处可能与源模块脱钩的名单。
 > 各模块之间仍按需直接 import 具体文件（`./parse` / `./table`），不必绕本门面。
 >
-> | 符号 | 来源 | 谁在用 |
-> |---|---|---|
-> | `CliArgs` `CliContext` | `parse.ts` | 全 CLI 类型锚点（knowledge / selftest / commands / host） |
-> | `parseArgs` | `parse.ts` | selftest 各组、引导层 |
-> | `OPTION_NAMES` `SIDE_PREFIXES` | `parse.ts` | selftest 参数组、`config-input` |
+> | 符号                           | 来源       | 谁在用                                                    |
+> | ------------------------------ | ---------- | --------------------------------------------------------- |
+> | `CliArgs` `CliContext`         | `parse.ts` | 全 CLI 类型锚点（knowledge / selftest / commands / host） |
+> | `parseArgs`                    | `parse.ts` | selftest 各组、引导层                                     |
+> | `OPTION_NAMES` `SIDE_PREFIXES` | `parse.ts` | selftest 参数组、`config-input`                           |
 
 ## 二、`table.ts`：声明表（「有哪些参数」的唯一定义处）
 
@@ -35,9 +35,10 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > CLI 参数声明面 —— 「有哪些参数」的唯一定义处（纯数据，零依赖）。
 >
 > 与同目录两个模块的分工（三层自底向上）：
->   1. 本文件：**声明了什么** —— 参数表 / 拼音别名 / 全集派生 / 键名换算，零逻辑零依赖；
->   2. `option-scope.ts`：**本 skill 认哪些** —— 作用域契约与差量排除值；
->   3. `args.ts`：**怎么解析** —— `util.parseArgs` tokens 底座 + 校验 + 薄适配层。
+>
+> 1. 本文件：**声明了什么** —— 参数表 / 拼音别名 / 全集派生 / 键名换算，零逻辑零依赖；
+> 2. `option-scope.ts`：**本 skill 认哪些** —— 作用域契约与差量排除值；
+> 3. `args.ts`：**怎么解析** —— `util.parseArgs` tokens 底座 + 校验 + 薄适配层。
 
 ### 2.2 为什么参数要有声明表
 
@@ -48,10 +49,10 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 ### 2.3 ⚠️ 键名换算与加载时机
 
 > ⚠️ **键名是 camelCase**（`late-zi` → `lateZi`）。换算只有 `camelKey` 一处，
->    声明表里的 `name` 仍写 kebab（它同时是用户敲的名字、help 的显示名）。
+> 声明表里的 `name` 仍写 kebab（它同时是用户敲的名字、help 的显示名）。
 >
 > ⚠️ 本文件由引导层（purple-star.ts）在 `registerHooks` **之后**经 `args.ts` 间接加载。
->    不要在 purple-star.ts 顶部用静态 `import` 引它 —— 钩子未注册时解析会失败。
+> 不要在 purple-star.ts 顶部用静态 `import` 引它 —— 钩子未注册时解析会失败。
 
 ### 2.4 `OptionSpec`：界面刻意只留四格
 
@@ -87,25 +88,25 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 原名（调用处按 `exclusive.slice(2)` 对拍），其余三个用 camelCase（消费 args 键）。
 
 - `SHADOWABLE_KEYS`：
-  > 可被独占分支吞掉的功能参数（kebab 原名）—— 专题深入组除 `palaces`（noShadow）
-  > 之外的全部，加上输出与选题组标了 `shadow` 的五项（yearly / monthly / focus /
-  > topic / report）。独占参数自身也在集合里，是为了让「两个独占分支同给」被指路
-  > 而非静默吞掉低优先级的那个（自指由调用处的 `n !== exclusive` 过滤兜住）。
+    > 可被独占分支吞掉的功能参数（kebab 原名）—— 专题深入组除 `palaces`（noShadow）
+    > 之外的全部，加上输出与选题组标了 `shadow` 的五项（yearly / monthly / focus /
+    > topic / report）。独占参数自身也在集合里，是为了让「两个独占分支同给」被指路
+    > 而非静默吞掉低优先级的那个（自指由调用处的 `n !== exclusive` 过滤兜住）。
 - `BIRTH_KEYS`：
-  > 出生相关参数名（camelCase）—— `role: "birth"` 三个组的全部参数。零输入演示的
-  > 判据之一：这些键**全部**缺席。「其他出生信息」组（gender / lng / city /
-  > province / name）也在内 —— 只给 `--gender` 是部分输入，按「缺一问一」报错，
-  > 不该走演示盘。位置参数归类与 `--config` 注入都发生在 parseArgs / applyConfig，
-  > 二者给出的出生信息均算「已输入」。
+    > 出生相关参数名（camelCase）—— `role: "birth"` 三个组的全部参数。零输入演示的
+    > 判据之一：这些键**全部**缺席。「其他出生信息」组（gender / lng / city /
+    > province / name）也在内 —— 只给 `--gender` 是部分输入，按「缺一问一」报错，
+    > 不该走演示盘。位置参数归类与 `--config` 注入都发生在 parseArgs / applyConfig，
+    > 二者给出的出生信息均算「已输入」。
 - `INTENT_KEYS`：
-  > 表达了输出意图的功能参数（camelCase）—— 专题深入与输出选题两组，刨去标了
-  > `noIntent` 的 `info`（零输入时它正是演示目标）与 `config`（参数来源而非输出形态）。
-  > 零输入 + 这些参数在场 = 用户要特定输出，不替他排虚构盘 —— 交回原路径按「缺一问一」
-  > 报错（`--json` / `--report` 尤其如此：机器接口与全盘报告都不喂虚构数据）。
+    > 表达了输出意图的功能参数（camelCase）—— 专题深入与输出选题两组，刨去标了
+    > `noIntent` 的 `info`（零输入时它正是演示目标）与 `config`（参数来源而非输出形态）。
+    > 零输入 + 这些参数在场 = 用户要特定输出，不替他排虚构盘 —— 交回原路径按「缺一问一」
+    > 报错（`--json` / `--report` 尤其如此：机器接口与全盘报告都不喂虚构数据）。
 - `DEEP_DIVE_KEYS`：
-  > 专题深入旗标（camelCase）—— 深入态基底（基本信息面板 / 运限速览 / 专题指路）的
-  > 显隐判据：任一在场即「已在深入，基底与指路是噪声」。旧 astrology 的 `deepDive`
-  > 硬编码六旗标由此收编；新增专题参数只需标 `deep: true`。
+    > 专题深入旗标（camelCase）—— 深入态基底（基本信息面板 / 运限速览 / 专题指路）的
+    > 显隐判据：任一在场即「已在深入，基底与指路是噪声」。旧 astrology 的 `deepDive`
+    > 硬编码六旗标由此收编；新增专题参数只需标 `deep: true`。
 
 ### 2.8 归属投影（候选 4）
 
@@ -144,7 +145,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 >   旧 cac「取末值」废止）。
 >
 > ⚠️ 本文件由引导层（purple-star.ts）在 `registerHooks` **之后**动态加载。
->    不要在 purple-star.ts 顶部用静态 `import` 引它 —— 钩子未注册时解析会失败。
+> 不要在 purple-star.ts 顶部用静态 `import` 引它 —— 钩子未注册时解析会失败。
 
 ### 3.2 `OPTION_NAMES` 的差量派生
 
@@ -178,8 +179,8 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 3. 前缀后面接的仍必须是声明过的名字：`--a-ctiy` 同样要抓。
 >
 > ⚠️ 刻意**不**校验「这个参数属于这个命令」：`--json` 给 `knowledge` 是无害的多余参数，
->    而把归属做成硬约束会让每条命令的合法集合成为第二个需要维护的真相 —— 拼错才是要挡的。
->    （Task 8 的 help 归属表是**视图**，不做硬校验。）
+> 而把归属做成硬约束会让每条命令的合法集合成为第二个需要维护的真相 —— 拼错才是要挡的。
+> （Task 8 的 help 归属表是**视图**，不做硬校验。）
 
 ### 3.6 `parseArgs`：两步法与贪婪取值
 
@@ -204,7 +205,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 > // 紧随 token 是真 option（`--xxx`）/ terminator / 结尾 → 可选值形态存 true。
 > // ⚠️ `-3` 这类假 option（底座把负数切成 name "3" 的 option token）**不算**——
-> //    贪婪取值恰恰要吃它（`--limit -3` 的 -3 是值）。
+> // 贪婪取值恰恰要吃它（`--limit -3` 的 -3 是值）。
 
 ### 3.7 `classifyPositionals`：为什么住在本文件
 

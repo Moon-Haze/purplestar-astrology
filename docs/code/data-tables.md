@@ -20,13 +20,13 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 >
 > ## 域名一览
 >
-> | 文件 | 内容 | 2026-10-11 前的位置 |
-> |---|---|---|
-> | `ganzhi.ts` | 十天干、十二地支、十二时辰、宫名序列与映射 | `constants.ts` |
-> | `wuxing.ts` | 纳音五行、五行局局数与局名 | `constants.ts` |
-> | `sihua.ts` | 生年四化、天魁天钺、禄存、天马 | `constants.ts` |
-> | `stars.ts` | 主星亮度表、十四主星释义 | `constants.ts` |
-> | `wenmo-tables.ts` | 文墨 SB 四流派亮度表（生成物，勿手改） | `wenmo-brightness.ts` |
+> | 文件              | 内容                                       | 2026-10-11 前的位置   |
+> | ----------------- | ------------------------------------------ | --------------------- |
+> | `ganzhi.ts`       | 十天干、十二地支、十二时辰、宫名序列与映射 | `constants.ts`        |
+> | `wuxing.ts`       | 纳音五行、五行局局数与局名                 | `constants.ts`        |
+> | `sihua.ts`        | 生年四化、天魁天钺、禄存、天马             | `constants.ts`        |
+> | `stars.ts`        | 主星亮度表、十四主星释义                   | `constants.ts`        |
+> | `wenmo-tables.ts` | 文墨 SB 四流派亮度表（生成物，勿手改）     | `wenmo-brightness.ts` |
 >
 > ## 使用约定
 >
@@ -80,7 +80,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 > ⚠️ 增删条目时同步 `PALACE_NAMES_ORDER`，两边必须同集合。
 > ⚠️ 未命中的宫名一律**抛错**而非回退（见 algorithm.ts 的 projectPalaceName）——
->    宫名是十二宫一览、--focus、三方四正、大限、格局判定的公共索引，不能静默降级。
+> 宫名是十二宫一览、--focus、三方四正、大限、格局判定的公共索引，不能静默降级。
 
 ---
 

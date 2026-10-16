@@ -21,6 +21,7 @@
 > `algorithm.ts` 按它产出，`cli/chart/render.ts` 按它渲染，`test/lib/compare.ts` 按它比对。
 >
 > 贯穿全项目的三套索引约定（三者**不同域**，混用必错）：
+>
 > - **天干索引** 0–9，序同 `constants.ts` 的 `STEMS`（0=甲 … 9=癸）
 > - **地支索引** 0–11，序同 `constants.ts` 的 `BRANCHES`（0=子 … 11=亥）
 > - **时辰序号** 0–12，见 `BirthInfo.timeIndex` —— 比地支索引**多一个 12**（晚子时）
@@ -32,6 +33,7 @@
 > `test/kernel-contract.test.ts` 把本面钉成可断言事实——内核签名一旦漂移，该测试先红。
 >
 > 冻结面（符号 → 所在模块）：
+>
 > - 排盘主流程：`generateChart(birthInfo) → ZiweiChart`（algorithm.ts）
 > - 宫位关系查询：`oppositeBranch` / `surroundBranches` / `palaceAtBranch` / `mustPalaceAtBranch`（palace-relations.ts）
 > - 四化查询：`getYearStemIndex` / `getMutagenByStem` / `getYearlyMutagen` / `getMonthlyMutagen` /
@@ -80,28 +82,28 @@
 - `year` / `month` / `day`：公历。`day` 若真太阳时校正跨过午夜，此值已是**校正后**的日期
   （`cli/birth/birth-info.ts` 用 `shiftDate` 调整）。
 - `timeIndex`：
-  > **时辰序号**，取值 **0–12**：0=子 … 11=亥，**12=晚子时**。
-  >
-  > ⚠️ 这不是 0–23 的钟表时，也**不能**直接当 `BRANCHES` 的索引用（12 会越界）。
-  > 钟表时 → 时辰序号的换算（真太阳时经度校正、可选均时差、跨午夜日期回退）全部在
-  > `cli/birth/birth-info.ts` 的 `calcTrueSolar` / `buildBirthInfo` 里完成，本字段消费的是其结果。
-  >
-  > 12 的语义是「子时，且要求按**晚子时算次日**安星」——它对应 iztro 的 `timeIndex` 12。
-  > 同一时刻按晚子时（12）与早子时（0）排出的是**两张不同的盘**，不是微调
-  > （实测：同一生日下 12 与 0 的紫微落宫都不同）。
-  >
-  > `cli/birth/birth-info.ts` 只在两种情况下产出 12：`--branch 12` 直接指定，或 `--time` 的
-  > 真太阳时落在 23:00–23:59 且同时给了 `--late-zi`。其余情形一律产出 0–11。
+    > **时辰序号**，取值 **0–12**：0=子 … 11=亥，**12=晚子时**。
+    >
+    > ⚠️ 这不是 0–23 的钟表时，也**不能**直接当 `BRANCHES` 的索引用（12 会越界）。
+    > 钟表时 → 时辰序号的换算（真太阳时经度校正、可选均时差、跨午夜日期回退）全部在
+    > `cli/birth/birth-info.ts` 的 `calcTrueSolar` / `buildBirthInfo` 里完成，本字段消费的是其结果。
+    >
+    > 12 的语义是「子时，且要求按**晚子时算次日**安星」——它对应 iztro 的 `timeIndex` 12。
+    > 同一时刻按晚子时（12）与早子时（0）排出的是**两张不同的盘**，不是微调
+    > （实测：同一生日下 12 与 0 的紫微落宫都不同）。
+    >
+    > `cli/birth/birth-info.ts` 只在两种情况下产出 12：`--branch 12` 直接指定，或 `--time` 的
+    > 真太阳时落在 23:00–23:59 且同时给了 `--late-zi`。其余情形一律产出 0–11。
 - `gender`：
-  > 性别。决定大限顺逆 —— 同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁），
-  > 故**必填、无默认值**：缺失时 `buildBirthInfo` 一律报错，不静默兜底成 male。
+    > 性别。决定大限顺逆 —— 同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁），
+    > 故**必填、无默认值**：缺失时 `buildBirthInfo` 一律报错，不静默兜底成 male。
 - `province` / `city`：`--province` 回退时取该省 `cities[0]`（省会）的经度，不参与安星；
   `city` 由 `cli/birth/birth-info.ts` 的 `findLongitude` 按名查经度，不参与安星。
 - `longitude`：
-  > 出生地经度，**东经为正**（北京 116.4）。
-  >
-  > 用途只有一个：真太阳时的**经度校正** `(经度 − 120) × 4` 分钟。查表值见
-  > `cities.ts` 的 `PROVINCES`；未给出生地时按 120 处理（即不做经度校正）。
+    > 出生地经度，**东经为正**（北京 116.4）。
+    >
+    > 用途只有一个：真太阳时的**经度校正** `(经度 − 120) × 4` 分钟。查表值见
+    > `cities.ts` 的 `PROVINCES`；未给出生地时按 120 处理（即不做经度校正）。
 
 `LunarInfo`（由公历生日换算而来，供输出展示与虚岁换算）：
 
@@ -109,10 +111,10 @@
 
 - `lunarYear`：**以正月初一为界**（不是立春、也不是生日）——`currentAge` 的虚岁换算依赖此口径。
 - `lunarMonth`：
-  > 农历月（1–12），**恒为正数**。
-  >
-  > ⚠️ 闰月不在此处用负号表达：`lunar-typescript` 的 `getMonth()` 确实以**负数月份**表示闰月，
-  > 但 `getLunarInfo` 取了 `Math.abs`，闰月与否单独由 `isLeapMonth` 标记。
+    > 农历月（1–12），**恒为正数**。
+    >
+    > ⚠️ 闰月不在此处用负号表达：`lunar-typescript` 的 `getMonth()` 确实以**负数月份**表示闰月，
+    > 但 `getLunarInfo` 取了 `Math.abs`，闰月与否单独由 `isLeapMonth` 标记。
 - `yearStem` / `yearBranch`：查表未命中时兜底 0。
 
 `Mutagen`：
@@ -126,39 +128,39 @@
   `sha` 煞星命中 `algorithm.ts` 的 `TOUGH_STARS` 时优先判定；`lucky` 吉星命中 `SOFT_STARS` 时优先判定；
   `minor` 其余（杂曜）兜底。
 - `mutagen`：
-  > ⚠️ 直接取自 iztro 的 `mutagen`：**无四化时它给的是空字符串 `""`**，而类型上写的是
-  > 可选（`?`）——两种「无」在运行时都会出现。判空请用真值判断
-  > （`cli/chart/render.ts` 的 `starLine` 即 `if (s.mutagen)`），**不要**写 `=== undefined`。
+    > ⚠️ 直接取自 iztro 的 `mutagen`：**无四化时它给的是空字符串 `""`**，而类型上写的是
+    > 可选（`?`）——两种「无」在运行时都会出现。判空请用真值判断
+    > （`cli/chart/render.ts` 的 `starLine` 即 `if (s.mutagen)`），**不要**写 `=== undefined`。
 - `brightness`：
-  > 亮度，已归并成三档：`bright` 庙/旺、`dim` 陷/不/闲、其余（含**缺省**）`normal`。
-  >
-  > ⚠️ **口径随混合口径切换（2026-10）**：主星 + 辅星 + 煞星（凡文墨 SB 表收录的星）
-  > 都会填，取值来自文墨 XD2 表的细档塌缩（`algorithm.ts` 装配层覆写）；表未收录的
-  > 星中，主星回落 iztro 原值、辅杂曜为 `undefined`。下判决前记得判空。
+    > 亮度，已归并成三档：`bright` 庙/旺、`dim` 陷/不/闲、其余（含**缺省**）`normal`。
+    >
+    > ⚠️ **口径随混合口径切换（2026-10）**：主星 + 辅星 + 煞星（凡文墨 SB 表收录的星）
+    > 都会填，取值来自文墨 XD2 表的细档塌缩（`algorithm.ts` 装配层覆写）；表未收录的
+    > 星中，主星回落 iztro 原值、辅杂曜为 `undefined`。下判决前记得判空。
 - `brightnessRaw`：
-  > 亮度细档（文墨口径中文，如「庙」「旺」「得」「利」「平」「不」「闲」「陷」）。
-  >
-  > ⚠️ 只有文墨 SB 表收录且该宫非留白的星才有值；三档 `brightness` 由此细档
-  > 塌缩而来（塌缩规则见 `algorithm.ts` 的 `mapBrightness`）。文本输出不显示此字段，
-  > 仅进 `--json` 供细粒度消费。
+    > 亮度细档（文墨口径中文，如「庙」「旺」「得」「利」「平」「不」「闲」「陷」）。
+    >
+    > ⚠️ 只有文墨 SB 表收录且该宫非留白的星才有值；三档 `brightness` 由此细档
+    > 塌缩而来（塌缩规则见 `algorithm.ts` 的 `mapBrightness`）。文本输出不显示此字段，
+    > 仅进 `--json` 供细粒度消费。
 
 `Palace`：
 
 - 身宫不单独占宫，而是与十二宫中的某一宫同宫，由 `isBodyPalace` 标记（故一张盘里恰有一个 true）。
 - `branch`：
-  > ⚠️ `ZiweiChart.palaces` 数组**不是**按此值升序排的，见 `ZiweiChart.palaces`。
+    > ⚠️ `ZiweiChart.palaces` 数组**不是**按此值升序排的，见 `ZiweiChart.palaces`。
 - `stem`：宫干直接取自 iztro 的 `heavenlyStem`；本项目仅用于展示，**不用它做四化**。
 - `name`：
-  > 宫名，一律为**本项目口径**（如「交友宫」，而非 iztro 的「仆役」）。
-  > 映射表见 `constants.ts` 的 `IZTRO_TO_PROJECT_PALACE`；未命中会抛错，不会回退原名。
+    > 宫名，一律为**本项目口径**（如「交友宫」，而非 iztro 的「仆役」）。
+    > 映射表见 `constants.ts` 的 `IZTRO_TO_PROJECT_PALACE`；未命中会抛错，不会回退原名。
 - `stars`：顺序固定为 主星 → 次星（iztro `minorStars`）→ 杂曜（`adjectiveStars`）。
 - `decadalRange`：本宫所属大限的年龄段 `[起, 讫]`（**虚岁**，闭区间）。仅 iztro 给出 `decadal.range` 时有值。
 - `ages`：
-  > 小限落在本宫的**虚岁**列表（如 `[9,21,33,…]`，每宫 10 个、十二宫并集连续覆盖 1–120）。
-  >
-  > 直接取自 iztro 静态盘的 `palace.ages` —— 小限的起宫与顺逆由 iztro 按生年支与性别
-  > 推定，本项目不重复实现。**虚岁域**，与 `decadalRange` / `ZiweiChart.currentAge` 同域，
-  > 以农历年（正月初一）为界。
+    > 小限落在本宫的**虚岁**列表（如 `[9,21,33,…]`，每宫 10 个、十二宫并集连续覆盖 1–120）。
+    >
+    > 直接取自 iztro 静态盘的 `palace.ages` —— 小限的起宫与顺逆由 iztro 按生年支与性别
+    > 推定，本项目不重复实现。**虚岁域**，与 `decadalRange` / `ZiweiChart.currentAge` 同域，
+    > 以农历年（正月初一）为界。
 - `oppositeBranch`：对宫地支索引，由 `./palace-relations` 的 `oppositeBranch` 算出（该式为全仓单点）。
 - `isEmpty` / `borrowedFromBranch` / `borrowedFromName` / `borrowedStars`：`borrowedFromBranch` 恒等于
   `oppositeBranch`；`borrowedStars` 是借到的对宫**主星**名列表（结构化数据，文案层无需再从文本反查），
@@ -171,21 +173,22 @@
 只做组装、不做推算，安星交给 iztro）：
 
 - `fiveElementsClassName` vs `fiveElementsClass`：
-  > ⚠️ 局数 `fiveElementsClass` 是**取局名首字五行查表**（`constants.ts` 的 `ELEMENT_TO_JU`）
-  > 解析出来的，首字非五行时兜底成 3（木三局）；而本字段永远是 iztro 的原文。
-  > 两者可能不一致，**展示以本字段为准**。
+    > ⚠️ 局数 `fiveElementsClass` 是**取局名首字五行查表**（`constants.ts` 的 `ELEMENT_TO_JU`）
+    > 解析出来的，首字非五行时兜底成 3（木三局）；而本字段永远是 iztro 的原文。
+    > 两者可能不一致，**展示以本字段为准**。
 - `palaces`：
-  > ⚠️ **数组顺序不是地支升序**，而是 iztro 的原生顺序：实测 `branch` 序列恒为
-  > `2,3,4,5,6,7,8,9,10,11,0,1`（自寅宫起，绕到丑宫）。因此：
-  > - **按 `branch` 建索引**（`palaces.find(p => p.branch === b)`），不要依赖数组下标；
-  > - 要按「子→亥」或任何其它顺序展示，得自己排（`cli/chart/render.ts` 就是显式 `sort` 后再渲染）。
+    > ⚠️ **数组顺序不是地支升序**，而是 iztro 的原生顺序：实测 `branch` 序列恒为
+    > `2,3,4,5,6,7,8,9,10,11,0,1`（自寅宫起，绕到丑宫）。因此：
+    >
+    > - **按 `branch` 建索引**（`palaces.find(p => p.branch === b)`），不要依赖数组下标；
+    > - 要按「子→亥」或任何其它顺序展示，得自己排（`cli/chart/render.ts` 就是显式 `sort` 后再渲染）。
 - `douJunBranch`：
-  > **子年斗君**所在宫的地支索引 0–11：以子宫起正月**逆数**至生月，再以生月宫起子时
-  > **顺数**至生时，所落之宫。斗君是流月定位的基准（流年正月自斗君宫起）。
-  >
-  > ⚠️ iztro 静态盘**不带**斗君，此字段由 `algorithm.ts` 按上式自推（已用 2000-4-6 子时男
-  > = 戌、1990-05-15 巳时男 = 寅 两组样例校准）。闰月按所闰之月数计（与 `lunarInfo.lunarMonth`
-  > 的 `Math.abs` 口径一致）；晚子时（timeIndex 12）按子时论。
+    > **子年斗君**所在宫的地支索引 0–11：以子宫起正月**逆数**至生月，再以生月宫起子时
+    > **顺数**至生时，所落之宫。斗君是流月定位的基准（流年正月自斗君宫起）。
+    >
+    > ⚠️ iztro 静态盘**不带**斗君，此字段由 `algorithm.ts` 按上式自推（已用 2000-4-6 子时男
+    > = 戌、1990-05-15 巳时男 = 寅 两组样例校准）。闰月按所闰之月数计（与 `lunarInfo.lunarMonth`
+    > 的 `Math.abs` 口径一致）；晚子时（timeIndex 12）按子时论。
 - `currentAge`：**虚岁**，以农历年（正月初一）为界，与 `decadalRange` / `decadals[].startAge` **同域**。
 - `currentDecadalIndex`：`-1` 表示虚岁尚未落进任何大限（童限未起运）。
 
@@ -281,37 +284,37 @@ astro.config({ yearDivide: "normal" });
 > 体系立场见仓库根 `CLAUDE.md` 与 `SKILL.md` 的「体系口径」章节。
 
 - **干支查表失败即抛错**（逐宫循环内）：
-  > `branch` / `stem` 是下游一切索引的键（宫位定位、三方四正、大限、格局判定全按它查），
-  > 查表失败若静默兜底 0，会出现「两宫同指子位」且零信号 —— 与 `projectPalaceName`
-  > 同一纪律：宁可当场失败，也不静默产出错盘。`BRANCHES` / `STEMS` 覆盖全部十二支十干，
-  > 正常情况下 `indexOf` 不可能失败；真失败即说明 iztro 输出已损坏。
+    > `branch` / `stem` 是下游一切索引的键（宫位定位、三方四正、大限、格局判定全按它查），
+    > 查表失败若静默兜底 0，会出现「两宫同指子位」且零信号 —— 与 `projectPalaceName`
+    > 同一纪律：宁可当场失败，也不静默产出错盘。`BRANCHES` / `STEMS` 覆盖全部十二支十干，
+    > 正常情况下 `indexOf` 不可能失败；真失败即说明 iztro 输出已损坏。
 - **亮度覆写（混合口径）**：
-  > 亮度走文墨 SB 表覆写（XD2 默认）：查表命中 → `brightness` 按细档塌缩 + `brightnessRaw`
-  > 记中文细档（主辅杂曜同表）；未收录 / 留白 → 主星回落 iztro 原值，辅杂曜不带亮度。
+    > 亮度走文墨 SB 表覆写（XD2 默认）：查表命中 → `brightness` 按细档塌缩 + `brightnessRaw`
+    > 记中文细档（主辅杂曜同表）；未收录 / 留白 → 主星回落 iztro 原值，辅杂曜不带亮度。
 - **虚岁（⚠️ 最易错的一处）**：
-  > `currentAge` 是**虚岁**，与 `decadalRange` / `decadals[].startAge` 同域（倪师《天纪》亦用虚岁）。
-  > 以农历年（正月初一）为界，不是生日、也不是立春 —— 与 iztro 的默认口径
-  > `ageDivide: 'normal'` 逐字对应（见 `iztro/lib/astro/FunctionalAstrolabe.js`）：
-  >     `nominalAge = 目标日农历年 − 出生农历年 + 1`
-  >
-  > ⚠️ 不可写成 `new Date().getFullYear() - year`（那是周岁）。两者域不同会让
-  > `currentAge` 偏 1~2 岁，并连带 `currentDecadalIndex` / `palace.isCurrentDecadal` 错位，
-  > 最坏情况是把**上一个大限的宫**当成当前大限整宫详批。
+    > `currentAge` 是**虚岁**，与 `decadalRange` / `decadals[].startAge` 同域（倪师《天纪》亦用虚岁）。
+    > 以农历年（正月初一）为界，不是生日、也不是立春 —— 与 iztro 的默认口径
+    > `ageDivide: 'normal'` 逐字对应（见 `iztro/lib/astro/FunctionalAstrolabe.js`）：
+    > `nominalAge = 目标日农历年 − 出生农历年 + 1`
+    >
+    > ⚠️ 不可写成 `new Date().getFullYear() - year`（那是周岁）。两者域不同会让
+    > `currentAge` 偏 1~2 岁，并连带 `currentDecadalIndex` / `palace.isCurrentDecadal` 错位，
+    > 最坏情况是把**上一个大限的宫**当成当前大限整宫详批。
 - **借对宫字段**：
-  > 对宫算式取自 `./palace-relations` —— 全仓对宫偏移的单点，本字段与它同源。
+    > 对宫算式取自 `./palace-relations` —— 全仓对宫偏移的单点，本字段与它同源。
 - **命宫 / 身宫地支**：
-  > 命宫 / 身宫地支必在十二宫内，这是排盘不变量（`cli/chart/render.ts` 的 `palaceAtBranch` 同样
-  > 依赖它）；查不到即内核输出已已损坏，当场报错而非兜底 0（理由同上方宫循环的干支校验）。
+    > 命宫 / 身宫地支必在十二宫内，这是排盘不变量（`cli/chart/render.ts` 的 `palaceAtBranch` 同样
+    > 依赖它）；查不到即内核输出已已损坏，当场报错而非兜底 0（理由同上方宫循环的干支校验）。
 - **紫微星位置**：
-  > 紫微必上盘（安星法的锚点），找不到即内核输出已损坏 —— 兜底 0 会静默指向子位错盘。
+    > 紫微必上盘（安星法的锚点），找不到即内核输出已损坏 —— 兜底 0 会静默指向子位错盘。
 - **大限数组**：
-  > 倪师《天纪》正统：四化永远固定，大限只看宫位移动。
-  > 不再生成 `decadals[].mutagen` / `stemIndex` / `stemName`（飞星派字段已下线）。
+    > 倪师《天纪》正统：四化永远固定，大限只看宫位移动。
+    > 不再生成 `decadals[].mutagen` / `stemIndex` / `stemName`（飞星派字段已下线）。
 - **命主 / 身主 / 子年斗君**：
-  > 命主身主：iztro 由命/身宫地支查表定星，原样取用（不重复实现查表）。
-  > 斗君：子起正月逆数至生月，生月宫起子时顺数至生时。iztro 静态盘不带，故按口诀自推。
-  > 闰月按所闰之月数计（`lunarMonth` 已 `Math.abs`）；晚子时（`timeIndex` 12）按子时论（`%12`）。
-  > 校准样例：2000-4-6 子时（三月）= 戌、1990-05-15 巳时（四月）= 寅（见 `cli/selftest/index.ts`）。
+    > 命主身主：iztro 由命/身宫地支查表定星，原样取用（不重复实现查表）。
+    > 斗君：子起正月逆数至生月，生月宫起子时顺数至生时。iztro 静态盘不带，故按口诀自推。
+    > 闰月按所闰之月数计（`lunarMonth` 已 `Math.abs`）；晚子时（`timeIndex` 12）按子时论（`%12`）。
+    > 校准样例：2000-4-6 子时（三月）= 戌、1990-05-15 巳时（四月）= 寅（见 `cli/selftest/index.ts`）。
 - **宫干自化已下线**（倪师不主张飞星派宫干自化论）。
 
 ---
@@ -358,33 +361,33 @@ astro.config({ yearDivide: "normal" });
 ### 3.5 各函数的 ⚠️ 与来历
 
 - `oppositeBranch`：
-  > `algorithm.ts` 填 `Palace.oppositeBranch` 字段用的就是本函数 —— 字段与算式同源，
-  > 手里已经有 `Palace` 对象时直接读字段即可，不必绕本函数。
-  >
-  > ⚠️ 入参恒为 0–11（`Palace.branch` 与 `ZiweiChart.soulBranch` 的定义域），故**不做**
-  > 两步取模 —— 越界入参会返回越界值，由调用方负责。
+    > `algorithm.ts` 填 `Palace.oppositeBranch` 字段用的就是本函数 —— 字段与算式同源，
+    > 手里已经有 `Palace` 对象时直接读字段即可，不必绕本函数。
+    >
+    > ⚠️ 入参恒为 0–11（`Palace.branch` 与 `ZiweiChart.soulBranch` 的定义域），故**不做**
+    > 两步取模 —— 越界入参会返回越界值，由调用方负责。
 - `SAN_FANG_OFFSETS`：
-  > 十二宫由命宫**逆行**排布，故官禄在 `+4`、财帛在 `+8`、迁移在 `+6`（**不是**顺行）。
-  > 校验见 `test/invariants.test.ts` 的「宫名与相对命宫的逆行偏移一致」。
-  >
-  > ⚠️ 迁移那一项与 `oppositeBranch` 是同一个事实（对宫），此处按三方四正的次序写进
-  > 表里而非调 `oppositeBranch(+6)` —— 四个偏移同表可一眼看全，`+6` 在本表内不会再变。
+    > 十二宫由命宫**逆行**排布，故官禄在 `+4`、财帛在 `+8`、迁移在 `+6`（**不是**顺行）。
+    > 校验见 `test/invariants.test.ts` 的「宫名与相对命宫的逆行偏移一致」。
+    >
+    > ⚠️ 迁移那一项与 `oppositeBranch` 是同一个事实（对宫），此处按三方四正的次序写进
+    > 表里而非调 `oppositeBranch(+6)` —— 四个偏移同表可一眼看全，`+6` 在本表内不会再变。
 - 按地支取宫（候选 8 收敛）的来历：
-  > 此前同一查表写在两处且语义各半：`patterns/helpers.getPalaceByBranch` 两步取模、
-  > 可缺省返回；`cli/render.palaceAtBranch` 不取模、取不到必得（抛错文案含 `what`）。
-  > 两函数现收进本模块，各自的语义原样保留 —— 薄壳留在原处，调用方一行不用改。
+    > 此前同一查表写在两处且语义各半：`patterns/helpers.getPalaceByBranch` 两步取模、
+    > 可缺省返回；`cli/render.palaceAtBranch` 不取模、取不到必得（抛错文案含 `what`）。
+    > 两函数现收进本模块，各自的语义原样保留 —— 薄壳留在原处，调用方一行不用改。
 - `palaceAtBranch`（取不到返回 `undefined`，两步取模）：
-  > `((branch % 12) + 12) % 12` 把入参规整到 0–11。调用点因此可以直接写
-  > `(branch + 11) % 12` 这类偏移算式而不必再判界。
-  >
-  > 与 `mustPalaceAtBranch` 的分工：**可能缺席**的查询用本函数（对宫/夹宫的极端输入），
-  > **必在盘上**的语义用必得版（命宫/身宫的排盘不变量）。
+    > `((branch % 12) + 12) % 12` 把入参规整到 0–11。调用点因此可以直接写
+    > `(branch + 11) % 12` 这类偏移算式而不必再判界。
+    >
+    > 与 `mustPalaceAtBranch` 的分工：**可能缺席**的查询用本函数（对宫/夹宫的极端输入），
+    > **必在盘上**的语义用必得版（命宫/身宫的排盘不变量）。
 - `mustPalaceAtBranch`（取不到直接抛错，**不取模**）：
-  > 命宫 / 身宫地支必定落在 `palaces` 内，这是排盘不变量；取不到即说明内核输出已损坏。
-  > 项目一贯立场：宁可当场失败，也不要渲染出一张缺了命宫的盘。
-  >
-  > ⚠️ 与 `palaceAtBranch` 不同，本函数**不做取模**：越界入参会按原样匹配不到
-  > 而抛错（文案里 `BRANCHES[branch]` 越界时回退显示数字），与旧 render 实现一致。
+    > 命宫 / 身宫地支必定落在 `palaces` 内，这是排盘不变量；取不到即说明内核输出已损坏。
+    > 项目一贯立场：宁可当场失败，也不要渲染出一张缺了命宫的盘。
+    >
+    > ⚠️ 与 `palaceAtBranch` 不同，本函数**不做取模**：越界入参会按原样匹配不到
+    > 而抛错（文案里 `BRANCHES[branch]` 越界时回退显示数字），与旧 render 实现一致。
 
 ---
 
@@ -399,6 +402,7 @@ astro.config({ yearDivide: "normal" });
 > 上，这里不参与安星，也不产出任何盘面字段。
 >
 > **六层四化（本模块接口的全部）**
+>
 > - 生年四化（本命）= 出生年天干四化，静态基础，落在 `Star.mutagen` 上（本模块不参与）
 > - 流年四化 = 当年年干的四化，一年动态（`getYearlyMutagen`）
 > - 流月四化 = 月柱天干（五虎遁）的四化，一月动态（`getMonthlyMutagen`）
@@ -419,6 +423,7 @@ astro.config({ yearDivide: "normal" });
 
 > 以下两件飞星派工具在本项目**继续禁用**，本模块不提供对应函数，`algorithm.ts` 也不填充
 > 相关盘面字段：
+>
 > - ❌ **宫干自化** —— 某宫宫干引发的四化中被化星恰在本宫（`Palace.selfMutagen` 恒不填）
 > - ❌ **来因宫** —— 追溯某化星由哪个宫的宫干「飞」来的飞星派追溯法
 >
@@ -433,57 +438,57 @@ astro.config({ yearDivide: "normal" });
 ### 4.4 各函数的 ⚠️ 与来历
 
 - `getMutagenByStem`：
-  > ⚠️ 索引越界（`SI_HUA_TABLE[stemIndex]` 取空）时返回**四项皆为空串**的记录而**不抛错** ——
-  > 调用方靠空串自然短路。这与 `algorithm.ts` 的 `projectPalaceName`（未命中即抛错）是
-  > 相反的取舍：宫名是下游索引的键，错不起；此处越界的代价只是算不出四化。
+    > ⚠️ 索引越界（`SI_HUA_TABLE[stemIndex]` 取空）时返回**四项皆为空串**的记录而**不抛错** ——
+    > 调用方靠空串自然短路。这与 `algorithm.ts` 的 `projectPalaceName`（未命中即抛错）是
+    > 相反的取舍：宫名是下游索引的键，错不起；此处越界的代价只是算不出四化。
 - `getYearStemIndex`（`((year − 4) % 10 + 10) % 10`，公元 4 年为甲子年）：
-  > ⚠️ **按公历年直接取模，不做农历年或节气的边界切换**：1–2 月出生者，其年柱按农历
-  > 口径可能仍属上一农历年 —— 此时本函数与 `algorithm.ts` 的 `getLunarInfo` 返回的
-  > `lunarInfo.yearStem`（由 `lunar-typescript` 算出的农历年干）会**相差一位**。
-  > 两者用途不同：本函数**只服务流年四化**（用户问「2026 年运势」即指公历年份对应的
-  > 干支年，取模恰好正确）；**生年四化必须用 `chart.lunarInfo.yearStem`** —— 盘面上
-  > iztro 的 `Star.mutagen`（mutagen）按农历年干标注，生年若走公历取模，1–2 月出生者
-  > 的【生年四化】区块会与宫详表自相矛盾（实测 1990-01-15：农历己巳 vs 公历庚）。
-  > `test/cli.test.ts` 的「生年四化的年干口径」一节盯着这条红线。
+    > ⚠️ **按公历年直接取模，不做农历年或节气的边界切换**：1–2 月出生者，其年柱按农历
+    > 口径可能仍属上一农历年 —— 此时本函数与 `algorithm.ts` 的 `getLunarInfo` 返回的
+    > `lunarInfo.yearStem`（由 `lunar-typescript` 算出的农历年干）会**相差一位**。
+    > 两者用途不同：本函数**只服务流年四化**（用户问「2026 年运势」即指公历年份对应的
+    > 干支年，取模恰好正确）；**生年四化必须用 `chart.lunarInfo.yearStem`** —— 盘面上
+    > iztro 的 `Star.mutagen`（mutagen）按农历年干标注，生年若走公历取模，1–2 月出生者
+    > 的【生年四化】区块会与宫详表自相矛盾（实测 1990-01-15：农历己巳 vs 公历庚）。
+    > `test/cli.test.ts` 的「生年四化的年干口径」一节盯着这条红线。
 - `getYearlyMutagen`：年干走 `getYearStemIndex`（纯取模），同样按公历年、不做农历年边界切换；
   本函数**不涉及**任何宫干。
 - `getMonthlyStemIndex`（五虎遁）：
-  > 五虎遁口诀：甲己年起丙寅、乙庚年起戊寅、丙辛年起庚寅、丁壬年起壬寅、戊癸年起甲寅。
-  > 函数内的 `startStemOfYin` 表即把「年干索引 → 正月（寅月）天干索引」固化下来
-  > （甲 0 / 己 5 → 丙 2，乙 1 / 庚 6 → 戊 4，丙 2 / 辛 7 → 庚 6，丁 3 / 壬 8 → 壬 8，
-  > 戊 4 / 癸 9 → 甲 0），再按 `month − 1` 顺推。
-  >
-  > ⚠️ 起点是**正月（寅月）**而非子月，故 `month` 是农历月份序号，不是地支索引。
-  > 表未命中（`yearStem` 越界）时兜底为 0（甲），属静默兜底 —— 代价只是该月的四化算错，
-  > 不影响排盘。
+    > 五虎遁口诀：甲己年起丙寅、乙庚年起戊寅、丙辛年起庚寅、丁壬年起壬寅、戊癸年起甲寅。
+    > 函数内的 `startStemOfYin` 表即把「年干索引 → 正月（寅月）天干索引」固化下来
+    > （甲 0 / 己 5 → 丙 2，乙 1 / 庚 6 → 戊 4，丙 2 / 辛 7 → 庚 6，丁 3 / 壬 8 → 壬 8，
+    > 戊 4 / 癸 9 → 甲 0），再按 `month − 1` 顺推。
+    >
+    > ⚠️ 起点是**正月（寅月）**而非子月，故 `month` 是农历月份序号，不是地支索引。
+    > 表未命中（`yearStem` 越界）时兜底为 0（甲），属静默兜底 —— 代价只是该月的四化算错，
+    > 不影响排盘。
 - `getMonthlyMutagen`：由流年干推月干，调用时传 `getYearlyMutagen(...).stemIndex` 而非出生年干；
   闰月的月序换算不在本函数内 —— 调用方先用 `getEffectiveMonthlyMonth` 把「闰月 + 农历日」
   折算成有效月序再传入。
 - `getDaXianMutagen`：
-  > 这是文墨排盘展示层的口径：大限四化随大限宫位走，宫干来自盘面 `Palace.stem`
-  > （五虎遁布局，排盘时已填）。**纯函数层** —— 不往 `Decadal` 结构上加字段，
-  > `school.test.ts` 的「大限键集合全等」断言因此继续有效。
-  >
-  > ⚠️ **童限期（`currentDecadalIndex === -1`，未起运）没有大限宫干可言**，调用方须先判
-  > 童限再调本函数，不要传 `-1` —— 传入负下标会拿到 `undefined` 大限并返回 `null`，
-  > 语义是「无此大限」，不是「童限」。
+    > 这是文墨排盘展示层的口径：大限四化随大限宫位走，宫干来自盘面 `Palace.stem`
+    > （五虎遁布局，排盘时已填）。**纯函数层** —— 不往 `Decadal` 结构上加字段，
+    > `school.test.ts` 的「大限键集合全等」断言因此继续有效。
+    >
+    > ⚠️ **童限期（`currentDecadalIndex === -1`，未起运）没有大限宫干可言**，调用方须先判
+    > 童限再调本函数，不要传 `-1` —— 传入负下标会拿到 `undefined` 大限并返回 `null`，
+    > 语义是「无此大限」，不是「童限」。
 - `getDailyStemIndex`：
-  > 日柱由 `lunar-typescript` 现算（`Lunar.fromYmd(...).getDayGan()`），不做任何缓存 ——
-  > 调用频度低（CLI 单次取数），不值得为它建表。日期非法时 lunar-typescript 会抛错，
-  > 本函数捕获后返回 `null`，由调用方转为「流日参数超出该月天数」的中文报错。
+    > 日柱由 `lunar-typescript` 现算（`Lunar.fromYmd(...).getDayGan()`），不做任何缓存 ——
+    > 调用频度低（CLI 单次取数），不值得为它建表。日期非法时 lunar-typescript 会抛错，
+    > 本函数捕获后返回 `null`，由调用方转为「流日参数超出该月天数」的中文报错。
 - `getHourlyStemIndex`（五鼠遁）：
-  > 五鼠遁口诀：甲己日起甲子、乙庚日起丙子、丙辛日起戊子、丁壬日起庚子、戊癸日起壬子。
-  > 函数内的 `ziStemByDayStem` 表即「日干索引 → 子时天干索引」，再按 `hourBranch` 顺推。
-  >
-  > ⚠️ **晚子时（23:00–24:00）按当日日干起遁**（`hourBranch 12` 归一为子 0），不换次日的
-  > 日干 —— 与上游文墨排盘展示层一致。传统晚子时派（子时归次日）会连日干一起换，那是
-  > 另一套口径；本模块只提供文墨口径这一种。
+    > 五鼠遁口诀：甲己日起甲子、乙庚日起丙子、丙辛日起戊子、丁壬日起庚子、戊癸日起壬子。
+    > 函数内的 `ziStemByDayStem` 表即「日干索引 → 子时天干索引」，再按 `hourBranch` 顺推。
+    >
+    > ⚠️ **晚子时（23:00–24:00）按当日日干起遁**（`hourBranch 12` 归一为子 0），不换次日的
+    > 日干 —— 与上游文墨排盘展示层一致。传统晚子时派（子时归次日）会连日干一起换，那是
+    > 另一套口径；本模块只提供文墨口径这一种。
 - `getHourlyMutagen`：粒度到时辰即止 —— 本模块不提供流分；调用方须自备**当日日干**。
 - `getEffectiveMonthlyMonth`（闰月流月的 split 半月口径）：
-  > split 口径（2026-09 随上游定版，150 组文墨专业版真机对照）：**闰月前半月（农历日
-  > ≤ 15）按本月取月干，后半月（> 15）按下月取**；闰十二月后半跨到次年正月时月序回 1、
-  > 月干须用**次年干**重推（调用方从返回值 `=== 1` 且 `isLeapMonth` 且日 > 15 自行判断，
-  > 取 `options.nextYearStem` 重调 `getMonthlyStemIndex`）。非闰月输入原样返回。
+    > split 口径（2026-09 随上游定版，150 组文墨专业版真机对照）：**闰月前半月（农历日
+    > ≤ 15）按本月取月干，后半月（> 15）按下月取**；闰十二月后半跨到次年正月时月序回 1、
+    > 月干须用**次年干**重推（调用方从返回值 `=== 1` 且 `isLeapMonth` 且日 > 15 自行判断，
+    > 取 `options.nextYearStem` 重调 `getMonthlyStemIndex`）。非闰月输入原样返回。
 
 ---
 

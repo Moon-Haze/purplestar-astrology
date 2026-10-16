@@ -219,7 +219,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 - ❌ **宫干自化** —— `algorithm.ts` 不填充 `Palace.selfMutagen`
 - ❌ **来因宫**
 
-⚠️ `mutagen.ts` 导出六层四化（生年 / 大限宫干 `getDaXianMutagen` / 流年 / 流月 / 流日 `getDailyMutagen` / 流时 `getHourlyMutagen`）；宫干自化与来因宫函数已删除，全仓零调用点。`types.ts` 的**绊线字段刻意保留**（`Palace.selfMutagen` 与 `SelfMutagenMark` / `DecadalMutagen` 类型；`Decadal` 结构不加字段，大限宫干四化走纯函数层）——断言要盯的正是「有没有被填回」。**要删这些字段，先读 `types.ts` 里紧挨着它们的说明。**
+⚠️ `mutagen.ts` 导出六层四化（生年 / 大限宫干 `getDaXianMutagen` / 流年 / 流月 / 流日 `getDailyMutagen` / 流时 `getHourlyMutagen`）；宫干自化与来因宫函数已删除，全仓零调用点。`types.ts` 的**绊线字段刻意保留**（`Palace.selfMutagen` 与 `SelfMutagenMark` / `DecadalMutagen` 类型；`Decadal` 结构不加字段，大限宫干四化走纯函数层）——断言要盯的正是「有没有被填回」。**要删这些字段，先读 `docs/code/chart-kernel.md` 的「绊线字段」一节。**
 
 ## 单 skill 形态（2026-09-30 三 skill 合一）
 
