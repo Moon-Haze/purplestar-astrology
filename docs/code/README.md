@@ -52,14 +52,18 @@
 4. **路径写仓库根相对口径**（`docs/code/chart-kernel.md`），与 `CLAUDE.md` 一致；不写 `../../`
    这种随目录层级变动就失效的相对路径。
 
-## 倪师引文软纪律
+## 倪师引文纪律（已硬化）
 
 搬进本目录的倪师引文（「倪师 / 倪海厦 + 引号句」形态）**与源码同受 `ANNOTATIONS` 核对表约束**：
 出现该形态必须在 `analysis/grades.ts` 登记档位，**占位或自撰内容绝不可挂倪师引语**（属伪造引文）。
 
-现状是**软约束**：引文守卫 `collectTsFiles` 只收 `.ts`，本目录的 `.md` 不在扫描范围内。
-硬化守卫（让它也扫 `.md`）属验证基础设施变更，另案提案——且 docs 里的合法古籍引用会误报，
-需要先解决判据。在此之前，守这条纪律靠人。
+这条纪律**有机器在看**：引文守卫（`test/lib/citation-guard.ts`）除 `.ts` 外也收 `.md`
+（`scanMarkdownCitations`，按仓库根扫全部手写文档，`SKILL.md` / `references/` / 本目录 /
+`README.md` 等一并纳入），往任何 `.md` 里写一句未核实引文挂到倪师名下，`npm test` 立刻红。
+
+排除只有一处：`docs/manual/`（`export-manual.ts` 的生成导出）—— 源头 `analysis/data.ts`
+本就在 `.ts` 扫描范围内，镜像的历史引文形态是 db 版本问题、重建即消。
+判据是**黑名单制**（只拦 suspect / fabricated 的引文核心），合法古籍引用不受影响。
 
 ## 与分发的关系
 

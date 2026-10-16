@@ -51,6 +51,9 @@ context: |
   ## 引文纪律
   - 凡出现「倪师 / 倪海厦 + 引号句」形态，必须在 `analysis/grades.ts` 登记档位，
     否则 `npm test` 引文守卫变红。**占位或自撰内容绝不可挂倪师引语**（属伪造引文）。
+  - 守卫的扫描面同时覆盖 `.ts` 与 `.md`（`docs/` / `SKILL.md` / `references/` 等手写文档，
+    见 `test/lib/citation-guard.ts` 的 `scanMarkdownCitations`）—— 往文档里写一句
+    未核实引文与往源码里写一句同样变红；`docs/manual/` 是生成导出，按路径排除。
 
   ## 缓存
   - 改排盘内核输出结构或升级 `iztro` 时**必须递增 `CACHE_VERSION`**，否则旧缓存被当有效读回。

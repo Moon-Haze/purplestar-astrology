@@ -40,6 +40,23 @@
  * 另一类是 `corpus/data/manual/`（生成快照目录，见 {@link collectTsFiles}）——
  * 内容是内核表的渲染镜像而非手写断语，同样「不是被核对的对象」。
  *
+ * ## `.md` 侧：{@link scanMarkdownCitations}
+ *
+ * 源码树之外，本仓还有一捆**手写文档**带着倪师引文：`SKILL.md` / `references/`（skill 的
+ * 规范面，LLM 解读时真正读到的文本）、`docs/code/`（源码长注释的搬迁目的地，引文从源码
+ * 原文照搬而来）、`README.md` / `CLAUDE.md` 等。它们与源码受**同一条纪律**约束，故由
+ * {@link scanMarkdownCitations} 按仓库根再扫一遍，与 {@link scanCitations} 共用同一份
+ * 黑名单构造与同一套形态正则（见 {@link buildBannedSet} / {@link findViolations}）——
+ * 不出现「文档一份判据、源码一份判据」的分叉。
+ *
+ * `.md` 侧排除 `docs/manual/`（`tools/db/export-manual.ts` 的生成导出），理由与 `.ts` 侧
+ * 排除 `corpus/data/manual/` 同源：源头 `analysis/data.ts` 本就在 `.ts` 扫描范围内，
+ * 镜像可能带着旧版库的历史引文形态，那是 db 版本问题、重建即消，不是新写的未核实引文。
+ *
+ * ⚠️ 两个函数的分工是**收集面**不同，不是严格程度不同：`scanCitations` 只扫 `.ts`
+ * （供流派适配器的 `citationRoots` 用），`scanMarkdownCitations` 只扫 `.md`。
+ * 把 `.md` 塞进前者会让「扫哪个根」变难推理，也会破坏现存那条记录职责边界的元测试。
+ *
  * @packageDocumentation
  */
 
@@ -124,6 +141,42 @@ function collectTsFiles(root: string, dir = ""): string[] {
 }
 
 /**
+ * 黑名单：核对表里 suspect / fabricated 条目的**引文核心**（书名号 / 引号内的部分）。
+ *
+ * @remarks
+ * `.ts` 侧与 `.md` 侧共用这一个构造 —— 判据只有一份，改口径时两边同时变，
+ * 不会出现「文档放行了、源码还拦着」的分叉。
+ */
+function buildBannedSet(checklist: readonly AnnotationEntry[]): Set<string> {
+	return new Set(
+		checklist
+			.filter(e => e.status === "suspect" || e.status === "fabricated")
+			.flatMap(e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1]))
+	);
+}
+
+/**
+ * 在给定的文本块里找出仍以倪师名义出现的未核实引文。
+ *
+ * @param chunks - 参与比对的文本（源码或文档），由调用方收集
+ * @param banned - 黑名单（见 {@link buildBannedSet}）
+ * @returns 违例的引文核心（已截断到 40 字），按出现顺序
+ *
+ * @remarks
+ * 形态正则与 `.ts` 侧**逐字相同**：`倪(海厦|师)` + 最多 10 个非句号非换行字符 +
+ * 说 / 言 / 称 / 警示 / 警告 / 明言 / 强调 / 描述 / 提醒 + 可选冒号 + 引号内 4 字以上。
+ * 不为 `.md` 放松任何一项 —— 放宽的那天就是失效的那天。
+ */
+function findViolations(chunks: readonly string[], banned: ReadonlySet<string>): string[] {
+	// 源码 / 文档中所有「倪海厦/倪师…说/言/警示…：『引文』」的引文核心
+	const citeRe =
+		/倪(?:海厦|师)[^。\n]{0,10}(?:说|言|称|警示|警告|明言|强调|描述|提醒)[：:]?\s*[「"『]([^」"』]{4,})[」"』]/g;
+	return [...chunks.join("\n").matchAll(citeRe)]
+		.filter(m => banned.has(m[1]))
+		.map(m => m[1].slice(0, 40));
+}
+
+/**
  * 扫描一棵源码树，找出仍以倪师名义出现的未核实引文。
  *
  * @param root - 扫描根（一个 skill 的 `scripts/`）
@@ -155,20 +208,74 @@ export function scanCitations(
 		}
 	}
 
-	// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
-	const banned = new Set(
-		checklist
-			.filter(e => e.status === "suspect" || e.status === "fabricated")
-			.flatMap(e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1]))
-	);
-	// 源码中所有「倪海厦/倪师…说/言/警示…：『引文』」的引文核心
-	const citeRe =
-		/倪(?:海厦|师)[^。\n]{0,10}(?:说|言|称|警示|警告|明言|强调|描述|提醒)[：:]?\s*[「"『]([^」"』]{4,})[」"』]/g;
-	const violations = [...chunks.join("\n").matchAll(citeRe)]
-		.filter(m => banned.has(m[1]))
-		.map(m => m[1].slice(0, 40));
+	return { violations: findViolations(chunks, buildBannedSet(checklist)), checked, skipped };
+}
 
-	return { violations, checked, skipped };
+/**
+ * 递归收集给定根下所有 `.md` 文件。
+ *
+ * @param root - 扫描根（仓库根）
+ * @param dir - 当前递归到的目录，相对 `root`（首次调用省略）
+ * @returns 相对 `root` 的文件路径，已排序
+ *
+ * @remarks
+ * 跳过 `node_modules` / 点目录 / `dist`：同 {@link collectTsFiles} 的理由，且 `dist/`
+ * 是打包产物。收集面同样是**推导**的——新增的手写子目录自动纳入，不依赖有人记得改清单。
+ *
+ * ⚠️ 跳过 `docs/manual`：那是 `tools/db/export-manual.ts` 的**生成导出**（Markdown 镜像），
+ * 与 `.ts` 侧跳过 `corpus/data/manual` 同源同理——源头 `analysis/data.ts` 本就在 `.ts`
+ * 扫描范围内，镜像可能带着旧版库的历史引文形态，是 db 版本问题、重建即消，
+ * **不是新写的未核实引文**。按路径排除而非按语义：生成目录没有可识别的语义特征
+ * （它的文件不导出任何东西），故理由必须写在注释里，并由元测试钉住排除范围不扩大。
+ */
+function collectMdFiles(root: string, dir = ""): string[] {
+	const out: string[] = [];
+	for (const entry of readdirSync(resolve(root, dir), { withFileTypes: true })) {
+		const rel = dir ? `${dir}/${entry.name}` : entry.name;
+		if (entry.isDirectory()) {
+			if (
+				entry.name === "node_modules" ||
+				entry.name === "dist" ||
+				entry.name.startsWith(".")
+			) {
+				continue;
+			}
+			if (dir === "docs" && entry.name === "manual") {
+				continue;
+			}
+			out.push(...collectMdFiles(root, rel));
+		} else if (entry.name.endsWith(".md")) {
+			out.push(rel);
+		}
+	}
+	return out.sort();
+}
+
+/**
+ * 扫描一棵文档树，找出仍以倪师名义出现的未核实引文 —— `docs/code/` 搬迁、`SKILL.md` /
+ * `references/` 规范面等手写 `.md` 的守门人。
+ *
+ * @param root - 扫描根（仓库根）
+ * @param checklist - 核对表（默认全局唯一那份，见 {@link buildBannedSet}）
+ * @returns 违例列表、参与比对的文档清单、被跳过的文件（恒为空，见下）
+ *
+ * @remarks
+ * 与 {@link scanCitations} **共用**黑名单构造与形态正则，差异只在收集面（`.md` 而非 `.ts`）
+ * 与扫描根（仓库根而非某 skill 的 `scripts/`）。
+ *
+ * `skipped` 恒为空数组：核对表住在 `scripts/corpus/data/annotations.ts`，是 `.ts` 不是
+ * `.md`，文档侧没有「核对表自身」需要排除。保留该字段是为了与 {@link CitationScan} 同构 —
+ * 调用方可以不加分支地合并两种扫描的结果。
+ *
+ * ⚠️ 与 `.ts` 侧同一条假绿防护：`violations` 为空时必须另看 `checked` 非空。
+ */
+export function scanMarkdownCitations(
+	root: string,
+	checklist: readonly AnnotationEntry[] = ANNOTATIONS
+): CitationScan {
+	const checked = collectMdFiles(root);
+	const chunks = checked.map(rel => readFileSync(resolve(root, rel), "utf8"));
+	return { violations: findViolations(chunks, buildBannedSet(checklist)), checked, skipped: [] };
 }
 
 /** {@link scanCitations} 的多根分派入参（结构化子集，避免与 `SchoolAdapter` 成环）。 */

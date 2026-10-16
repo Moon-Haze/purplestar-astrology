@@ -29,8 +29,12 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 
-import { scanCitations, scanCitationsForRoots } from "./lib/citation-guard.ts";
-import { ALL_SKILLS, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
+import {
+	scanCitations,
+	scanCitationsForRoots,
+	scanMarkdownCitations,
+} from "./lib/citation-guard.ts";
+import { ALL_SKILLS, REPO_ROOT, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
 // ⚠️ 核对表是**唯一一份数据资产**，它留在内核里 —— 数据留原地，逻辑搬到测试侧。
 import { ANNOTATIONS } from "../scripts/corpus/data/annotations.ts";
 import { SCHOOLS, SCHOOL_IDS } from "../scripts/school/registry.ts";
@@ -131,7 +135,10 @@ describe("引文守卫：扫描逻辑（喂构造的临时目录树）", () => {
 		assert.deepEqual(r.skipped, []);
 	});
 
-	it("非 .ts 文件与 node_modules / 点目录不进扫描范围", () => {
+	it("非 .ts 文件与 node_modules / 点目录不进 scanCitations 的范围（.md 归 scanMarkdownCitations）", () => {
+		// 这条记录的是**职责边界**而非缺陷：`scanCitations` 只扫 `.ts`，`.md` 由
+		// `scanMarkdownCitations` 负责（见下一个 describe 的 2.1）。把 `.md` 塞进前者会让
+		// 「扫哪个根」变难推理——流派适配器声明的根是 `<skill>/scripts/`，文档不在那下面。
 		const r = scanTree({
 			"ziwei/a.ts": "export const x = 1;\n",
 			"ziwei/notes.md": fakeCitation(QUOTE),
@@ -140,6 +147,86 @@ describe("引文守卫：扫描逻辑（喂构造的临时目录树）", () => {
 		});
 		assert.deepEqual(r.violations, [], "扫描卷进了不该扫的目录或非 .ts 文件");
 		assert.deepEqual(r.checked, ["ziwei/a.ts"]);
+	});
+});
+
+describe("引文守卫：文档侧（scanMarkdownCitations，喂构造的临时目录树）", () => {
+	it(".md 里的违例抓得到 —— 文档与源码受同一条纪律约束", () => {
+		// `docs/code/` 搬迁后带着从源码原文照搬的倪师引文；往那儿写一句未核实的，
+		// 与往 `scripts/` 里写一句必须同样变红。这条是「守卫真的在工作」的证据。
+		const r = scanMarkdownCitations(
+			makeTree({
+				"docs/code/x.md": fakeCitation(QUOTE),
+				"docs/code/y.md": "# 无关文档\n",
+			})
+		);
+		assert.deepEqual(r.violations, [QUOTE.slice(0, 40)]);
+		assert.deepEqual(r.checked, ["docs/code/x.md", "docs/code/y.md"]);
+	});
+
+	it("排除 docs/manual（生成导出），但同内容放在 docs/ 别处必须被抓", () => {
+		// 反向验证一对：排除范围既没失效（manual 下的不报），也没扩大（manual 外同样的
+		// 内容要报）。少了后一半，「排除」会悄无声息地长成一张白名单。
+		const tree = {
+			"docs/manual/topics/a.md": fakeCitation(QUOTE),
+			"docs/other.md": fakeCitation(QUOTE),
+			"docs/code/z.md": fakeCitation(QUOTE),
+		};
+		const r = scanMarkdownCitations(makeTree(tree));
+		assert.deepEqual(r.violations, [QUOTE.slice(0, 40), QUOTE.slice(0, 40)]);
+		assert.deepEqual(r.checked, ["docs/code/z.md", "docs/other.md"]);
+		assert.deepEqual(r.skipped, [], "文档侧没有核对表自身需要排除，skipped 恒为空");
+	});
+
+	it("node_modules / dist / 点目录下的 .md 不进扫描范围", () => {
+		const r = scanMarkdownCitations(
+			makeTree({
+				"a.md": "# 干净文档\n",
+				"node_modules/dep/readme.md": fakeCitation(QUOTE),
+				"dist/bundle.md": fakeCitation(QUOTE),
+				".github/x.md": fakeCitation(QUOTE),
+			})
+		);
+		assert.deepEqual(r.violations, [], "被排除目录里的违例不该被报，干净文件也不该被误报");
+		assert.deepEqual(r.checked, ["a.md"]);
+	});
+
+	it("空目录得到零违例且 checked 为空 —— 假绿指纹，供真扫描组设防", () => {
+		const r = scanMarkdownCitations(makeTree({}));
+		assert.deepEqual(r.violations, []);
+		assert.deepEqual(r.checked, []);
+	});
+});
+
+describe("引文守卫：文档侧真扫描（仓库根全部手写 .md）", () => {
+	/**
+	 * 按仓库根扫一遍 `.md`，进程内算一次。
+	 *
+	 * @remarks
+	 * 与流派分派组**并列**而非并入：仓库级文档（`SKILL.md` / `docs/` / `README.md`）
+	 * 不属于任何单一流派，塞进 `SchoolAdapter.citationRoots` 会逼每个流派各声明一份
+	 * 文档根（design D4）。
+	 */
+	const MD = scanMarkdownCitations(REPO_ROOT);
+
+	it("真的扫到了手写文档 —— 空转防护（排除过头会让 checked 空掉）", () => {
+		assert.ok(MD.checked.length > 0, "一个 .md 都没扫到 —— 收集面坏了还是根写歪了？");
+		// 点名两类高价值文档：skill 规范面与搬迁目的地。缺任一都说明排除规则长歪了。
+		for (const must of ["SKILL.md", "docs/code/README.md"]) {
+			assert.ok(MD.checked.includes(must), `应扫到 ${must}，实扫：${MD.checked.length} 个`);
+		}
+		assert.ok(
+			!MD.checked.some(f => f.startsWith("docs/manual/")),
+			"生成导出 docs/manual/ 不该进扫描范围"
+		);
+	});
+
+	it("零违例：没有未核实引文在文档里仍冒充倪师原话", () => {
+		assert.deepEqual(
+			MD.violations,
+			[],
+			`以下未核实引文在 .md 里仍冒充倪师原话（应改古诀云/紫微斗数有云/一说，或补核对记录）：\n${MD.violations.join("\n")}`
+		);
 	});
 });
 
