@@ -1,16 +1,11 @@
 /**
  * 主题分析的共享上下文 —— 十一个小节共读的状态，在此**一次算好**。
  *
- * @remarks
- * 各小节原先平铺在 `getTopicAnalysis` 一个函数体里，靠闭包共享十几个局部变量。
- * 拆成 `views/` 之后闭包没了，这些变量改由本文件的 `makeContext()` 统一产出，
- * 于是每个 `renderXxx` 都退化成「读 ctx → 返回若干行」的纯函数。
+ * ⚠️ **这里故意多算一样东西**：`mutagenInSanFang`（三方四正范围内的本命四化）——
+ *    它是全篇唯一一条真实的跨小节依赖（「三点五」拿它做去重集），留在 views 里现算
+ *    会把已展示的四化**再报一遍**。
  *
- * ⚠️ **这里故意多算一样东西**：`mutagenInSanFang`（三方四正范围内的本命四化）。
- * 它原本在「三、本命四化会照」小节现算，又被「三点五、年干四化」读去做去重集合 ——
- * 是全篇**唯一一条真实的跨小节依赖**。若留在 `views/mutagen.ts` 里现算，
- * `views/year-stem.ts` 就无从判断哪些四化已经报过，会把三方四正内已展示的
- * **再报一遍**。提到这里算一次，两节共读同一份结果。
+ * 拆分前的闭包共享史与 ctx 形状纪律，见 docs/code/analysis.md。
  *
  * @packageDocumentation
  */
@@ -100,9 +95,9 @@ export interface AnalysisContext {
  *   「无法找到 xx 相关信息。」（这是拆分前 `getTopicAnalysis` 的提前返回分支）
  *
  * @remarks
- * 缺省值刻意**保持与拆分前逐字一致**：`view` 缺省 `"mingpan"`、流年取系统当前年、
- * 流月取系统当前月、大限下标取 `chart.currentDecadalIndex`。它们读的是 `new Date()`，
- * 故本函数是 `analysis/` 里唯一一处非纯函数（只影响缺省，不影响给定 options 的调用）。
+ * 缺省值刻意**保持与拆分前逐字一致**（`view` 缺省 `"mingpan"`、流年/流月取系统当前、
+ * 大限下标取 `chart.currentDecadalIndex`），它们读的是 `new Date()`，故本函数是
+ * `analysis/` 里唯一一处非纯函数（只影响缺省，不影响给定 options 的调用）。
  */
 export function makeContext(
 	chart: ZiweiChart,

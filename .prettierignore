@@ -1,0 +1,11 @@
+# prettier 只管手写源码；生成物与构建产物排除在外
+# （生成文件由工具再生，手改会被下一次导出覆盖，格式化了也白格式化）
+
+# 构建产物
+dist/
+
+# 生成数据：export-manual.ts 产出（文件头自带「不要手改」）
+scripts/corpus/data/manual/
+
+# 生成数据：import-tianji.ts 产出（文件头自带「不要手改」）
+scripts/corpus/data/tianji.ts

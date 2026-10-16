@@ -16,3 +16,5 @@ export const starsSource: KnowledgeSource = {
 		return renderStars(args);
 	},
 };
+
+// 四域包装的迁移史与懒加载纪律见 docs/code/knowledge.md。

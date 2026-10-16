@@ -1,11 +1,11 @@
 /**
- * 出生信息解析层的**声明**部分 —— 接口与常量。
- *
- * 与 `./birth-info` 的分工：那边是「怎么算」（真太阳时、农历换算、城市名归一），
+ * 出生信息解析层的**声明**部分 —— 接口与常量（那边 `./birth-info` 是「怎么算」）。
  *
  * 依赖：@/types（BirthInfo）、./cities（CityInfo / PROVINCES）
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
+ *    各接口的口径警告（均时差缺项、跨天日界、晚子时、取整自洽、快照陈旧）
+ *    见 docs/code/cli-birth.md。
  */
 
 import type { BirthInfo } from "@/types";
@@ -18,8 +18,8 @@ import { PROVINCES, type CityInfo } from "./cities";
  * `eot` 决定是否计入均时差，其余三项是均时差所需的日期。
  *
  * ⚠️ 开了 `eot` 时 `year` / `month` / `day` **三项都必须给**，缺任何一项都会当场抛错 ——
- * 均时差依赖具体日期，缺项会在 {@link equationOfTime} 里静默算出 `NaN`，污染
- * `branch` / `dayOffset` 整条结果链（宁可在入口失败，也不产出错时辰）。
+ * 缺项会在 {@link equationOfTime} 里静默算出 `NaN`，污染整条结果链
+ * （宁可在入口失败，也不产出错时辰；见 docs/code/cli-birth.md）。
  */
 export interface TrueSolarOptions {
 	/** 是否额外计入均时差。默认 `false`，即传统口径（只做经度校正） */
@@ -45,17 +45,16 @@ export interface TrueSolarResult {
 	/**
 	 * 校正后是否落在 23:00–23:59（晚子时）。
 	 *
-	 * ⚠️ 这个区分很重要：子时横跨两日，23:00 后出生按传统三合派应「算次日」，
-	 * 排出的盘与当日早子时完全不同。
+	 * ⚠️ 子时横跨两日，23:00 后出生按传统三合派应「算次日」，排出的盘与当日早子时
+	 *    **完全不同**（两盘之别见 docs/code/cli-birth.md）。
 	 */
 	isLateZi: boolean;
 	/**
 	 * 校正后跨了几天的**日界**：0 = 未跨天，+1 = 落到次日，-1 = 落到前一日。
 	 *
 	 * ⚠️ **调用方必须据此调整日期**：真太阳时是一条连续的时间轴，日期与时辰都得取自它。
-	 * 只取时辰而把日期留在钟表轴上，「日 + 时」这个组合指向的就不是出生时刻。
-	 * 例：喀什 00:30 的真太阳时是前一日 21:38，日期不回退则「亥时」偏了约 9 小时，
-	 * 农历日跟着错一天 → 紫微星定位错 → 整盘十二宫全变。
+	 *    只取时辰而把日期留在钟表轴上，「日 + 时」这个组合指向的就不是出生时刻
+	 *    （喀什 00:30 的实测后果见 docs/code/cli-birth.md）。
 	 */
 	dayOffset: number;
 	/**
@@ -100,11 +99,10 @@ export interface LongitudeHit {
  * {@link PROVINCES} 平铺后的全部城市（335 条），模块加载时算一次。
  *
  * @remarks
- * 提到模块作用域是为了**可读性** —— 「查经度就是在这 335 条里找」比每次调用现摊一遍更直白。
- * ⚠️ **不要**把它当性能优化引用：`flatMap` 实测约 4μs/次，省下的是噪声。
+ * 提到模块作用域是为了**可读性**，不是性能优化（`flatMap` 实测约 4μs/次，省下的是噪声）。
  *
- * ⚠️ 这是对 `PROVINCES` 的一次性快照。该表是静态常量、运行时不变，故当前等价；
- * 若将来有测试去改 `PROVINCES` 的内容，`findLongitude` 会读到陈旧数据。
+ * ⚠️ 这是对 `PROVINCES` 的一次性快照：将来若有测试去改 `PROVINCES` 的内容，
+ *    `findLongitude` 会读到陈旧数据（见 docs/code/cli-birth.md）。
  */
 export const ALL_CITIES: CityInfo[] = PROVINCES.flatMap(p => p.cities);
 
@@ -138,9 +136,8 @@ export interface BirthInfoResult {
  * infoSection / buildReport / buildAnalyzeJson 消费的字段打成一包。
  *
  * @remarks
- * 此前这些字段在 astrology.ts 被解构成 8 个局部变量逐个传递，两处 `infoSection`
- * 的 `{ clockTime: typeof args.time === "string" ? … }` 折算逐字重复 —— 改一处
- * 漏一处没有任何断言会红。现收成 {@link toBasis} 单点折算 + 整包传递。
+ * 此前这些字段在 astrology.ts 被解构成 8 个局部变量逐个传递，同样的折算逐字重复 ——
+ * 改一处漏一处没有任何断言会红。现收成 {@link toBasis} 单点折算 + 整包传递。
  *
  * `notes` 用 `readonly`：这是只读快照，消费方（JSON 序列化 / 渲染）都不改它。
  */

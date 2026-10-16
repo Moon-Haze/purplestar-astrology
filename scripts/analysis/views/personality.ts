@@ -1,10 +1,10 @@
 /**
  * 五、性格专属补充 —— 仅 personality 主题出。
  *
- * @remarks
- * 只有一段 `profile.personality`。之所以与「一、总论」分开：总论里的
- * **星曜深层特质**（`profile.summary`）在 personality 主题下**刻意跳过**
- * （它取的是 overview 那一段，两节同出会雷同），这块性格深描就是它的替代。
+ * ⚠️ 与「一、总论」分开的原因：总论里的**星曜深层特质**（`profile.summary`）在
+ *    personality 主题下**刻意跳过**（两节同出会雷同），这块性格深描就是它的替代。
+ *
+ * 完整口径见 docs/code/analysis.md。
  *
  * @packageDocumentation
  */

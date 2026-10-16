@@ -8,6 +8,7 @@
  *
  * ⚠️ 生成文件 —— 重导命令：npx tsx tools/corpus/import-tianji.ts，**不要手改**。
  */
+// 来源许可（CC BY-NC-SA 4.0）与溯源字段口径同时收录于 docs/code/corpus.md。
 
 /** 册代号：紫微斗数相关五册（语料库原生编号）。 */
 export type TianjiBook = "01-stars" | "02-palaces" | "03-patterns" | "04-sihua" | "05-illness";

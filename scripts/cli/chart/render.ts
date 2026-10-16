@@ -1,14 +1,13 @@
 /**
  * 命盘渲染层 —— 把排盘内核输出的结构化数据，渲染成给模型读的文本片段。
  *
- * 拆自 purple-star.ts。只依赖 `@/` 内核，不依赖本目录的其他模块 —— 唯一例外是
- * `import type { CaliberBasis } from "../birth/birth-info-defs"`（候选 6 的 basis 签名，
- * 类型 import 运行时被完全擦除，不形成运行时边）与 `./chart-cache`（晚子时对照盘
- * 走排盘缓存，birth-info → render（fmtDate）的依赖方向同样不破）。
- * 故本文件仍处依赖图底层（args / render 并列底层）。
+ * 拆自 purple-star.ts。只依赖 `@/` 内核，不依赖本目录其他模块 —— 唯一例外是
+ * `import type { CaliberBasis }`（类型 import 运行时擦除，不形成运行时边）与
+ * `./chart-cache`（晚子时对照盘走排盘缓存）。故本文件仍处依赖图底层。
  *
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故这里可以放心用
- *    静态 import 引内核与 `@/` 别名。但**不要**反过来让 purple-star.ts 静态引本文件。
+ * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心用静态 import 引内核与
+ *    `@/` 别名；但**不要**反过来让 purple-star.ts 静态引本文件。
+ *    依赖方向、宫名别名表、指纹唯一实现与晚子时对照盘的论证见 docs/code/cli-chart.md。
  */
 
 import type { BirthInfo, Palace, Star, ZiweiChart, Mutagen } from "@/types";
@@ -43,14 +42,11 @@ export const genderCN = (g: "male" | "female") => (g === "male" ? "男" : "女")
  * `--focus` 的宫名别名表：四种写法 → 项目口径宫名。
  *
  * @remarks
- * 宫名口径已改为项目本位（倪师《天纪》体系，见 `constants.ts` 的 `IZTRO_TO_PROJECT_PALACE`），
- * 但用户嘴里说的、别的排盘软件里写的仍是老叫法。这里把四种写法都收进来，
- * 免得模型照用户原话传参却聚焦失败：
- * 项目全名（交友宫）· 口语简称（交友，去「宫」字）· iztro 旧口径（仆役）· 旧口径加宫（仆役宫）。
+ * 宫名口径已改为项目本位，但用户嘴里说的、别的排盘软件里写的仍是老叫法，故这里把四种
+ * 写法都收进来（项目全名 / 口语简称 / iztro 旧口径 / 旧口径加宫），免得模型照用户原话
+ * 传参却聚焦失败。地支名不在此表，由匹配处单独比对。
  *
- * 地支名（子/丑/…）不在此表，由匹配处单独比对。
- *
- * 整张表从 `IZTRO_TO_PROJECT_PALACE` 派生，故不会与内核映射表漂移。
+ * 整张表从 `IZTRO_TO_PROJECT_PALACE` 派生，故不会与内核映射表漂移（见 docs/code/cli-chart.md）。
  */
 export const FOCUS_ALIASES = new Map<string, string>();
 for (const [iztroName, projectName] of Object.entries(IZTRO_TO_PROJECT_PALACE)) {
@@ -70,11 +66,10 @@ for (const [iztroName, projectName] of Object.entries(IZTRO_TO_PROJECT_PALACE)) 
  * @throws 当地支不在 `chart.palaces` 内时
  *
  * @remarks
- * 命宫 / 身宫地支必定落在 `palaces` 内，这是排盘不变量；取不到即说明内核输出已损坏。
- * 此处遵循项目一贯立场：宁可当场失败，也不要渲染出一张缺了命宫的盘。
+ * 命宫 / 身宫地支必定落在 `palaces` 内（排盘不变量）；取不到即内核输出已损坏 —— 宁可
+ * 当场失败，也不要渲染出一张缺了命宫的盘。
  *
- * 实现已收敛至 `@/palace-relations` 的 `mustPalaceAtBranch`（候选 8）——
- * 本函数是薄壳，保持既有调用方与导出名不变。
+ * 实现已收敛至 `@/palace-relations` 的 `mustPalaceAtBranch`，本函数是薄壳。
  */
 export function palaceAtBranch(chart: ZiweiChart, branch: number, what: string): Palace {
 	return mustPalaceAtBranch(chart, branch, what);
@@ -89,10 +84,9 @@ export function palaceAtBranch(chart: ZiweiChart, branch: number, what: string):
  * @throws 当十二宫内无此宫名时；错误信息里会列出该盘实际的十二宫
  *
  * @remarks
- * 这里原先写的是 `find(p => p.name === "夫妻")`（iztro 旧口径）。宫名改为项目口径后
- * 它会静默返回 undefined，而调用点紧接着就读 `.branch` —— 合盘会以 TypeError 崩掉，
- * 报错还指不到真正的原因（「Cannot read properties of undefined」）。宫名是耦合点，
- * 取不到就该当场说清是哪个名字、当前的十二宫叫什么。
+ * ⚠️ 取不到就必须当场说清是哪个名字、当前十二宫叫什么：这里原先写的是 iztro 旧口径的
+ *    `find(p => p.name === "夫妻")`，宫名改项目口径后它静默返回 undefined，而调用点紧接
+ *    着读 `.branch` —— 合盘以 TypeError 崩掉且指不到真因（见 docs/code/cli-chart.md）。
  */
 export function mustPalace(chart: ZiweiChart, palaceName: string): Palace {
 	const p = chart.palaces.find(x => x.name === palaceName);
@@ -268,12 +262,12 @@ export function renderPalace(p: Palace, chart: ZiweiChart): string {
  * @returns 指纹字符串（各宫以 `|` 连接，宫内星曜名排序后以 `,` 连接）
  *
  * @remarks
- * 本函数是**唯一实现** —— `test/lib/compare.ts` 经 `test/lib/loader.ts` 的 `loadRender()`
- * 转出它，CLI 与测试共用同一份代码。（此前 test/ 侧另有一份逐行副本，两侧靠注释互相提醒
- * 「必须同步」，却没有任何断言盯着；只在一侧加排序就会静默分叉。）
+ * 本函数是**唯一实现** —— `test/lib/compare.ts` 经 `loadRender()` 转出它，CLI 与测试共用
+ * 同一份代码（此前 test/ 侧另有一份逐行副本，靠注释互相提醒「必须同步」却无断言盯着，
+ * 只在一侧加排序就会静默分叉）。
  *
- * 先按 `branch` 排序再拼接，使指纹与 `palaces` 的数组顺序无关（该顺序实测为
- * 寅起的 `2,3,…,11,0,1`，不是 0-11）。
+ * 先按 `branch` 排序再拼接，使指纹与 `palaces` 的数组顺序无关（该顺序是寅起的
+ * `2,3,…,11,0,1`）。完整理由见 docs/code/cli-chart.md。
  */
 export const chartSignature = (c: ZiweiChart): string =>
 	[...c.palaces]
@@ -321,14 +315,12 @@ function mingMajorBrief(c: ZiweiChart): string {
  * @returns 待追加进输出数组的若干行；命中任一口径时末尾带一个空行作分隔
  *
  * @remarks
- * 23:00–23:59 出生时，子时横跨两日：「当日早子时」与「晚子时算次日」排出的是两张不同的盘。
- * 故这里会**另排一张对照盘**并把两张盘的紫微位与命宫主星并列出来（`isLateZi` 时对照当日早子时
- * `timeIndex: 0`，否则对照晚子时 `timeIndex: 12`）。对照盘与主盘走**同一个缓存层**
- * （`./chart-cache`，键是出生信息哈希）——它是另一份 BirthInfo，故占另一个缓存条目，
- * 但同样只排一次。
+ * 23:00–23:59 出生时子时横跨两日，两种口径排出的是**两张不同的盘** —— 故这里**另排一张
+ * 对照盘**（`isLateZi` 时对照 `timeIndex: 0`，否则对照 12）并把两盘的紫微位与命宫主星
+ * 并列出来；对照盘与主盘走同一个缓存层，只排一次。
  *
- * 措辞锚在「校正后」而非「你给的钟表时间」：开 `--eot` 或西部城市时，落在 23:00–23:59 的
- * 往往是校正后的真太阳时，钟表时间可能在别处（如喀什 02:30 校正后是前一日 23:37）。
+ * ⚠️ 措辞锚在「校正后」而非「你给的钟表时间」：开 `--eot` 或西部城市时，落在 23:00–23:59
+ *    的往往是校正后的真太阳时（如喀什 02:30 校正后是前一日 23:37）。见 docs/code/cli-chart.md。
  */
 export function lateZiSection(
 	chart: ZiweiChart,

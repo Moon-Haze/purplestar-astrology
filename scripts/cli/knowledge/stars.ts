@@ -1,8 +1,7 @@
 /**
- * knowledge 的 **stars 域**：星曜释义。
+ * knowledge 的 **stars 域**：星曜释义（原独立 `stars` 命令已并入，旧命令名不保留）。
  *
- * 由 `knowledge --source stars` 进入（原独立 `stars` 命令已并入，旧命令名不保留）。
- * 数据是内核轻表（`STAR_DESCRIPTIONS`），静态 import 不影响启动。
+ * 数据是内核轻表（`STAR_DESCRIPTIONS`），静态 import 不影响启动（见 docs/code/cli-commands.md）。
  */
 
 import type { CliArgs } from "../args";

@@ -1,30 +1,21 @@
 /**
  * CLI 参数声明面 —— 「有哪些参数」的唯一定义处（纯数据，零依赖）。
  *
- * 与同目录两个模块的分工（三层自底向上）：
- *   1. 本文件：**声明了什么** —— 参数表 / 拼音别名 / 全集派生 / 键名换算，零逻辑零依赖；
- *   2. `option-scope.ts`：**本 skill 认哪些** —— 作用域契约与差量排除值；
- *   3. `args.ts`：**怎么解析** —— `util.parseArgs` tokens 底座 + 校验 + 薄适配层。
+ * 三层分工：本文件管**声明了什么**、`./scope` 管**本 skill 认哪些**、`./parse` 管**怎么解析**。
  *
- * ## 为什么参数要有声明表
- *
- * 「有哪些参数」的唯一来源是 {@link OPTION_GROUPS}：`args.ts` 的解析器据它拒绝未知参数、
- * help 据它渲染参数段、`SKILL.md` 则由 `selftest` 断言兜底。拼错参数名（`--ctiy 喀什`）
- * 曾静默落回默认经度排出错盘 —— 那正是这张表要消灭的失败模式。
- *
- * ⚠️ **键名是 camelCase**（`late-zi` → `lateZi`）。换算只有 {@link camelKey} 一处，
- *    声明表里的 `name` 仍写 kebab（它同时是用户敲的名字、help 的显示名）。
- *
- * ⚠️ 本文件由引导层（purple-star.ts）在 `registerHooks` **之后**经 `args.ts` 间接加载。
- *    不要在 purple-star.ts 顶部用静态 `import` 引它 —— 钩子未注册时解析会失败。
+ * ⚠️ **键名是 camelCase**（`late-zi` → `lateZi`），换算只有 {@link camelKey} 一处，
+ *    而 `name` 仍写 kebab（它同时是用户敲的名字、help 的显示名）。
+ * ⚠️ 本文件由引导层在 `registerHooks` **之后**经 `./parse` 间接加载 —— 不要在
+ *    purple-star.ts 顶部用静态 `import` 引它（钩子未注册时解析会失败）。
+ *    声明表的来历与各套派生的论证见 docs/code/cli-args.md。
  */
 
 /**
  * 一个参数的完整声明。
  *
  * @remarks
- * 界面刻意只留四格 `name / kind / value / desc` —— 声明表要能被一眼扫完，
- * 免得「加参数」变成一件要读文档才敢做的事。
+ * 界面刻意只留四格 `name / kind / value / desc` —— 声明表要能被一眼扫完（见
+ * docs/code/cli-args.md）。其余语义标志见下方字段。
  */
 export interface OptionSpec {
 	/** 参数名，不含 `--`。`synastry` 可用 `a-` / `b-` 前缀叠在它前面（如 `--a-chart`） */
@@ -76,13 +67,11 @@ export interface OptionGroup {
  * 全部参数（英文主名），按 help 的展示顺序分组。
  *
  * @remarks
- * - 专题参数族主名英文化（spec §1 表）：`pattern` / `mutagen` / `yearly` /
- *   `monthly` / `decadal` / `ages`；拼音原名成为 {@link OPTION_ALIASES} 别名。
- * - `--year` / `--month` / `--day` 三连**已删**：`--date 1990-5-15` 完全覆盖（格式宽松，
- *   月日不补零）。误敲 `--year` 由拼错建议引向 `--yearly`（编辑距离 2）。
+ * 专题参数族主名英文化，拼音原名成为 {@link OPTION_ALIASES} 别名；`--year` / `--month` /
+ * `--day` 三连**已删**（`--date` 完全覆盖，误敲 `--year` 由拼错建议引向 `--yearly`）。
  *
- * 分组标题里的「三选一」「二选一」是**口径**而非装饰：`buildBirthInfo` 对
- * `--date` / `--lunar` 与 `--time` / `--branch` 各取其一，同时给出时按该处的优先级处理。
+ * ⚠️ 分组标题里的「三选一」「二选一」是**口径**而非装饰：`buildBirthInfo` 对
+ *    `--date` / `--lunar` 与 `--time` / `--branch` 各取其一（见 docs/code/cli-args.md）。
  */
 export const OPTION_GROUPS: readonly OptionGroup[] = [
 	{
@@ -396,9 +385,8 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
  * 拼音别名 → 英文主名（spec §1.1）。
  *
  * @remarks
- * 别名是**显式声明**的映射，不是拼错容错 —— `--patern` 仍然报错，
- * `args.ts` 的 `suggestOption` 建议主名 `--pattern`。help / SKILL.md 一律用主名，
- * 别名在 help 的参数描述尾注。
+ * 别名是**显式声明**的映射，不是拼错容错 —— `--patern` 仍然报错（由 `suggestOption`
+ * 建议主名）。help / SKILL.md 一律用主名，别名在 help 的参数描述尾注。
  */
 export const OPTION_ALIASES: Record<string, string> = {
 	geju: "pattern",
@@ -432,15 +420,14 @@ export function camelKey(name: string): string {
 }
 
 // ══════════════════ 语义派生（候选 2）══════════════════
-// 四套派生 + 优先级链同源于 role 与参数标志：改 help 标题不再静默拆掉任何一套；
-// 新增专题旗标只需标 `deep: true`，deepDive 自动认。域注意：SHADOWABLE 用 kebab
-// 原名（调用处按 `exclusive.slice(2)` 对拍），其余三个用 camelCase（消费 args 键）。
+// 四套派生 + 优先级链同源于 role 与参数标志：新增专题旗标只需标 `deep: true`。
+// 域注意：SHADOWABLE 用 kebab 原名，其余三个用 camelCase（消费 args 键）
+// —— 论证见 docs/code/cli-args.md。
 
 /**
- * 可被独占分支吞掉的功能参数（kebab 原名）—— 专题深入组除 `palaces`（noShadow）
- * 之外的全部，加上输出与选题组标了 `shadow` 的五项（yearly / monthly / focus /
- * topic / report）。独占参数自身也在集合里，是为了让「两个独占分支同给」被指路
- * 而非静默吞掉低优先级的那个（自指由调用处的 `n !== exclusive` 过滤兜住）。
+ * 可被独占分支吞掉的功能参数（kebab 原名）：专题深入组除 `palaces`（noShadow）外全部，
+ * 加上输出与选题组标了 `shadow` 的五项。独占参数自身也在集合里（让「两个独占分支同给」
+ * 被指路而非静默吞掉）—— 自指由调用处的 `n !== exclusive` 兜住，见 docs/code/cli-args.md。
  */
 export const SHADOWABLE_KEYS: ReadonlySet<string> = new Set(
 	OPTION_GROUPS.flatMap(g => {
@@ -455,30 +442,26 @@ export const SHADOWABLE_KEYS: ReadonlySet<string> = new Set(
 );
 
 /**
- * 出生相关参数名（camelCase）—— `role: "birth"` 三个组的全部参数。零输入演示的
- * 判据之一：这些键**全部**缺席。「其他出生信息」组（gender / lng / city /
- * province / name）也在内 —— 只给 `--gender` 是部分输入，按「缺一问一」报错，
- * 不该走演示盘。位置参数归类与 `--config` 注入都发生在 parseArgs / applyConfig，
- * 二者给出的出生信息均算「已输入」。
+ * 出生相关参数名（camelCase）—— `role: "birth"` 三个组的全部参数。零输入演示的判据之一：
+ * 这些键**全部**缺席（只给 `--gender` 是部分输入，按「缺一问一」报错，不走演示盘）。
+ * 位置参数归类与 `--config` 注入也算「已输入」—— 见 docs/code/cli-args.md。
  */
 export const BIRTH_KEYS: readonly string[] = OPTION_GROUPS.filter(g => g.role === "birth").flatMap(
 	g => g.options.map(o => camelKey(o.name))
 );
 
 /**
- * 表达了输出意图的功能参数（camelCase）—— 专题深入与输出选题两组，刨去标了
- * `noIntent` 的 `info`（零输入时它正是演示目标）与 `config`（参数来源而非输出形态）。
- * 零输入 + 这些参数在场 = 用户要特定输出，不替他排虚构盘 —— 交回原路径按「缺一问一」
- * 报错（`--json` / `--report` 尤其如此：机器接口与全盘报告都不喂虚构数据）。
+ * 表达了输出意图的功能参数（camelCase）—— 专题深入与输出选题两组，刨去标了 `noIntent`
+ * 的 `info` 与 `config`。零输入 + 这些参数在场 = 用户要特定输出，**不替他排虚构盘**
+ * （`--json` / `--report` 尤其如此）—— 见 docs/code/cli-args.md。
  */
 export const INTENT_KEYS: readonly string[] = OPTION_GROUPS.filter(
 	g => g.role === "topic-deep" || g.role === "output-select"
 ).flatMap(g => g.options.filter(o => o.noIntent !== true).map(o => camelKey(o.name)));
 
 /**
- * 专题深入旗标（camelCase）—— 深入态基底（基本信息面板 / 运限速览 / 专题指路）的
- * 显隐判据：任一在场即「已在深入，基底与指路是噪声」。旧 astrology 的 `deepDive`
- * 硬编码六旗标由此收编；新增专题参数只需标 `deep: true`。
+ * 专题深入旗标（camelCase）—— 深入态基底的显隐判据：任一在场即「已在深入，基底与指路是
+ * 噪声」。旧 astrology 的硬编码六旗标由此收编；新增专题参数只需标 `deep: true`。
  */
 export const DEEP_DIVE_KEYS: readonly string[] = OPTION_GROUPS.flatMap(g =>
 	g.options.filter(o => o.deep === true).map(o => camelKey(o.name))
@@ -488,9 +471,8 @@ export const DEEP_DIVE_KEYS: readonly string[] = OPTION_GROUPS.flatMap(g =>
 export const EXCLUSIVE_PRIORITY_LABEL = "--palaces > --topic > --report > 其他功能参数";
 
 // ══════════════════ 归属投影（候选 4）══════════════════
-// 「哪个参数归哪条命令」此前是 help.ts 手抄的第二真相源（OPTION_OWNERSHIP，
-// 零正向测试，--out 的承诺与 main 的实际行为早已漂移）。现收进声明表：
-// 每个参数标 `cmds`（读取它的命令），全局参数标 `global`，help 只做投影。
+// 「哪个参数归哪条命令」此前是 help.ts 手抄的第二真相源（零正向测试、早已漂移），
+// 现收进声明表：每个参数标 `cmds`、全局参数标 `global`，help 只做投影。
 
 /**
  * 全局参数（kebab 名）—— 标了 `global: true` 的参数，任意命令可用。
@@ -507,8 +489,8 @@ export const GLOBAL_OPTIONS: readonly string[] = OPTION_GROUPS.flatMap(g => g.op
  * @returns 标了 `cmds` 含该命令、且非全局的参数名，按声明表顺序
  *
  * @remarks
- * help 视图：未列出的参数对该命令无害（skill 级作用域收下不用），但 help 不展示
- * —— 用户照 help 敲不会被误导。作用域仍是 skill 级，本投影不做硬校验。
+ * help 视图：未列出的参数对该命令无害（skill 级作用域收下不用），但 help 不展示。
+ * ⚠️ 作用域仍是 skill 级，本投影**不做硬校验**（见 docs/code/cli-args.md）。
  */
 export function ownedOptions(cmd: string): readonly string[] {
 	return OPTION_GROUPS.flatMap(g => g.options)

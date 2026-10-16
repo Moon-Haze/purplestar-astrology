@@ -1,10 +1,10 @@
 /**
- * `knowledge` 命令：统一知识检索 —— 四域合一（books 古籍 / stars 星曜释义 / tianji 天纪判语 / oracle 断语手册）。
+ * `knowledge` 命令：统一知识检索 —— 四域合一（books 古籍 / stars 星曜释义 /
+ * tianji 天纪判语 / oracle 断语手册）。
  *
  * Phase 1 · KnowledgeSource 接缝：分发走 `KNOWLEDGE_SOURCES` 注册表，本文件只做
- * 「查表 → 调 `search`」，不再写 `switch`（ADR-002：清单注册）。域由 `--source` 选择
- * （缺省 `books`，与「classics 只搜古籍」的历史用法向后兼容）。新增域只加一个源文件 +
- * 一行注册，不必改本入口。
+ * 「查表 → 调 `search`」，不再写 `switch`（ADR-002：清单注册）。新增域只加一个源文件 +
+ * 一行注册，不必改本入口（接缝与各域参数见 docs/code/cli-commands.md）。
  */
 
 import type { CliArgs } from "../args";

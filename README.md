@@ -22,11 +22,11 @@
 
 ```bash
 npm run pack
-# → dist/purplestar-astrology.zip（121 条目，约 1.2 MB）
+# → dist/purplestar-astrology.zip（131 条目，约 1.2 MB）
 ```
 
-打完自动**解压到临时目录跑一遍 selftest**（应为 151/151，其中 1 条标 ⏭ 跳过——
-它要读 `CLAUDE.md` / `README.md` / `test/README.md` 三份仓库级文档，都不进分发件）。
+打完自动**解压到临时目录跑一遍 selftest**（应为 160/160，其中 2 条标 ⏭ 跳过——
+它们要读 `CLAUDE.md` / `README.md` / `test/README.md` 等仓库级文档，都不进分发件）。
 `--no-verify` 可跳过自检。
 
 产物只含 4 项，顶层目录 `purplestar-astrology/`：
@@ -73,7 +73,7 @@ unzip purplestar-astrology.zip -d ~/<技能目录>/
 
 ```bash
 cd ~/<技能目录>/purplestar-astrology && npm install
-node scripts/purple-star.ts selftest   # 装完自检，应为 151/151
+node scripts/purple-star.ts selftest   # 装完自检，应为 160/160
 ```
 
 ### 手动拷贝（不想用 zip 时）

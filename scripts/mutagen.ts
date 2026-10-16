@@ -1,43 +1,13 @@
 /**
- * 四化工具模块 —— 生年 / 流年 / 流月 / 大限宫干 / 流日 / 流时六层四化的映射查询。
+ * 四化工具模块 —— 生年 / 流年 / 流月 / 大限宫干 / 流日 / 流时**六层四化**的映射查询。
  *
- * 本模块是**纯查表 + 纯算术**：输入天干索引（或公历年 / 农历月日），输出「禄权科忌」各自对应的
- * 星名。生年四化本身由排盘层（`algorithm.ts`）从 iztro 的 `mutagen` 字段直接落到 `Star.mutagen`
- * 上，这里不参与安星，也不产出任何盘面字段。
+ * 本模块是**纯查表 + 纯算术**：输入天干索引（或公历年 / 农历月日），输出「禄权科忌」各自
+ * 对应的星名。生年四化由排盘层落在 `Star.mutagen` 上，这里不参与安星、也不产出盘面字段。
  *
- * ## 六层四化（本模块接口的全部）
- *
- * - 生年四化（本命）= 出生年天干四化，静态基础，落在 `Star.mutagen` 上（本模块不参与）
- * - 流年四化 = 当年年干的四化，一年动态（{@link getYearlyMutagen}）
- * - 流月四化 = 月柱天干（五虎遁）的四化，一月动态（{@link getMonthlyMutagen}）
- * - 大限四化 = **大限宫干**的四化，十年动态（{@link getDaXianMutagen}）
- * - 流日四化 = 农历日柱天干的四化，一日动态（{@link getDailyMutagen}）
- * - 流时四化 = 时柱天干（五鼠遁）的四化，一时辰动态（{@link getHourlyMutagen}）
- *
- * ## 体系口径：文墨排盘 + 倪师论断（混合口径）
- *
- * - **排盘与运限四化以文墨天机为准**——大限四化取大限宫干（非本命年干）是文墨排盘
- *   展示层的口径，与流年/流月/流日/流时同属「时间干四化」，随上游 2026-10 混合口径引入。
- * - **论断框架仍按倪师三合派**：命宫为本，三方为用；人事努力 + 地理调整 > 先天命运
- *   （2/3 > 1/3）；大道至简，解读不停留在术语堆砌。
- * - 论断层引用大限宫干四化时仍按「落宫与会照」组织（化 X 落某宫 → 该宫主管领域受引动），
- *   不引入「飞入飞出」的飞星派论法。
- *
- * ## ⚠️ 体系红线：本模块不含宫干自化与来因宫
- *
- * 以下两件飞星派工具在本项目**继续禁用**，本模块不提供对应函数，`algorithm.ts` 也不填充
- * 相关盘面字段：
- *
- * - ❌ **宫干自化** —— 某宫宫干引发的四化中被化星恰在本宫（`Palace.selfMutagen` 恒不填）
- * - ❌ **来因宫** —— 追溯某化星由哪个宫的宫干「飞」来的飞星派追溯法
- *
- * ⚠️ **`types.ts` 的绊线刻意保留**：`Palace.selfMutagen` / `Decadal.mutagen` 两个字段与
- * `SelfMutagenMark` / `DecadalMutagen` 两个类型仍在，理由是它们的作用**恰恰是「留着但不填」**
- * —— 断言要盯的是「有没有被填回」，字段没了就无从盯起。大限宫干四化走本模块的
- * {@link getDaXianMutagen} 纯函数层（调用方传大限索引、返回四化记录），**不往 `Decadal`
- * 结构上加字段** —— `school.test.ts` 的「大限键集合全等」断言继续有效。
- *
- * 完整立场见仓库根 `CLAUDE.md` 的「体系口径」一节与 `SKILL.md` 的同名章节。
+ * ⚠️ 体系红线：本模块**不含宫干自化与来因宫**（飞星派工具，继续禁用）；
+ *    `types.ts` 的绊线字段刻意保留为「留着但不填」，大限宫干四化走纯函数层、
+ *    **不往 `Decadal` 上加字段**。六层清单、混合口径与红线的完整论证见
+ *    docs/code/chart-kernel.md，体系立场另见仓库根 `CLAUDE.md` 与 `SKILL.md`。
  *
  * @packageDocumentation
  */
@@ -57,9 +27,8 @@ import { STEMS } from "@/data/ganzhi";
  * @remarks
  * 表在 `constants.ts` 的 `SI_HUA_TABLE`，按天干索引取第 0–3 位。
  *
- * ⚠️ 索引越界（`SI_HUA_TABLE[stemIndex]` 取空）时返回**四项皆为空串**的记录而**不抛错** ——
- * 调用方靠空串自然短路。这与 `algorithm.ts` 的 `projectPalaceName`（未命中即抛错）是
- * 相反的取舍：宫名是下游索引的键，错不起；此处越界的代价只是算不出四化。
+ * ⚠️ 索引越界时返回**四项皆为空串**的记录而**不抛错**（与 `projectPalaceName` 未命中即抛错
+ *    是相反的取舍）—— 调用方靠空串自然短路。取舍理由见 docs/code/chart-kernel.md。
  */
 export function getMutagenByStem(stemIndex: number): Record<Mutagen, string> {
 	const arr = SI_HUA_TABLE[stemIndex];
@@ -77,17 +46,12 @@ export function getMutagenByStem(stemIndex: number): Record<Mutagen, string> {
  * @returns 天干索引 0–9（0=甲 … 9=癸）
  *
  * @remarks
- * 公元 4 年为甲子年，故 `(year − 4) mod 10`。先 `%` 再 `+10` 再 `%` 是标准的两步取模，
- * 保证传入 4 之前的年份（含负数）仍落在 0–9，而不是得到 JS 的负数余数。
+ * 公元 4 年为甲子年，故 `(year − 4) mod 10`；两步取模保证 4 之前的年份仍落在 0–9。
  *
- * ⚠️ **按公历年直接取模，不做农历年或节气的边界切换**：1–2 月出生者，其年柱按农历
- * 口径可能仍属上一农历年 —— 此时本函数与 `algorithm.ts` 的 `getLunarInfo` 返回的
- * `lunarInfo.yearStem`（由 `lunar-typescript` 算出的农历年干）会**相差一位**。
- * 两者用途不同：本函数**只服务流年四化**（用户问「2026 年运势」即指公历年份对应的
- * 干支年，取模恰好正确）；**生年四化必须用 `chart.lunarInfo.yearStem`** —— 盘面上
- * iztro 的 `Star.mutagen`（mutagen）按农历年干标注，生年若走公历取模，1–2 月出生者
- * 的【生年四化】区块会与宫详表自相矛盾（实测 1990-01-15：农历己巳 vs 公历庚）。
- * `test/cli.test.ts` 的「生年四化的年干口径」一节盯着这条红线。
+ * ⚠️ **按公历年直接取模，不做农历年边界切换**：本函数**只服务流年四化**，
+ *    **生年四化必须用 `chart.lunarInfo.yearStem`** —— 1–2 月出生者两者的年干会相差一位，
+ *    走错口径会让【生年四化】与宫详表自相矛盾。`test/cli.test.ts` 盯着这条红线，
+ *    完整论证见 docs/code/chart-kernel.md。
  */
 export function getYearStemIndex(year: number): number {
 	return (((year - 4) % 10) + 10) % 10;
@@ -102,8 +66,7 @@ export function getYearStemIndex(year: number): number {
  *
  * @remarks
  * 年干走 {@link getYearStemIndex}（纯取模），故同样**按公历年、不做农历年边界切换**。
- * 六层四化里的「一年动态」层，与生年四化（`Star.mutagen`）、流月四化并列；
- * 本函数**不涉及**任何宫干。
+ * 六层四化里的「一年动态」层，本函数**不涉及**任何宫干（细节见 docs/code/chart-kernel.md）。
  */
 export function getYearlyMutagen(year: number): {
 	stemIndex: number;
@@ -127,14 +90,11 @@ export function getYearlyMutagen(year: number): {
  * @returns 目标月的月柱天干索引 0–9
  *
  * @remarks
- * 五虎遁口诀：甲己年起丙寅、乙庚年起戊寅、丙辛年起庚寅、丁壬年起壬寅、戊癸年起甲寅。
- * 函数内的 `startStemOfYin` 表即把「年干索引 → 正月（寅月）天干索引」固化下来
- * （甲 0 / 己 5 → 丙 2，乙 1 / 庚 6 → 戊 4，丙 2 / 辛 7 → 庚 6，丁 3 / 壬 8 → 壬 8，
- * 戊 4 / 癸 9 → 甲 0），再按 `month − 1` 顺推。
+ * 五虎遁：甲己年起丙寅、乙庚年起戊寅、丙辛年起庚寅、丁壬年起壬寅、戊癸年起甲寅 ——
+ * `startStemOfYin` 表即「年干索引 → 正月（寅月）天干索引」，再按 `month − 1` 顺推。
  *
- * ⚠️ 起点是**正月（寅月）**而非子月，故 `month` 是农历月份序号，不是地支索引。
- * 表未命中（`yearStem` 越界）时兜底为 0（甲），属静默兜底 —— 代价只是该月的四化算错，
- * 不影响排盘。
+ * ⚠️ 起点是**正月（寅月）**而非子月，故 `month` 是农历月份序号，不是地支索引；
+ *    表未命中时兜底为 0（甲）—— 代价只是该月四化算错，不影响排盘（见 docs/code/chart-kernel.md）。
  */
 export function getMonthlyStemIndex(yearStem: number, month: number): number {
 	// 五虎遁：正月（寅月）天干
@@ -193,13 +153,10 @@ export function getMonthlyMutagen(
  * @returns 宫干索引、天干名与四化四星；大限下标越界或宫干缺失时为 `null`
  *
  * @remarks
- * 这是文墨排盘展示层的口径：大限四化随大限宫位走，宫干来自盘面 `Palace.stem`
- * （五虎遁布局，排盘时已填）。**纯函数层** —— 不往 `Decadal` 结构上加字段，
- * `school.test.ts` 的「大限键集合全等」断言因此继续有效。
+ * 文墨排盘展示层口径：宫干来自盘面 `Palace.stem`。**纯函数层** —— 不往 `Decadal` 上加字段。
  *
- * ⚠️ **童限期（`currentDecadalIndex === -1`，未起运）没有大限宫干可言**，调用方须先判
- * 童限再调本函数，不要传 `-1` —— 传入负下标会拿到 `undefined` 大限并返回 `null`，
- * 语义是「无此大限」，不是「童限」。
+ * ⚠️ **童限期（`currentDecadalIndex === -1`）没有大限宫干可言**，调用方须先判童限再调本函数：
+ *    传 `-1` 得到 `null`，语义是「无此大限」，不是「童限」（见 docs/code/chart-kernel.md）。
  */
 export function getDaXianMutagen(
 	chart: ZiweiChart,
@@ -236,8 +193,7 @@ export function getDaXianMutagen(
  * @returns 日干索引 0–9；日期非法（该月无此日等）时为 `null`
  *
  * @remarks
- * 日柱由 `lunar-typescript` 现算（`Lunar.fromYmd(...).getDayGan()`），不做任何缓存 ——
- * 调用频度低（CLI 单次取数），不值得为它建表。日期非法时 lunar-typescript 会抛错，
+ * 日柱由 `lunar-typescript` 现算（不缓存：CLI 单次取数，不值得建表）。日期非法时它抛错，
  * 本函数捕获后返回 `null`，由调用方转为「流日参数超出该月天数」的中文报错。
  */
 export function getDailyStemIndex(
@@ -295,12 +251,12 @@ export function getDailyMutagen(
  * @returns 时柱天干索引 0–9
  *
  * @remarks
- * 五鼠遁口诀：甲己日起甲子、乙庚日起丙子、丙辛日起戊子、丁壬日起庚子、戊癸日起壬子。
- * 函数内的 `ziStemByDayStem` 表即「日干索引 → 子时天干索引」，再按 `hourBranch` 顺推。
+ * 五鼠遁：甲己日起甲子、乙庚日起丙子、丙辛日起戊子、丁壬日起庚子、戊癸日起壬子 ——
+ * `ziStemByDayStem` 表即「日干索引 → 子时天干索引」，再按 `hourBranch` 顺推。
  *
- * ⚠️ **晚子时（23:00–24:00）按当日日干起遁**（`hourBranch 12` 归一为子 0），不换次日的
- * 日干 —— 与上游文墨排盘展示层一致。传统晚子时派（子时归次日）会连日干一起换，那是
- * 另一套口径；本模块只提供文墨口径这一种。
+ * ⚠️ **晚子时（23:00–24:00）按当日日干起遁**（12 归一为子 0），不换次日日干 —— 与文墨
+ *    排盘展示层一致；传统晚子时派是另一套口径，本模块只提供这一种
+ *    （见 docs/code/chart-kernel.md）。
  */
 export function getHourlyStemIndex(dayStemIndex: number, hourBranch: number): number {
 	// 五鼠遁：日干 → 子时天干
@@ -364,10 +320,9 @@ export interface MonthlyMonthOptions {
  * @returns 用于推月干的有效月序 1–12
  *
  * @remarks
- * split 口径（2026-09 随上游定版，150 组文墨专业版真机对照）：**闰月前半月（农历日
- * ≤ 15）按本月取月干，后半月（> 15）按下月取**；闰十二月后半跨到次年正月时月序回 1、
- * 月干须用**次年干**重推（调用方从返回值 `=== 1` 且 `isLeapMonth` 且日 > 15 自行判断，
- * 取 `options.nextYearStem` 重调 {@link getMonthlyStemIndex}）。非闰月输入原样返回。
+ * split 口径：**闰月前半月（农历日 ≤ 15）按本月取月干，后半月（> 15）按下月取**；闰十二月
+ * 后半跨到次年正月时月序回 1、月干须用 `options.nextYearStem` 重推（由调用方自行判断）。
+ * 非闰月输入原样返回。口径来历与真机对照见 docs/code/chart-kernel.md。
  */
 export function getEffectiveMonthlyMonth(month: number, options: MonthlyMonthOptions = {}): number {
 	const normalized = Math.max(1, Math.min(12, Math.trunc(month)));

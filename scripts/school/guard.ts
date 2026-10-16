@@ -9,6 +9,8 @@
  * ⚠️ 本模块**零运行时依赖**（只 import 类型）：`checkForbiddenFeatures` 是纯函数，
  * 输入一张盘与一个流派适配器，输出违例清单。它不 import 任何内核状态、不触发排盘，
  * 因此被 selftest 在启动期调用时几乎零成本。
+ *
+ * 同一份逻辑的两处消费者与「空壳流派不报此错」的数据驱动论证，见 docs/code/school.md。
  */
 
 import type { ZiweiChart } from "../types";

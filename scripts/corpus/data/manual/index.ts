@@ -6,6 +6,7 @@
  *
  * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。
  */
+// 懒加载理由、LOADERS 与 TOPIC_KEYS 的对应关系见 docs/code/corpus.md。
 import type { TopicKey } from "../../../analysis/data";
 import type { OracleStar } from "./types.ts";
 

@@ -1,8 +1,9 @@
 /**
- * 紫微斗数排盘算法 —— 基于 {@link https://github.com/SylarLong/iztro | iztro}。
+ * 紫微斗数排盘算法 —— iztro 与本项目领域模型之间的**唯一翻译层**：安星、五行局、大限区间
+ * 全部由 iztro 推算，这里只换算宫名口径、分类星曜、补借对宫字段，不重复实现命理逻辑。
  *
- * 本模块是 iztro 与本项目领域模型之间的**唯一翻译层**：安星、五行局、大限区间全部由
- * iztro 推算，这里只负责换算宫名口径、分类星曜、补借对宫字段，不重复实现任何命理逻辑。
+ * 逐段组装纪律（换年口径锁、宫名口径、亮度塌缩、星曜名单、虚岁、斗君）见
+ * docs/code/chart-kernel.md。
  *
  * @packageDocumentation
  */
@@ -36,10 +37,8 @@ import { wenmoStarBrightness } from "./wenmo-brightness";
  * @remarks
  * 映射表在 `constants.ts` 的 `IZTRO_TO_PROJECT_PALACE`。
  *
- * ⚠️ 未命中时**抛错，不回退到原名**。回退看着更「稳」，其实是让一个未知宫名静默
- * 流进输出 —— 而宫名是十二宫一览、`--focus`、三方四正、大限、格局判定的公共索引，
- * 错一个名字就是错一片下游。这与 `purple-star.ts` 顶部 `REQUIRED_EXPORTS` 自检
- * 是同一个理念：**宁可启动失败，也不静默产出错盘**。
+ * ⚠️ 未命中时**抛错，不回退到原名** —— 宫名是十二宫一览、`--focus`、三方四正、大限、
+ *    格局判定的公共索引，错一个名字就是错一片下游。理由见 docs/code/chart-kernel.md。
  */
 function projectPalaceName(iztroName: string): string {
 	const mapped = IZTRO_TO_PROJECT_PALACE[iztroName];
@@ -93,11 +92,10 @@ export function getLunarInfo(year: number, month: number, day: number): LunarInf
  * @returns `bright`（庙 / 旺）、`dim`（陷 / 不 / 闲），其余一切（含缺省）归 `normal`
  *
  * @remarks
- * 只归三档，是因为下游只问「够不够亮」这一个问题（`patterns/helpers.ts` 的 `isBright` / `isDim`）；
- * 「得 / 利 / 平」的细分差异在倪师体系里不进格局条件。文墨 5 档制的「闲」归 `dim`
- * —— 闲是比「不」还弱半档的负面亮度（中州派口径，XD2 默认流派含它）。
+ * 只归三档，是因为下游只问「够不够亮」（`patterns/helpers.ts` 的 `isBright` / `isDim`）；
+ * 文墨 5 档制的「闲」归 `dim`（比「不」还弱半档）。
  *
- * ⚠️ 缺省值走 `normal` 而非 `dim` —— 拿不到亮度时不做负面假设。
+ * ⚠️ 缺省值走 `normal` 而非 `dim` —— 拿不到亮度时不做负面假设（见 docs/code/chart-kernel.md）。
  */
 function mapBrightness(b?: string): "bright" | "normal" | "dim" {
 	if (!b) {
@@ -117,11 +115,11 @@ function mapBrightness(b?: string): "bright" | "normal" | "dim" {
  * 煞星名单。
  *
  * @remarks
- * 与 {@link SOFT_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**：名字在表内
- * 就先定类型，不再看 iztro 的 `type` 字段（判定顺序见该函数）。
+ * 与 {@link SOFT_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**：名字在表内就先定类型，
+ * 不再看 iztro 的 `type` 字段。
  *
- * ⚠️ 改这张表会改变 `Star.type`，进而改变 `patterns/` 的格局命中 ——
- * `npm test` 的语料回归盯着这条链路，别顺手加星。
+ * ⚠️ 改这张表会改变 `Star.type`，进而改变 `patterns/` 的格局命中 —— 别顺手加星
+ *    （`npm test` 的语料回归盯着这条链路，见 docs/code/chart-kernel.md）。
  */
 const TOUGH_STARS = new Set([
 	"擎羊",
@@ -142,9 +140,9 @@ const TOUGH_STARS = new Set([
  *
  * @remarks
  * 与 {@link TOUGH_STARS} 同为 {@link mapStarType} 的**硬编码优先名单**。两表**不重叠**，
- * 顺序上煞星先判 —— 若将来往两表里加同名星，`tough` 会赢。
+ * 顺序上煞星先判（将来加同名星则 `tough` 赢）。
  *
- * ⚠️ 同 {@link TOUGH_STARS}：改表即改格局命中，`npm test` 会盯着。
+ * ⚠️ 同 {@link TOUGH_STARS}：改表即改格局命中，`npm test` 会盯着（见 docs/code/chart-kernel.md）。
  */
 const SOFT_STARS = new Set([
 	"文昌",
@@ -217,13 +215,11 @@ function mapStarType(starName: string, iztroType: string): Star["type"] {
  * @returns 局数 2–6
  *
  * @remarks
- * 取**首字五行**查 {@link ELEMENT_TO_JU}：五行与局数是固定的一一对应
- * （水二 / 木三 / 金四 / 土五 / 火六），首字已足以定局数，无须解析后面的数字。
- * 这同时免疫了写法变更 —— 局名里的数字是中文还是阿拉伯（「水二局」/「水2局」）都不影响结果。
+ * 取**首字五行**查 {@link ELEMENT_TO_JU}（水二 / 木三 / 金四 / 土五 / 火六），免疫写法变更
+ * （「水二局」/「水2局」同结果）。
  *
- * ⚠️ 兜底返回 3（木三局）而**不抛错** —— 与 {@link projectPalaceName} 的严格口径相反。
- * 差别在于局数不参与安星（安星由 iztro 完成，此值只随盘输出），猜错的代价低于中断排盘；
- * 宫名则是下游一切索引的键，错不起。
+ * ⚠️ 兜底返回 3（木三局）而**不抛错** —— 与 {@link projectPalaceName} 相反：局数不参与安星，
+ *    猜错的代价低于中断排盘；宫名则是下游一切索引的键，错不起（见 docs/code/chart-kernel.md）。
  */
 export function parseWuxingJu(name: string): number {
 	// 显式标注 `| undefined`：Record 索引签名在 tsc 眼里恒为 number，
@@ -243,10 +239,8 @@ export function parseWuxingJu(name: string): number {
  *
  * @remarks
  * **只做组装、不做推算**：调 iztro 排盘 → 逐宫翻译宫名与星曜 → 算虚岁与当前大限
- * → 补借对宫字段。命理逻辑一律不在此处重复实现。
- *
- * **大限四化已主动下线**：不再生成 `decadals[].mutagen` / `stemIndex`（飞星派口径）。
- * 体系立场见仓库根 `CLAUDE.md` 与 `SKILL.md` 的「体系口径」章节。
+ * → 补借对宫字段。**大限四化已主动下线**（不再生成 `decadals[].mutagen` / `stemIndex`）。
+ * 各步纪律见 docs/code/chart-kernel.md；体系立场见仓库根 `CLAUDE.md` 与 `SKILL.md`。
  *
  * @example
  * ```ts
@@ -267,10 +261,8 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const palaces: Palace[] = astrolabe.palaces.map(p => {
 		const branch = BRANCHES.indexOf(p.earthlyBranch as string);
 		const stem = STEMS.indexOf(p.heavenlyStem as string);
-		// branch / stem 是下游一切索引的键（宫位定位、三方四正、大限、格局判定全按它查），
-		// 查表失败若静默兜底 0，会出现「两宫同指子位」且零信号 —— 与下方 projectPalaceName
-		// 同一纪律：宁可当场失败，也不静默产出错盘。BRANCHES / STEMS 覆盖全部十二支十干，
-		// 正常情况下 indexOf 不可能失败；真失败即说明 iztro 输出已损坏。
+		// branch / stem 是下游一切索引的键，查表失败静默兜底 0 会出现「两宫同指子位」且零信号
+		// —— 宁可当场失败，也不静默产出错盘（完整纪律见 docs/code/chart-kernel.md）。
 		if (branch < 0 || stem < 0) {
 			throw new Error(
 				`未知的 iztro 天干地支「${p.heavenlyStem}${p.earthlyBranch}」（宫名 ${p.name}）—— ` +
@@ -279,8 +271,8 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 		}
 
 		// 合并所有星：主星 + 次星 + 杂耀。亮度走文墨 SB 表覆写（混合口径，XD2 默认）：
-		// 查表命中 → brightness 按细档塌缩 + brightnessRaw 记中文细档（主辅杂曜同表）；
-		// 未收录 / 留白 → 主星回落 iztro 原值，辅杂曜不带亮度。
+		// 命中 → 细档塌缩 + brightnessRaw 记中文；未收录 / 留白 → 主星回落 iztro 原值、
+		// 辅杂曜不带亮度（口径见 docs/code/chart-kernel.md）。
 		const allStars: Star[] = [
 			...(p.majorStars ?? []).map(s => {
 				const raw = wenmoStarBrightness(s.name as string, branch);
@@ -333,13 +325,11 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	const lunarInfo = getLunarInfo(year, month, day);
 
 	// ── 当前年龄 & 大限 ──
-	// currentAge 是**虚岁**，与 decadalRange / decadals[].startAge 同域（倪师《天纪》亦用虚岁）。
-	// 以农历年（正月初一）为界，不是生日、也不是立春 —— 与 iztro 的默认口径
-	// `ageDivide: 'normal'` 逐字对应（见 iztro/lib/astro/FunctionalAstrolabe.js）：
-	//     nominalAge = 目标日农历年 − 出生农历年 + 1
-	// ⚠️ 不可写成 `new Date().getFullYear() - year`（那是周岁）。两者域不同会让
-	//    currentAge 偏 1~2 岁，并连带 currentDecadalIndex / palace.isCurrentDecadal 错位，
-	//    最坏情况是把**上一个大限的宫**当成当前大限整宫详批。
+	// currentAge 是**虚岁**（以农历年正月初一为界，与 decadals[].startAge 同域），
+	// 对应 iztro 的 `ageDivide: 'normal'`：nominalAge = 目标日农历年 − 出生农历年 + 1。
+	// ⚠️ 不可写成 `new Date().getFullYear() - year`（那是周岁）：域不同会连带
+	//    currentDecadalIndex 错位，最坏把**上一个大限**当成当前大限整宫详批
+	//    （论证见 docs/code/chart-kernel.md）。
 	const now = new Date();
 	const todayLunarYear = getLunarInfo(
 		now.getFullYear(),
@@ -373,8 +363,8 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	// ── 关键宫支 ──
 	const soulBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfSoulPalace as string);
 	const bodyBranch = BRANCHES.indexOf(astrolabe.earthlyBranchOfBodyPalace as string);
-	// 命宫 / 身宫地支必在十二宫内，这是排盘不变量（cli/chart/render.ts 的 palaceAtBranch 同样
-	// 依赖它）；查不到即内核输出已损坏，当场报错而非兜底 0（理由同上方宫循环的干支校验）。
+	// 命宫 / 身宫地支必在十二宫内（排盘不变量）；查不到即内核输出已损坏，当场报错而非兜底 0
+	// （理由同上方宫循环的干支校验，见 docs/code/chart-kernel.md）。
 	if (soulBranch < 0 || bodyBranch < 0) {
 		throw new Error(
 			`命宫/身宫地支不在十二支内（命宫=${astrolabe.earthlyBranchOfSoulPalace}，` +
@@ -410,9 +400,9 @@ export function generateChart(birthInfo: BirthInfo): ZiweiChart {
 	// 命主身主：iztro 由命/身宫地支查表定星，原样取用（不重复实现查表）
 	const mingZhu = astrolabe.soul as string;
 	const shenZhu = astrolabe.body as string;
-	// 斗君：子起正月逆数至生月，生月宫起子时顺数至生时。iztro 静态盘不带，故按口诀自推。
-	// 闰月按所闰之月数计（lunarMonth 已 Math.abs）；晚子时（timeIndex 12）按子时论（%12）。
-	// 校准样例：2000-4-6 子时（三月）= 戌、1990-05-15 巳时（四月）= 寅（见 cli/selftest/index.ts）。
+	// 斗君：子起正月逆数至生月，生月宫起子时顺数至生时。iztro 静态盘不带，故按口诀自推
+	// （闰月按所闰之月数计；晚子时按子时论 %12）。校准样例见 docs/code/chart-kernel.md
+	// 与 cli/selftest/index.ts。
 	const douJunBranch = ((timeIndex % 12) + 12 - (lunarInfo.lunarMonth - 1)) % 12;
 
 	// 宫干自化已下线（倪师不主张飞星派宫干自化论）

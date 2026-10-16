@@ -1,13 +1,11 @@
 /**
- * selftest 的共用 harness（叶子模块：无第三方依赖）。
+ * selftest 的共用 harness（叶子模块：无第三方依赖）—— 断言接口原先在主报告与
+ * classics / synastry 两个断言组里**逐字同形**定义三份，抽到这里后新增断言组只 import
+ * 本模块。主 selftest 负责声明有哪些组并渲染分段报告。
  *
- * 断言接口原先在 `cli/selftest/` 的主报告与 classics / synastry 两个断言组里**逐字同形**
- * 定义三份，靠「与主 selftest 同形」的注释维持同步 —— 抽到这里后，新增断言组
- * 只 import 本模块，不再复制样板。主 selftest 负责声明有哪些组并渲染分段报告。
- *
- * 注：子进程探针（spawnSync 跑根 CLI）**不**收进本模块 —— 各断言组的内核根来源
- * 不同（主 selftest 用引导层交代的 `ctx.root`，断言组自推导），「机制共用、策略各异」，
- * 且探针涉及进程创建，留在各自的运行语境里更诚实。
+ * ⚠️ 子进程探针（spawnSync 跑根 CLI）**不**收进本模块 —— 各断言组的内核根来源不同
+ *    （主 selftest 用 `ctx.root`，断言组自推导），「机制共用、策略各异」。
+ *    harness 各处的完整论证见 docs/code/cli-selftest.md。
  */
 
 import { existsSync } from "node:fs";
@@ -49,10 +47,9 @@ export interface CallResult {
  * @returns 与子进程冒烟同构的结果；throw 被捕获并拼成引导层同形文案
  *
  * @remarks
- * 输出形态断言原用 spawnSync 起真 CLI —— 每次约 3.2 秒（iztro 冷启动），全量 30 个
- * 调用点 ≈ 96 秒。直调复用本进程已加载的 iztro（约 25ms/次），断言语义等价：成功路径
- * 同一返回串；错误路径同一 throw（此处捕获后拼「错误：」前缀）。「stderr 前缀 + exit 1」
- * 这条真链路由各断言组保留的子进程冒烟覆盖。
+ * 输出形态断言原用 spawnSync 起真 CLI —— 每次约 3.2 秒（iztro 冷启动），全量 30 个调用点
+ * ≈ 96 秒。直调复用本进程已加载的 iztro（约 25ms/次），断言语义等价。「stderr 前缀 +
+ * exit 1」这条真链路由各断言组保留的子进程冒烟覆盖（见 docs/code/cli-selftest.md）。
  */
 export function callDirect(
 	cmd: string,
@@ -77,10 +74,9 @@ export function callDirect(
  * 主 selftest 各断言组的共享运行时。
  *
  * @remarks
- * 主 selftest（`cli/selftest.ts`）构造一次、按源码断言顺序逐组传入 `selftest/` 下的
- * 组函数。`call` / `runCli` / `commandNames` 只在这里构造：命令表 COMMANDS 由主 selftest
- * 动态 import 取得（打断「commands → selftest → 组 → commands」静态环），组文件因此
- * 一律不静态 import `cli/commands.ts` —— 需要命令表的一律走 deps。
+ * 主 selftest 构造一次、按源码断言顺序逐组传入组函数。`call` / `runCli` / `commandNames`
+ * 只在这里构造：命令表 COMMANDS 由主 selftest 动态 import 取得（打断静态环），组文件因此
+ * 一律不静态 import `cli/commands.ts`（见 docs/code/cli-selftest.md）。
  */
 export interface SelftestDeps {
 	/** 运行期上下文（内核根与其来源）—— 读 SKILL.md / 数据文件等守护断言用 */
@@ -124,9 +120,8 @@ export type OkFn = (
  * `ok` 跑一条断言并登记结果 —— 断言体抛错即记为该条失败，一条失败不影响其余断言继续跑；
  * 断言体返回值若非空则作为该项的补充说明。
  *
- * ⚠️ `opts.skip` 是**唯一的跳过入口**（见 {@link skipUnlessRepo}）：跳过记 pass 但
- * `skipped: true`，报告渲染时前置 `⏭`。**必须看得见「这条没跑」**—— 否则恒真守卫
- * 会伪装成通过：断言读不到文件时若静默 return，读者的默认理解是「检查过了，没问题」。
+ * ⚠️ `opts.skip` 是**唯一的跳过入口**：跳过记 pass 但 `skipped: true`，报告前置 `⏭`。
+ *    **必须看得见「这条没跑」** —— 否则恒真守卫会伪装成通过（见 docs/code/cli-selftest.md）。
  */
 export function createHarness(): {
 	results: Assertion[];
@@ -158,12 +153,11 @@ export function createHarness(): {
  *
  * @remarks
  * 判据取「包根有没有 `CLAUDE.md`」：分发包只含 `SKILL.md` / `package.json` /
- * `references/` / `scripts/` 四项（见 `tools/pack.ts`），仓库级文档
- * （`CLAUDE.md` / `README.md` / `test/README.md`）一律不带。故用 `CLAUDE.md` 作
- * 「我在不在仓库里」的探针——它必然与那三份文档同进同出。
+ * `references/` / `scripts/` 四项，仓库级文档一律不带 —— 用 `CLAUDE.md` 作
+ * 「我在不在仓库里」的探针（它必然与那三份文档同进同出）。
  *
- * ⚠️ **不要给不需要的断言加跳过**：读的文件若都在 `scripts/` 或 `references/` 内，
- * 它会被打包带上，跳过只会白白丢掉覆盖。全仓仅此一处仓库级断言组适用。
+ * ⚠️ **不要给不需要的断言加跳过**：文件若都在 `scripts/` 或 `references/` 内会被打包带上，
+ *    跳过只会白白丢掉覆盖。全仓仅此一处适用（见 docs/code/cli-selftest.md）。
  */
 export function skipUnlessRepo(ctx: { root: string }, why: string): string | undefined {
 	const repoOnly = resolve(ctx.root, "..", "CLAUDE.md");

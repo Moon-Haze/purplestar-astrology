@@ -4,8 +4,11 @@
  * 汇总三部古籍数据 + 提供「按 slug / 章节序号 / 段落 id 取用」与「全文检索」两组 API。
  * 数据以 TS 模块静态打包进代码（见 `data/`），零 DB 依赖、零网络请求。
  *
+ * ⚠️ {@link ALL_BOOKS} 的数组顺序即检索命中顺序，调整会改变输出排列。
+ *
  * @packageDocumentation
  */
+// 入口 API、段落口径与数据文件分工见 docs/code/corpus.md。
 
 import type { Book, Paragraph, SearchHit } from "./types";
 import { guSuiFu } from "./data/gusuifu";
@@ -15,9 +18,8 @@ import { ziWeiQuanShu } from "./data/quanshu";
 /**
  * 所有已收录古籍 —— 骨髓赋、紫微斗数全集、紫微斗数全书。
  *
- * @remarks
- * 数组顺序即 {@link searchClassics} 的命中顺序（按书 → 章节 → 段落逐层遍历），
- * 也是 `classics` 命令默认列出的顺序；调整顺序会改变检索结果的排列。
+ * ⚠️ 数组顺序即 {@link searchClassics} 的命中顺序（按书 → 章节 → 段落逐层遍历），
+ *    也是 `classics` 命令默认列出的顺序；调整顺序会改变检索结果的排列。
  */
 export const ALL_BOOKS: Book[] = [guSuiFu, ziWeiQuanJi, ziWeiQuanShu];
 

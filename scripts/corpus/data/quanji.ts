@@ -19,6 +19,8 @@ import type { Book } from "../types";
  * 不是本文件节选部分的字数 —— 本文件是节选，未来可续补。
  * 段落 id 前缀为 `qj-<卷号>-<段号>`（如 `qj-1-1`）；{@link ALL_BOOKS} 以
  * `slug` = `"quanji"` 收录本对象。
+ *
+ * `wordCount` 是**全书**粗略字数而非节选字数，口径详见 docs/code/corpus.md。
  */
 export const ziWeiQuanJi: Book = {
 	title: "紫微斗数全集",

@@ -12,6 +12,8 @@
  * - `citationRoots[].checklist` 直接引用内核的 `ANNOTATIONS`（全局唯一核对表），**不另存一份**，
  *   避免副本漂移——这正是 ADR-004「核对表随插件走」的落地方式（引用走，不是复制走）。
  * 适配器是**声明式口径**：声明自己是谁、禁什么、扫哪、对哪份核对表负责。
+ *
+ * 接缝由来（架构文档 §4.3）与多流派隔离设计，见 docs/code/school.md。
  */
 
 import type { BrightnessSchool } from "../wenmo-brightness";

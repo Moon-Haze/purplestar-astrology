@@ -2,15 +2,13 @@
  * 基础格局识别器 —— 让普通命盘也能识别出常见格局的一组轻量判定。
  *
  * @remarks
- * 基础格局（提升识别覆盖率）
- * 设计：让普通命盘也能识别出 1-3 个常见格局，而不是 30+ 严格古书格局都不匹配。
- * 这些都是单一条件触发的轻量识别，level 多为 neutral / good。
+ * 基础格局（提升识别覆盖率）：让普通命盘也能识别出 1-3 个常见格局，而不是 30+ 严格古书
+ * 格局都不匹配。单一条件触发的轻量识别，level 多为 neutral / good。
  *
- * 识别器签名一律 `(ctx: DetectContext) => Pattern[]`：命中返回 `[one]`，未命中返回 `[]`，
- * 并进总表只发生在 `./index` 的 `detectPatterns` 那一行 for 里 —— 本文件不接触任何累积数组。
- * 判词一律从 `corpus/data/patterns` 的 `PATTERN_VERDICTS` 取，收尾经 `./helpers` 的 `fillVerdict` 填占位符。
+ * 签名一律 `(ctx: DetectContext) => Pattern[]`：命中 `[one]`、未命中 `[]`，并进总表只发生在
+ * `./index`；判词一律从 `PATTERN_VERDICTS` 取、经 `fillVerdict` 填占位符。
  *
- * 下方导出的数组**次序即 `detectPatterns` 的输出次序**，增删或调整组内次序都会改变输出排列。
+ * ⚠️ 下方导出的数组**次序即 `detectPatterns` 的输出次序**（见 docs/code/patterns.md）。
  *
  * @packageDocumentation
  */

@@ -61,9 +61,7 @@ import {
 
 /**
  * `--view` 取值别名：英文主名与参数别名表（`OPTION_ALIASES`）同名同义 ——
- * decadal = daxian（当前大限）/ yearly = liunian（流年）/ monthly = liuyue（流月），
- * 归一到内部拼音取值后走同一套 {@link AnalysisView}。
- * mingpan（本命）在参数别名表中无英文对应，只有拼写本身。
+ * decadal = daxian / yearly = liunian / monthly = liuyue（mingpan 无英文对应）。
  */
 const VIEW_ALIASES: Record<string, AnalysisView> = {
 	mingpan: "mingpan",
@@ -83,8 +81,8 @@ const VIEW_ALIASES: Record<string, AnalysisView> = {
  * @throws 非整数或超出 1-9999 时
  *
  * @remarks
- * 非数字静默传下去会得到「NaN 天干 → 四空串」的垃圾输出，与 `--monthly` 同一纪律：
- * 宁可报错，不静默产出错盘。
+ * 非数字静默传下去会得到「NaN 天干 → 四空串」的垃圾输出 —— 与 `--monthly` 同一纪律：
+ * 宁可报错，不静默产出错盘（见 docs/code/cli-commands.md）。
  */
 export function parseYearlyArg(args: CliArgs): number {
 	const y =
@@ -124,8 +122,8 @@ export function parseMonthlyArg(args: CliArgs): number | null {
  * @throws 裸开关、非整数或超出 1-30 时
  *
  * @remarks
- * 与 `--monthly` 同一纪律：流日的「当前日」没有明确语义（须先有农历年月才有日），
- * 不设默认 —— 裸开关直接报错指路。
+ * 与 `--monthly` 同一纪律：流日的「当前日」没有明确语义，不设默认 —— 裸开关直接报错
+ * 指路（见 docs/code/cli-commands.md）。
  */
 export function parseDailyArg(args: CliArgs): number | null {
 	if (args.daily === true) {
@@ -166,13 +164,13 @@ function chartHeader(title: string, info: BirthInfo, note: string): string {
 
 /**
  * `--json` 的产物（生产端）：`astrology --json` 的顶层契约，也是
- * {@link readAnalyzeJson|synastry/chart-view 的 readAnalyzeJson} 所消费的形状。
+ * `synastry/chart-view 的 readAnalyzeJson` 所消费的形状。
  *
  * @remarks
- * 提为具名纯函数是为了让契约**一处生产、一处消费、一处对拍** —— 键名不再散落在
- * 分发函数中段，selftest 可以进程内直调本函数、把产物喂给消费方校验（原先是子进程
- * 端到端才能测的形状）。顶层键即输出契约：chart / patterns / mingGongSummary /
- * nativeSiHua / liuNianSiHua / liuYueSiHua / liuNianPalace / xiaoXian / lateZi / basis。
+ * 提为具名纯函数是为了让契约**一处生产、一处消费、一处对拍** —— selftest 可进程内直调
+ * 本函数、把产物喂给消费方校验。顶层键即输出契约：chart / patterns / mingGongSummary /
+ * nativeSiHua / liuNianSiHua / liuYueSiHua / liuNianPalace / xiaoXian / lateZi / basis
+ * （键集与 basis 冻结契约见 docs/code/cli-commands.md）。
  */
 export function buildAnalyzeJson(input: {
 	chart: ZiweiChart;
@@ -279,13 +277,11 @@ export function buildAnalyzeJson(input: {
 				};
 			})(),
 			lateZi: { candidate: basis.lateZiCandidate, applied: basis.isLateZi },
-			// 排盘依据：日期换算 / 出生地解析 / 时辰校正三类说明，让这份 JSON 自描述
-			// 「这张盘是怎么来的」，下游（合盘 skill）据此复述真太阳时与晚子时提示，
-			// 而不必自己重做一遍出生信息解析。
-			// 键名刻意不叫 trueSolar —— notes 里还含农历换算与出生地解析，与真太阳时无关。
-			// ⚠️ 显式四键是**冻结契约**（消费方 chart-view.ts 只声明这四键）：调用方
-			// 传整包 CaliberBasis 时整包序列化会多出 longitude/lngNote/clockTime 等键 ——
-			// 类型的「结构超集无 excess 检查」拦不住运行时，键集在此逐键声明。
+			// 排盘依据：让这份 JSON 自描述「这张盘是怎么来的」，下游据此复述真太阳时与
+			// 晚子时提示。键名刻意不叫 trueSolar（notes 还含农历换算与出生地解析）。
+			// ⚠️ 显式四键是**冻结契约**（消费方 chart-view.ts 只声明这四键）：整包序列化
+			//    会多出 longitude/lngNote/clockTime 等键，类型拦不住运行时
+			//    —— 键集在此逐键声明。论证见 docs/code/cli-commands.md。
 			basis: {
 				note: basis.note,
 				notes: basis.notes,
@@ -299,8 +295,8 @@ export function buildAnalyzeJson(input: {
 }
 
 /**
- * 零输入演示的内置虚构样例 —— 与 help 示例、`--template` 配置模板同源
- * （2011-06-24 07:45 杭州 male），输出自带「虚构」声明，不会被误当真实排盘。
+ * 零输入演示的内置虚构样例 —— 与 help 示例、`--template` 配置模板同源（2011-06-24 07:45
+ * 杭州 male），输出自带「虚构」声明（见 docs/code/cli-commands.md）。
  */
 const SAMPLE_BIRTH: Partial<CliArgs> = {
 	date: "2011-06-24",
@@ -320,11 +316,11 @@ const SAMPLE_TRAILER = [
 ];
 
 /**
- * 独占分支（--palaces / --topic / --report / --info）激活时，其余功能参数不会生效——
- * 静默吞违反「宁可启动失败，也不静默产出错盘」，在这里指路。优先级链：
- * --palaces > --topic > --report > 其他功能参数（--info 属于链上的「其他功能参数」，
- * 但它自身也是独占分支——只输出面板一节；--json 仅与完整概览或 --palaces 组合，
- * 见各自分支）。
+ * 独占分支（`--palaces` / `--topic` / `--report` / `--info`）激活时，其余功能参数不会生效
+ * —— 静默吞违反「宁可启动失败，也不静默产出错盘」，在这里指路。
+ *
+ * 优先级链：`--palaces` > `--topic` > `--report` > 其他功能参数（`--info` 属于链上的
+ * 「其他功能参数」，但它自身也是独占分支）。链的完整表述见 docs/code/cli-commands.md。
  */
 function assertNoShadowedFeatures(
 	args: CliArgs,
@@ -357,32 +353,23 @@ function assertNoShadowedFeatures(
  * @returns 已渲染好的文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 字符串
  *
  * @remarks
- * **精简概览 + 专题分发**：不带任何专题旗标时
- * 输出口径提示（出生地 / 晚子时）、基本信息面板与运限速览 + 专题指路（--info 同尾：
- * 面板 + 两节；公历生日 / 命宫 / 紫微落 / 三方四正并入面板）；给了
- * 哪个专题旗标就只追加该专题的详版（可叠加，按 --pattern → --mutagen → --yearly →
- * --decadal → --ages → --focus 的固定顺序），且不再带面板与运限速览/指路 —— 已在
- * 深入，基底与指路都是噪声。十二宫逐宫详表归 `--palaces` 与 `--json`。
+ * **精简概览 + 专题分发**：不带任何专题旗标时输出口径提示、基本信息面板与运限速览 +
+ * 专题指路；给了哪个专题旗标就只追加该专题的详版（可叠加，按 `--pattern` → `--mutagen`
+ * → `--yearly` → `--decadal` → `--ages` → `--focus` 的固定顺序），且不再带面板与指路
+ * —— 已在深入，基底与指路都是噪声。十二宫逐宫详表归 `--palaces` 与 `--json`。
  *
- * **零输入演示**：出生信息一项没给且未表达其他输出意图（`--json` /
- * `--palaces` / `--topic` / 专题参数均不在场）时，不报「缺少出生日期」，以内置虚构
- * 样例（2011-06-24 07:45 杭州 male）演示基本信息面板 + 运限速览 + 专题指路并附用法
- * 指路；部分输入不适用，继续按「缺一问一」报错。
- *
- * 命宫空宫时 `getMingGongSummary` 返回空关键词 / 空星性，`--json` 的消费方
- * （合盘 skill）自会处理；文本路径的宫详表见 `../fortune/` 各专题。
+ * **零输入演示**：出生信息一项没给且未表达其他输出意图时，以内置虚构样例演示并附用法
+ * 指路；部分输入不适用，继续按「缺一问一」报错。完整契约见 docs/code/cli-commands.md。
  */
 /**
- * 「给定 args + 排盘上下文 → 产出专题 section 序列」——候选 3 把旗标→section 的接线
- * 升为可直测 interface（原 `cmdAstrology` 默认路径的内联块）。
- *
- * 收益：接线本身成为被测物（`test/cli/astrology-sections.test.ts`），fortune 各
- * `*Section` 退为 implementation 零件，守卫链（monthly/daily/hourly 须配 mutagen/层级）
- * 与 `parseAgesArg` / `deepDive` 门沉进同一实现。调用方（cmdAstrology 默认/概览路径）
- * 只消费返回的 `string[]`，不再手抄顺序与守卫。
+ * 「给定 args + 排盘上下文 → 产出专题 section 序列」—— 候选 3 把旗标 → section 的接线
+ * 升为可直测 interface（原 `cmdAstrology` 默认路径的内联块）：接线本身成为被测物，
+ * fortune 各 `*Section` 退为 implementation 零件，守卫链与 `parseAgesArg` / `deepDive`
+ * 门沉进同一实现。
  *
  * 行为契约：与迁移前的内联块逐字节等价（无深掘时带信息面板 + 运限速览；给了任一专题旗标
  * 则跳过基底，按 pattern → mutagen → yearly → decadal → ages → focus 固定序追加）。
+ * 候选 3 的收益见 docs/code/cli-commands.md。
  *
  * @param chart - 已生成的命盘
  * @param args - CLI 参数表
@@ -477,10 +464,9 @@ export function cmdAstrology(args: CliArgs) {
 	}
 	// --config：配置是基底，命令行同名键覆盖（spec §3.3）
 	args = applyConfig(args);
-	// ── 零输入演示契约：出生信息一项没给且未表达其他输出意图时，
-	// 不报「缺少出生日期」，改以内置虚构样例演示基本信息面板。部分输入不适用 ——
-	// 给了一半说明想排特定的盘，继续走「缺一问一」报错；--json / --palaces / --topic /
-	// 专题参数在场同样不适用：那是明确的输出意图，虚构盘只会伪装成他要的产物。
+	// ── 零输入演示契约：出生信息一项没给且未表达其他输出意图时，改以内置虚构样例演示
+	// 基本信息面板。部分输入不适用（想排特定的盘），--json / --palaces / --topic /
+	// 专题参数在场同样不适用：那是明确的输出意图（见 docs/code/cli-commands.md）。
 	const usingSample =
 		BIRTH_KEYS.every(k => (args as Record<string, unknown>)[k] === undefined) &&
 		!INTENT_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
@@ -539,8 +525,7 @@ export function cmdAstrology(args: CliArgs) {
 					`独占分支请单独使用（优先级：${EXCLUSIVE_PRIORITY_LABEL}）。`
 			);
 		}
-		// 其余功能参数（--pattern / --mutagen / --decadal / --ages / --yearly / --monthly /
-		// --focus）与本分支同给同样不会生效——静默吞违反启动纪律，统一走独占检测指路。
+		// 其余功能参数与本分支同给同样不会生效 —— 静默吞违反启动纪律，统一走独占检测指路。
 		// palaces / topic / json 三者由上方各自的检查负责（职责不重复）。
 		assertNoShadowedFeatures(args, "--info");
 		return [

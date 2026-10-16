@@ -53,3 +53,5 @@ export const booksSource: KnowledgeSource = {
 		return out.join("\n");
 	},
 };
+
+// 四域包装的迁移史与懒加载纪律见 docs/code/knowledge.md。

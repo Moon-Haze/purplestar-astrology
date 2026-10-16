@@ -1,15 +1,10 @@
 /**
  * 一、总论（总-分结构）—— topic 报告的开篇。
  *
- * @remarks
- * 结构是「动态优先、静态兜底」：先出**命盘关键定制**（按本宫主星的亮度 / 四化从
- * `profile.topic_mods` 里取的专属开场）与**命盘特殊格局**（仅 overview / personality），
- * 再出静态白话总论（`profile.summary`，personality 段跳过以免与 overview 雷同），
- * 最后是本宫主星说明与星曜详解。
+ * ⚠️ 主宫无主星时整节退化成一句兜底提示：此时 `ctx.mainStars` 可能仍非空（借自对宫），
+ *    但 `ctx.profile` 为 `null`，故 `if (primaryStar && profile)` 两侧会一并落到 `else`。
  *
- * 主宫无主星时整节退化成一句兜底提示 —— 注意此时 `ctx.mainStars` 可能仍非空
- * （借自对宫），但 `ctx.profile` 为 `null`，故 `if (primaryStar && profile)` 两侧
- * 会一并落到 `else`。
+ * 「动态优先、静态兜底」的三段结构见 docs/code/analysis.md。
  *
  * @packageDocumentation
  */

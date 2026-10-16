@@ -1,11 +1,11 @@
 /**
  * 五点五、疾厄宫 —— 地支主轴 + 星曜辅助 + 煞忌警示（仅 health 主题出）。
  *
- * @remarks
- * 三层结构，权重递减：
- *   1. **宫位主轴**（`PALACE_BRANCH_ORGAN`）—— 疾厄宫落在哪个地支，这是倪师原法
- *   2. **星曜辅助**（`ZIWU_LIUZHU`）—— 主星五行的加重 / 减轻提示，只作附加
- *   3. **警示**—— 四煞入疾厄、三方四正见化忌、女命妇科保养
+ * ⚠️ 三层结构，权重递减：① **宫位主轴**（`PALACE_BRANCH_ORGAN`，疾厄宫落在哪个地支，
+ *    倪师原法）→ ② **星曜辅助**（`ZIWU_LIUZHU`，只作附加）→ ③ **警示**（四煞入疾厄 /
+ *    三方四正见化忌 / 女命妇科保养）。
+ *
+ * 完整口径见 docs/code/analysis.md。
  *
  * @packageDocumentation
  */
@@ -17,17 +17,12 @@ import type { AnalysisContext } from "../../analysis/context";
 /**
  * 疾厄宫 · 地支宫位 → 脏腑映射（倪师体系主轴）
  *
- * ⚠️ 倪师《天纪 05》原话明示：
- *   - 化忌在酉宫 = 肾
- *   - 火星地空在丑宫 = 肝
- *   - 头肩胸区域 = 妇科子宫 / 右卵巢
+ * ⚠️ 倪师疾厄论断**以疾厄宫落在哪个地支为主轴**，星曜五行为辅 —— 这与「按星曜五行
+ *    对应脏腑」的做法不同，后者是传统三合派用法。
+ * ⚠️ 本函数是 `../data` 的 `PALACE_BRANCH_ORGAN` 的**唯一使用点**。
  *
- * 倪师疾厄论断**以疾厄宫落在哪个地支为主轴**，星曜五行为辅。
- * 这与「按星曜五行对应脏腑」的做法不同——后者是传统三合派用法。
- *
- * @remarks
- * 该映射表本身在 `../data` 的 `PALACE_BRANCH_ORGAN`，本函数是它的
- * **唯一使用点**。
+ * 《天纪 05》原话条目（化忌在酉 = 肾、火星地空在丑 = 肝、头肩胸 = 妇科子宫 / 右卵巢）
+ * 见 docs/code/analysis.md。
  */
 export function renderHealth(ctx: AnalysisContext): string[] {
 	const { chart, topic, mainPalace, primaryStar, sanFang } = ctx;

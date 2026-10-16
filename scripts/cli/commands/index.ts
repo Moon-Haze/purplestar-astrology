@@ -33,9 +33,8 @@ export type { CommandName } from "./command-meta";
  * 命令实现的签名：返回**已渲染好的文本**（或其 Promise），由引导层统一 `await` 后 `console.log`。
  *
  * @remarks
- * 允许 async 是给 `cmdSelftest` 的：它要 `await import("./index")` 取命令表键集
- * （替代旧的「读源码文本正则抽键」），动态 import 是打断「commands → selftest → commands」
- * 静态环的唯一手段 —— 同步签名下这条 seam 只能用对物理排版敏感的正则走第三条路。
+ * 允许 async 是给 `cmdSelftest` 的：它要 `await import("./index")` 取命令表键集，动态 import
+ * 是打断「commands → selftest → commands」静态环的唯一手段（见 docs/code/cli-commands.md）。
  */
 type Cmd = (args: CliArgs, ctx: CliContext) => string | Promise<string>;
 
@@ -43,11 +42,10 @@ type Cmd = (args: CliArgs, ctx: CliContext) => string | Promise<string>;
  * 命令名 → 实现。
  *
  * @remarks
- * 刻意**不导出**这张裸表：导出的是下面两个视图（{@link COMMANDS} 供分发、
- * {@link COMMAND_DESC} 供渲染 HELP）。调用方拿不到「键集与描述可能对不上」的中间态。
+ * 刻意**不导出**这张裸表：导出的是下面两个视图（`COMMANDS` 供分发、`COMMAND_DESC` 供渲染
+ * HELP）—— 调用方拿不到「键集与描述可能对不上」的中间态。
  *
- * 用 `satisfies` 而非 `: Record<...>` 标注，是为了保住字面量键集 ——
- * `CommandName` 与 `COMMAND_DESC` 的完备性都建立在它之上（见下）。
+ * 用 `satisfies` 而非 `: Record<...>` 标注，是为了保住字面量键集（见 docs/code/cli-commands.md）。
  */
 const COMMAND_TABLE = {
 	astrology: cmdAstrology,

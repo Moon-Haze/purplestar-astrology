@@ -1,34 +1,13 @@
 /**
- * CLI 参数解析引擎 —— `util.parseArgs` tokens 底座 + 薄适配层。
- * 不依赖任何内核模块，也不使用 `@/` 别名。
+ * CLI 参数解析引擎 —— `util.parseArgs` tokens 底座 + 薄适配层（cac 已退役）。
+ * 不依赖任何内核模块，也不使用 `@/` 别名；三层分工里本文件只管**怎么解析**。
  *
- * 与同目录两个模块的分工（三层自底向上）：`args-table.ts` 管**声明了什么**
- * （参数表 / 别名 / 全集 / 键名换算，零依赖纯数据）、`option-scope.ts` 管
- * **本 skill 认哪些**（作用域契约与差量排除值），本文件只管**怎么解析**：
+ * 薄适配层做四件事：声明表校验（未知参数中文报错）、别名归一、判重（重复报错，
+ * 旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值，**版本敏感**，selftest 钉死）。
  *
- * cac 已退役，底座换 Node 内置 `util.parseArgs`
- * （`tokens: true` 拿 token 流），输入格式适配全部在本文件的薄适配层：
- *
- * - **底座只管切分**：`--key=value`（inlineValue）/ 裸 `--key` / `--` 分隔 / positional
- *   的 token 识别。⚠️ 实测（Node v26）：`strict: false` 下 `--limit -3` 的 `-3` 是**独立的
- *   option token**（name "3"），不是 limit 的值 —— 贪婪取值因此必须由适配层自己做
- *   （见 {@link parseArgs} 的单趟扫描），这也是「薄适配层」存在的第一个理由。
- * - **声明表校验**：未知参数当场中文报错（不走 strict —— 其报错是 Node 写死的英文，
- *   与全中文报错约定冲突；自校验完全可控）。
- * - **OPTION_ALIASES 归一**（`--geju`→`--pattern`）与主名判重（重复参数报错，
- *   旧 cac「取末值」废止）。
- *
- * ⚠️ 本文件由引导层（purple-star.ts）在 `registerHooks` **之后**动态加载。
- *    不要在 purple-star.ts 顶部用静态 `import` 引它 —— 钩子未注册时解析会失败。
- *
- * ## 为什么参数要有声明表
- *
- * 「有哪些参数」的唯一来源是 `args-table.ts` 的 `OPTION_GROUPS`：{@link parseArgs} 据它
- * 拒绝未知参数、help 据它渲染参数段、`SKILL.md` 则由 `selftest` 断言兜底。拼错参数名
- * （`--ctiy 喀什`）曾静默落回默认经度排出错盘 —— 那正是这张表要消灭的失败模式。
- *
- * ⚠️ **键名是 camelCase**（`late-zi` → `lateZi`）。换算只有 `args-table.ts` 的
- *    `camelKey` 一处，声明表里的 `name` 仍写 kebab（它同时是用户敲的名字、help 的显示名）。
+ * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载 —— 不要在 purple-star.ts 顶部用
+ *    静态 `import` 引它（钩子未注册时解析会失败）。底座与适配层的分工论证、
+ *    `--ctiy 喀什` 那类静默失败史，见 docs/code/cli-args.md。
  */
 
 import { parseArgs as nodeParseArgs } from "node:util";
@@ -62,9 +41,8 @@ export interface CliArgs {
  * 同时是 {@link suggestOption} 的候选集。
  *
  * @remarks
- * 从 `args-table.ts` 的全集（`ALL_OPTION_NAMES`）按 `OPTION_SCOPE.excluded`
- * **差量**派生：单 skill 形态下排除表为空，作用域即全集；「有哪些参数」因此
- * 真正只有 OPTION_GROUPS 一处声明。
+ * 从 `./table` 的全集按 `OPTION_SCOPE.excluded` **差量**派生：单 skill 形态下排除表为空，
+ * 作用域即全集 —— 「有哪些参数」因此真正只有 OPTION_GROUPS 一处声明。
  */
 export const OPTION_NAMES: ReadonlySet<string> = new Set(
 	[...ALL_OPTION_NAMES].filter(n => !OPTION_SCOPE.excluded.includes(n))
@@ -79,9 +57,8 @@ const ALL_SPECS: ReadonlyMap<string, OptionSpec> = new Map(
  * 本 skill 认的出生方前缀（合盘是 `a-` / `b-`，它要分别读两方的命盘）。
  *
  * @remarks
- * 取自 `option-scope.ts` 的 `OPTION_SCOPE.sidePrefixes`。导出是给 `cli/selftest.ts`
- * 用的：它扫 `SKILL.md` 里提到的参数，要先剥掉这层前缀再与 {@link OPTION_NAMES}
- * 比对 —— 前缀表不该有第二份。
+ * 取自 `./scope` 的 `OPTION_SCOPE.sidePrefixes`。导出是给 selftest 用的：它扫 `SKILL.md`
+ * 里提到的参数，要先剥掉这层前缀再与 {@link OPTION_NAMES} 比对 —— 前缀表不该有第二份。
  */
 export const SIDE_PREFIXES: readonly string[] = OPTION_SCOPE.sidePrefixes;
 
@@ -136,16 +113,12 @@ export function suggestOption(name: string): string | null {
  * @param command - 当前命令名；接受前缀的那几条由 `option-scope.ts` 的 `prefixedCommands` 声明
  *
  * @remarks
- * 三条规则各挡一种**静默失败**：
+ * 三条规则各挡一种**静默失败**：① 归一后不在 {@link OPTION_NAMES} → 拼错，报最近的名字；
+ * ② 前缀出现在不收它的命令上（写法被整个忽略，排的是默认经度的盘）；
+ * ③ 前缀后仍须是声明过的名字。
  *
- * 1. 名字（归一后）不在 {@link OPTION_NAMES}：拼错。报错并给出最近的名字。
- * 2. `a-` / `b-` 前缀出现在不收它的命令上：那里读的是不带前缀的名字，带前缀的写法会被
- *    整个忽略（`astrology --a-city 北京` 排的是默认经度的盘）。
- * 3. 前缀后面接的仍必须是声明过的名字：`--a-ctiy` 同样要抓。
- *
- * ⚠️ 刻意**不**校验「这个参数属于这个命令」：`--json` 给 `knowledge` 是无害的多余参数，
- *    而把归属做成硬约束会让每条命令的合法集合成为第二个需要维护的真相 —— 拼错才是要挡的。
- *    （Task 8 的 help 归属表是**视图**，不做硬校验。）
+ * ⚠️ 刻意**不**校验「这个参数属于这个命令」—— 把归属做成硬约束会让每条命令的合法集合
+ *    成为第二个需要维护的真相，拼错才是要挡的。三条的展开见 docs/code/cli-args.md。
  */
 function checkOptionName(key: string, command: string | undefined): string {
 	const prefix = SIDE_PREFIXES.find(p => key.startsWith(p));
@@ -192,22 +165,12 @@ interface Token {
  * @returns 参数表；键已归一为 camelCase 的英文主名；`--flag` 裸开关存布尔 `true`
  *
  * @remarks
- * ## 两步：**底座切分 → 单趟适配**
+ * **两步：底座切分 → 单趟适配**（底座 `nodeParseArgs({ strict: false, tokens: true })`
+ * 只交 token 流，取值判据 / 判重 / 归一 / 中文报错全在这趟扫描里）：
+ * 贪婪取值（`--limit -3` 的 `-3` 是值，⚠️ **版本敏感**，selftest 钉死）·
+ * 重复报错（旧 cac「取末值」废止）· `--` 之后全进 `_` · `-x` 短参数一律报错。
  *
- * 底座 `nodeParseArgs({ strict: false, tokens: true })` 只交 token 流；
- * 取值判据、判重、别名归一、中文报错全部在下面这趟扫描里：
- *
- * - **贪婪取值**：声明表 `kind: "value"` 的参数**无条件吃紧随 token**（不论其形状）——
- *   `--limit -3` 的 `-3` 在底座里是一个 name 为 "3" 的假 option token（实测 Node v26，
- *   见文件头），扫描把它吃成 limit 的值。⚠️ 此行为**版本敏感**（早期 Node 的 strict 模式
- *   会拒绝负值），selftest 钉死 —— Node 行为若回退立即变红。
- * - **重复报错**：同一参数（归一后主名，含主别名同现 `--geju --pattern`）给两次即报错
- *   —— 旧 cac「取末值」是静默择一，废止（spec §2.8 行为变更）。
- * - **`--` 之后**全进 `_`（不做形态归类）。
- * - **`-x` 短参数**：不在取值位置时一律报错 —— 本项目只有长参数。
- *
- * `command` 省略即退回「照单全收」的宽松解析 —— 供不关心参数面、只想拿个参数表的
- * 调用方使用。
+ * `command` 省略即退回「照单全收」的宽松解析。四条规则的展开见 docs/code/cli-args.md。
  */
 export function parseArgs(argv: string[], command?: string): CliArgs {
 	const { tokens } = nodeParseArgs({
@@ -293,8 +256,7 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 	}
 
 	// ── astrology 命令的位置参数形态归类（spec §1.2）──
-	// 其他命令（knowledge 各域的检索词）的 `_` 原样保留；astrology 的出生信息
-	// 可零参数给（`astrology 1990-5-15 9:30 男 北京`），按形态归类、顺序无关。
+	// 其他命令的 `_` 原样保留；astrology 的出生信息可零参数给，按形态归类、顺序无关。
 	// `--` 之后的内容已进 `_` 且不归类（用户明确说了「这些是字面量」）。
 	if (command === "astrology" && args._.length && !afterTerminator) {
 		const pos = classifyPositionals(args._);
@@ -316,14 +278,11 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
  *   报错并提示连写
  *
  * @remarks
- * 形态正则：日期 `^\d{4}-\d{1,2}-\d{1,2}$`、时刻 `^\d{1,2}:\d{2}$`、性别
- * `男|女|male|female|m|f`，其余中文 token 为城市名（含「山东青岛」省市连写与「山东」
- * 裸省名 —— 城市与省的解析在 `birth-info.ts` 的 findLongitude / 省会计链）。
- * 农历生日只能走 `--lunar`（与公历同形，无法按形态区分）。
+ * 形态正则：日期 `^\d{4}-\d{1,2}-\d{1,2}$`、时刻 `^\d{1,2}:\d{2}$`、性别 `男|女|male|female|m|f`，
+ * 其余中文 token 为城市名（含省市连写与裸省名）。农历生日只能走 `--lunar`（与公历同形）。
  *
- * ⚠️ 住本文件而非 `birth-info.ts`（计划原案）：归类在 {@link parseArgs} 内完成
- * （同类 token 重复必须在解析层报错），而 birth-info 静态 import 本文件的
- * {@link CliArgs} —— 挪过去会成环。
+ * ⚠️ 住本文件而非 `birth-info.ts`（计划原案）：归类在 {@link parseArgs} 内完成，而
+ *    birth-info 静态 import 本文件的 {@link CliArgs} —— 挪过去会成环（见 docs/code/cli-args.md）。
  */
 export function classifyPositionals(tokens: readonly string[]): Partial<CliArgs> {
 	const out: Partial<CliArgs> = {};

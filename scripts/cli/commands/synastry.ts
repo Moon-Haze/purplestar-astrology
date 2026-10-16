@@ -40,8 +40,8 @@ import {
 export function cmdSynastry(args: CliArgs): string {
 	// --charts：逗号分隔的**恰好两个**文件路径（甲先乙后）。本命令不排盘，
 	// 两份盘都得由排盘命令的 --json 产出（spec §2.3；a-/b- 前缀已退役）。
-	// ⚠️ 缺失或份数不对时报错，而**不是**回退去读出生信息 —— 那种回退会让本命令
-	//    悄悄又变成排盘方（且回退路径无人测，必然腐坏）。
+	// ⚠️ 缺失或份数不对时报错，而**不是**回退去读出生信息 —— 那种回退会让本命令悄悄又
+	//    变成排盘方（回退路径无人测，必然腐坏）。见 docs/code/cli-commands.md。
 	if (typeof args.charts !== "string") {
 		throw new Error(
 			`缺少 --charts：本命令不排盘，两方命盘都得由排盘命令的 --json 产出。\n` +
@@ -229,11 +229,11 @@ export function cmdSynastry(args: CliArgs): string {
 	}
 	if (!marriageHit) {out.push("  双方夫妻宫无收录的桃花/孤克星。");}
 	out.push("");
-	// 评分标准与完整方法论是**恒定静态文本** —— 与「这一对是谁」无关，排谁的盘都是同一份，
-	// 曾在此处无条件重印（实测占本命令输出 78%）。现住在 `references/synastry-guide.md`，
-	// 按需读取，此处只留指针。
-	// ⚠️ 指针文案**不得**出现「【评分标准】」/「【完整方法论】」这两个块标题：test/cli.test.ts
-	// 的绊线正是盯这两个字面量，引用了就是自己踩自己。
+	// 评分标准与完整方法论是**恒定静态文本**（曾占本命令输出 78%），现住在
+	// `references/synastry-guide.md`，此处只留指针。
+	// ⚠️ 指针文案**不得**出现「【评分标准】」/「【完整方法论】」这两个块标题：
+	//    test/cli.test.ts 的绊线正盯这两个字面量，引用了就是自己踩自己
+	//    （见 docs/code/cli-commands.md）。
 	out.push("评分标准与方法论已移至 references/synastry-guide.md（按需读取，不由本命令输出）。");
 
 	return out.join("\n");

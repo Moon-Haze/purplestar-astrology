@@ -1,15 +1,10 @@
 /**
  * `--config` / `--template` —— JSON 配置文件输入（spec §3.3）。
  *
- * - **`--config <file>`**：读 JSON 文件，键名与参数的 camelCase 主名同名
- *   （`date` / `time` / `city` / `gender` / `pattern` / `mutagen` / `yearly` …），
- *   出生信息与专题参数都可写。
- * - **优先级：命令行参数覆盖配置文件同名字段**（命令行更明确，必须赢；配置是基底）。
- * - **校验**：配置文件里的未知键、非法值与命令行同规则报错（不静默）；
- *   `_` 前缀键是注释性说明，跳过（模板里用它写人类备注）。
- * - **`--template`**：打印可直接使用的示例 JSON 模板到 stdout（含 `_说明` 键），
- *   用户 `--template > my.json` 落盘后可直接 `--config my.json` —— 模板本身
- *   必须是合法可跑的配置（selftest 有吃回闭环断言盯着）。
+ * 键名 = 参数的 camelCase 主名；**命令行参数覆盖配置同名字段**（配置是基底）；未知键与
+ * 非法值与命令行同规则报错；`_` 前缀键是注释性说明，跳过。
+ * ⚠️ `--template` 打印的模板本身必须是合法可跑的配置 —— selftest 有吃回闭环断言盯着。
+ *    四条规则的完整表述见 docs/code/cli-args.md。
  */
 
 import { readFileSync } from "node:fs";

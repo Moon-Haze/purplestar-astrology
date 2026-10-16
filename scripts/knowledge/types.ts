@@ -12,6 +12,8 @@
  * `citations` 是引文核对表的扩展点占位：Phase 3（SchoolAdapter + 按流派引文守卫）落地时，
  * 把 `corpus/annotations.ts` 的全局核对表收进各源，并按流派分派。Phase 1 不填充它，
  * 以免破坏 `citations.test.ts` 的全局扫描（该测试在 Phase 3 重构）。
+ *
+ * 接缝由来（架构文档 §4.1）与「新增一个域」的完整步骤，见 docs/code/knowledge.md。
  */
 
 import type { CliArgs } from "@/cli/args";

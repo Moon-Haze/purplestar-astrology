@@ -1,13 +1,15 @@
 /**
- * 出生信息解析层 —— CLI 参数 → 排盘内核要的 BirthInfo。
+ * 出生信息解析层 —— CLI 参数 → 排盘内核要的 BirthInfo（拆自 purple-star.ts）。
  *
- * 拆自 purple-star.ts。这一层是一整个内聚单元：输入是 `CliArgs`，输出是 `BirthInfoResult`，
- * 中间的复杂之处全在「真太阳时」与「农历换算」两件事上，与渲染、命令分发无关。
+ * 本层是一整个内聚单元：输入 `CliArgs`、输出 `BirthInfoResult`，复杂之处全在「真太阳时」
+ * 与「农历换算」两件事上，与渲染、命令分发无关。
  *
- * 依赖：`../args`（CliArgs 类型）、`../args/table`（键名换算）、`../chart/render`（日期格式化）、
- * `./cities`（真太阳时经度校正的城市表）、`@/data/ganzhi`（干支 / 时辰）、lunar-typescript
+ * 依赖：`../args`（CliArgs 类型）· `../args/table`（键名换算）· `../chart/render`（日期格式化）·
+ * `./cities`（经度表）· `@/data/ganzhi`（干支 / 时辰）· lunar-typescript
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
+ *    真太阳时口径、晚子时两盘、夏令时来源、城市容错与各项护栏的论证见
+ *    docs/code/cli-birth.md。
  */
 
 import type { CliArgs } from "../args";
@@ -56,11 +58,10 @@ const signed = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
  * @returns 当日的均时差（分钟），可正可负
  *
  * @remarks
- * 用常见的工程近似式（`9.87·sin2B − 7.53·cosB − 1.5·sinB`，B 由「年内第几天」折算），
- * 全年幅度实测 −14.6 ~ +16.5 分钟。
+ * 用常见的工程近似式（`9.87·sin2B − 7.53·cosB − 1.5·sinB`），全年幅度实测 −14.6 ~ +16.5 分钟。
  *
- * ⚠️ 该项**与经度无关**：即使 `--lng 120`（标准经线）也不为 0。所以「`--lng 120` = 不做校正」
- * 这个直觉只在默认口径下成立；开了 `--eot` 之后，120° 出生的盘照样会被均时差推动。
+ * ⚠️ 该项**与经度无关**：即使 `--lng 120` 也不为 0 —— 「`--lng 120` = 不做校正」这个直觉
+ *    只在默认口径下成立，开了 `--eot` 后 120° 出生的盘照样被推动（见 docs/code/cli-birth.md）。
  */
 export function equationOfTime(year: number, month: number, day: number): number {
 	const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
@@ -82,15 +83,15 @@ export function equationOfTime(year: number, month: number, day: number): number
  * @remarks
  * 与 `components/BirthForm.tsx` 的 `calcTrueSolarBranch` 保持同一换算公式。
  *
- * 校正量默认**只含经度项** `(经度 − 120) × 4`；传 `opts.eot` 时再加均时差，
- * 得到天文学严格意义上的真太阳时。两种口径的差别不是小数点级的 —— 均时差可达 ±16 分钟，
- * 足以把结果推过时辰边界（实测北京全年约 5% 的出生时间会因此换一个时辰，而时辰一换整张盘全变）。
+ * 校正量默认**只含经度项** `(经度 − 120) × 4`；传 `opts.eot` 时再加均时差。两种口径的差别
+ * 不是小数点级的（实测北京全年约 5% 的出生时间会因此换一个时辰，而时辰一换整张盘全变），
  * 故默认保持传统口径，要严格口径须显式开 `--eot`，**不做静默切换**。
  *
- * 判定（`dayOffset` / `isLateZi` / `branch`）一律用**未取整**的校正量：未开 `--eot` 时均时差恒为 0，
- * 故默认口径与旧实现逐位相同，不存在行为漂移；而跨没跨过午夜由精确时刻决定，先取整再判断会在边界翻车。
+ * 判定（`dayOffset` / `isLateZi` / `branch`）一律用**未取整**的校正量：跨没跨过午夜由精确
+ * 时刻决定，先取整再判断会在边界翻车。
  *
- * ⚠️ 均时差依赖具体日期，缺了会静默算出 `NaN` —— 宁可当场失败，也不产出错时辰。
+ * ⚠️ 均时差依赖具体日期，缺了会静默算出 `NaN` —— 宁可当场失败，也不产出错时辰
+ *    （完整论证见 docs/code/cli-birth.md）。
  */
 export function calcTrueSolar(
 	clockHour: number,
@@ -142,11 +143,10 @@ export function calcTrueSolar(
  * 中国夏令时的六年区间表。
  *
  * @remarks
- * 来源以 IANA tzdata（`Asia/Shanghai`，Rule PRC）为准 —— 起为「4 月 11 日及之后的
- * 第一个周日 02:00」，止为「9 月 11 日及之后的第一个周日 02:00」；1986 年因通知
- * 较晚特例从 5 月 4 日开始。百科类来源在 1988 年起日上与 tzdata 有出入
- * （04-10 vs 04-17），以 tzdata 为准（操作系统与排盘软件链的事实基准）。
- * 表驱动而非动态算规则：首年特例让规则计算必须带分支，直接写六年更直白。
+ * 来源以 IANA tzdata（`Asia/Shanghai`，Rule PRC）为准 —— 百科类来源在 1988 年起日上与
+ * tzdata 有出入（04-10 vs 04-17），以 tzdata 为准（操作系统与排盘软件链的事实基准）。
+ * 表驱动而非动态算规则：1986 年的首年特例让规则计算必须带分支，直接写六年更直白
+ * （起止规则与特例见 docs/code/cli-birth.md）。
  */
 const CHINA_DST_YEARS: ReadonlyArray<{
 	year: number;
@@ -177,9 +177,8 @@ const DST_BOUNDARY_MIN = 2 * 60;
  * @returns `true` 表示该钟表时刻按夏令时口径读数，排盘前应回拨 60 分
  *
  * @remarks
- * 起止日**当天**都参与判定（区间含首尾）：起始日 02:00 起钟表被拨快（更早的
- * 钟表读数仍是标准时间，不回拨）；结束日 02:00 起已拨回（更早的读数按拨回前
- * 口径保守视为夏令时 —— 01:00–01:59 物理上出现两次，取第一次）。
+ * 起止日**当天**都参与判定（区间含首尾），各自再按 02:00 切换时刻细分；结束日
+ * 01:00–01:59 物理上出现两次，取第一次。
  * `--branch` 直给时辰支的路径不调用本函数 —— 那条路的钟表换算是用户的责任。
  */
 export function isChinaDstClock(
@@ -216,8 +215,8 @@ export function isChinaDstClock(
  * @returns 偏移后的 `{ year, month, day }`（月份已归一为 1–12）
  *
  * @remarks
- * 用 `Date.UTC` 做日历运算，而不是 `day ± 86400000` —— 后者跨月、跨年、闰年都要自己判，
- * 且一旦掺进本地时区就会在夏令时切换日出错。UTC 没有夏令时，日期进退交给它算最稳。
+ * 用 `Date.UTC` 做日历运算，而不是 `day ± 86400000` —— 后者跨月 / 跨年 / 闰年都要自己判，
+ * 且掺进本地时区会在夏令时切换日出错。UTC 没有夏令时，日期进退交给它算最稳。
  */
 export function shiftDate(
 	year: number,
@@ -244,10 +243,8 @@ const stripSuffix = (s: string) => String(s).trim().replace(ADMIN_SUFFIX, "");
  * @returns 命中结果；未收录（或输入为空）时返回 `null`
  *
  * @remarks
- * 依次尝试：原名精确 → 去行政后缀精确 → 双向包含（`c.name.includes(bare) || bare.includes(c.name)`）。
- *
- * 双向包含命中多个时**取最短的城市名**（最短名最贴近用户所写），并将同长度的其余候选记进
- * `ambiguous` 提醒用户确认。
+ * 依次尝试：原名精确 → 去行政后缀精确 → 双向包含。命中多个时**取最短的城市名**（最短名
+ * 最贴近用户所写），同长度的其余候选记进 `ambiguous` 提醒确认（见 docs/code/cli-birth.md）。
  */
 export function findLongitude(cityName: string): LongitudeHit | null {
 	const raw = String(cityName).trim();
@@ -295,22 +292,14 @@ export function findLongitude(cityName: string): LongitudeHit | null {
  *   时辰缺失或非法，以及 `--lunar` 与 `--date` 同用、`--late-zi` 未配合 `--time`
  *
  * @remarks
- * 日期（三选一）：
- * - `--date YYYY-MM-DD` 公历生日
- * - `--lunar YYYY-MM-DD` 农历生日（自动换算成公历，配合 `--leap` 表示闰月）
- * - `--year` / `--month` / `--day` 公历生日（分写）
- *
- * 时辰（二选一）：
- * - `--time HH:MM` 配合 `--lng` / `--city` / `--province` → 走 {@link calcTrueSolar} 换算真太阳时
- * - `--branch 0-12` → 直接指定时辰支（0=子 … 11=亥；12=晚子时）
- * - `--late-zi` 配合 `--time`，把 23:00–23:59 改按「晚子时算次日」排
- * - `--eot` 配合 `--time`，真太阳时额外计入均时差
- *
- * 出生地（`--lng` 优先，其次 `--city` / `--province`，都没有则按东经 120°）与性别护栏的
- * 「宁可启动失败，也不静默产出错盘」立场，见各自的块内注释。
+ * 日期（二选一）：`--date YYYY-MM-DD` 公历 / `--lunar YYYY-MM-DD` 农历（配 `--leap` 表闰月）。
+ * 时辰（二选一）：`--time HH:MM`（配 `--lng` / `--city` / `--province` 走 {@link calcTrueSolar}）
+ * / `--branch 0-12`（12 = 晚子时）；`--late-zi` 与 `--eot` 均配 `--time`。
+ * 出生地 `--lng` 优先，其次 `--city` / `--province`，都没有则按东经 120°。
  *
  * ⚠️ 真太阳时跨过午夜时，此处会就地用 {@link shiftDate} 调整 `year` / `month` / `day` 并记进
  * `note` —— 日期是单点流入 `info` 的，改在这里，下游（农历、排盘、合盘、流年）自动跟随。
+ *    各项护栏（round-trip / 性别 / 晚子时误用）的立场见 docs/code/cli-birth.md。
  */
 export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	// `CliArgs` 的键是 camelCase，而这里的 `k` 按声明表的 kebab 写（如 `"late-zi"`），
@@ -379,12 +368,10 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		if (sm < 1 || sm > 12) {
 			throw new Error(`日期不存在：${solarStr}（月份应为 1-12，收到 ${sm}）`);
 		}
-		// 日历真值 round-trip 校验：宽松格式（1990-5-15）先归一再校验。JS Date 会把
-		// 2011-02-30 静默归一化为 03-02（Date.UTC 同样），直接下传就是一张「标题印着
-		// 02-30、实际排 03-02」的错盘（--json 的 birthInfo.day 与 lunarInfo 更会自相矛盾）。
-		// 与农历路径的回环校验同一立场：反查必须原样回来，否则宁可报错也不产出错盘。
-		// 注：lunar-typescript 的 Solar 不做归一化（fromYmd(2011,2,30) 原样吞下），
-		// round-trip 只能用 JS Date 反查。
+		// 日历真值 round-trip 校验：JS Date 会把 2011-02-30 静默归一化为 03-02，直接下传
+		// 就是一张「标题印着 02-30、实际排 03-02」的错盘 —— 与农历路径同一立场：反查必须
+		// 原样回来。注：lunar-typescript 的 Solar 不做归一化，故只能用 JS Date 反查
+		// （详见 docs/code/cli-birth.md）。
 		const probe = new Date(Date.UTC(sy, sm - 1, sd));
 		// Date 对 0-99 的年份有「+1900」的遗留映射，故年份只在 ≥100 时参与原样反查；
 		// 月/日的滚动（02-30→03-02、13-01→次年 01-01）不受该映射影响，必被下面的比较拦下。
@@ -432,8 +419,8 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 				lngNote = `「${cityRaw}」→ 东经 ${found.longitude}°`;
 			}
 		} else {
-			// 城市名未命中时的省名回退（spec §1.2 裸省名边界）：「山东」「内蒙古」按省会计
-			//（与 --province 同一实现）。--city 旗标路径同样受益（原先直接报未收录）。
+			// 城市名未命中时的省名回退（裸省名边界）：「山东」「内蒙古」按省会计，与
+			// --province 同一实现 —— --city 旗标路径同样受益（原先直接报未收录）。
 			const prov = PROVINCES.find(x => x.name === cityRaw || x.name.startsWith(cityRaw));
 			if (prov) {
 				longitude = prov.cities[0]?.longitude ?? 120;
@@ -465,9 +452,9 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	// 23:00–23:59 出生 → 早/晚子时两口径会排出不同的盘，此标记用于上层给出提醒
 	let lateZiCandidate = false;
 
-	// --late-zi 只对 --time 有意义：--branch 直接指定时辰（晚子时就是 --branch 12），
-	// 与之同用属于参数误用 —— 当场报错，而不是静默忽略（原先的校验放在时辰解析之后，
-	// 且条件含「两者皆缺」，而那时缺时辰早就在上方抛错 —— 实际不可达，等于没校验）。
+	// --late-zi 只对 --time 有意义（--branch 直接指定时辰，晚子时就是 --branch 12）：
+	// 与之同用属于参数误用 —— 当场报错，而不是静默忽略（旧校验位置实际不可达，等于没校验，
+	// 见 docs/code/cli-birth.md）。
 	if (wantLateZi && g("time") === undefined) {
 		throw new Error("--late-zi 需配合 --time 使用；直接指定时辰时，晚子时请用 --branch 12");
 	}
@@ -504,9 +491,9 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		});
 		lateZiCandidate = t.isLateZi;
 
-		// 校正把时刻推出当天时，日期必须跟着走 —— 否则 (日, 时) 这个组合指向的不是出生时刻。
-		// 真太阳时是一条连续时间轴，日期与时辰都得取自它（缘由见 calcTrueSolar 的 dayOffset）。
-		// 日期是单点流入 info 的，改这里，下游（农历、排盘、合盘、流年）自动跟随。
+		// 校正把时刻推出当天时，日期必须跟着走 —— 否则 (日, 时) 指向的不是出生时刻。
+		// 日期是单点流入 info 的，改这里，下游（农历、排盘、合盘、流年）自动跟随
+		//（连续时间轴的论证见 docs/code/cli-birth.md）。
 		let dayShiftText = "";
 		if (t.dayOffset !== 0) {
 			const shifted = shiftDate(year, month, day, t.dayOffset);
@@ -546,11 +533,10 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		throw new Error("缺少出生时辰：需 --time HH:MM 或 --branch 0-12");
 	}
 
-	// 性别决定大限顺逆：同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁）。
-	// 缺失或非法若被静默兜底成 male，用户拿到的是一张没有任何异常信号的错盘，
-	// 故按「宁可启动失败，也不静默产出错盘」处理：一律报错。
-	// （校验位置在时辰之后：缺项报错保持「日期 → 时辰 → 性别」的自然顺序——
-	//   只给日期时先报缺时辰，而不是跳过时辰直接报缺性别。）
+	// 性别决定大限顺逆（同一张盘男女的大限可差 80 年）：缺失或非法若被静默兜底成 male，
+	// 用户拿到的是一张没有任何异常信号的错盘，故一律报错。
+	// （校验位置在时辰之后：缺项报错保持「日期 → 时辰 → 性别」的自然顺序。
+	//   完整立场见 docs/code/cli-birth.md。）
 	const genderRaw = g("gender");
 	if (genderRaw === undefined) {
 		throw new Error(
@@ -585,7 +571,6 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 }
 
 // ─── 公开面 re-export ────────────────────────────────────────────────────────
-// 拆分前从本模块导出的 4 个名字，拆分后**逐名仍可从这里 import**。
-// `./birth-info-defs` 是它们的实际归属地，此处只做转发，调用方一行不用改。
-// 这 4 个名字本文件的实现也要用，故上方已 import，这里再 export 一次。
+// 拆分前从本模块导出的 4 个名字，拆分后**逐名仍可从这里 import**（实际住在
+// `./birth-info-defs`，此处只做转发，调用方一行不用改）。
 export type { BirthInfoResult, LongitudeHit, TrueSolarOptions, TrueSolarResult };

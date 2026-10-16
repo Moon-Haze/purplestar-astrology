@@ -1,14 +1,12 @@
 /**
  * dispatch.ts —— argv → { code, out, err, outFile } 的分发协议（候选 1）。
  *
- * 唯一真相源：未知命令文案、--help 拦截位置、错误前缀、参数解析 → 执行次序。
- * 此前这条链有 6 份独立实现（purple-star main / selftest call / corpus asserts /
- * synastry asserts / cli-samples / cli.test），未知命令文案 5 种变体 —— 本模块收拢后，
- * 各调用点退化为同一 seam 上的 adapter（写 stderr / 收进 Assertion / 渲染样例 / 断言）。
+ * 唯一真相源：未知命令文案、--help 拦截位置、错误前缀、参数解析 → 执行次序（此前这条链
+ * 有 6 份独立实现、未知命令文案 5 种变体）。
  *
- * ⚠️ 本模块**不写盘、不 print、不 exit**：副作用全部归宿主（purple-star 的 main），
- * 进程内测试（selftest）与子进程真链路（guard 冒烟）因此消费同一 seam。
- * `--out` 落盘也归宿主：dispatch 只把路径带出来（`outFile`），不碰文件系统。
+ * ⚠️ 本模块**不写盘、不 print、不 exit**：副作用全部归宿主，进程内测试与子进程真链路
+ *    因此消费同一 seam（`--out` 只把路径带出来，不碰文件系统）。
+ *    六份实现的历史与 `--help` 拦截位置的接口承诺见 docs/code/cli-chart.md。
  */
 import type { CliArgs, CliContext } from "../args";
 
@@ -82,7 +80,7 @@ export function unknownCommandMessage(cmd: string, available: readonly string[])
  *
  * @remarks
  * dispatch 的执行 catch 与宿主的副作用 catch（--out 落盘）共用 —— 前缀真相源一处，
- * 否则「错误：」会在宿主里再抄一份。
+ * 否则「错误：」会在宿主里再抄一份（见 docs/code/cli-chart.md）。
  */
 export function formatError(err: unknown): string {
 	return `错误：${err instanceof Error ? err.message : String(err)}`;
@@ -92,13 +90,11 @@ export function formatError(err: unknown): string {
  * 全链分发：help 拦截 → 查命令表 → parseArgs → 执行 → out 路径记录 → 错误包装。
  *
  * @remarks
- * `--help` / `-h` 出现在**任何位置**都打印 help，包括 `astrology --help`。这是刻意的：
- * `--help` 不在参数声明表里，放它走到 parseArgs 只会得到一句「未知参数 --help」，
- * 而用户此刻想要的显然是用法。判定提前到分发之前，parseArgs 因此永远见不到它 ——
- * 判定顺序是本模块的接口承诺，由 selftest 的 runDispatchProbe 钉住。
+ * `--help` / `-h` 出现在**任何位置**都打印 help（含 `astrology --help`）：它不在参数声明表
+ * 里，放它走到 parseArgs 只会得到「未知参数 --help」。判定提前到分发之前，parseArgs 因此
+ * 永远见不到它 —— **判定顺序是本模块的接口承诺**，由 selftest 的 runDispatchProbe 钉住。
  *
- * 未知命令与命令内部抛出的错误都返回 code=1（只带 err.message，不带栈），
- * 打印与退出归宿主。
+ * 未知命令与命令内部抛出的错误都返回 code=1（只带 err.message，不带栈）。
  */
 export async function dispatch(
 	argv: string[],

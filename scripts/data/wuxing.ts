@@ -1,7 +1,10 @@
 /**
- * 五行数据 —— 纳音五行、五行局局数与局名。
+ * 五行数据 —— 纳音五行、五行局局数与局名（2026-10-11 从 `constants.ts` 拆出，逐字迁移）。
  *
- * 2026-10-11 从 `constants.ts` 拆出，内容逐字迁移，仅改变物理位置。
+ * ⚠️ `ELEMENT_TO_JU` 与 `JU_NAMES` 的**状态不对等是刻意的**（前者已被消费、后者仅为
+ *    数据留存），见到这处不对称不必"顺手补齐"。
+ *
+ * 完整口径见 docs/code/data-tables.md。
  *
  * @packageDocumentation
  */
@@ -72,10 +75,8 @@ export const ELEMENT_TO_JU: Record<string, number> = {
  * 五行局局数 → 局名（如 2 → 「水二局」）。
  *
  * ⚠️ 当前无消费者：运行时展示的是 iztro 的原文 `ZiweiChart.fiveElementsClassName`，不经本表。
- * 它与 {@link ELEMENT_TO_JU} 成对（五行 ↔ 局数 ↔ 局名），仅为数据留存。
- *
- * 注意本表与 {@link ELEMENT_TO_JU} 的**状态不对等**：后者已被 `parseWuxingJu` 消费，
- * 本表仍无消费者，是刻意的数据留存 —— 见到这处不对称不必"顺手补齐"。
+ * 它与 {@link ELEMENT_TO_JU} 成对（五行 ↔ 局数 ↔ 局名），仅为数据留存 ——
+ * 两表的状态不对等是刻意的，不必"顺手补齐"。
  */
 export const JU_NAMES: Record<number, string> = {
 	2: "水二局",

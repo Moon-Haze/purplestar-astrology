@@ -10,6 +10,8 @@
  * - `citationRoots[].checklist` 直接 import 内核的 `ANNOTATIONS`（全局唯一核对表），
  *   **不**复制一份——避免核对表副本漂移；
  * - `scanRoot` 解析到本 skill 的 `scripts/`，与 `citations.test.ts` 原扫根完全一致，覆盖零退化。
+ *
+ * 三条「引用而非迁移」的完整论证（守住 0C 冻结红线），见 docs/code/school.md。
  */
 
 import { dirname, resolve } from "node:path";

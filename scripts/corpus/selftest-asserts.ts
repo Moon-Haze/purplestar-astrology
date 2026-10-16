@@ -11,6 +11,12 @@
  * 与 `cli/selftest/index.ts` 的接口：导出 {@link asserts}（收主 selftest 注入的
  * {@link SelftestDeps} —— call / runCli / ctx / ok 与排盘段同一套，不再本地手搓），
  * 逐条结果由主 selftest 汇总（报告分三段：排盘 / 古籍 / 合盘）。
+ *
+ * ⚠️ 数据源判据是**逐部点名**（不是「数组长度等于 3」）；命令表与作用域键集走**动态
+ *    import** 断「commands → selftest → 本文件」静态环，取代旧的读源码做正则匹配。
+ *
+ * 合并引擎（cac 底座）与 classics 原自研解析器的差异、断言组接口，见
+ * docs/code/corpus.md。
  */
 
 import { readFileSync } from "node:fs";

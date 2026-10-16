@@ -1,11 +1,11 @@
 /**
  * knowledge 的 **tianji 域**：天纪判语检索。
  *
- * 由 `knowledge --source tianji` 进入。数据（`corpus/data/tianji.ts`，392KB、1125 条）
- * 在函数体内动态 import 懒加载 —— 本模块被 `index.ts` 静态 import，不能让 CLI 主链路
- * 吃这份语料。
+ * 数据（`corpus/data/tianji.ts`，392KB、1125 条）在函数体内动态 import 懒加载 —— 本模块被
+ * `index.ts` 静态 import，不能让 CLI 主链路吃这份语料。
  *
- * 每条判语带 [part §section @时:分:秒] 溯源与 B 站回放直链；语料 CC BY-NC-SA 4.0。
+ * 每条判语带 `[part §section @时:分:秒]` 溯源与 B 站回放直链；语料 CC BY-NC-SA 4.0
+ * （见 docs/code/cli-commands.md）。
  */
 
 import type { CliArgs } from "../args";

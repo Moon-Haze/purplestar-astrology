@@ -1,12 +1,10 @@
 /**
- * 分析数据库的数据层 —— 类型、映射表与论断文案。
+ * 分析数据库的数据层 —— 类型、映射表与论断文案（「是什么」，不含「怎么算」）。
  *
- * 本模块只放「是什么」，不放「怎么算」：主题键与标签、星曜简述、宫位与脏腑的对应、
- * 紫微诸星安放表、魁钺贵人表、十四主星以外的星曜落宫文案、主题与宫位的对应关系、
- * topic 报告的展示映射与【综合建议】文案，以及 STAR_CONTENT_MAP（十四主星 × 12 宫语境的
- * 论断文案）。推算逻辑在 `./index`。
+ * ⚠️ 依赖：无（内部不引用 BRANCHES / STEMS，故本模块可独立成型、可单测）——
+ *    这是被人依赖的约束，不要为一张映射表破例引类型。
  *
- * 依赖：无（内部不引用 BRANCHES / STEMS，故本模块可独立成型）
+ * 收录内容清单与主题注册表的两个消费者、单一真相源收编史，见 docs/code/analysis.md。
  */
 
 // ─── 主星完整内容库（各宫位语境）───────────────────────────────────────────
@@ -890,21 +888,13 @@ export const STAR_CONTENT_MAP: Record<string, StarContent> = {
 /**
  * 主题键 —— 运行时**主题注册表**的唯一定义处。{@link TopicKey} 由它推出。
  *
- * @remarks
- * 此前内核与 `tools/db/db.ts` 各写一份，只靠注释提醒不得漂移；合到一处后「同名同序」
- * 由类型系统保证 —— `tools/db/db.ts` 只转出该常量。
- *
- * ⚠️ **它有两个消费者，角色不同，Phase 4 起显式分开**（此前两者被混为一谈，
- * 加一个主题会让数据集查询整体报 `column not found`）：
- *
- * 1. **运行时注册表**（本数组全部元素）—— 主题元数据派生表、CLI `--topic` 分发、
- *    oracle 域主题清单、测试断言。新增主题在此加一项即可。
- * 2. **数据集物理列**（只有 {@link STORAGE_TOPIC_KEYS}）—— `topics` 表是**每主题一列**，
- *    而**别名视图主题无独立列**（见 {@link TOPIC_CONTENT_SOURCE}）。所有拼 SQL 遍历
- *    列的地方必须走 `STORAGE_TOPIC_KEYS`，不能走本数组。
- *
+ * ⚠️ **它有两个消费者，角色不同，不能混用**：运行时语义（元数据派生表、CLI `--topic`
+ *    分发、测试断言）用本数组；数据集物理列语义必须走 {@link STORAGE_TOPIC_KEYS} ——
+ *    后者含无独立列的别名视图主题，用错会让拼 SQL 的地方报 `column not found`。
  * ⚠️ 对 {@link STORAGE_TOPIC_KEYS} 而言，**增删顺序等于改存储格式**：已入库的 parquet
- * 会与新代码的列对不上，要改必须同时重建数据集（`npm run build:db`）。
+ *    会与新代码的列对不上，要改必须同时重建数据集（`npm run build:db`）。
+ *
+ * 两消费者分离史与单一真相源收编过程，见 docs/code/analysis.md。
  */
 export const TOPIC_KEYS = [
 	"overview",
@@ -931,12 +921,8 @@ export type TopicKey = (typeof TOPIC_KEYS)[number];
 // keyPalaces / suggestions + `SUMMARY_TOPICS`）统一收进 `TOPIC_DEFS`，下方 8 张具名表
 // 改为由它派生。**加一个主题 = 只在 TOPIC_DEFS 加一个条目**（断语内容仍走
 // `corpus/data/manual/` 生成管线 + `LOADERS` 注册表）。
-//
-// ⚠️ 与执行计划 §4 的偏差：计划假设 `analysis/data.ts` 存在 `switch(topic)` 分支、可
-// 抽成 13 个 `TopicProvider` 文件；实际代码早已数据驱动（`getTopicAnalysis` 是统一管线
-// + 查表），`corpus/data/manual/index.ts` 的 `LOADERS` 已是内容注册表。故 Phase 2 不造
-// 13 个 case 文件（那是纯碎片、且会把主题定义拆到两处），改为把 8 张平行表收为单一真相源
-// —— 这才是真正的扩展摩擦点。`TopicProvider` 之名保留为 `TopicDef` 的类型别名。
+// ⚠️ 与执行计划 §4 的偏差及「为何不造 13 个 TopicProvider 文件」的论证，见
+//    docs/code/analysis.md。
 
 /** 年干四化·全局关键宫位解读的单条。 */
 export interface KeyPalace {
@@ -1334,14 +1320,12 @@ export const SUMMARY_TOPICS: ReadonlySet<TopicKey> = new Set(
  * 主题 → 其断语内容实际取自哪个主题（按 `contentKey` 归并，取**首个**声明者为内容源）。
  *
  * @remarks
- * 并非每个注册主题都自带新内容：`contentKey` 就是**内容复用**的声明（`study` 复用
- * `career` 的 `guanLu` —— 学业在紫微属官禄/文昌体系，主星内容本就同源）。
+ * `contentKey` 就是**内容复用**的声明（`study` 复用 `career` 的 `guanLu`）——
  * 复用即同一份内容，故它**没有独立的存储列**，也不该有。
  *
- * 此前这个区分不存在：`TOPIC_KEYS` 同时当「注册表」与「列清单」用，加一个别名视图
- * 主题会让所有拼 SQL 的地方（数据集检索宏、导出、校验）报 `column not found`。
- * 现在两个角色各自有常量（{@link STORAGE_TOPIC_KEYS} 是列侧），别名视图与
- * 「独立新内容」两种扩展形态被显式区分。
+ * ⚠️ 加一个别名视图主题曾会让所有拼 SQL 的地方报 `column not found`（`TOPIC_KEYS`
+ *    同时当过「注册表」与「列清单」）；现在两个角色各自有常量，{@link STORAGE_TOPIC_KEYS}
+ *    是列侧。完整论证见 docs/code/analysis.md。
  */
 export const TOPIC_CONTENT_SOURCE: Record<TopicKey, TopicKey> = (() => {
 	const firstByContentKey = new Map<string, TopicKey>();
@@ -1360,6 +1344,9 @@ export const TOPIC_CONTENT_SOURCE: Record<TopicKey, TopicKey> = (() => {
  * ⚠️ 所有拼 SQL、按列取值的地方必须用它，**不能**用 {@link TOPIC_KEYS}：
  * 后者含无独立列的别名视图主题（如 `study`），用它会让查询报 `column not found`。
  * 反之，运行时注册表语义（主题清单、CLI 分发）用 {@link TOPIC_KEYS}。
+ *
+ * ⚠️ **增删顺序等于改存储格式**：已入库的 parquet 会与新代码的列对不上，
+ * 要改必须同时重建数据集（`npm run build:db`）。
  */
 export const STORAGE_TOPIC_KEYS: readonly TopicKey[] = [
 	...new Set(TOPIC_KEYS.map(k => TOPIC_CONTENT_SOURCE[k])),
@@ -1754,12 +1741,13 @@ export interface AnalysisOptions {
 
 // ─── topic 报告：展示映射与综合建议 ──────────────────────────────────────────
 // 以下常量原为 `./index` 的 `getTopicAnalysis` **函数体内联字面量** —— 一次调用重建
-// 一份。其中 `SIHUA_SYMBOL` 与 `SIHUA_CHAR_TO_KEY` 更各有一处**逐字相同的副本**
+// 一份，其中 `SIHUA_SYMBOL` 与 `SIHUA_CHAR_TO_KEY` 更各有一处**逐字相同的副本**
 // （大限段与流年段各写一遍），改了其中一处不会有任何东西发现。按本模块「类型 + 映射表
 // + 论断文案」的定位收归于此，`./index` 只留推算。
 //
 // ⚠️ 四化键一律写成**字面量联合**而非引 `../types` 的 `Mutagen`：本模块开篇声明的
 // 「依赖：无」是条被人依赖的约束（可独立成型、可单测），为一张映射表破例不值当。
+// 收归过程见 docs/code/analysis.md。
 
 /** 四化字 → 展示用色点符号表。本模块私有，对外只经 {@link mutagenSymbol}。 */
 const SIHUA_SYMBOL: Record<string, string> = {

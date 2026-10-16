@@ -1,10 +1,9 @@
 /**
- * knowledge 的 **oracle 域**：断语手册检索。
+ * knowledge 的 **oracle 域**：断语手册检索（原独立 `oracle` 命令已并入，旧命令名不保留）。
  *
- * 由 `knowledge --source oracle` 进入（原独立 `oracle` 命令已并入，旧命令名不保留）。
  * 数据（`corpus/data/manual/`，4.4MB 分类断语）在函数体内动态 import 懒加载。
- *
- * 三形态：裸（列 13 主题）/ 主题（14 星概览）/ 主题+星（分类断语全展开）。
+ * 三形态：裸（列 13 主题）/ 主题（14 星概览）/ 主题+星（分类断语全展开）
+ * —— 见 docs/code/cli-commands.md。
  */
 
 import type { CliArgs } from "../args";

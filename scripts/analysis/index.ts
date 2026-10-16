@@ -1,52 +1,13 @@
 /**
- * 紫微斗数分析数据库 v3 — 倪海厦《天纪》正统口径
+ * 紫微斗数分析数据库 v3 — 倪海厦《天纪》正统口径：主题论断库装配点。
  *
- * 来源：自 reference/ziwei-samples-toolkit/lib/db-analysis.ts 拷入本仓内核。
- * 拷入时做了三处口径适配（其余逐字保留）：
- *   1. TOPIC_PALACE_NAME 改用**本项目宫名口径**（`Palace.name` 带「宫」字、
- *      「仆役」→「交友宫」，见 constants.ts 的 IZTRO_TO_PROJECT_PALACE）——
- *      本目录按宫名**严格等值**找宫（`palace-query.ts` 的 `getPalaceStars` 等），
- *      旧口径会全部失配并静默落到「无法找到 xx」的兜底文案。
- *   2. detectGeJu 内 getPalace 加「去宫字」归一化 —— 内容区散布着旧口径名
- *      （如 '迁移'），归一化兜住它们，逻辑零改动。
- *      ⚠️ 格局判定整体住在 `../patterns/`，而该归一化只服务于
- *      **按宫名找宫**这条旧路径；新判定走地支算术（`../palace-relations` 的偏移 +
- *      按 branch 取宫），不再按宫名找宫，故它连同那个 `getPalace` 一并消失。
- *      本目录只剩第 1 条仍在生效。
- *   3. 删除了未使用的 getYearStemIndex 导入（那是公历取模口径，仅流年可用；
- *      生年四化必须用 chart.lunarInfo.yearStem，见 sihua.ts 的口径说明）。
- *      ⚠️ 该导入后来因「四点五、流年」需要年干而引回，现只在 `views/yearly.ts`；
- *      用途仍是那条唯一合法用途（流年干），生年四化依旧走 chart.lunarInfo.yearStem。
+ * ⚠️ 知识来源分四级（verified / traditional / methodology / suspect），「倪师…说」引句
+ *    部分为传统口诀的风格化转述，CLI 在输出末尾固定披露 —— 登记表在 `./grades`。
+ * ⚠️ 各 view **只读 ctx、只返回自己的行**：不互相调用、不写回 ctx；唯一的跨节状态
+ *    `mutagenInSanFang` 已提升进 `./context`。
  *
- * ⚠️ 知识来源分级：
- *   - [verified]    倪师《天纪》讲稿原话（天纪 02-13 集已核对）
- *   - [traditional] 紫微斗数传统口诀（《紫微斗数全书》等古书，非倪师独创）
- *   - [methodology] 倪师体系的方法论概念（非原话摘录）
- *   - [suspect]     来源存疑，疑似其他流派或后人整理
- *
- *   以「倪海厦/倪师说」开头的引号句，部分为 traditional 口诀的风格化转述，不一定是
- *   倪师《天纪》逐字原话。CLI 的 topic 命令在输出末尾固定披露此点。
- *   引文主体在 `./data` 的 STAR_CONTENT_MAP，余下零星几处散在 `views/` 各节
- *   （如 `views/health.ts` 的疾厄论断）。
- *
- * 架构：
- * - 十四主星各自的详细命理内容（12 宫语境）
- * - 四化（禄权科忌）各自的语义补充
- * - getTopicAnalysis：动态推算三方四正、本命四化会照、大限、流年、流月
- *
- * ## 本目录的文件分工
- *
- * 拆分的分界线是**「算」与「写」**：状态算一次（`context.ts`），文案各节自己写（`views/`）。
- *
- *   index.ts          装配点：getTopicAnalysis 编排层 + 公开面 re-export
- *   report.ts         第二编排层：getTopicReport —— --report 的 Markdown 形态
- *   context.ts        跨节共享状态的**唯一**产出点（`makeContext`）
- *   palace-query.ts   只读查询：按宫名取宫 / 取三方四正 / 渲染一行星曜
- *   lookups.ts        文案查表 + 性别过滤 + 格局投影
- *   views/            十一个小节，每节一个 `renderXxx(ctx) => string[]`
- *
- * ⚠️ 各 view **只读 ctx、只返回自己的行**：不互相调用、不写回 ctx。唯一的跨节状态
- * （`mutagenInSanFang`）已提升进 `context.ts`，理由见该文件头部。
+ * 来源与三处口径适配、架构与文件分工、公开面 re-export 理由，见
+ * docs/code/analysis.md。
  *
  * @packageDocumentation
  */
@@ -93,14 +54,11 @@ import {
  * @returns 报告全文（已按出生性别过滤掉无关性别的句子）
  *
  * @remarks
- * 本函数是**编排层**：建一次上下文，按小节序把十一个 `renderXxx` 的行首尾相接，
- * 最后整体过一遍性别过滤。各节的实现与口径说明在 `views/` 各文件里。
+ * 本函数是**编排层**：建一次上下文，按小节序把十一个 `renderXxx` 的行首尾相接。
  *
- * 两点不要动：
- *
- * 1. **下面的拼接顺序即报告的小节序**（一 → 六），调整顺序会改变输出
- * 2. 性别过滤作用在**拼接后的整篇文本**上，而不是逐节 —— 它的规则之一是删除
- *    「；女命…」这类**跨行内子句**，逐节过滤会把跨节边界的句子漏掉
+ * ⚠️ 两点不要动：① 下面的拼接顺序即报告小节序，调整会改变输出；② 性别过滤作用在
+ *    **整篇**文本上而非逐节（跨行内子句，逐节会漏掉跨节边界的句子）——
+ *    理由见 docs/code/analysis.md。
  */
 export function getTopicAnalysis(
 	chart: ZiweiChart,
@@ -131,19 +89,14 @@ export function getTopicAnalysis(
 }
 
 // ─── 公开面 re-export ────────────────────────────────────────────────────────
-// 本公开面现导出 7 个值：拆分前即有的 4 个转发（TOPIC_LABEL / TOPIC_PALACE_NAME /
+// 本公开面导出 7 个值：拆分前即有的 4 个转发（TOPIC_LABEL / TOPIC_PALACE_NAME /
 // getTopicReport / getTopicReportMeta）+ filterGenderContent（候选 7 新增）
 // + TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
-// 前 4 个 `./data` 是实际归属地，此处只做转发，调用方一行不用改；
-// 它们与 filterGenderContent 本文件的实现都要用，故上方已 import，这里再 export 一次。
-// `./report` 的两个名字（--report 全盘报告的编排层）同走这张公开面 ——
-// CLI 不直插 analysis 内部模块。
-// `filterGenderContent`（候选 7）：本文件与 ./report 两处调用都保持 import
-// `./lookups`（避免 index ↔ report 成环），上公开面只为**外部可直测** ——
-// selftest 的性别过滤断言必须经这里 import，直插 lookups 即断言失效。
-// TOPIC_KEYS / TOPIC_DEFS（Phase 4）：主题注册表的**单一真相源**（Phase 2 收编的 8 张平行表
-// 已由它派生）。上公开面是为插件自证 —— 新增主题只需在此表加一个条目，
-// 外部守卫（selftest / 测试）经这里即可断言「某主题已注册且可用」，不必直插 `./data` 内部布局。
+// ⚠️ filterGenderContent 上公开面**只为外部可直测**（selftest 的性别过滤断言必须经这里
+//    import，直插 lookups 即断言失效）；index ↔ report 两处调用都保持 import `./lookups`。
+// ⚠️ TOPIC_KEYS / TOPIC_DEFS 是主题注册表的**单一真相源**（Phase 2 收编的 8 张平行表
+//    已由它派生），新增主题只在此表加条目。
+// 逐项理由见 docs/code/analysis.md。
 export {
 	TOPIC_KEYS,
 	TOPIC_DEFS,

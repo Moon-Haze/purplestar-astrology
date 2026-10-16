@@ -1,13 +1,10 @@
 /**
  * 文案查表与两条过滤器 —— 把「星 × 宫 × 四化」翻成文案，另加性别过滤与格局投影。
  *
- * @remarks
- * 本文件与 `palace-query.ts` 同层，区别在于**它读的是 `./data` 的表**：
- * `getMutagenNote` 查四化语义、`getMinorStarNote` 查次星宫位文案、`detectGeJu` 取格局判词。
- * 都不产生输出行，被 `views/` 各节调用。
+ * ⚠️ 本文件读的是 `./data` 的表（四化语义 / 次星宫位文案 / 格局判词），不产生输出行；
+ *    `filterGenderContent` 是唯一不查表的，作用在 `index.ts` 末尾的**整篇成品文本**上。
  *
- * `filterGenderContent` 是唯一一个不查表的：它在 `index.ts` 的末尾对**整篇成品文本**
- * 做一次性别过滤，故不属任何单节。
+ * 与 `palace-query.ts` 的分层差别，见 docs/code/analysis.md。
  *
  * @packageDocumentation
  */
@@ -93,16 +90,9 @@ export function getMinorStarNote(starName: string, palaceName: string): string {
 
 /** 识别命盘中的重要格局 */
 export function detectGeJu(chart: ZiweiChart): { name: string; description: string }[] {
-	// 格局的**命中事实层 + 两套判词**如今都归 `patterns/`：
-	//   - 判定（唯一一处）：`detectPatterns`，82 个格局各有独立预言机盯着
-	//   - analyze 侧短判词 + 等级：`Pattern.description` / `Pattern.level`
-	//   - topic 侧倪师口吻长判词：`Pattern.topicDescription`
-	//
-		// 本函数只是**投影**：把填了长判词的命中挑出来，供 `overview` / `personality` 展示。
-		// **新增格局只要在 patterns/ 的识别器里填 `topicDescription`，这边自动就能展示**，
-		// 不会有「判定加了、判词忘了补、topic 静默不显示」的漏。
-		//
-		// 展示顺序**按 level 降序**（同级保持识别器注册序）。
+	// ⚠️ 本函数只是**投影**：判定与判词全归 `patterns/`（82 个格局各有独立预言机盯着），
+	//    这里把填了长判词的命中挑出来展示；**新增格局只要在识别器里填 `topicDescription`，
+	//    这边自动就能展示**。展示顺序按 level 降序（同级保持识别器注册序）。
 	return detectPatterns(chart)
 		.filter((p): p is Pattern & { topicDescription: string } => !!p.topicDescription)
 		.sort((a, b) => b.level - a.level)

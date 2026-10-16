@@ -22,6 +22,9 @@ import type { Book } from "../types";
  *
  * 「四化论」一章（`qs-5-2`）写明生年四化永远固定、倪师不主张北派飞星派的自化 /
  * 宫干飞化 / 来因宫 —— 与本项目「三合派」体系立场一致，可作解读时的原文依据。
+ *
+ * 三部古籍的 `wordCount` 口径（全书字数 ≠ 节选字数）与段落 id 前缀，见
+ * docs/code/corpus.md。
  */
 export const ziWeiQuanShu: Book = {
 	title: "紫微斗数全书",

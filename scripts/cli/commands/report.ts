@@ -1,11 +1,10 @@
 /**
  * `astrology --report` 的文档装配层：把 13 个主题的 Markdown 报告节拼成一份全盘报告。
  *
- * 内核侧（`analysis/report.ts` 的 getTopicReport）只管**单主题内容**；本文件管
- * 文档级的事：报告顺序（用户口径：财运在事业前、性格在感情后）、文档头（出生信息 /
- * 农历 / 全盘骨架 / 生年四化 / 格局 / 运限速览）、口径提示、经典出处的古籍检索，以及
- * 知识来源分级尾注。经典出处在本层查（`corpus` 是独立知识域、经 `knowledge` 命令出面，内核不反向依赖它），
- * 引文经 `options.citations` 递给内核逐节渲染。
+ * 内核侧（`analysis/report.ts` 的 getTopicReport）只管**单主题内容**；本文件管文档级的事：
+ * 报告顺序、文档头、口径提示、经典出处的古籍检索与知识来源分级尾注。
+ * ⚠️ 经典出处在本层查（`corpus` 是独立知识域、经 `knowledge` 命令出面，内核不反向依赖它），
+ *    引文经 `options.citations` 递给内核逐节渲染 —— 见 docs/code/cli-commands.md。
  */
 
 import type { BirthInfo, ZiweiChart } from "@/types";
@@ -23,8 +22,8 @@ import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua } from
 import type { CaliberBasis } from "../birth/birth-info-defs";
 
 /**
- * 报告的 13 个板块及顺序 —— 与 `TOPIC_KEYS` 的存储序不同（那份数序是 parquet 列序，
- * 动不得）：财运提到事业前、性格放在感情后，其余按「先核心五项、后十二宫顺次」。
+ * 报告的 13 个板块及顺序 —— 与 `TOPIC_KEYS` 的存储序不同（那份数序是 parquet 列序，动不得）：
+ * 财运提到事业前、性格放在感情后，其余按「先核心五项、后十二宫顺次」（见 docs/code/cli-commands.md）。
  */
 const REPORT_TOPICS: TopicKey[] = [
 	"overview",
@@ -46,12 +45,11 @@ const REPORT_TOPICS: TopicKey[] = [
 const CITATION_LIMIT = 3;
 
 /**
- * 查一个主题的经典出处：先在古籍里找该主题主宫的**宫位专章**（全书「十二宫论·X宫」
- * 只覆盖命/财帛/官禄/夫妻四宫），取其中含主星的段落；再按主星名全局检索补足。
+ * 查一个主题的经典出处：先找该主题主宫的**宫位专章**（全书「十二宫论·X宫」只覆盖命 /
+ * 财帛 / 官禄 / 夫妻四宫），取其中含主星的段落；再按主星名全局检索补足。
  *
  * @remarks
- * 引文只出自本仓古籍库（公版古籍、已入库的定本），不做任何改写拼接 —— 查不到就少给，
- * 不凑数。
+ * 引文只出自本仓古籍库（公版古籍、已入库的定本），不做任何改写拼接 —— 查不到就少给，不凑数。
  */
 function topicCitations(meta: {
 	palaceName: string;

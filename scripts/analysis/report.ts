@@ -1,23 +1,12 @@
 /**
- * 全盘报告编排层 —— 与 {@link ./index|getTopicAnalysis} 平级的第二编排器。
+ * 全盘报告编排层 —— 与 {@link ./index|getTopicAnalysis} 平级的第二编排器（Markdown 形态）。
  *
- * @remarks
- * `--topic` 的单主题报告是终端文本形态（小节用 `【】` 加粗标记）；`astrology --report`
- * 需要的是**Markdown 文档形态**，且小节流参照 html 版主题报告（总览 → 一句话定调 →
- * 核心论断 → 命盘推演 → 三方四正联动 → 四化路径分析 → 命盘依据 → 经典出处 →
- * 综合建议）。两者共用同一套叶子 view 与数据表，差异只在编排与排版 —— 故本模块与
- * `getTopicAnalysis` 一样**只编排、不算命**：建一次 {@link makeContext} 上下文，
- * 把各 `renderXxx` 的行按报告小节序拼接，最后整体过一遍性别过滤（理由同
- * `getTopicAnalysis` 的第 2 点：跨行内子句的删除只能作用在整篇文本上）。
+ * ⚠️ 本模块**只编排、不算命**：建一次 {@link makeContext} 上下文，把各 `renderXxx` 的行
+ *    按报告小节序拼接，最后整体过一遍性别过滤（跨行内子句只能作用在整篇文本上）。
+ * ⚠️ 「经典出处」引文由 CLI 层查古籍后从 `options.citations` 递入，本模块不引古籍库 ——
+ *    保持「排盘内核不依赖古籍域」的分层。
  *
- * 叶子 view 的行首带着自己的 `**【小节名】**` 头，报告里改用 Markdown 标题
- * （`### 三方四正联动`），故取用时经 {@link asMarkdownBlock} 装配 —— 剥掉**首个**
- * 匹配头，view 内部的子块头（如疾厄节的【星曜辅助】）转成 `####` 标题：Markdown
- * 文档里强调行不能充当标题，也靠它保证各标题前后有空行。
- *
- * 「经典出处」的引文主体在古籍库（`../../classics`，另一知识域），本模块不引它 ——
- * 由 CLI 层经 {@link getTopicReportMeta} 拿到主宫主星后自查古籍、把结果从
- * `options.citations` 递进来，保持「排盘内核不依赖古籍域」的分层。
+ * 剥头口径、报告小节流与 html 版两节省略的理由，见 docs/code/analysis.md。
  *
  * @packageDocumentation
  */
@@ -61,10 +50,11 @@ export type ReportOptions = AnalysisOptions & { citations?: ReportCitation[] };
  * 把叶子 view 输出装配成报告的 Markdown 块。
  *
  * @remarks
- * 剥掉**首个**头：跳过开头的空行，若第一行非空行匹配 `**【…】**` 形态则删去它与其后
- * 的一个空行；view 内部的子块头（同样形态但不在行首）转成 `####` 标题并补足前后空行
- * —— Markdown 文档里强调行不能当标题。空数组与无头输出按原行装配（后者说明上游
- * view 改了排版，报告标题会与它自带的头并存 —— 那是应当被看见的漂移）。
+ * 剥掉**首个** `**【…】**` 头，view 内部的子块头转成 `####` 标题（Markdown 文档里
+ * 强调行不能当标题）。
+ *
+ * ⚠️ 无头输出按原行装配：报告标题会与它自带的头并存 —— 那是应当被看见的漂移。
+ * 完整口径见 docs/code/analysis.md。
  */
 function asMarkdownBlock(lines: string[]): string[] {
 	let i = 0;
@@ -138,10 +128,11 @@ export function getTopicReportMeta(
  *   返回兜底提示 —— 与 `getTopicAnalysis` 同一提前返回口径
  *
  * @remarks
- * 小节序参照 html 版主题报告：定调（引语）→ 总览 → 核心论断 → 命盘推演 →
- * 三方四正联动 → 四化路径分析（含魁钺贵人）→ 当前大限 → 主题专属补充（疾厄取象 /
- * 性格深描）→ 命盘依据 → 经典出处 → 综合建议。html 版另有「主辅煞组合精细论断」
- * 「天纪溯源·时间码」两节，其数据不在本仓知识源内，不臆造、整体省略。
+ * 小节序参照 html 版主题报告（定调 → 总览 → 核心论断 → 命盘推演 → 三方四正联动 →
+ * 四化路径分析 → 当前大限 → 主题专属补充 → 命盘依据 → 经典出处 → 综合建议）。
+ *
+ * ⚠️ html 版另有「主辅煞组合精细论断」「天纪溯源·时间码」两节，其数据不在本仓知识源内，
+ *    不臆造、整体省略。完整小节流见 docs/code/analysis.md。
  */
 export function getTopicReport(
 	chart: ZiweiChart,

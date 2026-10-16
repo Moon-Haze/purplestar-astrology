@@ -1,10 +1,10 @@
 /**
  * 三、本命四化会照 —— 三方四正范围内落的本命四化。
  *
- * @remarks
- * 只负责**展示**：那份 `mutagenInSanFang` 由 `context.ts` 的 `makeContext()` 算好
- * （因为「三点五、年干四化」要拿它做去重集合，见 `context.ts` 文件头）。
- * 一条都没有时给一段中性判语，而不是留空。
+ * ⚠️ 本节只负责**展示**：`mutagenInSanFang` 由 `context.ts` 的 `makeContext()` 算好，
+ *    不要在节内另算（「三点五」要拿同一份做去重集合）。
+ *
+ * 一条都没有时给一段中性判语，而不是留空。完整口径见 docs/code/analysis.md。
  *
  * @packageDocumentation
  */

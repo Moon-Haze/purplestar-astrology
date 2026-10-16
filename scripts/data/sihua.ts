@@ -1,7 +1,10 @@
 /**
- * 四化与安星表 —— 生年四化、天魁天钺、禄存、天马。
+ * 四化与安星表 —— 生年四化、天魁天钺、禄存、天马（2026-10-11 从 `constants.ts` 拆出，逐字迁移）。
  *
- * 2026-10-11 从 `constants.ts` 拆出，内容逐字迁移，仅改变物理位置。
+ * ⚠️ 只有 {@link SI_HUA_TABLE} 真正参与链路（改它会改变**所有**四化落宫与格局命中）；
+ *    天魁天钺 / 禄存 / 天马三张表**均无消费者**（由 iztro 安星），仅为数据留存。
+ *
+ * 完整口径见 docs/code/data-tables.md。
  *
  * @packageDocumentation
  */
@@ -11,10 +14,10 @@
  *
  * ⚠️ 键是**年干**索引（0=甲 … 9=癸）。本表**不含**宫干四化、流年干四化、自化那种
  * 飞星派口径 —— 那些已主动下线（见仓库根 `CLAUDE.md` 的「体系口径」一节）。
+ * ⚠️ 改本表会改变**所有**四化落宫、进而改变格局命中，`npm test` 的语料回归盯着这条链路。
  *
- * 消费者：`sihua.ts` 的 `getMutagenByStem`（生年 / 流年 / 流月三层的公共出口），上承 `cli/commands/index.ts`
- * 的生年四化落宫与合盘四化分析。⚠️ 改本表会改变**所有**四化落宫、进而改变格局命中，
- * `npm test` 的语料回归盯着这条链路。
+ * 消费者（`getMutagenByStem` 三层公共出口 / 生年四化落宫 / 合盘四化分析）见
+ * docs/code/data-tables.md。
  */
 export const SI_HUA_TABLE: Record<number, [string, string, string, string]> = {
 	0: ["廉贞", "破军", "武曲", "太阳"], // 甲

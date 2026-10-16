@@ -16,3 +16,5 @@ export const oracleSource: KnowledgeSource = {
 		return (await import("@/cli/knowledge/oracle")).renderOracle(args);
 	},
 };
+
+// 四域包装的迁移史与懒加载纪律见 docs/code/knowledge.md。

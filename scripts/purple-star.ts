@@ -4,36 +4,15 @@
  *
  * 本文件只做四件事：**定位内核根 → 注册 TS 解析钩子 → 启动期内核自检 → 把命令分发出去**
  * （分发协议本体在 `cli/host/dispatch.ts`，此处只组装端口并执行副作用）。
- * 命令实现、渲染、出生信息解析、自检都**不在**这里，见 scripts/cli/：
+ * 命令实现、渲染、出生信息解析、自检都**不在**这里，见 scripts/cli/。
  *
- *   cli/args/           参数面：table（声明面 OPTION_GROUPS + OPTION_ALIASES，零依赖纯数据）
- *                       / parse（解析引擎，util.parseArgs 底座）/ scope（作用域契约）
- *                       / config-input（--config / --template JSON 配置输入）
- *   cli/birth/          出生信息解析（真太阳时、农历换算、城市容错）
- *   cli/chart/          命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）+ 排盘缓存
- *   cli/commands/       命令实现：astrology（四命令合一）/ fortune（运限）/ report（--report）
- *                       / synastry（合盘）/ knowledge/（知识检索四域）/ help / command-meta /
- *                       index（COMMAND_TABLE 注册薄层）
- *   cli/host/           dispatch（argv → 三元组的分发协议）+ out（--out 落盘通道）
- *   cli/selftest/       回归自检（index = 排盘 / 古籍 / 合盘三段合一；kit = 共用 harness）
+ * ⚠️ 本文件除 `node:` 内置与 `./boot-hooks.ts` 外**不允许任何普通静态 import** ——
+ *    值的获取一律走 `load<T>()`（详见下方铁律三连与 docs/code/boot-layer.md）。
+ * ⚠️ 内核根 = `scripts/` 本身，故 `@/` 别名指向 `scripts/` 而**不是** skill 根。
+ * ⚠️ 启动自检「派生而非手抄」：在内核里重命名 / 删除导出会让 CLI 立刻报错 ——
+ *    这是有意的（宁可启动失败，也不静默产出错盘）。
  *
- * 设计原则：**不重复实现任何命理逻辑**，全部复用与脚本同级的既有内核模块：
- *   scripts/algorithm.ts   排盘主流程
- *   scripts/patterns/      格局识别（含古籍出处与破格条件）
- *   scripts/mutagen.ts       四化（生年 / 流年 / 流月）
- *   scripts/analysis/      分析数据库 v3（主题论断动态推算，topic 命令用）
- *   cli/birth/          出生信息解析（真太阳时、农历换算、城市容错）+ 城市经纬度表
- *   scripts/data/          天干地支 / 纳音五行 / 四化表 / 星曜释义（数据层）
- *
- * 语料（corpus：古籍/天纪/核对表）与 synastry 的内核也住进本仓
- * `scripts/corpus/` 与 `scripts/synastry/`，命令并入本 CLI —— 单 skill 单入口，
- * 排盘（astrology）、知识检索（knowledge，命令原名 classics）、合盘（synastry）
- * 都在这里（见 `SKILL.md`）。
- *
- * 依赖 Node ≥ 22.18（module.registerHooks + 原生 TS 类型擦除）。
- * 用法：node scripts/purple-star.ts <command> [options]   （在 skill 根目录下执行；脚本本身也可从任意 cwd 运行）
- * 帮助：node scripts/purple-star.ts help
- * 自检：node scripts/purple-star.ts selftest
+ * 设计原则（不重复实现任何命理逻辑）、cli/ 各层分工与用法，见 docs/code/boot-layer.md。
  *
  * @packageDocumentation
  */
@@ -41,26 +20,20 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-// ⚠️ 引导层**唯一**被允许的非 `node:` 静态 import，理由见下方「引导层为什么能静态 import
-//    boot-hooks.ts」—— 该文件自身只依赖 `node:` 内置，且调用点用的是带 `.ts` 扩展名的
-//    说明符，靠 Node 原生类型擦除即可加载，**不需要解析钩子**。除此之外本文件不允许出现
-//    任何普通静态 import。
+// ⚠️ 引导层**唯一**被允许的非 `node:` 静态 import：该文件自身只依赖 `node:` 内置，且调用点
+//    用的是带 `.ts` 扩展名的说明符，靠 Node 原生类型擦除即可加载，**不需要解析钩子**。
+//    铁律的实质不是「禁止静态 import」，而是「禁止在钩子注册前触发 `.ts` 解析」——
+//    `cli/selftest/index.ts` 有一条断言盯着 boot-hooks.ts 的 import 全是 `node:` 前缀。
 import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hooks.ts";
 
 // ── 类型层：`import type` 与 `typeof import(...)` 在运行时被**完全擦除**，不产生任何静态依赖 ──
-// 这一点是本文件能同时「自举注册 TS 钩子」与「拿到内核/子模块类型」的关键：
-// ESM 的静态 import 会被提升到模块求值之前，若用普通 import 引内核或 scripts/cli/*，
-// 钩子还没注册、对方的 .ts 就已经要加载了。类型节点擦除后什么都不剩，故安全。
+// 这是本文件能同时「自举注册 TS 钩子」与「拿到内核/子模块类型」的关键：ESM 的静态 import
+// 会被提升到模块求值之前，若用普通 import 引内核或 scripts/cli/*，钩子还没注册、对方的
+// .ts 就已经要加载了。类型节点擦除后什么都不剩，故安全。
 //
 // ⚠️ 因此：**本文件里除 `node:` 内置模块与 ./boot-hooks.ts 外，不允许出现任何普通静态 import**
-//    —— `scripts/cli/` 下的自家子模块也不行（它们静态 import 内核，同样会触发提前加载）。
-//    凡是要用的值，一律走下面的 load<T>()。这是本文件最容易被改坏的一处。
-//
-// **引导层为什么能静态 import boot-hooks.ts**：那条禁令的实质不是「禁止静态 import」，
-// 而是「禁止在钩子注册前触发 `.ts` 解析」。boot-hooks.ts 只 import `node:` 内置，自身不含
-// 任何需要钩子解析的依赖，且调用点写全了 `.ts` 扩展名 —— Node 的原生类型擦除直接就能加载它。
-// 把引导机制抽成共享模块（而非让 CLI 与 test/lib/loader.ts 各存一份逐行副本）正是靠这一点。
-// `cli/selftest/index.ts` 有一条断言盯着 boot-hooks.ts 的 import 全是 `node:` 前缀，防止这条豁免腐烂。
+//    —— `scripts/cli/` 下的自家子模块也不行。凡是要用的值，一律走下面的 load<T>()。
+//    这是本文件最容易被改坏的一处，论证全文见 docs/code/boot-layer.md。
 
 /**
  * 动态导入的模块类型：下方 `load<T>()` 用它把 `await import(spec)` 的 `any` 收窄回真实签名。
@@ -69,8 +42,8 @@ import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hook
  * `typeof import("...")` 是**类型层节点**，运行时被完全擦除，因此可以安全地写在文件顶部 ——
  * 这是本文件能同时「自举注册 TS 钩子」与「拿到内核真实类型」的关键（详见上方注释）。
  *
- * ⚠️ 这里只允许类型层的 `typeof import(...)`：任何**值导入**（含把内核模块或 `scripts/cli/*`
- * 写成普通静态 `import`）都会在钩子注册之前触发加载，直接崩掉。
+ * ⚠️ 这里只允许类型层的 `typeof import(...)`：任何**值导入**都会在钩子注册之前触发加载，
+ * 直接崩掉。
  */
 type AlgorithmModule = typeof import("@/algorithm");
 type PatternsModule = typeof import("@/patterns");
@@ -89,10 +62,9 @@ type OutModule = typeof import("@/cli/host/out");
 /** 分发协议（argv → 三元组的唯一真相源，见该文件头注释）。 */
 type DispatchModule = typeof import("@/cli/host/dispatch");
 
-// 历史注记：这里曾有一段 `process.emitWarning` 猴子补丁，用于过滤
-// `MODULE_TYPELESS_PACKAGE_JSON` 告警 —— 那是上游 ziwei-master（Next.js 项目，不能把
-// package.json 改成 "type":"module"）的约束，随内核拷贝带了过来。本仓库的 package.json
-// 已声明 "type": "module"，该告警不会触发，补丁是死代码，已删除。
+// 历史注记：这里曾有一段 `process.emitWarning` 猴子补丁（过滤
+// `MODULE_TYPELESS_PACKAGE_JSON`），随上游 ziwei-master（Next.js，不能改 package.json 的
+// "type"）拷贝带了过来；本仓库已声明 "type": "module"，告警不触发，补丁是死代码，已删除。
 
 /** 本脚本所在目录，即 `<skill 根>/scripts`（内核根的第一个候选，见 {@link pickRoot}） */
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -111,6 +83,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  *
  * 这里刻意**没有**「宿主项目」候选：每个 skill 自带内核，不存在「实时内核 vs 分发副本」
  * 的双模式。（本仓已无 skill 间的副本关系 —— 见 `CLAUDE.md`「三个 skill 之间没有关系」。）
+ * 两级优先级的完整论证见 docs/code/boot-layer.md。
  */
 const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
 	[process.env.ZIWEI_ROOT && resolve(process.env.ZIWEI_ROOT), "ZIWEI_ROOT 环境变量"],
@@ -215,8 +188,8 @@ async function loadCore() {
 	 * `SyntaxError: does not provide an export named ...`，指不到该改哪里。这里先 load 一遍
 	 * 并点名缺失项，把「哪个导出没了、当前内核根在哪、接下来怎么办」一次说清。
 	 *
-	 * ⚠️ 也因此：在内核里重命名或删除导出会让 CLI 立刻报错 —— **这是有意的，不是脆弱**。
-	 * 与 `algorithm.ts` 的 `projectPalaceName` 同一理念：宁可启动失败，也不静默产出错盘。
+	 * ⚠️ 也因此：在内核里重命名或删除导出会让 CLI 立刻报错 —— **这是有意的，不是脆弱**
+	 *    （与 `algorithm.ts` 的 `projectPalaceName` 同一理念：宁可启动失败，也不静默产出错盘）。
 	 */
 	const LOADED: ReadonlyArray<readonly [string, Record<string, unknown>]> = [
 		["@/algorithm", algorithmNs],

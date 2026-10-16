@@ -37,6 +37,9 @@
  * 比拖一整份内核划算。⚠️ 这是**自有的常量**，不是「漏了同步的副本」——
  * 改 `constants.ts` 的 `BRANCHES` 时**不需要**同步这里（两者不会同时被读到：
  * 本 skill 的盘是从 JSON 来的，地支索引与名字的对应关系由排盘方保证）。
+ *
+ * 「消费方契约自带」的三条论证（为何不 import 源的 types.ts / render.ts）、
+ * 窄契约的报错语义，见 docs/code/synastry.md。
  */
 
 import { readFileSync } from "node:fs";

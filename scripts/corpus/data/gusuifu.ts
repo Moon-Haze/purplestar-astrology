@@ -19,6 +19,8 @@ import type { Book } from "../types";
  * `wordCount` / `intro`）。段落 id 前缀为 `gsf-<章号>-<段号>`（如 `gsf-1-1`）；
  * {@link ALL_BOOKS} 以 `slug` = `"gusuifu"` 收录本对象，
  * `classics` 命令的输出即以该 slug 标识命中来源。
+ *
+ * 三部古籍的收录范围与段落 id 口径，见 docs/code/corpus.md。
  */
 export const guSuiFu: Book = {
 	title: "骨髓赋",

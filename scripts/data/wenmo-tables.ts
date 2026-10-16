@@ -17,6 +17,7 @@
  *
  * @packageDocumentation
  */
+// 本篇的「勿手改」纪律与类型下沉论证同时收录于 docs/code/data-tables.md。
 
 /**
  * 一个文墨亮度流派。

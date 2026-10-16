@@ -1,7 +1,10 @@
 /**
- * 星曜数据 —— 主星亮度表与十四主星释义。
+ * 星曜数据 —— 主星亮度表与十四主星释义（2026-10-11 从 `constants.ts` 拆出，逐字迁移）。
  *
- * 2026-10-11 从 `constants.ts` 拆出，内容逐字迁移，仅改变物理位置。
+ * ⚠️ 两张表**都无消费者**：`STAR_BRIGHTNESS` 未被运行期读取（亮度走 iztro 原文），
+ *    `STAR_DESCRIPTIONS` 只影响文案、不参与安星与格局判定。
+ *
+ * 完整口径见 docs/code/data-tables.md。
  *
  * @packageDocumentation
  */

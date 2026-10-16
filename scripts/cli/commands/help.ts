@@ -1,16 +1,12 @@
 /**
  * help 渲染 —— 总览 help 与每命令 `--help`（man 手册页结构，spec §3.2）。
  *
- * - **总览 `help`**：NAME / SYNOPSIS / DESCRIPTION / COMMANDS / OPTIONS / EXAMPLES /
- *   NOTES / SEE ALSO 八节（比每命令版多一节 COMMANDS），节标题大写、节序固定 ——
- *   `less purple-star.ts help` 的观感即 man。
- * - **`<命令> --help`**：同一结构减 COMMANDS 节；OPTIONS 按命令 → 参数归属表
- *   （{@link ownedOptions} 投影，源数据在声明表的 `cmds` 标志）过滤成该命令实际读取的子集。
- * - **归属表是 help 视图**，不做硬校验（作用域仍 skill 级）：「哪条命令读哪个参数」
- *   的诚实边界收窄只发生在 help 层。
+ * 总览八节（NAME / SYNOPSIS / DESCRIPTION / COMMANDS / OPTIONS / EXAMPLES / NOTES /
+ * SEE ALSO），`<命令> --help` 减 COMMANDS 节；OPTIONS 按命令 → 参数归属表（`ownedOptions`
+ * 投影）过滤成该命令实际读取的子集。
  *
- * 两处数据源：`commands.ts` 的 COMMAND_HELP（逐命令多行说明）与本文件就近声明的
- * 示例与注意事项。参数清单从 `args-table.ts` 的 OPTION_GROUPS 派生（与实际接受面同源）。
+ * ⚠️ **归属表是 help 视图**，不做硬校验（作用域仍 skill 级）。
+ *    两处数据源、节序与 NOTES 按命令裁剪的取舍见 docs/code/cli-commands.md。
  */
 
 import { COMMAND_DESC, COMMAND_HELP, COMMAND_NAMES, type CommandName } from "./command-meta";
@@ -233,9 +229,9 @@ export function renderCommandHelp(cmd: CommandName): string {
 		""
 	);
 	lines.push("EXAMPLES", ...(COMMAND_EXAMPLES[cmd] ?? []), "");
-	// NOTES 按命令裁剪：四必问 / 晚子时 / 真太阳时跨午夜都是**排盘**铁律 —— synastry
-	// 不排盘、knowledge 不涉出生信息，全量模板会让命令级 help 教人用对它无效的
-	// 参数（如 synastry --help 里的 --late-zi）。全量铁律保留在总览 help。
+	// NOTES 按命令裁剪：四必问 / 晚子时 / 真太阳时跨午夜都是**排盘**铁律 —— synastry 不排盘、
+	// knowledge 不涉出生信息，全量模板会让命令级 help 教人用对它无效的参数。
+	// 全量铁律保留在总览 help（见 docs/code/cli-commands.md）。
 	if (cmd === "astrology") {
 		lines.push("NOTES");
 		lines.push("  · 排盘四必问：出生日期、出生时间、性别、出生地 —— 缺一问一，不要猜。");

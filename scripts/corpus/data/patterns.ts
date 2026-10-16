@@ -15,6 +15,7 @@
  *
  * @packageDocumentation
  */
+// 本篇同时收录于 docs/code/corpus.md（格局数据定位与 {@link} 纪律）。
 
 import type { GejuNameAlias, PatternVerdict } from "@/patterns/types";
 

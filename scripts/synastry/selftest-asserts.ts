@@ -12,6 +12,11 @@
  * 与 `cli/selftest/index.ts` 的接口：导出 {@link asserts}（收主 selftest 注入的
  * {@link SelftestDeps} —— call / ctx / ok 与排盘段同一套，不再本地手搓），
  * 逐条结果由主 selftest 汇总。
+ *
+ * ⚠️ 输入必须是 `--charts` 形态（`--a-chart` 在解析层就是未知参数）；fixture 宫序
+ *    **仅用于造假盘**，合盘不排盘，不追求排盘学含义。
+ *
+ * 三类适配点（合并根 CLI / 暂缓守卫 / SKILL.md 一致性换接线）见 docs/code/synastry.md。
  */
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

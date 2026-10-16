@@ -8,17 +8,11 @@
  *   - `scripts/purple-star.ts`（CLI）—— 失败即渲染指引并 `process.exit(1)`
  *   - `test/lib/loader.ts`（回归测试）—— 失败即抛错，让 node:test 把失败归到具体用例
  *
- * 此前这两份是逐行副本，靠注释提醒「必须保持行为一致」，只有一条断言间接盯着。
- * 副本分叉不会被任何测试抓住：它只影响「怎么观察内核」，测试本身照旧全绿。
- *
  * ## ⚠️ 本文件只允许 import `node:` 内置模块
  *
- * 这是它能在**解析钩子注册之前**被静态 import 的唯一理由，也是引导层那条
- * 「不得出现普通静态 import」规则的全部动机 —— 那条规则的实质不是「禁止静态 import」，
- * 而是「禁止在钩子注册前触发 `.ts` 解析」。
- *
- * 本文件自身不依赖任何 `.ts` 解析：调用方必须用**带 `.ts` 扩展名**的说明符 import 它
- * （`import { … } from "./boot-hooks.ts"`），Node 的原生类型擦除即可加载，不需要钩子。
+ * 这是它能在**解析钩子注册之前**被静态 import 的唯一理由 —— 引导层「不得出现普通静态
+ * import」规则的实质不是「禁止静态 import」，而是「禁止在钩子注册前触发 `.ts` 解析」。
+ * 调用方必须用**带 `.ts` 扩展名**的说明符 import 它（Node 原生类型擦除即可加载）；
  * `cli/selftest/index.ts` 有一条断言盯着这条约束不被破坏。
  *
  * @packageDocumentation
@@ -102,6 +96,7 @@ export function pickRoot(candidates: Array<[string | undefined, string]>, probe:
  * `ERR_UNSUPPORTED_DIR_IMPORT`。**且 tsc 抓不住**：`moduleResolution: "bundler"`
  * 会把 `./patterns` 正常解析到 `patterns/index.ts`，于是类型全绿、只有真跑才崩。
  * 补上兜底后，`.ts` 文件仍优先于同名目录，故既有引用一条都不会改变解析目标。
+ * 两条分支候选序必须一致的完整论证见 docs/code/boot-layer.md。
  *
  * 裸包名重定向的意义：脱离项目运行时从文件位置向上找不到 `node_modules`，
  * 必须显式把 iztro / lunar-typescript 指到内核根去解析。
