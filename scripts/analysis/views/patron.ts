@@ -31,11 +31,15 @@ export function renderKuiYue(ctx: AnalysisContext): string[] {
 		const notes: string[] = [];
 		if (kuiPalaceForTopic) {
 			const map = KUI_YUE_GUIREN_MAP[kuiPalaceForTopic.name];
-			if (map?.kui) {notes.push(`**天魁在${kuiPalaceForTopic.name}**：${map.kui}`);}
+			if (map?.kui) {
+				notes.push(`**天魁在${kuiPalaceForTopic.name}**：${map.kui}`);
+			}
 		}
 		if (yuePalaceForTopic) {
 			const map = KUI_YUE_GUIREN_MAP[yuePalaceForTopic.name];
-			if (map?.yue) {notes.push(`**天钺在${yuePalaceForTopic.name}**：${map.yue}`);}
+			if (map?.yue) {
+				notes.push(`**天钺在${yuePalaceForTopic.name}**：${map.yue}`);
+			}
 		}
 		if (notes.length > 0) {
 			lines.push(`**【贵人倾向·魁钺细分】**`);

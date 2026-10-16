@@ -166,8 +166,7 @@ describe("引文守卫：按流派分派（每校扫各自 citationRoots）", ()
 		// 守卫更坏，它会被当成保障。
 		assert.ok(SCANS.length > 0, "注册表里一个 citationRoots 都没有 —— 分派形同虚设");
 		const empty = SCANS.filter(s => s.checked.length === 0).map(
-			s =>
-				`${s.school}@${s.root}（${s.exists ? "根在，但一个 .ts 都没扫到" : "根不存在"}）`
+			s => `${s.school}@${s.root}（${s.exists ? "根在，但一个 .ts 都没扫到" : "根不存在"}）`
 		);
 		assert.deepEqual(empty, [], `以下扫描根的范围是空的：\n${empty.join("\n")}`);
 	});

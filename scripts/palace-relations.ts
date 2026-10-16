@@ -86,6 +86,8 @@ export function palaceAtBranch(chart: ZiweiChart, branch: number): Palace | unde
  */
 export function mustPalaceAtBranch(chart: ZiweiChart, branch: number, what: string): Palace {
 	const p = chart.palaces.find(x => x.branch === branch);
-	if (!p) {throw new Error(`排盘异常：${what}（地支 ${BRANCHES[branch] ?? branch}）不在十二宫内`);}
+	if (!p) {
+		throw new Error(`排盘异常：${what}（地支 ${BRANCHES[branch] ?? branch}）不在十二宫内`);
+	}
 	return p;
 }

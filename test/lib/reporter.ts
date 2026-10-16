@@ -46,11 +46,15 @@ export default function aggregateReporter(): Transform {
 		transform(event: RawTestEvent, _enc, cb) {
 			const t = event.type;
 			const type =
-				t === "test:pass" ? "pass"
-				: t === "test:fail" ? "fail"
-				: t === "test:diagnostic" ? "diagnostic"
-				: t === "test:summary" ? "summary"
-				: null;
+				t === "test:pass"
+					? "pass"
+					: t === "test:fail"
+						? "fail"
+						: t === "test:diagnostic"
+							? "diagnostic"
+							: t === "test:summary"
+								? "summary"
+								: null;
 			if (!type) {
 				cb(); // enqueue/dequeue/start/plan 等与聚合无关，跳过不转发
 				return;

@@ -14,7 +14,8 @@ import { load } from "./lib/loader.ts";
 
 const reg = await load<typeof import("@/knowledge/registry")>("@/knowledge/registry");
 const { KNOWLEDGE_SOURCES, KNOWLEDGE_SOURCE_IDS } = reg;
-const { cmdKnowledge } = await load<typeof import("@/cli/knowledge/index")>("@/cli/knowledge/index");
+const { cmdKnowledge } =
+	await load<typeof import("@/cli/knowledge/index")>("@/cli/knowledge/index");
 
 describe("KnowledgeSource 注册表（Phase 1）", () => {
 	it("注册表含四域且顺序固定 books/stars/tianji/oracle", () => {

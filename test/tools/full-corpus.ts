@@ -28,7 +28,13 @@ import { fileURLToPath } from "node:url";
 import type { BirthInfo } from "@/types";
 import { loadAlgorithm } from "../lib/loader.ts";
 import { compareChart, formatDiffs, BRANCHES, type ChartDiff } from "../lib/compare.ts";
-import { forEachSample, openSource, closeSource, SourceError, DB_DIR } from "../lib/sample-source.ts";
+import {
+	forEachSample,
+	openSource,
+	closeSource,
+	SourceError,
+	DB_DIR,
+} from "../lib/sample-source.ts";
 
 const MAX_DETAIL = 20; // 明细最多列这么多条
 
@@ -37,7 +43,9 @@ const argv = process.argv.slice(2);
 const hasFlag = (name: string): boolean => argv.includes(`--${name}`);
 const optOf = (name: string): string | null => {
 	const i = argv.indexOf(`--${name}`);
-	if (i < 0) {return null;}
+	if (i < 0) {
+		return null;
+	}
 	const v = argv[i + 1];
 	return v && !v.startsWith("--") ? v : null;
 };
@@ -118,7 +126,9 @@ async function main(): Promise<void> {
 
 			if (real) {
 				stats.dirty++;
-				if (stats.detail.length < MAX_DETAIL) {stats.detail.push({ birth: raw.birthInfo, diffs: real });}
+				if (stats.detail.length < MAX_DETAIL) {
+					stats.detail.push({ birth: raw.birthInfo, diffs: real });
+				}
 			} else {
 				stats.clean++;
 			}
@@ -153,12 +163,21 @@ function report(s: CorpusStats, expected: number, completed: boolean, ms: number
 
 	console.log("\n══ 全量核验汇总 ══");
 	line("数据源", DB_DIR);
-	line("范围", `${scope}（${expected.toLocaleString("en-US")} 条${limited ? "，受 --limit 截断" : ""}）`);
+	line(
+		"范围",
+		`${scope}（${expected.toLocaleString("en-US")} 条${limited ? "，受 --limit 截断" : ""}）`
+	);
 	line("检查条数", s.checked.toLocaleString("en-US"));
 	line("完全一致", s.clean.toLocaleString("en-US"));
 	line("有差异", s.dirty.toLocaleString("en-US"));
-	line("白名单放行", `${s.whitelistedCells.toLocaleString("en-US")} 处（已知：太阳/太阴在酉宫的亮度，见 test/lib/compare.ts）`);
-	line("耗时", `${(ms / 1000).toFixed(1)} 秒（${(ms / Math.max(s.checked, 1)).toFixed(1)} ms/条）`);
+	line(
+		"白名单放行",
+		`${s.whitelistedCells.toLocaleString("en-US")} 处（已知：太阳/太阴在酉宫的亮度，见 test/lib/compare.ts）`
+	);
+	line(
+		"耗时",
+		`${(ms / 1000).toFixed(1)} 秒（${(ms / Math.max(s.checked, 1)).toFixed(1)} ms/条）`
+	);
 	console.log("");
 
 	if (s.dirty === 0) {
@@ -194,8 +213,7 @@ function report(s: CorpusStats, expected: number, completed: boolean, ms: number
 // ── 仅直接执行时跑 main ──
 // Node 的默认测试文件识别模式包含 `test/**/*`，若不加这道守卫，`node --test test/`
 // 可能把这个会跑两小时的脚本当成测试文件执行。
-const isDirectRun =
-	process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isDirectRun = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isDirectRun) {
 	main().catch(err => {
 		console.error(err);

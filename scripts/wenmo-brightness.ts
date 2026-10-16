@@ -55,9 +55,13 @@ export function wenmoStarBrightness(
 	school: BrightnessSchool = currentSchool
 ): string | undefined {
 	const id = WENMO_NAME_TO_ID[starName];
-	if (id == null) {return undefined;}
+	if (id == null) {
+		return undefined;
+	}
 	const v = SB_BY_SCHOOL[school][id]?.[branchIdx + 1];
-	if (v == null || v === 0) {return undefined;}
+	if (v == null || v === 0) {
+		return undefined;
+	}
 	return NUM_TO_CN_BY_SCHOOL[school][v];
 }
 
@@ -77,12 +81,17 @@ export function validateWenmoBrightness(): void {
 	};
 	for (const school of ["QS", "XD1", "ZZ", "XD2"] as const) {
 		const table = SB_BY_SCHOOL[school];
-		if (table.length !== 83) {throw new Error(`SB_${school} 行数 ${table.length} ≠ 83`);}
+		if (table.length !== 83) {
+			throw new Error(`SB_${school} 行数 ${table.length} ≠ 83`);
+		}
 		table.forEach((row, i) => {
-			if (row.length !== 13) {throw new Error(`SB_${school}[${i}] 列数 ${row.length} ≠ 13`);}
+			if (row.length !== 13) {
+				throw new Error(`SB_${school}[${i}] 列数 ${row.length} ≠ 13`);
+			}
 			for (const v of row) {
-				if (v !== 0 && !domains[school].includes(v))
-					{throw new Error(`SB_${school}[${i}] 含非法亮度值 ${v}`);}
+				if (v !== 0 && !domains[school].includes(v)) {
+					throw new Error(`SB_${school}[${i}] 含非法亮度值 ${v}`);
+				}
 			}
 		});
 	}

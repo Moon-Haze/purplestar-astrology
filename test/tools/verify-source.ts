@@ -43,7 +43,8 @@ const SKILL_ROOT = resolve(HERE, "../..");
  * （Step 5 会指向一个不存在的路径）。CLI 引导层的 `pickRoot()` 也是这个套路
  * （`ZIWEI_ROOT` 优先），保持一致。
  */
-const SAMPLES = process.env.ZIWEI_SAMPLES ?? resolve(SKILL_ROOT, "reference/ziwei-samples-toolkit/samples-out");
+const SAMPLES =
+	process.env.ZIWEI_SAMPLES ?? resolve(SKILL_ROOT, "reference/ziwei-samples-toolkit/samples-out");
 
 const RULE = "─".repeat(46);
 
@@ -51,7 +52,9 @@ const RULE = "─".repeat(46);
 const argv = process.argv.slice(2);
 const optOf = (name: string): string | null => {
 	const i = argv.indexOf(`--${name}`);
-	if (i < 0) {return null;}
+	if (i < 0) {
+		return null;
+	}
 	const v = argv[i + 1];
 	return v && !v.startsWith("--") ? v : null;
 };
@@ -79,11 +82,16 @@ function trim(raw: { birthInfo: BirthInfo; chart: unknown }): BaselineSample {
 
 /** 递归按 key 排序的规范 JSON —— 用来判定「差异是否**只是键序**」。 */
 function canonical(v: unknown): unknown {
-	if (Array.isArray(v)) {return v.map(canonical);}
+	if (Array.isArray(v)) {
+		return v.map(canonical);
+	}
 	if (v && typeof v === "object") {
 		const o = v as Record<string, unknown>;
 		return Object.fromEntries(
-			Object.keys(o).filter(k => o[k] !== undefined).sort().map(k => [k, canonical(o[k])])
+			Object.keys(o)
+				.filter(k => o[k] !== undefined)
+				.sort()
+				.map(k => [k, canonical(o[k])])
 		);
 	}
 	return v;
@@ -92,22 +100,38 @@ function canonical(v: unknown): unknown {
 /** 逐字段找第一处不同，返回 `路径 = 基准 / 实际`（找不到返回 null）。 */
 function firstStructuralDiff(a: unknown, b: unknown, path = ""): string | null {
 	if (Array.isArray(a) || Array.isArray(b)) {
-		if (!Array.isArray(a) || !Array.isArray(b)) {return `${path} = ${JSON.stringify(a)} / ${JSON.stringify(b)}`;}
-		if (a.length !== b.length) {return `${path}.length = ${a.length} / ${b.length}`;}
+		if (!Array.isArray(a) || !Array.isArray(b)) {
+			return `${path} = ${JSON.stringify(a)} / ${JSON.stringify(b)}`;
+		}
+		if (a.length !== b.length) {
+			return `${path}.length = ${a.length} / ${b.length}`;
+		}
 		for (let i = 0; i < a.length; i++) {
 			const d = firstStructuralDiff(a[i], b[i], `${path}[${i}]`);
-			if (d) {return d;}
+			if (d) {
+				return d;
+			}
 		}
 		return null;
 	}
 	if (a && b && typeof a === "object" && typeof b === "object") {
 		const ao = a as Record<string, unknown>;
 		const bo = b as Record<string, unknown>;
-		for (const k of Object.keys(ao)) {if (!(k in bo)) {return `${path}.${k} = 存在 / **缺失**`;}}
-		for (const k of Object.keys(bo)) {if (!(k in ao)) {return `${path}.${k} = **缺失** / 存在`;}}
+		for (const k of Object.keys(ao)) {
+			if (!(k in bo)) {
+				return `${path}.${k} = 存在 / **缺失**`;
+			}
+		}
+		for (const k of Object.keys(bo)) {
+			if (!(k in ao)) {
+				return `${path}.${k} = **缺失** / 存在`;
+			}
+		}
 		for (const k of Object.keys(ao)) {
 			const d = firstStructuralDiff(ao[k], bo[k], `${path}.${k}`);
-			if (d) {return d;}
+			if (d) {
+				return d;
+			}
 		}
 		return null;
 	}
@@ -119,7 +143,10 @@ type DiffKind = "五元组不符" | "键序不同" | "结构不同";
 /** 判定两侧差异属于哪一类。 */
 function classify(want: unknown, got: unknown): { kind: DiffKind; detail: string } {
 	if (JSON.stringify(canonical(want)) === JSON.stringify(canonical(got))) {
-		return { kind: "键序不同", detail: `逐字段值相同，但键的插入顺序不同（改重建侧的构造顺序）` };
+		return {
+			kind: "键序不同",
+			detail: `逐字段值相同，但键的插入顺序不同（改重建侧的构造顺序）`,
+		};
 	}
 	return { kind: "结构不同", detail: firstStructuralDiff(want, got) ?? "（未定位到具体字段）" };
 }
@@ -157,14 +184,20 @@ async function main(): Promise<void> {
 	} else {
 		const years = YEAR ? [YEAR] : Array.from({ length: 60 }, (_, i) => 1924 + i);
 		const months = MONTH ? [MONTH] : Array.from({ length: 12 }, (_, i) => i + 1);
-		for (const y of years) {for (const mo of months) {shards.push({ year: y, month: mo });}}
+		for (const y of years) {
+			for (const mo of months) {
+				shards.push({ year: y, month: mo });
+			}
+		}
 	}
 
 	console.log(RULE);
 	console.log("基准数据源互验（jsonl ↔ parquet 数据集，逐字节）");
 	console.log(`  数据集  : ${DB_DIR}`);
 	console.log(`  语料    : ${SAMPLES}`);
-	console.log(`  范围    : ${shards.length} 个分片${Number.isFinite(LIMIT) ? `，全局至多 ${LIMIT} 条` : ""}`);
+	console.log(
+		`  范围    : ${shards.length} 个分片${Number.isFinite(LIMIT) ? `，全局至多 ${LIMIT} 条` : ""}`
+	);
 	console.log(RULE);
 
 	let checked = 0;
@@ -190,11 +223,18 @@ async function main(): Promise<void> {
 		}
 
 		let lineNo = 0;
-		const rl = createInterface({ input: createReadStream(file).pipe(createGunzip()), crlfDelay: Infinity });
+		const rl = createInterface({
+			input: createReadStream(file).pipe(createGunzip()),
+			crlfDelay: Infinity,
+		});
 		for await (const line of rl) {
-			if (!line.trim()) {continue;}
+			if (!line.trim()) {
+				continue;
+			}
 			lineNo++;
-			if (checked >= LIMIT) {break;}
+			if (checked >= LIMIT) {
+				break;
+			}
 
 			const raw = JSON.parse(line) as { birthInfo: BirthInfo; chart: unknown };
 			const rebuilt = await fetchSample(raw.birthInfo);
@@ -222,7 +262,9 @@ async function main(): Promise<void> {
 			// 旧 pickFrom 的公式：仅供诊断，**不参与取数**。
 			// 行号与它算出的下标不一致 = 旧实现曾经错位取数的直接证据。
 			const legacyIdx =
-				(raw.birthInfo.day - 1) * 24 + raw.birthInfo.timeIndex * 2 + (raw.birthInfo.gender === "female" ? 1 : 0);
+				(raw.birthInfo.day - 1) * 24 +
+				raw.birthInfo.timeIndex * 2 +
+				(raw.birthInfo.gender === "female" ? 1 : 0);
 
 			let kind: DiffKind | "查无此样本";
 			let detail: string;
@@ -261,33 +303,47 @@ async function main(): Promise<void> {
 			);
 		}
 
-		if (hitLimit) {break;}
+		if (hitLimit) {
+			break;
+		}
 	}
 
 	console.log(`\n${RULE}`);
-	console.log(`  检查条数  : ${checked}${checked >= LIMIT ? "   ⚠ 受 --limit 截断，本次并未核验全部" : ""}`);
+	console.log(
+		`  检查条数  : ${checked}${checked >= LIMIT ? "   ⚠ 受 --limit 截断，本次并未核验全部" : ""}`
+	);
 	console.log(`  逐字节一致: ${identical}`);
 	console.log(`  有差异    : ${failures.length}`);
 	if (skippedShards > 0) {
-		console.log(`  未检查分片: ${skippedShards}   ⚠ 这些分片未被核验，上面的「一致/差异」不含它们`);
+		console.log(
+			`  未检查分片: ${skippedShards}   ⚠ 这些分片未被核验，上面的「一致/差异」不含它们`
+		);
 	}
 	console.log(RULE);
 
 	if (failures.length) {
 		console.log(`\n按类型分桶：`);
-		for (const [k, n] of [...buckets].sort((a, b) => b[1] - a[1])) {console.log(`  ${k.padEnd(12, "　")} ${n}`);}
+		for (const [k, n] of [...buckets].sort((a, b) => b[1] - a[1])) {
+			console.log(`  ${k.padEnd(12, "　")} ${n}`);
+		}
 
 		console.log(`\n差异明细（前 10 条）：`);
 		for (const f of failures.slice(0, 10)) {
-			console.log(`\n  ✗ [${f.kind}] 分片 ${f.shard} 第 ${f.lineNo} 行（该行在分片内下标 ${f.lineNo - 1}）`);
+			console.log(
+				`\n  ✗ [${f.kind}] 分片 ${f.shard} 第 ${f.lineNo} 行（该行在分片内下标 ${f.lineNo - 1}）`
+			);
 			console.log(`      样本：${JSON.stringify(f.birth)}`);
 			console.log(`      ${f.detail}`);
 			console.log(
 				`      旧 pickFrom 公式算出的下标：${f.legacyIdx}` +
-					(f.aligned ? "（与本行位置一致）" : "（**与本行位置不一致** —— 旧实现曾经错位取数）")
+					(f.aligned
+						? "（与本行位置一致）"
+						: "（**与本行位置不一致** —— 旧实现曾经错位取数）")
 			);
 		}
-		if (failures.length > 10) {console.log(`\n  …… 另有 ${failures.length - 10} 条未列出`);}
+		if (failures.length > 10) {
+			console.log(`\n  …… 另有 ${failures.length - 10} 条未列出`);
+		}
 		console.log(
 			`\n处理（按 spec 第五节的顺序）：\n` +
 				`  1. 「键序不同」→ 改 test/lib/sample-source.ts 里重建对象的键插入顺序\n` +

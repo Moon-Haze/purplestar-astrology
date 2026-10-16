@@ -328,8 +328,11 @@ export function sanFangHasMutagen(chart: ZiweiChart, hua: Mutagen): boolean {
 export function fillVerdict(verdict: PatternVerdict, vars: Record<string, string>): PatternVerdict {
 	const sub = (s: string): string => s.replace(/\{([^{}]+)\}/g, (m, k: string) => vars[k] ?? m);
 	const out: PatternVerdict = { description: sub(verdict.description) };
-	if (verdict.topicDescription !== undefined)
-		{out.topicDescription = sub(verdict.topicDescription);}
-	if (verdict.source !== undefined) {out.source = sub(verdict.source);}
+	if (verdict.topicDescription !== undefined) {
+		out.topicDescription = sub(verdict.topicDescription);
+	}
+	if (verdict.source !== undefined) {
+		out.source = sub(verdict.source);
+	}
 	return out;
 }

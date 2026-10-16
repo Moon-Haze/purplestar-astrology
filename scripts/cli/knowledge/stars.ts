@@ -12,15 +12,18 @@ export function renderStars(args: CliArgs): string {
 	const names = Object.keys(STAR_DESCRIPTIONS);
 	// 裸开关（--search 落在参数末尾）会被解析层存成 true（可选值形态），先拦下指路，
 	// 否则 String(true) = "true" 被当成星名，静默产出错结果。
-	if (typeof args.search === "boolean")
-		{throw new Error(
+	if (typeof args.search === "boolean") {
+		throw new Error(
 			"--search 需要一个检索词（如 --search 紫微），也可直接写位置参数：knowledge --source stars 紫微。"
-		);}
+		);
+	}
 	// 位置参数与 --search 等价（与 books 域同款回退）。
 	const q = String(args.search ?? args._.join(" "));
 	if (q) {
 		const s = STAR_DESCRIPTIONS[q];
-		if (!s) {return `未收录星曜「${q}」。已收录：${names.join("、")}`;}
+		if (!s) {
+			return `未收录星曜「${q}」。已收录：${names.join("、")}`;
+		}
 		return `${q}：关键词 ${s.keywords} · 星性 ${s.nature} · 五行 ${s.element}`;
 	}
 	return [

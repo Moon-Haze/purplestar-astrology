@@ -176,10 +176,11 @@ export function mustPalace(chart: ZiweiChart, palaceName: string): Palace {
  */
 export function palaceAtBranch(chart: ZiweiChart, branch: number, what: string): Palace {
 	const p = chart.palaces.find(x => x.branch === branch);
-	if (!p)
-		{throw new Error(
+	if (!p) {
+		throw new Error(
 			`命盘异常：${what}（地支 ${BRANCHES[branch] ?? branch}）不在十二宫内 —— 这份 JSON 已损坏`
-		);}
+		);
+	}
 	return p;
 }
 

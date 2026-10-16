@@ -95,8 +95,9 @@ export const WENMO_STAR_ID_TO_NAME: Record<number, string> = {
 
 /** 星名 → 文墨星 ID（{@link WENMO_STAR_ID_TO_NAME} 反查，模块加载时构建一次）。 */
 export const WENMO_NAME_TO_ID: Record<string, number> = {};
-for (const k in WENMO_STAR_ID_TO_NAME)
-	{WENMO_NAME_TO_ID[WENMO_STAR_ID_TO_NAME[Number(k)]] = Number(k);}
+for (const k in WENMO_STAR_ID_TO_NAME) {
+	WENMO_NAME_TO_ID[WENMO_STAR_ID_TO_NAME[Number(k)]] = Number(k);
+}
 
 /** 一张 SB 表（83 行 × 13 列，[0] 行列占位）。 */
 export type SbTable = ReadonlyArray<ReadonlyArray<number>>;

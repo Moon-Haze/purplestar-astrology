@@ -29,12 +29,7 @@ import {
 	runFortuneLocator,
 } from "./chart";
 import { runKnowledgeSource, runTopicRender } from "./render";
-import {
-	runParseEngine,
-	runArgSurface,
-	runDeclarationTable,
-	runSkillArgsAudit,
-} from "./args";
+import { runParseEngine, runArgSurface, runDeclarationTable, runSkillArgsAudit } from "./args";
 import {
 	runCommandSurface,
 	runHelpPrune,

@@ -9,12 +9,7 @@
 
 import type { BirthInfo, ZiweiChart } from "@/types";
 import { ALL_BOOKS, searchClassics } from "@/corpus";
-import {
-	getTopicReport,
-	getTopicReportMeta,
-	type ReportCitation,
-	type TopicKey,
-} from "@/analysis";
+import { getTopicReport, getTopicReportMeta, type ReportCitation, type TopicKey } from "@/analysis";
 import { detectPatterns } from "@/patterns";
 import { getMutagenByStem } from "@/mutagen";
 import { BRANCHES, STEMS } from "@/data/ganzhi";
@@ -68,14 +63,20 @@ function topicCitations(meta: {
 	if (star) {
 		for (const book of ALL_BOOKS) {
 			for (const ch of book.chapters) {
-				if (!ch.title.includes(meta.palaceName)) {continue;}
+				if (!ch.title.includes(meta.palaceName)) {
+					continue;
+				}
 				for (const p of ch.paragraphs) {
-					if (p.text.includes(star)) {push(`${book.title}·${ch.title}`, p.text);}
+					if (p.text.includes(star)) {
+						push(`${book.title}·${ch.title}`, p.text);
+					}
 				}
 			}
 		}
 		for (const hit of searchClassics(star, CITATION_LIMIT * 2)) {
-			if (out.length >= CITATION_LIMIT) {break;}
+			if (out.length >= CITATION_LIMIT) {
+				break;
+			}
 			push(`${hit.bookTitle}·${hit.chapterTitle}`, hit.text);
 		}
 	}
@@ -108,17 +109,17 @@ export function buildReport(chart: ZiweiChart, info: BirthInfo, basis: CaliberBa
 		`- 命宫：${BRANCHES[chart.soulBranch]} · 身宫：${BRANCHES[chart.bodyBranch]} · 五行局：${chart.fiveElementsClassName} · 紫微落：${BRANCHES[chart.ziweiPos]}`,
 		`- 生年四化（${STEMS[yearStem]}干）：${sihuaLine}`,
 	];
-	if (patterns.length > 0)
-		{header.push(`- 已入格局：${patterns.map(p => `${p.name}（${p.level}）`).join("、")}`);}
+	if (patterns.length > 0) {
+		header.push(`- 已入格局：${patterns.map(p => `${p.name}（${p.level}）`).join("、")}`);
+	}
 	header.push(
 		`- 当前虚岁：${chart.currentAge} · 当前大限：${dx ? `${dx.palaceName}（${dx.startAge}–${dx.endAge}岁）` : "—（尚未起运）"}`
 	);
 
 	// 口径提示（出生地 / 晚子时）—— 有则随报告，作为引用块紧跟文档头
-	const basisNotes = [
-		...birthplaceSection(basis),
-		...lateZiSection(chart, info, basis),
-	].filter(l => l.trim() !== "");
+	const basisNotes = [...birthplaceSection(basis), ...lateZiSection(chart, info, basis)].filter(
+		l => l.trim() !== ""
+	);
 	if (basisNotes.length > 0) {
 		header.push("", "> **口径提示**");
 		header.push(...basisNotes.map(l => `> ${l}`));

@@ -28,10 +28,14 @@ import { oppositeBranch } from "../palace-relations";
 /** 禄存守身：禄存入身宫（或命宫与身宫同宫） */
 function detectLuCunShouShen({ chart }: DetectContext): Pattern[] {
 	const luCunPalace = findStarPalace(chart, "禄存");
-	if (!luCunPalace) {return [];}
+	if (!luCunPalace) {
+		return [];
+	}
 	const inMing = luCunPalace.branch === chart.soulBranch;
 	const inShen = luCunPalace.branch === chart.bodyBranch;
-	if (!inMing && !inShen) {return [];}
+	if (!inMing && !inShen) {
+		return [];
+	}
 	const name = inMing ? "禄存守命" : "禄存守身";
 	return [
 		{
@@ -47,10 +51,14 @@ function detectLuCunShouShen({ chart }: DetectContext): Pattern[] {
 /** 天马入命/迁：驿马星动 */
 function detectTianMaRuMing({ chart }: DetectContext): Pattern[] {
 	const tianMaPalace = findStarPalace(chart, "天马");
-	if (!tianMaPalace) {return [];}
+	if (!tianMaPalace) {
+		return [];
+	}
 	const inMing = tianMaPalace.branch === chart.soulBranch;
 	const inQian = tianMaPalace.branch === oppositeBranch(chart.soulBranch);
-	if (!inMing && !inQian) {return [];}
+	if (!inMing && !inQian) {
+		return [];
+	}
 	const name = inMing ? "天马入命" : "天马在迁";
 	return [
 		{
@@ -66,9 +74,13 @@ function detectTianMaRuMing({ chart }: DetectContext): Pattern[] {
 /** 化禄入财：财帛宫主星化禄 */
 function detectHuaLuRuCai({ chart }: DetectContext): Pattern[] {
 	const cai = chart.palaces.find(p => p.name === "财帛宫");
-	if (!cai) {return [];}
+	if (!cai) {
+		return [];
+	}
 	const luStar = cai.stars.find(s => s.type === "major" && s.mutagen === "禄");
-	if (!luStar) {return [];}
+	if (!luStar) {
+		return [];
+	}
 	const name = "化禄入财";
 	return [
 		{
@@ -84,9 +96,13 @@ function detectHuaLuRuCai({ chart }: DetectContext): Pattern[] {
 /** 化权入官：官禄宫主星化权 */
 function detectHuaQuanRuGuan({ chart }: DetectContext): Pattern[] {
 	const guan = chart.palaces.find(p => p.name === "官禄宫");
-	if (!guan) {return [];}
+	if (!guan) {
+		return [];
+	}
 	const quanStar = guan.stars.find(s => s.type === "major" && s.mutagen === "权");
-	if (!quanStar) {return [];}
+	if (!quanStar) {
+		return [];
+	}
 	const name = "化权入官";
 	return [
 		{
@@ -105,7 +121,9 @@ function detectHuaKeRuMingShen({ chart, ming }: DetectContext): Pattern[] {
 	const target = [ming, shen].filter((p): p is Palace => Boolean(p));
 	for (const p of target) {
 		const keStar = p.stars.find(s => s.type === "major" && s.mutagen === "科");
-		if (!keStar) {continue;}
+		if (!keStar) {
+			continue;
+		}
 		const isMing = p.branch === chart.soulBranch;
 		const name = isMing ? "化科入命" : "化科入身";
 		// 命和身重复时只识别一次：首次命中即返回
@@ -125,7 +143,9 @@ function detectHuaKeRuMingShen({ chart, ming }: DetectContext): Pattern[] {
 /** 昌曲同会：文昌+文曲都在命三方四正 */
 function detectChangQuTongHui({ chart, ming }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!sanFangSet.has("文昌") || !sanFangSet.has("文曲")) {return [];}
+	if (!sanFangSet.has("文昌") || !sanFangSet.has("文曲")) {
+		return [];
+	}
 	const inMing = hasStar(ming, "文昌") && hasStar(ming, "文曲");
 	const name = inMing ? "昌曲坐命" : "昌曲同会";
 	return [
@@ -142,7 +162,9 @@ function detectChangQuTongHui({ chart, ming }: DetectContext): Pattern[] {
 /** 辅弼同会：左辅+右弼都在命三方四正 */
 function detectFuBiTongHui({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!sanFangSet.has("左辅") || !sanFangSet.has("右弼")) {return [];}
+	if (!sanFangSet.has("左辅") || !sanFangSet.has("右弼")) {
+		return [];
+	}
 	const name = "辅弼同会";
 	return [
 		{
@@ -158,7 +180,9 @@ function detectFuBiTongHui({ chart }: DetectContext): Pattern[] {
 /** 魁钺同会：天魁+天钺都在命三方四正 */
 function detectKuiYueTongHui({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
-	if (!sanFangSet.has("天魁") || !sanFangSet.has("天钺")) {return [];}
+	if (!sanFangSet.has("天魁") || !sanFangSet.has("天钺")) {
+		return [];
+	}
 	const name = "魁钺同会";
 	return [
 		{
@@ -178,11 +202,17 @@ function detectKeQuanShuangHui({ chart }: DetectContext): Pattern[] {
 		hasQuan = false;
 	for (const p of sfPalaces) {
 		for (const s of p.stars) {
-			if (s.type === "major" && s.mutagen === "科") {hasKe = true;}
-			if (s.type === "major" && s.mutagen === "权") {hasQuan = true;}
+			if (s.type === "major" && s.mutagen === "科") {
+				hasKe = true;
+			}
+			if (s.type === "major" && s.mutagen === "权") {
+				hasQuan = true;
+			}
 		}
 	}
-	if (!hasKe || !hasQuan) {return [];}
+	if (!hasKe || !hasQuan) {
+		return [];
+	}
 	const name = "科权双会";
 	return [
 		{

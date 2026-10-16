@@ -43,7 +43,9 @@ export function filterGenderContent(text: string, gender: "male" | "female"): st
 	result = result
 		.split("\n")
 		.map(line => {
-			if (!line.includes(removeTag)) {return line;}
+			if (!line.includes(removeTag)) {
+				return line;
+			}
 
 			const kept: string[] = [];
 			let rest = line;
@@ -56,15 +58,20 @@ export function filterGenderContent(text: string, gender: "male" | "female"): st
 					if (
 						!trimmed.startsWith(removeTag) &&
 						!trimmed.startsWith("（" + removeTag + "）")
-					)
-						{kept.push(rest);}
+					) {
+						kept.push(rest);
+					}
 					break;
 				}
 				const sentence = rest.slice(0, endIdx + 1);
 				rest = rest.slice(endIdx + 1);
 				const trimmed = sentence.trimStart();
-				if (!trimmed.startsWith(removeTag) && !trimmed.startsWith("（" + removeTag + "）"))
-					{kept.push(sentence);}
+				if (
+					!trimmed.startsWith(removeTag) &&
+					!trimmed.startsWith("（" + removeTag + "）")
+				) {
+					kept.push(sentence);
+				}
 			}
 
 			return kept.join("");
@@ -77,9 +84,13 @@ export function filterGenderContent(text: string, gender: "male" | "female"): st
 /** 获取某颗星在某宫的四化modifier文字 */
 export function getMutagenNote(starName: string, mutagen: string): string {
 	const profile = STAR_CONTENT_MAP[starName];
-	if (!profile?.sihua) {return "";}
+	if (!profile?.sihua) {
+		return "";
+	}
 	const key = SIHUA_CHAR_TO_KEY[mutagen];
-	if (!key) {return "";}
+	if (!key) {
+		return "";
+	}
 	return profile.sihua[key] ?? "";
 }
 

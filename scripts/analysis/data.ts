@@ -979,7 +979,11 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 			},
 			{ palace: "官禄", lu: "事业格局高，职位顺遂", ji: "职场官非是非，仕途阻碍" },
 			{ palace: "财帛", lu: "财禄丰厚，正财旺", ji: "财运受阻，破财漏财风险" },
-			{ palace: "福德", lu: "精神福气厚，享受人生", ji: "精神层面多困扰，内心不安，幸福感受损" },
+			{
+				palace: "福德",
+				lu: "精神福气厚，享受人生",
+				ji: "精神层面多困扰，内心不安，幸福感受损",
+			},
 		],
 		suggestions: [
 			"重点关注三方四正的星曜组合与本命四化会照，格局好坏由此决定。",
@@ -1003,8 +1007,16 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 				ji: "性格中有是非困扰，自我怀疑，宜修炼内心稳定感",
 			},
 			{ palace: "迁移", ji: "命宫受冲，性格中有坎坷底色，宜谨防三十岁前后的重大考验" },
-			{ palace: "福德", lu: "精神世界丰富，幸福感强，享受生活", ji: "精神层面多阴郁，内心福分受损，需主动寻找精神出口" },
-			{ palace: "父母", lu: "长辈贵人多，家庭关系融洽", ji: "与父母或上司关系有阻，文书合约需谨慎" },
+			{
+				palace: "福德",
+				lu: "精神世界丰富，幸福感强，享受生活",
+				ji: "精神层面多阴郁，内心福分受损，需主动寻找精神出口",
+			},
+			{
+				palace: "父母",
+				lu: "长辈贵人多，家庭关系融洽",
+				ji: "与父母或上司关系有阻，文书合约需谨慎",
+			},
 		],
 		suggestions: [
 			"了解自身性格优势，在适合的环境中最大化发挥特长。",
@@ -1036,8 +1048,16 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 				lu: "子女与感情关系融洽，家庭和谐",
 				ji: "感情纠纷牵连子女宫，桃花是非多，或子女缘分受影响",
 			},
-			{ palace: "迁移", lu: "外出有感情机遇，异乡有缘分", ji: "外出感情多波折，半空折翅之象影响感情" },
-			{ palace: "父母", lu: "长辈对感情支持，文书契约顺利", ji: "家长反对或文书问题影响婚姻" },
+			{
+				palace: "迁移",
+				lu: "外出有感情机遇，异乡有缘分",
+				ji: "外出感情多波折，半空折翅之象影响感情",
+			},
+			{
+				palace: "父母",
+				lu: "长辈对感情支持，文书契约顺利",
+				ji: "家长反对或文书问题影响婚姻",
+			},
 		],
 		suggestions: [
 			"感情问题需看夫妻宫主星、本命四化与三方四正综合判断，不可只看一宫。",
@@ -1060,10 +1080,22 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 				ke: "专业名声旺，考公考证吉",
 				ji: "职场官非是非，升职受阻，宜低调行事",
 			},
-			{ palace: "迁移", lu: "外出发展大吉，异地贵人多", ji: "外出事业受阻，外地是非，宜守不宜动" },
+			{
+				palace: "迁移",
+				lu: "外出发展大吉，异地贵人多",
+				ji: "外出事业受阻，外地是非，宜守不宜动",
+			},
 			{ palace: "财帛", lu: "职位带动收入，财禄双旺", ji: "财运受阻，职场财务纠纷" },
-			{ palace: "父母", lu: "上司贵人助力，文书顺利", ji: "与上司关系有阻，文书合约有风险，宜低调配合" },
-			{ palace: "田宅", lu: "家业财库充盈，事业基础稳", ji: "家庭事务干扰事业，或不动产牵连工作" },
+			{
+				palace: "父母",
+				lu: "上司贵人助力，文书顺利",
+				ji: "与上司关系有阻，文书合约有风险，宜低调配合",
+			},
+			{
+				palace: "田宅",
+				lu: "家业财库充盈，事业基础稳",
+				ji: "家庭事务干扰事业，或不动产牵连工作",
+			},
 		],
 		suggestions: [
 			"官禄宫是事业格局的核心，但命宫与迁移宫亦是三方四正中的重要组成。",
@@ -1086,11 +1118,23 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 				ke: "专业技术换财，财名双收",
 				ji: "正财受阻，破财风险大，需谨慎理财",
 			},
-			{ palace: "田宅", lu: "财库充盈，房产运旺，积累顺遂", ji: "田宅受损，财库漏财，房产有纠纷" },
+			{
+				palace: "田宅",
+				lu: "财库充盈，房产运旺，积累顺遂",
+				ji: "田宅受损，财库漏财，房产有纠纷",
+			},
 			{ palace: "官禄", lu: "职位带动财运，事业越好财越旺", ji: "职场财运受损，收入不稳" },
 			{ palace: "命宫", lu: "财来自命，生财顺遂", ji: "命中财运受挫，需另谋财路" },
-			{ palace: "迁移", lu: "外出生财旺，越动越有财", ji: "外出破财，宜守不宜动，防旅途损失" },
-			{ palace: "福德", lu: "福禄双美，享受财富的过程", ji: "财运中精神层面多耗，享受不到财富带来的快乐" },
+			{
+				palace: "迁移",
+				lu: "外出生财旺，越动越有财",
+				ji: "外出破财，宜守不宜动，防旅途损失",
+			},
+			{
+				palace: "福德",
+				lu: "福禄双美，享受财富的过程",
+				ji: "财运中精神层面多耗，享受不到财富带来的快乐",
+			},
 		],
 		suggestions: [
 			"财帛宫主星是财运的核心，但命宫与官禄宫三方联动决定财的来路。",
@@ -1113,7 +1157,10 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 			},
 			{ palace: "迁移", ji: "外出意外风险，半空折翅之象——需特别注意交通安全和意外伤害" },
 			{ palace: "命宫", ji: "自身健康基础受损，免疫力下降，需调养" },
-			{ palace: "父母", ji: "文书合约问题，或体检报告需关注，与医疗相关的证件文书事务谨慎处理" },
+			{
+				palace: "父母",
+				ji: "文书合约问题，或体检报告需关注，与医疗相关的证件文书事务谨慎处理",
+			},
 			{ palace: "子女", ji: "与生育、下腹部相关的健康需关注" },
 		],
 		suggestions: [
@@ -1130,7 +1177,11 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 		summaryKey: "overview",
 		isSummaryTopic: false,
 		keyPalaces: [
-			{ palace: "兄弟", lu: "兄弟助力大，合伙顺遂带财", ji: "兄弟缘薄或合伙破财，需提防合伙纠纷" },
+			{
+				palace: "兄弟",
+				lu: "兄弟助力大，合伙顺遂带财",
+				ji: "兄弟缘薄或合伙破财，需提防合伙纠纷",
+			},
 			{ palace: "命宫", lu: "自身为兄弟贵人", ji: "与兄弟关系中自身情绪易受影响" },
 			{ palace: "交友", lu: "朋友中有兄弟情谊", ji: "合伙与交友是非多" },
 		],
@@ -1148,7 +1199,11 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 		summaryKey: "overview",
 		isSummaryTopic: false,
 		keyPalaces: [
-			{ palace: "子女", lu: "子女聪慧有福，亲子关系好", ji: "子女缘薄或管教方式需调整，防生育波折" },
+			{
+				palace: "子女",
+				lu: "子女聪慧有福，亲子关系好",
+				ji: "子女缘薄或管教方式需调整，防生育波折",
+			},
 			{ palace: "夫妻", lu: "夫妻共育子女运旺", ji: "感情问题牵连子女" },
 			{ palace: "田宅", lu: "子女为家庭带来活力", ji: "子女与家宅有冲突" },
 		],
@@ -1235,7 +1290,11 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 				quan: "主导自己的精神生活",
 				ji: "紫微斗数有云（一说北派口诀，非倪师原话）：「福德宫化忌，夫妻宫未见生离，必定死别」——精神受损容易牵连婚姻与身体，需特别关注",
 			},
-			{ palace: "命宫", lu: "自我认同强，内心稳定", ji: "命宫与福德的双重受损，需主动寻求心理支撑" },
+			{
+				palace: "命宫",
+				lu: "自我认同强，内心稳定",
+				ji: "命宫与福德的双重受损，需主动寻求心理支撑",
+			},
 			{ palace: "财帛", lu: "享受财富的过程，福禄兼美", ji: "因财务问题牵动精神" },
 		],
 		suggestions: [
@@ -1332,7 +1391,9 @@ export const TOPIC_CONTENT_SOURCE: Record<TopicKey, TopicKey> = (() => {
 	const out = {} as Record<TopicKey, TopicKey>;
 	for (const k of TOPIC_KEYS) {
 		const ck = TOPIC_DEFS[k].contentKey;
-		if (!firstByContentKey.has(ck)) {firstByContentKey.set(ck, k);}
+		if (!firstByContentKey.has(ck)) {
+			firstByContentKey.set(ck, k);
+		}
 		out[k] = firstByContentKey.get(ck)!;
 	}
 	return out;
@@ -1726,7 +1787,6 @@ export const PALACE_TO_CONTENT_KEY: Partial<Record<string, keyof StarContent>> =
 	父母: "fuMu",
 };
 
-
 export type AnalysisView = "mingpan" | "daxian" | "liunian" | "liuyue";
 
 export interface AnalysisOptions {
@@ -1793,7 +1853,3 @@ export const SIHUA_CHAR_TO_KEY: Record<string, keyof MutagenModifier> = {
 	科: "ke",
 	忌: "ji",
 };
-
-
-
-

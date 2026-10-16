@@ -70,7 +70,9 @@ function pickSamples(parsed: FixtureLine[]): Array<{ why: string; line: FixtureL
 	const firstWhere = (pred: (f: FixtureLine) => boolean, why: string): FixtureLine => {
 		const found = parsed.find(f => !taken.has(keyOf(f)) && pred(f));
 		if (!found) {
-			throw new Error(`charts.jsonl 里找不到（未被前几条挑走的）「${why}」样本 —— 挑选规则已失效`);
+			throw new Error(
+				`charts.jsonl 里找不到（未被前几条挑走的）「${why}」样本 —— 挑选规则已失效`
+			);
 		}
 		taken.add(keyOf(found));
 		return found;
@@ -130,7 +132,11 @@ async function main(): Promise<void> {
 		console.log(`  ✓ ${why} → ${b.year}-${b.month}-${b.day} 时辰${b.timeIndex} ${b.gender}`);
 	}
 
-	writeFileSync(resolve(FIX_DIR, "raw-rows.json"), JSON.stringify(out, null, "\t") + "\n", "utf8");
+	writeFileSync(
+		resolve(FIX_DIR, "raw-rows.json"),
+		JSON.stringify(out, null, "\t") + "\n",
+		"utf8"
+	);
 	const bytes = readFileSync(resolve(FIX_DIR, "raw-rows.json")).length;
 	console.log(
 		`已写出 ${out.length} 条真实样本行 → test/fixtures/raw-rows.json（${(bytes / 1024).toFixed(0)} KiB）`
@@ -141,8 +147,7 @@ async function main(): Promise<void> {
 
 // 仅直接执行才跑 —— Node 的默认测试文件识别模式含 test/**/*，没有这道守卫时
 // `node --test test/` 会把它当测试文件执行（同 tools/ 下其余脚本）。
-const isDirectRun =
-	process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isDirectRun = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isDirectRun) {
 	main().catch(err => {
 		console.error(err);

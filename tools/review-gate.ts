@@ -70,7 +70,9 @@ interface GitOut {
 }
 function git(args: string[]): GitOut {
 	const r = spawnSync("git", args, { encoding: "utf8", cwd: SKILL_ROOT, maxBuffer: 1 << 28 });
-	if (r.error) {return { ok: false, out: String(r.error.message), code: -1 };}
+	if (r.error) {
+		return { ok: false, out: String(r.error.message), code: -1 };
+	}
 	return { ok: r.status === 0, out: (r.stdout ?? "") + (r.stderr ?? ""), code: r.status ?? -1 };
 }
 
@@ -89,18 +91,22 @@ function changedFiles(base: string | null): ChangedFile[] {
 	const r = git(["diff", "--name-status", "-M", base ?? "HEAD"]);
 	const tracked: ChangedFile[] = r.ok
 		? r.out
-			.split("\n")
-			.filter(Boolean)
-			.map(line => {
-				const parts = line.split("\t");
-				// R 形态是「状态 + 旧路径 + 新路径」，取新路径
-				return { status: parts[0][0], path: parts[parts.length - 1] };
-			})
+				.split("\n")
+				.filter(Boolean)
+				.map(line => {
+					const parts = line.split("\t");
+					// R 形态是「状态 + 旧路径 + 新路径」，取新路径
+					return { status: parts[0][0], path: parts[parts.length - 1] };
+				})
 		: [];
 	// 未跟踪文件只在「看工作区」时才是评审对象；相对 base 时它们本就不在 base 里。
-	if (base) {return tracked;}
+	if (base) {
+		return tracked;
+	}
 	const un = git(["ls-files", "--others", "--exclude-standard"]);
-	if (!un.ok) {return tracked;}
+	if (!un.ok) {
+		return tracked;
+	}
 	const fresh = un.out
 		.split("\n")
 		.filter(Boolean)
@@ -124,19 +130,25 @@ interface AddedLine {
  */
 function addedLines(base: string | null, files: ChangedFile[]): AddedLine[] {
 	const paths = files.filter(f => f.status !== "D").map(f => f.path);
-	if (!paths.length) {return [];}
+	if (!paths.length) {
+		return [];
+	}
 	// 未跟踪文件：`git diff` 不含它们，用 --no-index 与 /dev/null 比（退出码 1 = 有差异，属正常）
 	const untracked = files.filter(f => f.status === "A").map(f => f.path);
 	const known = files.filter(f => f.status !== "A" && f.status !== "D").map(f => f.path);
 	const chunks: string[] = [];
 	if (known.length) {
 		const r = git(["diff", "-U0", "--no-color", base ?? "HEAD", "--", ...known]);
-		if (r.ok) {chunks.push(r.out);}
+		if (r.ok) {
+			chunks.push(r.out);
+		}
 	}
 	for (const f of untracked) {
 		const r = git(["diff", "--no-index", "-U0", "--no-color", "/dev/null", f]);
 		// --no-index 差异存在时退出码为 1，非 0 不代表失败
-		if (r.out) {chunks.push(r.out);}
+		if (r.out) {
+			chunks.push(r.out);
+		}
 	}
 	const out: AddedLine[] = [];
 	let cur = "";
@@ -191,14 +203,16 @@ function classify(base: string | null, files: ChangedFile[], adds: AddedLine[]):
 	const pkgLine = pkgDiff.out
 		.split("\n")
 		.filter(l => /^[+-]/.test(l) && !/^(\+\+\+|---)/.test(l))
-		.filter(l => /"(dependencies|devDependencies|peerDependencies)"|"[^"]+"\s*:\s*"[~^]?\d/.test(l));
+		.filter(l =>
+			/"(dependencies|devDependencies|peerDependencies)"|"[^"]+"\s*:\s*"[~^]?\d/.test(l)
+		);
 	if (pkgLine.length) {
 		kinds.add("依赖");
 		reasons.push("动了依赖版本：iztro/lunar 升级会改变排盘结果，须 selftest + npm test 都跑");
 	}
 	// 重构线索：同文件增删都很大 → 像重排而非加法
-	const heavy = git(["diff", "--numstat", base ?? "HEAD"]).out
-		.split("\n")
+	const heavy = git(["diff", "--numstat", base ?? "HEAD"])
+		.out.split("\n")
 		.filter(Boolean)
 		.map(l => l.split("\t"))
 		.filter(c => c.length >= 2 && /^\d+$/.test(c[0]) && /^\d+$/.test(c[1]))
@@ -212,7 +226,9 @@ function classify(base: string | null, files: ChangedFile[], adds: AddedLine[]):
 	if (adds.some(a => a.text.length > 30 && /[「『]/.test(a.text))) {
 		kinds.add("内容");
 	}
-	if (!kinds.size) {kinds.add("局部");}
+	if (!kinds.size) {
+		kinds.add("局部");
+	}
 	if (paths.filter(p => p.endsWith(".md")).length === paths.length) {
 		kinds.add("文档");
 	}
@@ -222,16 +238,17 @@ function classify(base: string | null, files: ChangedFile[], adds: AddedLine[]):
 	// 跳过它等于让守卫自己给自己免检。
 	// 这条是实测补的：改 test/cli.test.ts 曾被判「轻」而跳过 npm test，
 	// 于是一处真失败从闸门底下溜了过去（红灯仍由 npm test 报出，不是静默）。
-	const touchesCode = paths.some(
-		p => /\.(ts|json)$/.test(p) && !p.endsWith(".md")
-	);
-	if (touchesCode) {kinds.add("代码");}
+	const touchesCode = paths.some(p => /\.(ts|json)$/.test(p) && !p.endsWith(".md"));
+	if (touchesCode) {
+		kinds.add("代码");
+	}
 
-	const tier: Tier = kinds.has("冻结面") || kinds.has("生成文件") || kinds.has("依赖") || kinds.has("重构")
-		? "严"
-		: touchesCode || kinds.has("真相源") || kinds.has("内容")
-			? "中"
-			: "轻";
+	const tier: Tier =
+		kinds.has("冻结面") || kinds.has("生成文件") || kinds.has("依赖") || kinds.has("重构")
+			? "严"
+			: touchesCode || kinds.has("真相源") || kinds.has("内容")
+				? "中"
+				: "轻";
 	if (tier !== "轻") {
 		reasons.push("碰到代码 → 必须跑全量回归（轻档只豁免纯文档改动）");
 	}
@@ -249,11 +266,19 @@ function classify(base: string | null, files: ChangedFile[], adds: AddedLine[]):
  * 判据归 selftest，本函数只负责**把位置圈对**。
  */
 function isContentLine(a: AddedLine): boolean {
-	if (/\.(md|markdown)$/.test(a.path)) {return false;}
-	if (!/^scripts\/(analysis|corpus\/data)\//.test(a.path)) {return false;}
+	if (/\.(md|markdown)$/.test(a.path)) {
+		return false;
+	}
+	if (!/^scripts\/(analysis|corpus\/data)\//.test(a.path)) {
+		return false;
+	}
 	// 核对表与登记表本身：它们**持有**引句而非引用，改它们走的是另一条审查路径
-	if (/(annotations|grades)\.ts$/.test(a.path)) {return false;}
-	if (/^\s*(\/\/|\*|\/\*)/.test(a.text)) {return false;}
+	if (/(annotations|grades)\.ts$/.test(a.path)) {
+		return false;
+	}
+	if (/^\s*(\/\/|\*|\/\*)/.test(a.text)) {
+		return false;
+	}
 	return true;
 }
 
@@ -280,7 +305,9 @@ function mechanical(files: ChangedFile[], adds: AddedLine[]): Finding[] {
 	// 生成文件：**改动**是阻断（会被下次重跑静默覆盖），**新增**只提示
 	// —— 新增一个生成物本身合理（首次落地），要确认的是「生成器也会产出它」。
 	for (const f of files) {
-		if (!GENERATED.some(re => re.test(f.path))) {continue;}
+		if (!GENERATED.some(re => re.test(f.path))) {
+			continue;
+		}
 		if (f.status === "M") {
 			out.push({
 				level: "🔴",
@@ -299,31 +326,45 @@ function mechanical(files: ChangedFile[], adds: AddedLine[]): Finding[] {
 	}
 
 	// 新增行里的倪师引句形态 —— **只报位置，不判是否已登记**（判据归 selftest）
-	const niQuote = adds.filter(a => isContentLine(a) && /(?<!非)倪(?:师|海厦)[^「」"“”]{0,18}[：:]?[「"]/.test(a.text));
+	const niQuote = adds.filter(
+		a => isContentLine(a) && /(?<!非)倪(?:师|海厦)[^「」"“”]{0,18}[：:]?[「"]/.test(a.text)
+	);
 	if (niQuote.length) {
 		out.push({
 			level: "🟡",
 			title: `新增 ${niQuote.length} 行含「倪师 + 引号」形态`,
-			where: niQuote.slice(0, 5).map(a => `${a.path}:${a.line}`).join("  "),
+			where: niQuote
+				.slice(0, 5)
+				.map(a => `${a.path}:${a.line}`)
+				.join("  "),
 			why: "① 若内容是自撰/占位，挂引语属伪造引文，应改为自述式；② 若确有出处，须在 grades.ts 登记档位。两者都由 selftest 拦截。",
 		});
 	}
 
 	// 计数写死：新增行里带「N 个/项/主题」这类字面量数字
-	const hardCount = adds.filter(a => isContentLine(a) && /\d+\s*(个主题|项|条断言|层)/.test(a.text));
+	const hardCount = adds.filter(
+		a => isContentLine(a) && /\d+\s*(个主题|项|条断言|层)/.test(a.text)
+	);
 	if (hardCount.length) {
 		out.push({
 			level: "💭",
 			title: `新增 ${hardCount.length} 行疑似写死计数`,
-			where: hardCount.slice(0, 5).map(a => `${a.path}:${a.line}`).join("  "),
+			where: hardCount
+				.slice(0, 5)
+				.map(a => `${a.path}:${a.line}`)
+				.join("  "),
 			why: "计数应能自报自报、能派生派生。确认这里不是必须固定的守卫基线值。",
 		});
 	}
 
 	// 跨层：cli ↔ 内核 ↔ test 同时被改，通常意味着改的不是单一职责
 	const layers = new Set<string>();
-	if (touchesDir(paths, "scripts/cli/")) {layers.add("cli");}
-	if (touchesDir(paths, "test/")) {layers.add("test");}
+	if (touchesDir(paths, "scripts/cli/")) {
+		layers.add("cli");
+	}
+	if (touchesDir(paths, "test/")) {
+		layers.add("test");
+	}
 	if (paths.some(p => /^scripts\/[^/]+\.ts$/.test(p) || p.startsWith("scripts/analysis"))) {
 		layers.add("内核");
 	}
@@ -350,7 +391,6 @@ function mechanical(files: ChangedFile[], adds: AddedLine[]): Finding[] {
 function touchesDir(paths: string[], frag: string): boolean {
 	return paths.some(p => p.startsWith(frag));
 }
-
 
 // ══════════════════════════════════════════════════════════════════════
 // 逐字节对拍 —— 重构类变更的硬证据
@@ -430,7 +470,9 @@ function snapshot(tag: string, scenarios: readonly Scenario[]): Map<string, stri
  */
 function readShot(p: string): { ok: true; text: string } | { ok: false; why: string } {
 	try {
-		if (statSync(p).size === 0) {return { ok: false, why: "快照为空" };}
+		if (statSync(p).size === 0) {
+			return { ok: false, why: "快照为空" };
+		}
 	} catch {
 		return { ok: false, why: "快照文件不存在" };
 	}
@@ -493,12 +535,18 @@ async function runByteDiff(): Promise<ByteDiffResult> {
 			const now = readShot(currentShots.get(sc.name)!);
 			const base = readShot(baselineShots.get(sc.name)!);
 			if (!now.ok || !base.ok) {
-				const parts = [!now.ok && `改动侧 ${now.why}`, !base.ok && `基线侧 ${base.why}`].filter(Boolean);
+				const parts = [
+					!now.ok && `改动侧 ${now.why}`,
+					!base.ok && `基线侧 ${base.why}`,
+				].filter(Boolean);
 				toolFault.push(`${sc.name}：${parts.join("；")}`);
 				continue;
 			}
-			if (now.text === base.text) {same.push(sc.name);}
-			else {diff.push(sc.name);}
+			if (now.text === base.text) {
+				same.push(sc.name);
+			} else {
+				diff.push(sc.name);
+			}
 		}
 		return { same, diff, toolFault };
 	} finally {
@@ -534,7 +582,12 @@ function runGates(tier: Tier): Gate[] {
 		gates.push({ name: "npm test", cmd: "npm test", pass: true, tail: "" });
 	}
 	for (const g of gates) {
-		const r = spawnSync(g.cmd, { encoding: "utf8", cwd: SKILL_ROOT, shell: true, maxBuffer: 1 << 28 });
+		const r = spawnSync(g.cmd, {
+			encoding: "utf8",
+			cwd: SKILL_ROOT,
+			shell: true,
+			maxBuffer: 1 << 28,
+		});
 		const text = ((r.stdout ?? "") + (r.stderr ?? ""))
 			.split("\n")
 			.filter(Boolean)
@@ -543,20 +596,26 @@ function runGates(tier: Tier): Gate[] {
 		g.pass = r.status === 0;
 		g.tail = text.slice(-2).join(" | ").slice(0, 200);
 		// 通过却无输出（如 typecheck 静默 0 错误）时**自报一句**，别留空让人猜是不是没跑
-		if (g.pass && !text.length) {g.tail = GATE_QUIET_PASS[g.name] ?? "通过（无输出）";}
+		if (g.pass && !text.length) {
+			g.tail = GATE_QUIET_PASS[g.name] ?? "通过（无输出）";
+		}
 		if (g.name === "npm test") {
 			// 核对内核层计数（总项数会被插件项合法抬高，内核层才是越界信号）
 			const inv = text.join("\n").match(/层 3 排盘结构不变量\s+(\d+)\s+项/);
 			const kc = text.join("\n").match(/层 3 内核契约\s+(\d+)\s+项/);
 			if (!inv || !kc) {
 				g.pass = false;
-				g.tail = "无法从 npm test 输出解析内核层计数 —— 守卫口径变了，先核对 run.ts 的 LAYERS";
+				g.tail =
+					"无法从 npm test 输出解析内核层计数 —— 守卫口径变了，先核对 run.ts 的 LAYERS";
 			} else {
 				const cur = { invariants: Number(inv[1]), kernelContract: Number(kc[1]) };
 				const total = text.join("\n").match(/总计 (\d+) 项/);
 				const base = `${KERNEL_BASELINE.invariants}+${KERNEL_BASELINE.kernelContract}`;
 				const now = `${cur.invariants}+${cur.kernelContract}`;
-				if (cur.invariants < KERNEL_BASELINE.invariants || cur.kernelContract < KERNEL_BASELINE.kernelContract) {
+				if (
+					cur.invariants < KERNEL_BASELINE.invariants ||
+					cur.kernelContract < KERNEL_BASELINE.kernelContract
+				) {
 					g.pass = false;
 					g.tail = `内核层 ${now} < 基线 ${base} —— 守卫被削弱或删除`;
 				} else if (now !== base) {
@@ -577,7 +636,10 @@ const JUDGE_ITEMS: Array<[string, string]> = [
 	["单职", "新增/改动的常量是否只承担一个角色？（一个名字、两种含义 = 下一个漂移的伏笔）"],
 	["独立", "新增断言的期望值来自哪条**独立路径**？同源同路径的断言只是实现的复读机。"],
 	["反向", "注入一个已知失效，确认只有目标断言变红 —— 做过吗？"],
-	["追溯", "文案改动是否与体系口径（文墨排盘 + 倪师论断）一致？改 CLI 输出时 SKILL.md 同步了吗？"],
+	[
+		"追溯",
+		"文案改动是否与体系口径（文墨排盘 + 倪师论断）一致？改 CLI 输出时 SKILL.md 同步了吗？",
+	],
 ];
 
 function printUsage(): void {
@@ -629,9 +691,15 @@ async function main(): Promise<void> {
 	const findings = mechanical(files, adds);
 
 	console.log(`\n${RULE}`);
-	console.log(`代码评审闸门　对象：${base ? `相对 ${base}` : "工作区未提交改动"}　分档：${cls.tier}`);
-	console.log(`变更 ${files.length} 个文件 · 新增 ${adds.length} 行 · 类型：${cls.kinds.join(" / ")}`);
-	for (const r of cls.reasons) {console.log(`  · ${r}`);}
+	console.log(
+		`代码评审闸门　对象：${base ? `相对 ${base}` : "工作区未提交改动"}　分档：${cls.tier}`
+	);
+	console.log(
+		`变更 ${files.length} 个文件 · 新增 ${adds.length} 行 · 类型：${cls.kinds.join(" / ")}`
+	);
+	for (const r of cls.reasons) {
+		console.log(`  · ${r}`);
+	}
 
 	console.log(`\n── 机检 ──`);
 	if (!findings.length) {
@@ -653,15 +721,20 @@ async function main(): Promise<void> {
 			console.log(`  ${g.pass ? "✅" : "❌"} ${g.name}　${g.tail}`);
 		}
 	} else {
-		const names = cls.tier === "轻"
-			? ["npm run typecheck", "node scripts/purple-star.ts selftest"]
-			: ["npm run typecheck", "node scripts/purple-star.ts selftest", "npm test"];
+		const names =
+			cls.tier === "轻"
+				? ["npm run typecheck", "node scripts/purple-star.ts selftest"]
+				: ["npm run typecheck", "node scripts/purple-star.ts selftest", "npm test"];
 		console.log(`\n── 闸门（未执行；去掉 --no-run 即会真的跑）──`);
-		for (const n of names) {console.log(`  ☐ ${n}`);}
+		for (const n of names) {
+			console.log(`  ☐ ${n}`);
+		}
 	}
 
 	console.log(`\n── 工作单（判断题，工具答不了）──`);
-	for (const [k, q] of JUDGE_ITEMS) {console.log(`  ☐ [${k}] ${q}`);}
+	for (const [k, q] of JUDGE_ITEMS) {
+		console.log(`  ☐ [${k}] ${q}`);
+	}
 	console.log(`  ☐ [分档] 本次是否属「重构（不改行为）」？是 → 必须补逐字节对拍证据`);
 
 	const blockers = findings.filter(f => f.level === "🔴").length + bdCounters.diff;
@@ -674,7 +747,9 @@ async function main(): Promise<void> {
 		if (bd.toolFault.length) {
 			// 验证手段失准 → 直接失败，绝不报成「代码变了」
 			console.log(`  ❌ 验证手段失准，本次结果不可用：`);
-			for (const t of bd.toolFault) {console.log(`      ${t}`);}
+			for (const t of bd.toolFault) {
+				console.log(`      ${t}`);
+			}
 		} else if (bd.same.length) {
 			console.log(`  ✅ ${bd.same.length} 个场景逐字节一致：${bd.same.join("、")}`);
 		}
@@ -697,7 +772,9 @@ async function main(): Promise<void> {
 	console.log(verdict);
 	console.log(RULE);
 
-	if (blockers || failed) {process.exitCode = 1;}
+	if (blockers || failed) {
+		process.exitCode = 1;
+	}
 }
 
 // ── 仅直接执行时跑 main（守卫口径同 tools/db/*.ts）──

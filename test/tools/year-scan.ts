@@ -43,7 +43,9 @@ const argv = process.argv.slice(2);
 const hasFlag = (name: string): boolean => argv.includes(`--${name}`);
 const optOf = (name: string): string | null => {
 	const i = argv.indexOf(`--${name}`);
-	if (i < 0) {return null;}
+	if (i < 0) {
+		return null;
+	}
 	const v = argv[i + 1];
 	return v && !v.startsWith("--") ? v : null;
 };
@@ -56,7 +58,9 @@ const LIMIT = optOf("limit") ? Number(optOf("limit")) : Infinity;
 
 function range(a: number, b: number): number[] {
 	const out: number[] = [];
-	for (let i = a; i <= b; i++) {out.push(i);}
+	for (let i = a; i <= b; i++) {
+		out.push(i);
+	}
 	return out;
 }
 
@@ -68,9 +72,20 @@ const label = (b: BirthInfo): string =>
 // 这里把同一组口径压到无基准的年份段。
 
 const MAJOR_STARS = [
-	"紫微", "天机", "太阳", "武曲", "天同", "廉贞",
-	"天府", "太阴", "贪狼", "巨门", "天相", "天梁",
-	"七杀", "破军",
+	"紫微",
+	"天机",
+	"太阳",
+	"武曲",
+	"天同",
+	"廉贞",
+	"天府",
+	"太阴",
+	"贪狼",
+	"巨门",
+	"天相",
+	"天梁",
+	"七杀",
+	"破军",
 ];
 
 interface Ctx {
@@ -86,61 +101,90 @@ function checkChart(chart: ZiweiChart, ctx: Ctx): string[] {
 
 	// 1. 十二宫必齐，宫名集合 === PALACE_NAMES_ORDER
 	const names = chart.palaces.map(p => p.name);
-	if (names.length !== 12 || new Set(names).size !== 12)
-		{errs.push(`十二宫不齐：${names.length} 宫 / ${new Set(names).size} 个不同名`);}
-	if ([...names].sort().join() !== [...PALACE_NAMES_ORDER].sort().join())
-		{errs.push(`宫名集合与 PALACE_NAMES_ORDER 不符：${[...names].sort().join("、")}`);}
+	if (names.length !== 12 || new Set(names).size !== 12) {
+		errs.push(`十二宫不齐：${names.length} 宫 / ${new Set(names).size} 个不同名`);
+	}
+	if ([...names].sort().join() !== [...PALACE_NAMES_ORDER].sort().join()) {
+		errs.push(`宫名集合与 PALACE_NAMES_ORDER 不符：${[...names].sort().join("、")}`);
+	}
 
 	// 2. 偏移恒等式：k = (命宫支 − 本宫支 + 12) % 12，宫名 = PALACE_NAMES_ORDER[k]
 	for (const p of chart.palaces) {
 		const k = (chart.soulBranch - p.branch + 12) % 12;
-		if (p.name !== PALACE_NAMES_ORDER[k])
-			{errs.push(`偏移恒等式：${BRANCHES[p.branch]} 宫应为 ${PALACE_NAMES_ORDER[k]}，实得 ${p.name}`);}
+		if (p.name !== PALACE_NAMES_ORDER[k]) {
+			errs.push(
+				`偏移恒等式：${BRANCHES[p.branch]} 宫应为 ${PALACE_NAMES_ORDER[k]}，实得 ${p.name}`
+			);
+		}
 	}
 
 	// 3. 十四主星各恰一颗
-	const majors = chart.palaces.flatMap(p => p.stars.filter(s => s.type === "major").map(s => s.name)).sort();
-	if (majors.join() !== [...MAJOR_STARS].sort().join())
-		{errs.push(`主星集合不符（${majors.length} 颗）：${majors.join("、")}`);}
+	const majors = chart.palaces
+		.flatMap(p => p.stars.filter(s => s.type === "major").map(s => s.name))
+		.sort();
+	if (majors.join() !== [...MAJOR_STARS].sort().join()) {
+		errs.push(`主星集合不符（${majors.length} 颗）：${majors.join("、")}`);
+	}
 
 	// 4. 生年四化：恰 4 颗带 mutagen、禄权科忌各一、与农历年干四化表逐颗一致
 	const marked = chart.palaces.flatMap(p => p.stars).filter(s => s.mutagen);
-	if (marked.length !== 4) {errs.push(`带四化标记的星应恰 4 颗，实得 ${marked.length}`);}
-	if (new Set(marked.map(s => s.mutagen)).size !== 4)
-		{errs.push(`四化应禄权科忌各一，实得 ${marked.map(s => s.mutagen).join("")}`);}
+	if (marked.length !== 4) {
+		errs.push(`带四化标记的星应恰 4 颗，实得 ${marked.length}`);
+	}
+	if (new Set(marked.map(s => s.mutagen)).size !== 4) {
+		errs.push(`四化应禄权科忌各一，实得 ${marked.map(s => s.mutagen).join("")}`);
+	}
 	const transforms = ctx.getMutagenByStem(chart.lunarInfo.yearStem);
 	const expectByStar: Record<string, string> = {};
-	for (const [hua, star] of Object.entries(transforms)) {expectByStar[star] = hua;}
+	for (const [hua, star] of Object.entries(transforms)) {
+		expectByStar[star] = hua;
+	}
 	for (const s of marked) {
-		if (expectByStar[s.name] !== s.mutagen)
-			{errs.push(`${s.name} 的四化标记为 ${s.mutagen}，年干（${ctx.STEMS[chart.lunarInfo.yearStem]}）四化表却给 ${expectByStar[s.name] ?? "无"}`);}
+		if (expectByStar[s.name] !== s.mutagen) {
+			errs.push(
+				`${s.name} 的四化标记为 ${s.mutagen}，年干（${ctx.STEMS[chart.lunarInfo.yearStem]}）四化表却给 ${expectByStar[s.name] ?? "无"}`
+			);
+		}
 	}
 
 	// 5. 大限：12 步、12 支、跨度 10 年首尾相接、palaceName 与宫位一致
-	if (chart.decadals.length !== 12) {errs.push(`大限应 12 步，实得 ${chart.decadals.length}`);}
-	if (new Set(chart.decadals.map(d => d.palaceBranch)).size !== 12)
-		{errs.push("大限 12 步应覆盖 12 个不同宫支");}
+	if (chart.decadals.length !== 12) {
+		errs.push(`大限应 12 步，实得 ${chart.decadals.length}`);
+	}
+	if (new Set(chart.decadals.map(d => d.palaceBranch)).size !== 12) {
+		errs.push("大限 12 步应覆盖 12 个不同宫支");
+	}
 	const dx = [...chart.decadals].sort((a, b) => a.startAge - b.startAge);
 	for (let i = 0; i < dx.length - 1; i++) {
-		if (dx[i].endAge - dx[i].startAge !== 9)
-			{errs.push(`大限第 ${i} 步跨度应为 10 年（${dx[i].startAge}-${dx[i].endAge}）`);}
-		if (dx[i + 1].startAge !== dx[i].endAge + 1)
-			{errs.push(`大限第 ${i} 步与第 ${i + 1} 步应相接（${dx[i].endAge} → ${dx[i + 1].startAge}）`);}
+		if (dx[i].endAge - dx[i].startAge !== 9) {
+			errs.push(`大限第 ${i} 步跨度应为 10 年（${dx[i].startAge}-${dx[i].endAge}）`);
+		}
+		if (dx[i + 1].startAge !== dx[i].endAge + 1) {
+			errs.push(
+				`大限第 ${i} 步与第 ${i + 1} 步应相接（${dx[i].endAge} → ${dx[i + 1].startAge}）`
+			);
+		}
 	}
 	for (const d of chart.decadals) {
 		const palace = chart.palaces.find(p => p.branch === d.palaceBranch);
-		if (!palace || palace.name !== d.palaceName)
-			{errs.push(`大限宫名 ${d.palaceName} 与宫位 ${BRANCHES[d.palaceBranch]} 的实际宫名 ${palace?.name ?? "无"} 不符`);}
+		if (!palace || palace.name !== d.palaceName) {
+			errs.push(
+				`大限宫名 ${d.palaceName} 与宫位 ${BRANCHES[d.palaceBranch]} 的实际宫名 ${palace?.name ?? "无"} 不符`
+			);
+		}
 	}
 
 	// 6. 空宫借宫：主星空宫必有借星，且借自对宫
 	for (const p of chart.palaces) {
 		const hasMajor = p.stars.some(s => s.type === "major");
 		if (!hasMajor) {
-			if (!p.borrowedStars?.length) {errs.push(`${p.name} 空宫却无 borrowedStars`);}
+			if (!p.borrowedStars?.length) {
+				errs.push(`${p.name} 空宫却无 borrowedStars`);
+			}
 			const opp = chart.palaces.find(q => q.branch === (p.branch + 6) % 12);
-			if (opp && p.borrowedFromName !== opp.name)
-				{errs.push(`${p.name} 借宫来源 ${p.borrowedFromName ?? "无"} ≠ 对宫 ${opp.name}`);}
+			if (opp && p.borrowedFromName !== opp.name) {
+				errs.push(`${p.name} 借宫来源 ${p.borrowedFromName ?? "无"} ≠ 对宫 ${opp.name}`);
+			}
 		} else if (p.borrowedStars?.length) {
 			errs.push(`${p.name} 有主星却带 borrowedStars`);
 		}
@@ -150,23 +194,34 @@ function checkChart(chart: ZiweiChart, ctx: Ctx): string[] {
 }
 
 /** 公历 → 本项目农历信息 → lunar-typescript 回到公历，须回到同一日（闰月用负月序）。 */
-function checkLunarRoundTrip(birth: BirthInfo, chart: ZiweiChart, stems: string[], branches: string[]): string[] {
+function checkLunarRoundTrip(
+	birth: BirthInfo,
+	chart: ZiweiChart,
+	stems: string[],
+	branches: string[]
+): string[] {
 	const li = chart.lunarInfo;
-	const back = Lunar.fromYmd(li.lunarYear, li.isLeapMonth ? -li.lunarMonth : li.lunarMonth, li.lunarDay).getSolar();
+	const back = Lunar.fromYmd(
+		li.lunarYear,
+		li.isLeapMonth ? -li.lunarMonth : li.lunarMonth,
+		li.lunarDay
+	).getSolar();
 	const [y, m, d] = [back.getYear(), back.getMonth(), back.getDay()];
-	if (y !== birth.year || m !== birth.month || d !== birth.day)
-		{return [
+	if (y !== birth.year || m !== birth.month || d !== birth.day) {
+		return [
 			`农历往返失败：公历 ${birth.year}-${birth.month}-${birth.day} → 农历 ${li.lunarYear}-${li.isLeapMonth ? "闰" : ""}${li.lunarMonth}-${li.lunarDay} → 公历 ${y}-${m}-${d}`,
-		];}
+		];
+	}
 	// 年柱双向核对：用**出生日当天**取年柱。lunar-typescript 的 getYearInGanZhi() 按
 	// 正月初一切年（与本项目同口径；立春界是另一个 API getYearInGanZhiByLiChun）。
 	// 不能用「年中日期取年柱」的技巧 —— 那只适用于问「某一年的年干」，此处核对的是
 	// 出生日的农历年归属；首版脚本正是在这里误报了一片（探针口径错 ≠ 被测对象错）。
 	const gz = Solar.fromYmd(birth.year, birth.month, birth.day).getLunar().getYearInGanZhi();
-	if (stems.indexOf(gz[0]!) !== li.yearStem || branches.indexOf(gz[1]!) !== li.yearBranch)
-		{return [
+	if (stems.indexOf(gz[0]!) !== li.yearStem || branches.indexOf(gz[1]!) !== li.yearBranch) {
+		return [
 			`年柱分叉：lunar 年柱 ${gz} vs lunarInfo ${stems[li.yearStem] ?? li.yearStem}${branches[li.yearBranch] ?? li.yearBranch}`,
-		];}
+		];
+	}
 	return [];
 }
 
@@ -196,9 +251,18 @@ async function main(): Promise<void> {
 		for (const m of range(1, 12)) {
 			for (const d of DAYS_OF_MONTH) {
 				for (const h of range(0, 11)) {
-					if (checked >= LIMIT) {break outer;}
+					if (checked >= LIMIT) {
+						break outer;
+					}
 					const gender = (y + m + d + h) % 2 === 0 ? "male" : "female";
-					const birth: BirthInfo = { year: y, month: m, day: d, timeIndex: h, gender, longitude: 120 };
+					const birth: BirthInfo = {
+						year: y,
+						month: m,
+						day: d,
+						timeIndex: h,
+						gender,
+						longitude: 120,
+					};
 					checked++;
 
 					let chart: ZiweiChart;
@@ -208,12 +272,18 @@ async function main(): Promise<void> {
 						push(violations, byCheck, birth, "排盘抛错", String(err));
 						continue;
 					}
-					for (const msg of checkChart(chart, ctx)) {push(violations, byCheck, birth, "安星法恒等式", msg);}
-					for (const msg of checkLunarRoundTrip(birth, chart, STEMS, BRANCHES))
-						{push(violations, byCheck, birth, "农历往返", msg);}
+					for (const msg of checkChart(chart, ctx)) {
+						push(violations, byCheck, birth, "安星法恒等式", msg);
+					}
+					for (const msg of checkLunarRoundTrip(birth, chart, STEMS, BRANCHES)) {
+						push(violations, byCheck, birth, "农历往返", msg);
+					}
 
-					if (!QUIET && checked % PROGRESS_EVERY === 0)
-						{console.log(`  已检查 ${checked} 条（${y}-${String(m).padStart(2, "0")}），违例 ${violations.length}`);}
+					if (!QUIET && checked % PROGRESS_EVERY === 0) {
+						console.log(
+							`  已检查 ${checked} 条（${y}-${String(m).padStart(2, "0")}），违例 ${violations.length}`
+						);
+					}
 				}
 			}
 		}
@@ -222,23 +292,33 @@ async function main(): Promise<void> {
 	const secs = ((Date.now() - t0) / 1000).toFixed(1);
 	console.log("");
 	console.log("══ 年份段恒等式扫描汇总 ══");
-	console.log(`  范围　　　　　　　　　　${START}–${END}（每月 ${DAYS_OF_MONTH.length} 日 × 12 时辰，性别交替）`);
+	console.log(
+		`  范围　　　　　　　　　　${START}–${END}（每月 ${DAYS_OF_MONTH.length} 日 × 12 时辰，性别交替）`
+	);
 	console.log(`  检查条数　　　　　　　　${checked}`);
 	console.log(`  违例　　　　　　　　　　${violations.length}`);
 	if (byCheck.size) {
 		console.log("  按类别：");
-		for (const [k, v] of [...byCheck.entries()].sort((a, b) => b[1] - a[1]))
-			{console.log(`    ${k}　　　${v}`);}
+		for (const [k, v] of [...byCheck.entries()].sort((a, b) => b[1] - a[1])) {
+			console.log(`    ${k}　　　${v}`);
+		}
 	}
 	if (violations.length) {
 		console.log(`  明细（前 ${MAX_DETAIL} 条）：`);
-		for (const v of violations.slice(0, MAX_DETAIL))
-			{console.log(`    [${label(v.birth)}] ${v.check}：${v.message}`);}
-		if (violations.length > MAX_DETAIL) {console.log(`    …… 其余 ${violations.length - MAX_DETAIL} 条略`);}
+		for (const v of violations.slice(0, MAX_DETAIL)) {
+			console.log(`    [${label(v.birth)}] ${v.check}：${v.message}`);
+		}
+		if (violations.length > MAX_DETAIL) {
+			console.log(`    …… 其余 ${violations.length - MAX_DETAIL} 条略`);
+		}
 	}
-	console.log(`  耗时　　　　　　　　　　${secs} 秒（${((Date.now() - t0) / checked).toFixed(1)} ms/条）`);
+	console.log(
+		`  耗时　　　　　　　　　　${secs} 秒（${((Date.now() - t0) / checked).toFixed(1)} ms/条）`
+	);
 	console.log("");
-	console.log(violations.length ? "✘ 有违例。" : "✔ 零违例（自洽性通过；这证明排得自洽，不证明排得对）。");
+	console.log(
+		violations.length ? "✘ 有违例。" : "✔ 零违例（自洽性通过；这证明排得自洽，不证明排得对）。"
+	);
 	process.exit(violations.length ? 1 : 0);
 }
 

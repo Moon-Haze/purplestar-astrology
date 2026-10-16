@@ -58,10 +58,14 @@ export type ReportOptions = AnalysisOptions & { citations?: ReportCitation[] };
  */
 function asMarkdownBlock(lines: string[]): string[] {
 	let i = 0;
-	while (i < lines.length && lines[i] === "") {i++;}
+	while (i < lines.length && lines[i] === "") {
+		i++;
+	}
 	if (i < lines.length && /^\*\*【[^】]+】\*\*$/.test(lines[i])) {
 		i += 1;
-		while (i < lines.length && lines[i] === "") {i++;}
+		while (i < lines.length && lines[i] === "") {
+			i++;
+		}
 	}
 	const out: string[] = [];
 	for (; i < lines.length; i++) {
@@ -79,8 +83,12 @@ function asMarkdownBlock(lines: string[]): string[] {
 function trimBlanks(lines: string[]): string[] {
 	let start = 0;
 	let end = lines.length;
-	while (start < end && lines[start] === "") {start++;}
-	while (end > start && lines[end - 1] === "") {end--;}
+	while (start < end && lines[start] === "") {
+		start++;
+	}
+	while (end > start && lines[end - 1] === "") {
+		end--;
+	}
 	return lines.slice(start, end);
 }
 
@@ -109,7 +117,9 @@ export function getTopicReportMeta(
 	topic: TopicKey
 ): { palaceName: string; primaryStarName: string | null; isLoan: boolean } | null {
 	const ctx = makeContext(chart, topic, {});
-	if (!ctx) {return null;}
+	if (!ctx) {
+		return null;
+	}
 	return {
 		palaceName: ctx.palaceName,
 		primaryStarName: ctx.primaryStar?.name ?? null,
@@ -140,7 +150,9 @@ export function getTopicReport(
 	options: ReportOptions = {}
 ): string {
 	const ctx = makeContext(chart, topic, options);
-	if (!ctx) {return `无法找到${TOPIC_PALACE_NAME[topic]}相关信息。`;}
+	if (!ctx) {
+		return `无法找到${TOPIC_PALACE_NAME[topic]}相关信息。`;
+	}
 
 	const { citations = [] } = options;
 	const lines: string[] = [];
@@ -154,7 +166,9 @@ export function getTopicReport(
 	// ── 一句话定调：主星一句简述（STAR_BRIEF），空宫给借宫提示 ──
 	if (ctx.primaryStar) {
 		const brief = STAR_BRIEF[ctx.primaryStar.name];
-		if (brief) {lines.push(`> **定调 · ${ctx.primaryStar.name}**：${brief}`);}
+		if (brief) {
+			lines.push(`> **定调 · ${ctx.primaryStar.name}**：${brief}`);
+		}
 	} else {
 		lines.push(`> **定调**：${ctx.palaceName}无主星，借对宫与三方四正综合定调。`);
 	}
@@ -183,19 +197,25 @@ export function getTopicReport(
 			const sihuaKey = ctx.primaryStar.mutagen
 				? (SIHUA_CHAR_TO_KEY[ctx.primaryStar.mutagen] ?? null)
 				: null;
-			if (brightnessKey && topicMod?.[brightnessKey])
-				{overviewLines.push(topicMod[brightnessKey]!);}
-			if (sihuaKey && topicMod?.[sihuaKey]) {overviewLines.push(topicMod[sihuaKey]!);}
+			if (brightnessKey && topicMod?.[brightnessKey]) {
+				overviewLines.push(topicMod[brightnessKey]!);
+			}
+			if (sihuaKey && topicMod?.[sihuaKey]) {
+				overviewLines.push(topicMod[sihuaKey]!);
+			}
 		}
 
 		if (topic === "overview" || topic === "personality") {
-			for (const gj of detectGeJu(chart))
-				{overviewLines.push(`⭐ **${gj.name}**：${gj.description}`);}
+			for (const gj of detectGeJu(chart)) {
+				overviewLines.push(`⭐ **${gj.name}**：${gj.description}`);
+			}
 		}
 
 		if (SUMMARY_TOPICS.has(topic)) {
 			const summary = ctx.profile.summary?.[gender]?.[summaryKey];
-			if (summary) {overviewLines.push(summary);}
+			if (summary) {
+				overviewLines.push(summary);
+			}
 		}
 	} else {
 		overviewLines.push(`${ctx.palaceName}空宫，需借对宫论事，整体以三方四正综合判断。`);
@@ -214,17 +234,22 @@ export function getTopicReport(
 			topic === "overview"
 				? ctx.profile.mingGong
 				: (ctx.profile[contentKey as keyof StarContent] as string | undefined);
-		if (content) {verdictLines.push(content);}
+		if (content) {
+			verdictLines.push(content);
+		}
 		const mod =
 			ctx.primaryStar.brightness === "bright"
 				? ctx.profile.brightMod
 				: ctx.primaryStar.brightness === "dim"
 					? ctx.profile.dimMod
 					: undefined;
-		if (mod) {verdictLines.push(`▶ ${mod}`);}
+		if (mod) {
+			verdictLines.push(`▶ ${mod}`);
+		}
 		const s2 = ctx.mainStars[1];
-		if (s2)
-			{verdictLines.push(`同宫第二主星：**${starBadge(s2)}**——${STAR_BRIEF[s2.name] ?? ""}`);}
+		if (s2) {
+			verdictLines.push(`同宫第二主星：**${starBadge(s2)}**——${STAR_BRIEF[s2.name] ?? ""}`);
+		}
 	}
 	if (verdictLines.length > 0) {
 		lines.push("### 核心论断");
@@ -301,7 +326,9 @@ export function getTopicReport(
 			(p, i) => `${ctx.sanFangLabels[i] ?? ""}（${p.name}：${descPalaceStars(p) || "空宫"}）`
 		)
 		.join("、");
-	if (sanFangDesc) {lines.push(`- 三方四正：${sanFangDesc}`);}
+	if (sanFangDesc) {
+		lines.push(`- 三方四正：${sanFangDesc}`);
+	}
 	if (ctx.mutagenInSanFang.length > 0) {
 		lines.push(
 			`- 本命四化会照：${ctx.mutagenInSanFang.map(m => `${m.starName}化${m.mutagen}（落${m.palaceName}）`).join("、")}`
@@ -320,14 +347,18 @@ export function getTopicReport(
 	if (citations.length > 0) {
 		lines.push("### 经典出处");
 		lines.push("");
-		for (const c of citations) {lines.push(`- 《${c.loc}》：「${c.text}」`);}
+		for (const c of citations) {
+			lines.push(`- 《${c.loc}》：「${c.text}」`);
+		}
 		lines.push("");
 	}
 
 	// ── 综合建议（TOPIC_SUGGESTIONS 三条；「继续深度追问」是交互尾巴，报告不带）──
 	lines.push("### 综合建议");
 	lines.push("");
-	for (const s of TOPIC_SUGGESTIONS[topic]) {lines.push(`→ ${s}`);}
+	for (const s of TOPIC_SUGGESTIONS[topic]) {
+		lines.push(`→ ${s}`);
+	}
 	lines.push("");
 
 	// view 之间的多空行在 Markdown 里与单个空行同义，统一压平成规范形态；

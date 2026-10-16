@@ -26,9 +26,8 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 const { generateChart } = await loadAlgorithm();
 // Phase 3：绊线改为声明式 —— 禁忌项读 SchoolAdapter，不在本文件硬编码。
 const { checkForbiddenFeatures } = await load<typeof import("@/school/guard")>("@/school/guard");
-const { SCHOOLS, DEFAULT_SCHOOL_ID } = await load<typeof import("@/school/registry")>(
-	"@/school/registry"
-);
+const { SCHOOLS, DEFAULT_SCHOOL_ID } =
+	await load<typeof import("@/school/registry")>("@/school/registry");
 const charts = samples.map(s => ({ birth: s.birthInfo, chart: generateChart({ ...s.birthInfo }) }));
 const label = (b: {
 	year: number;

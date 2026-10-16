@@ -48,7 +48,9 @@ export function renderOverview(ctx: AnalysisContext): string[] {
 					: primaryStar.brightness === "dim"
 						? "dim"
 						: null;
-			const sihuaKey = primaryStar.mutagen ? (SIHUA_CHAR_TO_KEY[primaryStar.mutagen] ?? null) : null;
+			const sihuaKey = primaryStar.mutagen
+				? (SIHUA_CHAR_TO_KEY[primaryStar.mutagen] ?? null)
+				: null;
 
 			const dynamicParts: string[] = [];
 			if (brightnessKey && topicMod?.[brightnessKey]) {
@@ -128,7 +130,9 @@ export function renderOverview(ctx: AnalysisContext): string[] {
 			const s2 = mainStars[1];
 			const brief = STAR_BRIEF[s2.name] ?? "";
 			lines.push("");
-			lines.push(`同宫第二主星：**${s2.name}${s2.mutagen ? "化" + s2.mutagen : ""}**——${brief}`);
+			lines.push(
+				`同宫第二主星：**${s2.name}${s2.mutagen ? "化" + s2.mutagen : ""}**——${brief}`
+			);
 		}
 	} else {
 		lines.push(`${palaceName}空宫，需借对宫论事，命格整体以三方四正综合判断。`);

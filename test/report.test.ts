@@ -46,7 +46,9 @@ async function cliCmdInProcess(args: string[]): Promise<string> {
 	const { COMMANDS } = await load<typeof import("@/cli/commands")>("@/cli/commands");
 	const { parseArgs } = await load<typeof import("@/cli/args")>("@/cli/args");
 	const fn = COMMANDS.astrology;
-	if (!fn) {throw new Error("astrology 命令未注册");}
+	if (!fn) {
+		throw new Error("astrology 命令未注册");
+	}
 	return fn(parseArgs(args, "astrology"), { root: ROOT, rootLabel: ROOT_LABEL });
 }
 
@@ -82,8 +84,9 @@ describe("astrology --report 全盘报告", () => {
 			"- 生年四化",
 			"- 已入格局",
 			"- 当前虚岁",
-		])
-			{assert.ok(t.includes(key), `文档头应有「${key}」行`);}
+		]) {
+			assert.ok(t.includes(key), `文档头应有「${key}」行`);
+		}
 	});
 
 	it("每一节都有定调 / 命盘依据 / 综合建议三要素，末尾带知识来源分级尾注", async () => {
@@ -98,12 +101,13 @@ describe("astrology --report 全盘报告", () => {
 		const t = await cliCmdInProcess([...MALE, "--report"]);
 		const cites = [...t.matchAll(/^- 《(.+?)》/gm)].map(m => m[1]);
 		assert.ok(cites.length > 0, "至少一条引文");
-		for (const loc of cites)
-			{assert.match(
+		for (const loc of cites) {
+			assert.match(
 				loc,
 				/骨髓赋|紫微斗数全集|紫微斗数全书/,
 				`引文出处应属三部古籍之一，实得：${loc}`
-			);}
+			);
+		}
 	});
 
 	it("女盘命宫空宫借对宫：标题带「借对宫」徽标且不落「无法找到」兜底", async () => {

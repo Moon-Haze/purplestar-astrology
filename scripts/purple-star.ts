@@ -252,7 +252,8 @@ async function main() {
 		// 用途付出 iztro 冷启动。
 		loadHelp: async () => {
 			const metaNs = await load<MetaModule>("@/cli/commands/command-meta");
-			const helpLite = await load<typeof import("@/cli/commands/help")>("@/cli/commands/help");
+			const helpLite =
+				await load<typeof import("@/cli/commands/help")>("@/cli/commands/help");
 			return {
 				renderOverviewHelp: () => helpLite.renderOverviewHelp(),
 				renderCommandHelp: (cmd: string) =>

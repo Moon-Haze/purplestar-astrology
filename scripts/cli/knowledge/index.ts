@@ -25,7 +25,8 @@ import { KNOWLEDGE_SOURCES, KNOWLEDGE_SOURCE_IDS } from "@/knowledge/registry";
 export async function cmdKnowledge(args: CliArgs): Promise<string> {
 	const source = String(args.source ?? "books");
 	const ks = KNOWLEDGE_SOURCES[source];
-	if (!ks)
-		{throw new Error(`--source 应为 ${KNOWLEDGE_SOURCE_IDS.join("/")}，收到：${source}`);}
+	if (!ks) {
+		throw new Error(`--source 应为 ${KNOWLEDGE_SOURCE_IDS.join("/")}，收到：${source}`);
+	}
 	return ks.search(args);
 }

@@ -43,8 +43,12 @@ export const SAMPLE_LABELS: Record<string, string> = {
 
 // 干支码字段译成「码（名）」；其余字段走通用 cell 渲染。
 export function formatSampleValue(key: string, v: unknown): string {
-	if (v === null || v === undefined) {return cell(v);}
-	if (key === "gender") {return v === "male" ? "男" : v === "female" ? "女" : cell(v);}
+	if (v === null || v === undefined) {
+		return cell(v);
+	}
+	if (key === "gender") {
+		return v === "male" ? "男" : v === "female" ? "女" : cell(v);
+	}
 	if (
 		key === "year_stem" ||
 		key === "year_branch" ||
@@ -63,7 +67,9 @@ export const dash = (v: unknown): string => (v === null || v === undefined ? "�
 
 // 星曜列表渲染：空数组/NULL 一律出 —，多项以空格分隔。
 export function starList(v: unknown, brightness?: unknown): string {
-	if (!Array.isArray(v) || v.length === 0) {return "—";}
+	if (!Array.isArray(v) || v.length === 0) {
+		return "—";
+	}
 	const bs = Array.isArray(brightness) ? brightness : [];
 	return v
 		.map((s, i) => {
@@ -83,6 +89,8 @@ export function sihuaCell(flags: unknown, stars: unknown): string {
 		Array.isArray(stars) && stars.length > 0
 			? stars.map(s => String(s).split(":")[0]).join("、")
 			: "";
-	if (!f && !names) {return "—";}
+	if (!f && !names) {
+		return "—";
+	}
 	return names ? `${f}（${names}）` : f;
 }

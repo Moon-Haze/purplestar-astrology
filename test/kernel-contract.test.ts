@@ -24,10 +24,22 @@ describe("内核对外契约（冻结 @ 2026-10-12）", () => {
 	});
 
 	it("宫位关系查询在契约面", () => {
-		assert.ok(isFn(palaceRelations.oppositeBranch), "palace-relations.oppositeBranch 必须在契约面");
-		assert.ok(isFn(palaceRelations.surroundBranches), "palace-relations.surroundBranches 必须在契约面");
-		assert.ok(isFn(palaceRelations.palaceAtBranch), "palace-relations.palaceAtBranch 必须在契约面");
-		assert.ok(isFn(palaceRelations.mustPalaceAtBranch), "palace-relations.mustPalaceAtBranch 必须在契约面");
+		assert.ok(
+			isFn(palaceRelations.oppositeBranch),
+			"palace-relations.oppositeBranch 必须在契约面"
+		);
+		assert.ok(
+			isFn(palaceRelations.surroundBranches),
+			"palace-relations.surroundBranches 必须在契约面"
+		);
+		assert.ok(
+			isFn(palaceRelations.palaceAtBranch),
+			"palace-relations.palaceAtBranch 必须在契约面"
+		);
+		assert.ok(
+			isFn(palaceRelations.mustPalaceAtBranch),
+			"palace-relations.mustPalaceAtBranch 必须在契约面"
+		);
 		assert.equal(palaceRelations.oppositeBranch.length, 1, "oppositeBranch 签名应为 (branch)");
 	});
 
@@ -48,17 +60,36 @@ describe("内核对外契约（冻结 @ 2026-10-12）", () => {
 	});
 
 	it("亮度查询在契约面", () => {
-		assert.ok(isFn(wenmo.wenmoStarBrightness), "wenmo-brightness.wenmoStarBrightness 必须在契约面");
-		assert.ok(isFn(wenmo.getBrightnessSchool), "wenmo-brightness.getBrightnessSchool 必须在契约面");
-		assert.ok(isFn(wenmo.setBrightnessSchool), "wenmo-brightness.setBrightnessSchool 必须在契约面");
-		assert.equal(wenmo.wenmoStarBrightness.length, 2, "wenmoStarBrightness 签名应为 (starName, branchIdx)");
+		assert.ok(
+			isFn(wenmo.wenmoStarBrightness),
+			"wenmo-brightness.wenmoStarBrightness 必须在契约面"
+		);
+		assert.ok(
+			isFn(wenmo.getBrightnessSchool),
+			"wenmo-brightness.getBrightnessSchool 必须在契约面"
+		);
+		assert.ok(
+			isFn(wenmo.setBrightnessSchool),
+			"wenmo-brightness.setBrightnessSchool 必须在契约面"
+		);
+		assert.equal(
+			wenmo.wenmoStarBrightness.length,
+			2,
+			"wenmoStarBrightness 签名应为 (starName, branchIdx)"
+		);
 		assert.equal(wenmo.setBrightnessSchool.length, 1, "setBrightnessSchool 签名应为 (school)");
 		assert.equal(wenmo.getBrightnessSchool.length, 0, "getBrightnessSchool 签名应为 ()");
 	});
 
 	it("绊线字段运行时恒为空 —— 体系立场（倪师三合派）不可回填", () => {
 		const { generateChart } = algorithm;
-		const chart = generateChart({ year: 2011, month: 6, day: 24, timeIndex: 7, gender: "male" });
+		const chart = generateChart({
+			year: 2011,
+			month: 6,
+			day: 24,
+			timeIndex: 7,
+			gender: "male",
+		});
 		for (const p of chart.palaces) {
 			assert.equal(
 				p.selfMutagen,
@@ -67,10 +98,7 @@ describe("内核对外契约（冻结 @ 2026-10-12）", () => {
 			);
 		}
 		for (const dx of chart.decadals) {
-			assert.ok(
-				!("mutagen" in dx),
-				"大限出现 mutagen —— 飞星派大限四化，合约禁止回填"
-			);
+			assert.ok(!("mutagen" in dx), "大限出现 mutagen —— 飞星派大限四化，合约禁止回填");
 		}
 	});
 });

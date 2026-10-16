@@ -135,7 +135,9 @@ function checkOptionName(key: string, command: string | undefined): string {
 	}
 	// 别名归一：--geju → --pattern（显式声明的映射，不是拼错容错）
 	const canonical = OPTION_ALIASES[key] ?? key;
-	if (OPTION_NAMES.has(canonical)) {return canonical;}
+	if (OPTION_NAMES.has(canonical)) {
+		return canonical;
+	}
 	const hint = suggestOption(canonical);
 	throw new Error(
 		`未知参数 --${key}。${hint ? `最接近的是 --${hint}。` : ""}运行 help 查看全部参数。`
@@ -220,13 +222,15 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 		const spec = ALL_SPECS.get(canonical);
 		const storeKey = camelKey(canonical);
 		// 判重：归一后主名判（前缀形态的 storeKey 天然不同：aChart ≠ chart，不算重复）
-		if (seen.has(storeKey))
-			{throw new Error(`参数 --${canonical} 重复给出（含主名与别名同现）。每个参数只给一次。`);}
+		if (seen.has(storeKey)) {
+			throw new Error(`参数 --${canonical} 重复给出（含主名与别名同现）。每个参数只给一次。`);
+		}
 		seen.add(storeKey);
 
 		if (spec?.kind === "switch") {
-			if (t.inlineValue === true)
-				{throw new Error(`--${canonical} 是开关，不接受值。运行 help 查看全部参数。`);}
+			if (t.inlineValue === true) {
+				throw new Error(`--${canonical} 是开关，不接受值。运行 help 查看全部参数。`);
+			}
 			args[storeKey] = true;
 			continue;
 		}
@@ -263,7 +267,9 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 		args._ = [];
 		// 参数优先：位置参数只填空，旗标已给的项不被覆盖
 		for (const [k, v] of Object.entries(pos)) {
-			if (v !== undefined && args[k] === undefined) {args[k] = v;}
+			if (v !== undefined && args[k] === undefined) {
+				args[k] = v;
+			}
 		}
 	}
 	return args;
@@ -288,24 +294,30 @@ export function classifyPositionals(tokens: readonly string[]): Partial<CliArgs>
 	const out: Partial<CliArgs> = {};
 	/** 同类槽位：已有值即同类重复。城市槽的报错文案额外提示连写。 */
 	const put = (slot: "date" | "time" | "gender" | "city", value: string) => {
-		if (out[slot] !== undefined)
-			{throw new Error(
+		if (out[slot] !== undefined) {
+			throw new Error(
 				slot === "city"
 					? `城市 token 只能给一个：省+市请连写（如「山东青岛」），或用 --city / --province 分别指定。收到：${out[slot]} 与 ${value}`
 					: `同类出生信息 token 只能给一个（${slot}）：已收 ${out[slot]}，又收 ${value}`
-			);}
+			);
+		}
 		out[slot] = value;
 	};
 	for (const t of tokens) {
-		if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(t)) {put("date", t);}
-		else if (/^\d{1,2}:\d{2}$/.test(t)) {put("time", t);}
-		else if (/^(男|女|male|female|m|f)$/i.test(t)) {put("gender", t);}
-		else if (/[\u4e00-\u9fff]/.test(t)) {put("city", t);}
-		else
-			{throw new Error(
+		if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(t)) {
+			put("date", t);
+		} else if (/^\d{1,2}:\d{2}$/.test(t)) {
+			put("time", t);
+		} else if (/^(男|女|male|female|m|f)$/i.test(t)) {
+			put("gender", t);
+		} else if (/[\u4e00-\u9fff]/.test(t)) {
+			put("city", t);
+		} else {
+			throw new Error(
 				`无法识别的位置参数：${t}。出生信息按形态归类（日期 YYYY-M-D / 时刻 HH:MM / 性别 / 中文城市名），` +
 					`其余输入请用参数给出。运行 help 查看全部参数。`
-			);}
+			);
+		}
 	}
 	return out;
 }

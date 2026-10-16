@@ -17,8 +17,12 @@ import { eq, skipUnlessRepo, type SelftestDeps } from "./kit";
 export function runSmoke({ ok, runCli }: Pick<SelftestDeps, "ok" | "runCli">): void {
 	ok("冒烟（子进程）：成功链路 入口→解析→命令表→渲染 一次走通", () => {
 		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "北京"]);
-		if (r.code !== 0) {throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);}
-		if (!r.out.includes("【基本信息】")) {throw new Error("缺基本信息面板");}
+		if (r.code !== 0) {
+			throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+		}
+		if (!r.out.includes("【基本信息】")) {
+			throw new Error("缺基本信息面板");
+		}
 		return "子进程成功链路在";
 	});
 	ok("冒烟（子进程）：错误链路 stderr「错误：」前缀 + exit 1 + stdout 空（--json 路径）", () => {
@@ -32,30 +36,43 @@ export function runSmoke({ ok, runCli }: Pick<SelftestDeps, "ok" | "runCli">): v
 			"male",
 			"--json",
 		]);
-		if (r.code === 0 || !r.err.startsWith("错误："))
-			{throw new Error(
+		if (r.code === 0 || !r.err.startsWith("错误：")) {
+			throw new Error(
 				`应 stderr「错误：」前缀 + 非零退出，实得 code=${r.code} err=${r.err.slice(0, 60)}`
-			);}
-		if (r.out.trim()) {throw new Error("stdout 应为空");}
+			);
+		}
+		if (r.out.trim()) {
+			throw new Error("stdout 应为空");
+		}
 		return "子进程错误出口在";
 	});
 	ok("冒烟（子进程）：未知命令 stderr + exit 1 并指路", () => {
 		const r = runCli(["analyze", "--date", "1990-05-15"]);
-		if (r.code === 0 || !r.err.includes("未知命令") || !r.err.includes("astrology"))
-			{throw new Error(`实得：${r.err.trim()}`);}
+		if (r.code === 0 || !r.err.includes("未知命令") || !r.err.includes("astrology")) {
+			throw new Error(`实得：${r.err.trim()}`);
+		}
 		return "未知命令指路在";
 	});
 	ok("冒烟（子进程）：--out 落盘 —— 末尾恰一个换行、正文不占 stdout、stderr 有落盘提示", () => {
 		const p = resolve(tmpdir(), `ziwei-selftest-out-${process.pid}.md`);
 		try {
 			const r = runCli(["astrology", "1990-5-15", "9:30", "男", "北京", "--out", p]);
-			if (r.code !== 0) {throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);}
+			if (r.code !== 0) {
+				throw new Error(`退出码 ${r.code}，stderr：${r.err.trim()}`);
+			}
 			const written = readFileSync(p, "utf8");
-			if (!written.includes("【基本信息】")) {throw new Error("落盘内容缺基本信息面板");}
-			if (!written.endsWith("\n") || written.endsWith("\n\n"))
-				{throw new Error("文件末尾应恰一个换行");}
-			if (r.out.trim()) {throw new Error("stdout 应为空（正文已落盘）");}
-			if (!r.err.includes("已写入")) {throw new Error("stderr 缺落盘提示");}
+			if (!written.includes("【基本信息】")) {
+				throw new Error("落盘内容缺基本信息面板");
+			}
+			if (!written.endsWith("\n") || written.endsWith("\n\n")) {
+				throw new Error("文件末尾应恰一个换行");
+			}
+			if (r.out.trim()) {
+				throw new Error("stdout 应为空（正文已落盘）");
+			}
+			if (!r.err.includes("已写入")) {
+				throw new Error("stderr 缺落盘提示");
+			}
 		} finally {
 			rmSync(p, { force: true });
 		}
@@ -63,9 +80,12 @@ export function runSmoke({ ok, runCli }: Pick<SelftestDeps, "ok" | "runCli">): v
 	});
 	ok("冒烟（子进程）：--out 路径含 .. 段被拒（stderr「错误：」前缀 + exit 1）", () => {
 		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "北京", "--out", "a/../out.md"]);
-		if (r.code === 0 || !r.err.startsWith("错误：") || !r.err.includes(".."))
-			{throw new Error(`实得 code=${r.code} err=${r.err.slice(0, 60)}`);}
-		if (r.out.trim()) {throw new Error("stdout 应为空");}
+		if (r.code === 0 || !r.err.startsWith("错误：") || !r.err.includes("..")) {
+			throw new Error(`实得 code=${r.code} err=${r.err.slice(0, 60)}`);
+		}
+		if (r.out.trim()) {
+			throw new Error("stdout 应为空");
+		}
 		return "--out 穿越防护在";
 	});
 }
@@ -84,7 +104,9 @@ export function runSkillCommandAudit({
 
 		const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
 		const at = md.indexOf("## 命令速查");
-		if (at < 0) {throw new Error("SKILL.md 里找不到「## 命令速查」小节");}
+		if (at < 0) {
+			throw new Error("SKILL.md 里找不到「## 命令速查」小节");
+		}
 		// 只取该小节里的表格：正文提到命令名的散文（如「`analyze` 会自动输出两盘差异」）
 		// 不构成「速查表说这个命令存在」的声明，卷进来只会产生误报。
 		// 先跳过标题行与其后的空行，否则下面第一个 `\n\n` 就是标题后的空行，切出个空表。
@@ -98,11 +120,14 @@ export function runSkillCommandAudit({
 		const mentioned = rows
 			.map(l => l.match(/^\|\s*`([a-z][a-z0-9-]*)/)?.[1])
 			.filter(n => n !== undefined);
-		if (!mentioned.length) {throw new Error("未从命令速查表扫到命令 —— 表格格式已变");}
+		if (!mentioned.length) {
+			throw new Error("未从命令速查表扫到命令 —— 表格格式已变");
+		}
 
 		const unknown = mentioned.filter(n => !defined.includes(n));
-		if (unknown.length)
-			{throw new Error(`SKILL.md 提到但 commands.ts 未定义的命令：${unknown.join("、")}`);}
+		if (unknown.length) {
+			throw new Error(`SKILL.md 提到但 commands.ts 未定义的命令：${unknown.join("、")}`);
+		}
 		return `${mentioned.length} 个命令全部有实现`;
 	});
 }
@@ -126,10 +151,11 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 				"ziwei/sihua.ts",
 				"本技能不排盘",
 			]) {
-				if (text.includes(stale))
-					{throw new Error(
+				if (text.includes(stale)) {
+					throw new Error(
 						`${file} 仍含合并前口径「${stale}」——三 skill 已合一，请按现行 CLI 改写`
-					);}
+					);
+				}
 			}
 		}
 		return "workflow / synastry-troubleshooting / synastry-guide 三份与现行 CLI 口径一致";
@@ -149,15 +175,18 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 				["CLAUDE.md", claude],
 				["scripts/boot-hooks.ts", bootHooks],
 			] as const) {
-				if (text.includes("22.15") && !text.includes("NODE_OPTIONS"))
-					{throw new Error(
+				if (text.includes("22.15") && !text.includes("NODE_OPTIONS")) {
+					throw new Error(
 						`${name} 仍承诺 Node ≥ 22.15 —— 实测 22.15.0 裸跑 ERR_UNKNOWN_FILE_EXTENSION，下限应为 22.18`
-					);}
+					);
+				}
 			}
-			if (!opts.includes("独占分支") || !opts.includes("--palaces` > `--topic"))
-				{throw new Error("options.md 缺独占分支优先级链描述");}
-			if (!testReadme.includes("npm install iztro@latest"))
-				{throw new Error("test/README.md 缺升级 iztro 的 pin 改写警告");}
+			if (!opts.includes("独占分支") || !opts.includes("--palaces` > `--topic")) {
+				throw new Error("options.md 缺独占分支优先级链描述");
+			}
+			if (!testReadme.includes("npm install iztro@latest")) {
+				throw new Error("test/README.md 缺升级 iztro 的 pin 改写警告");
+			}
 		},
 		// ⚠️ README.md / CLAUDE.md / test/README.md 都是**仓库级**文档，不进分发包
 		// （包只含 SKILL.md / package.json / references/ / scripts/ 四项），
@@ -179,8 +208,9 @@ export async function runGradeRegistry({
 		const { NI_GRADES } = grades;
 		const legal = new Set(["verified", "traditional", "suspect", "methodology"]);
 		for (const e of NI_GRADES) {
-			if (!legal.has(e.grade))
-				{throw new Error(`grades.ts 的「${e.quote}」档位非法：${e.grade}`);}
+			if (!legal.has(e.grade)) {
+				throw new Error(`grades.ts 的「${e.quote}」档位非法：${e.grade}`);
+			}
 		}
 		const src = readFileSync(resolve(ctx.root, "analysis", "data.ts"), "utf8");
 		// 引句标记（与评估报告口径一致，按实测扩展）：「倪师 / 倪海厦」锚点
@@ -196,24 +226,27 @@ export async function runGradeRegistry({
 			.split("\n")
 			.filter(l => !/^\s*(\/\/|\/\*|\*)/.test(l))
 			.flatMap(l => [...l.matchAll(QUOTE_RE)]);
-		if (marks.length < 28)
-			{throw new Error(
+		if (marks.length < 28) {
+			throw new Error(
 				`引句标记只抽到 ${marks.length} 条（评估基线 28）——标记正则或文案已变，先核对再改断言`
-			);}
+			);
+		}
 		const registered = new Set(NI_GRADES.map(e => e.quote));
 		const missing = marks.map(m => m[2].slice(0, 12)).filter(q => !registered.has(q));
-		if (missing.length)
-			{throw new Error(
+		if (missing.length) {
+			throw new Error(
 				`以下倪师引句未在 grades.ts 登记分级：${missing.map(q => `「${q}…」`).join("、")}`
-			);}
+			);
+		}
 		// 反向（grades.ts 头注释承诺的另一半）：登记的 quote 若在文案中抽不到对应引句
 		// ——写错的定位串或文案已删的引句——这里是幽灵条目，必须点名变红。
 		const inText = new Set(marks.map(m => m[2].slice(0, 12)));
 		const ghosts = NI_GRADES.filter(e => !inText.has(e.quote));
-		if (ghosts.length)
-			{throw new Error(
+		if (ghosts.length) {
+			throw new Error(
 				`grades.ts 以下登记在 data.ts 抽不到对应引句（quote 失配或引句已删）：${ghosts.map(e => `「${e.quote}…」（${e.star}·${e.field}）`).join("、")}`
-			);}
+			);
+		}
 		return `${marks.length} 条引句全部有分级登记`;
 	});
 }
@@ -246,14 +279,18 @@ export async function runDispatchProbe(deps: SelftestDeps): Promise<void> {
 	// ① 未知命令：code=1，且 err 必须 === 共享文案函数对同一列表的产出（同源断言）
 	const unknown = await dispatch(["bogus"], ports);
 	deps.ok("分发：未知命令 code=1 且文案出自共享函数", () => {
-		if (unknown.code !== 1) {throw new Error(`code 应为 1，实得 ${unknown.code}`);}
-		if (unknown.err !== unknownCommandMessage("bogus", NAMES))
-			{throw new Error(`文案不同源：${unknown.err}`);}
+		if (unknown.code !== 1) {
+			throw new Error(`code 应为 1，实得 ${unknown.code}`);
+		}
+		if (unknown.err !== unknownCommandMessage("bogus", NAMES)) {
+			throw new Error(`文案不同源：${unknown.err}`);
+		}
 	});
 	// ② help 拦截先于查表与 loadCore：桩的 COMMANDS 为空也能拿到 CMDHELP
 	const help = await dispatch(["astrology", "--help"], ports);
 	deps.ok("分发：--help 拦截在查表之前返回 code=0", () => {
-		if (help.code !== 0 || help.out !== "CMDHELP")
-			{throw new Error(`实得 code=${help.code} out=${help.out}`);}
+		if (help.code !== 0 || help.out !== "CMDHELP") {
+			throw new Error(`实得 code=${help.code} out=${help.out}`);
+		}
 	});
 }

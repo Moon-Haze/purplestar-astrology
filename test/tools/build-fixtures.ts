@@ -80,8 +80,16 @@ async function main(): Promise<void> {
 		if (leapMonth) {
 			const solar = Lunar.fromYmd(year, -leapMonth, 1).getSolar();
 			const timeIndex = (i * 7 + 3) % 12;
-			raw = await fetchSample({ year, month: solar.getMonth(), day: solar.getDay(), timeIndex, gender: "male" });
-			if (raw) {stats.leapYears.push(`${year}(闰${leapMonth})`);}
+			raw = await fetchSample({
+				year,
+				month: solar.getMonth(),
+				day: solar.getDay(),
+				timeIndex,
+				gender: "male",
+			});
+			if (raw) {
+				stats.leapYears.push(`${year}(闰${leapMonth})`);
+			}
 		} else {
 			raw = await fetchSample({ year, month: 12, day: 30, timeIndex: 0, gender: "male" });
 		}
@@ -106,10 +114,15 @@ async function main(): Promise<void> {
 	const { compareChart, formatDiffs } = await import("../lib/compare.ts");
 	const { generateChart } = await loadAlgorithm();
 
-	const diverged: Array<{ birth: BaselineSample["birthInfo"]; diffs: ReturnType<typeof compareChart> }> = [];
+	const diverged: Array<{
+		birth: BaselineSample["birthInfo"];
+		diffs: ReturnType<typeof compareChart>;
+	}> = [];
 	for (const s of samples) {
 		const diffs = compareChart(generateChart({ ...s.birthInfo }), s.chart);
-		if (diffs.length) {diverged.push({ birth: s.birthInfo, diffs });}
+		if (diffs.length) {
+			diverged.push({ birth: s.birthInfo, diffs });
+		}
 	}
 	if (diverged.length) {
 		console.error(
@@ -121,10 +134,14 @@ async function main(): Promise<void> {
 				`    · 若不是预期变化 → 这是回归，先查 scripts/ 下的内核改动\n`
 		);
 		for (const { birth, diffs } of diverged.slice(0, 10)) {
-			console.error(`  ${birth.year}-${birth.month}-${birth.day} 时${birth.timeIndex} ${birth.gender}`);
+			console.error(
+				`  ${birth.year}-${birth.month}-${birth.day} 时${birth.timeIndex} ${birth.gender}`
+			);
 			console.error(formatDiffs(diffs, 5));
 		}
-		if (diverged.length > 10) {console.error(`  …… 另有 ${diverged.length - 10} 条未列出`);}
+		if (diverged.length > 10) {
+			console.error(`  …… 另有 ${diverged.length - 10} 条未列出`);
+		}
 		process.exit(1);
 	}
 	console.log(`  分歧自检通过：${samples.length} 条抽样与当前内核一致（白名单之外零差异）`);
@@ -169,12 +186,15 @@ async function main(): Promise<void> {
 		"utf8"
 	);
 
-	const m = stats.months.size, h = stats.hours.size;
+	const m = stats.months.size,
+		h = stats.hours.size;
 	console.log(`已生成 ${samples.length} 条基准 → test/fixtures/charts.jsonl`);
 	console.log(
 		`  覆盖：${m}/12 月 · ${h}/12 时辰 · ${stats.genders.size}/2 性别 · ${stats.wuxing.size}/5 五行局 · ${stats.leapYears.length} 个闰月年`
 	);
-	if (m < 12 || h < 12) {console.warn("  ⚠ 月或时辰覆盖不全，检查槽位轮转公式");}
+	if (m < 12 || h < 12) {
+		console.warn("  ⚠ 月或时辰覆盖不全，检查槽位轮转公式");
+	}
 
 	closeSource();
 }
@@ -182,8 +202,7 @@ async function main(): Promise<void> {
 // ── 仅直接执行时跑 main ──
 // Node 的默认测试文件识别模式包含 `test/**/*`。若不加这道守卫，`node --test test/`
 // 可能把这个会写盘的脚本当成测试文件执行（它会重写 test/fixtures/）。
-const isDirectRun =
-	process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isDirectRun = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isDirectRun) {
 	main().catch(err => {
 		console.error(err);

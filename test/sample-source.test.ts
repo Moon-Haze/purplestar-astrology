@@ -85,11 +85,25 @@ describe("基准数据源（纯函数与错误指引）", () => {
 /** 造一行 `samples`（只写测试关心的列，其余给 0 —— 映射是逐列的，不会串）。 */
 function sampleRow(over: Partial<SampleRow> = {}): SampleRow {
 	return {
-		year: 1924, month: 1, day: 1, hour: 0, gender: "male", longitude: 120,
-		lunar_year: 1923, lunar_month: 12, lunar_day: 25,
-		year_stem: 0, year_branch: 0, is_leap_month: false,
-		ming_gong_branch: 2, shen_gong_branch: 6, wuxing_ju: 4, wuxing_ju_name: "金四局",
-		ziwei_pos: 9, current_age: 102, current_daxian_index: 9,
+		year: 1924,
+		month: 1,
+		day: 1,
+		hour: 0,
+		gender: "male",
+		longitude: 120,
+		lunar_year: 1923,
+		lunar_month: 12,
+		lunar_day: 25,
+		year_stem: 0,
+		year_branch: 0,
+		is_leap_month: false,
+		ming_gong_branch: 2,
+		shen_gong_branch: 6,
+		wuxing_ju: 4,
+		wuxing_ju_name: "金四局",
+		ziwei_pos: 9,
+		current_age: 102,
+		current_daxian_index: 9,
 		...over,
 	};
 }
@@ -97,11 +111,20 @@ function sampleRow(over: Partial<SampleRow> = {}): SampleRow {
 /** 造一行 `palaces`。 */
 function palaceRow(over: Partial<PalaceRow> = {}): PalaceRow {
 	return {
-		branch: 2, stem: 0, palace_name: "福德",
-		major_stars: [], lucky_stars: [], sha_stars: [], minor_stars: [],
-		major_brightness: [], sihua_stars: [],
-		is_ming_gong: false, is_shen_gong: false, is_current_daxian: false,
-		daxian_start: 104, daxian_end: 113,
+		branch: 2,
+		stem: 0,
+		palace_name: "福德",
+		major_stars: [],
+		lucky_stars: [],
+		sha_stars: [],
+		minor_stars: [],
+		major_brightness: [],
+		sihua_stars: [],
+		is_ming_gong: false,
+		is_shen_gong: false,
+		is_current_daxian: false,
+		daxian_start: 104,
+		daxian_end: 113,
 		...over,
 	};
 }
@@ -111,7 +134,20 @@ function twelvePalaces(): PalaceRow[] {
 	return Array.from({ length: 12 }, (_, i) =>
 		palaceRow({
 			branch: (i + 2) % 12,
-			palace_name: ["命宫","兄弟","夫妻","子女","财帛","疾厄","迁移","仆役","官禄","田宅","福德","父母"][i],
+			palace_name: [
+				"命宫",
+				"兄弟",
+				"夫妻",
+				"子女",
+				"财帛",
+				"疾厄",
+				"迁移",
+				"仆役",
+				"官禄",
+				"田宅",
+				"福德",
+				"父母",
+			][i],
 			daxian_start: 2 + i * 10,
 			daxian_end: 11 + i * 10,
 		})
@@ -132,8 +168,12 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 		assert.equal(s.birthInfo.gender, "male");
 		assert.equal(s.birthInfo.longitude, 120);
 		assert.deepEqual(s.chart.lunarInfo, {
-			lunarYear: 1923, lunarMonth: 12, lunarDay: 25,
-			yearStem: 0, yearBranch: 0, isLeapMonth: false,
+			lunarYear: 1923,
+			lunarMonth: 12,
+			lunarDay: 25,
+			yearStem: 0,
+			yearBranch: 0,
+			isLeapMonth: false,
 		});
 		assert.equal(s.chart.soulBranch, 2);
 		assert.equal(s.chart.fiveElementsClassName, "金四局");
@@ -150,21 +190,48 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 	it("顶层与 chart 的键序与 jsonl 一致（逐字节比对的前提）", () => {
 		const s = rowsToSample(sampleRow(), twelvePalaces());
 		assert.deepEqual(Object.keys(s), ["birthInfo", "chart"]);
-		assert.deepEqual(Object.keys(s.birthInfo), ["year", "month", "day", "timeIndex", "gender", "longitude"]);
+		assert.deepEqual(Object.keys(s.birthInfo), [
+			"year",
+			"month",
+			"day",
+			"timeIndex",
+			"gender",
+			"longitude",
+		]);
 		assert.deepEqual(Object.keys(s.chart), [
-			"birthInfo", "lunarInfo", "soulBranch", "bodyBranch", "fiveElementsClass",
-			"fiveElementsClassName", "ziweiPos", "palaces", "decadals", "currentAge", "currentDecadalIndex",
+			"birthInfo",
+			"lunarInfo",
+			"soulBranch",
+			"bodyBranch",
+			"fiveElementsClass",
+			"fiveElementsClassName",
+			"ziweiPos",
+			"palaces",
+			"decadals",
+			"currentAge",
+			"currentDecadalIndex",
 		]);
 		assert.deepEqual(Object.keys(s.chart.lunarInfo ?? {}), [
-			"lunarYear", "lunarMonth", "lunarDay", "yearStem", "yearBranch", "isLeapMonth",
+			"lunarYear",
+			"lunarMonth",
+			"lunarDay",
+			"yearStem",
+			"yearBranch",
+			"isLeapMonth",
 		]);
 	});
 
 	it("宫位键序与 jsonl 一致，decadalRange 取自 daxian_start/end", () => {
 		const p = rowsToSample(sampleRow(), twelvePalaces()).chart.palaces![0];
 		assert.deepEqual(Object.keys(p), [
-			"branch", "stem", "name", "stars", "decadalRange",
-			"isSoulPalace", "isBodyPalace", "isCurrentDecadal",
+			"branch",
+			"stem",
+			"name",
+			"stars",
+			"decadalRange",
+			"isSoulPalace",
+			"isBodyPalace",
+			"isCurrentDecadal",
 		]);
 		assert.deepEqual(p.decadalRange, [2, 11]);
 	});
@@ -177,8 +244,16 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 		palaces[0].sha_stars = ["擎羊"];
 		palaces[0].minor_stars = ["三台", "封诰"];
 		const stars = rowsToSample(sampleRow(), palaces).chart.palaces![0].stars;
-		assert.deepEqual(stars.map(x => x.type), ["major", "major", "soft", "tough", "minor", "minor"]);
-		assert.deepEqual(stars[0], { name: "太阳", type: "major", brightness: "bright", mutagen: "" });
+		assert.deepEqual(
+			stars.map(x => x.type),
+			["major", "major", "soft", "tough", "minor", "minor"]
+		);
+		assert.deepEqual(stars[0], {
+			name: "太阳",
+			type: "major",
+			brightness: "bright",
+			mutagen: "",
+		});
 	});
 
 	it("mutagen 键的存在性：18 颗有键（主星 + 四辅星），其余整键缺失", () => {
@@ -210,17 +285,23 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 		palaces.reverse(); // 故意打乱输入顺序
 		const dx = rowsToSample(sampleRow(), palaces).chart.decadals!;
 		assert.equal(dx.length, 12);
-		assert.deepEqual(dx.map(d => d.startAge), [2, 12, 22, 32, 42, 52, 62, 72, 82, 92, 102, 112]);
+		assert.deepEqual(
+			dx.map(d => d.startAge),
+			[2, 12, 22, 32, 42, 52, 62, 72, 82, 92, 102, 112]
+		);
 		assert.deepEqual(Object.keys(dx[0]), ["startAge", "endAge", "palaceBranch", "palaceName"]);
 	});
 
 	it("不就地改动传入的 palaces 数组", () => {
 		const palaces = twelvePalaces();
 		palaces.reverse(); // ⚠️ 必须先打乱：上面的 decadals 测试已证明 twelvePalaces() 天然有序，
-		                   //    有序输入会让 rowsToSample 的 sort 退化成 no-op，断言恒真
+		//    有序输入会让 rowsToSample 的 sort 退化成 no-op，断言恒真
 		const before = palaces.map(p => p.branch);
 		rowsToSample(sampleRow(), palaces);
-		assert.deepEqual(palaces.map(p => p.branch), before);
+		assert.deepEqual(
+			palaces.map(p => p.branch),
+			before
+		);
 	});
 
 	it("assertTwelveRows：11 行宫位抛 SourceError，12 行放行", () => {
@@ -228,7 +309,8 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 		assert.doesNotThrow(() => assertTwelveRows(palaces, sampleRow()));
 		assert.throws(
 			() => assertTwelveRows(palaces.slice(0, 11), sampleRow()),
-			(err: unknown) => err instanceof SourceError && /预期 12 行，实际 11 行/.test((err as Error).message)
+			(err: unknown) =>
+				err instanceof SourceError && /预期 12 行，实际 11 行/.test((err as Error).message)
 		);
 	});
 });
@@ -267,14 +349,18 @@ describe("真实行 → fixtures：逐字节复现（输入取自 fixtures/raw-r
 		// （而同源的比对器在 compare.ts，那里同源同错的风险另由层 3 的外部预言机堵。）
 		//
 		// 真实行由 test/tools/export-raw-rows.ts 一次性导出并提交；`npm test` 不碰 db/。
-		const raw = JSON.parse(readFileSync(resolve(FIXTURES, "raw-rows.json"), "utf8")) as RawEntry[];
+		const raw = JSON.parse(
+			readFileSync(resolve(FIXTURES, "raw-rows.json"), "utf8")
+		) as RawEntry[];
 		// 产物为空时下面的循环一次都不跑 —— 那是标准的假绿，先挡住。
 		assert.ok(raw.length > 0, "raw-rows.json 为空，跑 node test/tools/export-raw-rows.ts 重建");
 
 		// 答案侧**保留原文行**，不做 JSON.parse 再 stringify：要验的就是「逐字节相同」，
 		// 中间过一道序列化会把键序差异抹平，等于把要验的性质消掉。
 		const answers = new Map<string, string>();
-		for (const line of readFileSync(resolve(FIXTURES, "charts.jsonl"), "utf8").trim().split("\n")) {
+		for (const line of readFileSync(resolve(FIXTURES, "charts.jsonl"), "utf8")
+			.trim()
+			.split("\n")) {
 			const { birthInfo } = JSON.parse(line) as { birthInfo: Parameters<typeof keyOf>[0] };
 			answers.set(keyOf(birthInfo), line);
 		}
@@ -287,7 +373,10 @@ describe("真实行 → fixtures：逐字节复现（输入取自 fixtures/raw-r
 			const [first] = entry.rows;
 			const key = keyOf(first as unknown as SampleRow);
 			const answer = answers.get(key);
-			assert.ok(answer !== undefined, `${entry.why}：charts.jsonl 里没有 ${key} —— 产物与基准不同源`);
+			assert.ok(
+				answer !== undefined,
+				`${entry.why}：charts.jsonl 里没有 ${key} —— 产物与基准不同源`
+			);
 
 			const rebuilt = JSON.stringify(
 				rowsToSample(first as unknown as SampleRow, entry.rows as unknown as PalaceRow[])

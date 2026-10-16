@@ -60,10 +60,11 @@ export function callDirect(
 ): CallResult {
 	try {
 		const out = dispatch(parse(argv, cmd), ctx);
-		if (typeof out !== "string")
-			{throw new Error(
+		if (typeof out !== "string") {
+			throw new Error(
 				`kit 直调仅支持同步命令（${cmd} 返回了 Promise——本断言组不测 selftest 命令）`
-			);}
+			);
+		}
 		return { code: 0, out, err: "" };
 	} catch (err) {
 		return { code: 1, out: "", err: `错误：${(err as Error).message}` };
@@ -102,16 +103,13 @@ export interface SelftestDeps {
  * 用 `!==` **严格相等**比较，不做深比较也不做类型转换；失败信息里用 `JSON.stringify` 展开两侧取值。
  */
 export function eq(actual: unknown, expected: unknown, msg = ""): void {
-	if (actual !== expected)
-		{throw new Error(`${msg}期望 ${JSON.stringify(expected)}，实得 ${JSON.stringify(actual)}`);}
+	if (actual !== expected) {
+		throw new Error(`${msg}期望 ${JSON.stringify(expected)}，实得 ${JSON.stringify(actual)}`);
+	}
 }
 
 /** harness 的断言登记签名（各组通过 deps 拿到，故声明在此便于共用）。 */
-export type OkFn = (
-	name: string,
-	fn: () => unknown,
-	opts?: { skip?: string }
-) => void;
+export type OkFn = (name: string, fn: () => unknown, opts?: { skip?: string }) => void;
 
 /**
  * harness：各断言组独立收集自己的结果（工厂函数，不共享状态）。

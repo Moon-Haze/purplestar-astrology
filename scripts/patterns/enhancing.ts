@@ -24,18 +24,23 @@ import {
 /** 辅弼夹命 */
 function detectFuBiJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
-	if (!prev || !next) {return [];}
+	if (!prev || !next) {
+		return [];
+	}
 	const prevHasZuo = hasStar(prev, "左辅");
 	const prevHasYou = hasStar(prev, "右弼");
 	const nextHasZuo = hasStar(next, "左辅");
 	const nextHasYou = hasStar(next, "右弼");
-	if (!((prevHasZuo && nextHasYou) || (prevHasYou && nextHasZuo))) {return [];}
+	if (!((prevHasZuo && nextHasYou) || (prevHasYou && nextHasZuo))) {
+		return [];
+	}
 
 	const required = ["左辅右弼分居命宫前后两宫"];
 	const bonus: string[] = [];
 	const breaking: string[] = [];
-	if (sanFangAllStars(chart).has("天魁") || sanFangAllStars(chart).has("天钺"))
-		{bonus.push("再会魁钺");}
+	if (sanFangAllStars(chart).has("天魁") || sanFangAllStars(chart).has("天钺")) {
+		bonus.push("再会魁钺");
+	}
 
 	const name = "辅弼夹命";
 	return [
@@ -52,12 +57,16 @@ function detectFuBiJiaMing({ chart }: DetectContext): Pattern[] {
 /** 昌曲夹命 */
 function detectChangQuJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
-	if (!prev || !next) {return [];}
+	if (!prev || !next) {
+		return [];
+	}
 	const prevHasChang = hasStar(prev, "文昌");
 	const prevHasQu = hasStar(prev, "文曲");
 	const nextHasChang = hasStar(next, "文昌");
 	const nextHasQu = hasStar(next, "文曲");
-	if (!((prevHasChang && nextHasQu) || (prevHasQu && nextHasChang))) {return [];}
+	if (!((prevHasChang && nextHasQu) || (prevHasQu && nextHasChang))) {
+		return [];
+	}
 
 	const name = "昌曲夹命";
 	return [
@@ -74,10 +83,14 @@ function detectChangQuJiaMing({ chart }: DetectContext): Pattern[] {
 /** 魁钺夹命 */
 function detectKuiYueJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
-	if (!prev || !next) {return [];}
+	if (!prev || !next) {
+		return [];
+	}
 	const okA = hasStar(prev, "天魁") && hasStar(next, "天钺");
 	const okB = hasStar(prev, "天钺") && hasStar(next, "天魁");
-	if (!okA && !okB) {return [];}
+	if (!okA && !okB) {
+		return [];
+	}
 
 	const name = "魁钺夹命";
 	return [
@@ -97,10 +110,16 @@ function detectShuangLuChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	let huaLuFound = false;
 	let luCunFound = false;
 	for (const p of sanFang) {
-		if (p.stars.some(s => s.mutagen === "禄")) {huaLuFound = true;}
-		if (hasStar(p, "禄存")) {luCunFound = true;}
+		if (p.stars.some(s => s.mutagen === "禄")) {
+			huaLuFound = true;
+		}
+		if (hasStar(p, "禄存")) {
+			luCunFound = true;
+		}
 	}
-	if (!huaLuFound || !luCunFound) {return [];}
+	if (!huaLuFound || !luCunFound) {
+		return [];
+	}
 
 	const name = "双禄朝垣";
 	return [
@@ -127,12 +146,20 @@ function detectSanQiJiaHui({ chart }: DetectContext): Pattern[] {
 		ke = false;
 	for (const p of sanFangPalaces) {
 		for (const s of p.stars) {
-			if (s.mutagen === "禄") {lu = true;}
-			if (s.mutagen === "权") {quan = true;}
-			if (s.mutagen === "科") {ke = true;}
+			if (s.mutagen === "禄") {
+				lu = true;
+			}
+			if (s.mutagen === "权") {
+				quan = true;
+			}
+			if (s.mutagen === "科") {
+				ke = true;
+			}
 		}
 	}
-	if (!(lu && quan && ke)) {return [];}
+	if (!(lu && quan && ke)) {
+		return [];
+	}
 
 	const name = "三奇加会";
 	return [
@@ -149,7 +176,9 @@ function detectSanQiJiaHui({ chart }: DetectContext): Pattern[] {
 /** 化禄入命/官/财 */
 function detectHuaLuRuMing({ chart, ming }: DetectContext): Pattern[] {
 	const huaLuStar = ming.stars.find(s => s.mutagen === "禄" && s.type === "major");
-	if (!huaLuStar) {return [];}
+	if (!huaLuStar) {
+		return [];
+	}
 
 	const name = `${huaLuStar.name}化禄入命`;
 	return [

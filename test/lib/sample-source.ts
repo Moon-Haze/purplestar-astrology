@@ -31,7 +31,11 @@ import type { DuckDBConnection } from "@duckdb/node-api";
 import type { BirthInfo, Star } from "@/types";
 import { loadData } from "./loader.ts";
 import type {
-	BaselineChart, BaselineDecadal, BaselinePalace, BaselineSample, BaselineStar,
+	BaselineChart,
+	BaselineDecadal,
+	BaselinePalace,
+	BaselineSample,
+	BaselineStar,
 } from "./compare.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/lib
@@ -97,8 +101,6 @@ export function missingDbHint(dbDir: string = DB_DIR, missing: readonly string[]
 	);
 }
 
-
-
 /** 惰性单例：数据集目录 → 已建立的连接。进程退出时自然释放。 */
 const connections = new Map<string, Promise<DuckDBConnection>>();
 
@@ -134,7 +136,9 @@ function sqlLiteral(value: string): string {
  */
 export async function openSource(dbDir: string = DB_DIR): Promise<DuckDBConnection> {
 	const cached = connections.get(dbDir);
-	if (cached) {return cached;}
+	if (cached) {
+		return cached;
+	}
 
 	const pending = (async (): Promise<DuckDBConnection> => {
 		// ⚠️ 动态 import 而非顶层静态 import：它是 devDependency，可能没装。
@@ -149,7 +153,9 @@ export async function openSource(dbDir: string = DB_DIR): Promise<DuckDBConnecti
 		// 两张表都必须存在才认为数据集可用：只有一张同样是残缺状态，而残缺会一路静默
 		// 传到比对结果里 —— JOIN 出 0 行，表现成「每个样本都不存在」，没有一处会报错。
 		const missing = TABLES.filter(t => !existsSync(tablePath(dbDir, t)));
-		if (missing.length > 0) {throw new SourceError(missingDbHint(dbDir, missing));}
+		if (missing.length > 0) {
+			throw new SourceError(missingDbHint(dbDir, missing));
+		}
 
 		// 内存库 + 视图：数据留在 parquet 里按需读取，不整表载入内存。
 		// 顺带消掉了旧形态下最烦人的一类故障 —— 文件锁。内存库无锁可争，parquet 只读
@@ -159,7 +165,9 @@ export async function openSource(dbDir: string = DB_DIR): Promise<DuckDBConnecti
 		try {
 			for (const table of TABLES) {
 				const file = tablePath(dbDir, table);
-				await conn.run(`CREATE VIEW ${table} AS SELECT * FROM read_parquet(${sqlLiteral(file)})`);
+				await conn.run(
+					`CREATE VIEW ${table} AS SELECT * FROM read_parquet(${sqlLiteral(file)})`
+				);
 				// 视图是惰性的：建视图不读文件，parquet 损坏要等到第一次查询才炸，而那时现场
 				// 已经离这里很远。立刻验一次元数据，把损坏挡在 openSource 里。
 				await conn.run(`DESCRIBE SELECT * FROM ${table}`);
@@ -168,9 +176,9 @@ export async function openSource(dbDir: string = DB_DIR): Promise<DuckDBConnecti
 			conn.closeSync();
 			throw new SourceError(
 				`样本数据集的 parquet 读不出来：${dbDir}\n` +
-				`  底层错误：${err instanceof Error ? err.message : String(err)}\n` +
-				`  多半是 parquet 损坏或残缺（拷贝中断）。这**不是**语料丢失：\n` +
-				`    reference/ziwei-samples-toolkit/samples-out  是同一份语料的原始形态。`
+					`  底层错误：${err instanceof Error ? err.message : String(err)}\n` +
+					`  多半是 parquet 损坏或残缺（拷贝中断）。这**不是**语料丢失：\n` +
+					`    reference/ziwei-samples-toolkit/samples-out  是同一份语料的原始形态。`
 			);
 		}
 		return conn;
@@ -265,7 +273,9 @@ function hasMutagenKey(type: Star["type"], name: string): boolean {
 function mutagenOf(p: PalaceRow, name: string): string {
 	for (const entry of p.sihua_stars ?? []) {
 		const i = entry.indexOf(":");
-		if (i > 0 && entry.slice(0, i) === name) {return entry.slice(i + 1);}
+		if (i > 0 && entry.slice(0, i) === name) {
+			return entry.slice(i + 1);
+		}
 	}
 	return "";
 }
@@ -299,8 +309,12 @@ function palaceOf(p: PalaceRow): BaselinePalace {
 			stars.push({ name, type: "soft" }); // 整键缺失，不是 ""
 		}
 	}
-	for (const name of p.sha_stars ?? []) {stars.push({ name, type: "tough" });}
-	for (const name of p.minor_stars ?? []) {stars.push({ name, type: "minor" });}
+	for (const name of p.sha_stars ?? []) {
+		stars.push({ name, type: "tough" });
+	}
+	for (const name of p.minor_stars ?? []) {
+		stars.push({ name, type: "minor" });
+	}
 
 	return {
 		branch: p.branch,
@@ -474,7 +488,9 @@ export async function fetchSample(birthInfo: BirthInfo): Promise<BaselineSample 
 	// 宽松的 `JS` 联合，而我们**刚刚**用上面的 SELECT 亲手指定了列名与顺序，类型由构造
 	// 保证。断言在 SELECT 旁边，改了列名会立刻失配。
 	const rows = reader.getRowObjectsJS() as unknown as JoinedRow[];
-	if (rows.length === 0) {return null;}
+	if (rows.length === 0) {
+		return null;
+	}
 
 	// 完备性护栏：先判「0 行 = 样本不存在」（正常语义），再判「12 行 = 形状完整」。
 	// 两者语义相反，顺序不能颠倒 —— 0 行不是异常，12 行守卫才是。
@@ -525,12 +541,16 @@ export async function forEachSample(
 
 	/** 组装当前样本并回调；返回 false 表示应当停止。 */
 	const flush = (): boolean => {
-		if (current === null) {return true;}
+		if (current === null) {
+			return true;
+		}
 		seen++;
 		// 形状守卫：与 fetchSample 对称 —— 截断库在此会产出畸形盘，必须大声失败而非静默比对。
 		assertTwelveRows(palaces, current);
 		const sample = rowsToSample(current, palaces);
-		if (fn(sample) === false) {return false;}
+		if (fn(sample) === false) {
+			return false;
+		}
 		return !(Number.isFinite(filter.limit) && seen >= (filter.limit as number));
 	};
 
@@ -545,7 +565,9 @@ export async function forEachSample(
 			const id = Number(row.sample_id);
 
 			if (id !== currentId) {
-				if (!flush()) {return false;}
+				if (!flush()) {
+					return false;
+				}
 				currentId = id;
 				current = row;
 				palaces = [];

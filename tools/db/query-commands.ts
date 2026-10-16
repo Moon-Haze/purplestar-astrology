@@ -13,7 +13,9 @@ async function rowsOf(conn: DuckDBConnection, sql: string, params: Record<string
 
 async function runSample(conn: DuckDBConnection, id: number, json: boolean): Promise<void> {
 	const rows = await rowsOf(conn, "SELECT * FROM samples WHERE sample_id = $id", { id });
-	if (rows.length === 0) {throw new Error(`样本 ${id} 不存在`);}
+	if (rows.length === 0) {
+		throw new Error(`样本 ${id} 不存在`);
+	}
 	if (json) {
 		console.log(JSON.stringify(rows[0], jsonReplacer));
 		return;
@@ -29,15 +31,21 @@ async function runPalaces(conn: DuckDBConnection, id: number, json: boolean): Pr
 	const rows = await rowsOf(conn, "SELECT * FROM palaces WHERE sample_id = $id ORDER BY branch", {
 		id,
 	});
-	if (rows.length === 0) {throw new Error(`样本 ${id} 不存在（palaces 无宫位行）`);}
+	if (rows.length === 0) {
+		throw new Error(`样本 ${id} 不存在（palaces 无宫位行）`);
+	}
 	if (json) {
 		console.log(JSON.stringify(rows, jsonReplacer));
 		return;
 	}
 	const table = rows.map(r => {
 		const marks: string[] = [];
-		if (r.is_shen_gong === true) {marks.push("身宫");}
-		if (r.is_current_daxian === true) {marks.push("当前大限");}
+		if (r.is_shen_gong === true) {
+			marks.push("身宫");
+		}
+		if (r.is_current_daxian === true) {
+			marks.push("当前大限");
+		}
 		return {
 			宫位: String(r.palace_name),
 			干支:
@@ -65,12 +73,16 @@ async function runTopic(
 ): Promise<void> {
 	// SQL 侧固定 SELECT *：主题列由展示层按（已过白名单的）keys 过滤，输入不进 SQL。
 	const rows = await rowsOf(conn, "SELECT * FROM topics WHERE sample_id = $id", { id });
-	if (rows.length === 0) {throw new Error(`样本 ${id} 不存在`);}
+	if (rows.length === 0) {
+		throw new Error(`样本 ${id} 不存在`);
+	}
 	const row = rows[0];
 	const selected = keys.length > 0 ? keys : [...STORAGE_TOPIC_KEYS];
 	if (json) {
 		const out: Record<string, unknown> = { sample_id: Number(row.sample_id) };
-		for (const k of selected) {out[k] = row[k] ?? null;}
+		for (const k of selected) {
+			out[k] = row[k] ?? null;
+		}
 		console.log(JSON.stringify(out, jsonReplacer));
 		return;
 	}
@@ -150,13 +162,24 @@ export async function dispatch(conn: DuckDBConnection, args: ParsedArgs): Promis
 		const result = await conn.run(c.sql);
 		const columns = result.columnNames();
 		const rows = (await result.getRowObjectsJS()) as Array<Record<string, unknown>>;
-		if (args.json) {console.log(JSON.stringify(rows, jsonReplacer));}
-		else {console.log(renderTable(columns, rows));}
+		if (args.json) {
+			console.log(JSON.stringify(rows, jsonReplacer));
+		} else {
+			console.log(renderTable(columns, rows));
+		}
 		return;
 	}
-	if (c.kind === "sample") {return runSample(conn, c.id, args.json);}
-	if (c.kind === "palaces") {return runPalaces(conn, c.id, args.json);}
-	if (c.kind === "topic") {return runTopic(conn, c.id, c.keys, args.json);}
-	if (c.kind === "search") {return runSearch(conn, c.topic, c.pattern, c.limit, args.json);}
+	if (c.kind === "sample") {
+		return runSample(conn, c.id, args.json);
+	}
+	if (c.kind === "palaces") {
+		return runPalaces(conn, c.id, args.json);
+	}
+	if (c.kind === "topic") {
+		return runTopic(conn, c.id, c.keys, args.json);
+	}
+	if (c.kind === "search") {
+		return runSearch(conn, c.topic, c.pattern, c.limit, args.json);
+	}
 	return runCount(conn, args.json);
 }

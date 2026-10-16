@@ -173,7 +173,9 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 		const missing: string[] = [];
 		for (const name of ALL_SKILLS) {
 			for (const f of ["SKILL.md", "package.json", "scripts/purple-star.ts"]) {
-				if (!existsSync(resolve(skillDir(name), f))) {missing.push(`${name}: ${f}`);}
+				if (!existsSync(resolve(skillDir(name), f))) {
+					missing.push(`${name}: ${f}`);
+				}
 			}
 		}
 		assert.deepEqual(missing, [], `skill 目录不完整：\n${missing.join("\n")}`);
@@ -185,13 +187,15 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 		// `import` 语法当场报错 —— 而根 package.json 里明明写着 type: module，症状看起来像是
 		// 「根配置被忽略了」，排查方向会被整个带偏（源 skill 的 package.json 正是拆分时新建的）。
 		//
-			// ⚠️ 这条**尤其重要**：`.ts` 若靠解析钩子加载，钩子与
-			// type 字段无关；若改走 Node 原生类型擦除，type 一错当场崩。
+		// ⚠️ 这条**尤其重要**：`.ts` 若靠解析钩子加载，钩子与
+		// type 字段无关；若改走 Node 原生类型擦除，type 一错当场崩。
 		const bad: string[] = [];
 		for (const name of ALL_SKILLS) {
 			const p = resolve(skillDir(name), "package.json");
 			const pkg = JSON.parse(readFileSync(p, "utf8")) as { type?: string };
-			if (pkg.type !== "module") {bad.push(`${name}: type=${String(pkg.type)}`);}
+			if (pkg.type !== "module") {
+				bad.push(`${name}: type=${String(pkg.type)}`);
+			}
 		}
 		assert.deepEqual(
 			bad,
@@ -227,7 +231,9 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 		for (const name of CHART_LIKE) {
 			const md = readFileSync(resolve(skillDir(name), "SKILL.md"), "utf8");
 			for (const [probe, what] of SENTINELS) {
-				if (!md.includes(probe)) {missing.push(`${name}: 缺「${probe}」（${what}）`);}
+				if (!md.includes(probe)) {
+					missing.push(`${name}: 缺「${probe}」（${what}）`);
+				}
 			}
 		}
 		assert.deepEqual(
@@ -263,13 +269,17 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 			// `~/.claude/skills/` 之后并不成立，本就不该写成链接。
 			for (const m of md.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
 				const target = m[1];
-				if (!target.startsWith("references/")) {continue;}
+				if (!target.startsWith("references/")) {
+					continue;
+				}
 				linked.add(target.slice("references/".length));
 				if (!existsSync(resolve(dir, target))) {
 					problems.push(`${name}: SKILL.md 链接指向不存在的 ${target}`);
 				}
 			}
-			if (!existsSync(refDir)) {continue;}
+			if (!existsSync(refDir)) {
+				continue;
+			}
 			for (const entry of readdirSync(refDir).filter(n => n.endsWith(".md"))) {
 				if (!linked.has(entry)) {
 					problems.push(

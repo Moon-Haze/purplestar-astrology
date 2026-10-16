@@ -5,51 +5,13 @@
 	"note": "基准为 iztro 2.5.8 的行为快照；本项目用 2.6.1，已知差异见 test/lib/compare.ts 的 KNOWN_DIVERGENCES。另：样本的 palaces[].name / daXians[].palaceName 存的是 iztro 宫名（第 8 宫为「仆役」、十二宫不带「宫」字），本项目输出的是倪师《天纪》口径（「交友宫」、统一带「宫」字）——比对时由 compare.ts 的 normalizePalaceName 施加在 baseline 一侧翻译，样本本身不做改动",
 	"generatedAt": "2026-09-21",
 	"count": 300,
-	"yearRange": [
-		1924,
-		1983
-	],
+	"yearRange": [1924, 1983],
 	"algorithm": "每年 5 条：4 条常规槽位（月/时辰随年份序号轮转以铺满 12 月 × 12 时辰）+ 1 条闰月年取闰月首日、平年取 12-30 子时",
 	"coverage": {
-		"months": [
-			1,
-			2,
-			3,
-			4,
-			5,
-			6,
-			7,
-			8,
-			9,
-			10,
-			11,
-			12
-		],
-		"hours": [
-			0,
-			1,
-			2,
-			3,
-			4,
-			5,
-			6,
-			7,
-			8,
-			9,
-			10,
-			11
-		],
-		"genders": [
-			"female",
-			"male"
-		],
-		"wuxingJu": [
-			"土五局",
-			"木三局",
-			"水二局",
-			"火六局",
-			"金四局"
-		],
+		"months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+		"hours": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+		"genders": ["female", "male"],
+		"wuxingJu": ["土五局", "木三局", "水二局", "火六局", "金四局"],
 		"leapYears": [
 			"1925(闰4)",
 			"1928(闰2)",

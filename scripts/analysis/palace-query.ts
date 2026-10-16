@@ -19,15 +19,21 @@ export function getPalaceStars(
 	palaceName: string
 ): { palace: Palace; mainStars: Star[]; isLoan: boolean } | null {
 	const palace = chart.palaces.find(p => p.name === palaceName);
-	if (!palace) {return null;}
+	if (!palace) {
+		return null;
+	}
 
 	const mainStars = palace.stars.filter(s => s.type === "major");
-	if (mainStars.length > 0) {return { palace, mainStars, isLoan: false };}
+	if (mainStars.length > 0) {
+		return { palace, mainStars, isLoan: false };
+	}
 
 	// 空宫：借对宫
 	const oppBranch = oppositeBranch(palace.branch);
 	const oppPalace = chart.palaces.find(p => p.branch === oppBranch);
-	if (!oppPalace) {return { palace, mainStars: [], isLoan: false };}
+	if (!oppPalace) {
+		return { palace, mainStars: [], isLoan: false };
+	}
 
 	const oppMainStars = oppPalace.stars.filter(s => s.type === "major");
 	return { palace, mainStars: oppMainStars, isLoan: true };
@@ -36,7 +42,9 @@ export function getPalaceStars(
 /** 获取三方四正（4个宫位）*/
 export function getSanFangSiZheng(chart: ZiweiChart, palaceName: string): Palace[] {
 	const main = chart.palaces.find(p => p.name === palaceName);
-	if (!main) {return [];}
+	if (!main) {
+		return [];
+	}
 
 	return surroundBranches(main.branch)
 		.map(b => chart.palaces.find(p => p.branch === b))
@@ -46,7 +54,9 @@ export function getSanFangSiZheng(chart: ZiweiChart, palaceName: string): Palace
 /** 描述一个宫位的星曜（带四化） */
 export function descPalaceStars(palace: Palace): string {
 	const main = palace.stars.filter(s => s.type === "major");
-	if (main.length === 0) {return `${palace.name}空宫`;}
+	if (main.length === 0) {
+		return `${palace.name}空宫`;
+	}
 	return main
 		.map(
 			s =>

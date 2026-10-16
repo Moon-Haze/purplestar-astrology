@@ -25,9 +25,13 @@ function renderOracleStar(star: string, o: OracleStar): string[] {
 	const out: string[] = [`【断语手册 · ${star}】`];
 
 	const pushSection = (title: string, ls: string[]): void => {
-		if (ls.length === 0) {return;}
+		if (ls.length === 0) {
+			return;
+		}
 		out.push("", `▶ ${title}`);
-		for (const l of ls) {out.push(MARKER_RE.test(l) ? l : `  ${l}`);}
+		for (const l of ls) {
+			out.push(MARKER_RE.test(l) ? l : `  ${l}`);
+		}
 	};
 
 	pushSection("命盘关键定制", o.mods);
@@ -39,14 +43,20 @@ function renderOracleStar(star: string, o: OracleStar): string[] {
 	if (o.mainPalace.stars.length > 0 || o.mainPalace.content.length > 0) {
 		out.push("", "▶ 本宫论断");
 		// 行自带「本宫主星：」前缀（渲染层原文），直接顶格
-		for (const l of o.mainPalace.stars) {out.push(`  ${l}`);}
-		for (const l of o.mainPalace.content) {out.push(`  ${l}`);}
+		for (const l of o.mainPalace.stars) {
+			out.push(`  ${l}`);
+		}
+		for (const l of o.mainPalace.content) {
+			out.push(`  ${l}`);
+		}
 	}
 	if (o.sanFang.length > 0) {
 		out.push("", "▶ 三方四正联动");
 		for (const sf of o.sanFang) {
 			out.push(`  ▍${sf.palace}：${sf.stars.join("、")}`);
-			for (const it of sf.items) {out.push(`    ${it}`);}
+			for (const it of sf.items) {
+				out.push(`    ${it}`);
+			}
 		}
 	}
 	pushSection(
@@ -59,7 +69,9 @@ function renderOracleStar(star: string, o: OracleStar): string[] {
 		"贵人倾向（魁钺）",
 		o.kuiYue.map(k => `◇ ${k}`)
 	);
-	for (const [name, ls] of Object.entries(o.extras)) {pushSection(name, ls);}
+	for (const [name, ls] of Object.entries(o.extras)) {
+		pushSection(name, ls);
+	}
 
 	return out;
 }
@@ -70,8 +82,9 @@ export async function renderOracle(args: CliArgs): Promise<string> {
 	const topicPos = args._[0];
 	const topicRaw =
 		args.topic !== undefined && args.topic !== true ? String(args.topic) : topicPos;
-	if (typeof args.topic === "boolean")
-		{throw new Error("--topic 需要一个主题 key（如 --topic career），或直接写位置参数。");}
+	if (typeof args.topic === "boolean") {
+		throw new Error("--topic 需要一个主题 key（如 --topic career），或直接写位置参数。");
+	}
 
 	const { loadTopicOracle } = await import("@/corpus/data/manual/index.ts");
 
@@ -87,10 +100,11 @@ export async function renderOracle(args: CliArgs): Promise<string> {
 		].join("\n");
 	}
 	const topic = topicRaw as TopicKey;
-	if (!TOPIC_LABEL[topic])
-		{throw new Error(
+	if (!TOPIC_LABEL[topic]) {
+		throw new Error(
 			`oracle 域的主题应为 13 个之一（${Object.keys(TOPIC_LABEL).join("/")}），收到：${topicRaw}`
-		);}
+		);
+	}
 	const oracle = await loadTopicOracle(topic);
 
 	// 星名：--star 或第二个位置参数
@@ -119,8 +133,9 @@ export async function renderOracle(args: CliArgs): Promise<string> {
 	}
 
 	const o = oracle[starRaw];
-	if (!o)
-		{throw new Error(`断语手册未收录「${starRaw}」。已收录：${Object.keys(oracle).join("、")}`);}
+	if (!o) {
+		throw new Error(`断语手册未收录「${starRaw}」。已收录：${Object.keys(oracle).join("、")}`);
+	}
 	return [
 		`【断语手册 · ${TOPIC_LABEL[topic]}】`,
 		"",

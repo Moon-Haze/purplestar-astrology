@@ -108,9 +108,13 @@ function collectTsFiles(root: string, dir = ""): string[] {
 	for (const entry of readdirSync(resolve(root, dir), { withFileTypes: true })) {
 		const rel = dir ? `${dir}/${entry.name}` : entry.name;
 		if (entry.isDirectory()) {
-			if (entry.name === "node_modules" || entry.name.startsWith(".")) {continue;}
+			if (entry.name === "node_modules" || entry.name.startsWith(".")) {
+				continue;
+			}
 			// 生成快照（tools/db/export-manual.ts 转印）随知识数据聚拢迁至 corpus/data/manual
-			if (entry.name === "manual" && dir === "corpus/data") {continue;}
+			if (entry.name === "manual" && dir === "corpus/data") {
+				continue;
+			}
 			out.push(...collectTsFiles(root, rel));
 		} else if (entry.name.endsWith(".ts")) {
 			out.push(rel);
@@ -134,14 +138,18 @@ function collectTsFiles(root: string, dir = ""): string[] {
  * 调用方必须同时检查 `checked` 非空 —— 那样的「零违例」是假绿。`test/citations.test.ts`
  * 盯着这一条。
  */
-export function scanCitations(root: string, checklist: readonly AnnotationEntry[] = ANNOTATIONS): CitationScan {
+export function scanCitations(
+	root: string,
+	checklist: readonly AnnotationEntry[] = ANNOTATIONS
+): CitationScan {
 	const checked: string[] = [];
 	const skipped: string[] = [];
 	const chunks: string[] = [];
 	for (const rel of collectTsFiles(root)) {
 		const src = readFileSync(resolve(root, rel), "utf8");
-		if (isChecklistSource(src)) {skipped.push(rel);}
-		else {
+		if (isChecklistSource(src)) {
+			skipped.push(rel);
+		} else {
 			checked.push(rel);
 			chunks.push(src);
 		}
@@ -149,9 +157,9 @@ export function scanCitations(root: string, checklist: readonly AnnotationEntry[
 
 	// suspect/fabricated 条目的引文核心（书名号/引号内的部分）
 	const banned = new Set(
-		checklist.filter(e => e.status === "suspect" || e.status === "fabricated").flatMap(e =>
-			[...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1])
-		)
+		checklist
+			.filter(e => e.status === "suspect" || e.status === "fabricated")
+			.flatMap(e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1]))
 	);
 	// 源码中所有「倪海厦/倪师…说/言/警示…：『引文』」的引文核心
 	const citeRe =

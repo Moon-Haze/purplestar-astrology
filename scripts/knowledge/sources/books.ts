@@ -15,8 +15,9 @@ export const booksSource: KnowledgeSource = {
 	id: "books",
 	label: "古籍",
 	search(args: CliArgs): string {
-		if (typeof args.search === "boolean")
-			{return "--search 需要一个检索词（如 --search 机月同梁）。";}
+		if (typeof args.search === "boolean") {
+			return "--search 需要一个检索词（如 --search 机月同梁）。";
+		}
 		if (!args.search && !args._.length) {
 			return [
 				"知识检索四域：books 古籍（默认）· stars 星曜释义 · tianji 天纪判语 · oracle 断语手册",
@@ -38,10 +39,13 @@ export const booksSource: KnowledgeSource = {
 		// `typeof ... === "boolean"` 那一支是裸写 `--limit`（没跟值）的第二道防线。
 		// 值域非法走 throw（引导层打「错误：」并 exit 1），与命令其它 throw 行为一致，
 		// 不再走 return——return 会把报错当正常输出打 stdout 且 exit 0，机器路径无法感知。
-		if (typeof args.limit === "boolean" || Number.isNaN(limit) || limit < 1)
-			{throw new Error(`--limit 需为正整数，实得 ${String(args.limit)}。`);}
+		if (typeof args.limit === "boolean" || Number.isNaN(limit) || limit < 1) {
+			throw new Error(`--limit 需为正整数，实得 ${String(args.limit)}。`);
+		}
 		const hits = searchClassics(q, limit);
-		if (!hits.length) {return `古籍中未找到「${q}」。`;}
+		if (!hits.length) {
+			return `古籍中未找到「${q}」。`;
+		}
 		const out = [`古籍检索「${q}」命中 ${hits.length} 条：`, ""];
 		for (const h of hits) {
 			const plain = String(h.snippet ?? "")

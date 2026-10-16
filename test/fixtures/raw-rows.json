@@ -26,27 +26,12 @@
 				"branch": 2,
 				"stem": 0,
 				"palace_name": "福德",
-				"major_stars": [
-					"太阳",
-					"巨门"
-				],
-				"lucky_stars": [
-					"左辅"
-				],
+				"major_stars": ["太阳", "巨门"],
+				"lucky_stars": ["左辅"],
 				"sha_stars": [],
-				"minor_stars": [
-					"三台",
-					"封诰",
-					"天巫",
-					"孤辰"
-				],
-				"major_brightness": [
-					"bright",
-					"bright"
-				],
-				"sihua_stars": [
-					"巨门:权"
-				],
+				"minor_stars": ["三台", "封诰", "天巫", "孤辰"],
+				"major_brightness": ["bright", "bright"],
+				"sihua_stars": ["巨门:权"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -77,20 +62,11 @@
 				"branch": 3,
 				"stem": 1,
 				"palace_name": "田宅",
-				"major_stars": [
-					"天相"
-				],
-				"lucky_stars": [
-					"天魁"
-				],
+				"major_stars": ["天相"],
+				"lucky_stars": ["天魁"],
 				"sha_stars": [],
-				"minor_stars": [
-					"天贵",
-					"龙池"
-				],
-				"major_brightness": [
-					"dim"
-				],
+				"minor_stars": ["天贵", "龙池"],
+				"major_brightness": ["dim"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -122,22 +98,11 @@
 				"branch": 4,
 				"stem": 2,
 				"palace_name": "官禄",
-				"major_stars": [
-					"天机",
-					"天梁"
-				],
-				"lucky_stars": [
-					"文曲"
-				],
+				"major_stars": ["天机", "天梁"],
+				"lucky_stars": ["文曲"],
 				"sha_stars": [],
-				"minor_stars": [
-					"红鸾",
-					"月德"
-				],
-				"major_brightness": [
-					"normal",
-					"bright"
-				],
+				"minor_stars": ["红鸾", "月德"],
+				"major_brightness": ["normal", "bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -169,24 +134,11 @@
 				"branch": 5,
 				"stem": 3,
 				"palace_name": "仆役",
-				"major_stars": [
-					"紫微",
-					"七杀"
-				],
-				"lucky_stars": [
-					"天钺",
-					"天马"
-				],
+				"major_stars": ["紫微", "七杀"],
+				"lucky_stars": ["天钺", "天马"],
 				"sha_stars": [],
-				"minor_stars": [
-					"天福",
-					"天虚",
-					"天伤"
-				],
-				"major_brightness": [
-					"bright",
-					"normal"
-				],
+				"minor_stars": ["天福", "天虚", "天伤"],
+				"major_brightness": ["bright", "normal"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -221,12 +173,7 @@
 				"major_stars": [],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"解神",
-					"台辅",
-					"天官",
-					"阴煞"
-				],
+				"minor_stars": ["解神", "台辅", "天官", "阴煞"],
 				"major_brightness": [],
 				"sihua_stars": [],
 				"is_ming_gong": false,
@@ -262,12 +209,7 @@
 				"major_stars": [],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"华盖",
-					"天刑",
-					"天哭",
-					"天使"
-				],
+				"minor_stars": ["华盖", "天刑", "天哭", "天使"],
 				"major_brightness": [],
 				"sihua_stars": [],
 				"is_ming_gong": false,
@@ -303,9 +245,7 @@
 				"major_stars": [],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"天德"
-				],
+				"minor_stars": ["天德"],
 				"major_brightness": [],
 				"sihua_stars": [],
 				"is_ming_gong": false,
@@ -338,25 +278,12 @@
 				"branch": 9,
 				"stem": 7,
 				"palace_name": "子女",
-				"major_stars": [
-					"廉贞",
-					"破军"
-				],
+				"major_stars": ["廉贞", "破军"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"火星"
-				],
-				"minor_stars": [
-					"恩光",
-					"破碎"
-				],
-				"major_brightness": [
-					"normal",
-					"dim"
-				],
-				"sihua_stars": [
-					"破军:禄"
-				],
+				"sha_stars": ["火星"],
+				"minor_stars": ["恩光", "破碎"],
+				"major_brightness": ["normal", "dim"],
+				"sihua_stars": ["破军:禄"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -388,17 +315,9 @@
 				"stem": 8,
 				"palace_name": "夫妻",
 				"major_stars": [],
-				"lucky_stars": [
-					"文昌"
-				],
-				"sha_stars": [
-					"铃星"
-				],
-				"minor_stars": [
-					"天喜",
-					"天月",
-					"寡宿"
-				],
+				"lucky_stars": ["文昌"],
+				"sha_stars": ["铃星"],
+				"minor_stars": ["天喜", "天月", "寡宿"],
 				"major_brightness": [],
 				"sihua_stars": [],
 				"is_ming_gong": false,
@@ -431,26 +350,11 @@
 				"branch": 11,
 				"stem": 9,
 				"palace_name": "兄弟",
-				"major_stars": [
-					"天府"
-				],
+				"major_stars": ["天府"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"地空",
-					"地劫",
-					"陀罗"
-				],
-				"minor_stars": [
-					"天姚",
-					"凤阁",
-					"天才",
-					"天寿",
-					"天厨",
-					"年解"
-				],
-				"major_brightness": [
-					"normal"
-				],
+				"sha_stars": ["地空", "地劫", "陀罗"],
+				"minor_stars": ["天姚", "凤阁", "天才", "天寿", "天厨", "年解"],
+				"major_brightness": ["normal"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -482,28 +386,12 @@
 				"branch": 0,
 				"stem": 0,
 				"palace_name": "命宫",
-				"major_stars": [
-					"天同",
-					"太阴"
-				],
-				"lucky_stars": [
-					"右弼",
-					"禄存"
-				],
+				"major_stars": ["天同", "太阴"],
+				"lucky_stars": ["右弼", "禄存"],
 				"sha_stars": [],
-				"minor_stars": [
-					"咸池",
-					"八座",
-					"天空",
-					"截路"
-				],
-				"major_brightness": [
-					"bright",
-					"bright"
-				],
-				"sihua_stars": [
-					"太阴:科"
-				],
+				"minor_stars": ["咸池", "八座", "天空", "截路"],
+				"major_brightness": ["bright", "bright"],
+				"sihua_stars": ["太阴:科"],
 				"is_ming_gong": true,
 				"is_shen_gong": true,
 				"is_current_daxian": false,
@@ -534,26 +422,12 @@
 				"branch": 1,
 				"stem": 1,
 				"palace_name": "父母",
-				"major_stars": [
-					"武曲",
-					"贪狼"
-				],
+				"major_stars": ["武曲", "贪狼"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"擎羊"
-				],
-				"minor_stars": [
-					"旬空",
-					"空亡",
-					"蜚廉"
-				],
-				"major_brightness": [
-					"bright",
-					"bright"
-				],
-				"sihua_stars": [
-					"贪狼:忌"
-				],
+				"sha_stars": ["擎羊"],
+				"minor_stars": ["旬空", "空亡", "蜚廉"],
+				"major_brightness": ["bright", "bright"],
+				"sihua_stars": ["贪狼:忌"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -589,22 +463,11 @@
 				"branch": 2,
 				"stem": 4,
 				"palace_name": "官禄",
-				"major_stars": [
-					"七杀"
-				],
+				"major_stars": ["七杀"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"陀罗"
-				],
-				"minor_stars": [
-					"红鸾",
-					"天月",
-					"天空",
-					"孤辰"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"sha_stars": ["陀罗"],
+				"minor_stars": ["红鸾", "天月", "天空", "孤辰"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -636,20 +499,11 @@
 				"branch": 3,
 				"stem": 5,
 				"palace_name": "仆役",
-				"major_stars": [
-					"天同"
-				],
-				"lucky_stars": [
-					"文昌",
-					"禄存"
-				],
+				"major_stars": ["天同"],
+				"lucky_stars": ["文昌", "禄存"],
 				"sha_stars": [],
-				"minor_stars": [
-					"天伤"
-				],
-				"major_brightness": [
-					"normal"
-				],
+				"minor_stars": ["天伤"],
+				"major_brightness": ["normal"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -681,21 +535,11 @@
 				"branch": 4,
 				"stem": 6,
 				"palace_name": "迁移",
-				"major_stars": [
-					"武曲"
-				],
+				"major_stars": ["武曲"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"地空",
-					"擎羊"
-				],
-				"minor_stars": [
-					"天姚",
-					"天官"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"sha_stars": ["地空", "擎羊"],
+				"minor_stars": ["天姚", "天官"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -727,22 +571,11 @@
 				"branch": 5,
 				"stem": 7,
 				"palace_name": "疾厄",
-				"major_stars": [
-					"太阳"
-				],
+				"major_stars": ["太阳"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"铃星"
-				],
-				"minor_stars": [
-					"三台",
-					"龙池",
-					"天哭",
-					"天使"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"sha_stars": ["铃星"],
+				"minor_stars": ["三台", "龙池", "天哭", "天使"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -774,22 +607,11 @@
 				"branch": 6,
 				"stem": 8,
 				"palace_name": "财帛",
-				"major_stars": [
-					"破军"
-				],
+				"major_stars": ["破军"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"地劫"
-				],
-				"minor_stars": [
-					"咸池",
-					"天厨",
-					"月德",
-					"截路"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"sha_stars": ["地劫"],
+				"minor_stars": ["咸池", "天厨", "月德", "截路"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -821,24 +643,12 @@
 				"branch": 7,
 				"stem": 9,
 				"palace_name": "子女",
-				"major_stars": [
-					"天机"
-				],
-				"lucky_stars": [
-					"左辅",
-					"右弼"
-				],
+				"major_stars": ["天机"],
+				"lucky_stars": ["左辅", "右弼"],
 				"sha_stars": [],
-				"minor_stars": [
-					"空亡",
-					"天虚"
-				],
-				"major_brightness": [
-					"dim"
-				],
-				"sihua_stars": [
-					"天机:禄"
-				],
+				"minor_stars": ["空亡", "天虚"],
+				"major_brightness": ["dim"],
+				"sihua_stars": ["天机:禄"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -869,27 +679,12 @@
 				"branch": 8,
 				"stem": 0,
 				"palace_name": "夫妻",
-				"major_stars": [
-					"紫微",
-					"天府"
-				],
-				"lucky_stars": [
-					"天钺"
-				],
+				"major_stars": ["紫微", "天府"],
+				"lucky_stars": ["天钺"],
 				"sha_stars": [],
-				"minor_stars": [
-					"天喜",
-					"天贵",
-					"天福",
-					"阴煞"
-				],
-				"major_brightness": [
-					"bright",
-					"normal"
-				],
-				"sihua_stars": [
-					"紫微:科"
-				],
+				"minor_stars": ["天喜", "天贵", "天福", "阴煞"],
+				"major_brightness": ["bright", "normal"],
+				"sihua_stars": ["紫微:科"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -920,24 +715,12 @@
 				"branch": 9,
 				"stem": 1,
 				"palace_name": "兄弟",
-				"major_stars": [
-					"太阴"
-				],
+				"major_stars": ["太阴"],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"八座",
-					"凤阁",
-					"封诰",
-					"蜚廉",
-					"年解"
-				],
-				"major_brightness": [
-					"dim"
-				],
-				"sihua_stars": [
-					"太阴:忌"
-				],
+				"minor_stars": ["八座", "凤阁", "封诰", "蜚廉", "年解"],
+				"major_brightness": ["dim"],
+				"sihua_stars": ["太阴:忌"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -968,21 +751,11 @@
 				"branch": 10,
 				"stem": 2,
 				"palace_name": "命宫",
-				"major_stars": [
-					"贪狼"
-				],
+				"major_stars": ["贪狼"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"火星"
-				],
-				"minor_stars": [
-					"解神",
-					"天德",
-					"寡宿"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"sha_stars": ["火星"],
+				"minor_stars": ["解神", "天德", "寡宿"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": true,
 				"is_shen_gong": false,
@@ -1014,22 +787,11 @@
 				"branch": 11,
 				"stem": 3,
 				"palace_name": "父母",
-				"major_stars": [
-					"巨门"
-				],
-				"lucky_stars": [
-					"文曲",
-					"天马"
-				],
+				"major_stars": ["巨门"],
+				"lucky_stars": ["文曲", "天马"],
 				"sha_stars": [],
-				"minor_stars": [
-					"天才",
-					"天巫",
-					"旬空"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"minor_stars": ["天才", "天巫", "旬空"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -1061,22 +823,11 @@
 				"branch": 0,
 				"stem": 4,
 				"palace_name": "福德",
-				"major_stars": [
-					"廉贞",
-					"天相"
-				],
-				"lucky_stars": [
-					"天魁"
-				],
+				"major_stars": ["廉贞", "天相"],
+				"lucky_stars": ["天魁"],
 				"sha_stars": [],
-				"minor_stars": [
-					"恩光",
-					"天刑"
-				],
-				"major_brightness": [
-					"normal",
-					"bright"
-				],
+				"minor_stars": ["恩光", "天刑"],
+				"major_brightness": ["normal", "bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": true,
@@ -1108,23 +859,12 @@
 				"branch": 1,
 				"stem": 5,
 				"palace_name": "田宅",
-				"major_stars": [
-					"天梁"
-				],
+				"major_stars": ["天梁"],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"天寿",
-					"台辅",
-					"华盖",
-					"破碎"
-				],
-				"major_brightness": [
-					"bright"
-				],
-				"sihua_stars": [
-					"天梁:权"
-				],
+				"minor_stars": ["天寿", "台辅", "华盖", "破碎"],
+				"major_brightness": ["bright"],
+				"sihua_stars": ["天梁:权"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": true,
@@ -1160,25 +900,11 @@
 				"branch": 2,
 				"stem": 2,
 				"palace_name": "父母",
-				"major_stars": [
-					"天机",
-					"太阴"
-				],
-				"lucky_stars": [
-					"禄存",
-					"天马"
-				],
-				"sha_stars": [
-					"地劫"
-				],
-				"minor_stars": [
-					"天巫",
-					"孤辰"
-				],
-				"major_brightness": [
-					"normal",
-					"bright"
-				],
+				"major_stars": ["天机", "太阴"],
+				"lucky_stars": ["禄存", "天马"],
+				"sha_stars": ["地劫"],
+				"minor_stars": ["天巫", "孤辰"],
+				"major_brightness": ["normal", "bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -1210,22 +936,11 @@
 				"branch": 3,
 				"stem": 3,
 				"palace_name": "福德",
-				"major_stars": [
-					"紫微",
-					"贪狼"
-				],
+				"major_stars": ["紫微", "贪狼"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"擎羊"
-				],
-				"minor_stars": [
-					"红鸾",
-					"天姚"
-				],
-				"major_brightness": [
-					"bright",
-					"normal"
-				],
+				"sha_stars": ["擎羊"],
+				"minor_stars": ["红鸾", "天姚"],
+				"major_brightness": ["bright", "normal"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -1257,20 +972,11 @@
 				"branch": 4,
 				"stem": 4,
 				"palace_name": "田宅",
-				"major_stars": [
-					"巨门"
-				],
+				"major_stars": ["巨门"],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"八座",
-					"龙池",
-					"华盖",
-					"天月"
-				],
-				"major_brightness": [
-					"dim"
-				],
+				"minor_stars": ["八座", "龙池", "华盖", "天月"],
+				"major_brightness": ["dim"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -1302,22 +1008,11 @@
 				"branch": 5,
 				"stem": 5,
 				"palace_name": "官禄",
-				"major_stars": [
-					"天相"
-				],
+				"major_stars": ["天相"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"火星"
-				],
-				"minor_stars": [
-					"封诰",
-					"天厨",
-					"月德",
-					"破碎"
-				],
-				"major_brightness": [
-					"normal"
-				],
+				"sha_stars": ["火星"],
+				"minor_stars": ["封诰", "天厨", "月德", "破碎"],
+				"major_brightness": ["normal"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -1349,21 +1044,11 @@
 				"branch": 6,
 				"stem": 6,
 				"palace_name": "仆役",
-				"major_stars": [
-					"天梁"
-				],
-				"lucky_stars": [
-					"左辅"
-				],
+				"major_stars": ["天梁"],
+				"lucky_stars": ["左辅"],
 				"sha_stars": [],
-				"minor_stars": [
-					"天哭",
-					"天虚",
-					"天伤"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"minor_stars": ["天哭", "天虚", "天伤"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -1395,27 +1080,12 @@
 				"branch": 7,
 				"stem": 7,
 				"palace_name": "迁移",
-				"major_stars": [
-					"廉贞",
-					"七杀"
-				],
-				"lucky_stars": [
-					"文昌",
-					"文曲",
-					"天钺"
-				],
+				"major_stars": ["廉贞", "七杀"],
+				"lucky_stars": ["文昌", "文曲", "天钺"],
 				"sha_stars": [],
-				"minor_stars": [
-					"天寿",
-					"天官"
-				],
-				"major_brightness": [
-					"normal",
-					"bright"
-				],
-				"sihua_stars": [
-					"廉贞:禄"
-				],
+				"minor_stars": ["天寿", "天官"],
+				"major_brightness": ["normal", "bright"],
+				"sihua_stars": ["廉贞:禄"],
 				"is_ming_gong": false,
 				"is_shen_gong": true,
 				"is_current_daxian": false,
@@ -1447,17 +1117,9 @@
 				"stem": 8,
 				"palace_name": "疾厄",
 				"major_stars": [],
-				"lucky_stars": [
-					"右弼"
-				],
-				"sha_stars": [
-					"地空"
-				],
-				"minor_stars": [
-					"截路",
-					"蜚廉",
-					"天使"
-				],
+				"lucky_stars": ["右弼"],
+				"sha_stars": ["地空"],
+				"minor_stars": ["截路", "蜚廉", "天使"],
 				"major_brightness": [],
 				"sihua_stars": [],
 				"is_ming_gong": false,
@@ -1493,14 +1155,7 @@
 				"major_stars": [],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"天喜",
-					"咸池",
-					"台辅",
-					"天福",
-					"天德",
-					"空亡"
-				],
+				"minor_stars": ["天喜", "咸池", "台辅", "天福", "天德", "空亡"],
 				"major_brightness": [],
 				"sihua_stars": [],
 				"is_ming_gong": false,
@@ -1533,9 +1188,7 @@
 				"branch": 10,
 				"stem": 0,
 				"palace_name": "子女",
-				"major_stars": [
-					"天同"
-				],
+				"major_stars": ["天同"],
 				"lucky_stars": [],
 				"sha_stars": [],
 				"minor_stars": [
@@ -1549,9 +1202,7 @@
 					"阴煞",
 					"年解"
 				],
-				"major_brightness": [
-					"normal"
-				],
+				"major_brightness": ["normal"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -1583,23 +1234,12 @@
 				"branch": 11,
 				"stem": 1,
 				"palace_name": "夫妻",
-				"major_stars": [
-					"武曲",
-					"破军"
-				],
+				"major_stars": ["武曲", "破军"],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"天刑"
-				],
-				"major_brightness": [
-					"normal",
-					"normal"
-				],
-				"sihua_stars": [
-					"武曲:科",
-					"破军:权"
-				],
+				"minor_stars": ["天刑"],
+				"major_brightness": ["normal", "normal"],
+				"sihua_stars": ["武曲:科", "破军:权"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -1630,18 +1270,12 @@
 				"branch": 0,
 				"stem": 2,
 				"palace_name": "兄弟",
-				"major_stars": [
-					"太阳"
-				],
+				"major_stars": ["太阳"],
 				"lucky_stars": [],
 				"sha_stars": [],
 				"minor_stars": [],
-				"major_brightness": [
-					"dim"
-				],
-				"sihua_stars": [
-					"太阳:忌"
-				],
+				"major_brightness": ["dim"],
+				"sihua_stars": ["太阳:忌"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -1672,23 +1306,11 @@
 				"branch": 1,
 				"stem": 3,
 				"palace_name": "命宫",
-				"major_stars": [
-					"天府"
-				],
-				"lucky_stars": [
-					"天魁"
-				],
-				"sha_stars": [
-					"铃星",
-					"陀罗"
-				],
-				"minor_stars": [
-					"天才",
-					"天空"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"major_stars": ["天府"],
+				"lucky_stars": ["天魁"],
+				"sha_stars": ["铃星", "陀罗"],
+				"minor_stars": ["天才", "天空"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": true,
 				"is_shen_gong": false,
@@ -1725,21 +1347,11 @@
 				"branch": 2,
 				"stem": 2,
 				"palace_name": "父母",
-				"major_stars": [
-					"七杀"
-				],
-				"lucky_stars": [
-					"禄存",
-					"天马"
-				],
+				"major_stars": ["七杀"],
+				"lucky_stars": ["禄存", "天马"],
 				"sha_stars": [],
-				"minor_stars": [
-					"孤辰",
-					"天刑"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"minor_stars": ["孤辰", "天刑"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -1771,20 +1383,11 @@
 				"branch": 3,
 				"stem": 3,
 				"palace_name": "福德",
-				"major_stars": [
-					"天同"
-				],
+				"major_stars": ["天同"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"擎羊"
-				],
-				"minor_stars": [
-					"红鸾",
-					"天月"
-				],
-				"major_brightness": [
-					"normal"
-				],
+				"sha_stars": ["擎羊"],
+				"minor_stars": ["红鸾", "天月"],
+				"major_brightness": ["normal"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -1816,28 +1419,12 @@
 				"branch": 4,
 				"stem": 4,
 				"palace_name": "田宅",
-				"major_stars": [
-					"武曲"
-				],
-				"lucky_stars": [
-					"文昌"
-				],
-				"sha_stars": [
-					"铃星"
-				],
-				"minor_stars": [
-					"八座",
-					"恩光",
-					"龙池",
-					"华盖",
-					"阴煞"
-				],
-				"major_brightness": [
-					"bright"
-				],
-				"sihua_stars": [
-					"武曲:科"
-				],
+				"major_stars": ["武曲"],
+				"lucky_stars": ["文昌"],
+				"sha_stars": ["铃星"],
+				"minor_stars": ["八座", "恩光", "龙池", "华盖", "阴煞"],
+				"major_brightness": ["bright"],
+				"sihua_stars": ["武曲:科"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -1868,27 +1455,12 @@
 				"branch": 5,
 				"stem": 5,
 				"palace_name": "官禄",
-				"major_stars": [
-					"太阳"
-				],
-				"lucky_stars": [
-					"右弼"
-				],
-				"sha_stars": [
-					"地空",
-					"地劫"
-				],
-				"minor_stars": [
-					"天厨",
-					"月德",
-					"破碎"
-				],
-				"major_brightness": [
-					"bright"
-				],
-				"sihua_stars": [
-					"太阳:忌"
-				],
+				"major_stars": ["太阳"],
+				"lucky_stars": ["右弼"],
+				"sha_stars": ["地空", "地劫"],
+				"minor_stars": ["天厨", "月德", "破碎"],
+				"major_brightness": ["bright"],
+				"sihua_stars": ["太阳:忌"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -1919,23 +1491,12 @@
 				"branch": 6,
 				"stem": 6,
 				"palace_name": "仆役",
-				"major_stars": [
-					"破军"
-				],
+				"major_stars": ["破军"],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"天姚",
-					"天哭",
-					"天虚",
-					"天伤"
-				],
-				"major_brightness": [
-					"bright"
-				],
-				"sihua_stars": [
-					"破军:权"
-				],
+				"minor_stars": ["天姚", "天哭", "天虚", "天伤"],
+				"major_brightness": ["bright"],
+				"sihua_stars": ["破军:权"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -1966,19 +1527,11 @@
 				"branch": 7,
 				"stem": 7,
 				"palace_name": "迁移",
-				"major_stars": [
-					"天机"
-				],
-				"lucky_stars": [
-					"天钺"
-				],
+				"major_stars": ["天机"],
+				"lucky_stars": ["天钺"],
 				"sha_stars": [],
-				"minor_stars": [
-					"天官"
-				],
-				"major_brightness": [
-					"dim"
-				],
+				"minor_stars": ["天官"],
+				"major_brightness": ["dim"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -2010,25 +1563,11 @@
 				"branch": 8,
 				"stem": 8,
 				"palace_name": "疾厄",
-				"major_stars": [
-					"紫微",
-					"天府"
-				],
+				"major_stars": ["紫微", "天府"],
 				"lucky_stars": [],
-				"sha_stars": [
-					"火星"
-				],
-				"minor_stars": [
-					"封诰",
-					"天巫",
-					"截路",
-					"蜚廉",
-					"天使"
-				],
-				"major_brightness": [
-					"bright",
-					"normal"
-				],
+				"sha_stars": ["火星"],
+				"minor_stars": ["封诰", "天巫", "截路", "蜚廉", "天使"],
+				"major_brightness": ["bright", "normal"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -2060,23 +1599,11 @@
 				"branch": 9,
 				"stem": 9,
 				"palace_name": "财帛",
-				"major_stars": [
-					"太阴"
-				],
-				"lucky_stars": [
-					"左辅"
-				],
+				"major_stars": ["太阴"],
+				"lucky_stars": ["左辅"],
 				"sha_stars": [],
-				"minor_stars": [
-					"天喜",
-					"咸池",
-					"天福",
-					"天德",
-					"空亡"
-				],
-				"major_brightness": [
-					"dim"
-				],
+				"minor_stars": ["天喜", "咸池", "天福", "天德", "空亡"],
+				"major_brightness": ["dim"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -2108,24 +1635,11 @@
 				"branch": 10,
 				"stem": 0,
 				"palace_name": "子女",
-				"major_stars": [
-					"贪狼"
-				],
-				"lucky_stars": [
-					"文曲"
-				],
+				"major_stars": ["贪狼"],
+				"lucky_stars": ["文曲"],
 				"sha_stars": [],
-				"minor_stars": [
-					"三台",
-					"天贵",
-					"凤阁",
-					"旬空",
-					"寡宿",
-					"年解"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"minor_stars": ["三台", "天贵", "凤阁", "旬空", "寡宿", "年解"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -2157,15 +1671,11 @@
 				"branch": 11,
 				"stem": 1,
 				"palace_name": "夫妻",
-				"major_stars": [
-					"巨门"
-				],
+				"major_stars": ["巨门"],
 				"lucky_stars": [],
 				"sha_stars": [],
 				"minor_stars": [],
-				"major_brightness": [
-					"bright"
-				],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
@@ -2197,23 +1707,12 @@
 				"branch": 0,
 				"stem": 2,
 				"palace_name": "兄弟",
-				"major_stars": [
-					"廉贞",
-					"天相"
-				],
+				"major_stars": ["廉贞", "天相"],
 				"lucky_stars": [],
 				"sha_stars": [],
-				"minor_stars": [
-					"解神",
-					"台辅"
-				],
-				"major_brightness": [
-					"normal",
-					"bright"
-				],
-				"sihua_stars": [
-					"廉贞:禄"
-				],
+				"minor_stars": ["解神", "台辅"],
+				"major_brightness": ["normal", "bright"],
+				"sihua_stars": ["廉贞:禄"],
 				"is_ming_gong": false,
 				"is_shen_gong": false,
 				"is_current_daxian": false,
@@ -2244,23 +1743,11 @@
 				"branch": 1,
 				"stem": 3,
 				"palace_name": "命宫",
-				"major_stars": [
-					"天梁"
-				],
-				"lucky_stars": [
-					"天魁"
-				],
-				"sha_stars": [
-					"陀罗"
-				],
-				"minor_stars": [
-					"天才",
-					"天寿",
-					"天空"
-				],
-				"major_brightness": [
-					"bright"
-				],
+				"major_stars": ["天梁"],
+				"lucky_stars": ["天魁"],
+				"sha_stars": ["陀罗"],
+				"minor_stars": ["天才", "天寿", "天空"],
+				"major_brightness": ["bright"],
 				"sihua_stars": [],
 				"is_ming_gong": true,
 				"is_shen_gong": true,

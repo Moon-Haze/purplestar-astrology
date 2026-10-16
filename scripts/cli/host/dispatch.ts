@@ -55,12 +55,15 @@ export interface DispatchResult {
  * knowledge —— 敲旧名给一条可直接照抄的迁移写法，而不是让用户自己从 help 里找。
  */
 export function unknownCommandMerged(cmd: string): string {
-	if (cmd === "stars")
-		{return `—— 星曜释义已并入：knowledge --source stars --search <星名>`;}
-	if (cmd === "oracle")
-		{return `—— 断语手册已并入：knowledge --source oracle --topic <主题> [--star <星名>]`;}
-	if (cmd === "classics")
-		{return "—— 本命令原名 classics，已改名：knowledge --search <词>（古籍用法逐字不变）";}
+	if (cmd === "stars") {
+		return `—— 星曜释义已并入：knowledge --source stars --search <星名>`;
+	}
+	if (cmd === "oracle") {
+		return `—— 断语手册已并入：knowledge --source oracle --topic <主题> [--star <星名>]`;
+	}
+	if (cmd === "classics") {
+		return "—— 本命令原名 classics，已改名：knowledge --search <词>（古籍用法逐字不变）";
+	}
 	return "";
 }
 
@@ -96,17 +99,15 @@ export function formatError(err: unknown): string {
  *
  * 未知命令与命令内部抛出的错误都返回 code=1（只带 err.message，不带栈）。
  */
-export async function dispatch(
-	argv: string[],
-	ports: DispatchPorts
-): Promise<DispatchResult> {
+export async function dispatch(argv: string[], ports: DispatchPorts): Promise<DispatchResult> {
 	const cmd = argv[0];
 	const hasHelpFlag = argv.includes("--help") || argv.includes("-h");
 	// ① --help 拦截：先于查表与 loadCore（help 路径只加载轻模块）
 	if (cmd && cmd !== "help" && hasHelpFlag) {
 		const help = await ports.loadHelp();
-		if (help.commandNames.includes(cmd))
-			{return { code: 0, out: help.renderCommandHelp(cmd), err: "" };}
+		if (help.commandNames.includes(cmd)) {
+			return { code: 0, out: help.renderCommandHelp(cmd), err: "" };
+		}
 	}
 	if (!cmd || cmd === "help" || hasHelpFlag) {
 		const help = await ports.loadHelp();
@@ -115,14 +116,14 @@ export async function dispatch(
 	// ② 真正执行：此刻才加载内核（启动自检在 loadCore 内）
 	const { COMMANDS, parseArgs } = await ports.loadCore();
 	const fn = COMMANDS[cmd];
-	if (!fn)
-		{return { code: 1, out: "", err: unknownCommandMessage(cmd, Object.keys(COMMANDS)) };}
+	if (!fn) {
+		return { code: 1, out: "", err: unknownCommandMessage(cmd, Object.keys(COMMANDS)) };
+	}
 	try {
 		// 命令名一并交给 parseArgs：参数面要按命令校验
 		const args = parseArgs(argv.slice(1), cmd);
 		const out = await fn(args, ports.ctx);
-		const outFile =
-			typeof args.out === "string" && args.out !== "" ? args.out : undefined;
+		const outFile = typeof args.out === "string" && args.out !== "" ? args.out : undefined;
 		return outFile !== undefined
 			? { code: 0, out: String(out), err: "", outFile }
 			: { code: 0, out: String(out), err: "" };

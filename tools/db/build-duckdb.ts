@@ -71,27 +71,44 @@ function parseArgs(argv: string[]): Args {
 		const key = eq >= 0 ? arg.slice(0, eq) : arg;
 		const inline = eq >= 0 ? arg.slice(eq + 1) : undefined;
 		const value = (): string => {
-			if (inline !== undefined) {return inline;}
+			if (inline !== undefined) {
+				return inline;
+			}
 			const next = argv[++i];
-			if (next === undefined) {throw new Error(`参数缺值: ${key}`);}
+			if (next === undefined) {
+				throw new Error(`参数缺值: ${key}`);
+			}
 			return next;
 		};
-		if (key === "--from-year") {a.fromYear = Number(value());}
-		else if (key === "--to-year") {a.toYear = Number(value());}
+		if (key === "--from-year") {
+			a.fromYear = Number(value());
+		} else if (key === "--to-year") {
+			a.toYear = Number(value());
+		}
 		// 路径参数在 resolve 之前先校验原始值：resolve 会把 .. 归一化掉，过了这一步就无从识别
 		else if (key === "--src") {
 			const v = value();
-			if (v.split(/[\\/]/).includes("..")) {throw new Error("--src 路径不允许包含 .. 段");}
+			if (v.split(/[\\/]/).includes("..")) {
+				throw new Error("--src 路径不允许包含 .. 段");
+			}
 			a.src = path.resolve(v);
 		} else if (key === "--out") {
 			const v = value();
-			if (v.split(/[\\/]/).includes("..")) {throw new Error("--out 路径不允许包含 .. 段");}
+			if (v.split(/[\\/]/).includes("..")) {
+				throw new Error("--out 路径不允许包含 .. 段");
+			}
 			a.out = path.resolve(v);
-		} else if (key === "--mode") {a.mode = parseMode(value());}
-		else if (key === "--min-free-gb") {a.minFreeGb = Number(value());}
-		else if (key === "--batch-shards") {a.batchShards = Math.max(1, Number(value()));}
-		else if (key === "--db" || key === "--topics-dir") {throw new Error(deletedArgHint(key));}
-		else {throw new Error(`未知参数: ${arg}`);}
+		} else if (key === "--mode") {
+			a.mode = parseMode(value());
+		} else if (key === "--min-free-gb") {
+			a.minFreeGb = Number(value());
+		} else if (key === "--batch-shards") {
+			a.batchShards = Math.max(1, Number(value()));
+		} else if (key === "--db" || key === "--topics-dir") {
+			throw new Error(deletedArgHint(key));
+		} else {
+			throw new Error(`未知参数: ${arg}`);
+		}
 	}
 	return a;
 }
@@ -100,8 +117,12 @@ function parseArgs(argv: string[]): Args {
 // 非法值必须报错而不是回退：用户传了旧形态却拿到 inline 库，是一种
 // 无声的、事后才发现的错误。故只做精确匹配，不接受大小写或空白变体。
 export function parseMode(raw: string): "inline" | "dataset" {
-	if (raw === "inline") {return "inline";}
-	if (raw === "dataset") {return "dataset";}
+	if (raw === "inline") {
+		return "inline";
+	}
+	if (raw === "dataset") {
+		return "dataset";
+	}
 	if (raw === "parquet" || raw === "sidecar") {
 		throw new Error(
 			`--mode=${raw} 已删除：改用 --mode=dataset（dataset 形态取代了它，` +
@@ -119,7 +140,9 @@ export function parseMode(raw: string): "inline" | "dataset" {
 // 空值不表达任何形态意图（等同未设），不报错。
 export function rejectLegacyModeEnv(env: NodeJS.ProcessEnv = process.env): void {
 	const raw = env.ZIWEI_DB_MODE;
-	if (raw === undefined || raw === "") {return;}
+	if (raw === undefined || raw === "") {
+		return;
+	}
 	throw new Error(
 		`ZIWEI_DB_MODE 已废弃（当前值 ${JSON.stringify(raw)}），形态改用命令行参数：` +
 			"--mode=inline 或 --mode=dataset（不传等同 inline）"
@@ -305,8 +328,9 @@ export async function encodeShard(
 		await conn.run(sql.topicPairs);
 		await conn.run(sql.topicLineRows);
 		const miss = Number((await (await conn.run(sql.dictMisses)).getRowsJS())[0][0]);
-		if (miss > 0)
-			{throw new Error(`本分片有 ${miss} 行未命中字典（字典与源不一致，拒绝写入悬空 id）`);}
+		if (miss > 0) {
+			throw new Error(`本分片有 ${miss} 行未命中字典（字典与源不一致，拒绝写入悬空 id）`);
+		}
 		await conn.run(sql.encodeTopicLines);
 	} finally {
 		await dropTempsQuietly(conn, sql.dropTemps);
@@ -342,16 +366,24 @@ export async function buildShard(
 }
 
 async function listShards(src: string, fromYear?: number, toYear?: number): Promise<string[]> {
-	if (src.split(/[\\/]/).includes("..")) {throw new Error("--src 路径不允许包含 .. 段");}
+	if (src.split(/[\\/]/).includes("..")) {
+		throw new Error("--src 路径不允许包含 .. 段");
+	}
 	const out: string[] = [];
 	for (const dir of (await readdir(src, { withFileTypes: true }))
 		.filter(d => d.isDirectory())
 		.sort((a, b) => a.name.localeCompare(b.name))) {
 		const m = dir.name.match(/^year-(\d{4})$/);
-		if (!m) {continue;}
+		if (!m) {
+			continue;
+		}
 		const y = Number(m[1]);
-		if (fromYear !== undefined && y < fromYear) {continue;}
-		if (toYear !== undefined && y > toYear) {continue;}
+		if (fromYear !== undefined && y < fromYear) {
+			continue;
+		}
+		if (toYear !== undefined && y > toYear) {
+			continue;
+		}
 		for (const f of (await readdir(path.join(src, dir.name)))
 			.filter(f => f.endsWith(".jsonl.gz"))
 			.sort()) {
@@ -377,8 +409,12 @@ export async function repackDataset(
 	totalSamples: number,
 	partSamples: number = DATASET_PART_SAMPLES
 ): Promise<{ files: string[]; maxBytes: number }> {
-	if (stagingDir.split(/[\\/]/).includes("..")) {throw new Error("--out 路径不允许包含 .. 段");}
-	if (datasetDir.split(/[\\/]/).includes("..")) {throw new Error("--out 路径不允许包含 .. 段");}
+	if (stagingDir.split(/[\\/]/).includes("..")) {
+		throw new Error("--out 路径不允许包含 .. 段");
+	}
+	if (datasetDir.split(/[\\/]/).includes("..")) {
+		throw new Error("--out 路径不允许包含 .. 段");
+	}
 	await conn.run("SET threads=4");
 	await conn.run("SET memory_limit='4GB'");
 	await conn.run("SET preserve_insertion_order=false");
@@ -392,7 +428,9 @@ export async function repackDataset(
       SELECT * FROM read_parquet(${glob}) WHERE sample_id BETWEEN ${lo} AND ${hi}
     ) TO ${sqlLiteral(file)} (FORMAT PARQUET, COMPRESSION ZSTD)`);
 		const size = statSync(file).size;
-		if (size > maxBytes) {maxBytes = size;}
+		if (size > maxBytes) {
+			maxBytes = size;
+		}
 		if (size > DATASET_PART_MAX_BYTES) {
 			throw new Error(
 				`片 ${path.basename(file)} 有 ${(size / 1024 ** 2).toFixed(1)}MB，` +
@@ -418,8 +456,12 @@ export async function finalizeDataset(
 	datasetDir: string,
 	done: string[]
 ): Promise<void> {
-	if (stagingDir.split(/[\\/]/).includes("..")) {throw new Error("--out 路径不允许包含 .. 段");}
-	if (datasetDir.split(/[\\/]/).includes("..")) {throw new Error("--out 路径不允许包含 .. 段");}
+	if (stagingDir.split(/[\\/]/).includes("..")) {
+		throw new Error("--out 路径不允许包含 .. 段");
+	}
+	if (datasetDir.split(/[\\/]/).includes("..")) {
+		throw new Error("--out 路径不允许包含 .. 段");
+	}
 	try {
 		// 与 done 对账：每个已入库分片都必须有暂存 parquet，缺一个就重打包不出来
 		const missing = done.filter(
@@ -528,12 +570,18 @@ async function main() {
 	// --force：先清掉旧库、旧进度与字典副本，之后的流程等同于全新构建
 	if (args.force) {
 		for (const p of [dbPath, dbPath + ".wal", progressPath, dictPath]) {
-			if (existsSync(p)) {await rm(p, { force: true });}
+			if (existsSync(p)) {
+				await rm(p, { force: true });
+			}
 		}
 		// dataset 与它的暂存一并清掉。整体清空是必需的：上一次多出来的片若留下，
 		// read_parquet 的 glob 会照读不误，重复样本不会报任何错（spec §5.3）。
-		if (existsSync(datasetDir)) {await rm(datasetDir, { recursive: true, force: true });}
-		if (existsSync(stagingDir)) {await rm(stagingDir, { recursive: true, force: true });}
+		if (existsSync(datasetDir)) {
+			await rm(datasetDir, { recursive: true, force: true });
+		}
+		if (existsSync(stagingDir)) {
+			await rm(stagingDir, { recursive: true, force: true });
+		}
 	}
 
 	const dbExists = existsSync(dbPath);
@@ -617,8 +665,9 @@ async function main() {
 				skipped.add(rel);
 				failures.push({ shard: rel, error: String(e) });
 				console.error(`字典扫描失败，跳过分片 ${rel}:\n${e}`);
-				if (failures.length >= 10)
-					{throw new Error("失败分片达 10 个，中止构建（上游数据异常）");}
+				if (failures.length >= 10) {
+					throw new Error("失败分片达 10 个，中止构建（上游数据异常）");
+				}
 			}
 		}
 
@@ -638,7 +687,9 @@ async function main() {
 		if (existsSync(dictPath)) {
 			const prev = new Map<number, string>();
 			for (const ln of (await readFile(dictPath, "utf8")).split("\n")) {
-				if (!ln.trim()) {continue;}
+				if (!ln.trim()) {
+					continue;
+				}
 				const o = JSON.parse(ln) as { line_id: number; line: string };
 				prev.set(Number(o.line_id), o.line);
 			}
@@ -647,13 +698,17 @@ async function main() {
 			const diff: string[] = [];
 			for (const [id, line] of prev) {
 				const cur = now.get(id);
-				if (cur !== line)
-					{diff.push(
+				if (cur !== line) {
+					diff.push(
 						cur === undefined ? `line_id=${id} 丢失` : `line_id=${id} 文本被改写`
-					);}
+					);
+				}
 			}
-			for (const id of now.keys())
-				{if (!prev.has(id) && id <= maxPrev) {diff.push(`line_id=${id} 复用了旧号`);}}
+			for (const id of now.keys()) {
+				if (!prev.has(id) && id <= maxPrev) {
+					diff.push(`line_id=${id} 复用了旧号`);
+				}
+			}
 			if (diff.length > 0) {
 				throw new Error(
 					`行字典与既有副本不一致（${diff.length} 条），已有分片的 line_ids 可能已失效；` +
@@ -691,7 +746,9 @@ async function main() {
 				// 登记必须在 encodeShard **之前**：它内部先 COPY 再返回，若 COPY 中途抛错
 				// （磁盘满、被中断），文件可能已经落在 tmp/ 里，而事后登记就漏掉了它。
 				// rm 带 force，登记了但文件不存在的分支是无害的。
-				if (stage) {staged.push(stage);}
+				if (stage) {
+					staged.push(stage);
+				}
 				await encodeShard(conn, path.join(args.src, rel), stage?.tmp);
 				done.push(rel);
 				inserted++;
@@ -699,19 +756,26 @@ async function main() {
 			await conn.run("COMMIT");
 			committed = true;
 		} catch (e) {
-			if (!committed) {await rollbackQuietly(conn);}
+			if (!committed) {
+				await rollbackQuietly(conn);
+			}
 			// 本批未能全部入库，已写出的临时 Parquet 一并作废——否则它们会在下一轮
 			// 被视图的 *.parquet glob 读进来，变成「库内没有对应样本」的孤儿行
-			for (const s of staged) {await rm(s.tmp, { force: true });}
+			for (const s of staged) {
+				await rm(s.tmp, { force: true });
+			}
 			done.splice(done.length - inserted, inserted); // 本批已记入的分片作废
 			// COMMIT 本身失败时没有哪一片是「坏分片」（inserted === batch.length），
 			// 此时不可跳过任何分片，只记整批失败并原样重排队。
 			const bad = inserted < batch.length ? batch[inserted] : null;
-			if (bad) {skipped.add(bad);}
+			if (bad) {
+				skipped.add(bad);
+			}
 			failures.push({ shard: bad ?? "(COMMIT)", error: String(e) }); // read_json 错误消息内含行/列位置（spec §9）
 			console.error(bad ? `分片失败: ${bad}\n${e}` : `整批提交失败:\n${e}`);
-			if (failures.length >= 10)
-				{throw new Error("失败分片达 10 个，中止构建（上游数据异常）");}
+			if (failures.length >= 10) {
+				throw new Error("失败分片达 10 个，中止构建（上游数据异常）");
+			}
 			// 事务已回滚：失败者跳过，同批其余分片（失败之前 + 失败之后）全部放回队首重做。
 			// 只放回「失败之后」会静默丢掉失败之前那批的数据（它们已从 done 里撤销，却无人重做）。
 			pending.unshift(...batch.slice(0, inserted), ...batch.slice(inserted + 1));
@@ -729,10 +793,13 @@ async function main() {
 				console.error(`分片边车改名失败: ${s.final}\n${e}`);
 				failures.push({ shard: s.rel, error: String(e) });
 				const at = done.lastIndexOf(s.rel);
-				if (at >= 0) {done.splice(at, 1);}
+				if (at >= 0) {
+					done.splice(at, 1);
+				}
 				pending.push(s.rel);
-				if (failures.length >= 10)
-					{throw new Error("失败分片达 10 个，中止构建（上游数据异常）");}
+				if (failures.length >= 10) {
+					throw new Error("失败分片达 10 个，中止构建（上游数据异常）");
+				}
 			}
 		}
 
@@ -796,7 +863,9 @@ async function main() {
 			(mode === "dataset" ? `dataset ${(dsSize / 1024 ** 2).toFixed(0)}MiB，` : "") +
 			`耗时 ${((Date.now() - t0) / 60000).toFixed(1)} 分钟`
 	);
-	if (skipped.size > 0) {console.error(`跳过失败分片 ${skipped.size} 个`);}
+	if (skipped.size > 0) {
+		console.error(`跳过失败分片 ${skipped.size} 个`);
+	}
 	if (failures.length > 0) {
 		console.error(`警告：${failures.length} 个分片失败未入库`);
 		process.exitCode = 1;

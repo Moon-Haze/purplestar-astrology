@@ -34,13 +34,17 @@ export const dispWidth = (s: string): number =>
 const pad = (s: string, w: number): string => s + " ".repeat(Math.max(0, w - dispWidth(s)));
 
 export function renderTable(columns: string[], rows: Array<Record<string, unknown>>): string {
-	if (rows.length === 0) {return "(0 行)";}
+	if (rows.length === 0) {
+		return "(0 行)";
+	}
 	const widths = columns.map(c =>
 		Math.max(dispWidth(c), ...rows.map(r => dispWidth(cell(r[c]))))
 	);
 	const line = (cells: string[]) => cells.map((s, i) => pad(s, widths[i])).join("  |  ");
 	const out = [line(columns), widths.map(w => "-".repeat(w)).join("--+--")];
-	for (const r of rows) {out.push(line(columns.map(c => cell(r[c]))));}
+	for (const r of rows) {
+		out.push(line(columns.map(c => cell(r[c]))));
+	}
 	out.push(`(${rows.length} 行)`);
 	return out.join("\n");
 }

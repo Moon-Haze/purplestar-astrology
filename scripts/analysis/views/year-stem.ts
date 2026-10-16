@@ -43,7 +43,9 @@ export function renderYearStem(ctx: AnalysisContext): string[] {
 			.filter(sh => sh.palace === rule.palace)
 			.forEach(sh => {
 				const key = `${sh.star}-${sh.mutagen}-${sh.palace}`;
-				if (alreadyShown.has(key)) {return;} // 三方四正已展示，跳过
+				if (alreadyShown.has(key)) {
+					return;
+				} // 三方四正已展示，跳过
 				const ruleKey = SIHUA_CHAR_TO_KEY[sh.mutagen];
 				const meaning = ruleKey ? rule[ruleKey] : undefined;
 				if (meaning) {
@@ -61,7 +63,9 @@ export function renderYearStem(ctx: AnalysisContext): string[] {
 		lines.push(`**【年干四化·关键宫位影响】**`);
 		lines.push("");
 		globalKeyFindings.forEach(({ palace, star, mutagen, meaning }) => {
-			lines.push(`${mutagenSymbol(mutagen)} **${star}化${mutagen}**（落${palace}）→ ${meaning}`);
+			lines.push(
+				`${mutagenSymbol(mutagen)} **${star}化${mutagen}**（落${palace}）→ ${meaning}`
+			);
 		});
 		lines.push("");
 	}

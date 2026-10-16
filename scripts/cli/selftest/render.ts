@@ -52,7 +52,9 @@ export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">
 			"破军",
 		];
 		const miss = majorStars.filter(s => !STAR_DESCRIPTIONS[s]);
-		if (miss.length) {throw new Error(`缺失释义：${miss.join("、")}`);}
+		if (miss.length) {
+			throw new Error(`缺失释义：${miss.join("、")}`);
+		}
 		eq(Object.keys(STAR_DESCRIPTIONS).length, 14, "星曜释义条数 ");
 	});
 	ok("知识源：主题论断库 13 主题均可产出（样本盘，非空且宫名不失配）", () => {
@@ -63,14 +65,18 @@ export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">
 			const t = getTopicAnalysis(c, k);
 			return t.length < 100 || t.includes("无法找到");
 		});
-		if (bad.length) {throw new Error(`以下主题产出异常：${bad.join("、")}`);}
+		if (bad.length) {
+			throw new Error(`以下主题产出异常：${bad.join("、")}`);
+		}
 		return "13 主题全部产出";
 	});
 	ok("论断：四种 view（mingpan/daxian/liunian/liuyue）均可产出", () => {
 		const c = generateChart(SAMPLE);
 		for (const v of ["mingpan", "daxian", "liunian", "liuyue"] as AnalysisView[]) {
 			const t = getTopicAnalysis(c, "wealth", { view: v, liunianYear: 2027, liuyueMonth: 6 });
-			if (t.length < 100) {throw new Error(`view=${v} 产出过短：${t.length} 字`);}
+			if (t.length < 100) {
+				throw new Error(`view=${v} 产出过短：${t.length} 字`);
+			}
 		}
 		return "mingpan / daxian / liunian / liuyue";
 	});
@@ -93,8 +99,9 @@ export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">
 			m => m[1]
 		);
 		// 先确认真的扫到了东西：正则写歪或文件被改名都会得到空数组，那样的「零违规」是假绿。
-		if (!specs.length)
-			{throw new Error("未扫到任何 import —— 正则或 boot-hooks.ts 的路径可能已失效");}
+		if (!specs.length) {
+			throw new Error("未扫到任何 import —— 正则或 boot-hooks.ts 的路径可能已失效");
+		}
 		const bad = specs.filter(s => !s.startsWith("node:"));
 		if (bad.length) {
 			throw new Error(
@@ -112,12 +119,24 @@ export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 		() => {
 			const c = generateChart(SAMPLE);
 			const text = overviewSection(c, 2026).join("\n");
-			if (!text.includes("【运限速览】")) {throw new Error("缺【运限速览】标题");}
-			if (!text.includes(`虚岁 ${c.currentAge}`)) {throw new Error("缺当前虚岁");}
-			if (!text.includes("大限")) {throw new Error("缺大限速览");}
-			if (!text.includes("2026 丙午")) {throw new Error("缺流年干支");}
-			if (!text.includes("流年命宫")) {throw new Error("缺流年命宫");}
-			if (!text.includes("小限")) {throw new Error("缺小限速览");}
+			if (!text.includes("【运限速览】")) {
+				throw new Error("缺【运限速览】标题");
+			}
+			if (!text.includes(`虚岁 ${c.currentAge}`)) {
+				throw new Error("缺当前虚岁");
+			}
+			if (!text.includes("大限")) {
+				throw new Error("缺大限速览");
+			}
+			if (!text.includes("2026 丙午")) {
+				throw new Error("缺流年干支");
+			}
+			if (!text.includes("流年命宫")) {
+				throw new Error("缺流年命宫");
+			}
+			if (!text.includes("小限")) {
+				throw new Error("缺小限速览");
+			}
 			for (const f of [
 				"--yearly",
 				"--decadal",
@@ -127,8 +146,11 @@ export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 				"--focus",
 				"--palaces",
 				"--topic",
-			])
-				{if (!text.includes(f)) {throw new Error(`专题指路缺 ${f}`);}}
+			]) {
+				if (!text.includes(f)) {
+					throw new Error(`专题指路缺 ${f}`);
+				}
+			}
 		}
 	);
 	ok("专题渲染：基本信息专题逐项输出（2000-4-6 子时男，对齐外部排盘参照）", () => {
@@ -159,7 +181,9 @@ export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 			"不做八字论命",
 		];
 		const miss = want.filter(w => !text.includes(w));
-		if (miss.length) {throw new Error(`基本信息节缺以下行：\n  ${miss.join("\n  ")}`);}
+		if (miss.length) {
+			throw new Error(`基本信息节缺以下行：\n  ${miss.join("\n  ")}`);
+		}
 		return `${want.length} 项全部在`;
 	});
 	ok("专题渲染：节气与非节气四柱分叉时并列两行（2021-02-08，立春后/正月初一前）", () => {
@@ -171,74 +195,136 @@ export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 		);
 		const jie = text.split("\n").find(l => l.startsWith("节气四柱 : "));
 		const fei = text.split("\n").find(l => l.startsWith("非节气四柱 : "));
-		if (!jie || !fei) {throw new Error(`两口径分叉时应并列两行，实得：\n${text}`);}
-		if (jie.slice("节气四柱 : ".length) === fei.slice("非节气四柱 : ".length))
-			{throw new Error("样例选取失效：两口径竟然相同，请换立春/正月初一之间的日期");}
+		if (!jie || !fei) {
+			throw new Error(`两口径分叉时应并列两行，实得：\n${text}`);
+		}
+		if (jie.slice("节气四柱 : ".length) === fei.slice("非节气四柱 : ".length)) {
+			throw new Error("样例选取失效：两口径竟然相同，请换立春/正月初一之间的日期");
+		}
 		return "分叉时两行对照在";
 	});
 	ok("专题渲染：流年专题（流年命宫 / 三方四正 / 四化落点 / 与大限关系）", () => {
 		const c = generateChart(SAMPLE);
 		const text = yearlySection(c, 2026).join("\n");
-		if (!text.includes("年柱 丙午")) {throw new Error("缺流年干支");}
-		if (!text.includes("流年命宫")) {throw new Error("缺流年命宫标注");}
+		if (!text.includes("年柱 丙午")) {
+			throw new Error("缺流年干支");
+		}
+		if (!text.includes("流年命宫")) {
+			throw new Error("缺流年命宫标注");
+		}
 		// 2026 午宫 = 迁移宫；流年三方四正 = 午戌寅 + 对宫子 = 迁移/夫妻/福德/命宫
-		if (!text.includes("迁移宫")) {throw new Error("缺流年命宫（迁移宫）");}
-		if (!text.includes("夫妻宫") || !text.includes("福德宫"))
-			{throw new Error("缺流年三方四正（午的三合=戌寅）");}
+		if (!text.includes("迁移宫")) {
+			throw new Error("缺流年命宫（迁移宫）");
+		}
+		if (!text.includes("夫妻宫") || !text.includes("福德宫")) {
+			throw new Error("缺流年三方四正（午的三合=戌寅）");
+		}
 		// 流年忌廉贞落迁移宫(午) = 流年命宫本身
-		if (!text.includes("化忌 廉贞")) {throw new Error("缺流年四化落宫");}
-		if (!text.includes("大限三方四正")) {throw new Error("缺与当前大限三方的对照说明");}
+		if (!text.includes("化忌 廉贞")) {
+			throw new Error("缺流年四化落宫");
+		}
+		if (!text.includes("大限三方四正")) {
+			throw new Error("缺与当前大限三方的对照说明");
+		}
 		// 生年忌天同与流年禄天同同星同宫（子女宫酉）→ 应有引动标注
-		if (!text.includes("天同")) {throw new Error("缺生年×流年同星引动标注");}
+		if (!text.includes("天同")) {
+			throw new Error("缺生年×流年同星引动标注");
+		}
 	});
 	ok("专题渲染：大限专题（时间轴 / 三方四正 / 四化落点 / 限内逐年）", () => {
 		const c = generateChart(SAMPLE);
 		const text = decadalSection(c, 37).join("\n");
-		if (!text.includes("36-45")) {throw new Error("缺当前大限区间");}
-		if (!text.includes("116-125")) {throw new Error("缺大限时间轴首尾（116-125）");}
+		if (!text.includes("36-45")) {
+			throw new Error("缺当前大限区间");
+		}
+		if (!text.includes("116-125")) {
+			throw new Error("缺大限时间轴首尾（116-125）");
+		}
 		// 卯限的三方四正 = 卯未亥 + 对宫酉 = 田宅/疾厄/兄弟/子女
-		if (!text.includes("疾厄宫") || !text.includes("兄弟宫")) {throw new Error("缺大限三方四正");}
+		if (!text.includes("疾厄宫") || !text.includes("兄弟宫")) {
+			throw new Error("缺大限三方四正");
+		}
 		// 生年化科太阴落卯（大限本宫）
-		if (!text.includes("太阴")) {throw new Error("缺生年四化落大限三方的标注");}
+		if (!text.includes("太阴")) {
+			throw new Error("缺生年四化落大限三方的标注");
+		}
 		// 限内逐年表：37 岁 = 2026 丙午 流年命宫午；小限官禄宫
-		if (!text.includes("37岁") || !text.includes("丙午")) {throw new Error("缺限内逐年对照表");}
-		if (!text.includes("小限")) {throw new Error("逐年表缺小限列");}
+		if (!text.includes("37岁") || !text.includes("丙午")) {
+			throw new Error("缺限内逐年对照表");
+		}
+		if (!text.includes("小限")) {
+			throw new Error("逐年表缺小限列");
+		}
 	});
 	ok("专题渲染：小限专题（小限宫 / 三方四正 / 岁数分布 / 与流年关系）", () => {
 		const c = generateChart(SAMPLE);
 		const text = ageSection(c, 37, 2026).join("\n");
 		// 37 岁小限 = 官禄宫(辰)
-		if (!text.includes("官禄宫")) {throw new Error("缺小限宫（37 岁应为官禄宫）");}
-		if (!text.includes("三方四正")) {throw new Error("缺小限三方四正");}
-		if (!text.includes("小限岁数")) {throw new Error("缺十二宫小限岁数分布表");}
-		if (!text.includes("流年")) {throw new Error("缺小限与流年命宫的对照");}
+		if (!text.includes("官禄宫")) {
+			throw new Error("缺小限宫（37 岁应为官禄宫）");
+		}
+		if (!text.includes("三方四正")) {
+			throw new Error("缺小限三方四正");
+		}
+		if (!text.includes("小限岁数")) {
+			throw new Error("缺十二宫小限岁数分布表");
+		}
+		if (!text.includes("流年")) {
+			throw new Error("缺小限与流年命宫的对照");
+		}
 	});
 	ok("专题渲染：格局专题沿用格局识别（含成立条件与出处）", () => {
 		const c = generateChart(SAMPLE);
 		const text = patternSection(c).join("\n");
-		if (!text.includes("【格局识别】")) {throw new Error("缺【格局识别】标题");}
-		if (!text.includes("英星入庙格")) {throw new Error("缺样例盘必有格局（英星入庙）");}
-		if (!text.includes("出处")) {throw new Error("缺出处行");}
+		if (!text.includes("【格局识别】")) {
+			throw new Error("缺【格局识别】标题");
+		}
+		if (!text.includes("英星入庙格")) {
+			throw new Error("缺样例盘必有格局（英星入庙）");
+		}
+		if (!text.includes("出处")) {
+			throw new Error("缺出处行");
+		}
 	});
 	ok("专题渲染：四化专题（生年 + 大限宫干 + 流年 + 同星引动；流月可选）", () => {
 		const c = generateChart(SAMPLE);
 		const text = mutagenSection(c, { liuNianYear: 2026 }).join("\n");
-		if (!text.includes("【生年四化】")) {throw new Error("缺生年四化节");}
-		if (!text.includes("化禄 太阳 → 兄弟宫")) {throw new Error("缺生年化禄落宫（兄弟宫）");}
-		if (!text.includes("大限四化")) {throw new Error("缺大限宫干四化节（文墨排盘口径）");}
-		if (!text.includes("【2026 流年四化】")) {throw new Error("缺流年四化节");}
-		if (!text.includes("天同")) {throw new Error("缺生年×流年同星引动标注");}
+		if (!text.includes("【生年四化】")) {
+			throw new Error("缺生年四化节");
+		}
+		if (!text.includes("化禄 太阳 → 兄弟宫")) {
+			throw new Error("缺生年化禄落宫（兄弟宫）");
+		}
+		if (!text.includes("大限四化")) {
+			throw new Error("缺大限宫干四化节（文墨排盘口径）");
+		}
+		if (!text.includes("【2026 流年四化】")) {
+			throw new Error("缺流年四化节");
+		}
+		if (!text.includes("天同")) {
+			throw new Error("缺生年×流年同星引动标注");
+		}
 		const withMonth = mutagenSection(c, { liuNianYear: 2026, liuYueMonth: 6 }).join("\n");
-		if (!withMonth.includes("流月四化")) {throw new Error("给了农历月却缺流月四化节");}
+		if (!withMonth.includes("流月四化")) {
+			throw new Error("给了农历月却缺流月四化节");
+		}
 	});
 	ok("专题渲染：宫盘聚焦专题（三方四正会照 / 四化落宫 / 运限引动）", () => {
 		const c = generateChart(SAMPLE);
 		const text = focusSection(c, "命宫", 2026).join("\n");
-		if (!text.includes("【聚焦：命宫】")) {throw new Error("缺聚焦标题");}
-		if (!text.includes("会照")) {throw new Error("缺三方四正会照星曜");}
+		if (!text.includes("【聚焦：命宫】")) {
+			throw new Error("缺聚焦标题");
+		}
+		if (!text.includes("会照")) {
+			throw new Error("缺三方四正会照星曜");
+		}
 		// 命宫(子)的对宫是迁移宫(午) = 2026 流年命宫 → 应有引动标注
-		if (!text.includes("流年命宫")) {throw new Error("缺流年引动标注");}
-		if (!text.includes("大限")) {throw new Error("缺大限年龄段标注");}
+		if (!text.includes("流年命宫")) {
+			throw new Error("缺流年引动标注");
+		}
+		if (!text.includes("大限")) {
+			throw new Error("缺大限年龄段标注");
+		}
 	});
 	// ── 性别过滤上公开面（候选 7）：filterGenderContent 此前只被内核自用，
 	// 外部（测试/消费方）无从直测 —— 断言**必须经 @/analysis 公开面 import，
@@ -246,22 +332,29 @@ export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("性别过滤：male 的 getTopicAnalysis 不含女命残留（候选 7）", () => {
 		const c = generateChart(SAMPLE);
 		const out = getTopicAnalysis(c, "overview");
-		if (out.includes("；女命") || out.includes("（女命）"))
-			{throw new Error("存在女命残留——整篇过滤未生效");}
+		if (out.includes("；女命") || out.includes("（女命）")) {
+			throw new Error("存在女命残留——整篇过滤未生效");
+		}
 		return "男命输出无女命残留";
 	});
 	ok("性别过滤：filterGenderContent 三条规则直测", () => {
 		const f = filterGenderContent("甲；女命宜静。乙\n（女命）丙\n女命主柔。", "male");
-		if (f.includes("女命")) {throw new Error(`规则未生效：${JSON.stringify(f)}`);}
+		if (f.includes("女命")) {
+			throw new Error(`规则未生效：${JSON.stringify(f)}`);
+		}
 		const g = filterGenderContent("男命主刚。乙", "female");
-		if (g.includes("男命")) {throw new Error("female 侧未过滤男命句");}
+		if (g.includes("男命")) {
+			throw new Error("female 侧未过滤男命句");
+		}
 		return "male/female 两侧三规则在";
 	});
 	ok("性别过滤：整篇作用域——跨行子句在拼接后被删", () => {
 		// 构造跨行输入：「；女命」子句横跨 \n，逐行过滤会漏、整篇过滤会删
 		const input = "上句；女命\n下句继续。";
 		const f = filterGenderContent(input, "male");
-		if (f.includes("女命")) {throw new Error("跨行子句残留——过滤未作用于整篇");}
+		if (f.includes("女命")) {
+			throw new Error("跨行子句残留——过滤未作用于整篇");
+		}
 		return "整篇作用域在";
 	});
 }

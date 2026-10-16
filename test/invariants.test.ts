@@ -48,9 +48,8 @@ const {
 	getDaXianMutagen,
 } = await loadSihua();
 // 文墨亮度表（混合口径的亮度数据源）—— 锚点断言见「文墨亮度表」组。
-const { wenmoStarBrightness, setBrightnessSchool, getBrightnessSchool } = await load<
-	typeof import("@/wenmo-brightness")
->("@/wenmo-brightness");
+const { wenmoStarBrightness, setBrightnessSchool, getBrightnessSchool } =
+	await load<typeof import("@/wenmo-brightness")>("@/wenmo-brightness");
 const { mustPalace, locateSihua } = await loadRender();
 
 const MAJOR_STARS = [
@@ -345,7 +344,9 @@ describe("排盘结构不变量", () => {
 			for (const { birth, chart } of charts) {
 				for (const p of chart.palaces) {
 					const dx = chart.decadals.find(d => d.palaceBranch === p.branch);
-					if (!dx || !p.decadalRange) {continue;}
+					if (!dx || !p.decadalRange) {
+						continue;
+					}
 					assert.deepEqual(
 						p.decadalRange,
 						[dx.startAge, dx.endAge],
@@ -455,8 +456,11 @@ describe("排盘结构不变量", () => {
 			const sampled = charts.filter((_, i) => i % 5 === 0);
 			let baseDecadal = 0;
 			for (const { birth, chart } of sampled) {
-				if (check(birth, chart) === "childhood") {childhood++;}
-				else {baseDecadal++;}
+				if (check(birth, chart) === "childhood") {
+					childhood++;
+				} else {
+					baseDecadal++;
+				}
 			}
 			decadal += baseDecadal;
 			// 末尾那两条 `> 0` 是弱断言：只证明「至少分到了一条」，不证明**分对了**。
@@ -481,8 +485,11 @@ describe("排盘结构不变量", () => {
 			];
 			for (const base of recent) {
 				for (const timeIndex of [0, 6, 9]) {
-					if (check({ ...base, timeIndex, gender: "male" }) === "childhood") {childhood++;}
-					else {decadal++;}
+					if (check({ ...base, timeIndex, gender: "male" }) === "childhood") {
+						childhood++;
+					} else {
+						decadal++;
+					}
 				}
 			}
 
@@ -519,7 +526,9 @@ describe("排盘结构不变量", () => {
 			let emptyCount = 0;
 			for (const { birth, chart } of charts) {
 				for (const p of chart.palaces) {
-					if (!p.isEmpty) {continue;}
+					if (!p.isEmpty) {
+						continue;
+					}
 					emptyCount++;
 					assert.ok(
 						Array.isArray(p.borrowedStars),
@@ -565,12 +574,13 @@ describe("排盘结构不变量", () => {
 			// （见 cli/birth/birth-info.ts 的归一化）。宽容若渗进取宫层，写错的名字就不会当场失败，
 			// 而是悄悄取到「最像的那个宫」—— 正是本项目反复防的那种静默错盘。
 			const chart = charts[0].chart;
-			for (const bad of ["仆役", "仆役宫", "夫妻", "福德", "财帛", "兄弟", "命", ""])
-				{assert.throws(
+			for (const bad of ["仆役", "仆役宫", "夫妻", "福德", "财帛", "兄弟", "命", ""]) {
+				assert.throws(
 					() => mustPalace(chart, bad),
 					/找不到/,
 					`「${bad}」不是项目口径全名，应当抛错`
-				);}
+				);
+			}
 		});
 	});
 
@@ -591,8 +601,13 @@ describe("排盘结构不变量", () => {
 			// 一张盘即可：十四主星与六吉各恰好出现一次，是上面「星曜」块已断言的不变量。
 			const onChart = new Set(charts[0].chart.palaces.flatMap(p => p.stars.map(s => s.name)));
 			const missing = new Set<string>();
-			for (const arr of Object.values(SI_HUA_TABLE))
-				{for (const star of arr) {if (!onChart.has(star)) {missing.add(star);}}}
+			for (const arr of Object.values(SI_HUA_TABLE)) {
+				for (const star of arr) {
+					if (!onChart.has(star)) {
+						missing.add(star);
+					}
+				}
+			}
 			assert.deepEqual(
 				[...missing],
 				[],
@@ -605,8 +620,13 @@ describe("排盘结构不变量", () => {
 			// 不命中，且比错字更难看出来 —— 它是个真实存在的星名，只是不参与四化。
 			const allowed = new Set([...MAJOR_STARS, "文昌", "文曲", "左辅", "右弼"]);
 			const bad = new Set<string>();
-			for (const arr of Object.values(SI_HUA_TABLE))
-				{for (const star of arr) {if (!allowed.has(star)) {bad.add(star);}}}
+			for (const arr of Object.values(SI_HUA_TABLE)) {
+				for (const star of arr) {
+					if (!allowed.has(star)) {
+						bad.add(star);
+					}
+				}
+			}
 			assert.deepEqual([...bad], [], `四化表里出现了不该化的星：${[...bad].join("、")}`);
 		});
 
@@ -841,7 +861,9 @@ describe("排盘结构不变量", () => {
 			// 对 300 基准盘的首个大限：宫干由盘面 Palace.stem 取，四化由 SI_HUA_TABLE
 			// 直接查 —— 与 getDaXianMutagen 内部同源但走**独立复算**路径，抓包装层错误。
 			for (const { chart } of charts) {
-				if (chart.currentDecadalIndex === -1) {continue;} // 童限无大限宫干
+				if (chart.currentDecadalIndex === -1) {
+					continue;
+				} // 童限无大限宫干
 				const dx = chart.decadals[chart.currentDecadalIndex];
 				const palace = chart.palaces.find(p => p.branch === dx.palaceBranch);
 				assert.ok(palace, `大限宫 ${dx.palaceBranch} 应在盘上`);
@@ -898,7 +920,9 @@ describe("排盘结构不变量", () => {
 			const chart = generateChart({ ...samples[0].birthInfo });
 			for (const p of chart.palaces) {
 				for (const s of p.stars) {
-					if (s.brightnessRaw === undefined) {continue;}
+					if (s.brightnessRaw === undefined) {
+						continue;
+					}
 					const collapse =
 						s.brightnessRaw === "庙" || s.brightnessRaw === "旺"
 							? "bright"
@@ -940,8 +964,11 @@ describe("排盘结构不变量", () => {
 						should,
 						`${label(birth)}：${p!.name}（偏移 ${offset}）主星化${mutagen}=${should}，但格局识别=${got}`
 					);
-					if (should) {yes++;}
-					else {no++;}
+					if (should) {
+						yes++;
+					} else {
+						no++;
+					}
 				}
 				// 两侧都要有样本，否则断言可能在「全 false」上空转全绿
 				assert.ok(yes > 0, `300 条样本里没有一条化${mutagen}入该宫，正例侧未生效`);
@@ -1120,9 +1147,13 @@ describe("排盘结构不变量", () => {
 				武贪格: c => {
 					const w = palaceOfStar(c, "武曲");
 					const t = palaceOfStar(c, "贪狼");
-					if (!w || !t) {return false;}
+					if (!w || !t) {
+						return false;
+					}
 					const d = offsetBetween(w.branch, t.branch);
-					if (d !== 0 && d !== 6) {return false;}
+					if (d !== 0 && d !== 6) {
+						return false;
+					}
 					return SANFANG_NAMES.includes(w.name) || SANFANG_NAMES.includes(t.name);
 				},
 				日月同宫: c => {
@@ -1138,7 +1169,9 @@ describe("排盘结构不变量", () => {
 				府相朝垣: c => {
 					const f = palaceOfStar(c, "天府");
 					const x = palaceOfStar(c, "天相");
-					if (!f || !x || f.name === x.name) {return false;}
+					if (!f || !x || f.name === x.name) {
+						return false;
+					}
 					return SANFANG_NAMES.includes(f.name) && SANFANG_NAMES.includes(x.name);
 				},
 				火贪格: c => tanWithSha(c, "火星"),
@@ -1193,9 +1226,13 @@ describe("排盘结构不变量", () => {
 				// 不是照命理理想口径重写；有分歧要改的是实现与预言机两边，不是只改一边。
 				七杀朝斗格: c => {
 					const p = palaceOfStar(c, "七杀");
-					if (!p) {return false;}
+					if (!p) {
+						return false;
+					}
 					// 寅=2 / 申=8：这里走地支**名**，实现走地支**索引**，两条路径在「寅申是哪两支」上分岔
-					if (BRANCHES[p.branch] !== "寅" && BRANCHES[p.branch] !== "申") {return false;}
+					if (BRANCHES[p.branch] !== "寅" && BRANCHES[p.branch] !== "申") {
+						return false;
+					}
 					return p.name === "命宫" || p.name === "迁移宫";
 				},
 				// 日月并明：太阳、太阴**同时**入庙（不限宫位，也不要求同宫 —— 后者是「日月同宫」）
@@ -1221,7 +1258,9 @@ describe("排盘结构不变量", () => {
 				禄马交驰格: c => {
 					const lu = palaceOfStar(c, "禄存");
 					const ma = palaceOfStar(c, "天马");
-					if (!lu || !ma) {return false;}
+					if (!lu || !ma) {
+						return false;
+					}
 					return (
 						lu.name === ma.name ||
 						(SANFANG_NAMES.includes(lu.name) && SANFANG_NAMES.includes(ma.name))
@@ -1275,8 +1314,11 @@ describe("排盘结构不变量", () => {
 							should,
 							`${label(birth)}：预言机=${should}，实现=${got}（命宫在${BRANCHES[chart.soulBranch]}）`
 						);
-						if (should) {yes++;}
-						else {no++;}
+						if (should) {
+							yes++;
+						} else {
+							no++;
+						}
 					}
 					// 两侧都要有样本，否则断言可能在「全 false / 全 true」上空转全绿
 					if (NO_HIT_IN_FIXTURES.has(name)) {
@@ -1363,8 +1405,12 @@ describe("排盘结构不变量", () => {
 					const uncovered = new Set<string>();
 					for (const set of detected) {
 						for (const n of set) {
-							if (covered.has(n)) {continue;}
-							if (DERIVED_SUFFIXES.some(sfx => n.endsWith(sfx))) {continue;}
+							if (covered.has(n)) {
+								continue;
+							}
+							if (DERIVED_SUFFIXES.some(sfx => n.endsWith(sfx))) {
+								continue;
+							}
 							uncovered.add(n);
 						}
 					}
@@ -1408,52 +1454,61 @@ describe("格局名裁决（同现象异名）", () => {
 				a.basis === "corpus" || a.basis === "convention",
 				`「${a.canonical}」的 basis 非法：${String(a.basis)}`
 			);
-			for (const n of [a.canonical, ...a.aliases])
-				{assert.ok(n in a.counts, `「${a.canonical}」的 counts 缺名字「${n}」`);}
+			for (const n of [a.canonical, ...a.aliases]) {
+				assert.ok(n in a.counts, `「${a.canonical}」的 counts 缺名字「${n}」`);
+			}
 		}
 	});
 
 	it("basis=convention 的条目必须写明为何不走词频", () => {
 		// 「书写统一」与「古籍词频裁决」是两种依据，不能混为一谈。词频裁不了的条目
 		// 若连理由都不写，后人只会看到一堆平手的数字，无从判断当初是怎么定的。
-		for (const a of GEJU_NAME_ALIASES.filter(x => x.basis === "convention"))
-			{assert.ok(
+		for (const a of GEJU_NAME_ALIASES.filter(x => x.basis === "convention")) {
+			assert.ok(
 				(a.note ?? "").trim().length > 0,
 				`「${a.canonical}」basis=convention 却没写 note —— 必须说明为何古籍不足以裁决`
-			);}
+			);
+		}
 	});
 
 	it("表里记的词频与古籍库重算结果逐一对得上", () => {
-		for (const a of GEJU_NAME_ALIASES)
-			{for (const [name, recorded] of Object.entries(a.counts))
-				{assert.equal(
+		for (const a of GEJU_NAME_ALIASES) {
+			for (const [name, recorded] of Object.entries(a.counts)) {
+				assert.equal(
 					freq(name),
 					recorded,
 					`「${name}」表记 ${recorded} 次，古籍库实为 ${freq(name)} 次 —— 语料变了，该重新裁决`
-				);}}
+				);
+			}
+		}
 	});
 
 	it("basis=corpus 的条目：现用名词频严格高于它的每一个异名", () => {
 		// 只看 corpus —— convention 类本就是「古籍裁不了」才走约定的，允许平手或落败。
 		// 这条断言若因语料更新而变红，说明裁决结论该重审。
-		for (const a of GEJU_NAME_ALIASES.filter(x => x.basis === "corpus"))
-			{for (const alias of a.aliases)
-				{assert.ok(
+		for (const a of GEJU_NAME_ALIASES.filter(x => x.basis === "corpus")) {
+			for (const alias of a.aliases) {
+				assert.ok(
 					a.counts[a.canonical] > a.counts[alias],
 					`「${a.canonical}」(${a.counts[a.canonical]}) 未高于异名「${alias}」(${a.counts[alias]}) —— 该重新裁决，而不是改数字`
-				);}}
+				);
+			}
+		}
 	});
 
 	it("落选的异名不再出现在任何排盘产出里（300 条基准逐盘扫）", () => {
 		for (const [i, { birth, chart }] of charts.entries()) {
 			const where = `${birth.year}-${birth.month}-${birth.day}`;
-			for (const p of detectPatterns(chart))
-				{for (const a of GEJU_NAME_ALIASES)
-					{for (const alias of a.aliases)
-						{assert.ok(
+			for (const p of detectPatterns(chart)) {
+				for (const a of GEJU_NAME_ALIASES) {
+					for (const alias of a.aliases) {
+						assert.ok(
 							!p.name.endsWith(alias),
 							`第 ${i} 张盘（${where}）产出旧名「${p.name}」—— 应已统一为「${a.canonical}」`
-						);}}}
+						);
+					}
+				}
+			}
 		}
 	});
 });
@@ -1514,11 +1569,14 @@ describe("topic 长判词（Pattern.topicDescription）", () => {
 
 	const withTopic = new Set<string>();
 	const allNames = new Set<string>();
-	for (const { chart } of charts)
-		{for (const p of detectPatterns(chart)) {
+	for (const { chart } of charts) {
+		for (const p of detectPatterns(chart)) {
 			allNames.add(p.name);
-			if (p.topicDescription) {withTopic.add(p.name);}
-		}}
+			if (p.topicDescription) {
+				withTopic.add(p.name);
+			}
+		}
+	}
 
 	it("判词名册双向匹配：代码里有判词的都在册，在册的都有实现", () => {
 		const unlisted = [...withTopic].filter(n => !ROSTER.some(pat => matches(pat, n)));
@@ -1536,22 +1594,26 @@ describe("topic 长判词（Pattern.topicDescription）", () => {
 	});
 
 	it("每条长判词都成句（长度 > 20）", () => {
-		for (const [i, { birth, chart }] of charts.entries())
-			{for (const p of detectPatterns(chart))
-				{if (p.topicDescription !== undefined)
-					{assert.ok(
+		for (const [i, { birth, chart }] of charts.entries()) {
+			for (const p of detectPatterns(chart)) {
+				if (p.topicDescription !== undefined) {
+					assert.ok(
 						p.topicDescription.length > 20,
 						`第 ${i} 张盘（${birth.year}-${birth.month}-${birth.day}）的「${p.name}」长判词过短（${p.topicDescription.length} 字）：${p.topicDescription}`
-					);}}}
+					);
+				}
+			}
+		}
 	});
 
 	it("格局名不含展示标记（如「（煞格）」）", () => {
 		// 警示后缀属于**展示层**，应写进判词而非挂在 name 上 —— name 是查找键，
 		// 带上括号标注后，所有按名字比对的地方都会失配。
-		for (const name of allNames)
-			{assert.ok(
+		for (const name of allNames) {
+			assert.ok(
 				!name.includes("（") && !name.includes("("),
 				`格局名「${name}」带上了展示标记 —— 应剥离并写入判词`
-			);}
+			);
+		}
 	});
 });

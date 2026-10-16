@@ -68,12 +68,16 @@ test("排盘内核可加载", () => {
 describe("排盘对标（基准：iztro 2.5.8 样本）", () => {
 	const byYear = new Map<number, BaselineSample[]>();
 	for (const s of samples) {
-		if (!byYear.has(s.birthInfo.year)) {byYear.set(s.birthInfo.year, []);}
+		if (!byYear.has(s.birthInfo.year)) {
+			byYear.set(s.birthInfo.year, []);
+		}
 		byYear.get(s.birthInfo.year)!.push(s);
 	}
 
 	for (const [year, list] of [...byYear].sort((a, b) => a[0] - b[0])) {
-		if (YEAR_FILTER !== null && year !== YEAR_FILTER) {continue;}
+		if (YEAR_FILTER !== null && year !== YEAR_FILTER) {
+			continue;
+		}
 		describe(`${year} 年`, () => {
 			for (const s of list) {
 				it(describeBirth(s.birthInfo), t => {

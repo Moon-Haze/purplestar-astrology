@@ -51,7 +51,9 @@ export function getMingGongSummary(chart: ZiweiChart): {
 	nature: string;
 } {
 	const mingPalace = chart.palaces.find(p => p.branch === chart.soulBranch);
-	if (!mingPalace) {return { stars: [], keywords: [], nature: "" };}
+	if (!mingPalace) {
+		return { stars: [], keywords: [], nature: "" };
+	}
 
 	const majorStars = mingPalace.stars.filter(s => s.type === "major");
 	const starNames = majorStars.map(s => s.name);
