@@ -1,6 +1,8 @@
 // ── 基准样本数据源：db/dataset/*.parquet ──
 //
-// 全项目**唯一**懂 DuckDB 与表结构的地方。三个手工工具（test/tools/full-corpus.ts、
+// 测试**读侧**的 DuckDB 入口：采样、取行、读回表结构都在这里。写侧（构建分片、
+// 建库、导出）在 `tools/db/`（`db.ts` 的 `createDb` / `detectLayout` 等是两侧重叠的
+// 底层定义处）；读侧不吸写侧逻辑。三个手工工具（test/tools/full-corpus.ts、
 // test/tools/build-fixtures.ts、test/tools/verify-source.ts）都从这里取样本，
 // 它们自己不写 SQL、不碰连接。
 //

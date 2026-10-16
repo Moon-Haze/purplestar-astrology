@@ -11,6 +11,7 @@
  */
 
 import { PALACE_BRANCH_ORGAN, ZIWU_LIUZHU } from "../../analysis/data";
+import { SHA_HARD } from "../../corpus/data/patterns";
 import { BRANCHES } from "@/data/ganzhi";
 import type { AnalysisContext } from "../../analysis/context";
 
@@ -58,10 +59,8 @@ export function renderHealth(ctx: AnalysisContext): string[] {
 			}
 		}
 
-		// 煞星警示
-		const shaInPalace = mainPalace.stars.filter(s =>
-			["擎羊", "陀罗", "火星", "铃星"].includes(s.name)
-		);
+		// 煞星警示（四煞口径取单点 SHA_HARD，与格局判定同源）
+		const shaInPalace = mainPalace.stars.filter(s => SHA_HARD.includes(s.name));
 		if (shaInPalace.length > 0) {
 			lines.push(
 				`⚠️ **煞星入疾厄**：${shaInPalace.map(s => s.name).join("、")}——倪师《天纪 11-12》：「陀罗、擎羊入疾厄宫，开刀见血光」。需提前体检，流年化忌入此宫时尤防手术意外。`

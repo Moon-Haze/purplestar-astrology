@@ -11,7 +11,8 @@
 
 import type { Palace, Star, ZiweiChart } from "../types";
 // 对宫与三方四正的偏移：全仓单点在 ../palace-relations
-import { oppositeBranch, surroundBranches } from "../palace-relations";
+import { oppositeBranch, palaceAtBranch, surroundBranches } from "../palace-relations";
+import { starBadge } from "./overview-material";
 
 /** 获取宫位的主星列表（空宫则借对宫） */
 export function getPalaceStars(
@@ -30,7 +31,7 @@ export function getPalaceStars(
 
 	// 空宫：借对宫
 	const oppBranch = oppositeBranch(palace.branch);
-	const oppPalace = chart.palaces.find(p => p.branch === oppBranch);
+	const oppPalace = palaceAtBranch(chart, oppBranch);
 	if (!oppPalace) {
 		return { palace, mainStars: [], isLoan: false };
 	}
@@ -51,18 +52,13 @@ export function getSanFangSiZheng(chart: ZiweiChart, palaceName: string): Palace
 		.filter(Boolean) as Palace[];
 }
 
-/** 描述一个宫位的星曜（带四化） */
+/** 描述一个宫位的星曜（带四化；徽标拼式取 `overview-material` 的 starBadge 单点） */
 export function descPalaceStars(palace: Palace): string {
 	const main = palace.stars.filter(s => s.type === "major");
 	if (main.length === 0) {
 		return `${palace.name}空宫`;
 	}
-	return main
-		.map(
-			s =>
-				`${s.name}${s.mutagen ? "化" + s.mutagen : ""}${s.brightness === "bright" ? "（庙旺）" : s.brightness === "dim" ? "（落陷）" : ""}`
-		)
-		.join("、");
+	return main.map(s => starBadge(s)).join("、");
 }
 
 /** 获取宫位中的所有四化信息 */

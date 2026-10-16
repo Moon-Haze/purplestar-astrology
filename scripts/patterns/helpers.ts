@@ -317,12 +317,12 @@ export function sanFangHasMutagen(chart: ZiweiChart, hua: Mutagen): boolean {
  * 把判词里的 `{占位符}` 换成实参。没给值的占位符**原样保留** —— 这样漏填会以
  * `{星}化禄坐命` 这种可见的畸形判词暴露出来，而不是静默产出空串。
  *
- * @param verdict - 判词表里的一条（`data.ts` 的 `PATTERN_VERDICTS`）
+ * @param verdict - 判词表里的一条（`../corpus/data/patterns.ts` 的 `PATTERN_VERDICTS`）
  * @param vars - 占位符名 → 实参，键**不含**花括号（`{ 星: "武曲" }`）
  * @returns 替换后的**新对象**；入参不被修改
  *
  * @remarks
- * 占位符约定与表键口径见 `data.ts` 的「判词」分区注释。本函数按声明与实现
+ * 占位符约定与表键口径见 `../corpus/data/patterns.ts` 的「判词」分区注释。本函数按声明与实现
  * 分离的立场住在实现侧 —— 它是纯函数，且只被同目录的识别器调用点使用。
  */
 export function fillVerdict(verdict: PatternVerdict, vars: Record<string, string>): PatternVerdict {

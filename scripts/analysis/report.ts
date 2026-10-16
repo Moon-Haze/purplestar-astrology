@@ -13,21 +13,16 @@
 
 import type { ZiweiChart } from "../types";
 import {
-	SIHUA_CHAR_TO_KEY,
 	STAR_BRIEF,
-	STAR_CONTENT_MAP,
-	SUMMARY_TOPICS,
-	TOPIC_CONTENT_KEY,
 	TOPIC_LABEL,
 	TOPIC_PALACE_NAME,
-	TOPIC_SUMMARY_KEY,
 	TOPIC_SUGGESTIONS,
 	type AnalysisOptions,
-	type StarContent,
 	type TopicKey,
 } from "../analysis/data";
 import { makeContext } from "../analysis/context";
-import { detectGeJu, filterGenderContent } from "../analysis/lookups";
+import { filterGenderContent } from "../analysis/lookups";
+import { buildOverviewMaterial, starBadge } from "../analysis/overview-material";
 import { descPalaceStars } from "../analysis/palace-query";
 import { BRANCHES } from "@/data/ganzhi";
 import { renderDecadal } from "../analysis/views/decadal";
@@ -93,19 +88,6 @@ function trimBlanks(lines: string[]): string[] {
 }
 
 /**
- * 主宫主星的亮度/四化展示后缀（`庙旺` / `落陷` / `化X`），报告标题徽标用。
- *
- * @remarks
- * 与 `views/overview.ts` 的 mainStarDesc 同一口径，但不带「（庙旺）」括号 —— 报告
- * 标题里用 `·` 分隔更紧凑（`命宫 · 紫微落陷、天相庙旺`）。
- */
-function starBadge(star: { name: string; mutagen?: string; brightness?: string }): string {
-	const hua = star.mutagen ? `化${star.mutagen}` : "";
-	const bright = star.brightness === "bright" ? "庙旺" : star.brightness === "dim" ? "落陷" : "";
-	return `${star.name}${hua}${bright}`;
-}
-
-/**
  * 主题报告的元信息 —— CLI 层为该主题查古籍引文的全部输入。
  *
  * @remarks
@@ -131,7 +113,7 @@ export function getTopicReportMeta(
  * 生成单个主题的 Markdown 报告节。
  *
  * @param chart - 已排好的命盘
- * @param topic - 主题键（13 个之一）
+ * @param topic - 主题键（14 个之一）
  * @param options - 视角等 {@link AnalysisOptions} + `citations`（经典出处引文，
  *   缺省时该小节整体省略）
  * @returns 一节 Markdown 文本（以 `## 主题名（主宫 · 主星）` 开头）；主宫找不到时
@@ -156,11 +138,11 @@ export function getTopicReport(
 
 	const { citations = [] } = options;
 	const lines: string[] = [];
+	const m = buildOverviewMaterial(ctx);
 
 	// ── 节标题：主题名（主宫 · 主星徽标）──
-	const badge = ctx.mainStars.length ? ctx.mainStars.map(s => starBadge(s)).join("、") : "空宫";
 	const loanTag = ctx.isLoan ? "借对宫" : "";
-	lines.push(`## ${TOPIC_LABEL[topic]}（${ctx.palaceName} · ${loanTag}${badge}）`);
+	lines.push(`## ${TOPIC_LABEL[topic]}（${ctx.palaceName} · ${loanTag}${m.mainBadge}）`);
 	lines.push("");
 
 	// ── 一句话定调：主星一句简述（STAR_BRIEF），空宫给借宫提示 ──
@@ -175,50 +157,17 @@ export function getTopicReport(
 	lines.push("");
 
 	// ── 总览：命盘关键定制 + 特殊格局 + 星曜深层特质 ──
-	// 素材与 views/overview.ts 同源（topic_mods / detectGeJu / summary），
-	// 但不加【】小节头 —— 报告里它们是同一段「总览」的三个层次。
-	// 辅助宫主题（兄弟/子女/迁移/交友/田宅/福德/父母）三样都没有 —— 整段省略，
-	// 不留空标题（view 层同口径：summary 只给核心 5 主题，避免与 overview 雷同）。
+	// 取材住 `../overview-material`（与 views/overview.ts 同一单点），但不加【】小节头
+	// —— 报告里它们是同一段「总览」的三个层次。辅助宫主题（兄弟/子女/迁移/交友/
+	// 田宅/福德/父母）三样都没有 —— 整段省略，不留空标题（view 层同口径）。
 	const overviewLines: string[] = [];
-	if (ctx.primaryStar && ctx.profile) {
-		const summaryKey = TOPIC_SUMMARY_KEY[topic];
-		const isCoreTopic = SUMMARY_TOPICS.has(topic) || topic === "personality";
-		const gender: "male" | "female" = chart.birthInfo?.gender === "female" ? "female" : "male";
-
-		if (isCoreTopic) {
-			const topicMod =
-				ctx.profile.topic_mods?.[summaryKey as keyof typeof ctx.profile.topic_mods];
-			const brightnessKey =
-				ctx.primaryStar.brightness === "bright"
-					? "bright"
-					: ctx.primaryStar.brightness === "dim"
-						? "dim"
-						: null;
-			const sihuaKey = ctx.primaryStar.mutagen
-				? (SIHUA_CHAR_TO_KEY[ctx.primaryStar.mutagen] ?? null)
-				: null;
-			if (brightnessKey && topicMod?.[brightnessKey]) {
-				overviewLines.push(topicMod[brightnessKey]!);
-			}
-			if (sihuaKey && topicMod?.[sihuaKey]) {
-				overviewLines.push(topicMod[sihuaKey]!);
-			}
-		}
-
-		if (topic === "overview" || topic === "personality") {
-			for (const gj of detectGeJu(chart)) {
-				overviewLines.push(`⭐ **${gj.name}**：${gj.description}`);
-			}
-		}
-
-		if (SUMMARY_TOPICS.has(topic)) {
-			const summary = ctx.profile.summary?.[gender]?.[summaryKey];
-			if (summary) {
-				overviewLines.push(summary);
-			}
+	if (!m.emptyFallback) {
+		overviewLines.push(...m.mods, ...m.geju);
+		if (m.summary) {
+			overviewLines.push(m.summary);
 		}
 	} else {
-		overviewLines.push(`${ctx.palaceName}空宫，需借对宫论事，整体以三方四正综合判断。`);
+		overviewLines.push(m.emptyFallback);
 	}
 	if (overviewLines.length > 0) {
 		lines.push("### 总览");
@@ -228,27 +177,15 @@ export function getTopicReport(
 
 	// ── 核心论断：本宫主星的该宫语境全文 + 亮度补充 + 同宫第二主星 ──
 	const verdictLines: string[] = [];
-	if (ctx.primaryStar && ctx.profile) {
-		const contentKey = TOPIC_CONTENT_KEY[topic];
-		const content =
-			topic === "overview"
-				? ctx.profile.mingGong
-				: (ctx.profile[contentKey as keyof StarContent] as string | undefined);
-		if (content) {
-			verdictLines.push(content);
+	if (!m.emptyFallback) {
+		if (m.content) {
+			verdictLines.push(m.content);
 		}
-		const mod =
-			ctx.primaryStar.brightness === "bright"
-				? ctx.profile.brightMod
-				: ctx.primaryStar.brightness === "dim"
-					? ctx.profile.dimMod
-					: undefined;
-		if (mod) {
-			verdictLines.push(`▶ ${mod}`);
+		if (m.brightNote) {
+			verdictLines.push(m.brightNote);
 		}
-		const s2 = ctx.mainStars[1];
-		if (s2) {
-			verdictLines.push(`同宫第二主星：**${starBadge(s2)}**——${STAR_BRIEF[s2.name] ?? ""}`);
+		if (m.secondStar) {
+			verdictLines.push(m.secondStar);
 		}
 	}
 	if (verdictLines.length > 0) {
@@ -262,7 +199,7 @@ export function getTopicReport(
 	lines.push("");
 	lines.push(
 		`本宫主星：${ctx.isLoan ? `（${ctx.palaceName}空宫，借对宫论事）` : ""}` +
-			`${ctx.mainStars.map(s => starBadge(s)).join("、") || "空宫"}` +
+			`${m.mainBadge}` +
 			`${topic === "overview" ? `，${chart.fiveElementsClassName}` : ""}`
 	);
 	lines.push("");

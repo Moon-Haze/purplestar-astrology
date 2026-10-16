@@ -10,7 +10,6 @@
  */
 
 import { PALACE_TO_CONTENT_KEY, STAR_BRIEF, STAR_CONTENT_MAP } from "../../analysis/data";
-import { oppositeBranch } from "../../palace-relations";
 import type { AnalysisContext } from "../../analysis/context";
 import { getMinorStarNote, getMutagenNote } from "../../analysis/lookups";
 import { descPalaceStars } from "../../analysis/palace-query";
@@ -71,13 +70,11 @@ export function renderSanFang(ctx: AnalysisContext): string[] {
 				lines.push("");
 			});
 		} else if (!isMain && mainStarsOfP.length === 0) {
-			const oppBranch = oppositeBranch(p.branch);
-			const oppP = chart.palaces.find(q => q.branch === oppBranch);
-			const oppStars = oppP?.stars.filter(s => s.type === "major") ?? [];
+			// 借宫信息直接读排盘填好的结构化字段（borrowedStars/borrowedFromName），不内联重算
+			const oppName = p.borrowedFromName ?? "";
+			const oppStars = p.borrowedStars ?? [];
 			if (oppStars.length > 0) {
-				lines.push(
-					`  （空宫，借对宫${oppP?.name ?? ""}：${oppStars.map(s => s.name).join("、")}入事）`
-				);
+				lines.push(`  （空宫，借对宫${oppName}：${oppStars.join("、")}入事）`);
 			} else {
 				lines.push(`  （空宫）`);
 			}

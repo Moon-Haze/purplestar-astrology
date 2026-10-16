@@ -17,7 +17,8 @@ import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua } from
 import type { CaliberBasis } from "../birth/birth-info-defs";
 
 /**
- * 报告的 13 个板块及顺序 —— 与 `TOPIC_KEYS` 的存储序不同（那份数序是 parquet 列序，动不得）：
+ * 报告的 13 个板块及顺序 —— 与 `TOPIC_KEYS` 的序不同；数据集物理列序归
+ * `STORAGE_TOPIC_KEYS` 管（增删顺序等于改存储格式，动不得）：
  * 财运提到事业前、性格放在感情后，其余按「先核心五项、后十二宫顺次」（见 docs/code/cli-commands.md）。
  */
 const REPORT_TOPICS: TopicKey[] = [

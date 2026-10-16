@@ -1,8 +1,9 @@
 # patterns —— 格局层
 
 本篇覆盖 `scripts/patterns/`：`index.ts`（装配）· `types.ts`（形状）· `helpers.ts`（底座）·
-`superior.ts` / `medium.ts` / `enhancing.ts` / `basic.ts` / `converged.ts` / `malefic.ts`（判定）·
-`soul-summary.ts`（命宫摘要）。
+`superior.ts` / `medium.ts` / `enhancing.ts` / `basic.ts` / `converged.ts` / `malefic.ts`（判定）。
+（`soul-summary.ts` 是纯文案映射，不住判定目录 —— 已迁 `scripts/analysis/soul-summary.ts`，
+见 [analysis.md](analysis.md)。）
 
 收录的是这些文件里 **B 类模块头论文**与 **C 类 ⚠️ 防呆警告**的原文；A 类 TSDoc 契约与
 D 类口径锁留在源码。分类判据见 [README.md](README.md)。
@@ -36,13 +37,13 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > - `helpers.ts` —— **底座**：宫位 / 星曜查询与判词填充 `fillVerdict`
 > - `superior.ts` / `medium.ts` / `enhancing.ts` / `e-ge.ts` / `basic.ts` /
 >   `converged.ts` —— **判定**：各分组识别器，每组末尾导出自己的 `Detector` 数组
-> - `soul-summary.ts` —— **命宫摘要**：与判定零耦合，独立一刀
+> - `soul-summary.ts` —— **命宫摘要**：已迁 `analysis/soul-summary.ts`（纯文案层不住判定目录）
 > - `index.ts`（本文件） —— **装配**：`DETECTORS` 总表 + `detectPatterns` + 公开面 re-export
 
 ### 1.2 识别器的统一收尾
 
 > 每个识别器的收尾统一是：先把名字算进局部 `name`，再 `return [{ name, level,
-> palaces, conditions, ...PATTERN_VERDICTS[name] }]` —— 判词**一律**从表里取，
+palaces, conditions, ...PATTERN_VERDICTS[name] }]` —— 判词**一律**从表里取，
 > 识别器文件不再出现 `description` / `topicDescription` / `source` 字面量。
 > `level` / `palaces` / `conditions` 的值是盘上算出来的，故留在识别器里。
 >
@@ -139,15 +140,13 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 - **`converged.ts`** —— 收敛自 db-analysis 的识别器：判定收敛到格局层后归入本组。
 - **`malefic.ts`** —— 恶格：煞忌交侵、主刑伤波折的一组，成格条件与上格同严。
 
-## 六、`soul-summary.ts`：命宫摘要（⚠️ 不得改签名）
+## 六、`soul-summary.ts`：命宫摘要（⚠️ 不得改签名）—— 已迁出本目录
 
-> 命宫摘要 —— 命宫主星的简要概括：星名、关键词、星性。
->
-> 与格局判定**零耦合**：本文件不调用 `./helpers` 里任何查询函数，也不读 `./data`，
-> 两张映射表直接写在这里 —— 是格局层里最干净的一刀。
->
-> 「保持向后兼容」指的是：它是格局层最早对外暴露的导出之一，
-> `cli/commands/index.ts` 的 `analyze` 至今按原样取用，**签名与返回结构不得改动**。
+> 命宫摘要（命宫主星的简要概括：星名、关键词、星性）现住
+> `scripts/analysis/soul-summary.ts`：它是**不判条件、只做映射**的纯文案层，
+> 按分层红线不住格局判定目录。搬家是纯位置变动，**签名与返回结构仍不得改动**——
+> `cli/commands/astrology.ts` 的 `mingGongSummary`（文本与 `--json`）按原样取用。
+> 详情见 [analysis.md](analysis.md) 的「`soul-summary.ts`」节。
 
 ## 五、`converged.ts`：⚠️ 口径照搬，不趁迁移「顺手修正」
 

@@ -2,8 +2,8 @@
  * 格局层的**类型**：结构体、识别器入参、识别器签名。
  *
  * @remarks
- * 本模块只放「是什么形状」；数据在 `data.ts`、判定在各分组文件、装配在 `./index` ——
- * 分工是**形状 / 数据 / 判定**，改哪一层就只需读哪个文件（见 docs/code/patterns.md）。
+ * 本模块只放「是什么形状」；数据在 `../corpus/data/patterns.ts`、判定在各分组文件、
+ * 装配在 `./index` —— 分工是**形状 / 数据 / 判定**，改哪一层就只需读哪个文件（见 docs/code/patterns.md）。
  *
  * 本文件里的 `{@link}` 一律只指向**本文档内**的符号 —— 跨文件 TSDoc 解析不到，
  * 指向其他模块的符号时直呼其名，不加链接。
@@ -135,7 +135,7 @@ export interface GejuNameAlias {
  * @remarks
  * `description` / `topicDescription` 里可含 `{星}` / `{宫}` / `{煞}` / `{会}` 占位符，
  * 由 `helpers.ts` 的 `fillVerdict` 在调用点填。判词表的键口径、以及「为什么
- * level / palaces / conditions 不在这里」，见 `data.ts` 的「判词」分区注释。
+ * level / palaces / conditions 不在这里」，见 `../corpus/data/patterns.ts` 的「判词」分区注释。
  */
 export interface PatternVerdict {
 	/** analyze 侧短判词，一到两句 + 等级由 `level` 单独承载 */

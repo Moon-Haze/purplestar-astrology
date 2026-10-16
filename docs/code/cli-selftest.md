@@ -16,13 +16,14 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 回归自检 —— 内核或 iztro 升级后，用一组不变量快速验证 CLI 仍然正确。
 >
 > 拆自 purple-star.ts。独立成文件的两个理由：
->   1. 它占原文件四分之一（489 行），且**性质是测试代码**，不是产品代码；
->   2. 它的依赖是单向的 —— 它调用解析层与渲染层，但没有任何东西调用它（除了命令表）。
->      抽一个叶子出去，是所有重构里最安全的一种。
+>
+> 1. 它占原文件四分之一（489 行），且**性质是测试代码**，不是产品代码；
+> 2. 它的依赖是单向的 —— 它调用解析层与渲染层，但没有任何东西调用它（除了命令表）。
+>    抽一个叶子出去，是所有重构里最安全的一种。
 >
 > ⚠️ 它留在 `scripts/` 而非 `test/`，是有意的：skill 分发时只带走
->    `SKILL.md + scripts/ + package.json`，`test/` 不带走。自检必须在交付包内，
->    否则装到别人机器上就没法自证。
+> `SKILL.md + scripts/ + package.json`，`test/` 不带走。自检必须在交付包内，
+> 否则装到别人机器上就没法自证。
 >
 > ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
 >
@@ -33,7 +34,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 改名任一方都会静默改判解析目标。
 >
 > 断言本体按主题住在 `./selftest/` 子目录（calc / birth / chart / render / args /
-> commands / guard 七组），本文件只做编排：构造 harness 与直调 / 子进程探针，按
+> commands / astrology-shapes / guard 八组），本文件只做编排：构造 harness 与直调 / 子进程探针，按
 > 报告顺序逐组调用，再把 classics / synastry 断言组并入并渲染分段报告。
 
 ### 1.2 `cmdSelftest`
@@ -46,30 +47,30 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 内核根从 `ctx` 取而非自己推导：那是引导层 `pickRoot()` 的职责，自检只负责把它交代出来。
 >
 > ⚠️ 有失败项时**不抛错，而是先 `console.error` 全量报告再 `process.exit(1)`** ——
->    `test/cli.test.ts` 依赖这个退出码判定自检是否全绿。
+> `test/cli.test.ts` 依赖这个退出码判定自检是否全绿。
 
 ### 1.3 三条运行期纪律（行内）
 
 - **强制直排、绕过排盘缓存**：
-  > 自检全程**强制直排、绕过排盘缓存**：回归要验的是「当前内核排出来的盘」，
-  > 若允许命中 .cache/charts 里改动前写下的条目，改完内核的回归会拿着旧盘全绿 ——
-  > 那比没有回归更坏（假绿）。本行同时覆盖下方 runCli 的子进程（env 随进程继承）。
+    > 自检全程**强制直排、绕过排盘缓存**：回归要验的是「当前内核排出来的盘」，
+    > 若允许命中 .cache/charts 里改动前写下的条目，改完内核的回归会拿着旧盘全绿 ——
+    > 那比没有回归更坏（假绿）。本行同时覆盖下方 runCli 的子进程（env 随进程继承）。
 - **命令表键集（动态 import 打断静态环）**：
-  > 命令表键集：动态 import 打断「commands → selftest → commands」静态环，取代旧
-  > 「读 commands.ts 源码文本、正则抽键」的第三条路 —— 那条路让命令表的物理排版成了
-  > load-bearing 契约。取 COMMANDS 视图而非裸表：表本身刻意不导出，而断言要的正是
-  > 运行期真实键集。selftest/ 下组文件一律不静态 import commands。
+    > 命令表键集：动态 import 打断「commands → selftest → commands」静态环，取代旧
+    > 「读 commands.ts 源码文本、正则抽键」的第三条路 —— 那条路让命令表的物理排版成了
+    > load-bearing 契约。取 COMMANDS 视图而非裸表：表本身刻意不导出，而断言要的正是
+    > 运行期真实键集。selftest/ 下组文件一律不静态 import commands。
 - **子进程探针只留给冒烟**：
-  > 子进程探针只留给文末的冒烟（守住「入口 → 解析 → 命令表 → 渲染 + 错误出口」真链路）；
-  > 输出形态断言用进程内直调（call）—— 每次子进程约 3.2 秒（iztro 冷启动），直调约
-  > 25ms，判据同构（code / out / err 三元组，错误路径同一「错误：」前缀文案）。
+    > 子进程探针只留给文末的冒烟（守住「入口 → 解析 → 命令表 → 渲染 + 错误出口」真链路）；
+    > 输出形态断言用进程内直调（call）—— 每次子进程约 3.2 秒（iztro 冷启动），直调约
+    > 25ms，判据同构（code / out / err 三元组，错误路径同一「错误：」前缀文案）。
 - **⏭ 跳过标记**：
-  > ⚠️ 跳过项**前置 ⏭**：它记 pass 但那条断言**根本没跑**，与「跑过且通过」是
-  > 两件事。不标出来就是恒真守卫伪装成通过 —— 最坏的那种假绿。
+    > ⚠️ 跳过项**前置 ⏭**：它记 pass 但那条断言**根本没跑**，与「跑过且通过」是
+    > 两件事。不标出来就是恒真守卫伪装成通过 —— 最坏的那种假绿。
 - **三段汇总**：
-  > corpus 与 synastry 的自检断言各自住在 `scripts/corpus/selftest-asserts.ts` 与
-  > `scripts/synastry/selftest-asserts.ts`，由本命令汇总执行 —— 报告分三段
-  > （排盘 / 古籍 / 合盘），首行「通过 N/N」为合计。
+    > corpus 与 synastry 的自检断言各自住在 `scripts/corpus/selftest-asserts.ts` 与
+    > `scripts/synastry/selftest-asserts.ts`，由本命令汇总执行 —— 报告分三段
+    > （排盘 / 古籍 / 合盘），首行「通过 N/N」为合计。
 
 ## 二、`kit.ts`：共用 harness
 
@@ -146,9 +147,12 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 - **`render.ts`** —— 渲染与知识源：知识源可用性、专题渲染各节（原区块 8 与「专题渲染」区）。
 - **`args.ts`** —— 参数系统：解析引擎、参数面、声明表、SKILL.md 参数对拍（原解析引擎 /
   参数面 / 声明表区块）。
-- **`commands.ts`** —— 命令层：命令面、help 裁剪 / 强化、契约对拍、命令拆分、astrology
-  输出形态。直调探针 `call` 由主 selftest 构造后经 deps 传入 —— 组文件不静态 import
+- **`commands.ts`** —— 命令层：命令面、help 裁剪 / 强化、契约对拍、命令拆分。直调探针
+  `call` 由主 selftest 构造后经 deps 传入 —— 组文件不静态 import
   `cli/commands.ts`，命令表键集判断一律走 `commandNames`。
+- **`astrology-shapes.ts`** —— astrology 输出形态：未深入 / 深入 / 零输入 / --palaces /
+  --topic / --focus / --config / --template 与组合层端到端（自 `commands.ts` 拆出，
+  断言体原样；同走 deps 注入，不静态 import `cli/commands.ts`）。
 - **`guard.ts`** —— 兜底守护：子进程冒烟、SKILL.md 命令对拍、文档一致性、知识分级。
   冒烟五条走 `deps.runCli`（守「入口 → 解析 → 命令表 → 渲染 + 错误出口」真链路）；
   知识分级组的 grades 动态 import 保持在 ok 断言流之外（ok 断言体是同步回调）。

@@ -49,7 +49,7 @@ import {
  * 生成某个主题的完整论断报告。
  *
  * @param chart - 已排好的命盘
- * @param topic - 主题键（13 个之一，见 `./data` 的 `TOPIC_KEYS`）
+ * @param topic - 主题键（14 个之一，见 `./data` 的 `TOPIC_KEYS`）
  * @param options - 视角 / 流年年月 / 大限下标
  * @returns 报告全文（已按出生性别过滤掉无关性别的句子）
  *

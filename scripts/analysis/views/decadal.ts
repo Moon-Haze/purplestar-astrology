@@ -12,7 +12,7 @@
  */
 
 import { mutagenSymbol } from "../../analysis/data";
-import { oppositeBranch, surroundBranches } from "../../palace-relations";
+import { surroundBranches } from "../../palace-relations";
 import type { AnalysisContext } from "../../analysis/context";
 import { descPalaceStars } from "../../analysis/palace-query";
 
@@ -38,14 +38,13 @@ export function renderDecadal(ctx: AnalysisContext): string[] {
 		);
 
 		// ── 大限宫为空宫时借对宫 ──
-		if (dxPalace && dxPalace.stars.filter(s => s.type === "major").length === 0) {
-			const oppBranch = oppositeBranch(dxPalace.branch);
-			const oppP = chart.palaces.find(q => q.branch === oppBranch);
-			const oppStars = oppP?.stars.filter(s => s.type === "major").map(s => s.name) ?? [];
+		// 借宫信息直接读排盘填好的结构化字段（borrowedStars/borrowedFromName），不内联重算
+		if (dxPalace && dxPalace.isEmpty) {
+			const oppStars = dxPalace.borrowedStars ?? [];
 			if (oppStars.length > 0) {
 				lines.push("");
 				lines.push(
-					`▶ 大限宫为空宫，借**${oppP?.name}**的${oppStars.join("、")}入事——倪师强调「空宫必借对宫论事」。`
+					`▶ 大限宫为空宫，借**${dxPalace.borrowedFromName ?? ""}**的${oppStars.join("、")}入事——倪师强调「空宫必借对宫论事」。`
 				);
 			}
 		}

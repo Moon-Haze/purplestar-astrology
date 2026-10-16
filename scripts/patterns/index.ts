@@ -27,12 +27,13 @@ import { E_GE } from "../patterns/malefic";
 import { JI_CHU_GE } from "../patterns/basic";
 import { SHOU_LIAN_GE } from "../patterns/converged";
 
-// **原处 re-export** 拆分前就对外公开的三个类型与裁决表，使 `analysis/`（`type Pattern`）、
+// **原处 re-export** 拆分前就对外公开的类型与裁决表，使 `analysis/`（`type Pattern`）、
 // `test/invariants.test.ts`（`GEJU_NAME_ALIASES`）的既有 import 一行都不用改 ——
 // 本模块的公开面与拆分前**逐名一致**（原先 module-private 的 `DetectContext` 不在此列）。
+// （`getMingGongSummary` 原也在本公开面：它是纯文案映射不住判定层，已迁
+// `analysis/soul-summary.ts`，消费方 `cli/commands/astrology.ts` 直接从新址 import。）
 export type { Pattern, PatternCondition, GejuNameAlias } from "../patterns/types";
 export { GEJU_NAME_ALIASES } from "../corpus/data/patterns";
-export { getMingGongSummary } from "../patterns/soul-summary";
 
 /**
  * 识别器注册表。**顺序即语义** —— 分组与组内次序都影响 `detectPatterns` 的输出排列。

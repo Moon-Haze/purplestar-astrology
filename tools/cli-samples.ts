@@ -40,6 +40,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseArgs, type CliContext } from "@/cli/args";
+import { OPTION_GROUPS } from "@/cli/args/table";
 import { COMMANDS } from "@/cli/commands";
 import { unknownCommandMessage } from "@/cli/host/dispatch";
 import { renderCommandHelp, renderOverviewHelp } from "@/cli/commands/help";
@@ -720,6 +721,42 @@ const SAMPLES: Sample[] = [
 	},
 	{
 		group: "astrology · 输出与配置",
+		title: "--no-cache 跳过排盘缓存",
+		desc: "强制现排（默认同一农历年内复用 .cache/charts 里的排盘结果）",
+		args: [
+			"astrology",
+			"--date",
+			"2011-06-24",
+			"--time",
+			"07:45",
+			"--city",
+			"杭州",
+			"--gender",
+			"male",
+			"--no-cache",
+		],
+	},
+	{
+		group: "astrology · 输出与配置",
+		title: "--out 落盘通道",
+		desc: "把输出写入文件（覆盖写，末尾恰一个换行；进度提示走 stderr，stdout 不再打印正文）",
+		args: [
+			"astrology",
+			"--date",
+			"2011-06-24",
+			"--time",
+			"07:45",
+			"--city",
+			"杭州",
+			"--gender",
+			"male",
+			"--json",
+			"--out",
+			"/tmp/purplestar-chart.json",
+		],
+	},
+	{
+		group: "astrology · 输出与配置",
 		title: "--template 打印配置模板",
 		desc: "可直接落盘的 JSON 模板（--template > my.json）",
 		args: ["astrology", "--template"],
@@ -755,6 +792,12 @@ const SAMPLES: Sample[] = [
 		title: "--source tianji 天纪判语检索",
 		desc: "《天纪》讲稿原话 + 秒级回放溯源（nihai-tianji-corpus 语料，紫微五册）",
 		args: ["knowledge", "--source", "tianji", "半空折翅"],
+	},
+	{
+		group: "knowledge · 知识检索",
+		title: "--book 限册检索（tianji 域）",
+		desc: "天纪域限定单册（册代号或中文名：主星/十二宫/格局/四化/疾厄）",
+		args: ["knowledge", "--source", "tianji", "--book", "主星", "紫微"],
 	},
 	{
 		group: "knowledge · 知识检索",
@@ -936,6 +979,34 @@ async function main(): Promise<void> {
 		console.error(
 			"    node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成都 --gender female --json --out tools/samples/chart-b.json"
 		);
+		process.exit(1);
+	}
+
+	// ── 参数覆盖自检：样例表必须覆盖声明表的全部参数 ──
+	// `OPTION_GROUPS` 是参数面的唯一真相源，样例表是它的下游消费者；新增参数忘补
+	// 样例时文档会静默缺节。检查对象从声明表**派生**（不引入第二份清单），
+	// `--x=v` 与 `--x v` 两种取值形态都算已覆盖。
+	const coveredParams = new Set<string>();
+	for (const s of SAMPLES) {
+		for (const a of s.args) {
+			if (a.startsWith("--")) {
+				coveredParams.add(a.split("=")[0]);
+			}
+		}
+	}
+	const declaredParams = new Set<string>();
+	for (const group of OPTION_GROUPS) {
+		for (const opt of group.options) {
+			declaredParams.add(`--${opt.name}`);
+		}
+	}
+	const uncovered = [...declaredParams].filter(name => !coveredParams.has(name));
+	if (uncovered.length) {
+		console.error(`✘ 以下声明参数在 SAMPLES 里没有样例（文档将静默缺节）：`);
+		for (const name of uncovered) {
+			console.error(`    ${name}`);
+		}
+		console.error("  在 SAMPLES 就近组别补一条样例（示例数据用虚构口径），再重新生成文档。");
 		process.exit(1);
 	}
 

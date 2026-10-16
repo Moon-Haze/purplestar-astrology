@@ -5,9 +5,9 @@
 > 命令均为**进程内直调**（与 CLI 同一命令函数，输出一致；含 --yearly/--ages 等随时间漂移的样例，
 > 复跑时对应字段可能随当天日期变化）。
 
-- 生成时间：2026-10-15 21:05　git：`9eccd3a`　Node：v26.11.1
+- 生成时间：2026-10-17 00:40　git：`ff4488f`　Node：v26.11.1
 - 引擎：iztro 2.6.1 + lunar-typescript 1.8.6　相对仓库根执行，文档里的命令可直接复制到终端复现
-- 样例 60 条，输出全量；「错误路径」各条期待非 0 退出码，核对的是**报错文案**
+- 样例 63 条，输出全量；「错误路径」各条期待非 0 退出码，核对的是**报错文案**
 
 ## 帮助
 
@@ -1749,7 +1749,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ▶ 入庙旺（卯至申宫），光明正大，事业财运俱佳，名利兼收，是太阳最佳发挥状态。
 
-同宫第二主星：**太阴**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
+同宫第二主星：**太阴（落陷）**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
 
 **【三方四正联动】**
 
@@ -1823,7 +1823,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ▶ 入庙旺（卯至申宫），光明正大，事业财运俱佳，名利兼收，是太阳最佳发挥状态。
 
-同宫第二主星：**太阴**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
+同宫第二主星：**太阴（落陷）**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
 
 **【三方四正联动】**
 
@@ -1897,7 +1897,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ▶ 入庙旺（卯至申宫），光明正大，事业财运俱佳，名利兼收，是太阳最佳发挥状态。
 
-同宫第二主星：**太阴**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
+同宫第二主星：**太阴（落陷）**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
 
 **【三方四正联动】**
 
@@ -1971,7 +1971,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ▶ 入庙旺（卯至申宫），光明正大，事业财运俱佳，名利兼收，是太阳最佳发挥状态。
 
-同宫第二主星：**太阴**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
+同宫第二主星：**太阴（落陷）**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
 
 **【三方四正联动】**
 
@@ -2051,7 +2051,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 命格总览（命宫 · 借对宫天机庙旺、巨门庙旺）
+## 命格总览（命宫 · 借对宫天机（庙旺）、巨门（庙旺））
 
 > **定调 · 天机**：智慧星，善变化策划，宜顾问咨询，多才艺，财运起伏，辅佐型人才。
 
@@ -2067,11 +2067,11 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 ### 核心论断
 
 天机聪明机变，善策划，多才多艺，思维灵活敏锐，一生变动较多。倪海厦说天机「善变」，是最适合辅佐型岗位的星曜——策划、咨询、IT技术、宗教哲学、教育皆宜，独当一面反而不利。命宫天机者，兴趣广泛，博而不专，早年容易频繁换方向，需在中年后逐渐收敛，专注一两个领域方能有大成。感情上多变不专一，理性与感性并存，有宗教或哲学方面的兴趣，内心世界丰富深刻。相貌清秀，身材修长，面目灵动。
-同宫第二主星：**巨门庙旺**——是非口才星，善辩论，宜律师教师传媒，化禄口才生财，化忌口舌官非。
+同宫第二主星：**巨门（庙旺）**——是非口才星，善辩论，宜律师教师传媒，化禄口才生财，化忌口舌官非。
 
 ### 命盘推演
 
-本宫主星：（命宫空宫，借对宫论事）天机庙旺、巨门庙旺，火六局
+本宫主星：（命宫空宫，借对宫论事）天机（庙旺）、巨门（庙旺），火六局
 
 ### 三方四正联动
 
@@ -2126,7 +2126,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 财富运势（财帛宫 · 天梁化科落陷）
+## 财富运势（财帛宫 · 天梁化科（落陷））
 
 > **定调 · 天梁**：老星荫星，善逢凶化吉，宜法律医学教育，孤克倾向，晚婚为宜。
 
@@ -2140,7 +2140,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ### 命盘推演
 
-本宫主星：天梁化科落陷
+本宫主星：天梁化科（落陷）
 
 ### 三方四正联动
 
@@ -2192,7 +2192,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 事业职业（官禄宫 · 太阳庙旺、太阴落陷）
+## 事业职业（官禄宫 · 太阳（庙旺）、太阴（落陷））
 
 > **定调 · 太阳**：男贵星，主名誉公务，入庙大吉，落陷劳而无获，主眼目与心脏。
 
@@ -2204,11 +2204,11 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 官禄宫太阳，最宜政府机关、公众事务、媒体传播、法律司法或管理职位；入庙则仕途光明，有一定社会地位与影响力；落陷则升职艰难，宜转换行业或工作环境，切忌固守。化禄则名利双收；化权则在公共领域掌权；若无吉化相助，需靠人脉积累与努力慢慢建立职业口碑。
 ▶ 入庙旺（卯至申宫），光明正大，事业财运俱佳，名利兼收，是太阳最佳发挥状态。
-同宫第二主星：**太阴落陷**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
+同宫第二主星：**太阴（落陷）**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
 
 ### 命盘推演
 
-本宫主星：太阳庙旺、太阴落陷
+本宫主星：太阳（庙旺）、太阴（落陷）
 
 ### 三方四正联动
 
@@ -2258,7 +2258,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 感情婚姻（夫妻宫 · 借对宫太阳庙旺、太阴落陷）
+## 感情婚姻（夫妻宫 · 借对宫太阳（庙旺）、太阴（落陷））
 
 > **定调 · 太阳**：男贵星，主名誉公务，入庙大吉，落陷劳而无获，主眼目与心脏。
 
@@ -2270,11 +2270,11 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 夫妻宫太阳，配偶外向积极，有公众魅力，事业心旺盛；女命此配置，丈夫气度不凡，社会地位较高，但忙于事业，陪伴时间相对较少。入庙则配偶阳光开朗，感情顺遂；落陷则配偶脾气急躁，或感情受到名誉问题的影响，需更多耐心相处。化忌时，名誉纠纷可能牵连感情，需防配偶因外部压力影响婚姻。
 ▶ 入庙旺（卯至申宫），光明正大，事业财运俱佳，名利兼收，是太阳最佳发挥状态。
-同宫第二主星：**太阴落陷**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
+同宫第二主星：**太阴（落陷）**——月亮富贵星，感情细腻，女命最吉，入庙大富，主田宅房产。
 
 ### 命盘推演
 
-本宫主星：（夫妻宫空宫，借对宫论事）太阳庙旺、太阴落陷
+本宫主星：（夫妻宫空宫，借对宫论事）太阳（庙旺）、太阴（落陷）
 
 ### 三方四正联动
 
@@ -2325,7 +2325,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 性格特质（命宫 · 借对宫天机庙旺、巨门庙旺）
+## 性格特质（命宫 · 借对宫天机（庙旺）、巨门（庙旺））
 
 > **定调 · 天机**：智慧星，善变化策划，宜顾问咨询，多才艺，财运起伏，辅佐型人才。
 
@@ -2340,11 +2340,11 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 ### 核心论断
 
 天机守命者，聪明但容易想太多，有时钻牛角尖，好奇心强但持久性不足；擅长分析与策划，却不善于执行到底，需要有执行力强的搭档配合。感情上多变，分分合合较常见，理性时很清醒，感性时又容易冲动；有宗教缘或对命理、哲学感兴趣，中年后灵性意识增强。
-同宫第二主星：**巨门庙旺**——是非口才星，善辩论，宜律师教师传媒，化禄口才生财，化忌口舌官非。
+同宫第二主星：**巨门（庙旺）**——是非口才星，善辩论，宜律师教师传媒，化禄口才生财，化忌口舌官非。
 
 ### 命盘推演
 
-本宫主星：（命宫空宫，借对宫论事）天机庙旺、巨门庙旺
+本宫主星：（命宫空宫，借对宫论事）天机（庙旺）、巨门（庙旺）
 
 ### 三方四正联动
 
@@ -2402,7 +2402,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 健康状况（疾厄宫 · 紫微落陷、天相落陷）
+## 健康状况（疾厄宫 · 紫微（落陷）、天相（落陷））
 
 > **定调 · 紫微**：帝星，主贵，有领导气场，宜政界大企业，主观固执，需禄配合方富贵双全。
 
@@ -2413,11 +2413,11 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 ### 核心论断
 
 疾厄宫紫微，脾胃消化系统是首要弱项，紫微属土，中焦脾胃最需保养，宜饮食规律，避免暴饮暴食；心脑血管亦是长期健康关注点，紫微主血脉，需定期检查血压与心脏。情绪管理方面，紫微守命者因自尊心强，遇到挫败时容易产生心理压力，间接影响消化系统健康，宜学会排解情绪。
-同宫第二主星：**天相落陷**——印星辅佐，忠厚老实，位高权轻，宜行政秘书法务，守成为上。
+同宫第二主星：**天相（落陷）**——印星辅佐，忠厚老实，位高权轻，宜行政秘书法务，守成为上。
 
 ### 命盘推演
 
-本宫主星：紫微落陷、天相落陷
+本宫主星：紫微（落陷）、天相（落陷）
 
 ### 三方四正联动
 
@@ -2485,7 +2485,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 兄弟合伙（兄弟宫 · 廉贞庙旺）
+## 兄弟合伙（兄弟宫 · 廉贞（庙旺））
 
 > **定调 · 廉贞**：次桃花，文武兼备，多才艺，化忌主血光官非，感情纠纷多。
 
@@ -2495,7 +2495,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ### 命盘推演
 
-本宫主星：廉贞庙旺
+本宫主星：廉贞（庙旺）
 
 ### 三方四正联动
 
@@ -2549,7 +2549,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 子女缘分（子女宫 · 七杀庙旺）
+## 子女缘分（子女宫 · 七杀（庙旺））
 
 > **定调 · 七杀**：将星，孤独果决冒险，宜军警创业，七杀朝斗格则武职大贵。
 
@@ -2559,7 +2559,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ### 命盘推演
 
-本宫主星：七杀庙旺
+本宫主星：七杀（庙旺）
 
 ### 三方四正联动
 
@@ -2611,18 +2611,18 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 迁移外出（迁移宫 · 天机庙旺、巨门庙旺）
+## 迁移外出（迁移宫 · 天机（庙旺）、巨门（庙旺））
 
 > **定调 · 天机**：智慧星，善变化策划，宜顾问咨询，多才艺，财运起伏，辅佐型人才。
 
 ### 核心论断
 
 迁移宫天机，外出多变动，旅途机会多，适合从事需要频繁出行的工作。在外善于应变，能快速适应新环境；化禄则外出生财，以智慧闯荡；化忌则外出多波折，旅途不顺，需提前规划减少意外。
-同宫第二主星：**巨门庙旺**——是非口才星，善辩论，宜律师教师传媒，化禄口才生财，化忌口舌官非。
+同宫第二主星：**巨门（庙旺）**——是非口才星，善辩论，宜律师教师传媒，化禄口才生财，化忌口舌官非。
 
 ### 命盘推演
 
-本宫主星：天机庙旺、巨门庙旺
+本宫主星：天机（庙旺）、巨门（庙旺）
 
 ### 三方四正联动
 
@@ -2728,18 +2728,18 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 田宅不动产（田宅宫 · 武曲化禄庙旺、天府庙旺）
+## 田宅不动产（田宅宫 · 武曲化禄（庙旺）、天府（庙旺））
 
 > **定调 · 武曲**：财星，刚毅果决，善理财经营，化忌主手术血光，最强财星之一。
 
 ### 核心论断
 
 田宅宫武曲，房产是重要的财富积累方式，实物资产投资能力强；家宅简洁务实，重功能而非装饰。化禄则房产大旺，财库厚实；化忌则房产有纠纷、或家中有意外血光，重大购置前需谨慎评估。
-同宫第二主星：**天府庙旺**——南帝守财星，稳重保守，善守财不善生财，宜政府银行大企业。
+同宫第二主星：**天府（庙旺）**——南帝守财星，稳重保守，善守财不善生财，宜政府银行大企业。
 
 ### 命盘推演
 
-本宫主星：武曲化禄庙旺、天府庙旺
+本宫主星：武曲化禄（庙旺）、天府（庙旺）
 
 ### 三方四正联动
 
@@ -2789,7 +2789,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 精神福德（福德宫 · 天同庙旺）
+## 精神福德（福德宫 · 天同（庙旺））
 
 > **定调 · 天同**：福星，温和享乐，主福禄，宜服务艺术，财来财稳，肾脏需注意。
 
@@ -2799,7 +2799,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ### 命盘推演
 
-本宫主星：天同庙旺
+本宫主星：天同（庙旺）
 
 ### 三方四正联动
 
@@ -2850,7 +2850,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ---
 
-## 父母长辈（父母宫 · 破军庙旺）
+## 父母长辈（父母宫 · 破军（庙旺））
 
 > **定调 · 破军**：破坏创新星，六亲缘薄，宜技术专长走天下，化禄破而后立。
 
@@ -2860,7 +2860,7 @@ node scripts/purple-star.ts astrology --date 1999-11-3 --time 15:20 --city 成�
 
 ### 命盘推演
 
-本宫主星：破军庙旺
+本宫主星：破军（庙旺）
 
 ### 三方四正联动
 
@@ -4125,7 +4125,1228 @@ node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭�
 }
 ```
 
-### 42. --template 打印配置模板
+### 42. --no-cache 跳过排盘缓存
+
+```bash
+node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --no-cache
+```
+
+强制现排（默认同一农历年内复用 .cache/charts 里的排盘结果）。
+
+退出码 **0**　耗时 0.03s
+
+输出：
+
+```text
+【基本信息】
+性别 : 男
+公历生日 : 2011-06-24
+地理经度 : 120.100
+钟表时间 : 07:45
+真太阳时 : 钟表 07:45 → 真太阳时校正 +0 分 → 辰时(07:00-09:00)
+农历时间 : 辛卯年五月廿三日辰时
+四柱(节气与非节气同) : 辛卯 甲午 庚戌 丙子
+五行局数 : 木三局
+命盘类型 : 三合盘(天盘)
+命宫:寅 · 身宫:戌 · 紫微落:申
+三方四正:命宫/官禄宫/财帛宫/迁移宫
+身主:天同; 命主:禄存; 子年斗君:子
+（注：四柱仅为出生时刻记录，本技能不做八字论命。）
+
+【运限速览】虚岁 16 · 大限 13-22岁 兄弟宫(丑) · 流年 2026 丙午 流年命宫午·官禄宫 · 小限辰·福德宫
+【专题深入】--pattern 格局 · --mutagen 四化 · --decadal [虚岁] 大限 · --ages [虚岁] 小限 · --yearly [年] 流年 · --focus <宫> 宫盘深化 · --palaces 十二宫详表 · --topic <key> 主题论断 · --report 全盘报告(Markdown)
+```
+
+### 43. --out 落盘通道
+
+```bash
+node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json --out /tmp/purplestar-chart.json
+```
+
+把输出写入文件（覆盖写，末尾恰一个换行；进度提示走 stderr，stdout 不再打印正文）。
+
+退出码 **0**　耗时 0.00s
+
+输出：
+
+```text
+{
+  "chart": {
+    "birthInfo": {
+      "year": 2011,
+      "month": 6,
+      "day": 24,
+      "timeIndex": 4,
+      "gender": "male",
+      "longitude": 120.1
+    },
+    "lunarInfo": {
+      "lunarYear": 2011,
+      "lunarMonth": 5,
+      "lunarDay": 23,
+      "yearStem": 7,
+      "yearBranch": 3,
+      "isLeapMonth": false
+    },
+    "soulBranch": 2,
+    "bodyBranch": 10,
+    "fiveElementsClass": 3,
+    "fiveElementsClassName": "木三局",
+    "ziweiPos": 8,
+    "palaces": [
+      {
+        "branch": 2,
+        "stem": 6,
+        "name": "命宫",
+        "stars": [
+          {
+            "name": "七杀",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "庙",
+            "mutagen": ""
+          },
+          {
+            "name": "天钺",
+            "type": "soft",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "铃星",
+            "type": "tough",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          }
+        ],
+        "decadalRange": [
+          3,
+          12
+        ],
+        "ages": [
+          2,
+          14,
+          26,
+          38,
+          50,
+          62,
+          74,
+          86,
+          98,
+          110
+        ],
+        "isSoulPalace": true,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 8,
+        "isEmpty": false
+      },
+      {
+        "branch": 3,
+        "stem": 7,
+        "name": "父母宫",
+        "stars": [
+          {
+            "name": "天同",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "庙",
+            "mutagen": ""
+          },
+          {
+            "name": "地劫",
+            "type": "tough",
+            "brightness": "normal",
+            "brightnessRaw": "平"
+          },
+          {
+            "name": "恩光",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "天哭",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          }
+        ],
+        "decadalRange": [
+          113,
+          122
+        ],
+        "ages": [
+          3,
+          15,
+          27,
+          39,
+          51,
+          63,
+          75,
+          87,
+          99,
+          111
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 9,
+        "isEmpty": false
+      },
+      {
+        "branch": 4,
+        "stem": 8,
+        "name": "福德宫",
+        "stars": [
+          {
+            "name": "武曲",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "庙",
+            "mutagen": ""
+          },
+          {
+            "name": "天空",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "截路",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          103,
+          112
+        ],
+        "ages": [
+          4,
+          16,
+          28,
+          40,
+          52,
+          64,
+          76,
+          88,
+          100,
+          112
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 10,
+        "isEmpty": false
+      },
+      {
+        "branch": 5,
+        "stem": 9,
+        "name": "田宅宫",
+        "stars": [
+          {
+            "name": "太阳",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "旺",
+            "mutagen": "权"
+          },
+          {
+            "name": "天马",
+            "type": "soft",
+            "brightness": "normal",
+            "brightnessRaw": "平"
+          },
+          {
+            "name": "天姚",
+            "type": "minor"
+          },
+          {
+            "name": "天贵",
+            "type": "minor",
+            "brightness": "normal",
+            "brightnessRaw": "平"
+          },
+          {
+            "name": "天才",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "天巫",
+            "type": "minor"
+          },
+          {
+            "name": "天福",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "旺"
+          },
+          {
+            "name": "空亡",
+            "type": "minor"
+          },
+          {
+            "name": "孤辰",
+            "type": "minor",
+            "brightness": "dim",
+            "brightnessRaw": "陷"
+          },
+          {
+            "name": "蜚廉",
+            "type": "minor"
+          },
+          {
+            "name": "破碎",
+            "type": "minor",
+            "brightness": "dim",
+            "brightnessRaw": "陷"
+          }
+        ],
+        "decadalRange": [
+          93,
+          102
+        ],
+        "ages": [
+          5,
+          17,
+          29,
+          41,
+          53,
+          65,
+          77,
+          89,
+          101,
+          113
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 11,
+        "isEmpty": false
+      },
+      {
+        "branch": 6,
+        "stem": 0,
+        "name": "官禄宫",
+        "stars": [
+          {
+            "name": "破军",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "庙",
+            "mutagen": ""
+          },
+          {
+            "name": "右弼",
+            "type": "soft",
+            "brightness": "bright",
+            "brightnessRaw": "旺",
+            "mutagen": ""
+          },
+          {
+            "name": "文昌",
+            "type": "soft",
+            "brightness": "dim",
+            "brightnessRaw": "闲",
+            "mutagen": "忌"
+          },
+          {
+            "name": "天魁",
+            "type": "soft",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "天喜",
+            "type": "minor"
+          },
+          {
+            "name": "三台",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "旺"
+          },
+          {
+            "name": "封诰",
+            "type": "minor"
+          },
+          {
+            "name": "天厨",
+            "type": "minor"
+          },
+          {
+            "name": "阴煞",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          83,
+          92
+        ],
+        "ages": [
+          6,
+          18,
+          30,
+          42,
+          54,
+          66,
+          78,
+          90,
+          102,
+          114
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 0,
+        "isEmpty": false
+      },
+      {
+        "branch": 7,
+        "stem": 1,
+        "name": "交友宫",
+        "stars": [
+          {
+            "name": "天机",
+            "type": "major",
+            "brightness": "dim",
+            "brightnessRaw": "陷",
+            "mutagen": ""
+          },
+          {
+            "name": "地空",
+            "type": "tough",
+            "brightness": "normal",
+            "brightnessRaw": "平"
+          },
+          {
+            "name": "龙池",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "凤阁",
+            "type": "minor",
+            "brightness": "dim",
+            "brightnessRaw": "陷"
+          },
+          {
+            "name": "华盖",
+            "type": "minor",
+            "brightness": "dim",
+            "brightnessRaw": "陷"
+          },
+          {
+            "name": "天月",
+            "type": "minor"
+          },
+          {
+            "name": "旬空",
+            "type": "minor"
+          },
+          {
+            "name": "天伤",
+            "type": "minor",
+            "brightness": "dim",
+            "brightnessRaw": "陷"
+          },
+          {
+            "name": "年解",
+            "type": "minor",
+            "brightness": "normal",
+            "brightnessRaw": "平"
+          }
+        ],
+        "decadalRange": [
+          73,
+          82
+        ],
+        "ages": [
+          7,
+          19,
+          31,
+          43,
+          55,
+          67,
+          79,
+          91,
+          103,
+          115
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 1,
+        "isEmpty": false
+      },
+      {
+        "branch": 8,
+        "stem": 2,
+        "name": "迁移宫",
+        "stars": [
+          {
+            "name": "紫微",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "旺",
+            "mutagen": ""
+          },
+          {
+            "name": "天府",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "旺",
+            "mutagen": ""
+          },
+          {
+            "name": "左辅",
+            "type": "soft",
+            "brightness": "bright",
+            "brightnessRaw": "旺",
+            "mutagen": ""
+          },
+          {
+            "name": "文曲",
+            "type": "soft",
+            "brightness": "bright",
+            "brightnessRaw": "旺",
+            "mutagen": "科"
+          },
+          {
+            "name": "陀罗",
+            "type": "tough",
+            "brightness": "dim",
+            "brightnessRaw": "陷"
+          },
+          {
+            "name": "八座",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "月德",
+            "type": "minor",
+            "brightness": "dim",
+            "brightnessRaw": "陷"
+          }
+        ],
+        "decadalRange": [
+          63,
+          72
+        ],
+        "ages": [
+          8,
+          20,
+          32,
+          44,
+          56,
+          68,
+          80,
+          92,
+          104,
+          116
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 2,
+        "isEmpty": false
+      },
+      {
+        "branch": 9,
+        "stem": 3,
+        "name": "疾厄宫",
+        "stars": [
+          {
+            "name": "太阴",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "旺",
+            "mutagen": ""
+          },
+          {
+            "name": "禄存",
+            "type": "soft",
+            "brightness": "bright",
+            "brightnessRaw": "旺"
+          },
+          {
+            "name": "天官",
+            "type": "minor",
+            "brightness": "normal",
+            "brightnessRaw": "平"
+          },
+          {
+            "name": "天虚",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "旺"
+          },
+          {
+            "name": "天使",
+            "type": "minor",
+            "brightness": "dim",
+            "brightnessRaw": "陷"
+          }
+        ],
+        "decadalRange": [
+          53,
+          62
+        ],
+        "ages": [
+          9,
+          21,
+          33,
+          45,
+          57,
+          69,
+          81,
+          93,
+          105,
+          117
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 3,
+        "isEmpty": false
+      },
+      {
+        "branch": 10,
+        "stem": 4,
+        "name": "财帛宫",
+        "stars": [
+          {
+            "name": "贪狼",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "庙",
+            "mutagen": ""
+          },
+          {
+            "name": "擎羊",
+            "type": "tough",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "台辅",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          43,
+          52
+        ],
+        "ages": [
+          10,
+          22,
+          34,
+          46,
+          58,
+          70,
+          82,
+          94,
+          106,
+          118
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": true,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 4,
+        "isEmpty": false
+      },
+      {
+        "branch": 11,
+        "stem": 5,
+        "name": "子女宫",
+        "stars": [
+          {
+            "name": "巨门",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "庙",
+            "mutagen": "禄"
+          }
+        ],
+        "decadalRange": [
+          33,
+          42
+        ],
+        "ages": [
+          11,
+          23,
+          35,
+          47,
+          59,
+          71,
+          83,
+          95,
+          107,
+          119
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 5,
+        "isEmpty": false
+      },
+      {
+        "branch": 0,
+        "stem": 6,
+        "name": "夫妻宫",
+        "stars": [
+          {
+            "name": "廉贞",
+            "type": "major",
+            "brightness": "normal",
+            "brightnessRaw": "平",
+            "mutagen": ""
+          },
+          {
+            "name": "天相",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "庙",
+            "mutagen": ""
+          },
+          {
+            "name": "红鸾",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "咸池",
+            "type": "minor",
+            "brightness": "dim",
+            "brightnessRaw": "陷"
+          },
+          {
+            "name": "解神",
+            "type": "minor"
+          },
+          {
+            "name": "天德",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          }
+        ],
+        "decadalRange": [
+          23,
+          32
+        ],
+        "ages": [
+          12,
+          24,
+          36,
+          48,
+          60,
+          72,
+          84,
+          96,
+          108,
+          120
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": false,
+        "oppositeBranch": 6,
+        "isEmpty": false
+      },
+      {
+        "branch": 1,
+        "stem": 7,
+        "name": "兄弟宫",
+        "stars": [
+          {
+            "name": "天梁",
+            "type": "major",
+            "brightness": "bright",
+            "brightnessRaw": "旺",
+            "mutagen": ""
+          },
+          {
+            "name": "火星",
+            "type": "tough",
+            "brightness": "normal",
+            "brightnessRaw": "平"
+          },
+          {
+            "name": "天寿",
+            "type": "minor",
+            "brightness": "bright",
+            "brightnessRaw": "庙"
+          },
+          {
+            "name": "寡宿",
+            "type": "minor",
+            "brightness": "normal",
+            "brightnessRaw": "平"
+          },
+          {
+            "name": "天刑",
+            "type": "minor"
+          }
+        ],
+        "decadalRange": [
+          13,
+          22
+        ],
+        "ages": [
+          1,
+          13,
+          25,
+          37,
+          49,
+          61,
+          73,
+          85,
+          97,
+          109
+        ],
+        "isSoulPalace": false,
+        "isBodyPalace": false,
+        "isCurrentDecadal": true,
+        "oppositeBranch": 7,
+        "isEmpty": false
+      }
+    ],
+    "decadals": [
+      {
+        "startAge": 3,
+        "endAge": 12,
+        "palaceBranch": 2,
+        "palaceName": "命宫"
+      },
+      {
+        "startAge": 13,
+        "endAge": 22,
+        "palaceBranch": 1,
+        "palaceName": "兄弟宫"
+      },
+      {
+        "startAge": 23,
+        "endAge": 32,
+        "palaceBranch": 0,
+        "palaceName": "夫妻宫"
+      },
+      {
+        "startAge": 33,
+        "endAge": 42,
+        "palaceBranch": 11,
+        "palaceName": "子女宫"
+      },
+      {
+        "startAge": 43,
+        "endAge": 52,
+        "palaceBranch": 10,
+        "palaceName": "财帛宫"
+      },
+      {
+        "startAge": 53,
+        "endAge": 62,
+        "palaceBranch": 9,
+        "palaceName": "疾厄宫"
+      },
+      {
+        "startAge": 63,
+        "endAge": 72,
+        "palaceBranch": 8,
+        "palaceName": "迁移宫"
+      },
+      {
+        "startAge": 73,
+        "endAge": 82,
+        "palaceBranch": 7,
+        "palaceName": "交友宫"
+      },
+      {
+        "startAge": 83,
+        "endAge": 92,
+        "palaceBranch": 6,
+        "palaceName": "官禄宫"
+      },
+      {
+        "startAge": 93,
+        "endAge": 102,
+        "palaceBranch": 5,
+        "palaceName": "田宅宫"
+      },
+      {
+        "startAge": 103,
+        "endAge": 112,
+        "palaceBranch": 4,
+        "palaceName": "福德宫"
+      },
+      {
+        "startAge": 113,
+        "endAge": 122,
+        "palaceBranch": 3,
+        "palaceName": "父母宫"
+      }
+    ],
+    "mingZhu": "禄存",
+    "shenZhu": "天同",
+    "douJunBranch": 0,
+    "currentAge": 16,
+    "currentDecadalIndex": 1
+  },
+  "patterns": [
+    {
+      "name": "紫府同宫",
+      "level": 75,
+      "palaces": [
+        "迁移宫"
+      ],
+      "conditions": {
+        "required": [
+          "紫微天府同入迁移宫（照命，力减）"
+        ],
+        "bonus": [
+          "左辅右弼同会",
+          "再会昌曲"
+        ],
+        "breaking": []
+      },
+      "description": "紫微天府同宫于迁移宫，照拱命宫而非坐守，主一生有贵人贵气依托，但本身不一定大富贵，需看会照吉煞而定。",
+      "topicDescription": "紫微天府同处寅申宫，且在迁移宫照拱命宫——南北二帝同坐，福禄双全，一生衣食无忧；惟非坐命，贵气照入而非自居，成就多借外力与际遇，需看会照吉煞而定。",
+      "source": "《紫微斗数全书·紫府同宫格》"
+    },
+    {
+      "name": "武贪格",
+      "level": 90,
+      "palaces": [
+        "福德宫",
+        "财帛宫"
+      ],
+      "conditions": {
+        "required": [
+          "武曲贪狼对宫拱照",
+          "会照命宫三方"
+        ],
+        "bonus": [
+          "再遇火星/铃星（火贪/铃贪叠加）"
+        ],
+        "breaking": []
+      },
+      "description": "武曲贪狼会命，财星与桃花欲望星交辉，古书云\"武贪不发少年人\"——三十岁后方能厚积薄发。主中年以后大富大贵，财源由人脉、应酬、欲望管理而来，适合金融、投机、销售、娱乐业。",
+      "source": "《紫微斗数骨髓赋》"
+    },
+    {
+      "name": "杀破狼",
+      "level": 40,
+      "palaces": [
+        "命宫",
+        "官禄宫",
+        "财帛宫"
+      ],
+      "conditions": {
+        "required": [
+          "七杀、破军、贪狼三星齐入命宫三方四正"
+        ],
+        "bonus": [
+          "辅弼同会（变动中得贵人）"
+        ],
+        "breaking": [
+          "煞星过重（动而无成）"
+        ]
+      },
+      "description": "七杀、破军、贪狼三星会命，开创闯荡之命格。一生变动多、不甘平凡，宜创业、军警、业务、销售。中年后才能稳定守成，年轻时易因冲动失利。",
+      "topicDescription": "七杀、破军、贪狼会照命宫三方四正，形成杀破狼格——一生变动大、开创性强，适合走创业、技术、军警、外地发展路线，关键在以行动力换格局。",
+      "source": "《紫微斗数全书·杀破狼》"
+    },
+    {
+      "name": "廉相格",
+      "level": 60,
+      "palaces": [
+        "夫妻宫"
+      ],
+      "conditions": {
+        "required": [
+          "廉贞天相同宫"
+        ],
+        "bonus": [
+          "左辅会照"
+        ],
+        "breaking": []
+      },
+      "description": "廉贞天相同宫，印绶格局，主秉公处事、清廉之名，宜任公职、行政管理、法务、企划。怕见擎羊化忌，则反主官非。",
+      "topicDescription": "廉贞天相同宫成廉相格，才艺、制度、协调并重；格局清贵，宜法务、行政、管理、审美与规则并行的领域。",
+      "source": "《紫微斗数全书》"
+    },
+    {
+      "name": "昌曲同会",
+      "level": 75,
+      "palaces": [
+        "命宫"
+      ],
+      "conditions": {
+        "required": [
+          "文昌、文曲同会命宫三方四正"
+        ]
+      },
+      "description": "文昌文曲同会三方四正，主才华横溢、口才文笔俱佳。宜走需要表达与文采的行业，化科加持则名声大显。",
+      "source": "《紫微斗数全书·文星论》"
+    },
+    {
+      "name": "辅弼同会",
+      "level": 75,
+      "palaces": [
+        "命宫"
+      ],
+      "conditions": {
+        "required": [
+          "左辅、右弼同会命宫三方四正"
+        ]
+      },
+      "description": "左辅右弼同会命宫三方四正，主一生贵人不绝、人缘极佳。最宜领导岗位与团队合作型工作。倪师说「辅弼夹命，平生贵人多」——你不是单打独斗的命，要善用人际网络。",
+      "source": "《紫微斗数全书·辅弼论》"
+    },
+    {
+      "name": "魁钺同会",
+      "level": 75,
+      "palaces": [
+        "命宫"
+      ],
+      "conditions": {
+        "required": [
+          "天魁、天钺同会命宫三方四正"
+        ]
+      },
+      "description": "天魁天钺同会命宫三方四正，主\"天乙贵人\"加持，关键时刻总有贵人提携。倪师说「魁钺夹命，必为贵人」——遇到困难时身边会出现得力相助者，宜主动维护人脉。",
+      "source": "《紫微斗数全书·魁钺论》"
+    },
+    {
+      "name": "七杀朝斗格",
+      "level": 90,
+      "palaces": [
+        "命宫"
+      ],
+      "conditions": {
+        "required": [
+          "七杀居寅宫或申宫",
+          "七杀坐命宫或迁移宫"
+        ]
+      },
+      "description": "七杀居命宫（寅或申），对宫紫微天府相照——古书云\"七杀朝斗，爵禄荣昌\"，是武职大贵之格，最宜军警政界、企业高管，一生贵气难挡。",
+      "topicDescription": "七杀居寅申，对宫紫微天府相照——倪海厦说「爵禄荣昌」，这是武职大贵的格局，最宜军警政界或企业高管，一生贵气难挡。",
+      "source": "《紫微斗数骨髓赋·七杀星论》"
+    },
+    {
+      "name": "日月并明格",
+      "level": 90,
+      "palaces": [
+        "田宅宫",
+        "疾厄宫"
+      ],
+      "conditions": {
+        "required": [
+          "太阳入庙（bright）",
+          "太阴入庙（bright）"
+        ]
+      },
+      "description": "太阳太阴同时入庙旺，号\"日月并明\"——主一生贵人多助、行事左右逢源，名声与实利可以兼得，宜走动、宜公众事务；日月分居两宫亦成格，不必同宫。",
+      "topicDescription": "太阳太阴同时入庙旺——倪海厦说「做事情左右逢源，一辈子做事情荣华」，此格局代表日月同辉，一生贵人多，做事顺遂，名利双全。",
+      "source": "传统口诀（本仓古籍库无直接出处）"
+    },
+    {
+      "name": "紫府朝垣格",
+      "level": 90,
+      "palaces": [
+        "迁移宫"
+      ],
+      "conditions": {
+        "required": [
+          "紫微与天府同会命宫三方四正",
+          "命宫不坐紫微、天府"
+        ]
+      },
+      "description": "紫微天府分居命宫三方四正朝拱，命宫本身不坐紫府——两帝星照命而不自居，贵气由外而来，宜仕途或大企业高位，一生贵人不绝。",
+      "topicDescription": "紫微天府分居三方朝拱命宫——格局高贵，命主有王侯气象，一生贵人不绝，事业稳中有贵。这是非同宫的紫府格局，能量辐射命宫，适合走仕途或大企业管理层。",
+      "source": "传统口诀（本仓古籍库无直接出处）"
+    },
+    {
+      "name": "文昌化忌",
+      "level": 40,
+      "palaces": [
+        "官禄宫"
+      ],
+      "conditions": {
+        "required": [
+          "文昌带生年化忌"
+        ]
+      },
+      "description": "文昌化忌——文星受伤，主文书、契约、考试、言论一类的事易生暗亏：签约核对条款、考试防疏漏、言语慎出口，化忌是功课而非定论。",
+      "topicDescription": "文昌化忌——文书契约是非多，倪师说「昌曲化忌，文书暗亏」，签约前务必仔细核对条款，防印鉴、合约、考试凭证相关的麻烦；考试、论文、文件审批类的事宜需格外严谨。",
+      "source": "传统口诀（本仓古籍库无直接出处）"
+    }
+  ],
+  "mingGongSummary": {
+    "stars": [
+      "七杀"
+    ],
+    "keywords": [
+      "将星",
+      "果决",
+      "孤克"
+    ],
+    "nature": "将帅星"
+  },
+  "nativeSiHua": {
+    "stem": "辛",
+    "transforms": {
+      "禄": "巨门",
+      "权": "太阳",
+      "科": "文曲",
+      "忌": "文昌"
+    },
+    "located": [
+      {
+        "hua": "禄",
+        "star": "巨门",
+        "palace": "子女宫",
+        "branch": "亥",
+        "isMajor": true
+      },
+      {
+        "hua": "权",
+        "star": "太阳",
+        "palace": "田宅宫",
+        "branch": "巳",
+        "isMajor": true
+      },
+      {
+        "hua": "科",
+        "star": "文曲",
+        "palace": "迁移宫",
+        "branch": "申",
+        "isMajor": false
+      },
+      {
+        "hua": "忌",
+        "star": "文昌",
+        "palace": "官禄宫",
+        "branch": "午",
+        "isMajor": false
+      }
+    ]
+  },
+  "liuNianSiHua": {
+    "year": 2026,
+    "stem": "丙",
+    "transforms": {
+      "禄": "天同",
+      "权": "天机",
+      "科": "文昌",
+      "忌": "廉贞"
+    },
+    "located": [
+      {
+        "hua": "禄",
+        "star": "天同",
+        "palace": "父母宫",
+        "branch": "卯",
+        "isMajor": true
+      },
+      {
+        "hua": "权",
+        "star": "天机",
+        "palace": "交友宫",
+        "branch": "未",
+        "isMajor": true
+      },
+      {
+        "hua": "科",
+        "star": "文昌",
+        "palace": "官禄宫",
+        "branch": "午",
+        "isMajor": false
+      },
+      {
+        "hua": "忌",
+        "star": "廉贞",
+        "palace": "夫妻宫",
+        "branch": "子",
+        "isMajor": true
+      }
+    ]
+  },
+  "liuYueSiHua": null,
+  "daXianSiHua": {
+    "stem": "辛",
+    "transforms": {
+      "禄": "巨门",
+      "权": "太阳",
+      "科": "文曲",
+      "忌": "文昌"
+    },
+    "located": [
+      {
+        "hua": "禄",
+        "star": "巨门",
+        "palace": "子女宫",
+        "branch": "亥",
+        "isMajor": true
+      },
+      {
+        "hua": "权",
+        "star": "太阳",
+        "palace": "田宅宫",
+        "branch": "巳",
+        "isMajor": true
+      },
+      {
+        "hua": "科",
+        "star": "文曲",
+        "palace": "迁移宫",
+        "branch": "申",
+        "isMajor": false
+      },
+      {
+        "hua": "忌",
+        "star": "文昌",
+        "palace": "官禄宫",
+        "branch": "午",
+        "isMajor": false
+      }
+    ]
+  },
+  "liuRiSiHua": null,
+  "liuShiSiHua": null,
+  "liuNianPalace": {
+    "year": 2026,
+    "branchIndex": 6,
+    "branch": "午",
+    "palaceName": "官禄宫"
+  },
+  "xiaoXian": {
+    "age": 16,
+    "palaceBranchIndex": 4,
+    "palaceBranch": "辰",
+    "palaceName": "福德宫"
+  },
+  "lateZi": {
+    "candidate": false,
+    "applied": false
+  },
+  "basis": {
+    "note": "钟表 07:45 → 真太阳时校正 +0 分 → 辰时(07:00-09:00)",
+    "notes": [
+      "钟表 07:45 → 真太阳时校正 +0 分 → 辰时(07:00-09:00)"
+    ],
+    "lateZiCandidate": false,
+    "isLateZi": false
+  }
+}
+```
+
+### 44. --template 打印配置模板
 
 ```bash
 node scripts/purple-star.ts astrology --template
@@ -4150,7 +5371,7 @@ node scripts/purple-star.ts astrology --template
 }
 ```
 
-### 43. --config 读配置文件
+### 45. --config 读配置文件
 
 ```bash
 node scripts/purple-star.ts astrology --config tools/samples/config.example.json
@@ -4271,7 +5492,7 @@ node scripts/purple-star.ts astrology --config tools/samples/config.example.json
 
 ## knowledge · 知识检索
 
-### 44. --search 古籍原文检索（books 域，默认）
+### 46. --search 古籍原文检索（books 域，默认）
 
 ```bash
 node scripts/purple-star.ts knowledge --search 机月同梁
@@ -4298,7 +5519,7 @@ node scripts/purple-star.ts knowledge --search 机月同梁
     『机月同梁』作吏人——古云此格者宜担任公职、行政文书工作，安稳一生。再会昌曲化科，主名声远播…
 ```
 
-### 45. --source stars 星曜释义
+### 47. --source stars 星曜释义
 
 ```bash
 node scripts/purple-star.ts knowledge --source stars --search 紫微
@@ -4314,7 +5535,7 @@ node scripts/purple-star.ts knowledge --source stars --search 紫微
 紫微：关键词 帝王·尊贵·独立 · 星性 中性偏吉 · 五行 土
 ```
 
-### 46. --source stars 位置参数形态
+### 48. --source stars 位置参数形态
 
 ```bash
 node scripts/purple-star.ts knowledge --source stars 擎羊
@@ -4330,7 +5551,7 @@ node scripts/purple-star.ts knowledge --source stars 擎羊
 未收录星曜「擎羊」。已收录：紫微、天机、太阳、武曲、天同、廉贞、天府、太阴、贪狼、巨门、天相、天梁、七杀、破军
 ```
 
-### 47. --source tianji 天纪判语检索
+### 49. --source tianji 天纪判语检索
 
 ```bash
 node scripts/purple-star.ts knowledge --source tianji 半空折翅
@@ -4338,7 +5559,7 @@ node scripts/purple-star.ts knowledge --source tianji 半空折翅
 
 《天纪》讲稿原话 + 秒级回放溯源（nihai-tianji-corpus 语料，紫微五册）。
 
-退出码 **0**　耗时 0.01s
+退出码 **0**　耗时 0.02s
 
 输出：
 
@@ -4410,7 +5631,89 @@ node scripts/purple-star.ts knowledge --source tianji 半空折翅
    可回放验证；引用下断语时注明出处与口径，商业用途受 NC 条款约束。
 ```
 
-### 48. --source oracle 断语手册
+### 50. --book 限册检索（tianji 域）
+
+```bash
+node scripts/purple-star.ts knowledge --source tianji --book 主星 紫微
+```
+
+天纪域限定单册（册代号或中文名：主星/十二宫/格局/四化/疾厄）。
+
+退出码 **0**　耗时 0.00s
+
+输出：
+
+```text
+天纪判语检索「紫微」：57 条命中（限 主星 册）
+
+「我们分南斗还有北斗。北斗星系第一颗星我们叫做紫微星。」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·定性
+     [p5 §4 @00:26:02] https://www.bilibili.com/video/BV1KJsLekEfA?p=5&t=1562
+
+「那这颗星它是帝星，黄帝的星。它是北斗星君，它是个帝星。」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·定性
+     [p5 §4 @00:26:39] https://www.bilibili.com/video/BV1KJsLekEfA?p=5&t=1599
+
+「紫微星主的是官，官带。所以有紫微星出现的时候，它代表的是官印，官的命。」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·定性
+     [p5 §4 @00:31:02] https://www.bilibili.com/video/BV1KJsLekEfA?p=5&t=1862
+
+「通通是按照北斗星君，我们在排八字，诸位如果有去排的时候就知道，是以北斗星君为主，其他星都是按照北斗星君在转，所以我们以紫微星为主」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·定性
+     [p9 §1 @00:00:13] https://www.bilibili.com/video/BV1KJsLekEfA?p=9&t=13
+
+「那星都会聚在一起，都会因为这个紫微星，而通通聚在一起，排起来都是一样的，这样子我们从这个角度来教比较简单」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·定性
+     [p9 §1 @00:00:54] https://www.bilibili.com/video/BV1KJsLekEfA?p=9&t=54
+
+「你看她命上面先生是紫微七杀，不但代表先生是独子或长子以外，而且代表先生头顶上面没有人，做事业当老板，那她先生走掉以后，她应该当公司负责人她去继承」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·定性
+     [p17 §7 @00:27:11] https://www.bilibili.com/video/BV1KJsLekEfA?p=17&t=1631
+
+「耳朵不在大，但是要正面不见耳最好。」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·长相
+     [p5 §4 @00:27:10] https://www.bilibili.com/video/BV1KJsLekEfA?p=5&t=1630
+
+「这个是标准的帝星紫微星。当然每个人都有眼睛鼻子嘴巴都有，但他的比较很开。整个脸宽宽大大的厚重。厚重人非常的厚重。」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·长相
+     [p5 §4 @00:27:26] https://www.bilibili.com/video/BV1KJsLekEfA?p=5&t=1646
+
+「然后他不苟言笑。不随便开口。」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·性情
+     [p5 §4 @00:27:53] https://www.bilibili.com/video/BV1KJsLekEfA?p=5&t=1673
+
+「紫微星还有一个功能，它有解厄制化的功能。就是我们命中逢凶星的时候，一凶星出现的时候，它遇到紫微星都可以解掉。煞星逢到紫微星的时候，这个煞星要去掉。只有紫微星可以解这个事情，能够逢凶化吉。」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·解厄制化
+     [p5 §4 @00:33:36] https://www.bilibili.com/video/BV1KJsLekEfA?p=5&t=2016
+
+「我们朝紫微天府也可以啊，如果是房子在斜向的话，你给他朝紫微天府，南北斗星君本来就是解厄制化」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·解厄制化
+     [p17 §12 @00:47:09] https://www.bilibili.com/video/BV1KJsLekEfA?p=17&t=2829
+
+「因为她22生意太好了，太好了以后，包括所有的事情通通来了，懂不懂通通会发生的，了解我意思要这样子看，所以我们写诸事皆吉，你要想没错，她也要这样子写，可是应该说是在这个时间，所有的心里想的事情，她都会很顺心的能够达成」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·解厄制化
+     [p19 §3 @00:08:32] https://www.bilibili.com/video/BV1KJsLekEfA?p=19&t=512
+
+「因为为什么贵星太多了，都能够解厄制化，出了什么问题都有人能给你，帮你逢凶化吉」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·解厄制化
+     [p19 §3 @00:08:49] https://www.bilibili.com/video/BV1KJsLekEfA?p=19&t=529
+
+「所以我们有两颗星是配合紫微星的。一个叫左辅。一个叫右弼。同样是命坐紫微的人，如果没有左辅右弼在他两边的时候，紫微星也是皇帝，但是紫微星是孤星。孤帝，孤独的皇帝。所以是僧道。」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·必需辅弼
+     [p5 §4 @00:29:28] https://www.bilibili.com/video/BV1KJsLekEfA?p=5&t=1768
+
+「所以紫微星一颗星在那边的时候，它代表的是什么，孤单。如果你的命紫微星在命周围辅弼星没有，代表你这个人很厚重人很厚道性本孤。喜欢一个人，不太喜欢去跟别人来往。」
+  —— 《天纪·主星·紫微（北斗 · 帝星）·必需辅弼
+     [p5 §4 @00:30:19] https://www.bilibili.com/video/BV1KJsLekEfA?p=5&t=1819
+
+（仅显示前 15 条，--limit 可调）
+
+────────────────────────────────────────────────────────
+⚠️ 知识来源：nihai-tianji-corpus（倪海厦《天纪》结构化语料库，CC BY-NC-SA 4.0）——倪师原话短引文，
+   可回放验证；引用下断语时注明出处与口径，商业用途受 NC 条款约束。
+```
+
+### 51. --source oracle 断语手册
 
 ```bash
 node scripts/purple-star.ts knowledge --source oracle --topic career --star 七杀
@@ -4418,7 +5721,7 @@ node scripts/purple-star.ts knowledge --source oracle --topic career --star 七�
 
 13 主题 × 十四主星的分类断语快照（--topic 选主题 --star 选星）。
 
-退出码 **0**　耗时 0.01s
+退出码 **0**　耗时 0.02s
 
 输出：
 
@@ -4627,7 +5930,7 @@ node scripts/purple-star.ts knowledge --source oracle --topic career --star 七�
 
 ## knowledge · 古籍检索
 
-### 49. --search 多关键词 AND 检索
+### 52. --search 多关键词 AND 检索
 
 ```bash
 node scripts/purple-star.ts knowledge --search 紫微 化权
@@ -4648,7 +5951,7 @@ node scripts/purple-star.ts knowledge --search 紫微 化权
     『紫微』忌空劫，主有位无禄。紫微忌孤君无辅，主孤峰独峙，难成大事。紫微化权主独断，紫微化…
 ```
 
-### 50. --limit 命中条数上限
+### 53. --limit 命中条数上限
 
 ```bash
 node scripts/purple-star.ts knowledge --search 紫微 --limit 3
@@ -4673,7 +5976,7 @@ node scripts/purple-star.ts knowledge --search 紫微 --limit 3
 
 ## synastry · 合盘
 
-### 51. --charts 双宫联参
+### 54. --charts 双宫联参
 
 ```bash
 node scripts/purple-star.ts synastry --charts tools/samples/chart-a.json,tools/samples/chart-b.json
@@ -4754,7 +6057,7 @@ node scripts/purple-star.ts synastry --charts tools/samples/chart-a.json,tools/s
 
 ## selftest · 回归自检
 
-### 52. selftest 三段合一
+### 55. selftest 三段合一
 
 ```bash
 node scripts/purple-star.ts selftest
@@ -4762,12 +6065,12 @@ node scripts/purple-star.ts selftest
 
 排盘 / 古籍 / 合盘自检：农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束。
 
-退出码 **0**　耗时 3.08s
+退出码 **0**　耗时 3.10s
 
 输出：
 
 ```text
-紫微斗数 skill 回归自检 —— 通过 160/160
+紫微斗数 skill 回归自检 —— 通过 158/158
 内核根：/home/swix/Code/TypeScriptProjects/purplestar-astrology/scripts （来源：仓库自带内核）
 
 ✅ 农历换算：1990年四月廿一 = 公历 1990-05-15
@@ -4920,8 +6223,6 @@ node scripts/purple-star.ts selftest
      十二宫详表在
 ✅ astrology：--topic love 出主题论断；--view 英文取值与拼音等价；--view 越界报错
      主题论断、view 英文等价与越界校验在
-✅ astrology：旧命令名已删（命令表键集层面；stderr/exit 指路由冒烟断言覆盖）
-     5 个旧命令名已全部出表
 ✅ astrology：--focus 四项深化（全星曜/对宫详表/涉及格局/运限引动）
      四项深化在
 ✅ astrology：不存在的公历日期全链路报错（--json 机器路径同受校验）
@@ -4934,8 +6235,6 @@ node scripts/purple-star.ts selftest
      大限节在
 ✅ 组合层：--ages 端到端出小限节
      小限节在
-✅ 组合层：守卫链 --monthly 无 --mutagen 报错并指路
-     守卫链在
 ✅ 组合层：deepDive 门——给 --pattern 时不输出基底节
      deepDive 门在
 ✅ help 强化：总览含 man 七节标题且节序固定（总览另含 COMMANDS 节）
@@ -5024,7 +6323,7 @@ node scripts/purple-star.ts selftest
 
 ## 错误路径（期待报错）
 
-### 53. 零输入 --json
+### 56. 零输入 --json
 
 ```bash
 node scripts/purple-star.ts astrology --json
@@ -5042,7 +6341,7 @@ stderr：
 错误：缺少出生日期：需 --date YYYY-MM-DD 或 --lunar YYYY-MM-DD
 ```
 
-### 54. 部分输入只给日期
+### 57. 部分输入只给日期
 
 ```bash
 node scripts/purple-star.ts astrology --date 1990-5-15
@@ -5060,7 +6359,7 @@ stderr：
 错误：缺少出生时辰：需 --time HH:MM 或 --branch 0-12
 ```
 
-### 55. 缺 --gender
+### 58. 缺 --gender
 
 ```bash
 node scripts/purple-star.ts astrology --date 2011-06-24 --branch 4
@@ -5078,7 +6377,7 @@ stderr：
 错误：缺少性别：需 --gender male|female|男|女（性别决定大限顺逆，缺失会排出错盘）
 ```
 
-### 56. --date 与 --lunar 同用
+### 59. --date 与 --lunar 同用
 
 ```bash
 node scripts/purple-star.ts astrology --date 2011-06-24 --lunar 1990-4-21 --branch 4 --gender 男
@@ -5096,7 +6395,7 @@ stderr：
 错误：--lunar 与 --date 不能同时使用（一个是农历，一个是公历）
 ```
 
-### 57. 拼错参数 --ctiy（最近邻建议）
+### 60. 拼错参数 --ctiy（最近邻建议）
 
 ```bash
 node scripts/purple-star.ts astrology --date 2011-06-24 --branch 4 --gender 男 --ctiy 北京
@@ -5114,7 +6413,7 @@ stderr：
 错误：未知参数 --ctiy。最接近的是 --city。运行 help 查看全部参数。
 ```
 
-### 58. 日期不存在 2011-02-30
+### 61. 日期不存在 2011-02-30
 
 ```bash
 node scripts/purple-star.ts astrology --date 2011-02-30 --branch 4 --gender 男
@@ -5132,7 +6431,7 @@ stderr：
 错误：日期不存在：2011-02-30（2011 年 2 月只有 28 天）
 ```
 
-### 59. --branch 13 越界
+### 62. --branch 13 越界
 
 ```bash
 node scripts/purple-star.ts astrology --date 2011-06-24 --branch 13 --gender 男
@@ -5150,7 +6449,7 @@ stderr：
 错误：--branch 应为 0-11（0=子 … 11=亥）或 12（晚子时）
 ```
 
-### 60. 未收录城市
+### 63. 未收录城市
 
 ```bash
 node scripts/purple-star.ts astrology --date 2011-06-24 --branch 4 --city 亚特兰蒂斯 --gender 男
@@ -5170,4 +6469,4 @@ stderr：
 
 ## 汇总
 
-- 样例 60 条，退出码符合预期 60/60，总耗时 3.1s
+- 样例 63 条，退出码符合预期 63/63，总耗时 3.2s

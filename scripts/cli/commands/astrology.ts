@@ -40,7 +40,8 @@ import {
 	ageSection,
 } from "./fortune";
 import { generateChartCached } from "../chart/chart-cache";
-import { detectPatterns, getMingGongSummary } from "@/patterns";
+import { detectPatterns } from "@/patterns";
+import { getMingGongSummary } from "@/analysis/soul-summary";
 import {
 	getMutagenByStem,
 	getYearlyMutagen,

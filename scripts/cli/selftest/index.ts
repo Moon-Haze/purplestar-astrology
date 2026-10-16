@@ -7,8 +7,8 @@
  *    而解析候选序是「同名 `.ts` 优先于同名目录」—— 现为目录 index，隐患已消）。
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
  *
- * 断言本体按主题住在 `./` 七组（calc / birth / chart / render / args / commands / guard），
- * 本文件只做编排。完整理由与三条运行期纪律见 docs/code/cli-selftest.md。
+ * 断言本体按主题住在 `./` 八组（calc / birth / chart / render / args / commands /
+ * astrology-shapes / guard），本文件只做编排。完整理由与三条运行期纪律见 docs/code/cli-selftest.md。
  */
 
 import type { CliContext } from "../args";
@@ -35,9 +35,9 @@ import {
 	runHelpPrune,
 	runContractProbe,
 	runCommandSplit,
-	runAstrologyShapes,
 	runHelpEnrich,
 } from "./commands";
+import { runAstrologyShapes } from "./astrology-shapes";
 import {
 	runSmoke,
 	runSkillCommandAudit,

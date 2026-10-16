@@ -88,7 +88,7 @@ function detectWuQiSha({ chart }: DetectContext): Pattern[] {
 	if (getStarMutagen(wu, "武曲") === "忌") {
 		breaking.push("武曲化忌（武曲化忌为财劫之兆）");
 	}
-	if (hasShaInPalace(wu, ["擎羊", "陀罗", "火星", "铃星"])) {
+	if (hasShaInPalace(wu, SHA_HARD)) {
 		breaking.push("武杀宫煞星过多");
 	}
 

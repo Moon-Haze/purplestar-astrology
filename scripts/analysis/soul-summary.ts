@@ -2,11 +2,11 @@
  * 命宫摘要 —— 命宫主星的简要概括：星名、关键词、星性。
  *
  * @remarks
- * 与格局判定**零耦合**：本文件不调用 `./helpers` 里任何查询函数，也不读 `./data`，两张映射表
- * 直接写在这里 —— 是格局层里最干净的一刀。
+ * 与格局判定**零耦合**：本文件不调用任何查询函数，两张映射表直接写在这里，
+ * 不判条件、只做映射，属论断/文案层（故住 `analysis/`，不住格局判定目录 `patterns/`）。
  *
- * ⚠️ 「保持向后兼容」：`cli/commands/index.ts` 的 `analyze` 至今按原样取用，**签名与返回
- *    结构不得改动**（完整说明见 docs/code/patterns.md）。
+ * ⚠️ 「保持向后兼容」：`cli/commands/astrology.ts` 的 `mingGongSummary`（文本与 `--json`）
+ *    至今按原样取用，**签名与返回结构不得改动**（完整说明见 docs/code/analysis.md）。
  *
  * @packageDocumentation
  */
@@ -22,17 +22,16 @@ import type { ZiweiChart } from "../types";
  *   `nature` 为星性；命宫缺失时三项皆空
  *
  * @remarks
- * 为**向后兼容**保留的轻量摘要：两张大表（`keywordMap` / `natureMap`）是按 14 主星硬编码
- * 的中文词条，故与 `./helpers` 及各分组识别器都不同 —— 这里**不判条件，只做映射**，属纯文案层。
- * `cli/commands/index.ts` 的 `analyze`（文本与 `--json` 的 `mingGongSummary`）都取它，与
- * `detectPatterns` 的输出拼成完整解读素材。
+ * 轻量摘要：两张大表（`keywordMap` / `natureMap`）是按 14 主星硬编码的中文词条 ——
+ * 这里**不判条件，只做映射**，属纯文案层。`cli/commands/astrology.ts` 的
+ * `mingGongSummary` 取它，与 `detectPatterns` 的输出拼成完整解读素材。
  *
  * 三处口径需要注意：
  *
  * 1. **只看主星**：`keywordMap` 与 `natureMap` 都只覆盖 14 主星，吉煞杂耀一概不参与
  * 2. **空宫给"空宫"**：`stars` 为空（命宫无主星）时 `nature` 直接是字面量 `"空宫"`，
  *    `keywords` 为空数组 —— 此时调用方需改为从**借入的对宫主星**取释义，
- *    `cli/commands/index.ts` 就是这么处理的（见 `Palace.borrowedStars`）
+ *    消费方就是这么处理的（见 `Palace.borrowedStars`）
  * 3. **`nature` 与 `keywords` 都锚在首颗主星**：`nature` 取 `starNames[0]`，而
  *    `keywords` 把**所有**主星的词条摊平后 `slice(0, 5)` —— 命宫坐双主星时，
  *    首星决定星性、两星共同贡献关键词

@@ -18,37 +18,40 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 >
 > 来源：自 reference/ziwei-samples-toolkit/lib/db-analysis.ts 拷入本仓内核。
 > 拷入时做了三处口径适配（其余逐字保留）：
->   1. TOPIC_PALACE_NAME 改用**本项目宫名口径**（`Palace.name` 带「宫」字、
->      「仆役」→「交友宫」，见 constants.ts 的 IZTRO_TO_PROJECT_PALACE）——
->      本目录按宫名**严格等值**找宫（`palace-query.ts` 的 `getPalaceStars` 等），
->      旧口径会全部失配并静默落到「无法找到 xx」的兜底文案。
->   2. detectGeJu 内 getPalace 加「去宫字」归一化 —— 内容区散布着旧口径名
->      （如 '迁移'），归一化兜住它们，逻辑零改动。
->      ⚠️ 格局判定整体住在 `../patterns/`，而该归一化只服务于
->      **按宫名找宫**这条旧路径；新判定走地支算术（`../palace-relations` 的偏移 +
->      按 branch 取宫），不再按宫名找宫，故它连同那个 `getPalace` 一并消失。
->      本目录只剩第 1 条仍在生效。
->   3. 删除了未使用的 getYearStemIndex 导入（那是公历取模口径，仅流年可用；
->      生年四化必须用 chart.lunarInfo.yearStem，见 sihua.ts 的口径说明）。
->      ⚠️ 该导入后来因「四点五、流年」需要年干而引回，现只在 `views/yearly.ts`；
->      用途仍是那条唯一合法用途（流年干），生年四化依旧走 chart.lunarInfo.yearStem。
+>
+> 1. TOPIC_PALACE_NAME 改用**本项目宫名口径**（`Palace.name` 带「宫」字、
+>    「仆役」→「交友宫」，见 constants.ts 的 IZTRO_TO_PROJECT_PALACE）——
+>    本目录按宫名**严格等值**找宫（`palace-query.ts` 的 `getPalaceStars` 等），
+>    旧口径会全部失配并静默落到「无法找到 xx」的兜底文案。
+> 2. detectGeJu 内 getPalace 加「去宫字」归一化 —— 内容区散布着旧口径名
+>    （如 '迁移'），归一化兜住它们，逻辑零改动。
+>    ⚠️ 格局判定整体住在 `../patterns/`，而该归一化只服务于
+>    **按宫名找宫**这条旧路径；新判定走地支算术（`../palace-relations` 的偏移 +
+>    按 branch 取宫），不再按宫名找宫，故它连同那个 `getPalace` 一并消失。
+>    本目录只剩第 1 条仍在生效。
+> 3. 删除了未使用的 getYearStemIndex 导入（那是公历取模口径，仅流年可用；
+>    生年四化必须用 chart.lunarInfo.yearStem，见 sihua.ts 的口径说明）。
+>    ⚠️ 该导入后来因「四点五、流年」需要年干而引回，现只在 `views/yearly.ts`；
+>    用途仍是那条唯一合法用途（流年干），生年四化依旧走 chart.lunarInfo.yearStem。
 
 ### 1.2 知识来源分级与引文披露
 
 > ⚠️ 知识来源分级：
->   - [verified]    倪师《天纪》讲稿原话（天纪 02-13 集已核对）
->   - [traditional] 紫微斗数传统口诀（《紫微斗数全书》等古书，非倪师独创）
->   - [methodology] 倪师体系的方法论概念（非原话摘录）
->   - [suspect]     来源存疑，疑似其他流派或后人整理
 >
->   以「倪海厦/倪师说」开头的引号句，部分为 traditional 口诀的风格化转述，不一定是
->   倪师《天纪》逐字原话。CLI 的 topic 命令在输出末尾固定披露此点。
->   引文主体在 `./data` 的 STAR_CONTENT_MAP，余下零星几处散在 `views/` 各节
->   （如 `views/health.ts` 的疾厄论断）。
+> - [verified] 倪师《天纪》讲稿原话（天纪 02-13 集已核对）
+> - [traditional] 紫微斗数传统口诀（《紫微斗数全书》等古书，非倪师独创）
+> - [methodology] 倪师体系的方法论概念（非原话摘录）
+> - [suspect] 来源存疑，疑似其他流派或后人整理
+>
+> 以「倪海厦/倪师说」开头的引号句，部分为 traditional 口诀的风格化转述，不一定是
+> 倪师《天纪》逐字原话。CLI 的 topic 命令在输出末尾固定披露此点。
+> 引文主体在 `./data` 的 STAR_CONTENT_MAP，余下零星几处散在 `views/` 各节
+> （如 `views/health.ts` 的疾厄论断）。
 
 ### 1.3 架构与文件分工
 
 > 架构：
+>
 > - 十四主星各自的详细命理内容（12 宫语境）
 > - 四化（禄权科忌）各自的语义补充
 > - getTopicAnalysis：动态推算三方四正、本命四化会照、大限、流年、流月
@@ -57,12 +60,12 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 >
 > 拆分的分界线是**「算」与「写」**：状态算一次（`context.ts`），文案各节自己写（`views/`）。
 >
->   index.ts          装配点：getTopicAnalysis 编排层 + 公开面 re-export
->   report.ts         第二编排层：getTopicReport —— --report 的 Markdown 形态
->   context.ts        跨节共享状态的**唯一**产出点（`makeContext`）
->   palace-query.ts   只读查询：按宫名取宫 / 取三方四正 / 渲染一行星曜
->   lookups.ts        文案查表 + 性别过滤 + 格局投影
->   views/            十一个小节，每节一个 `renderXxx(ctx) => string[]`
+> index.ts 装配点：getTopicAnalysis 编排层 + 公开面 re-export
+> report.ts 第二编排层：getTopicReport —— --report 的 Markdown 形态
+> context.ts 跨节共享状态的**唯一**产出点（`makeContext`）
+> palace-query.ts 只读查询：按宫名取宫 / 取三方四正 / 渲染一行星曜
+> lookups.ts 文案查表 + 性别过滤 + 格局投影
+> views/ 十一个小节，每节一个 `renderXxx(ctx) => string[]`
 >
 > ⚠️ 各 view **只读 ctx、只返回自己的行**：不互相调用、不写回 ctx。唯一的跨节状态
 > （`mutagenInSanFang`）已提升进 `context.ts`，理由见该文件头部。
@@ -82,17 +85,18 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 > 本公开面现导出 7 个值：拆分前即有的 4 个转发（TOPIC_LABEL / TOPIC_PALACE_NAME /
 > getTopicReport / getTopicReportMeta）+ filterGenderContent（候选 7 新增）
-> + TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
-> 前 4 个 `./data` 是实际归属地，此处只做转发，调用方一行不用改；
-> 它们与 filterGenderContent 本文件的实现都要用，故上方已 import，这里再 export 一次。
-> `./report` 的两个名字（--report 全盘报告的编排层）同走这张公开面 ——
-> CLI 不直插 analysis 内部模块。
-> `filterGenderContent`（候选 7）：本文件与 ./report 两处调用都保持 import
-> `./lookups`（避免 index ↔ report 成环），上公开面只为**外部可直测** ——
-> selftest 的性别过滤断言必须经这里 import，直插 lookups 即断言失效。
-> TOPIC_KEYS / TOPIC_DEFS（Phase 4）：主题注册表的**单一真相源**（Phase 2 收编的 8 张平行表
-> 已由它派生）。上公开面是为插件自证 —— 新增主题只需在此表加一个条目，
-> 外部守卫（selftest / 测试）经这里即可断言「某主题已注册且可用」，不必直插 `./data` 内部布局。
+>
+> - TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
+>   前 4 个 `./data` 是实际归属地，此处只做转发，调用方一行不用改；
+>   它们与 filterGenderContent 本文件的实现都要用，故上方已 import，这里再 export 一次。
+>   `./report` 的两个名字（--report 全盘报告的编排层）同走这张公开面 ——
+>   CLI 不直插 analysis 内部模块。
+>   `filterGenderContent`（候选 7）：本文件与 ./report 两处调用都保持 import
+>   `./lookups`（避免 index ↔ report 成环），上公开面只为**外部可直测** ——
+>   selftest 的性别过滤断言必须经这里 import，直插 lookups 即断言失效。
+>   TOPIC_KEYS / TOPIC_DEFS（Phase 4）：主题注册表的**单一真相源**（Phase 2 收编的 8 张平行表
+>   已由它派生）。上公开面是为插件自证 —— 新增主题只需在此表加一个条目，
+>   外部守卫（selftest / 测试）经这里即可断言「某主题已注册且可用」，不必直插 `./data` 内部布局。
 
 ---
 
@@ -169,6 +173,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > `quote` 是引句「」内前 12 字的定位串，selftest 对「文案中的引句 ↔ 本表」做
 > 双向匹配——文案新增引句未登记、或登记的 quote 与文案失配，都会变红。
 > 档位判定规则（与评估报告一致）：
+>
 > - `verified`：引句带《天纪》集数出处（如「天纪 03 明言」）；
 > - `traditional`：古诀云 / 古书云 / 口诀 / 无出处的倪师转述（默认档）；
 > - `suspect`：原文案已带「未核实 / 来源存疑 / 一说非倪师原话」散注；
@@ -213,9 +218,10 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 ### 6.1 `detectGeJu` 只是投影
 
 > 格局的**命中事实层 + 两套判词**如今都归 `patterns/`：
->   - 判定（唯一一处）：`detectPatterns`，82 个格局各有独立预言机盯着
->   - analyze 侧短判词 + 等级：`Pattern.description` / `Pattern.level`
->   - topic 侧倪师口吻长判词：`Pattern.topicDescription`
+>
+> - 判定（唯一一处）：`detectPatterns`，82 个格局各有独立预言机盯着
+> - analyze 侧短判词 + 等级：`Pattern.description` / `Pattern.level`
+> - topic 侧倪师口吻长判词：`Pattern.topicDescription`
 >
 > 本函数只是**投影**：把填了长判词的命中挑出来，供 `overview` / `personality` 展示。
 > **新增格局只要在 patterns/ 的识别器里填 `topicDescription`，这边自动就能展示**，
@@ -266,9 +272,10 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 >
 > ⚠️ 与执行计划 §4 的偏差：计划假设 `analysis/data.ts` 存在 `switch(topic)` 分支、可
 > 抽成 13 个 `TopicProvider` 文件；实际代码早已数据驱动（`getTopicAnalysis` 是统一管线
-> + 查表），`corpus/data/manual/index.ts` 的 `LOADERS` 已是内容注册表。故 Phase 2 不造
-> 13 个 case 文件（那是纯碎片、且会把主题定义拆到两处），改为把 8 张平行表收为单一真相源
-> —— 这才是真正的扩展摩擦点。`TopicProvider` 之名保留为 `TopicDef` 的类型别名。
+>
+> - 查表），`corpus/data/manual/index.ts` 的 `LOADERS` 已是内容注册表。故 Phase 2 不造
+>   13 个 case 文件（那是纯碎片、且会把主题定义拆到两处），改为把 8 张平行表收为单一真相源
+>   —— 这才是真正的扩展摩擦点。`TopicProvider` 之名保留为 `TopicDef` 的类型别名。
 
 ### 7.4 `TOPIC_CONTENT_SOURCE`：内容复用即无独立列
 
@@ -294,7 +301,8 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 以下常量原为 `./index` 的 `getTopicAnalysis` **函数体内联字面量** —— 一次调用重建
 > 一份。其中 `SIHUA_SYMBOL` 与 `SIHUA_CHAR_TO_KEY` 更各有一处**逐字相同的副本**
 > （大限段与流年段各写一遍），改了其中一处不会有任何东西发现。按本模块「类型 + 映射表
-> + 论断文案」的定位收归于此，`./index` 只留推算。
+>
+> - 论断文案」的定位收归于此，`./index` 只留推算。
 >
 > ⚠️ 四化键一律写成**字面量联合**而非引 `../types` 的 `Mutagen`：本模块开篇声明的
 > 「依赖：无」是条被人依赖的约束（可独立成型、可单测），为一张映射表破例不值当。
@@ -378,14 +386,16 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 ### 8.9 `health.ts`：五点五、疾厄宫
 
 > 三层结构，权重递减：
->   1. **宫位主轴**（`PALACE_BRANCH_ORGAN`）—— 疾厄宫落在哪个地支，这是倪师原法
->   2. **星曜辅助**（`ZIWU_LIUZHU`）—— 主星五行的加重 / 减轻提示，只作附加
->   3. **警示**—— 四煞入疾厄、三方四正见化忌、女命妇科保养
+>
+> 1. **宫位主轴**（`PALACE_BRANCH_ORGAN`）—— 疾厄宫落在哪个地支，这是倪师原法
+> 2. **星曜辅助**（`ZIWU_LIUZHU`）—— 主星五行的加重 / 减轻提示，只作附加
+> 3. **警示**—— 四煞入疾厄、三方四正见化忌、女命妇科保养
 >
 > ⚠️ 倪师《天纪 05》原话明示：
->   - 化忌在酉宫 = 肾
->   - 火星地空在丑宫 = 肝
->   - 头肩胸区域 = 妇科子宫 / 右卵巢
+>
+> - 化忌在酉宫 = 肾
+> - 火星地空在丑宫 = 肝
+> - 头肩胸区域 = 妇科子宫 / 右卵巢
 >
 > 倪师疾厄论断**以疾厄宫落在哪个地支为主轴**，星曜五行为辅。
 > 这与「按星曜五行对应脏腑」的做法不同——后者是传统三合派用法。
@@ -404,3 +414,26 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 唯一不判条件的小节：`TOPIC_SUGGESTIONS[topic]` 的建议清单 + 一句固定的
 > 「继续深度追问」引导语。它保证报告末尾总有一个可交互的落点 ——
 > 故不要在别处加「有内容才出」的条件。
+
+## 九、`soul-summary.ts`：命宫摘要（⚠️ 不得改签名）
+
+> 命宫摘要 —— 命宫主星的简要概括：星名、关键词、星性。
+>
+> 与格局判定**零耦合**：不调用任何查询函数，`keywordMap` / `natureMap` 两张映射表
+> 直接写在文件里 —— 不判条件、只做映射，属纯文案层，故住 `analysis/`（自
+> `patterns/soul-summary.ts` 迁入：纯文案内容不住格局判定目录）。
+>
+> 「保持向后兼容」：`cli/commands/astrology.ts` 的 `mingGongSummary`（文本与
+> `--json`）至今按原样取用，**签名与返回结构不得改动**。
+
+## 十、`overview-material.ts`：总览取材与星曜徽标单点
+
+> 「总览段取什么材」的唯一实现：`buildOverviewMaterial(ctx)` 一次取齐七个决策点
+> （核心主题判定 / topic_mods 双键注入 / 格局主题清单 / summary 段条件 /
+> contentKey 全文选择 / 亮度补充 / 第二主星），返回结构化段落；两个编排器
+> （`views/overview.ts` 的【】版式与 `report.ts` 的 ### 版式）只做版式装配。
+>
+> `starBadge` 是星曜徽标（星名 + 化象 + `（庙旺）/（落陷）` 全角括号）的全仓单点，
+> `palace-query.ts` 的 `descPalaceStars` 同式引它。
+> 原先两编排器各写一遍取材、徽标两式并存、兜底句两份措辞——均已收敛
+> （architecture-review-20261016 候选 1）。
