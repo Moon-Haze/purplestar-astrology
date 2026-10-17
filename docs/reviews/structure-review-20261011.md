@@ -144,14 +144,14 @@ selftest 拆分后的最大组文件（命令面 + 契约对拍 + astrology 形�
 
 ## 明确不建议动的
 
-| 文件 | 行数 | 理由 |
-|---|---|---|
-| `astrology.ts` | 547 | `cmdAstrology` 的各输出形态分支共享 header/校验/常量，是命令本体的真实内聚；`buildAnalyzeJson` 已有独立消费方（selftest 对拍、synastry），若消费方继续增多再议独立 |
-| `help.ts` | 287 | man 手册结构内聚，依赖最轻（command-meta + args） |
-| `report.ts` / `synastry.ts` / `oracle.ts` | 154/233/142 | 尺寸健康、职责单一 |
-| `stars.ts` / `classics.ts` / `config.ts` / `out.ts` | ≤105 | 薄命令与通道层，正合适 |
-| `commands.ts` | 72 | 命令表聚合，恰如其分 |
-| `purple-star.ts` | 311 | 引导层 + main，`command-meta` 拆分后启动路径已收敛 |
+| 文件                                                | 行数        | 理由                                                                                                                                                               |
+| --------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `astrology.ts`                                      | 547         | `cmdAstrology` 的各输出形态分支共享 header/校验/常量，是命令本体的真实内聚；`buildAnalyzeJson` 已有独立消费方（selftest 对拍、synastry），若消费方继续增多再议独立 |
+| `help.ts`                                           | 287         | man 手册结构内聚，依赖最轻（command-meta + args）                                                                                                                  |
+| `report.ts` / `synastry.ts` / `oracle.ts`           | 154/233/142 | 尺寸健康、职责单一                                                                                                                                                 |
+| `stars.ts` / `classics.ts` / `config.ts` / `out.ts` | ≤105        | 薄命令与通道层，正合适                                                                                                                                             |
+| `commands.ts`                                       | 72          | 命令表聚合，恰如其分                                                                                                                                               |
+| `purple-star.ts`                                    | 311         | 引导层 + main，`command-meta` 拆分后启动路径已收敛                                                                                                                 |
 
 ## 建议落地顺序
 

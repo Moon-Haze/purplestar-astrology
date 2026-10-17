@@ -20,6 +20,7 @@
 保持为**稳定不变的两层**。新增内容 = 落一个插件目录 + 在注册表加一行，**零改内核、零改 CLI 分发、typecheck 仍兜底**。
 
 这把你们已有的两条纪律延伸到内容层：
+
 1. `COMMAND_TABLE` / `OPTION_GROUPS` 的"单点声明真相源" → 升级为"插件注册表单点声明"。
 2. `selftest-asserts` 的"每个内核自带断言组" → 升级为"每个插件自带断言组 + 引文核对表"。
 
@@ -28,12 +29,14 @@
 ## 1. 设计目标与不可逾越的约束
 
 **目标**
+
 - G1 新增知识内容（古籍 / 主题断语 / 流派）不触碰排盘内核与 CLI 分发。
 - G2 保持"拷贝 + `npm install`"的单 skill 分发形态，**不引入外部插件包、不引入构建步骤**。
 - G3 新增内容仍受现有三道质量防线覆盖：启动期 `LOADED` 自检、CLI `selftest`、七层 `npm test`（含引文守卫）。
 - G4 渐进披露不变：`SKILL.md` 仍是骨架，插件细则只在被读到时进上下文。
 
 **约束（来自既有决策，不可动）**
+
 - C1 单 skill，仓库根 = skill 根；无构建，Node ≥ 22.18 直跑 `.ts`。
 - C2 排盘确定性：内核只改 `iztro` + 自研算法，不靠模型推算。
 - C3 三合派（倪海厦《天纪》）体系立场；飞星派（宫干自化 / 来因宫）继续禁用，绊线字段 `Palace.selfMutagen` 不得填回。
@@ -44,18 +47,20 @@
 ## 2. 当前架构的扩展性评估
 
 **已经做对的（复用，不重做）**
+
 - CLI 外壳已收敛为稳定层：`dispatch`（候选 1）、`args-table` 单点声明（候选 2/4）让命令与参数面与实现解耦。
 - 内容已有初步隔离：`analysis/`（主题论断引擎）、`corpus/`（古籍 + 天纪）、`synastry/`（合盘断语）各成内核，
   `corpus/data/manual/` 已把 13 主题断语物理拆成独立文件——**这是插件化的现成地基**。
 - 三层拆分计划把 `constants`/`wenmo` 数据下沉到 `data/`，与"内容层"方向一致。
 
 **真正的缺口（本文要补的）**
-| 缺口 | 现状 | 后果 |
-|---|---|---|
-| 内容无统一接口 | 古籍走 `corpus/index.ts`、主题走 `analysis/data.ts`、星曜/天纪/断语走 `cli/knowledge/*`，三套加载与查询形态 | 加内容要同时懂三套内部契约 |
-| 内容无注册表 | `knowledge --source` 的 4 域是 `cli/knowledge/index.ts` 硬编码分支；`analysis` 主题在 `data.ts` 内 `switch` | 新源 = 改 CLI 分支 + 改引擎 |
-| 流派硬编码 | 文墨亮度 + 倪师框架写死在 `wenmo-brightness.ts`/`mutagen.ts`/`types.ts` 绊线；引文守卫只认倪师 | 加流派要动内核多处 |
-| 引文守卫单流派 | `citations.test.ts` 只扫"冒充倪师原话"，核对表只有 `annotations.ts` | 多流派时引文归属会错乱 |
+
+| 缺口           | 现状                                                                                                        | 后果                        |
+| -------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------- |
+| 内容无统一接口 | 古籍走 `corpus/index.ts`、主题走 `analysis/data.ts`、星曜/天纪/断语走 `cli/knowledge/*`，三套加载与查询形态 | 加内容要同时懂三套内部契约  |
+| 内容无注册表   | `knowledge --source` 的 4 域是 `cli/knowledge/index.ts` 硬编码分支；`analysis` 主题在 `data.ts` 内 `switch` | 新源 = 改 CLI 分支 + 改引擎 |
+| 流派硬编码     | 文墨亮度 + 倪师框架写死在 `wenmo-brightness.ts`/`mutagen.ts`/`types.ts` 绊线；引文守卫只认倪师              | 加流派要动内核多处          |
+| 引文守卫单流派 | `citations.test.ts` 只扫"冒充倪师原话"，核对表只有 `annotations.ts`                                         | 多流派时引文归属会错乱      |
 
 ---
 
@@ -177,6 +182,7 @@ export const SCHOOLS: Record<SchoolId, SchoolAdapter> = {
 ## 5. 架构决策记录（ADR）
 
 ### ADR-001 · 保持单 skill 形态，内容插件不引外部包
+
 - **Status**：Accepted
 - **Context**：未来增长是知识内容，非新排盘领域/多宿主。用户已确认"单 skill 内扩展"。
 - **Decision**：插件以**仓库内目录 + 注册表**形式存在，不拆 npm 子包、不引插件市场。
@@ -184,6 +190,7 @@ export const SCHOOLS: Record<SchoolId, SchoolAdapter> = {
   ❌ 插件不能与主仓独立版本化/独立发布（当前不需要）。
 
 ### ADR-002 · 插件用"清单注册"而非文件系统自动发现
+
 - **Status**：Accepted
 - **Context**：项目无构建步骤，`@/` 钩子在运行时解析；已有 `ALL_SKILLS`（磁盘推导）与
   `COMMAND_TABLE`（静态注册）两套先例。
@@ -193,6 +200,7 @@ export const SCHOOLS: Record<SchoolId, SchoolAdapter> = {
   ❌ 比 glob 自动发现多一行样板（可接受，且这正是你们已有的取舍）。
 
 ### ADR-003 · 排盘内核与知识内容严格分层，内容扩展不触碰内核
+
 - **Status**：Accepted
 - **Context**：90% 增长是内容；当前加内容要改 `analysis/data.ts` 与 `cli/knowledge/*`。
 - **Decision**：内核只暴露纯函数供插件消费；插件层禁止反向依赖 CLI、禁止修改内核模块状态。
@@ -201,6 +209,7 @@ export const SCHOOLS: Record<SchoolId, SchoolAdapter> = {
   内容漂移被关进插件自身的断言组。❌ 内核接口需先稳定（见路线图 Phase 0）。
 
 ### ADR-004 · 流派作为一等扩展点，引文守卫随流派
+
 - **Status**：Accepted
 - **Context**：现行引文守卫只认倪师、核对表只有 `annotations.ts`；多流派会使归属错乱。
 - **Decision**：`SchoolAdapter` 自带 `citationRoots`；`citations.test.ts` 改为按流派分别扫描各自
@@ -215,30 +224,36 @@ export const SCHOOLS: Record<SchoolId, SchoolAdapter> = {
 > 前提：Phase 0 的内核稳定是后续一切的基础——**内核未稳前不要开始插件化**，否则插件接口会随内核漂移。
 
 ### Phase 0 · 内核稳定（现在 → 约 2 周）
+
 - 落地既有 8 候选深化 + 三层拆分（`docs/plans/2026-10-11-*`）。
 - 冻结内核对外纯函数面（`generateChart`、宫位/四化查询、亮度查询），写进 `types.ts` 注释作为契约。
 - **退出标准**：`selftest` 全绿、`npm test` 549+ 全绿、`typecheck` 0 错；内核对外接口有文档化契约。
 
 ### Phase 1 · KnowledgeSource 接缝（证明 seam，重构不改行为）
+
 - 抽 `KnowledgeSource` 接口；把现有 books/stars/tianji/oracle 4 源**迁**到 `knowledge/sources/` 后注册。
 - `cli/knowledge/index.ts` 改为查注册表；`SKILL.md`/`references/` 同步"源清单来自注册表"。
 - **退出标准**：对外行为逐字节不变；`selftest` 新增"注册表声明 ⊆ SKILL.md 提到的源"断言。
 
 ### Phase 2 · TopicProvider 接缝
+
 - 抽 `TopicProvider` 接口；13 主题从 `analysis/data.ts` 的 `switch` 迁到 `analysis/topics/` 后注册。
 - `corpus/data/manual/` 13 文件成为各 provider 的内容载荷。
 - **退出标准**：`astrology --topic` 输出 diff=0；新增主题只加文件 + 一行注册。
 
 ### Phase 3 · SchoolAdapter + 按流派引文守卫
+
 - 现行混合口径封进 `schools/wenmo-nishi`；`citations.test.ts` 改为按流派分派，核对表随插件。
 - 绊线字段 `Palace.selfMutagen` 的"不被填回"断言改为读 `forbiddenFeatures`。
 - **退出标准**：倪师引文纪律零退化；加一个空壳新流派适配器不触发任何倪师断言。
 
 ### Phase 4 · 端到端验证（首个纯插件新增）
+
 - 加一个**真实新内容**作为纯插件（建议：第 4 部古籍，或第 14 个主题），**全程零改内核与 CLI 外壳**。
 - **退出标准**：新内容经 `knowledge` / `astrology --topic` 可用；`selftest` + `npm test` 仅新增插件自身断言，内核层项数与基线一致。
 
 ### Phase 5 ·（可选，仅当未来转向多 skill）内核+框架抽取
+
 - 若某天要做八字/塔罗等**新排盘领域**，本设计的"内核 + 插件框架 + CLI 外壳 + 测试骨架"已可被抽取为共享底座，
   每个领域 skill 是"底座 + 自己的内核插件 + 自己的内容插件"。**本阶段不在当前范围内**，仅记此伏笔。
 

@@ -333,16 +333,16 @@ surroundNames（邻宫；算术 ×3 处重复）      └───────�
 
 ## 优先级速览
 
-| # | 标题 | 强度 | 依赖类别 |
-|---|------|------|----------|
-| 1 | 分发协议收成一个 module | Strong | ports & adapters |
-| 2 | 独占/专题语义收成一张声明 | Strong | in-process |
-| 3 | 旗标→section 接线成为可测 interface | Strong | in-process |
-| 4 | 归属表从转录改为投影 | Strong | local-substitutable |
-| 5 | 断言组 interface 统一 + rootLabel 分叉 | Worth exploring | in-process / mock |
-| 6 | 口径提示 basis 多形态收一处 | Worth exploring | in-process |
-| 7 | filterGenderContent 上公开面 | Worth exploring | local-substitutable |
-| 8 | 宫位查询多视图收敛 | Speculative | in-process |
+| #   | 标题                                   | 强度            | 依赖类别            |
+| --- | -------------------------------------- | --------------- | ------------------- |
+| 1   | 分发协议收成一个 module                | Strong          | ports & adapters    |
+| 2   | 独占/专题语义收成一张声明              | Strong          | in-process          |
+| 3   | 旗标→section 接线成为可测 interface    | Strong          | in-process          |
+| 4   | 归属表从转录改为投影                   | Strong          | local-substitutable |
+| 5   | 断言组 interface 统一 + rootLabel 分叉 | Worth exploring | in-process / mock   |
+| 6   | 口径提示 basis 多形态收一处            | Worth exploring | in-process          |
+| 7   | filterGenderContent 上公开面           | Worth exploring | local-substitutable |
+| 8   | 宫位查询多视图收敛                     | Speculative     | in-process          |
 
 **成对关系**：1 与 3 同属「测试绕过 interface」一条链（1 让 `--help`/`--out`/未知命令进程内可触达，3 让组合层可直测）；2 与 4 同源于 `args-table.ts`（一次声明深化同时养活语义派生与归属投影两个视图）。
 

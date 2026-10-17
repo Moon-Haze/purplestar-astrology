@@ -177,11 +177,11 @@ seam 方向全部正确（tools/db import 内核数据、verify-duckdb 有读回
 
 ## 不占候选的小漂移（注释级，随手修）
 
-| 位置 | 问题 |
-| --- | --- |
-| `patterns/types.ts:5,138` · `helpers.ts:320,325` | 「见 `data.ts`」是陈旧指针——判词表已迁 `corpus/data/patterns.ts`，patterns/ 下并无 data.ts |
-| `analysis/index.ts:52` · `analysis/report.ts:134` | 「13 个主题」注释漂移——TOPIC_KEYS 实为 14（study 是 Phase 4 加的别名视图） |
-| `cli/commands/report.ts:20` | 「parquet 列序」注释在 TOPIC_DEFS Phase 2 后失真（列清单角色已归 `STORAGE_TOPIC_KEYS`）；`REPORT_TOPICS` 手抄 13 板块与 14 主题注册表的集合关系靠人肉维持 |
+| 位置                                              | 问题                                                                                                                                                      |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `patterns/types.ts:5,138` · `helpers.ts:320,325`  | 「见 `data.ts`」是陈旧指针——判词表已迁 `corpus/data/patterns.ts`，patterns/ 下并无 data.ts                                                                |
+| `analysis/index.ts:52` · `analysis/report.ts:134` | 「13 个主题」注释漂移——TOPIC_KEYS 实为 14（study 是 Phase 4 加的别名视图）                                                                                |
+| `cli/commands/report.ts:20`                       | 「parquet 列序」注释在 TOPIC_DEFS Phase 2 后失真（列清单角色已归 `STORAGE_TOPIC_KEYS`）；`REPORT_TOPICS` 手抄 13 板块与 14 主题注册表的集合关系靠人肉维持 |
 
 ## 健康区（一句话带过）
 
@@ -209,15 +209,15 @@ seam 方向全部正确（tools/db import 内核数据、verify-duckdb 有读回
 
 ## 落地记录（2026-10-17，七个候选全部闭环）
 
-| 候选 | 落地 | openspec 归档 |
-| --- | --- | --- |
-| 1 总览取材双写 | `overview-material.ts` 单点（starBadge + buildOverviewMaterial），两编排器改版式装配；文案统一（兜底句「命格整体」、徽标带括号） | `2026-10-17-extract-overview-material` |
-| 2 selftest 双写 | 去重 2 条（insight 并入 CommandSplit；组合层 monthly 删）+ `runAstrologyShapes` 拆至 `astrology-shapes.ts`（commands.ts 851→480 行） | `2026-10-17-selftest-commands-dedup-split` |
-| 3 借星字段没接 | surround/decadal 改读 `borrowedStars`/`borrowedFromName`；palace-query 换 `palaceAtBranch` | 批量（无独立变更，等价收敛） |
-| 4 soul-summary 错层 | 迁 `analysis/soul-summary.ts`（签名不动，astrology.ts 改 import，patterns 公开面收窄） | 批量（等价收敛） |
-| 5 cli-samples 守卫 | main 加派生自检（OPTION_GROUPS ⊆ SAMPLES），**当场抓到 3 个现存静默缺口**（--no-cache/--out/--book）并补齐 | `2026-10-17-cli-samples-coverage-guard` |
-| 6 SHA_HARD 内联 | health/medium 两处换单点 | 批量（等价收敛） |
-| 7 读侧/写侧注释 | sample-source.ts 头注释改边界描述；小漂移三处（patterns 指针 / 14 主题计数 / STORAGE_TOPIC_KEYS 归属）一并清 | 批量（注释级） |
+| 候选                | 落地                                                                                                                                 | openspec 归档                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| 1 总览取材双写      | `overview-material.ts` 单点（starBadge + buildOverviewMaterial），两编排器改版式装配；文案统一（兜底句「命格整体」、徽标带括号）     | `2026-10-17-extract-overview-material`     |
+| 2 selftest 双写     | 去重 2 条（insight 并入 CommandSplit；组合层 monthly 删）+ `runAstrologyShapes` 拆至 `astrology-shapes.ts`（commands.ts 851→480 行） | `2026-10-17-selftest-commands-dedup-split` |
+| 3 借星字段没接      | surround/decadal 改读 `borrowedStars`/`borrowedFromName`；palace-query 换 `palaceAtBranch`                                           | 批量（无独立变更，等价收敛）               |
+| 4 soul-summary 错层 | 迁 `analysis/soul-summary.ts`（签名不动，astrology.ts 改 import，patterns 公开面收窄）                                               | 批量（等价收敛）                           |
+| 5 cli-samples 守卫  | main 加派生自检（OPTION_GROUPS ⊆ SAMPLES），**当场抓到 3 个现存静默缺口**（--no-cache/--out/--book）并补齐                           | `2026-10-17-cli-samples-coverage-guard`    |
+| 6 SHA_HARD 内联     | health/medium 两处换单点                                                                                                             | 批量（等价收敛）                           |
+| 7 读侧/写侧注释     | sample-source.ts 头注释改边界描述；小漂移三处（patterns 指针 / 14 主题计数 / STORAGE_TOPIC_KEYS 归属）一并清                         | 批量（注释级）                             |
 
 验证总账：typecheck 0 错误、selftest 160→158（去重预期）、npm test 599/599、
 cli-samples 63/63、prettier 全过；`--topic` 输出逐字零变化、`--report` 变化
