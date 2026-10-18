@@ -43,11 +43,18 @@ interface RawEntry {
 	note: string;
 }
 
+/**
+ * 语料库 note 的多标注拼接规整：上游把多条考据标注拼成「cleaned〕〔已按裁决改正：…」
+ * 形态——全角括号只剩中间的 `〕〔` 分隔符，首尾括号已丢。此处统一替换为「；」，
+ * 语义不变，展示不再是半截括号。
+ */
+const normalizeNote = (note: string): string => note.replaceAll("〕〔", "；");
+
 const rows: RawEntry[] = [];
 for (const line of readFileSync(jsonl, "utf8").split("\n").filter(Boolean)) {
 	const d = JSON.parse(line) as RawEntry;
 	if ((BOOKS as readonly string[]).includes(d.book)) {
-		rows.push(d);
+		rows.push({ ...d, note: normalizeNote(d.note) });
 	}
 }
 if (rows.length === 0) {
@@ -69,6 +76,8 @@ const lines: string[] = [
 	" *",
 	" * ⚠️ 生成文件 —— 重导命令：npx tsx tools/corpus/import-tianji.ts，**不要手改**。",
 	" */",
+	"",
+	"// 来源许可（CC BY-NC-SA 4.0）与溯源字段口径同时收录于 docs/code/corpus.md。",
 	"",
 	`/** 册代号：紫微斗数相关五册（语料库原生编号）。 */`,
 	`export type TianjiBook = ${BOOKS.map(b => lit(b)).join(" | ")};`,
