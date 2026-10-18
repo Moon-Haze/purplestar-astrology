@@ -237,13 +237,25 @@ export function shiftDate(
 const stripSuffix = (s: string) => String(s).trim().replace(ADMIN_SUFFIX, "");
 
 /**
+ * 省级行政区去掉行政词缀后的简称（「海南省」→「海南」、「广西壮族自治区」→「广西」）。
+ *
+ * 裸省简称**不参与城市的包含匹配**：青海省的「海南州」、吉林省的「吉林市」都以省简称
+ * 为子串，`--city 海南` / `--city 吉林` 若被包含匹配截胡，就是跨省错配（经度差足以换时辰）。
+ * 省简称一律交回 {@link buildBirthInfo} 的省名回退，按省会计。
+ */
+const PROVINCE_SHORT_NAMES = new Set(
+	PROVINCES.map(p => p.name.replace(/(维吾尔|壮族|回族)?自治区|特别行政区|省$/, ""))
+);
+
+/**
  * 按城市名查经度（容错匹配）。
  *
  * @param cityName - 用户输入的城市名，可带行政区划后缀
  * @returns 命中结果；未收录（或输入为空）时返回 `null`
  *
  * @remarks
- * 依次尝试：原名精确 → 去行政后缀精确 → 双向包含。命中多个时**取最短的城市名**（最短名
+ * 依次尝试：原名精确 → 去行政后缀精确 → 双向包含（裸省简称除外，见
+ * {@link PROVINCE_SHORT_NAMES}）。命中多个时**取最短的城市名**（最短名
  * 最贴近用户所写），同长度的其余候选记进 `ambiguous` 提醒确认（见 docs/code/cli-birth.md）。
  */
 export function findLongitude(cityName: string): LongitudeHit | null {
@@ -264,6 +276,11 @@ export function findLongitude(cityName: string): LongitudeHit | null {
 			exact: hit.name === raw,
 			ambiguous: null,
 		};
+	}
+
+	// 裸省简称不猜城市（「海南」≠ 海南州、「吉林」≠ 吉林市），交回省名回退按省会计
+	if (PROVINCE_SHORT_NAMES.has(bare)) {
+		return null;
 	}
 
 	const cands = ALL_CITIES.filter(c => c.name.includes(bare) || bare.includes(c.name));

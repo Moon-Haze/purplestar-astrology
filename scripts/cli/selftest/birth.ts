@@ -87,6 +87,27 @@ export function runCityTolerance({ ok }: Pick<SelftestDeps, "ok">): void {
 		}
 		return `${count} 个省的连写全部正确命中省会`;
 	});
+	ok("城市容错：裸省简称不被省内同名市截胡（海南/吉林 走省名回退）", () => {
+		// 青海的「海南州」、吉林的「吉林市」都以省简称为子串，包含匹配若放行即跨省错配
+		eq(findLongitude("海南"), null, "海南 ");
+		eq(findLongitude("吉林"), null, "吉林 ");
+		const hz = findLongitude("海南州"),
+			jl = findLongitude("吉林市");
+		if (!hz || !jl) {
+			throw new Error("海南州 / 吉林市 应精确命中");
+		}
+		eq(hz.longitude, 100.6, "海南州 ");
+		eq(jl.longitude, 126.6, "吉林市 ");
+		const hainan = buildBirthInfo(
+			parseArgs(["--date", "1990-05-15", "--time", "09:30", "--city", "海南", "--gender", "male"])
+		);
+		eq(hainan.info.longitude, 110.3, "--city 海南 按海口计 ");
+		const jilin = buildBirthInfo(
+			parseArgs(["--date", "1990-05-15", "--time", "09:30", "--city", "吉林", "--gender", "male"])
+		);
+		eq(jilin.info.longitude, 125.4, "--city 吉林 按长春计 ");
+		return "两省简称回退省会，同名州/市不受影响";
+	});
 	ok("城市容错：--city 石家庄市 能正常起盘", () => {
 		const b = buildBirthInfo(
 			parseArgs([
