@@ -305,6 +305,7 @@ knowledge-retrieval / quality-gates / synastry），`openspec/config.yaml` 是**
   `openspec-update-change` / `openspec-sync-specs` / `openspec-archive-change`，
   或直接用 CLI（`openspec list` / `openspec show <名>` / `openspec validate --all`）。
   propose 只产出规划工件**不动代码**，apply 才实现，archive 把变更折回 specs。
-- **产物纪律**：`openspec/` 已跟踪入 git，是手写真相源；`.agents/` 与 `.zcode/` 下的
-  `openspec-*` 技能目录是 CLI 生成物，已在 `.gitignore`，别手改、别提交。
+- **产物纪律**：`openspec/` 已跟踪入 git，是手写真相源；`.agents/` 下的 `openspec-*`
+  技能目录虽为 CLI 生成物，但**已纳管**（与 `.claude/` 协作用件同口径，克隆即得
+  openspec 工作流）——别手改，要变更请重跑 CLI 生成后再提交。
 - 改完 specs 跑 `openspec validate --all`，须全部通过、零警告。

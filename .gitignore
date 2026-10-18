@@ -9,8 +9,6 @@ node_modules/
 .zcodeignore
 .mcp.json
 
-# ── openspec CLI 生成物 ───────────────────────────────────
-
 # ── 上游参照仓库（只读快照，不入版本控制）────────────────
 # 快照当前不在工作区，规则作为防护保留，勿删。
 # ⚠️ 核查用 find / stat / du，勿用 ls —— 本机 ls 是带 --git-ignore 的
