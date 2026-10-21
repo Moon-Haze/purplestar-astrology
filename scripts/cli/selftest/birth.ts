@@ -99,11 +99,29 @@ export function runCityTolerance({ ok }: Pick<SelftestDeps, "ok">): void {
 		eq(hz.longitude, 100.6, "海南州 ");
 		eq(jl.longitude, 126.6, "吉林市 ");
 		const hainan = buildBirthInfo(
-			parseArgs(["--date", "1990-05-15", "--time", "09:30", "--city", "海南", "--gender", "male"])
+			parseArgs([
+				"--date",
+				"1990-05-15",
+				"--time",
+				"09:30",
+				"--city",
+				"海南",
+				"--gender",
+				"male",
+			])
 		);
 		eq(hainan.info.longitude, 110.3, "--city 海南 按海口计 ");
 		const jilin = buildBirthInfo(
-			parseArgs(["--date", "1990-05-15", "--time", "09:30", "--city", "吉林", "--gender", "male"])
+			parseArgs([
+				"--date",
+				"1990-05-15",
+				"--time",
+				"09:30",
+				"--city",
+				"吉林",
+				"--gender",
+				"male",
+			])
 		);
 		eq(jilin.info.longitude, 125.4, "--city 吉林 按长春计 ");
 		return "两省简称回退省会，同名州/市不受影响";
