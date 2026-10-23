@@ -83,6 +83,8 @@ git clone <本仓库> && cd purplestar-astrology && npm install
 node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州
 ```
 
+完整用法（安装、命令详解、输出认读、排障）见 [docs/user-guide/](docs/user-guide/)。
+
 ## 命令速览
 
 | 命令        | 用途     | 最小示例                                                                |
@@ -101,7 +103,7 @@ node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州
 | `SKILL.md`    | 技能行为规范：AI 助手触发技能后按它排盘与解读        |
 | `references/` | 细则文档（工作流、输出契约、参数面、排障……按需加载） |
 | `scripts/`    | CLI 与排盘 / 合盘 / 语料内核（TypeScript，直接运行） |
-| `docs/`       | 开发者文档：模块地图、评审报告、计划（不随技能分发） |
+| `docs/`       | 使用手册 + 开发者文档：`user-guide/` 面向人的 CLI 手册、模块地图、评审报告、计划（不随技能分发） |
 | `openspec/`   | 规范驱动开发的当前规范与变更提案（不随技能分发）     |
 | `test/`       | 基准回归测试（不随技能分发）                         |
 
