@@ -260,7 +260,7 @@ export function runSkillArgsAudit({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 		// 的行为）。它提到的旗标若在解析层不存在，助手会照着敲一个被拒的参数。
 		//
 		// 只查「SKILL.md → 声明表」这一个方向。反向（声明表里的旗标都要写进 SKILL.md）
-		// 刻意不查：SKILL.md 是使用指南不是穷举清单，`topic` 的 13 个 key、`knowledge` 的
+		// 刻意不查：SKILL.md 是使用指南不是穷举清单，`topic` 的全部 key、`knowledge` 的
 		// 位置参数这类细节本就不该塞进去。
 		const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
 		const mentioned = [...md.matchAll(/--([a-z][a-z0-9-]*)/g)].map(m => m[1]);

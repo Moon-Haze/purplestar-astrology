@@ -312,7 +312,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				kind: "value",
 				value: "key",
 				optionalValue: true,
-				desc: "主题论断选主题（13 个 key 之一；不带值时列清单）",
+				desc: "主题论断选主题（不带值时列全部 key 清单）",
 			},
 			{
 				name: "view",

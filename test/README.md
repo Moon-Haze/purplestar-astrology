@@ -325,7 +325,7 @@ node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三
   同一份数据的原始载体是 `reference/ziwei-samples-toolkit/samples-out/`，三者等价并存，见文首）
 - **抽样**：60 年（1924–1983）每年 5 条 = 300 条，实测覆盖
   **12/12 月 · 12/12 时辰 · 2/2 性别 · 5/5 五行局 · 22 个闰月年**
-- **只存 `birthInfo` + `chart`**：样本的 `topics`（13 主题解读文本）占单条体积 90%，
+- **只存 `birthInfo` + `chart`**：样本的 `topics`（各主题解读文本）占单条体积 90%，
   由 toolkit 私有的 `db-analysis.ts`（2254 行 `STAR_DB`）生成 —— 本项目刻意不含该文件，
   无法复现，故一律剔除。单条 62.5KB → 5.4KB，300 条共 1.6MB
 - **抽样是确定性的**（不用随机数），同样的输入必然产出同样的 fixtures，基准可复现、diff 可审阅

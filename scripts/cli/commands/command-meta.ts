@@ -52,7 +52,7 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 		"stars：星曜释义（--search <星名>，或位置参数；缺省列全部星曜的「关键词 · 星性 · 五行」）。",
 		"tianji：天纪判语检索（《天纪》讲稿原话 + 秒级回放溯源，紫微五册：主星 / 十二宫 / 格局 /",
 		"  四化 / 疾厄；--book 限册、--limit 限条），引用「倪师说」时用它找原话出处；语料 CC BY-NC-SA 4.0。",
-		"oracle：断语手册（13 主题 × 十四主星的分类断语快照；--topic <key> [--star <星名>]，",
+		"oracle：断语手册（各主题 × 十四主星的分类断语快照；--topic <key> [--star <星名>]，",
 		"  缺 --star 时列 14 星概览）；快照为本命静态口径，解读仍需结合具体命盘。",
 		"⚠️ 本命令原名 classics（四域合并时改名，books 用法逐字不变）；旧命令 stars / oracle",
 		"已并入（--source …），原命令名不再保留。",

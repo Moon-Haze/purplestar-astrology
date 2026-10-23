@@ -57,7 +57,7 @@ export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">
 		}
 		eq(Object.keys(STAR_DESCRIPTIONS).length, 14, "星曜释义条数 ");
 	});
-	ok("知识源：主题论断库 13 主题均可产出（样本盘，非空且宫名不失配）", () => {
+	ok(`知识源：主题论断库 ${Object.keys(TOPIC_LABEL).length} 主题均可产出（样本盘，非空且宫名不失配）`, () => {
 		// TOPIC_PALACE_NAME 已适配项目宫名口径（「交友宫」而非 iztro 旧口径「仆役」）；
 		// 若口径漂移，getTopicAnalysis 会静默落到「无法找到 xx」的兜底文案 —— 这条断言盯着它
 		const c = generateChart(SAMPLE);
@@ -68,7 +68,7 @@ export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">
 		if (bad.length) {
 			throw new Error(`以下主题产出异常：${bad.join("、")}`);
 		}
-		return "13 主题全部产出";
+		return `${Object.keys(TOPIC_LABEL).length} 主题全部产出`;
 	});
 	ok("论断：四种 view（mingpan/daxian/liunian/liuyue）均可产出", () => {
 		const c = generateChart(SAMPLE);

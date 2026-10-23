@@ -115,7 +115,7 @@ export const STAR_BRIGHTNESS: Record<string, Record<number, string>> = {
  * 断言（要求恰 14 条，且键集合与 iztro 的十四主星一致）。
  *
  * ⚠️ 本表**不参与安星，也不参与格局判定**，只影响文案。增删条目会让 `selftest` 的
- * 「星曜释义条数」断言变红。注意：线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）
+ * 「星曜释义条数」断言变红。注意：线上站点的 14 主星 × 主题论断库（`STAR_DB`）
  * **不在本 skill 内**，别把它和本表混为一谈。
  */
 export const STAR_DESCRIPTIONS: Record<

@@ -13,6 +13,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { generateChart } from "@/algorithm";
+import { TOPIC_LABEL } from "@/analysis";
 import { readAnalyzeJson } from "@/synastry/chart-view";
 import { buildBirthInfo } from "../birth/birth-info";
 import { OPTION_GROUPS } from "../args/table";
@@ -85,8 +86,12 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		} catch (e) {
 			msg = (e as Error).message;
 		}
-		if (!msg.includes("13 个之一")) {
-			throw new Error(`非法主题未指路：${msg || "未报错"}`);
+		// 断言盯「自报数 == 实际键集长度」，不钉字面量（集合基数不写死）：
+		// 写死 13、或干脆不给数，这两种退化都会被这条抓到。
+		const topicKeys = Object.keys(TOPIC_LABEL);
+		const reported = msg.match(/应为 (\d+) 个/);
+		if (!reported || Number(reported[1]) !== topicKeys.length) {
+			throw new Error(`非法主题未按实际键集自报：${msg || "未报错"}`);
 		}
 	});
 	ok("命令面：tianji 域概览与检索（回放链接 + 来源声明）", async () => {

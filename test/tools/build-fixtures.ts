@@ -147,7 +147,7 @@ async function main(): Promise<void> {
 	console.log(`  分歧自检通过：${samples.length} 条抽样与当前内核一致（白名单之外零差异）`);
 
 	// ── 写出：只保留 birthInfo + chart ──
-	// 样本的 `topics`（13 主题解读文本）占单条体积 90%，且由 toolkit 私有的 db-analysis.ts
+	// 样本的 `topics`（各主题解读文本）占单条体积 90%，且由 toolkit 私有的 db-analysis.ts
 	// 生成 —— 本项目刻意不含该文件，无法复现，故一律剔除。单条 62.5KB → 5.4KB（实测 5497 字节）。
 	mkdirSync(OUT_DIR, { recursive: true });
 	const jsonl = samples

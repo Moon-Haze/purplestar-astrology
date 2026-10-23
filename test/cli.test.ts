@@ -1862,7 +1862,7 @@ describe("CLI 端到端", () => {
 	// 旧独立命令 stars / oracle 已并入 knowledge --source（tianji 域同期加入），
 	// 用例全部走 knowledge 路径。
 	describe("knowledge 四域：oracle 域（断语手册）", () => {
-		it("裸调用列出 13 主题与用法", async () => {
+		it("裸调用列出全部主题与用法", async () => {
 			const t = await cliCmd("knowledge", ["--source", "oracle"]);
 			assert.ok(t.includes("career") && t.includes("用法"), "应列主题 key 与用法");
 		});
@@ -1899,7 +1899,28 @@ describe("CLI 端到端", () => {
 				"--topic",
 				"nope",
 			]).catch((e: { stderr?: string }) => e.stderr ?? "");
-			assert.ok(noTopic.includes("13 个之一"), `非法主题应指路，实得：${noTopic}`);
+			// 主题基数**派生**：断言比对「文案自报的数」与实际键集长度，不钉字面量
+			const reported = noTopic.match(/应为 (\d+) 个/);
+			assert.ok(
+				reported && Number(reported[1]) === TOPIC_KEYS.length,
+				`非法主题应按实际键集自报（${TOPIC_KEYS.length}），实得：${noTopic}`
+			);
+			// 交叉断言：knowledge 与 astrology 两条路径自报的主题数必须一致
+			const noTopicAstro = await cliCmd("astrology", [
+				"--date",
+				"1990-05-15",
+				"--branch",
+				"5",
+				"--gender",
+				"male",
+				"--topic",
+				"nope",
+			]).catch((e: { stderr?: string }) => e.stderr ?? "");
+			const reportedAstro = noTopicAstro.match(/应为 (\d+) 个/);
+			assert.ok(
+				reportedAstro && reportedAstro[1] === reported[1],
+				`两条路径自报的主题数应一致，实得：knowledge=${reported?.[1]} astrology=${reportedAstro?.[1]}`
+			);
 			const noStar = await cliCmd("knowledge", [
 				"--source",
 				"oracle",

@@ -2,7 +2,7 @@
  * knowledge 的 **oracle 域**：断语手册检索（原独立 `oracle` 命令已并入，旧命令名不保留）。
  *
  * 数据（`corpus/data/manual/`，4.4MB 分类断语）在函数体内动态 import 懒加载。
- * 三形态：裸（列 13 主题）/ 主题（14 星概览）/ 主题+星（分类断语全展开）
+ * 三形态：裸（列全部主题）/ 主题（十四主星概览）/ 主题+星（分类断语全展开）
  * —— 见 docs/code/cli-commands.md。
  */
 
@@ -88,11 +88,15 @@ export async function renderOracle(args: CliArgs): Promise<string> {
 
 	const { loadTopicOracle } = await import("@/corpus/data/manual/index.ts");
 
-	// 无主题：列 13 主题与用法
+	// 主题基数**派生**而非写死：加主题时文案自动跟上，不必回来改数字。
+	const topicKeys = Object.keys(TOPIC_LABEL);
+	const topicCount = topicKeys.length;
+
+	// 无主题：列全部主题与用法
 	if (!topicRaw) {
 		return [
-			"断语手册检索（13 主题 × 十四主星，分析数据库预计算快照）：",
-			...Object.keys(TOPIC_LABEL).map(k => `  ${k.padEnd(11)} ${TOPIC_LABEL[k as TopicKey]}`),
+			`断语手册检索（${topicCount} 主题 × 十四主星，分析数据库预计算快照）：`,
+			...topicKeys.map(k => `  ${k.padEnd(11)} ${TOPIC_LABEL[k as TopicKey]}`),
 			"",
 			"用法：knowledge --source oracle [--topic <主题>] [--star <星名>]",
 			"  knowledge --source oracle --topic career          # 事业主题 14 主星概览",
@@ -102,7 +106,7 @@ export async function renderOracle(args: CliArgs): Promise<string> {
 	const topic = topicRaw as TopicKey;
 	if (!TOPIC_LABEL[topic]) {
 		throw new Error(
-			`oracle 域的主题应为 13 个之一（${Object.keys(TOPIC_LABEL).join("/")}），收到：${topicRaw}`
+			`oracle 域的主题应为 ${topicCount} 个之一（${topicKeys.join("/")}），收到：${topicRaw}`
 		);
 	}
 	const oracle = await loadTopicOracle(topic);

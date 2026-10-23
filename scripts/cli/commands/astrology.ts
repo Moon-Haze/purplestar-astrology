@@ -575,7 +575,7 @@ export function cmdAstrology(args: CliArgs) {
 		return out.join("\n");
 	}
 
-	// --topic：主题论断。不带值（或裸开关）= 列 13 主题清单。
+	// --topic：主题论断。不带值（或裸开关）= 列全部主题清单。
 	if (args.topic !== undefined) {
 		if (args.json) {
 			throw new Error(

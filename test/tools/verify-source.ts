@@ -73,7 +73,7 @@ function shardPath(year: number, month: number): string {
  * 把 jsonl 的一行裁剪成基准样本。
  *
  * 与 `build-fixtures.ts` 写盘时的裁剪规则**必须一致**：顶层只留 `birthInfo` 与 `chart`。
- * 样本的 `topics`（13 主题解读文本）占单条体积 90%，且由 toolkit 私有的 db-analysis.ts
+ * 样本的 `topics`（各主题解读文本）占单条体积 90%，且由 toolkit 私有的 db-analysis.ts
  * 生成，本项目刻意不含该文件 —— 基准与互验两侧都剔除它才比得起来。
  */
 function trim(raw: { birthInfo: BirthInfo; chart: unknown }): BaselineSample {
