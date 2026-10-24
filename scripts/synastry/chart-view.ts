@@ -31,11 +31,11 @@
  *
  * ## 为什么地支名在这里自写一份
  *
- * 源的 `constants.ts` 也有 `BRANCHES`，但那是**运行期**导入（值是数组）——
+ * 源的 `data/ganzhi.ts` 也有 `BRANCHES`，但那是**运行期**导入（值是数组）——
  * 引它会把 500 多行的常量表（四化表、星曜释义、时辰对照）整份拖进本 skill。
  * 地支名是**永不变化的宇宙常量**（子丑寅卯…），不是会漂移的排盘逻辑，故自带 12 个字
  * 比拖一整份内核划算。⚠️ 这是**自有的常量**，不是「漏了同步的副本」——
- * 改 `constants.ts` 的 `BRANCHES` 时**不需要**同步这里（两者不会同时被读到：
+ * 改 `data/ganzhi.ts` 的 `BRANCHES` 时**不需要**同步这里（两者不会同时被读到：
  * 本 skill 的盘是从 JSON 来的，地支索引与名字的对应关系由排盘方保证）。
  *
  * 「消费方契约自带」的三条论证（为何不 import 源的 types.ts / render.ts）、
@@ -48,7 +48,7 @@ import { readFileSync } from "node:fs";
  * 十二地支，数组下标即全项目的**地支索引**（0=子、1=丑 … 11=亥）。
  *
  * @remarks
- * 与源的 `constants.ts` 同名同值，理由见文件头。这里只用于把 `Palace.branch`
+ * 与源的 `data/ganzhi.ts` 同名同值，理由见文件头。这里只用于把 `Palace.branch`
  * 渲染成「夫妻宫 卯」里的那个「卯」。
  */
 const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
@@ -89,7 +89,7 @@ export interface BirthInfo {
 /** 一颗星 —— 本 skill 只看名字与类别。 */
 export interface Star {
 	name: string;
-	/** `"major"` 即十四主星；其余三类（minor / lucky / sha）本 skill 不区分 */
+	/** `"major"` 即十四主星；其余三类（内核字面量 minor / soft / tough）本 skill 不区分 */
 	type: "major" | "minor" | "soft" | "tough";
 }
 

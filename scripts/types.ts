@@ -93,8 +93,10 @@ export interface LunarInfo {
 /**
  * 四化类型 —— 禄 / 权 / 科 / 忌。
  *
- * ⚠️ 本项目只认**生年干四化**（倪师《天纪》：四化星永远固定不动）；大限四化取宫干、
- * 宫干自化等飞星派口径已主动下线，见仓库根 `CLAUDE.md` 与 docs/code/chart-kernel.md。
+ * ⚠️ 体系口径（文墨排盘 + 倪师论断）：生年四化取**农历年干**（四化星永远固定不动）；
+ * 大限宫干四化走 `mutagen.ts` 的纯函数层（`getDaXianMutagen`），**不落进 `Decadal`
+ * 结构**；宫干自化与来因宫（飞星派口径）禁用。红线与绊线见仓库根 `AGENTS.md`
+ * 与 docs/code/chart-kernel.md。
  */
 export type Mutagen = "禄" | "权" | "科" | "忌";
 
@@ -165,11 +167,11 @@ export interface Palace {
 	 * ⚠️ `ZiweiChart.palaces` 数组**不是**按此值升序排的，见 {@link ZiweiChart.palaces}。
 	 */
 	branch: number;
-	/** 宫干（天干索引 0–9），直接取自 iztro 的 `heavenlyStem`；本项目仅用于展示，**不用它做四化** */
+	/** 宫干（天干索引 0–9），直接取自 iztro 的 `heavenlyStem`；展示用，且供 `getDaXianMutagen` 查大限宫干四化（纯函数层，不落盘字段） */
 	stem: number;
 	/**
 	 * 宫名，一律为**本项目口径**（如「交友宫」，而非 iztro 的「仆役」）。
-	 * 映射表见 `constants.ts` 的 `IZTRO_TO_PROJECT_PALACE`；未命中会抛错，不会回退原名。
+	 * 映射表见 `data/ganzhi.ts` 的 `IZTRO_TO_PROJECT_PALACE`；未命中会抛错，不会回退原名。
 	 */
 	name: string;
 	/** 本宫全部星曜，顺序固定为：主星 → 次星（iztro `minorStars`）→ 杂曜（`adjectiveStars`） */

@@ -35,7 +35,7 @@ import { wenmoStarBrightness } from "./wenmo-brightness";
  * @throws 当 `IZTRO_TO_PROJECT_PALACE` 未覆盖该宫名时
  *
  * @remarks
- * 映射表在 `constants.ts` 的 `IZTRO_TO_PROJECT_PALACE`。
+ * 映射表在 `data/ganzhi.ts` 的 `IZTRO_TO_PROJECT_PALACE`。
  *
  * ⚠️ 未命中时**抛错，不回退到原名** —— 宫名是十二宫一览、`--focus`、三方四正、大限、
  *    格局判定的公共索引，错一个名字就是错一片下游。理由见 docs/code/chart-kernel.md。
@@ -45,7 +45,7 @@ function projectPalaceName(iztroName: string): string {
 	if (!mapped) {
 		throw new Error(
 			`未知的 iztro 宫名「${iztroName}」—— IZTRO_TO_PROJECT_PALACE 未覆盖。` +
-				`若 iztro 改了宫名口径，请同步 scripts/constants.ts 的映射表` +
+				`若 iztro 改了宫名口径，请同步 scripts/data/ganzhi.ts 的映射表` +
 				`（并同步 PALACE_NAMES_ORDER 与 test/lib/compare.ts 的说明）。`
 		);
 	}

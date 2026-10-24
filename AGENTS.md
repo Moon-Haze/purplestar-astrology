@@ -74,12 +74,13 @@ npm run pack
 
 ### 分发：`npm run pack` 打 zip（`scripts/` 不拍平）
 
-产物 `dist/purplestar-astrology.zip`（约 1.2 MB / 131 条目），只含
+产物 `dist/purplestar-astrology.zip`（约 1.2 MB；条目数以 `npm run pack` 实跑自报为准），只含
 `SKILL.md` `package.json` `references/` `scripts/` 四项，顶层目录 `purplestar-astrology/`。
 `dist/` 在 `.gitignore` 内。
 
 ⚠️ **不要为了「目录扁平」去拍平 `scripts/`**：内核定位走 `boot-hooks` 的 `pickRoot`
-（脚本自身所在目录），与目录层级**无关**。实测拍平前后 selftest 都是 160/160。
+（脚本自身所在目录），与目录层级**无关**。实测拍平前后 selftest 都是全绿
+（项数以 selftest 首行自报为准，勿以文档数字为验收标准）。
 拍平反而要重写**数百处** import 与动态 `load()` 字面量（不写死数字，随代码增长）—— 收益零、风险全是：
 `load<>("@/x")` 是**字符串字面量**不是 import 语句，正则抓不到，
 漏改的症状是「产物启动即无法加载 @/cli/dispatch」（而仓库 typecheck/selftest 全绿）。

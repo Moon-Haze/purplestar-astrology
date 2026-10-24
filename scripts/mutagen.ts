@@ -7,7 +7,7 @@
  * ⚠️ 体系红线：本模块**不含宫干自化与来因宫**（飞星派工具，继续禁用）；
  *    `types.ts` 的绊线字段刻意保留为「留着但不填」，大限宫干四化走纯函数层、
  *    **不往 `Decadal` 上加字段**。六层清单、混合口径与红线的完整论证见
- *    docs/code/chart-kernel.md，体系立场另见仓库根 `CLAUDE.md` 与 `SKILL.md`。
+ *    docs/code/chart-kernel.md，体系立场另见仓库根 `AGENTS.md` 与 `SKILL.md`。
  *
  * @packageDocumentation
  */
@@ -25,7 +25,7 @@ import { STEMS } from "@/data/ganzhi";
  * @returns 四化类型到星名的映射，键固定为 禄 / 权 / 科 / 忌
  *
  * @remarks
- * 表在 `constants.ts` 的 `SI_HUA_TABLE`，按天干索引取第 0–3 位。
+ * 表在 `data/sihua.ts` 的 `SI_HUA_TABLE`，按天干索引取第 0–3 位。
  *
  * ⚠️ 索引越界时返回**四项皆为空串**的记录而**不抛错**（与 `projectPalaceName` 未命中即抛错
  *    是相反的取舍）—— 调用方靠空串自然短路。取舍理由见 docs/code/chart-kernel.md。
