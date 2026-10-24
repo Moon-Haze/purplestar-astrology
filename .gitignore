@@ -31,6 +31,9 @@ db/ziwei.duckdb*
 # ── 分发产物（tools/pack.ts 生成）──────────────────────────────────
 dist/
 
+# ── 生成文档（tools/cli-samples.ts 随用随生，6e6e9ad 起不入版本控制）──
+docs/cli-samples.md
+
 # ── 系统垃圾 / 本地工具产物 ───────────────────────────────
 .DS_Store
 *.log
@@ -39,3 +42,4 @@ npm-debug.log*
 html/
 package-lock.json
 .Trash-**
+.**test/

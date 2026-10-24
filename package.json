@@ -12,6 +12,7 @@
 		"bench:startup": "tsx tools/bench/startup.ts",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"review": "tsx tools/review-gate.ts",
+		"cli-samples": "tsx tools/cli-samples.ts",
 		"lint": "eslint scripts/ tools/ test/",
 		"lint:fix": "eslint scripts/ tools/ test/ --fix",
 		"format": "prettier --write scripts/ tools/ test/"

@@ -8,10 +8,10 @@
 // 3 秒的 node + iztro 冷启动），把输出 / 错误 / 退出码 / 耗时**流式**渲染成
 // markdown 打到 stdout。
 //
-// 用法（仓库根执行）：
-//   npx tsx tools/cli-samples.ts                              # markdown 打到终端
-//   npx tsx tools/cli-samples.ts --out docs/cli-samples.md    # 直接落盘成 markdown 文件
-//   npx tsx tools/cli-samples.ts -h                           # 本帮助
+// 用法（仓库根执行；npm run 传参需 `--` 分隔）：
+//   npm run cli-samples                                       # markdown 打到终端
+//   npm run cli-samples -- --out docs/cli-samples.md          # 直接落盘成 markdown 文件
+//   npm run cli-samples -- -h                                 # 本帮助
 //
 // 落盘走 --out：写点收敛在 scripts/cli/host/out.ts 的 writeOutFile（路径 `..` 段校验在同一处），
 // 与主 CLI 的 `--out` 同一通道；正文不再占 stdout，进度日志走 stderr，不污染文档。
@@ -926,7 +926,7 @@ const SAMPLES: Sample[] = [
 // ── 主流程：样例执行就地内联，渲染行经 emit 输出（见文件头「结构说明」）──
 async function main(): Promise<void> {
 	if (process.argv.includes("-h") || process.argv.includes("--help")) {
-		console.log("用法：npx tsx tools/cli-samples.ts [--out docs/cli-samples.md]");
+		console.log("用法：npm run cli-samples [-- --out docs/cli-samples.md]");
 		console.log("  markdown 打到 stdout，或 --out 直接落盘（覆盖写，末尾恰一个换行）。");
 		console.log("  进度日志走 stderr，不污染文档。");
 		console.log("  退出码 0 = 全部样例退出码符合预期；1 = 有意外（明细在文档「汇总」节）。");
