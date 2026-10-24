@@ -4,11 +4,11 @@
 
 import type { ZiweiChart } from "@/types";
 import { STEMS, BRANCHES } from "@/data/ganzhi";
-import { getYearlyMutagen, getYearStemIndex } from "@/mutagen";
+import { getYearlyMutagen, getYearStemIndex, getNativeMutagen } from "@/mutagen";
 import { surroundBranches } from "@/palace-relations";
 import { renderPalace, surroundNames } from "../chart/render";
 import { yearlyBranchOf } from "./primitives";
-import { huiZhaoLine, nativeSiHuaOf, sameStarPairs, sihuaLines } from "./sihua-helpers";
+import { huiZhaoLine, sameStarPairs, sihuaLines } from "./sihua-helpers";
 
 /**
  * `--liunian [年]`：流年专题 —— 流年命宫（年支宫）→ 流年三方四正会照 →
@@ -56,7 +56,7 @@ export function yearlySection(chart: ZiweiChart, year: number): string[] {
 					: `流年命宫**不入**大限三方四正（${dxSanFangNames}）—— 流年独立于限运看`)
 		);
 	}
-	const pairs = sameStarPairs(chart, nativeSiHuaOf(chart), liuNian.transforms);
+	const pairs = sameStarPairs(chart, getNativeMutagen(chart).transforms, liuNian.transforms);
 	if (pairs.length) {
 		out.push("生年 × 流年同星引动：");
 		for (const p of pairs) {

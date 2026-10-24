@@ -15,9 +15,6 @@ export const booksSource: KnowledgeSource = {
 	id: "books",
 	label: "古籍",
 	search(args: CliArgs): string {
-		if (typeof args.search === "boolean") {
-			return "--search 需要一个检索词（如 --search 机月同梁）。";
-		}
 		if (!args.search && !args._.length) {
 			return [
 				"知识检索四域：books 古籍（默认）· stars 星曜释义 · tianji 天纪判语 · oracle 断语手册",
@@ -32,17 +29,8 @@ export const booksSource: KnowledgeSource = {
 			].join("\n");
 		}
 		const q = String(args.search ?? args._.join(" "));
-		const limit = Number(args.limit ?? 15);
-		// 非法上限必须在这里拦下：内核把 NaN / <1 一律归成空结果，若不区分就会掉进
-		// 下面那条「未找到」——明明有命中，只是把上限设成了 0 或写成了非数字。
-		//
-		// `typeof ... === "boolean"` 那一支是裸写 `--limit`（没跟值）的第二道防线。
-		// 值域非法走 throw（引导层打「错误：」并 exit 1），与命令其它 throw 行为一致，
-		// 不再走 return——return 会把报错当正常输出打 stdout 且 exit 0，机器路径无法感知。
-		if (typeof args.limit === "boolean" || Number.isNaN(limit) || limit < 1) {
-			throw new Error(`--limit 需为正整数，实得 ${String(args.limit)}。`);
-		}
-		const hits = searchClassics(q, limit);
+		// 值域合法性由入口守卫保证（assertKnowledgeArgs），这里只做类型收窄。
+		const hits = searchClassics(q, Number(args.limit ?? 15));
 		if (!hits.length) {
 			return `古籍中未找到「${q}」。`;
 		}

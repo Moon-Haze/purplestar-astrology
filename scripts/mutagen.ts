@@ -38,6 +38,31 @@ export function getMutagenByStem(stemIndex: number): Record<Mutagen, string> {
 	return { 禄: arr[0], 权: arr[1], 科: arr[2], 忌: arr[3] };
 }
 
+// ─── 1b) 生年四化（chart 适配层） ──────────────────────────────
+/**
+ * 生年四化：从命盘取**农历年干**（`chart.lunarInfo.yearStem`），再查其四化。
+ *
+ * @param chart - 命盘（`algorithm` 的产物）
+ * @returns 年干索引、年干名与四化四星
+ *
+ * @remarks
+ * ⚠️ **生年四化必须用农历年干，不可用公历取模**（{@link getYearStemIndex} 只服务流年）：
+ *    1–2 月出生者两者的年干会相差一位，走错口径会让【生年四化】与宫详表自相矛盾。
+ *    该红线的 chart 适配收进本函数，与流年层的警告同址 —— `test/cli.test.ts` 盯着这条。
+ */
+export function getNativeMutagen(chart: ZiweiChart): {
+	stemIndex: number;
+	stemName: string;
+	transforms: Record<Mutagen, string>;
+} {
+	const stemIndex = chart.lunarInfo.yearStem;
+	return {
+		stemIndex,
+		stemName: STEMS[stemIndex] ?? "",
+		transforms: getMutagenByStem(stemIndex),
+	};
+}
+
 // ─── 2) 公历年 → 年柱天干索引 ──────────────────────────────────
 /**
  * 公历年份 → 年柱天干索引。

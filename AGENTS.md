@@ -144,11 +144,10 @@ npm run pack
     │   ├── fortune.ts               运限专题（流年/大限/小限/信息/格局/四化/聚焦各节）
     │   ├── report.ts                --report 全盘主题报告的文档装配层
     │   └── synastry.ts              合盘命令（--charts 输入）
-    ├── cli/knowledge/               知识检索命令（四域合一：books 古籍 / stars 星曜 /
-    │   ├── index.ts                 tianji 天纪 / oracle 断语；原 classics 改名）
-    │   ├── oracle.ts                ⚠️ 本目录与 `cli/commands/` **平级**，非其子目录
-    │   ├── stars.ts
-    │   └── tianji.ts
+    ├── cli/knowledge/               知识检索命令入口（四域合一：books 古籍 / stars 星曜 /
+    │   └── index.ts                 tianji 天纪 / oracle 断语；前置守卫 + 注册表分发，
+    │                                四域渲染实现住 knowledge/sources/「实现即插件」
+    │                                ⚠️ 本目录与 `cli/commands/` **平级**，非其子目录
     ├── cli/host/                    宿主装配（引导层按需加载的端口）
     │   ├── dispatch.ts              argv → { code, out, err, outFile } 的分发协议（唯一真相源）
     │   └── out.ts                   --out 落盘通道（与 stdout 产物逐字对拍）

@@ -284,11 +284,12 @@ export function readAnalyzeJson(file: string, side: string): AnalyzeJson {
 		);
 	}
 
-	const located = (o.nativeSiHua as { located?: unknown } | undefined)?.located;
-	if (!Array.isArray(located)) {
+	const nativeSiHua = o.nativeSiHua as { stem?: unknown; located?: unknown } | undefined;
+	const located = nativeSiHua?.located;
+	if (typeof nativeSiHua?.stem !== "string" || !Array.isArray(located)) {
 		throw new Error(
-			`${side}方命盘文件缺 \`nativeSiHua.located\`（生年四化落宫）：${file}\n` +
-				`  「四化入夫妻宫」一节依赖它，缺了会静默少一节结论。请用 \`astrology --json\` 重新生成。`
+			`${side}方命盘文件缺 \`nativeSiHua\`（生年四化年干与落宫）：${file}\n` +
+				`  「四化入夫妻宫」一节依赖落宫，年干用于口径提示；缺了会静默少结论。请用 \`astrology --json\` 重新生成。`
 		);
 	}
 

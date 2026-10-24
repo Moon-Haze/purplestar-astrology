@@ -2,7 +2,7 @@
 
 本篇覆盖 `scripts/knowledge/`：`types.ts`（`KnowledgeSource` 接缝）·
 `registry.ts`（声明式注册表）· `sources/books.ts` / `sources/stars.ts` /
-`sources/tianji.ts` / `sources/oracle.ts`（四域包装）。
+`sources/tianji.ts` / `sources/oracle.ts`（四域「实现即插件」）。
 
 收录的是这些文件里 **B 类模块头论文**与 **C 类 ⚠️ 防呆警告**的原文；A 类 TSDoc 契约与
 D 类口径锁留在源码。分类判据见 [README.md](README.md)。
@@ -18,8 +18,9 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > = 写一个 `KnowledgeSource` 文件 + 在 registry 加一行，不必改 CLI 分发入口
 > （ADR-002：清单注册而非文件系统自动发现）。
 >
-> `search` 签名刻意保持与现有 `renderBooks`/`renderStars`/`renderTianji`/`renderOracle`
-> 一致（`(args: CliArgs) => string | Promise<string>`），让迁移零改行为。
+> `search` 收原始 `CliArgs`：`--search` 三态与 `--limit` 校验由命令入口守卫单点承担
+> （`cli/knowledge/index.ts` 的 `assertKnowledgeArgs`），位置参数回退是域知识、留在各域
+> 实现内（books/stars/tianji 回退为检索词，oracle 回退为 topic/star）。
 >
 > `citations` 是引文核对表的扩展点占位：Phase 3（SchoolAdapter + 按流派引文守卫）落地时，
 > 把 `corpus/annotations.ts` 的全局核对表收进各源，并按流派分派。Phase 1 不填充它，
@@ -36,46 +37,45 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > `COMMAND_TABLE` 哲学一致）。新增一个域 = 写一个 `sources/<id>.ts` + 下面加一行，
 > 不必改 `cli/knowledge/index.ts`。
 >
-> 懒加载纪律：tianji / oracle 两域的实现在 `search` 内 `await import` 重数据，注册表
-> 静态 import 这些包装模块（轻量）不会把 392KB / 4.4MB 数据拉进 CLI 启动。
+> 懒加载纪律：tianji / oracle 两域的重语料（392KB / 4.4MB）在各自 `search` 体内
+> `await import`，注册表静态 import 的源模块本身是轻的，不会把重数据拉进 CLI 启动。
+> 四域是「实现即插件」形态：渲染逻辑直接住在 `sources/<id>.ts`，无转发壳。
 
 ⚠️ `KNOWLEDGE_SOURCES` 的**键序即概览列出与报错提示的顺序**；`KNOWLEDGE_SOURCE_IDS`
 是键集合的单一真相源，CLI 报错提示与自检断言复用它，**不手抄字符串**。
 
 ---
 
-## 三、`sources/`：四域包装
+## 三、`sources/`：四域「实现即插件」
 
 ### 3.1 `books.ts`：默认域，无懒加载顾虑
 
 > knowledge 的 **books 域**：古籍原文检索（默认域）。
 >
-> 从 `cli/knowledge/index.ts` 的 `renderBooks` 迁来（Phase 1 · KnowledgeSource 接缝），
-> 逻辑逐字不变，仅改为 `KnowledgeSource` 形态。books 域静态引 `@/corpus`（古籍数据
-> 已静态打包进代码，零 DB 依赖），启动无懒加载顾虑。
+> books 域静态引 `@/corpus`（古籍数据已静态打包进代码，零 DB 依赖），启动无懒加载顾虑。
+> `--search` 三态与 `--limit` 校验由命令入口守卫单点承担，本域只做检索渲染。
 
-### 3.2 `stars.ts`：薄包装，数据来自内核轻表
+### 3.2 `stars.ts`：内核轻表，静态 import
 
-> knowledge 的 **stars 域**：星曜释义（Phase 1 · KnowledgeSource 接缝）。
+> knowledge 的 **stars 域**：星曜释义（实现即插件：渲染逻辑与注册形态同址，无转发壳）。
 >
-> 实现复用 `cli/knowledge/stars.ts` 的 `renderStars`（薄包装，数据来自内核轻表
-> `STAR_DESCRIPTIONS`，静态 import 不影响启动）。本文件只把它包成 `KnowledgeSource`。
+> 数据是内核轻表（`STAR_DESCRIPTIONS`），静态 import 不影响启动。位置参数与 `--search`
+> 等价（与 books 域同款回退）。
 
 ### 3.3 `tianji.ts`：懒加载 392KB 语料
 
-> knowledge 的 **tianji 域**：天纪判语检索（Phase 1 · KnowledgeSource 接缝）。
+> knowledge 的 **tianji 域**：天纪判语检索（实现即插件，无转发壳）。
 >
-> 实现复用 `cli/knowledge/tianji.ts` 的 `renderTianji`。本文件只把它包成 `KnowledgeSource`，
-> 并保持**懒加载纪律**：`renderTianji` 内部 `await import("@/corpus/data/tianji")`（392KB
-> 语料）只在查询时加载，本包装模块本身不静态引重数据，CLI 主链路不吃它。
+> **懒加载纪律**：`corpus/data/tianji.ts`（392KB、1125 条）在 `search` 体内
+> `await import("@/corpus/data/tianji")`，只在查询时加载，本模块被 registry 静态
+> import 也不把语料拉进 CLI 主链路。
 
 ### 3.4 `oracle.ts`：懒加载 4.4MB 断语
 
-> knowledge 的 **oracle 域**：断语手册检索（Phase 1 · KnowledgeSource 接缝）。
+> knowledge 的 **oracle 域**：断语手册检索（实现即插件，无转发壳）。
 >
-> 实现复用 `cli/knowledge/oracle.ts` 的 `renderOracle`。本文件只把它包成 `KnowledgeSource`，
-> 并保持**懒加载纪律**：`renderOracle` 内部 `await import("@/corpus/data/manual/index.ts")`
-> （4.4MB 分类断语）只在查询时加载，本包装模块本身不静态引重数据，CLI 主链路不吃它。
+> **懒加载纪律**：`corpus/data/manual/`（4.4MB 分类断语）在 `search` 体内
+> `await import("@/corpus/data/manual/index.ts")`，只在查询时加载，CLI 主链路不吃它。
 
 ---
 

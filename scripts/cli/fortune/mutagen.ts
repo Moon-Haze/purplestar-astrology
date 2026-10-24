@@ -6,13 +6,14 @@
 import type { ZiweiChart } from "@/types";
 import { STEMS, BRANCHES } from "@/data/ganzhi";
 import {
+	getNativeMutagen,
 	getYearlyMutagen,
 	getMonthlyMutagen,
 	getDaXianMutagen,
 	getDailyMutagen,
 	getHourlyMutagen,
 } from "@/mutagen";
-import { nativeSiHuaOf, sameStarPairs, sihuaLines } from "./sihua-helpers";
+import { sameStarPairs, sihuaLines } from "./sihua-helpers";
 
 /**
  * `--mutagen` 的取数选项。
@@ -47,11 +48,11 @@ export interface MutagenSectionOptions {
  */
 export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions): string[] {
 	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour } = options;
-	const native = nativeSiHuaOf(chart);
+	const native = getNativeMutagen(chart);
 	const liuNian = getYearlyMutagen(liuNianYear);
 
-	const out = [`【生年四化】年干 ${STEMS[chart.lunarInfo.yearStem]}`];
-	out.push(...sihuaLines(chart, native));
+	const out = [`【生年四化】年干 ${native.stemName}`];
+	out.push(...sihuaLines(chart, native.transforms));
 
 	// 大限四化：大限宫的宫干查四化表（文墨排盘口径）。童限未起运时无宫干可取。
 	out.push("");
@@ -108,7 +109,7 @@ export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions
 			}
 		}
 	}
-	const pairs = sameStarPairs(chart, native, liuNian.transforms);
+	const pairs = sameStarPairs(chart, native.transforms, liuNian.transforms);
 	if (pairs.length) {
 		out.push("");
 		out.push("【生年 × 流年 同星引动】");

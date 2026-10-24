@@ -47,6 +47,7 @@ describe("内核对外契约（冻结 @ 2026-10-12）", () => {
 		for (const name of [
 			"getYearStemIndex",
 			"getMutagenByStem",
+			"getNativeMutagen",
 			"getYearlyMutagen",
 			"getMonthlyMutagen",
 			"getDaXianMutagen",
@@ -57,6 +58,9 @@ describe("内核对外契约（冻结 @ 2026-10-12）", () => {
 		}
 		assert.equal(sihua.getMutagenByStem.length, 1, "getMutagenByStem 签名应为 (stemIndex)");
 		assert.equal(sihua.getYearStemIndex.length, 1, "getYearStemIndex 签名应为 (year)");
+		// 生年层的 chart 适配收进内核（原 cli/fortune 的 nativeSiHuaOf）：签名 (chart)、
+		// 返回与六层同形（stemIndex / stemName / transforms）—— 年干取 lunarInfo.yearStem。
+		assert.equal(sihua.getNativeMutagen.length, 1, "getNativeMutagen 签名应为 (chart)");
 	});
 
 	it("亮度查询在契约面", () => {

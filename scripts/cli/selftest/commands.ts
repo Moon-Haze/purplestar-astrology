@@ -50,9 +50,15 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		}
 	});
 	ok("命令面：knowledge books 域 --search 末尾缺值同样指路", async () => {
-		const s = await cmdKnowledge(parseArgs(["--limit", "3", "--search"], "knowledge"));
-		if (!s.includes("需要一个检索词")) {
-			throw new Error(`缺值未指路，输出：${s.slice(0, 40)}`);
+		// 四域缺值语义一致（入口守卫统一 throw）：books 域不再走 return 把报错打 stdout。
+		let msg = "";
+		try {
+			await cmdKnowledge(parseArgs(["--limit", "3", "--search"], "knowledge"));
+		} catch (e) {
+			msg = (e as Error).message;
+		}
+		if (!msg.includes("需要一个检索词")) {
+			throw new Error(`缺值未指路（应 throw），实得：${msg || "未报错"}`);
 		}
 	});
 	ok("命令面：oracle 域三形态（列主题 / 主题概览 / 单星展开）与非法主题指路", async () => {

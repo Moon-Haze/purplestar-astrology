@@ -4,11 +4,11 @@
 
 import type { ZiweiChart } from "@/types";
 import { STEMS, BRANCHES } from "@/data/ganzhi";
-import { getYearStemIndex, getDaXianMutagen } from "@/mutagen";
+import { getYearStemIndex, getDaXianMutagen, getNativeMutagen } from "@/mutagen";
 import { surroundBranches } from "@/palace-relations";
 import { renderPalace, surroundNames } from "../chart/render";
 import { agePalaceOf, yearlyBranchOf } from "./primitives";
-import { huiZhaoLine, nativeSiHuaOf, sihuaLines } from "./sihua-helpers";
+import { huiZhaoLine, sihuaLines } from "./sihua-helpers";
 
 /**
  * `--daxian [虚岁]`：大限（十年大运）专题 —— 十二年运时间轴 → 指定岁所在限深入
@@ -62,8 +62,8 @@ export function decadalSection(chart: ZiweiChart, age: number): string[] {
 
 	out.push("");
 	out.push("生年四化落点（★ = 落大限三方四正）：");
-	const native = nativeSiHuaOf(chart);
-	out.push(...sihuaLines(chart, native, sanFang));
+	const native = getNativeMutagen(chart);
+	out.push(...sihuaLines(chart, native.transforms, sanFang));
 
 	// 大限宫干四化（文墨排盘口径）：本限宫干查四化表，落宫照会照本限三方标 ★。
 	// 三合派论断框架（宫位移动 + 生年四化会照）保持不变，此节是排盘展示层的追加。

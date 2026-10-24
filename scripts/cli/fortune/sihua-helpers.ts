@@ -5,7 +5,6 @@
  */
 
 import type { ZiweiChart, Mutagen } from "@/types";
-import { getMutagenByStem } from "@/mutagen";
 import { locateSihua } from "../chart/render";
 
 /**
@@ -63,15 +62,6 @@ export function sihuaLines(
  */
 export function huiZhaoLine(chart: ZiweiChart, sanFang: number[]): string {
 	return `  会照主星：${huiZhaoMajors(chart, sanFang).join("、") || "（无主星会照）"}`;
-}
-
-/**
- * 生年四化（农历年干口径，与盘面 mutagen 同源）。
- *
- * @remarks 与 cmdAnalyze 的既有口径一致：取 `chart.lunarInfo.yearStem`，不可用公历取模。
- */
-export function nativeSiHuaOf(chart: ZiweiChart) {
-	return getMutagenByStem(chart.lunarInfo.yearStem);
 }
 
 /**

@@ -4,12 +4,12 @@
 
 import type { ZiweiChart } from "@/types";
 import { BRANCHES } from "@/data/ganzhi";
-import { getYearlyMutagen } from "@/mutagen";
+import { getYearlyMutagen, getNativeMutagen } from "@/mutagen";
 import { surroundBranches, oppositeBranch } from "@/palace-relations";
 import { detectPatterns } from "@/patterns";
 import { FOCUS_ALIASES, locateSihua, renderPalace, starLine } from "../chart/render";
 import { agePalaceOf, yearlyBranchOf } from "./primitives";
-import { huiZhaoMajors, nativeSiHuaOf } from "./sihua-helpers";
+import { huiZhaoMajors } from "./sihua-helpers";
 
 /**
  * `--focus <宫>`：宫盘分析专题 —— 目标宫详表 + 对宫 + 三方四正会照星曜 +
@@ -85,8 +85,8 @@ export function focusSection(chart: ZiweiChart, focusRaw: string, liuNianYear: n
 
 	out.push("");
 	out.push("四化落宫：");
-	const native = nativeSiHuaOf(chart);
-	const nativesHere = locateSihua(chart, native).filter(x => x.palace === target.name);
+	const native = getNativeMutagen(chart);
+	const nativesHere = locateSihua(chart, native.transforms).filter(x => x.palace === target.name);
 	if (nativesHere.length) {
 		for (const x of nativesHere) {
 			out.push(`  生年化${x.hua} ${x.star} 落此宫`);
