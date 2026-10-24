@@ -20,7 +20,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 本接口**不持有**任何亮度表 / 四化表 / 论断文案的副本——那些是冻结内核（`wenmo-brightness.ts` /
 > `mutagen.ts` / `corpus/data/*`）的专属数据，插件只**引用**它们：
 >
-> - `defaultBrightnessSchool` 只记录冻结内核的默认流派（"XD2"），**不在适配器里改内核状态**；
+> - 冻结内核的默认亮度流派是内核侧事实，适配器不以镜像字段记录它、更不改内核状态；
 > - `citationRoots[].checklist` 直接引用内核的 `ANNOTATIONS`（全局唯一核对表），**不另存一份**，
 >   避免副本漂移——这正是 ADR-004「核对表随插件走」的落地方式（引用走，不是复制走）。
 >   适配器是**声明式口径**：声明自己是谁、禁什么、扫哪、对哪份核对表负责。
@@ -77,8 +77,8 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 >
 > ⚠️ **引用而非迁移**（守住 0C 冻结红线）：
 >
-> - `defaultBrightnessSchool: "XD2"` 只是引用冻结内核 `wenmo-brightness.ts` 的默认流派常量，
->   **不**在本文件调用 `setBrightnessSchool`（不改内核运行时状态）；
+> - 冻结内核的默认亮度流派（wenmo-brightness.ts 默认即 XD2）是内核侧事实，
+>   适配器不镜像记录、也不调用 `setBrightnessSchool`（不改内核运行时状态）；
 > - `citationRoots[].checklist` 直接 import 内核的 `ANNOTATIONS`（全局唯一核对表），
 >   **不**复制一份——避免核对表副本漂移；
 > - `scanRoot` 解析到本 skill 的 `scripts/`，与 `citations.test.ts` 原扫根完全一致，覆盖零退化。

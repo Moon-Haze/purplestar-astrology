@@ -75,13 +75,20 @@
 插件 SHALL **引用**内核数据（亮度表、四化表、引文核对表），SHALL NOT 持有副本。
 副本必然随内核演进而漂移。
 
-落地方式：`SchoolAdapter.citationRoots[].checklist` 直接引用内核的全局唯一 `ANNOTATIONS`；
-`defaultBrightnessSchool` 只**记录**冻结内核的默认流派，不在适配器里改内核状态。
+落地方式：`SchoolAdapter.citationRoots[].checklist` 直接引用内核的全局唯一 `ANNOTATIONS`。
+冻结内核的默认亮度流派属内核侧事实，适配器 SHALL NOT 以镜像字段记录它，
+更不得修改内核模块状态；适配器只声明流派自己的内容与纪律（扫描根、核对表、
+禁用特征），内核默认值不进入适配器接口。
 
 #### Scenario: 适配器持有副本
 
 - **WHEN** 适配器自行复制一份亮度表或核对表
 - **THEN** 违反 ADR-004；应改为引用，否则副本与内核漂移
+
+#### Scenario: 适配器镜像内核默认值
+
+- **WHEN** 适配器接口出现「记录内核默认流派 / 默认框架」的镜像字段
+- **THEN** 视为假想接缝的冗余声明——内核默认值留在内核侧，适配器接口收窄为流派自有事实；字段应删除而非继续零消费地保留
 
 ### Requirement: 体系立场随适配器声明
 

@@ -8,7 +8,7 @@
  * ⚠️ **引用而非迁移（守住 Phase 0 冻结内核契约 0C 的红线）**：
  * 本接口**不持有**任何亮度表 / 四化表 / 论断文案的副本——那些是冻结内核（`wenmo-brightness.ts` /
  * `mutagen.ts` / `corpus/data/*`）的专属数据，插件只**引用**它们：
- * - `defaultBrightnessSchool` 只记录冻结内核的默认流派（"XD2"），**不在适配器里改内核状态**；
+ * - 冻结内核的默认亮度流派是内核侧事实，适配器不以镜像字段记录它、更不改内核状态；
  * - `citationRoots[].checklist` 直接引用内核的 `ANNOTATIONS`（全局唯一核对表），**不另存一份**，
  *   避免副本漂移——这正是 ADR-004「核对表随插件走」的落地方式（引用走，不是复制走）。
  * 适配器是**声明式口径**：声明自己是谁、禁什么、扫哪、对哪份核对表负责。
@@ -16,11 +16,14 @@
  * 接缝由来（架构文档 §4.3）与多流派隔离设计，见 docs/code/school.md。
  */
 
-import type { BrightnessSchool } from "../wenmo-brightness";
 import type { AnnotationEntry } from "../corpus/data/annotations";
 
-/** 流派 id。当前仅 `wenmo-nishi`（默认），新流派加联合分支即可。 */
-export type SchoolId = "wenmo-nishi" | (string & {});
+/**
+ * 流派 id。当前仅 `wenmo-nishi`（默认）。新流派 = types 联合加分支 + registry 加一行，
+ * 两处显式（与清单注册同哲学），漏改由 typecheck 兜底——不设 `(string & {})` 逃生舱，
+ * 它会让「忘了在类型层声明」变得合法而不可见。
+ */
+export type SchoolId = "wenmo-nishi";
 
 /** 体系禁用特征（继承绊线语义的声明式表达）。 */
 export type ForbiddenFeature = "self-mutagen" | "lai-yin" | (string & {});
@@ -46,10 +49,6 @@ export interface SchoolAdapter {
 	id: SchoolId;
 	/** 人类可读名（概览 / 报错用） */
 	label: string;
-	/** 默认亮度流派（引用冻结内核的默认值，仅记录，不在适配器里改内核状态） */
-	defaultBrightnessSchool?: BrightnessSchool;
-	/** 论断框架描述（命宫为本 / 三方为用 等） */
-	assertionFramework: string;
 	/** 禁用特征（继承绊线语义）：如 ["self-mutagen","lai-yin"] */
 	forbiddenFeatures?: readonly ForbiddenFeature[];
 	/** 该流派权威语料核对表引用（多流派隔离，不复制核对表） */

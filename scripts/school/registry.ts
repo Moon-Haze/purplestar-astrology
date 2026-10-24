@@ -20,7 +20,7 @@ export const SCHOOLS: Record<SchoolId, SchoolAdapter> = {
 };
 
 /** 注册表键集合（稳定顺序）；自检断言复用，不手抄字符串。 */
-export const SCHOOL_IDS: readonly SchoolId[] = Object.keys(SCHOOLS);
+export const SCHOOL_IDS: readonly SchoolId[] = Object.keys(SCHOOLS) as SchoolId[];
 
-/** 当前生效的默认流派（单 skill 形态下即默认流派）。 */
-export const DEFAULT_SCHOOL_ID: SchoolId = "wenmo-nishi";
+/** 当前生效的默认流派（单 skill 形态下即默认流派）—— 取注册表首键，不与键名双写字面量。 */
+export const DEFAULT_SCHOOL_ID: SchoolId = SCHOOL_IDS[0];
