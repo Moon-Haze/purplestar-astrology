@@ -101,12 +101,17 @@
 
 ### Requirement: 跳过必须可见
 
-跳过断言 SHALL 只走 `kit.skipUnlessRepo`，判据取「包根有没有 `CLAUDE.md`」
-（分发件只含四项，仓库级文档一律不带）。跳过 SHALL 记 pass 但 `skipped: true`，
+跳过断言 SHALL 只走 `kit.skipUnlessRepo`，判据取「包根有没有 `AGENTS.md`」
+（分发件只含四项，仓库级文档一律不带——`AGENTS.md` 与 README / test/ 同进退，
+是「我在不在仓库里」的现存探针）。跳过 SHALL 记 pass 但 `skipped: true`，
 报告渲染时**前置 `⏭`**。
 
 **不得给不需要的断言加跳过**：若断言读的文件都在 `scripts/` 或 `references/` 内，
 它会被打包带上，跳过只是白白丢覆盖。
+
+**仓库态 SHALL 零跳过**：判据锚点必须是现存文件——锚点失效（探针指向已删除文件）
+会使守卫在仓库态恒真降级，比没有守卫更坏；仓库级回归 SHALL 有断言钉住
+「selftest 报告不出现 ⏭」，锚点再失效时当场变红。
 
 #### Scenario: 恒真守卫
 
@@ -117,6 +122,11 @@
 
 - **WHEN** 给一条只读 `scripts/` 内文件的断言加跳过
 - **THEN** 视为白白丢覆盖，应移除
+
+#### Scenario: 仓库态零跳过
+
+- **WHEN** 在仓库形态（非分发包）跑 selftest
+- **THEN** 报告全文不出现 `⏭`；判据锚点被删或改名时，钉住此事实的断言变红，而非静默恒真
 
 ### Requirement: 回归链路禁缓存
 
@@ -130,13 +140,21 @@
 
 ### Requirement: 引文守卫
 
-`test/citations.test.ts` SHALL 扫描 `scripts/` 全树，比对 `corpus/data/annotations.ts` 的引文核对表，
+`test/citations.test.ts` SHALL 扫描**仓库 `.ts` 全树**（流派分派组之外另有仓库级组，
+与 `.md` 侧的全仓扫描对称），比对 `corpus/data/annotations.ts` 的引文核对表，
 拦截冒充倪师原话的文案。比对基准是权威语料，不是文案之间的相互一致性。
+扫描面 SHALL 覆盖带引文代码的真实分布（含 `tools/` 与 `test/`），不因「属某流派声明的根」
+而留盲区；`node_modules` / 点目录由收集器排除。
 
 #### Scenario: 冒充原话
 
 - **WHEN** 文案出现「倪师说 + 引号句」但核对表无此项
 - **THEN** 守卫失败
+
+#### Scenario: 声明根之外的引文
+
+- **WHEN** `tools/` 或 `test/` 下的 `.ts` 文件出现核对表外的「倪师 / 倪海厦 + 引号句」形态
+- **THEN** 仓库级扫描组失败——不因该目录不在任何流派的 `scanRoot` 内而静默放行
 
 ### Requirement: 基准差异须显式登记
 
@@ -157,3 +175,51 @@
 
 - **WHEN** 升级 iztro 版本
 - **THEN** 递增排盘缓存的 `CACHE_VERSION`，并跑 `selftest` 与 `npm test` 再交付
+
+### Requirement: 分析数据表键域互证
+
+analysis 侧按宫名 / 主星键索引的数据表 SHALL 与运行时键域互证：宫名键以运行时宫名域
+（展开形、带「宫」字、交友宫口径，即 `PALACE_NAMES_ORDER`）为唯一域——次星宫位文案表、
+宫位内容键映射、主题关键宫位的每个宫名键 SHALL 能在该域内解析；十四主星名 SHALL 以
+内核星表为单一真相源，星曜内容、星曜简述、主题断语手册的主星键集 SHALL 与之互证同集。
+
+键域漂移（数据表键与运行时键不一致导致的静默 miss）属 typecheck 查不到的缺陷类，
+SHALL 由 invariants 互证断言拦截；断言 SHALL 报出超域或不一致的键，消费点 SHALL NOT
+以 `??` 空串兜底掩盖 miss。
+
+#### Scenario: 宫名键超域
+
+- **WHEN** analysis 数据表新增或改动一个宫名键，而它不在运行时宫名域内（如紧凑形「仆役」、漏「宫」字的「兄弟」）
+- **THEN** invariants 互证断言失败，`npm test` 变红并报出该键；不得静默 miss 后以空串兜底
+
+#### Scenario: 星名键集分叉
+
+- **WHEN** 星曜内容表、星曜简述表或主题断语手册键集中出现内核星表没有的主星名，或缺其一
+- **THEN** 互证断言失败，报出不一致的键集差异
+
+#### Scenario: 运行时直查全命中
+
+- **WHEN** 消费点以运行时 `Palace.name` 直查 analysis 数据表
+- **THEN** 十二宫全部命中，无一落入「简述兜底」或空串分支
+
+### Requirement: OpenSpec 校验零警告
+
+specs 主干（`openspec/specs/`）或 change 工件（`openspec/changes/`）发生任何改动后，
+`openspec validate --all` SHALL 全部通过且**零警告**才算完成。出现警告时（如
+requirement 文本超长）SHALL 当场修复——拆分 requirement、把例子与边界情况移进
+scenario——不得以「仅警告不失败」为由带警告归档或提交。
+
+#### Scenario: specs 主干改动后校验
+
+- **WHEN** `openspec/specs/` 下任一 spec 文件被修改
+- **THEN** `openspec validate --all` 退出码为 0 且输出不含 `WARNING`，否则该改动未完成
+
+#### Scenario: 警告须当场修复
+
+- **WHEN** validate 报出警告（如 requirement 文本超过 500 字符）
+- **THEN** 按警告建议修复（拆分 requirement / 移内容进 scenario）直至零警告，不得放行
+
+#### Scenario: 归档折回后复验
+
+- **WHEN** change 归档将 delta 折回主干 specs
+- **THEN** 折回后重跑 `openspec validate --all` 确认仍零警告
