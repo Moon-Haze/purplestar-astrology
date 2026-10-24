@@ -279,7 +279,9 @@ function verify(zip: Buffer, entries: Entry[]): void {
 					.join("\n")}`
 			);
 		}
-		const skipped = (stdout.match(/⏭/g) ?? []).length;
+		// 数**顶格 ⏭ 行**＝跳过的断言条数：一条跳过断言输出两行各含一个 ⏭（顶格的
+		// 断言行 + 缩进的 detail 行，detail 文案自带前缀），数字符或数含缩进行都会虚报。
+		const skipped = stdout.split("\n").filter(l => l.startsWith("⏭")).length;
 		console.log(
 			`  自检：解压后 selftest ${first.replace(/^.*—— 通过 /, "通过 ")}` +
 				`（${skipped} 条标 ⏭ 跳过：仓库级文档不分发，属预期）`

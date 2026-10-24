@@ -32,6 +32,7 @@
 // ⚠️ 本文件只写 mkdtemp 造的临时树，对本仓只读不写（读 README、run.ts 与各 SKILL.md 的源码文本）。
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -51,6 +52,8 @@ import { ALL_SKILLS, CHART_LIKE, SOURCE_SKILL, skillDir } from "./lib/skills.ts"
 //    `node:` 内置，故可在解析钩子注册之前被 Node 的原生类型擦除加载。
 // ⚠️ 内核在仓库根 scripts/，挪内核时本行会静默失效。
 import { makeResolveHook } from "../scripts/boot-hooks.ts";
+// kit 是叶子模块（运行时只依赖 node: 内置，`../args` 是被擦除的类型导入），可静态引入。
+import { skipUnlessRepo } from "../scripts/cli/selftest/kit.ts";
 
 /** 仓库根 —— 本文件在 `<仓库根>/test/` 下，故退一级。 */
 const SKILL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -289,6 +292,31 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 			}
 		}
 		assert.deepEqual(problems, [], `骨架与 references/ 的接线有问题：\n${problems.join("\n")}`);
+	});
+
+	it("仓库态 selftest 零跳过 —— skipUnlessRepo 锚点失效会让守卫恒真（反恒真）", () => {
+		// 恒真守卫比没有守卫更坏：探针指向不存在的文件时，仓库态与分发态不可区分，
+		// 依赖仓库级文档的断言静默跳过且记 pass。两层设防：
+		//   轻层 —— 探针在仓库态必须放行；锚点文件被删 / 改名时这里先红。
+		//   重层 —— 端到端跑一遍 selftest，报告全文不得出现 ⏭：仓库态的合法跳过不存在，
+		//           新增跳过属于「白白丢覆盖」（判据见 scripts/cli/selftest/kit.ts）。
+		assert.equal(
+			skipUnlessRepo({ root: resolve(SKILL_ROOT, "scripts") }, "反恒真探针"),
+			undefined,
+			"skipUnlessRepo 在仓库态应放行 —— 探针锚点（包根 AGENTS.md）是否已被移动或删除？"
+		);
+		const r = spawnSync(
+			process.execPath,
+			[resolve(SKILL_ROOT, "scripts", "purple-star.ts"), "selftest"],
+			{ encoding: "utf8", env: { ...process.env, ZIWEI_NO_CACHE: "1" } }
+		);
+		assert.equal(r.status, 0, `selftest 应全绿退出，stderr：${(r.stderr ?? "").slice(0, 200)}`);
+		const skippedLines = (r.stdout ?? "").split("\n").filter(l => l.includes("⏭"));
+		assert.deepEqual(
+			skippedLines,
+			[],
+			`仓库态 selftest 出现跳过项（应要么移除断言对仓库级文档的依赖，要么该断言本不该跳过）：\n${skippedLines.join("\n")}`
+		);
 	});
 });
 

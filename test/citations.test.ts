@@ -46,8 +46,8 @@ import { SCHOOLS, SCHOOL_IDS } from "../scripts/school/registry.ts";
  * 刻意不硬编码：核对表里的条目会被增删，写死的样本迟早指向一条已被改归属的引文，
  * 那时「违例抓得到」的用例会变成假红 —— 而它的失败信息会指向守卫，不是指向样本本身。
  *
- * ⚠️ 必须**筛出带引号的那类**条目：核对表的 `text` 是整句引用（如
- * `倪海厦说「紫微在迁移，外地逢贵人」`），但并非每条都带引号 —— 实测第一条 suspect 是
+ * ⚠️ 必须**筛出带引号的那类**条目：核对表的 `text` 是整句引用（带「倪师说」前缀与
+ * 引文核心的形态），但并非每条都带引号 —— 实测第一条 suspect 是
  * 「紫微斗数分析数据库 — 倪海厦三合派体系」这样的**标题句**，直接取 `[0]` 会得到空样本，
  * 而空样本会让「违例抓得到」退化成「什么都没抓到也是对的」。
  */
@@ -226,6 +226,44 @@ describe("引文守卫：文档侧真扫描（仓库根全部手写 .md）", () 
 			MD.violations,
 			[],
 			`以下未核实引文在 .md 里仍冒充倪师原话（应改古诀云/紫微斗数有云/一说，或补核对记录）：\n${MD.violations.join("\n")}`
+		);
+	});
+});
+
+describe("引文守卫：仓库级 .ts 真扫描（流派声明根之外的盲区关闭）", () => {
+	/**
+	 * 按仓库根扫一遍 `.ts`，进程内算一次。
+	 *
+	 * @remarks
+	 * 与流派分派组**并列**：仓库级代码（`tools/` / `test/`）不属于任何单一流派的
+	 * `citationRoots`，塞进流派声明会污染「各流派只扫自己内容」的隔离语义 ——
+	 * 与 `.md` 侧按仓库根扫描（design D4）同一理由、两侧对称。收集器的排除规则同样
+	 * 对称：`.ts` 侧排除 `node_modules` / 点目录 / `corpus/data/manual`（生成快照），
+	 * `.md` 侧排除 `node_modules` / `dist` / 点目录 / `docs/manual` —— 排除的是
+	 * 生成镜像与依赖，不是手写源码。
+	 */
+	const TS = scanCitations(REPO_ROOT);
+
+	it("真的扫到了流派根之外的代码 —— 空转防护（tools/ 与 test/ 必须在覆盖内）", () => {
+		assert.ok(TS.checked.length > 0, "一个 .ts 都没扫到 —— 收集面坏了还是根写歪了？");
+		for (const prefix of ["scripts/", "tools/", "test/"]) {
+			assert.ok(
+				TS.checked.some(f => f.startsWith(prefix)),
+				`应扫到 ${prefix} 下的 .ts —— 仓库级组没盖到流派声明根之外的代码`
+			);
+		}
+		// 对称性自查：排除规则与 .md 侧同纪律，排除目录里的文件不该出现在比对集。
+		assert.ok(
+			!TS.checked.some(f => f.includes("node_modules") || f.split("/")[0].startsWith(".")),
+			"node_modules 或点目录下的文件混进了扫描范围 —— 排除规则两侧不对称了"
+		);
+	});
+
+	it("零违例：tools/ 与 test/ 里没有未核实引文仍冒充倪师原话", () => {
+		assert.deepEqual(
+			TS.violations,
+			[],
+			`以下未核实引文在仓库 .ts 里仍冒充倪师原话（应改古诀云/紫微斗数有云/一说，或补核对记录）：\n${TS.violations.join("\n")}`
 		);
 	});
 });

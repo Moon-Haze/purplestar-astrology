@@ -126,10 +126,12 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 > 守卫：只有**仓库形态**（而非分发包形态）才跑依赖仓库级文档的断言。
 >
-> 判据取「包根有没有 `CLAUDE.md`」：分发包只含 `SKILL.md` / `package.json` /
+> 判据取「包根有没有 `AGENTS.md`」：分发包只含 `SKILL.md` / `package.json` /
 > `references/` / `scripts/` 四项（见 `tools/pack.ts`），仓库级文档
-> （`CLAUDE.md` / `README.md` / `test/README.md`）一律不带。故用 `CLAUDE.md` 作
-> 「我在不在仓库里」的探针 —— 它必然与那三份文档同进同出。
+> （`AGENTS.md` / `README.md` / `test/README.md`）一律不带。故用 `AGENTS.md` 作
+> 「我在不在仓库里」的探针 —— 它是仓库级文档的现行代表，与其余文档同进退。
+> 探针必须指向现存文件：锚点失效会让守卫在仓库态恒真降级，
+> `test/repo.test.ts` 的反恒真断言盯「仓库态 selftest 报告不出现 ⏭」。
 >
 > ⚠️ **不要给不需要的断言加跳过**：读的文件若都在 `scripts/` 或 `references/` 内，
 > 它会被打包带上，跳过只会白白丢掉覆盖。全仓仅此一处仓库级断言组适用。

@@ -164,7 +164,7 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 		"文档一致性：Node 下限、独占分支、升级警告三处承诺与实现同步",
 		() => {
 			const readme = readFileSync(resolve(ctx.root, "..", "README.md"), "utf8");
-			const claude = readFileSync(resolve(ctx.root, "..", "CLAUDE.md"), "utf8");
+			const agentsMd = readFileSync(resolve(ctx.root, "..", "AGENTS.md"), "utf8");
 			const opts = readFileSync(resolve(ctx.root, "..", "references", "options.md"), "utf8");
 			const testReadme = readFileSync(resolve(ctx.root, "..", "test", "README.md"), "utf8");
 			// boot-hooks 的失败指引是**用户运行时真实看到**的报错文案——下限号写错（如仍写
@@ -172,7 +172,7 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 			const bootHooks = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
 			for (const [name, text] of [
 				["README.md", readme],
-				["CLAUDE.md", claude],
+				["AGENTS.md", agentsMd],
 				["scripts/boot-hooks.ts", bootHooks],
 			] as const) {
 				if (text.includes("22.15") && !text.includes("NODE_OPTIONS")) {
@@ -188,10 +188,10 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 				throw new Error("test/README.md 缺升级 iztro 的 pin 改写警告");
 			}
 		},
-		// ⚠️ README.md / CLAUDE.md / test/README.md 都是**仓库级**文档，不进分发包
+		// ⚠️ README.md / AGENTS.md / test/README.md 都是**仓库级**文档，不进分发包
 		// （包只含 SKILL.md / package.json / references/ / scripts/ 四项），
 		// 故在包形态下显式跳过 —— 判据与理由见 kit.skipUnlessRepo。
-		{ skip: skipUnlessRepo(ctx, "仓库级文档（README/CLAUDE/test-README）不入分发包") }
+		{ skip: skipUnlessRepo(ctx, "仓库级文档（README/AGENTS/test-README）不入分发包") }
 	);
 }
 

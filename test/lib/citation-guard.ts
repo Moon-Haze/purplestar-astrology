@@ -128,8 +128,12 @@ function collectTsFiles(root: string, dir = ""): string[] {
 			if (entry.name === "node_modules" || entry.name.startsWith(".")) {
 				continue;
 			}
-			// 生成快照（tools/db/export-manual.ts 转印）随知识数据聚拢迁至 corpus/data/manual
-			if (entry.name === "manual" && dir === "corpus/data") {
+			// 生成快照（tools/db/export-manual.ts 转印）随知识数据聚拢迁至 corpus/data/manual。
+			// 按相对路径**后缀**判断而非整段相等：本收集器既被以 `scripts/` 为根调用
+			// （流派 citationRoots，dir = "corpus/data"），也被以仓库根调用
+			// （test/citations.test.ts 的仓库级组，dir = "scripts/corpus/data"）——
+			// 写死整段会让换根时排除静默失效，快照里的历史引文形态会把真违例淹没。
+			if (entry.name === "manual" && dir.endsWith("corpus/data")) {
 				continue;
 			}
 			out.push(...collectTsFiles(root, rel));

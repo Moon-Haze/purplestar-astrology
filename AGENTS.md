@@ -99,10 +99,10 @@ npm run pack
 
 1. **不要在代码里写死目录层级**。要定位包内文件一律走 `ctx.root`（= `scripts/`），
    不写 `ROOT/../..` 这类上溯——层数一变就静默找错文件。
-2. **仓库级文档不在分发件里**。`CLAUDE.md` / `test/` / `docs/` / `db/` 都不进包，
-   因此依赖它们的断言用 `skipUnlessRepo` 显式跳过（判据是包根有没有 `CLAUDE.md`）。
+2. **仓库级文档不在分发件里**。`AGENTS.md` / `test/` / `docs/` / `db/` 都不进包，
+   因此依赖它们的断言用 `skipUnlessRepo` 显式跳过（判据是包根有没有 `AGENTS.md`）。
    **跳过必须看得见**（报告上标 `⏭`）——与「跑过了」不可区分的恒真守卫比没有守卫更坏。
-   现状：仓库 0 跳过 / 分发 1 跳过。
+   现状：仓库 0 跳过（`test/repo.test.ts` 反恒真断言钉住）/ 分发 1 跳过。
 3. **zip 顶层目录名必须与 frontmatter `name` 一致**（`purplestar-astrology`），
    宿主按目录名发现技能，不一致则永远唤不起。
 

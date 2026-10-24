@@ -150,15 +150,17 @@ export function createHarness(): {
  * @returns 不该跑时返回跳过原因字符串；该跑时返回 `undefined`
  *
  * @remarks
- * 判据取「包根有没有 `CLAUDE.md`」：分发包只含 `SKILL.md` / `package.json` /
- * `references/` / `scripts/` 四项，仓库级文档一律不带 —— 用 `CLAUDE.md` 作
- * 「我在不在仓库里」的探针（它必然与那三份文档同进同出）。
+ * 判据取「包根有没有 `AGENTS.md`」：分发包只含 `SKILL.md` / `package.json` /
+ * `references/` / `scripts/` 四项，仓库级文档一律不带 —— 用 `AGENTS.md` 作
+ * 「我在不在仓库里」的探针（它是仓库级文档的现行代表，与 README / test/ 同进退）。
+ * 探针必须指向**现存**文件：锚点失效会让守卫在仓库态恒真降级，
+ * `test/repo.test.ts` 的反恒真断言盯「仓库态 selftest 报告不出现 ⏭」。
  *
  * ⚠️ **不要给不需要的断言加跳过**：文件若都在 `scripts/` 或 `references/` 内会被打包带上，
  *    跳过只会白白丢掉覆盖。全仓仅此一处适用（见 docs/code/cli-selftest.md）。
  */
 export function skipUnlessRepo(ctx: { root: string }, why: string): string | undefined {
-	const repoOnly = resolve(ctx.root, "..", "CLAUDE.md");
+	const repoOnly = resolve(ctx.root, "..", "AGENTS.md");
 	if (!existsSync(repoOnly)) {
 		return `⏭ ${why}（分发包不含仓库级文档）`;
 	}
