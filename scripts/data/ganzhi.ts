@@ -106,3 +106,31 @@ export const IZTRO_TO_PROJECT_PALACE: Record<string, string> = {
 	福德: "福德宫",
 	父母: "父母宫",
 };
+
+/**
+ * 项目口径宫名（`Palace.name`，带「宫」字）→ db 库内紧凑键（不带「宫」字、「仆役」）。
+ *
+ * 这是**导出管线专用的翻译器**：内核与 analysis 侧的宫名键域已统一为
+ * `PALACE_NAMES_ORDER` 展开形（`test/invariants.test.ts` 互证钉住），本表只服务
+ * 向紧凑口径库（db 散表 / docs 导出）翻译的工具（`tools/db/export-manual.ts`），
+ * 12 宫显式映射，未知原样返回。方向与 {@link IZTRO_TO_PROJECT_PALACE} 相反
+ * （那张是 iztro 原始名 → 项目口径，命中缺失即抛错；这张面向工具、宽容回退）。
+ */
+export const COMPACT_PALACE_KEY: Record<string, string> = {
+	命宫: "命宫",
+	兄弟宫: "兄弟",
+	夫妻宫: "夫妻",
+	子女宫: "子女",
+	财帛宫: "财帛",
+	疾厄宫: "疾厄",
+	迁移宫: "迁移",
+	交友宫: "仆役",
+	官禄宫: "官禄",
+	田宅宫: "田宅",
+	福德宫: "福德",
+	父母宫: "父母",
+};
+
+/** 项目口径宫名 → db 库内紧凑键（未知原样返回），见 {@link COMPACT_PALACE_KEY}。 */
+export const compactPalaceKey = (palaceName: string): string =>
+	COMPACT_PALACE_KEY[palaceName] ?? palaceName;

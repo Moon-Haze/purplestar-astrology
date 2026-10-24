@@ -1617,3 +1617,76 @@ describe("topic 长判词（Pattern.topicDescription）", () => {
 		}
 	});
 });
+
+// ── analysis 数据键域互证 ──
+//
+// 宫名键域以 PALACE_NAMES_ORDER（展开形、交友宫口径）为唯一域：analysis 侧按宫名
+// 索引的数据表若混入紧凑键（「兄弟」/「仆役」）或半改形态（「交友」），运行时直查会
+// 静默 miss、被 ?? "" 与简述兜底吞掉 —— 键域漂移是 typecheck 查不到的缺陷类
+// （架构评审 2026-10-24 S1：修复前内容键表 12 键仅 1 命中、主题关键宫大面积 miss）。
+// 十四主星名以内核星表为单一真相源，四处键集互证防抄错（三方标签错位事故的同型防线）。
+const ANALYSIS_DATA = await load<typeof import("@/analysis/data")>("@/analysis/data");
+const KERNEL_STAR_TABLE = await load<typeof import("@/data/stars")>("@/data/stars");
+const MANUAL_INDEX = await load<typeof import("@/corpus/data/manual")>("@/corpus/data/manual");
+describe("analysis 数据键域互证", () => {
+	const domain = new Set(PALACE_NAMES_ORDER);
+
+	it("宫名键域：三张分析表的每个宫名键都在 PALACE_NAMES_ORDER 域内", () => {
+		const bad: string[] = [];
+		for (const [star, byPalace] of Object.entries(ANALYSIS_DATA.MINOR_STAR_PALACE_CONTENT)) {
+			for (const k of Object.keys(byPalace)) {
+				if (!domain.has(k)) {
+					bad.push(`MINOR_STAR_PALACE_CONTENT[${star}].${k}`);
+				}
+			}
+		}
+		for (const k of Object.keys(ANALYSIS_DATA.PALACE_TO_CONTENT_KEY)) {
+			if (!domain.has(k)) {
+				bad.push(`PALACE_TO_CONTENT_KEY.${k}`);
+			}
+		}
+		for (const [topic, rules] of Object.entries(ANALYSIS_DATA.TOPIC_KEY_PALACES)) {
+			for (const r of rules) {
+				if (!domain.has(r.palace)) {
+					bad.push(`TOPIC_DEFS[${topic}].keyPalaces.${r.palace}`);
+				}
+			}
+		}
+		assert.deepEqual(
+			bad,
+			[],
+			`以下宫名键不在运行时宫名域内（紧凑形/旧口径会静默 miss，应改为 PALACE_NAMES_ORDER 展开形）：\n${bad.join("\n")}`
+		);
+	});
+
+	it("宫名键域：内容键表 12 宫齐、每颗次星 12 宫齐（运行时直查全命中的完备性）", () => {
+		assert.equal(
+			Object.keys(ANALYSIS_DATA.PALACE_TO_CONTENT_KEY).length,
+			PALACE_NAMES_ORDER.length,
+			"PALACE_TO_CONTENT_KEY 应覆盖全部十二宫"
+		);
+		const sparse = Object.entries(ANALYSIS_DATA.MINOR_STAR_PALACE_CONTENT)
+			.filter(([, t]) => Object.keys(t).length !== PALACE_NAMES_ORDER.length)
+			.map(([s, t]) => `${s}（${Object.keys(t).length} 宫）`);
+		assert.deepEqual(sparse, [], `次星宫位表每星应 12 宫齐，缺失的星：${sparse.join("、")}`);
+	});
+
+	it("十四主星键集：星曜内容 / 简述 / 内核星表 / manual ORACLE 四处同键集", async () => {
+		const truth = [...Object.keys(KERNEL_STAR_TABLE.STAR_DESCRIPTIONS)].sort();
+		assert.equal(truth.length, 14, "内核星表应是十四主星");
+		const bySrc: Array<[string, string[]]> = [
+			["STAR_CONTENT_MAP", Object.keys(ANALYSIS_DATA.STAR_CONTENT_MAP).sort()],
+			["STAR_BRIEF", Object.keys(ANALYSIS_DATA.STAR_BRIEF).sort()],
+		];
+		for (const topic of ANALYSIS_DATA.TOPIC_KEYS) {
+			const oracle = await MANUAL_INDEX.loadTopicOracle(topic);
+			bySrc.push([`manual ORACLE[${topic}]`, Object.keys(oracle).sort()]);
+		}
+		const diff = bySrc.filter(([, keys]) => JSON.stringify(keys) !== JSON.stringify(truth));
+		assert.deepEqual(
+			diff.map(([src]) => src),
+			[],
+			`以下星名键集与内核星表（单一真相源）不一致：\n${diff.map(([src, keys]) => `${src}: ${keys.join("、")}`).join("\n")}`
+		);
+	});
+});

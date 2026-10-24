@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import type { DuckDBConnection } from "@duckdb/node-api";
 
 import { resolveQueryTarget } from "./db";
+import { compactPalaceKey } from "../../scripts/data/ganzhi";
 import {
 	TOPIC_KEYS,
 	TOPIC_DEFS,
@@ -43,27 +44,8 @@ const TOPICS_DIR = join(OUT_DIR, "topics");
 const { generateChart } = await import("../../scripts/algorithm");
 const patterns = await import("../../scripts/patterns/index");
 
-/**
- * 项目口径宫名（`Palace.name`，带「宫」字）→ 库内紧凑键。
- * 库内列值（palace_name 等）与 `./data` 散表同为紧凑口径（不带「宫」字、「仆役」），
- * 本工具在「项目口径主题主宫 → 库内值」这一处需要归一 —— 12 宫显式映射，未知原样返回。
- */
-const COMPACT_PALACE_KEY: Record<string, string> = {
-	命宫: "命宫",
-	兄弟宫: "兄弟",
-	夫妻宫: "夫妻",
-	子女宫: "子女",
-	财帛宫: "财帛",
-	疾厄宫: "疾厄",
-	迁移宫: "迁移",
-	交友宫: "仆役",
-	官禄宫: "官禄",
-	田宅宫: "田宅",
-	福德宫: "福德",
-	父母宫: "父母",
-};
-const compactPalaceKey = (palaceName: string): string =>
-	COMPACT_PALACE_KEY[palaceName] ?? palaceName;
+// 宫名归一（项目口径 → 库内紧凑键）的表与函数住内核 scripts/data/ganzhi.ts
+// （COMPACT_PALACE_KEY / compactPalaceKey），此处只引用 —— 见其注释的口径论证。
 
 // 主题 → 紧凑口径主宫名（库内 palace_name 值域）。由 TOPIC_DEFS[topic].palace（项目口径）
 // 经 compactPalaceKey 归一**派生**，不再手抄 —— 与 Phase 2 的单一真相源同一纪律：
