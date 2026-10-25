@@ -12,13 +12,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { generateChart } from "@/algorithm";
 import { STAR_DESCRIPTIONS } from "@/data/stars";
-import {
-	filterGenderContent,
-	getTopicAnalysis,
-	TOPIC_LABEL,
-	type TopicKey,
-	type AnalysisView,
-} from "@/analysis";
+import { getTopicAnalysis, TOPIC_LABEL, type TopicKey, type AnalysisView } from "@/analysis";
+import { selectGender } from "@/analysis/lookups";
 import {
 	decadalSection,
 	focusSection,
@@ -329,35 +324,29 @@ export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 			throw new Error("缺大限年龄段标注");
 		}
 	});
-	// ── 性别过滤上公开面（候选 7）：filterGenderContent 此前只被内核自用，
-	// 外部（测试/消费方）无从直测 —— 断言**必须经 @/analysis 公开面 import，
-	// 直插 ./lookups 即本组失败的意义（公开面缺导出 → 模块链接期就崩）。 ──
-	ok("性别过滤：male 的 getTopicAnalysis 不含女命残留（候选 7）", () => {
+	// ── 性别投影（取代 filterGenderContent 正则剥离）：数据层已拆进 GenderField，
+	// 消费方经 selectGender 投影；断言直接测投影函数，兼验证 male 整篇无女命残留。 ──
+	ok("性别投影：male 的 getTopicAnalysis 不含女命残留", () => {
 		const c = generateChart(SAMPLE);
 		const out = getTopicAnalysis(c, "overview");
 		if (out.includes("；女命") || out.includes("（女命）")) {
-			throw new Error("存在女命残留——整篇过滤未生效");
+			throw new Error("存在女命残留——结构化投影未生效");
 		}
 		return "男命输出无女命残留";
 	});
-	ok("性别过滤：filterGenderContent 三条规则直测", () => {
-		const f = filterGenderContent("甲；女命宜静。乙\n（女命）丙\n女命主柔。", "male");
-		if (f.includes("女命")) {
-			throw new Error(`规则未生效：${JSON.stringify(f)}`);
+	ok("性别投影：selectGender 结构化投影（common/male/female/suffix）", () => {
+		const mid = { common: "上句", female: "；女命宜静", suffix: "。下句。" };
+		const m = selectGender(mid, "male");
+		if (m !== "上句。下句。") {
+			throw new Error(`male 投影错：${m}`);
 		}
-		const g = filterGenderContent("男命主刚。乙", "female");
-		if (g.includes("男命")) {
-			throw new Error("female 侧未过滤男命句");
+		const f = selectGender(mid, "female");
+		if (f !== "上句；女命宜静。下句。") {
+			throw new Error(`female 投影错：${f}`);
 		}
-		return "male/female 两侧三规则在";
-	});
-	ok("性别过滤：整篇作用域——跨行子句在拼接后被删", () => {
-		// 构造跨行输入：「；女命」子句横跨 \n，逐行过滤会漏、整篇过滤会删
-		const input = "上句；女命\n下句继续。";
-		const f = filterGenderContent(input, "male");
-		if (f.includes("女命")) {
-			throw new Error("跨行子句残留——过滤未作用于整篇");
+		if (selectGender("甲。乙。", "male") !== "甲。乙。") {
+			throw new Error("纯 string 投影错——无性别差异字段应原样返回");
 		}
-		return "整篇作用域在";
+		return "common/male/female/suffix 投影正确";
 	});
 }

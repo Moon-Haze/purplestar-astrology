@@ -21,7 +21,6 @@ import {
 	type TopicKey,
 } from "../analysis/data";
 import { makeContext } from "../analysis/context";
-import { filterGenderContent } from "../analysis/lookups";
 import { buildOverviewMaterial, starBadge } from "../analysis/overview-material";
 import { descPalaceStars } from "../analysis/palace-query";
 import { BRANCHES } from "@/data/ganzhi";
@@ -303,5 +302,5 @@ export function getTopicReport(
 	const text = trimBlanks(lines)
 		.join("\n")
 		.replace(/\n{3,}/g, "\n\n");
-	return filterGenderContent(text, chart.birthInfo.gender);
+	return text;
 }

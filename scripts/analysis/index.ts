@@ -25,7 +25,6 @@ import {
 	type TopicKey,
 } from "../analysis/data";
 import { makeContext } from "../analysis/context";
-import { filterGenderContent } from "../analysis/lookups";
 import { renderDecadal } from "../analysis/views/decadal";
 import { renderHealth } from "../analysis/views/health";
 import { renderKuiYue } from "../analysis/views/patron";
@@ -83,17 +82,14 @@ export function getTopicAnalysis(
 		...renderSuggestions(ctx), // 六、综合建议
 	];
 
-	// 过滤与当前性别无关的内容（男命不显示女命专属句，女命不显示男命专属句）
+	// 性别已在各 view 经 selectGender 投影，此处仅拼接，不再做整篇正则过滤。
 	const rawText = lines.join("\n");
-	return filterGenderContent(rawText, chart.birthInfo.gender);
+	return rawText;
 }
 
 // ─── 公开面 re-export ────────────────────────────────────────────────────────
-// 本公开面导出 7 个值：拆分前即有的 4 个转发（TOPIC_LABEL / TOPIC_PALACE_NAME /
-// getTopicReport / getTopicReportMeta）+ filterGenderContent（候选 7 新增）
-// + TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
-// ⚠️ filterGenderContent 上公开面**只为外部可直测**（selftest 的性别过滤断言必须经这里
-//    import，直插 lookups 即断言失效）；index ↔ report 两处调用都保持 import `./lookups`。
+// 本公开面导出 6 个值：TOPIC_LABEL / TOPIC_PALACE_NAME / getTopicReport /
+// getTopicReportMeta + TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
 // ⚠️ TOPIC_KEYS / TOPIC_DEFS 是主题注册表的**单一真相源**（Phase 2 收编的 8 张平行表
 //    已由它派生），新增主题只在此表加条目。
 // 逐项理由见 docs/code/analysis.md。
@@ -104,6 +100,5 @@ export {
 	TOPIC_PALACE_NAME,
 	getTopicReport,
 	getTopicReportMeta,
-	filterGenderContent,
 };
 export type { AnalysisOptions, AnalysisView, TopicKey, ReportCitation, ReportOptions };

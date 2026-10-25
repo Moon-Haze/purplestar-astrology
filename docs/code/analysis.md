@@ -64,7 +64,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > report.ts 第二编排层：getTopicReport —— --report 的 Markdown 形态
 > context.ts 跨节共享状态的**唯一**产出点（`makeContext`）
 > palace-query.ts 只读查询：按宫名取宫 / 取三方四正 / 渲染一行星曜
-> lookups.ts 文案查表 + 性别过滤 + 格局投影
+> lookups.ts 文案查表 + 性别投影 + 格局投影
 > views/ 十一个小节，每节一个 `renderXxx(ctx) => string[]`
 >
 > ⚠️ 各 view **只读 ctx、只返回自己的行**：不互相调用、不写回 ctx。唯一的跨节状态
@@ -73,27 +73,22 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 ### 1.4 `getTopicAnalysis` 的两条不要动
 
 > 本函数是**编排层**：建一次上下文，按小节序把十一个 `renderXxx` 的行首尾相接，
-> 最后整体过一遍性别过滤。各节的实现与口径说明在 `views/` 各文件里。
+> 性别已在各 view 经 `selectGender` 投影。各节的实现与口径说明在 `views/` 各文件里。
 >
 > 两点不要动：
 >
 > 1. **下面的拼接顺序即报告的小节序**（一 → 六），调整顺序会改变输出
-> 2. 性别过滤作用在**拼接后的整篇文本**上，而不是逐节 —— 它的规则之一是删除
->    「；女命…」这类**跨行内子句**，逐节过滤会把跨节边界的句子漏掉
+> 2. 性别差异已在数据层拆进结构化字段（`GenderField`），各 view 经 `selectGender` 按
+>    `ctx.gender` 投影，编排层不再对拼接后的整篇文本跑正则过滤
 
 ### 1.5 公开面 re-export
 
-> 本公开面现导出 7 个值：拆分前即有的 4 个转发（TOPIC_LABEL / TOPIC_PALACE_NAME /
-> getTopicReport / getTopicReportMeta）+ filterGenderContent（候选 7 新增）
+> 本公开面现导出 6 个值：拆分前即有的 4 个转发（TOPIC_LABEL / TOPIC_PALACE_NAME /
+> getTopicReport / getTopicReportMeta）+ TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
 >
-> - TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
->   前 4 个 `./data` 是实际归属地，此处只做转发，调用方一行不用改；
->   它们与 filterGenderContent 本文件的实现都要用，故上方已 import，这里再 export 一次。
+> - 前 4 个 `./data` 是实际归属地，此处只做转发，调用方一行不用改。
 >   `./report` 的两个名字（--report 全盘报告的编排层）同走这张公开面 ——
 >   CLI 不直插 analysis 内部模块。
->   `filterGenderContent`（候选 7）：本文件与 ./report 两处调用都保持 import
->   `./lookups`（避免 index ↔ report 成环），上公开面只为**外部可直测** ——
->   selftest 的性别过滤断言必须经这里 import，直插 lookups 即断言失效。
 >   TOPIC_KEYS / TOPIC_DEFS（Phase 4）：主题注册表的**单一真相源**（Phase 2 收编的 8 张平行表
 >   已由它派生）。上公开面是为插件自证 —— 新增主题只需在此表加一个条目，
 >   外部守卫（selftest / 测试）经这里即可断言「某主题已注册且可用」，不必直插 `./data` 内部布局。
@@ -109,8 +104,8 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 核心论断 → 命盘推演 → 三方四正联动 → 四化路径分析 → 命盘依据 → 经典出处 →
 > 综合建议）。两者共用同一套叶子 view 与数据表，差异只在编排与排版 —— 故本模块与
 > `getTopicAnalysis` 一样**只编排、不算命**：建一次 {@link makeContext} 上下文，
-> 把各 `renderXxx` 的行按报告小节序拼接，最后整体过一遍性别过滤（理由同
-> `getTopicAnalysis` 的第 2 点：跨行内子句的删除只能作用在整篇文本上）。
+> 把各 `renderXxx` 的行按报告小节序拼接（性别已在各 view 经 `selectGender` 投影，
+> 编排层不再做整篇过滤）。
 >
 > 叶子 view 的行首带着自己的 `**【小节名】**` 头，报告里改用 Markdown 标题
 > （`### 三方四正联动`），故取用时经 {@link asMarkdownBlock} 装配 —— 剥掉**首个**
@@ -204,16 +199,16 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 ---
 
-## 六、`lookups.ts`：文案查表与两条过滤器
+## 六、`lookups.ts`：文案查表与性别投影、格局投影
 
-> 文案查表与两条过滤器 —— 把「星 × 宫 × 四化」翻成文案，另加性别过滤与格局投影。
+> 文案查表与性别投影、格局投影 —— 把「星 × 宫 × 四化」翻成文案。
 >
 > 本文件与 `palace-query.ts` 同层，区别在于**它读的是 `./data` 的表**：
 > `getMutagenNote` 查四化语义、`getMinorStarNote` 查次星宫位文案、`detectGeJu` 取格局判词。
 > 都不产生输出行，被 `views/` 各节调用。
 >
-> `filterGenderContent` 是唯一一个不查表的：它在 `index.ts` 的末尾对**整篇成品文本**
-> 做一次性别过滤，故不属任何单节。
+> `selectGender` 是唯一一个不查表的：它把 `string | GenderField` 按 `gender` 投影为
+> 当前性别的文本（`common + (male|female) + suffix`），供 `views/` 各节调用。
 
 ### 6.1 `detectGeJu` 只是投影
 

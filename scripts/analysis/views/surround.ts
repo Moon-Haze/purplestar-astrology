@@ -9,14 +9,19 @@
  * @packageDocumentation
  */
 
-import { PALACE_TO_CONTENT_KEY, STAR_BRIEF, STAR_CONTENT_MAP } from "../../analysis/data";
+import {
+	PALACE_TO_CONTENT_KEY,
+	STAR_BRIEF,
+	STAR_CONTENT_MAP,
+	type GenderField,
+} from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
-import { getMinorStarNote, getMutagenNote } from "../../analysis/lookups";
+import { getMinorStarNote, getMutagenNote, selectGender } from "../../analysis/lookups";
 import { descPalaceStars } from "../../analysis/palace-query";
 
 /** 渲染「二、三方四正联动」整节。 */
 export function renderSanFang(ctx: AnalysisContext): string[] {
-	const { chart, palaceName, sanFang, sanFangLabels } = ctx;
+	const { chart, palaceName, sanFang, sanFangLabels, gender } = ctx;
 
 	const lines: string[] = [];
 
@@ -40,7 +45,10 @@ export function renderSanFang(ctx: AnalysisContext): string[] {
 				const palaceContentKey = PALACE_TO_CONTENT_KEY[p.name];
 				const fullContent =
 					starProfile && palaceContentKey
-						? (starProfile[palaceContentKey] as string | undefined)
+						? selectGender(
+								starProfile[palaceContentKey] as string | GenderField | undefined,
+								gender
+							)
 						: null;
 				const mutagenStr = s.mutagen ? `化${s.mutagen}` : "";
 				const brightStr =
@@ -49,7 +57,7 @@ export function renderSanFang(ctx: AnalysisContext): string[] {
 						: s.brightness === "dim"
 							? "（落陷）"
 							: "";
-				const mutagenNote = s.mutagen ? getMutagenNote(s.name, s.mutagen) : "";
+				const mutagenNote = s.mutagen ? getMutagenNote(s.name, s.mutagen, gender) : "";
 
 				if (fullContent) {
 					// 有完整宫位段落，直接输出全文 + 四化补充

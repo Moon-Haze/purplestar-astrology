@@ -1,8 +1,8 @@
 /**
- * 文案查表与两条过滤器 —— 把「星 × 宫 × 四化」翻成文案，另加性别过滤与格局投影。
+ * 文案查表与性别投影、格局投影 —— 把「星 × 宫 × 四化」翻成文案。
  *
  * ⚠️ 本文件读的是 `./data` 的表（四化语义 / 次星宫位文案 / 格局判词），不产生输出行；
- *    `filterGenderContent` 是唯一不查表的，作用在 `index.ts` 末尾的**整篇成品文本**上。
+ *    `selectGender` 是唯一不查表的，把 `string | GenderField` 投影为当前性别的文本。
  *
  * 与 `palace-query.ts` 的分层差别，见 docs/code/analysis.md。
  *
@@ -10,79 +10,58 @@
  */
 
 import type { ZiweiChart } from "../types";
-import { MINOR_STAR_PALACE_CONTENT, SIHUA_CHAR_TO_KEY, STAR_CONTENT_MAP } from "../analysis/data";
+import {
+	MINOR_STAR_PALACE_CONTENT,
+	SIHUA_CHAR_TO_KEY,
+	STAR_CONTENT_MAP,
+	type GenderField,
+} from "../analysis/data";
 // 格局的**命中判定**统一由 patterns/ 负责（本文件只写判词），故这里引它的产出。
 // 所有手写判定（含 12 个原先只在本文件存在的格局）都已收敛到 patterns/，
 // `detectGeJu` 不含任何判定。
 import { detectPatterns, type Pattern } from "../patterns";
 
 /**
- * 过滤与当前性别无关的内容
- * 规则：
- *  1. 删除"；女命xxx"或"；男命xxx"格式的分号子句
- *  2. 删除以"女命"或"男命"开头的完整句子（到。！？结束）
+ * 性别投影：把 `string | GenderField` 字段投影为当前性别的文本。
+ *
+ * - 纯 `string`：无性别差异，原样返回；
+ * - `GenderField`：`common` + 当前性别的专属段（`male` / `female`）+ `suffix` 拼接；
+ * - `undefined`：可选字段缺省，返回空串。
+ *
+ * 这是取代 `filterGenderContent` 正则剥离的结构化投影——性别差异已在数据层拆进字段，
+ * 消费方只做一次投影，不再对成稿跑正则。
  */
-export function filterGenderContent(text: string, gender: "male" | "female"): string {
-	const removeTag = gender === "male" ? "女命" : "男命";
-
-	let result = text;
-
-	// 规则1：删除 ；女命/男命 引导的子句（不跨句末标点）
-	result = result.replace(new RegExp(`；${removeTag}[^；。！？]*`, "g"), "");
-
-	// 规则3：删除整行以 （女命）/（男命） 开头的内容
-	result = result
-		.split("\n")
-		.filter(line => {
-			const t = line.trimStart();
-			return !t.startsWith("（" + removeTag + "）");
-		})
-		.join("\n");
-
-	// 规则2：按行处理，删除以 removeTag 开头的完整句子
-	result = result
-		.split("\n")
-		.map(line => {
-			if (!line.includes(removeTag)) {
-				return line;
-			}
-
-			const kept: string[] = [];
-			let rest = line;
-
-			while (rest.length > 0) {
-				const endIdx = rest.search(/[。！？]/);
-				if (endIdx === -1) {
-					// 无句末标点的剩余片段
-					const trimmed = rest.trimStart();
-					if (
-						!trimmed.startsWith(removeTag) &&
-						!trimmed.startsWith("（" + removeTag + "）")
-					) {
-						kept.push(rest);
-					}
-					break;
-				}
-				const sentence = rest.slice(0, endIdx + 1);
-				rest = rest.slice(endIdx + 1);
-				const trimmed = sentence.trimStart();
-				if (
-					!trimmed.startsWith(removeTag) &&
-					!trimmed.startsWith("（" + removeTag + "）")
-				) {
-					kept.push(sentence);
-				}
-			}
-
-			return kept.join("");
-		})
-		.join("\n");
-
-	return result;
+export function selectGender(
+	field: string | GenderField | undefined,
+	gender: "male" | "female"
+): string {
+	if (field === undefined) {
+		return "";
+	}
+	if (typeof field === "string") {
+		return field;
+	}
+	return (
+		field.common +
+		(gender === "male" ? (field.male ?? "") : (field.female ?? "")) +
+		(field.suffix ?? "")
+	);
 }
 
-/** 获取某颗星在某宫的四化modifier文字 */
-export function getMutagenNote(starName: string, mutagen: string): string {
+/**
+ * 过滤与当前性别无关的内容（已废弃，保留语义说明供迁移对拍参考）。
+ *
+ * ⚠️ 本函数已被 {@link selectGender} 的结构化投影取代——性别差异在数据层拆进
+ * `GenderField`（`common`/`male`/`female`/`suffix`），消费方只做投影，不再对成稿跑正则。
+ * 保留此注释仅为记录旧三规则语义，供重构回归时逐字节对拍。
+ */
+
+/** 获取某颗星在某宫的四化modifier文字（按性别投影） */
+export function getMutagenNote(
+	starName: string,
+	mutagen: string,
+	gender: "male" | "female"
+): string {
 	const profile = STAR_CONTENT_MAP[starName];
 	if (!profile?.sihua) {
 		return "";
@@ -91,7 +70,7 @@ export function getMutagenNote(starName: string, mutagen: string): string {
 	if (!key) {
 		return "";
 	}
-	return profile.sihua[key] ?? "";
+	return selectGender(profile.sihua[key], gender);
 }
 
 /** 获取次星在某宫的详细文案 */

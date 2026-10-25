@@ -15,10 +15,11 @@ import {
 	SUMMARY_TOPICS,
 	TOPIC_CONTENT_KEY,
 	TOPIC_SUMMARY_KEY,
+	type GenderField,
 	type StarContent,
 } from "./data";
 import type { AnalysisContext } from "./context";
-import { detectGeJu } from "./lookups";
+import { detectGeJu, selectGender } from "./lookups";
 
 /**
  * 星曜徽标：`星名` + `化X`（有四化时）+ `（庙旺）/（落陷）`（有亮度时）。
@@ -58,7 +59,7 @@ export interface OverviewMaterial {
  * summary 段条件、contentKey 全文选择、亮度补充、第二主星——一次取齐。
  */
 export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
-	const { chart, topic, palaceName, mainStars, primaryStar, profile, isLoan } = ctx;
+	const { chart, topic, palaceName, mainStars, primaryStar, profile, isLoan, gender } = ctx;
 
 	if (!(primaryStar && profile)) {
 		return {
@@ -75,7 +76,6 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	}
 
 	const summaryKey = TOPIC_SUMMARY_KEY[topic];
-	const gender: "male" | "female" = chart.birthInfo?.gender === "female" ? "female" : "male";
 	const isCoreTopic = SUMMARY_TOPICS.has(topic) || topic === "personality";
 
 	// ── 动态内容优先：命盘关键定制（亮度 + 四化的 topic_mods，仅核心主题）──
@@ -92,10 +92,10 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 			? (SIHUA_CHAR_TO_KEY[primaryStar.mutagen] ?? null)
 			: null;
 		if (brightnessKey && topicMod?.[brightnessKey]) {
-			mods.push(topicMod[brightnessKey]!);
+			mods.push(selectGender(topicMod[brightnessKey], gender));
 		}
 		if (sihuaKey && topicMod?.[sihuaKey]) {
-			mods.push(topicMod[sihuaKey]!);
+			mods.push(selectGender(topicMod[sihuaKey], gender));
 		}
 	}
 
@@ -112,17 +112,19 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	const loanNote = isLoan ? `（${palaceName}空宫，借对宫${primaryStar.name}论事）` : "";
 
 	const contentKey = TOPIC_CONTENT_KEY[topic];
-	const content =
+	const contentRaw =
 		topic === "overview"
 			? profile.mingGong
-			: (profile[contentKey as keyof StarContent] as string | undefined);
+			: (profile[contentKey as keyof StarContent] as string | GenderField | undefined);
+	const content = contentRaw === undefined ? undefined : selectGender(contentRaw, gender);
 
-	const mod =
+	const modRaw =
 		primaryStar.brightness === "bright"
 			? profile.brightMod
 			: primaryStar.brightness === "dim"
 				? profile.dimMod
 				: undefined;
+	const mod = modRaw === undefined ? undefined : selectGender(modRaw, gender);
 	const brightNote = mod ? `▶ ${mod}` : undefined;
 
 	const s2 = mainStars[1];

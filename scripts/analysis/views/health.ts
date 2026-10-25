@@ -14,6 +14,7 @@ import { PALACE_BRANCH_ORGAN, ZIWU_LIUZHU } from "../../analysis/data";
 import { SHA_HARD } from "../../corpus/data/patterns";
 import { BRANCHES } from "@/data/ganzhi";
 import type { AnalysisContext } from "../../analysis/context";
+import { selectGender } from "../../analysis/lookups";
 
 /**
  * 疾厄宫 · 地支宫位 → 脏腑映射（倪师体系主轴）
@@ -54,7 +55,7 @@ export function renderHealth(ctx: AnalysisContext): string[] {
 				lines.push(
 					`疾厄宫主星 **${primaryStar.name}**（${ziwu.element}）辅助指向 **${ziwu.organ}**——星曜五行是"附加提示"，与宫位地支脏腑叠加判断：`
 				);
-				lines.push(`▸ ${ziwu.advice}`);
+				lines.push(`▸ ${selectGender(ziwu.advice, chart.birthInfo.gender)}`);
 				lines.push("");
 			}
 		}

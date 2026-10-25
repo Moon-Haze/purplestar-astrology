@@ -50,6 +50,8 @@ export interface AnalysisContext {
 	view: AnalysisView;
 	liunianYear: number;
 	liuyueMonth: number;
+	/** 出生性别（`chart.birthInfo.gender`），性别投影的单一入口 */
+	gender: "male" | "female";
 
 	/** 本主题的主宫名（`TOPIC_PALACE_NAME[topic]`，带「宫」字的本项目口径） */
 	palaceName: string;
@@ -134,7 +136,7 @@ export function makeContext(
 	const mutagenInSanFang: MutagenInSanFang[] = [];
 	sanFang.forEach(p => {
 		getPalaceMutagen(p).forEach(({ name, mutagen }) => {
-			const note = getMutagenNote(name, mutagen);
+			const note = getMutagenNote(name, mutagen, chart.birthInfo.gender);
 			mutagenInSanFang.push({ palaceName: p.name, starName: name, mutagen, note });
 		});
 	});
@@ -145,6 +147,7 @@ export function makeContext(
 		view,
 		liunianYear,
 		liuyueMonth,
+		gender: chart.birthInfo.gender,
 		palaceName,
 		topicLabel,
 		mainPalace,
