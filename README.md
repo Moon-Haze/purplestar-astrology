@@ -59,6 +59,23 @@ $ node scripts/purple-star.ts knowledge --search 机月同梁
 
 ### 装进 AI 助手
 
+**方式一 · skills CLI（一条命令）**：Agent Skills 生态的标准安装器
+（[vercel-labs/skills](https://github.com/vercel-labs/skills)，支持 Claude Code 等 70+ 宿主）：
+
+```bash
+npx skills add Moon-Haze/purplestar-astrology -g -a claude-code
+# 网络走 SSH 更稳时用 URL 字面量：
+npx skills add git@github.com:Moon-Haze/purplestar-astrology.git -g -a claude-code
+```
+
+两条已知代价：①安装走 git clone，需拉取约 400 MiB git 数据（实测口径 2026-10-25，
+`git count-objects -vH`，大头是 `db/dataset/` 数据集）；②装完不含 `node_modules`，
+**首次使用须在技能根 `npm install`**（`SKILL.md` 的「首次使用」节已写明，AI 助手读到
+会自行补装）。装出的是整仓工作树（含 `test/` `docs/` 等），功能不受影响。
+`npx skills find` 搜不到本技能属预期（未登记 skills.sh 索引），按 `owner/repo` 安装不受影响。
+
+**方式二 · zip（可校验字节复现）**：需要校验包未被改动、或要只含四项的干净分发件时选这条：
+
 ```bash
 npm run pack        # 打出 dist/purplestar-astrology.zip
 unzip dist/purplestar-astrology.zip -d ~/<技能目录>/

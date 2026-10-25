@@ -32,6 +32,22 @@ node scripts/purple-star.ts selftest
 日常使用只需要 `npm install` 一次；脚本从仓库根或任意目录运行都可以（内核定位走脚本
 自身所在路径，不依赖 cwd）。
 
+## 装进 AI 助手（skills CLI）
+
+想把技能装进 AI 助手（Claude Code 等）而不是本机直跑 CLI，用 Agent Skills 生态的
+标准安装器一条命令完成（与 README「装进 AI 助手」同口径）：
+
+```bash
+npx skills add Moon-Haze/purplestar-astrology -g -a claude-code
+```
+
+两条已知代价：①安装走 git clone，需拉取约 400 MiB git 数据（实测口径 2026-10-25，
+大头是 `db/dataset/` 数据集）；②装完不含 `node_modules`，首次使用须在技能根
+`npm install`——`SKILL.md`「首次使用」节已写明，AI 助手会自行补装。装出的是整仓
+工作树，功能不受影响。`npx skills find` 搜不到本技能属预期（未登记 skills.sh 索引），
+按 `owner/repo` 安装不受影响；网络走 SSH 更稳时用
+`npx skills add git@github.com:Moon-Haze/purplestar-astrology.git`。
+
 ## 第一张盘
 
 排盘四必问：**出生日期、出生时间、性别、出生地**——缺哪问哪，不要让工具猜。
