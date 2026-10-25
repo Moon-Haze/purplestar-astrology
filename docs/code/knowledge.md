@@ -18,9 +18,10 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > = 写一个 `KnowledgeSource` 文件 + 在 registry 加一行，不必改 CLI 分发入口
 > （ADR-002：清单注册而非文件系统自动发现）。
 >
-> `search` 收原始 `CliArgs`：`--search` 三态与 `--limit` 校验由命令入口守卫单点承担
-> （`cli/knowledge/index.ts` 的 `assertKnowledgeArgs`），位置参数回退是域知识、留在各域
-> 实现内（books/stars/tianji 回退为检索词，oracle 回退为 topic/star）。
+> `search` 收 CLI 无关的 `KnowledgeQuery`（精确字段，由 `cli/knowledge/index.ts` 的
+> `decodeKnowledgeQuery` 从 `CliArgs` 解码而来）：`--search`/`--limit`/`--book`/`--topic`
+> 的三态与值域校验在入口单点承担，位置参数回退是域知识、留在各域实现内
+> （books/stars/tianji 回退为检索词，oracle 回退为 topic/star）。
 >
 > `citations` 是引文核对表的扩展点占位：Phase 3（SchoolAdapter + 按流派引文守卫）落地时，
 > 把 `corpus/annotations.ts` 的全局核对表收进各源，并按流派分派。Phase 1 不填充它，

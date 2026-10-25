@@ -26,7 +26,7 @@ describe("KnowledgeSource 注册表（Phase 1）", () => {
 		for (const id of KNOWLEDGE_SOURCE_IDS) {
 			const ks = KNOWLEDGE_SOURCES[id];
 			assert.equal(typeof ks.search, "function", `${id}.search 必须是函数`);
-			const out = await ks.search({ _: [], source: id } as never);
+			const out = await ks.search({ positional: [], limit: 15 });
 			assert.ok(typeof out === "string" && out.length > 0, `${id}.search 应返回非空文本`);
 		}
 	});

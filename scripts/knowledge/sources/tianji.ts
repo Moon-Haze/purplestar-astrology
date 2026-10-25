@@ -9,8 +9,7 @@
  * （见 docs/code/cli-commands.md）。
  */
 
-import type { CliArgs } from "@/cli/args";
-import type { KnowledgeSource } from "../types";
+import type { KnowledgeQuery, KnowledgeSource } from "../types";
 
 /** 册代号 → 中文名（语料库原生编号）。 */
 const TIANJI_BOOK_NAMES: Record<string, string> = {
@@ -32,17 +31,12 @@ const TIANJI_FOOTER = [
 export const tianjiSource: KnowledgeSource = {
 	id: "tianji",
 	label: "天纪判语",
-	async search(args: CliArgs): Promise<string> {
-		const q = String(args.search ?? args._.join(" ") ?? "");
-		const limit = Math.floor(Number(args.limit ?? 15));
+	async search(query: KnowledgeQuery): Promise<string> {
+		const q = query.term ?? query.positional.join(" ") ?? "";
+		const limit = Math.floor(query.limit);
 
-		// 限册：接受册代号（01-stars）或中文名（主星）。args.book 是 string | boolean | string[]
-		//（索引签名），String() 先收窄成 string 再比对。
-		const bookArg = args.book;
-		if (typeof bookArg === "boolean") {
-			throw new Error("--book 需要一个册名（如 --book 01-stars）。");
-		}
-		const bookStr = bookArg === undefined ? "" : String(bookArg);
+		// 限册：接受册代号（01-stars）或中文名（主星）。裸开关已在入口 throw，这里直接读 string。
+		const bookStr = query.book ?? "";
 		const bookNorm = bookStr
 			? (Object.keys(TIANJI_BOOK_NAMES).find(
 					k => k === bookStr || TIANJI_BOOK_NAMES[k] === bookStr

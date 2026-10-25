@@ -7,8 +7,7 @@
  * —— 见 docs/code/cli-commands.md。
  */
 
-import type { CliArgs } from "@/cli/args";
-import type { KnowledgeSource } from "../types";
+import type { KnowledgeQuery, KnowledgeSource } from "../types";
 import { TOPIC_LABEL, type TopicKey } from "@/analysis";
 
 type OracleStar = import("@/corpus/data/manual/types").OracleStar;
@@ -82,14 +81,9 @@ function renderOracleStar(star: string, o: OracleStar): string[] {
 export const oracleSource: KnowledgeSource = {
 	id: "oracle",
 	label: "断语手册",
-	async search(args: CliArgs): Promise<string> {
+	async search(query: KnowledgeQuery): Promise<string> {
 		// 主题：--topic 或首个位置参数（与 astrology --topic 的 key 集合一致）
-		const topicPos = args._[0];
-		const topicRaw =
-			args.topic !== undefined && args.topic !== true ? String(args.topic) : topicPos;
-		if (typeof args.topic === "boolean") {
-			throw new Error("--topic 需要一个主题 key（如 --topic career），或直接写位置参数。");
-		}
+		const topicRaw = query.topic ?? query.positional[0];
 
 		const { loadTopicOracle } = await import("@/corpus/data/manual/index.ts");
 
@@ -117,7 +111,7 @@ export const oracleSource: KnowledgeSource = {
 		const oracle = await loadTopicOracle(topic);
 
 		// 星名：--star 或第二个位置参数
-		const starRaw = args.star !== undefined ? String(args.star) : args._[1];
+		const starRaw = query.star ?? query.positional[1];
 
 		// 无星名：14 主星概览
 		if (!starRaw) {

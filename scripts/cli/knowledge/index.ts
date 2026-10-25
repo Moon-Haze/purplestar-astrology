@@ -8,25 +8,28 @@
  * docs/code/cli-commands.md）。
  *
  * 参数样板的单点：`--search` 裸开关与 `--limit` 值域是四域同形的东西，由
- * {@link assertKnowledgeArgs} 在入口统一拦截（throw → stderr + 非零退出）；
+ * {@link decodeKnowledgeQuery} 在入口统一拦截（throw → stderr + 非零退出）；
  * 位置参数回退是**域知识**（books/stars/tianji 回退为检索词、oracle 回退为
  * topic/star），留在各域实现内。
  */
 
 import type { CliArgs } from "../args";
+import type { KnowledgeQuery } from "@/knowledge/types";
 import { KNOWLEDGE_SOURCES, KNOWLEDGE_SOURCE_IDS } from "@/knowledge/registry";
 
 /**
- * knowledge 命令的公共参数守卫：三态归一与 limit 校验的单点。
+ * knowledge 命令的公共参数解码：三态归一 + limit 校验 + 值解码的单点。
  *
  * @remarks
- * 四域同形的两件事在这里一次说清，域实现不再各抄一份（历史上 books 的
- * `--search` 缺值走 return、其余三域走 throw，exit code 曾实际漂移）：
- * - `--search` 裸开关（解析层存成 `true`）一律 throw——不把报错当正常输出打
- *   stdout，机器路径（退出码）可感知；
- * - `--limit` 给了就必须是正整数（books/tianji 两份文案合一）。
+ * 校验与解码合并在这里，域实现不再各抄一份（历史上 books 的 `--search` 缺值走
+ * return、其余三域走 throw，exit code 曾实际漂移）：
+ * - `--search`/`--book`/`--topic` 裸开关（解析层存成 `true`）一律 throw——不把报错
+ *   当正常输出打 stdout，机器路径（退出码）可感知；
+ * - `--limit` 给了就必须是正整数（books/tianji 两份文案合一）；
+ * - 取值参数解码为精确 `string`（或 `undefined`），裸开关的 boolean 形态在此被拦截，
+ *   各源无需再 `typeof x === "boolean"` 收窄。位置参数回退仍是域知识，原样透传。
  */
-function assertKnowledgeArgs(args: CliArgs, source: string): void {
+function decodeKnowledgeQuery(args: CliArgs, source: string): KnowledgeQuery {
 	if (typeof args.search === "boolean") {
 		throw new Error(
 			`--search 需要一个检索词（如 --search 紫微），也可直接写位置参数：knowledge --source ${source} 紫微。`
@@ -38,6 +41,21 @@ function assertKnowledgeArgs(args: CliArgs, source: string): void {
 			throw new Error(`--limit 需为正整数，实得 ${String(args.limit)}。`);
 		}
 	}
+	if (typeof args.book === "boolean") {
+		throw new Error("--book 需要一个册名（如 --book 01-stars）。");
+	}
+	if (typeof args.topic === "boolean") {
+		throw new Error("--topic 需要一个主题 key（如 --topic career），或直接写位置参数。");
+	}
+
+	return {
+		term: typeof args.search === "string" ? args.search : undefined,
+		positional: args._,
+		limit: args.limit === undefined ? 15 : Number(args.limit),
+		book: typeof args.book === "string" ? args.book : undefined,
+		topic: typeof args.topic === "string" ? args.topic : undefined,
+		star: args.star === undefined ? undefined : String(args.star),
+	};
 }
 
 /**
@@ -54,10 +72,10 @@ function assertKnowledgeArgs(args: CliArgs, source: string): void {
  */
 export async function cmdKnowledge(args: CliArgs): Promise<string> {
 	const source = String(args.source ?? "books");
-	assertKnowledgeArgs(args, source);
+	const query = decodeKnowledgeQuery(args, source);
 	const ks = KNOWLEDGE_SOURCES[source];
 	if (!ks) {
 		throw new Error(`--source 应为 ${KNOWLEDGE_SOURCE_IDS.join("/")}，收到：${source}`);
 	}
-	return ks.search(args);
+	return ks.search(query);
 }

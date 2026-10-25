@@ -6,9 +6,10 @@
  * = 写一个 `KnowledgeSource` 文件 + 在 registry 加一行，不必改 CLI 分发入口
  * （ADR-002：清单注册而非文件系统自动发现）。
  *
- * `search` 收原始 `CliArgs`：`--search` 三态与 `--limit` 校验由命令入口守卫单点承担
- * （`cli/knowledge/index.ts` 的 `assertKnowledgeArgs`），位置参数回退是域知识、留在各域
- * 实现内（books/stars/tianji 回退为检索词，oracle 回退为 topic/star）。
+ * `search` 收 CLI 无关的 `KnowledgeQuery`（精确字段，由 `cli/knowledge/index.ts` 的
+ * `decodeKnowledgeQuery` 从 `CliArgs` 解码而来）：`--search`/`--limit`/`--book`/`--topic`
+ * 的三态与值域校验在入口单点承担，位置参数回退是域知识、留在各域实现内
+ * （books/stars/tianji 回退为检索词，oracle 回退为 topic/star）。
  *
  * `citations` 是引文核对表的扩展点占位：Phase 3（SchoolAdapter + 按流派引文守卫）落地时，
  * 把 `corpus/annotations.ts` 的全局核对表收进各源，并按流派分派。Phase 1 不填充它，
@@ -17,7 +18,27 @@
  * 接缝由来（架构文档 §4.1）与「新增一个域」的完整步骤，见 docs/code/knowledge.md。
  */
 
-import type { CliArgs } from "@/cli/args";
+/**
+ * 知识源的查询参数（CLI 无关）。
+ *
+ * 由命令入口 `decodeKnowledgeQuery` 从 `CliArgs` 解码而来：裸开关（boolean）已在入口
+ * throw，取值参数已收窄为 `string`（或 `undefined`），各源不再需要 `typeof x === "boolean"`
+ * + `String(x)` 防御收窄。位置参数回退是域知识、留在各源，故 `positional` 原样透传。
+ */
+export interface KnowledgeQuery {
+	/** `--search` 的字符串值；未给为 `undefined` */
+	term?: string;
+	/** 位置参数（原样透传，供各源做自己的回退） */
+	positional: string[];
+	/** `--limit` 的数值；未给为默认 15 */
+	limit: number;
+	/** `--book` 的字符串值（限册代号或中文名）；未给为 `undefined` */
+	book?: string;
+	/** `--topic` 的字符串值；未给为 `undefined` */
+	topic?: string;
+	/** `--star` 的字符串值；未给为 `undefined` */
+	star?: string;
+}
 
 /** 一条引文核对项（占位形状；Phase 3 落地时与 annotations.ts 对齐）。 */
 export interface CitationRef {
@@ -36,7 +57,7 @@ export interface KnowledgeSource {
 	/** 流派归属（可选；Phase 3 SchoolAdapter 落地后填充） */
 	school?: string;
 	/** 渲染该域的检索输出；返回已渲染文本。 */
-	search(args: CliArgs): string | Promise<string>;
+	search(query: KnowledgeQuery): string | Promise<string>;
 	/** 该源自带的引文核对表（可选；Phase 3 填充） */
 	citations?: readonly CitationRef[];
 }

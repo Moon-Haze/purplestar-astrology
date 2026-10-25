@@ -6,18 +6,17 @@
  * 检索词 → 释义渲染。
  */
 
-import type { CliArgs } from "@/cli/args";
-import type { KnowledgeSource } from "../types";
+import type { KnowledgeQuery, KnowledgeSource } from "../types";
 import { STAR_DESCRIPTIONS } from "@/data/stars";
 
 /** stars 域：无关键词列全部星曜，有关键词出该星的「关键词 · 星性 · 五行」。 */
 export const starsSource: KnowledgeSource = {
 	id: "stars",
 	label: "星曜释义",
-	search(args: CliArgs): string {
+	search(query: KnowledgeQuery): string {
 		const names = Object.keys(STAR_DESCRIPTIONS);
 		// 位置参数与 --search 等价（与 books 域同款回退）。
-		const q = String(args.search ?? args._.join(" "));
+		const q = query.term ?? query.positional.join(" ");
 		if (q) {
 			const s = STAR_DESCRIPTIONS[q];
 			if (!s) {

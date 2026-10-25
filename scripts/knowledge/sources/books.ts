@@ -6,16 +6,15 @@
  * 已静态打包进代码，零 DB 依赖），启动无懒加载顾虑。
  */
 
-import type { CliArgs } from "@/cli/args";
-import type { KnowledgeSource } from "../types";
+import type { KnowledgeQuery, KnowledgeSource } from "../types";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/corpus";
 
 /** 渲染 books 域：无关键词列四域概览，有关键词出古籍命中。 */
 export const booksSource: KnowledgeSource = {
 	id: "books",
 	label: "古籍",
-	search(args: CliArgs): string {
-		if (!args.search && !args._.length) {
+	search(query: KnowledgeQuery): string {
+		if (!query.term && !query.positional.length) {
 			return [
 				"知识检索四域：books 古籍（默认）· stars 星曜释义 · tianji 天纪判语 · oracle 断语手册",
 				"",
@@ -28,9 +27,9 @@ export const booksSource: KnowledgeSource = {
 				"其他域：--source stars（星曜释义）/ --source tianji（天纪判语）/ --source oracle（断语手册）",
 			].join("\n");
 		}
-		const q = String(args.search ?? args._.join(" "));
-		// 值域合法性由入口守卫保证（assertKnowledgeArgs），这里只做类型收窄。
-		const hits = searchClassics(q, Number(args.limit ?? 15));
+		const q = query.term ?? query.positional.join(" ");
+		// 值域合法性由入口解码保证（decodeKnowledgeQuery），这里直接读精确字段。
+		const hits = searchClassics(q, query.limit);
 		if (!hits.length) {
 			return `古籍中未找到「${q}」。`;
 		}
