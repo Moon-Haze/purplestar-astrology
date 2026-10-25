@@ -25,8 +25,11 @@ import type { AnnotationEntry } from "../corpus/data/annotations";
  */
 export type SchoolId = "wenmo-nishi";
 
-/** 体系禁用特征（继承绊线语义的声明式表达）。 */
-export type ForbiddenFeature = "self-mutagen" | "lai-yin" | (string & {});
+/**
+ * 体系禁用特征（继承绊线语义的声明式表达）——闭集，与 `SchoolId` 同纪律：不设
+ * `(string & {})` 逃生舱，新禁用特征走「types 联合加分支 + guard 补真检查」两处显式。
+ */
+export type ForbiddenFeature = "self-mutagen" | "lai-yin";
 
 /**
  * 一个扫描根 + 它对应的引文核对表（引用，不复制）。
