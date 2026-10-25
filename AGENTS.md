@@ -221,6 +221,75 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 ⚠️ `mutagen.ts` 导出六层四化（生年 / 大限宫干 `getDaXianMutagen` / 流年 / 流月 / 流日 `getDailyMutagen` / 流时 `getHourlyMutagen`）；宫干自化与来因宫函数已删除，全仓零调用点。`types.ts` 的**绊线字段刻意保留**（`Palace.selfMutagen` 与 `SelfMutagenMark` / `DecadalMutagen` 类型；`Decadal` 结构不加字段，大限宫干四化走纯函数层）——断言要盯的正是「有没有被填回」。**要删这些字段，先读 `docs/code/chart-kernel.md` 的「绊线字段」一节。**
 
+## 项目约束（不可动）
+
+本节的约束读代码看不出来，是已定决策（ADR / 评审）——排盘、解读、提案、改代码前先读。
+`openspec/config.yaml` 的 `context` 只做指针指向本节、不复制，二者以本节为准。
+
+### 失败可见性
+
+- 静默吞参数已全数改为「报错 + 指路」（独占分支、未知参数、重复参数）；新代码不得引入兜底默认值、
+  不得静默忽略无效输入。参与判定链的输入（性别、日期、`--monthly` 裸开关）一律报错，绝不取默认值。
+
+### 虚岁与起运
+
+- 年龄一律**虚岁**（以农历年正月初一为界），不得换算成周岁；`currentDecadalIndex === -1`
+  表示尚未起运，属正常，不得硬套大限。
+
+### 分层红线（ADR-003）
+
+- 排盘内核（`algorithm.ts` / `mutagen.ts` / `patterns/` / `data/` / `wenmo-brightness.ts`）
+  与知识内容（`analysis/` / `corpus/` / `synastry/`）严格分层。**插件层禁止反向依赖 `cli/`，
+  禁止修改内核模块状态。**
+- 新增知识内容（古籍 / 主题断语 / 新流派）**不得触碰排盘内核与 CLI 分发**，也不因此需要重跑内核回归。
+- 轻路径纪律：重语料（tianji / oracle）只能在各自 `search` 体内 `await import`，
+  注册表静态 import 的源必须轻；help / 未知命令路径不得触发 iztro 加载（`command-meta` 禁 import 命令实现与内核）。
+
+### 注册表纪律（ADR-002）
+
+- 插件一律**清单注册**（`registry.ts` 显式 import），不用文件系统自动发现。新增插件 = 写文件 + 加一行；漏注册由 typecheck 兜底。
+
+### 冻结内核契约
+
+- `test/kernel-contract.test.ts` 冻结内核对外形状（2026-10-12）。改动内核导出即破坏契约，必须显式说明并同步该测试，不要顺手改断言迁就实现。
+
+### 键域口径
+
+- analysis 侧按宫名索引的数据表（次星宫位文案表 / 宫位内容键映射 / 主题关键宫位）一律用**展开形**宫名键，
+  与运行时宫名域 `PALACE_NAMES_ORDER` 同域——带「宫」字，第 8 宫是交友宫，**不是** iztro 旧口径的「仆役宫」。
+  紧凑形宫名键只作归一中间量，不得直接出现在数据表里。
+- 十四主星名以 `scripts/data/stars.ts` 为唯一真相源；星曜内容表、简述表、主题断语手册的主星键集与之一致。
+- 键域漂移（数据表键与运行时键不一致导致的静默 miss）由 `test/invariants.test.ts` 拦截；消费点不得用 `?? ""` 掩盖 miss。
+
+### 引文纪律
+
+- 凡出现「倪师 / 倪海厦 + 引号句」形态，必须在 `analysis/grades.ts` 登记档位，否则 `npm test` 引文守卫变红。
+  **占位或自撰内容绝不可挂倪师引语**（属伪造引文）。
+- 守卫扫描面同时覆盖 `.ts` 与 `.md`（`docs/` / `SKILL.md` / `references/` 等，见 `test/lib/citation-guard.ts` 的 `scanMarkdownCitations`）；`docs/manual/` 是生成导出，按路径排除。
+
+### 缓存
+
+- 改排盘内核输出结构或升级 `iztro` 时**必须递增 `CACHE_VERSION`**，否则旧缓存被当有效读回。
+- 回归链路恒设 `ZIWEI_NO_CACHE=1`，漏设会拿旧缓存**假绿**。
+- 缓存是性能优化，**绝不参与正确性**：读失败静默降级现排、写失败不得让排盘失败——缓存故障的正确表现是「慢」，不是「错」。
+
+### 最小 diff 与生成物
+
+- 只格式化本次真正新增 / 改动的行，**不夹带无关格式改动**：整跑 format 会产出数万行纯排版噪声，逐字节 diff 与评审双双失效。
+- 生成文件不手改、改生成器再重导（`data/wenmo-tables.ts`、`corpus/data/tianji.ts`、`corpus/data/manual/`、cli-samples 产物）；重导前先想清楚 diff 只含预期变化。
+- 「重构不改行为」的任务，验收必须含**与改动前基线逐字节 diff=0**（先取基线再动手）。
+
+### 抽象与重构判据
+
+- **deletion test**：删掉它是让复杂度集中，还是只是搬家？搬家不算重构成果；去重优先于拆分，不为拆而拆。
+- 每个新抽象必须答得出「删掉它会多写几行」，答不出就别加；常量单一角色，一个常量不得身兼两职（`TOPIC_KEYS` 一名两用教训）。
+- **接缝判据**：加一个实现只需「一个文件 + 一行注册」；若还要改三处以上分发逻辑，那不是接缝，是把耦合换了位置。
+
+### 验证闸门
+
+- 新增 `test/*.test.ts` 必须同时登记 `test/README.md` 层表与 `test/lib/run.ts` 的 `LAYERS`。
+- 「内核层测试项数」是插件越界报警器：内容扩展型改动不得使内核层项数变动——项数一动先怀疑越界，而不是先改基线。
+
 ## 单 skill 形态（2026-09-30 三 skill 合一）
 
 此前 `skills/` 下有三个自包含 skill（astrology 排盘 / synastry 合盘 / classics 古籍），2026-09-30 合并为仓库根的单 skill：内核上提根 `scripts/`，语料与 synastry 的内核分别住 `scripts/corpus/`（原 classics，2026-10-11 并入天纪语料与引文核对表后改名）与 `scripts/synastry/`，命令并入同一条 CLI，selftest 三段合一。**`skills/` 目录已删除**，别照旧记忆找它。
@@ -296,8 +365,8 @@ CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 
 仓内用 OpenSpec 做规范驱动开发。`openspec/specs/` 是各能力域的**当前规范**
 （chart-casting / distribution / extensibility / interpretation-contract /
-knowledge-retrieval / quality-gates / synastry），`openspec/config.yaml` 是**项目约束**
-（体系立场、分层红线、验证闸门等读代码看不出的已定决策，proposal 生成时会自动带上）。
+knowledge-retrieval / quality-gates / synastry），`openspec/config.yaml` 的 `context` 只做**指针**
+指向本文「项目约束（不可动）」节、不复制约束（单一真相源在本文，避免两份漂移）。
 
 - **什么时候走**：触及规范面的改动（新能力、改输出契约、动扩展点、变验证纪律）先提案再动手；
   纯实现修复与文案修订不必。
