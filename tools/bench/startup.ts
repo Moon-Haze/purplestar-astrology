@@ -81,7 +81,7 @@ const E2E_CASES: Array<{ label: string; args: string[] }> = [
 		],
 	},
 	{
-		label: "astrology --topic（排盘 + 分析数据库 v3）",
+		label: "astrology --topic（排盘 + 分析数据库）",
 		args: [
 			"astrology",
 			"--topic",

@@ -32,7 +32,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > scripts/algorithm.ts 排盘主流程
 > scripts/patterns/ 格局识别（含古籍出处与破格条件）
 > scripts/mutagen.ts 四化（生年 / 流年 / 流月）
-> scripts/analysis/ 分析数据库 v3（主题论断动态推算，topic 命令用）
+> scripts/analysis/ 分析数据库（主题论断动态推算，topic 命令用）
 > cli/birth/ 出生信息解析（真太阳时、农历换算、城市容错）+ 城市经纬度表
 > scripts/data/ 天干地支 / 纳音五行 / 四化表 / 星曜释义（数据层）
 >

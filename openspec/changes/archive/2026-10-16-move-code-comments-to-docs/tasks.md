@@ -21,7 +21,7 @@
 ## 3. 知识与扩展层七单元
 
 - [x] 3.1 `patterns`：写 `docs/code/patterns.md`（搬 `patterns/` 的 B/C：helpers 底座定位、index 公开面收窄、各分组判定共享前提），瘦身源码留指路牌；验证：diff 只动注释行 + `selftest` 全绿
-- [x] 3.2 `analysis`：写 `docs/code/analysis.md`（搬论断库 v3 结构、grades 档位、context/report 分层），瘦身源码留指路牌；验证：diff 只动注释行 + `selftest` 全绿
+- [x] 3.2 `analysis`：写 `docs/code/analysis.md`（搬论断库结构、grades 档位、context/report 分层），瘦身源码留指路牌；验证：diff 只动注释行 + `selftest` 全绿
 - [x] 3.3 `data-tables`：写 `docs/code/data-tables.md`（搬干支/五行表的口径与兜底规则），瘦身源码留指路牌；验证：diff 只动注释行 + `selftest` 全绿
 - [x] 3.4 `corpus`：写 `docs/code/corpus.md`（搬三部古籍 + 天纪语料 + 引文核对表定位、manual 快照生成关系），瘦身源码留指路牌；验证：diff 只动注释行 + `selftest` 全绿
 - [x] 3.5 `knowledge`：写 `docs/code/knowledge.md`（搬 KnowledgeSource 接缝、registry 清单注册、重数据懒加载理由），瘦身源码留指路牌；验证：diff 只动注释行 + `selftest` 全绿

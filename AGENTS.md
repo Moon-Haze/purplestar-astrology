@@ -156,7 +156,7 @@ npm run pack
     │                                 synastry 两个断言组共用
     ├── algorithm.ts 等             排盘内核（原 ziwei/ 目录，2026-10-12 拆平至 scripts/ 根）：
     │                               algorithm（iztro 主流程）/ patterns（格局层）/
-    │                               mutagen（四化）/ analysis（主题论断数据库 v3）/ data
+    │                               mutagen（四化）/ analysis（主题论断数据库）/ data
     │                               （干支/五行/四化/星曜数据表）/ wenmo-brightness /
     │                               palace-relations / types
     ├── corpus/                     古籍与文献语料内核：data/（三部古籍 quanshu/quanji/gusuifu
@@ -349,7 +349,7 @@ CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 
 ## 内核的来源
 
-排盘内核提取自上游开源项目 `ziwei-master`（未发布到 npm），**在本项目内独立演化**。线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/` 不在其中；本仓自带分析数据库 v3（`analysis/`）。
+排盘内核提取自上游开源项目 `ziwei-master`（未发布到 npm），**在本项目内独立演化**。线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/` 不在其中；本仓自带分析数据库（`analysis/`）。
 
 ## 代码审查
 

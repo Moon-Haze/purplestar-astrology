@@ -45,7 +45,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 「倪师引用」文献核对记录 —— 本仓内核中所有「倪师/倪海厦」引用的文献核对表。
 >
 > 数据源：reference/ziwei-samples-toolkit/corpus/annotations.json
-> 本仓的 v3 已清掉全部 fabricated，存活 suspect 的强归属也已
+> 本仓已清掉全部 fabricated，存活 suspect 的强归属也已
 > 清修为「古诀云 / 紫微斗数有云 / 一说」—— 本模块因此转为**防回流禁语清单**，
 > 由 `scripts/cli/selftest/index.ts` 的「未核实引文不得冒充倪师原话」断言消费。
 

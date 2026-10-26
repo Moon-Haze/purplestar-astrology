@@ -621,7 +621,7 @@ export function cmdAstrology(args: CliArgs) {
 			"",
 			text,
 			"",
-			"⚠️ 知识来源分级：以上论断出自分析数据库 v3 —— 其中「倪师说」引号句部分为传统口诀的",
+			"⚠️ 知识来源分级：以上论断出自分析数据库 —— 其中「倪师说」引号句部分为传统口诀的",
 			"   风格化转述，不一定是《天纪》逐字原话（verified / traditional / methodology / suspect 四级），",
 			"   引用下断语时请注明口径。",
 		].join("\n");

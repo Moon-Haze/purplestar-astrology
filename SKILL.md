@@ -9,7 +9,7 @@ description: "紫微斗数一条龙（倪海厦《天纪》三合派体系）—
 description_zh: "紫微斗数排盘解读、合盘与古籍检索三合一的助手技能。给出出生年月日时与性别即可排出命盘，解读十二宫、格局、四化、大限流年；可做双人合盘看婚姻配对；可检索《骨髓赋》等三部古籍原文。排盘由确定性引擎产出，不靠模型推算。"
 description_en: "An end-to-end assistant skill for Zi Wei Dou Shu (Purple Star Astrology) chart casting, interpretation, synastry and classical-text retrieval. Given date, time, gender and birthplace it casts the chart deterministically and reads the twelve palaces, pattern classifications, Four Transformations and decade/year cycles. It also synastries two charts for relationship pairing and retrieves verbatim source text from three classical manuals. Does not handle BaZi, tarot or Western astrology."
 allowed-tools:
-  - scripts/bash
+    - scripts/bash
 ---
 
 # 紫微斗数（排盘解读 · 合盘 · 古籍）
@@ -119,8 +119,8 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 
 ### 知识库来源
 
-- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库 v3**（`scripts/analysis/`：推算 + `data.ts` 论断文案与类型映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `astrology --topic` 使用。解读的知识源是工作流第 2 步列出的六个。
-- **分析数据库 v3 的输出分级**：⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话（verified / traditional / methodology / suspect 四级），引用下断语须注明口径。
+- **上游 SEO 版论断库不可用、也不作解读依据**：上游站点的静态 SEO 库（`lib/seo/knowledge.ts` 及其依赖的 SEO 版 `STAR_DB`）只存在于线上站点源码——`reference/ziwei-doushu/` 只读快照里那份是**空占位**（`STAR_DB = {}`，论断内容不在上游开源范围），**无论在哪里看到都不可用**。本仓自带的是另一份**分析数据库**（`scripts/analysis/`：推算 + `data.ts` 论断文案与类型映射表，拷自 `reference/ziwei-samples-toolkit/`）：十四主星 × 12 宫语境内容库 + `getTopicAnalysis` **动态推算**（主宫主星/空宫借对宫、三方四正、本命四化会照、大限/流年/流月视角），经 `astrology --topic` 使用。解读的知识源是工作流第 2 步列出的六个。
+- **分析数据库的输出分级**：⚠️ 其输出末尾带知识来源分级提示——库中「倪师说」引号句部分为传统口诀的**风格化转述**，不一定是《天纪》逐字原话（verified / traditional / methodology / suspect 四级），引用下断语须注明口径。
 - ⚠️ **本技能不是官方出品，勿冒充倪师本人或其授权机构**：它是对公开流传的倪海厦《天纪》三合派**内容与排盘工具**的技术整理实现——排盘口径参考文墨天机，《天纪》为讲座内容而非本人著作出版。涉及「倪师说」「倪海厦说」字样时，一律按上一条的分级口径注明是风格化转述还是可溯原话，**不得生成《天纪》里不存在的引语**。对外交付（`--report` 或解读成文）时保留本条说明与各节的来源分级标注。
 
 ### 亮度与星曜口径
@@ -141,12 +141,12 @@ node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成�
 
 ## 命令速查
 
-| 命令                                  | 用途                                                                                                                                                                                                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `astrology`                           | **主力命令**（四命令合一）。概览默认含基本信息；`--palaces` 十二宫详表；`--topic` 主题论断；`--report` 全盘报告（Markdown）；专题参数可叠加（独占分支除外）                                                                                                        |
+| 命令                                  | 用途                                                                                                                                                                                                                                                              |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `astrology`                           | **主力命令**（四命令合一）。概览默认含基本信息；`--palaces` 十二宫详表；`--topic` 主题论断；`--report` 全盘报告（Markdown）；专题参数可叠加（独占分支除外）                                                                                                       |
 | `knowledge`                           | **统一知识检索**（`--source` 四域）：books 古籍（默认，`--search`/`--limit`）/ stars 星曜释义 / tianji 天纪判语（秒级回放溯源，`--book` 限册）/ oracle 断语手册（各主题 × 十四主星分类断语，`--topic`/`--star`）。命令原名 classics，旧命令 stars / oracle 已并入 |
-| `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后）。方法论与评分标准不在命令输出里，按 [references/synastry-guide.md](references/synastry-guide.md) 按需读取                                                                                               |
-| `selftest`                            | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次                                                                                                                                                                                      |
+| `synastry --charts <a.json>,<b.json>` | 合盘（双宫联参；读两份 `astrology --json` 产物，甲先乙后）。方法论与评分标准不在命令输出里，按 [references/synastry-guide.md](references/synastry-guide.md) 按需读取                                                                                              |
+| `selftest`                            | 回归自检（排盘 / 古籍 / 合盘三段，末行自报项数）。改动或升级 `iztro` 后跑一次                                                                                                                                                                                     |
 
 高频参数：出生信息 `--date` / `--lunar` / `--time` / `--branch` / `--gender`（**必填**）/ `--city`，或零参数快捷形态 `2011-06-24 07:45 男 杭州`（按形态归类；示例数据为虚构）；专题深入 `--pattern` / `--mutagen` / `--yearly [年]` / `--decadal [虚岁]` / `--ages [虚岁]` / `--focus <宫名>` 可叠加（`--info` / `--palaces` / `--topic` / `--report` 是独占分支；拼音别名仍被识别，全表见 options.md）；四化细化 `--monthly <农历月>` / `--daily <农历日>` / `--hourly <时支>`（逐级依赖：日挂月、时挂日，均须配 `--mutagen`）；输出 `--json`；输出落盘 `--out <路径>`（覆盖写，正文不再占 stdout —— 需要把报告 / JSON 存成文件时用它，代替 shell 重定向）；**排盘结果默认按出生信息哈希缓存在系统临时目录**（`os.tmpdir()` 下的应用专属子目录，skill 包内零写入；同一农历年内复用，换专题参数重跑只付「读文件 + 渲染」；跨春节自动重排，系统清理临时目录后冷排一次），`--no-cache` 强制现排。
 
