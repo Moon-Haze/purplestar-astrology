@@ -14,7 +14,9 @@ import {
 	MINOR_STAR_PALACE_CONTENT,
 	SIHUA_CHAR_TO_KEY,
 	STAR_CONTENT_MAP,
+	type BranchedContent,
 	type GenderField,
+	type PalaceContent,
 } from "../analysis/data";
 // 格局的**命中判定**统一由 patterns/ 负责（本文件只写判词），故这里引它的产出。
 // 所有手写判定（含 12 个原先只在本文件存在的格局）都已收敛到 patterns/，
@@ -46,6 +48,57 @@ export function selectGender(
 		(gender === "male" ? (field.male ?? "") : (field.female ?? "")) +
 		(field.suffix ?? "")
 	);
+}
+
+/** {@link BranchedContent} 判别：它与 {@link GenderField} 都有 `common`，按四化 / 亮度分支键区分。 */
+function isBranched(raw: PalaceContent): raw is BranchedContent {
+	return typeof raw === "object" && ("sihua" in raw || "brightness" in raw);
+}
+
+/** 命中分支句的句读补齐：子句文本逐字保留，缺尾句读时由投影层补「。」。 */
+function branchPiece(text: string): string {
+	return /[。；！？]$/.test(text) ? text : text + "。";
+}
+
+/**
+ * 宫位语境条目投影：按该星实际四化与亮度拼接「common + 命中分支」。
+ *
+ * - 纯 `string` / `GenderField`（未迁移条目）：原投影输出，行为与迁移前逐字节一致
+ *   （双形态兼容，见 spec interpretation-content「未迁移条目逐字节不变」）；
+ * - `BranchedContent`（已迁移）：只拼命中分支——亮度条件在前、四化条件在后（随原
+ *   散文次序），未命中分支不出现在交付文本。命中子句逐字保留，句读由本函数补齐。
+ *
+ * 条件句为**中段穿插**（拆分会破坏行文）或性别专属段内嵌的条目不迁移，见
+ * `data.ts` 的显式豁免清单。
+ */
+export function selectBranches(
+	raw: PalaceContent | undefined,
+	star: { mutagen?: string; brightness?: string },
+	gender: "male" | "female"
+): string {
+	if (raw === undefined) {
+		return "";
+	}
+	if (typeof raw === "string" || !isBranched(raw)) {
+		return selectGender(raw as string | GenderField, gender);
+	}
+	// 分号兜底清洗：原散文「X；化忌则Y。」拆走分支后 common 可能残留尾分号，
+	// 数据侧已批量清洗（存量），此处防未来新增条目再犯（增量）——两层互指。
+	let out = selectGender(raw.common, gender).replace(/；$/, "。");
+	if (out && !/[。；！？]$/.test(out)) {
+		out += "。";
+	}
+	const bKey = star.brightness === "bright" ? "bright" : star.brightness === "dim" ? "dim" : null;
+	const brightPiece = bKey ? raw.brightness?.[bKey] : undefined;
+	if (brightPiece) {
+		out += branchPiece(selectGender(brightPiece, gender));
+	}
+	const huaKey = star.mutagen ? SIHUA_CHAR_TO_KEY[star.mutagen] : undefined;
+	const huaPiece = huaKey ? raw.sihua?.[huaKey] : undefined;
+	if (huaPiece) {
+		out += branchPiece(selectGender(huaPiece, gender));
+	}
+	return out;
 }
 
 /**

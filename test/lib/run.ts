@@ -202,6 +202,11 @@ const LAYERS = [
 		file: "topic-study.test.ts",
 		suites: ["Phase 4 验证：第 14 主题 study 经 getTopicAnalysis 可用且产出非空文本"],
 	},
+	{
+		label: "层 3 主题注册表",
+		file: "topic-suggestions.test.ts",
+		suites: ["综合建议按盘推算"],
+	},
 	{ label: "层 4 三合派约束", file: "school.test.ts", suites: ["三合派体系约束"] },
 	{
 		label: "层 5 数据源纯函数",

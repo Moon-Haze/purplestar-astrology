@@ -174,9 +174,17 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		if (!t.startsWith("# 紫微斗数全盘报告")) {
 			throw new Error("报告应以一级标题开头");
 		}
-		const h2 = t.split("\n").filter(l => l.startsWith("## ")).length;
-		if (h2 !== 13) {
-			throw new Error(`## 二级标题应为 13 个板块，实得 ${h2}`);
+		const h2 = t.split("\n").filter(l => l.startsWith("## "));
+		// 大限独立节（refine-report-dedup-citations）：13 主题板块 + 文档头区的当前大限节
+		const decadalIdx = h2.findIndex(l => l.startsWith("## 当前大限"));
+		if (decadalIdx < 0) {
+			throw new Error("报告应含「## 当前大限」独立节");
+		}
+		if (h2.length !== 14) {
+			throw new Error(`## 二级标题应为 13 板块 + 1 大限独立节，实得 ${h2.length}`);
+		}
+		if (t.includes("\n### 当前大限\n")) {
+			throw new Error("板块内不应重复渲染大限小节（已抽出为独立节）");
 		}
 		if (!t.includes("知识来源分级")) {
 			throw new Error("报告尾注缺知识来源分级");

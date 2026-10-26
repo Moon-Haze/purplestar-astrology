@@ -70,8 +70,13 @@ const FEMALE = ["--date", "1999-11-3", "--time", "15:20", "--city", "成都", "-
 describe("astrology --report 全盘报告", () => {
 	it("13 个板块齐全且顺序符合用户口径（财运在事业前、性格在感情后）", async () => {
 		const t = await cliCmdInProcess([...MALE, "--report"]);
-		const headings = [...t.matchAll(/^## (.+?)（/gm)].map(m => m[1]);
-		assert.deepEqual(headings, [...REPORT_TOPICS], "## 二级标题应为 13 板块按报告序");
+		// 大限独立节（refine-report-dedup-citations）不是主题板块，排除后比对报告序
+		const headings = [...t.matchAll(/^## (.+?)（/gm)]
+			.map(m => m[1])
+			.filter(n => n !== "当前大限");
+		assert.deepEqual(headings, [...REPORT_TOPICS], "主题板块应为 13 个且按报告序");
+		assert.ok(t.includes("\n## 当前大限（"), "文档头区应有当前大限独立节");
+		assert.ok(!t.includes("\n### 当前大限\n"), "板块内不应再有大限小节");
 	});
 
 	it("文档头含出生信息 / 农历 / 骨架 / 生年四化 / 格局 / 运限六要素", async () => {

@@ -1,17 +1,18 @@
 /**
  * 六、综合建议 —— 报告的收尾节，**无条件出**。
  *
- * ⚠️ 唯一不判条件的小节：`TOPIC_SUGGESTIONS[topic]` 的建议清单 + 一句固定的
- *    「继续深度追问」引导语，它保证报告末尾总有一个可交互的落点 ——
- *    故不要在别处加「有内容才出」的条件。
+ * ⚠️ 建议内容按盘推算（{@link buildTopicSuggestions}，change dynamic-topic-suggestions），
+ *    信号全未命中时给通用收束句并显式标注；一句固定的「继续深度追问」引导语保证
+ *    报告末尾总有一个可交互的落点 —— 故不要在别处加「有内容才出」的条件。
  *
  * 完整口径见 docs/code/analysis.md。
  *
  * @packageDocumentation
  */
 
-import { TOPIC_LABEL, TOPIC_SUGGESTIONS } from "../../analysis/data";
+import { TOPIC_LABEL } from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
+import { buildTopicSuggestions } from "../../analysis/suggestions";
 
 /** 渲染「六、综合建议」整节。 */
 export function renderSuggestions(ctx: AnalysisContext): string[] {
@@ -22,7 +23,13 @@ export function renderSuggestions(ctx: AnalysisContext): string[] {
 	lines.push(`**【综合建议】**`);
 	lines.push("");
 
-	TOPIC_SUGGESTIONS[topic].forEach(s => lines.push(`→ ${s}`));
+	for (const s of buildTopicSuggestions(ctx)) {
+		lines.push(
+			s.basis === "无命中信号"
+				? `→ ${s.text}（本盘无此主题的直接信号，此为通用收束）`
+				: `→ ${s.text}`
+		);
+	}
 	lines.push("");
 	lines.push(`**【继续深度追问】**`);
 	lines.push(

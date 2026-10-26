@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { astro } from "iztro";
 
 import type { BirthInfo, Palace, ZiweiChart } from "@/types";
+import type { BranchedContent } from "@/analysis/data";
 import {
 	load,
 	loadAlgorithm,
@@ -1626,6 +1627,7 @@ describe("topic 长判词（Pattern.topicDescription）", () => {
 // （架构评审 2026-10-24 S1：修复前内容键表 12 键仅 1 命中、主题关键宫大面积 miss）。
 // 十四主星名以内核星表为单一真相源，四处键集互证防抄错（三方标签错位事故的同型防线）。
 const ANALYSIS_DATA = await load<typeof import("@/analysis/data")>("@/analysis/data");
+const { selectGender } = await load<typeof import("@/analysis/lookups")>("@/analysis/lookups");
 const KERNEL_STAR_TABLE = await load<typeof import("@/data/stars")>("@/data/stars");
 const MANUAL_INDEX = await load<typeof import("@/corpus/data/manual")>("@/corpus/data/manual");
 describe("analysis 数据键域互证", () => {
@@ -1688,5 +1690,100 @@ describe("analysis 数据键域互证", () => {
 			[],
 			`以下星名键集与内核星表（单一真相源）不一致：\n${diff.map(([src, keys]) => `${src}: ${keys.join("、")}`).join("\n")}`
 		);
+	});
+});
+
+// ── 条件分支迁移守卫（structure-content-branches）──
+//
+// 双向盯：非豁免条目必须已迁移为 BranchedContent（收敛断言），已迁移条目的 common
+// 不得残留条件句式（质量断言）。豁免清单（BRANCH_MIGRATION_EXEMPT）显式登记未迁移
+// 条目，条目可数 —— 「豁免必须看得见」同一纪律。
+describe("条件分支迁移守卫", () => {
+	const CONTEXT_KEYS = [
+		"mingGong",
+		"personality",
+		"xiongDi",
+		"fuQi",
+		"ziNv",
+		"caiBo",
+		"jiE",
+		"qianYi",
+		"jiaoYou",
+		"guanLu",
+		"tianZhai",
+		"fuDe",
+		"fuMu",
+	] as const;
+	const COND_ANY = /(若有|若|逢)?化[禄权科忌](则|时|，)|(入庙|庙旺|落陷)(者|时)?则/;
+	const isBranched = (v: unknown): v is BranchedContent =>
+		typeof v === "object" && v !== null && ("sihua" in v || "brightness" in v);
+
+	it("迁移收敛：非豁免条目必须已迁移为 BranchedContent，豁免清单条目可数", () => {
+		const bad: string[] = [];
+		for (const [star, profile] of Object.entries(ANALYSIS_DATA.STAR_CONTENT_MAP)) {
+			for (const key of CONTEXT_KEYS) {
+				const v = profile[key];
+				if (v === undefined || isBranched(v)) {
+					continue;
+				}
+				const text = selectGender(v, "male");
+				if (
+					COND_ANY.test(text) &&
+					!(`${star}/${key}` in ANALYSIS_DATA.BRANCH_MIGRATION_EXEMPT)
+				) {
+					bad.push(`${star}/${key}`);
+				}
+			}
+		}
+		assert.deepEqual(bad, [], `以下条目含条件句但未迁移且未登记豁免：\n${bad.join("\n")}`);
+	});
+
+	it("迁移质量：已迁移条目的 common 不得残留段首条件句式", () => {
+		const bad: string[] = [];
+		for (const [star, profile] of Object.entries(ANALYSIS_DATA.STAR_CONTENT_MAP)) {
+			for (const key of CONTEXT_KEYS) {
+				const v = profile[key];
+				if (!isBranched(v)) {
+					continue;
+				}
+				const text = selectGender(v.common, "male");
+				const leaked = text
+					.split(/[；。]/)
+					.some(seg => /^(若有|若|逢)?化[禄权科忌](则|时|，)/.test(seg.trim()));
+				if (leaked) {
+					bad.push(`${star}/${key}`);
+				}
+			}
+		}
+		assert.deepEqual(
+			bad,
+			[],
+			`以下已迁移条目的 common 残留条件句式（拆分不完整）：\n${bad.join("\n")}`
+		);
+	});
+
+	it("投影：命中分支逐字出现、未命中分支不出现（太阳·子女 亮度 + 化忌双条件）", async () => {
+		const { selectBranches } =
+			await load<typeof import("@/analysis/lookups")>("@/analysis/lookups");
+		const raw = ANALYSIS_DATA.STAR_CONTENT_MAP["太阳"].ziNv;
+		assert.ok(
+			typeof raw === "object" && raw !== null && "brightness" in raw,
+			"太阳·子女应已迁移"
+		);
+		const bc = raw as {
+			common: unknown;
+			sihua?: Record<string, string>;
+			brightness?: Record<string, string>;
+		};
+		const jiText = bc.sihua?.ji ?? "";
+		const brightText = bc.brightness?.bright ?? "";
+		const dimText = bc.brightness?.dim ?? "";
+		const hit = selectBranches(raw as never, { mutagen: "忌", brightness: "dim" }, "male");
+		assert.ok(hit.includes(jiText), "命中化忌子句应逐字出现");
+		assert.ok(hit.includes(dimText), "命中落陷子句应逐字出现");
+		assert.ok(!hit.includes(brightText), "未命中的入庙分支不应出现");
+		const miss = selectBranches(raw as never, { mutagen: "", brightness: "bright" }, "male");
+		assert.ok(miss.includes(brightText), "命中入庙子句应逐字出现");
+		assert.ok(!miss.includes(jiText), "未命中的化忌分支不应出现");
 	});
 });

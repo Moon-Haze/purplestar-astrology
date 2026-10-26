@@ -14,7 +14,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 ### 1.1 来源与三处口径适配
 
-> 紫微斗数分析数据库 v3 — 倪海厦《天纪》正统口径
+> 紫微斗数分析数据库 — 倪海厦《天纪》正统口径
 >
 > 来源：自 reference/ziwei-samples-toolkit/lib/db-analysis.ts 拷入本仓内核。
 > 拷入时做了三处口径适配（其余逐字保留）：
@@ -199,7 +199,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 ---
 
-## 六、`lookups.ts`：文案查表与性别投影、格局投影
+## 六、`lookups.ts`：文案查表与性别投影、条件分支投影、格局投影
 
 > 文案查表与性别投影、格局投影 —— 把「星 × 宫 × 四化」翻成文案。
 >
@@ -207,8 +207,11 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > `getMutagenNote` 查四化语义、`getMinorStarNote` 查次星宫位文案、`detectGeJu` 取格局判词。
 > 都不产生输出行，被 `views/` 各节调用。
 >
-> `selectGender` 是唯一一个不查表的：它把 `string | GenderField` 按 `gender` 投影为
-> 当前性别的文本（`common + (male|female) + suffix`），供 `views/` 各节调用。
+> 两个不查表的投影函数：`selectGender` 把 `string | GenderField` 按 `gender` 投影为
+> 当前性别的文本（`common + (male|female) + suffix`）；`selectBranches` 把
+> `PalaceContent`（`string | GenderField | BranchedContent`）按该星实际 `mutagen` /
+> `brightness` 投影为「common + 命中分支」——未迁移条目原投影输出（双形态兼容），
+> 已迁移条目只拼命中分支，未命中分支不出现在交付文本。两者供 `views/` 各节调用。
 
 ### 6.1 `detectGeJu` 只是投影
 
@@ -223,6 +226,19 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 不会有「判定加了、判词忘了补、topic 静默不显示」的漏。
 >
 > 展示顺序**按 level 降序**（同级保持识别器注册序）。
+
+### 6.2 `selectBranches` 与条件分支结构
+
+> 宫位语境条目的值域是三形态联合（`PalaceContent`）：未迁移散文（`string`）、性别
+> 结构化（`GenderField`）、条件分支结构（`BranchedContent` = `common` + `sihua` 四键 +
+> `brightness` 两键）。分支子句**逐字保留**（拆分只挪承载、不改措辞），句读由投影层
+> 补齐——`common` 尾部孤立分号清洗为句号（数据侧已批量清洗存量，投影侧一行兜底
+> 防增量，polish-report-residuals）；条件句**中段穿插**或**性别专属段内嵌**（「性别 ×
+> 四化」二维信号）的条目不迁移，显式登记在 `data.ts` 的 `BRANCH_MIGRATION_EXEMPT`
+> （键 =「星名/语境键」），由 `test/invariants.test.ts` 的「条件分支迁移守卫」双向盯：
+> 非豁免条目必须已迁移、已迁移条目的 `common` 不得残留条件句式。数据形态先例是
+> 2026-10 的性别结构化（`GenderField` + `selectGender`），四化 / 亮度分支是同一思路
+> 的推广。
 
 ---
 
@@ -337,6 +353,10 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 只负责**展示**：那份 `mutagenInSanFang` 由 `context.ts` 的 `makeContext()` 算好
 > （因为「三点五、年干四化」要拿它做去重集合，见 `context.ts` 文件头）。
 > 一条都没有时给一段中性判语，而不是留空。
+>
+> 可选 `dedupe` 表（polish-report-residuals）：语义注句查表首现一次并登记，
+> 复现只保留落点行（🔵 星化X（落宫））——落点行恒出，不隐藏四化事实；
+> 缺省（`--topic` 路径）注句照常输出。
 
 ### 8.5 `year-stem.ts`：三点五、年干四化·全局关键宫位解读
 
@@ -406,9 +426,17 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 ### 8.11 `suggestions.ts`：六、综合建议
 
-> 唯一不判条件的小节：`TOPIC_SUGGESTIONS[topic]` 的建议清单 + 一句固定的
-> 「继续深度追问」引导语。它保证报告末尾总有一个可交互的落点 ——
+> 建议内容按盘推算（`../suggestions.ts` 的 `buildTopicSuggestions`，change
+> dynamic-topic-suggestions）：最小信号集 = 主宫主星及亮度、主题三方内的本命四化、
+> 当前大限与主题宫的地支关系（本宫 / 三合 / 对冲 / 无同气四选一），槽位模板句确定性
+> 填充——同盘同参数逐字节一致，异盘不同。信号全未命中时降级为该主题的通用收束句，
+> 并**显式标注**「无命中信号」（降级可见、可数，不虚构信号）。
+> 「继续深度追问」引导语仍固定 —— 报告末尾总有一个可交互的落点，
 > 故不要在别处加「有内容才出」的条件。
+>
+> `TOPIC_DEFS[].suggestions` 的静态三条**保留退役**（`grades.ts` 有三条引语档案挂在
+> 它的下标上，表即档案）；模板句与降级句住 `data.ts` 的
+> `TOPIC_SUGGESTION_TEMPLATES` / `TOPIC_SUGGESTION_FALLBACK` / `TOPIC_SUGGESTION_DECADAL`。
 
 ## 九、`soul-summary.ts`：命宫摘要（⚠️ 不得改签名）
 
@@ -423,10 +451,15 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 ## 十、`overview-material.ts`：总览取材与星曜徽标单点
 
-> 「总览段取什么材」的唯一实现：`buildOverviewMaterial(ctx)` 一次取齐七个决策点
+> 「总览段取什么材」的唯一实现：`buildOverviewMaterial(ctx)` 一次取齐八个决策点
 > （核心主题判定 / topic_mods 双键注入 / 格局主题清单 / summary 段条件 /
-> contentKey 全文选择 / 亮度补充 / 第二主星），返回结构化段落；两个编排器
-> （`views/overview.ts` 的【】版式与 `report.ts` 的 ### 版式）只做版式装配。
+> contentKey 全文选择 / 亮度补充 / 第二主星简述 / **第二主星同宫语境全文
+> `secondStarContent`**——双主星主场展开（polish-report-residuals）：第二主星按
+> 同一 contentKey 取自己的 profile 全文，在本板块核心论断首现并登记主场，三方
+> 联动的指引指回正确板块；无对应语境数据时 `undefined` 维持一句简述），
+> 返回结构化段落；两个编排器（`views/overview.ts` 的【】版式与 `report.ts` 的
+>
+> ### 版式）只做版式装配。
 >
 > `starBadge` 是星曜徽标（星名 + 化象 + `（庙旺）/（落陷）` 全角括号）的全仓单点，
 > `palace-query.ts` 的 `descPalaceStars` 同式引它。

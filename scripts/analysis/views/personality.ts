@@ -10,7 +10,7 @@
  */
 
 import type { AnalysisContext } from "../../analysis/context";
-import { selectGender } from "../../analysis/lookups";
+import { selectBranches } from "../../analysis/lookups";
 
 /** 渲染「五、性格专属补充」整节（非 personality 主题返回空数组）。 */
 export function renderPersonality(ctx: AnalysisContext): string[] {
@@ -21,7 +21,7 @@ export function renderPersonality(ctx: AnalysisContext): string[] {
 	if (topic === "personality" && primaryStar && profile) {
 		lines.push(`**【性格深描】**`);
 		lines.push("");
-		lines.push(selectGender(profile.personality, gender));
+		lines.push(selectBranches(profile.personality, primaryStar, gender));
 		lines.push("");
 	}
 

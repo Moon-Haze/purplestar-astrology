@@ -12,14 +12,16 @@
 import {
 	SIHUA_CHAR_TO_KEY,
 	STAR_BRIEF,
+	STAR_CONTENT_MAP,
 	SUMMARY_TOPICS,
 	TOPIC_CONTENT_KEY,
 	TOPIC_SUMMARY_KEY,
 	type GenderField,
+	type PalaceContent,
 	type StarContent,
 } from "./data";
 import type { AnalysisContext } from "./context";
-import { detectGeJu, selectGender } from "./lookups";
+import { detectGeJu, selectBranches, selectGender } from "./lookups";
 
 /**
  * 星曜徽标：`星名` + `化X`（有四化时）+ `（庙旺）/（落陷）`（有亮度时）。
@@ -50,6 +52,13 @@ export interface OverviewMaterial {
 	brightNote: string | undefined;
 	/** 同宫第二主星行（`同宫第二主星：**徽标**——简述`） */
 	secondStar: string | undefined;
+	/**
+	 * 同宫第二主星的同宫语境全文（按本主题 contentKey 取该星自己的 profile，经
+	 * 分支投影）。核心论断节的「第二主星」从一句简述升级为简述 + 全文——双主星
+	 * 的全文由此在本板块（语义主场）首现，装配层预扫描同登记，三方联动的指引
+	 * 指回正确板块。该星无对应语境数据时 `undefined`，维持一句简述不硬凑。
+	 */
+	secondStarContent: string | undefined;
 	/** 空宫兜底句；主宫无主星时非空，编排器整节退化为这一句 */
 	emptyFallback: string;
 }
@@ -71,6 +80,7 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 			content: undefined,
 			brightNote: undefined,
 			secondStar: undefined,
+			secondStarContent: undefined,
 			emptyFallback: `${palaceName}空宫，需借对宫论事，命格整体以三方四正综合判断。`,
 		};
 	}
@@ -115,8 +125,9 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	const contentRaw =
 		topic === "overview"
 			? profile.mingGong
-			: (profile[contentKey as keyof StarContent] as string | GenderField | undefined);
-	const content = contentRaw === undefined ? undefined : selectGender(contentRaw, gender);
+			: (profile[contentKey as keyof StarContent] as PalaceContent | undefined);
+	const content =
+		contentRaw === undefined ? undefined : selectBranches(contentRaw, primaryStar, gender);
 
 	const modRaw =
 		primaryStar.brightness === "bright"
@@ -132,6 +143,15 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 		? `同宫第二主星：**${starBadge(s2)}**——${STAR_BRIEF[s2.name] ?? ""}`
 		: undefined;
 
+	// 第二主星的同宫语境全文：取该星自己 profile 的同一 contentKey，经分支投影。
+	// 无该键数据（可选键缺省）时 undefined，核心论断维持一句简述。
+	const s2Profile = s2 ? STAR_CONTENT_MAP[s2.name] : undefined;
+	const s2Raw = s2Profile
+		? (s2Profile[contentKey as keyof StarContent] as PalaceContent | undefined)
+		: undefined;
+	const secondStarContent =
+		s2Raw === undefined ? undefined : selectBranches(s2Raw, s2, gender) || undefined;
+
 	return {
 		mods,
 		geju,
@@ -141,6 +161,7 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 		content,
 		brightNote,
 		secondStar,
+		secondStarContent,
 		emptyFallback: "",
 	};
 }

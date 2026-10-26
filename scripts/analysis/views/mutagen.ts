@@ -12,8 +12,15 @@
 import { mutagenSymbol } from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
 
-/** 渲染「三、本命四化会照」整节。 */
-export function renderMutagen(ctx: AnalysisContext): string[] {
+/**
+ * 渲染「三、本命四化会照」整节。
+ *
+ * @param dedupe - 报告装配层的跨节去重表（键 = 文本）。语义注句（`note`）查表：
+ *   首现给注并登记，复现只保留落点行（🔵 星化X（落宫））——注句全报告一次
+ *   （四化注首现原则），落点行恒出不隐藏四化事实。缺省（`--topic` 单主题路径）
+ *   为 `undefined`，注句照常输出，行为与不去重时一致。
+ */
+export function renderMutagen(ctx: AnalysisContext, dedupe?: Map<string, string>): string[] {
 	const { mutagenInSanFang } = ctx;
 
 	const lines: string[] = [];
@@ -23,8 +30,9 @@ export function renderMutagen(ctx: AnalysisContext): string[] {
 		lines.push("");
 		mutagenInSanFang.forEach(({ palaceName: pn, starName, mutagen, note }) => {
 			lines.push(`${mutagenSymbol(mutagen)} **${starName}化${mutagen}**（落${pn}）`);
-			if (note) {
+			if (note && !dedupe?.get(note)) {
 				lines.push(`   ${note}`);
+				dedupe?.set(note, ctx.topicLabel);
 			}
 		});
 		lines.push("");

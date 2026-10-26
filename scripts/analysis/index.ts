@@ -1,5 +1,5 @@
 /**
- * 紫微斗数分析数据库 v3 — 倪海厦《天纪》正统口径：主题论断库装配点。
+ * 紫微斗数分析数据库 — 倪海厦《天纪》正统口径：主题论断库装配点。
  *
  * ⚠️ 知识来源分四级（verified / traditional / methodology / suspect），「倪师…说」引句
  *    部分为传统口诀的风格化转述，CLI 在输出末尾固定披露 —— 登记表在 `./grades`。
@@ -38,6 +38,8 @@ import { renderYearStem } from "../analysis/views/year-stem";
 import {
 	getTopicReport,
 	getTopicReportMeta,
+	getTopicMainContentTexts,
+	getDecadalSection,
 	type ReportCitation,
 	type ReportOptions,
 } from "../analysis/report";
@@ -88,8 +90,9 @@ export function getTopicAnalysis(
 }
 
 // ─── 公开面 re-export ────────────────────────────────────────────────────────
-// 本公开面导出 6 个值：TOPIC_LABEL / TOPIC_PALACE_NAME / getTopicReport /
-// getTopicReportMeta + TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
+// 本公开面导出 8 个值：TOPIC_LABEL / TOPIC_PALACE_NAME / getTopicReport /
+// getTopicReportMeta / getTopicMainContentTexts / getDecadalSection +
+// TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
 // ⚠️ TOPIC_KEYS / TOPIC_DEFS 是主题注册表的**单一真相源**（Phase 2 收编的 8 张平行表
 //    已由它派生），新增主题只在此表加条目。
 // 逐项理由见 docs/code/analysis.md。
@@ -100,5 +103,7 @@ export {
 	TOPIC_PALACE_NAME,
 	getTopicReport,
 	getTopicReportMeta,
+	getTopicMainContentTexts,
+	getDecadalSection,
 };
 export type { AnalysisOptions, AnalysisView, TopicKey, ReportCitation, ReportOptions };

@@ -13,14 +13,27 @@ import {
 	PALACE_TO_CONTENT_KEY,
 	STAR_BRIEF,
 	STAR_CONTENT_MAP,
-	type GenderField,
+	type PalaceContent,
 } from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
-import { getMinorStarNote, getMutagenNote, selectGender } from "../../analysis/lookups";
+import { starBadge } from "../../analysis/overview-material";
+import {
+	getMinorStarNote,
+	getMutagenNote,
+	selectBranches,
+	selectGender,
+} from "../../analysis/lookups";
 import { descPalaceStars } from "../../analysis/palace-query";
 
-/** 渲染「二、三方四正联动」整节。 */
-export function renderSanFang(ctx: AnalysisContext): string[] {
+/**
+ * 渲染「二、三方四正联动」整节。
+ *
+ * @param dedupe - 报告装配层的跨节去重表（键 = 论断全文文本，值 = 首现 / 主场板块名）。
+ *   命中的全文降级为「星曜徽标 + 指引回首现板块」一行；未命中给全文并登记本板块。
+ *   缺省（`--topic` 单主题路径）为 `undefined`，输出与不去重时逐字节一致。
+ *   主场登记由装配层预扫描完成（见 `analysis/report.ts` 的 `getTopicMainContentText`）。
+ */
+export function renderSanFang(ctx: AnalysisContext, dedupe?: Map<string, string>): string[] {
 	const { chart, palaceName, sanFang, sanFangLabels, gender } = ctx;
 
 	const lines: string[] = [];
@@ -45,10 +58,11 @@ export function renderSanFang(ctx: AnalysisContext): string[] {
 				const palaceContentKey = PALACE_TO_CONTENT_KEY[p.name];
 				const fullContent =
 					starProfile && palaceContentKey
-						? selectGender(
-								starProfile[palaceContentKey] as string | GenderField | undefined,
+						? selectBranches(
+								starProfile[palaceContentKey] as PalaceContent | undefined,
+								s,
 								gender
-							)
+							) || null
 						: null;
 				const mutagenStr = s.mutagen ? `化${s.mutagen}` : "";
 				const brightStr =
@@ -60,13 +74,21 @@ export function renderSanFang(ctx: AnalysisContext): string[] {
 				const mutagenNote = s.mutagen ? getMutagenNote(s.name, s.mutagen, gender) : "";
 
 				if (fullContent) {
-					// 有完整宫位段落，直接输出全文 + 四化补充
-					lines.push(`**${s.name}${mutagenStr}${brightStr}** 在${p.name}：`);
-					lines.push("");
-					lines.push(fullContent);
-					if (mutagenNote) {
+					const seenAt = dedupe?.get(fullContent);
+					if (seenAt) {
+						// 跨节去重：同段全文已登记（他板块首现，或本板块主场预登记）——
+						// 降级为徽标 + 指引行，全文恒只在其首现 / 主场板块出现一次。
+						lines.push(`**${starBadge(s)}**（论断详见「${seenAt}」板块）`);
+					} else {
+						// 有完整宫位段落，直接输出全文 + 四化补充
+						lines.push(`**${s.name}${mutagenStr}${brightStr}** 在${p.name}：`);
 						lines.push("");
-						lines.push(`▶ 化${s.mutagen}：${mutagenNote}`);
+						lines.push(fullContent);
+						if (mutagenNote) {
+							lines.push("");
+							lines.push(`▶ 化${s.mutagen}：${mutagenNote}`);
+						}
+						dedupe?.set(fullContent, ctx.topicLabel);
 					}
 				} else {
 					// 无专项段落，用简述 + 四化

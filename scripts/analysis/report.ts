@@ -16,18 +16,17 @@ import {
 	STAR_BRIEF,
 	TOPIC_LABEL,
 	TOPIC_PALACE_NAME,
-	TOPIC_SUGGESTIONS,
 	type AnalysisOptions,
 	type TopicKey,
 } from "../analysis/data";
 import { makeContext } from "../analysis/context";
 import { buildOverviewMaterial, starBadge } from "../analysis/overview-material";
 import { descPalaceStars } from "../analysis/palace-query";
+import { buildTopicSuggestions } from "../analysis/suggestions";
 import { BRANCHES } from "@/data/ganzhi";
 import { renderDecadal } from "../analysis/views/decadal";
 import { renderHealth } from "../analysis/views/health";
 import { renderKuiYue } from "../analysis/views/patron";
-import { renderPersonality } from "../analysis/views/personality";
 import { renderSanFang } from "../analysis/views/surround";
 import { renderMutagen } from "../analysis/views/mutagen";
 
@@ -37,8 +36,23 @@ export interface ReportCitation {
 	text: string;
 }
 
-/** {@link getTopicReport} 的可选参数：在 {@link AnalysisOptions} 上叠加引文。 */
-export type ReportOptions = AnalysisOptions & { citations?: ReportCitation[] };
+/** {@link getTopicReport} 的可选参数：在 {@link AnalysisOptions} 上叠加引文与装配状态。 */
+export type ReportOptions = AnalysisOptions & {
+	citations?: ReportCitation[];
+	/**
+	 * 报告装配层的跨节去重状态：键 = 论断全文文本，值 = 该文的首现 / 主场板块名。
+	 * 三方联动的 fullContent 渲染前查此表，命中即降级为「徽标 + 指引行」；缺省
+	 * （`--topic` 单主题路径）为 `undefined`，输出与不去重时逐字节一致。
+	 * 主场登记由装配层经 {@link getTopicMainContentText} 预扫描完成 —— 见其注释。
+	 */
+	dedupe?: Map<string, string>;
+	/**
+	 * `--report` 装配时置 true：板块内不再渲染「当前大限」小节（大限与主题无关，
+	 * 由文档头区的独立大限节承接，见 {@link getDecadalSection}）。缺省不省略，
+	 * 单主题路径行为不变。
+	 */
+	omitDecadal?: boolean;
+};
 
 /**
  * 把叶子 view 输出装配成报告的 Markdown 块。
@@ -109,6 +123,50 @@ export function getTopicReportMeta(
 }
 
 /**
+ * 单主题核心论断需登记主场的全文集合（第一主星 `m.content` + 双主星的
+ * `m.secondStarContent`，与 {@link getTopicReport} 同源同投影，同走
+ * {@link buildOverviewMaterial}）—— 供 `--report` 装配层**预登记**主场板块。
+ *
+ * @remarks
+ * 为什么必须预扫描而非渲染时登记：渲染按板块序进行，更早板块的三方联动会先遇到
+ * 「渲染在后的板块核心论断」同文文本并抢走首现，导致主场板块的核心论断降级、
+ * 同文出现两次。预扫描把全部主场登记完后，三方联动的 fullContent 查表命中主场
+ * 即降级指引回主场板块 —— 全文恰出现一次，且永远落在其主场。第二主星全文同样
+ * 在本板块展开（双主星主场展开），故一并登记——改前它只能靠别的板块三方联动
+ * 抢走首现，指引指错主场（天相→财富运势、巨门→健康状况）。空宫等无内容的
+ * 主题返回空数组，调用方跳过登记。
+ */
+export function getTopicMainContentTexts(chart: ZiweiChart, topic: TopicKey): string[] {
+	const ctx = makeContext(chart, topic, {});
+	if (!ctx) {
+		return [];
+	}
+	const m = buildOverviewMaterial(ctx);
+	return [m.content, m.secondStarContent].filter((t): t is string => !!t);
+}
+
+/**
+ * 「当前大限」独立节的正文（剥 view 自带的 `**【…】**` 头，年龄区间与宫名由
+ * 装配层的节标题承载）—— 大限与主题无关（{@link renderDecadal} 只读 currentDx），
+ * 13 个板块各渲染一遍是纯重复，`--report` 改为全报告一处，板块内以
+ * `omitDecadal` 省略。
+ *
+ * 未起运（renderDecadal 返回空）时返回童限提示句，文案与 {@link getTopicReport}
+ * 的未起运分支逐字一致。
+ */
+export function getDecadalSection(chart: ZiweiChart): string {
+	const ctx = makeContext(chart, "overview", {});
+	if (!ctx) {
+		return "";
+	}
+	const decadal = renderDecadal(ctx);
+	if (decadal.length === 0) {
+		return "（尚未起运 —— 虚岁小于五行局数时不入大限，按命宫论，见 SKILL「童限」口径。）";
+	}
+	return asMarkdownBlock(decadal).join("\n").trim();
+}
+
+/**
  * 生成单个主题的 Markdown 报告节。
  *
  * @param chart - 已排好的命盘
@@ -159,9 +217,14 @@ export function getTopicReport(
 	// 取材住 `../overview-material`（与 views/overview.ts 同一单点），但不加【】小节头
 	// —— 报告里它们是同一段「总览」的三个层次。辅助宫主题（兄弟/子女/迁移/交友/
 	// 田宅/福德/父母）三样都没有 —— 整段省略，不留空标题（view 层同口径）。
+	// ⚠️ personality 板块跳过 mods/geju：它与命格总览板块同主宫（命宫），注入行
+	//    逐字相同——报告连续阅读场景纯冗余（板块总览唯一，spec report-assembly）。
+	//    本函数仅服务 --report，--topic 终端路径（getTopicAnalysis）不受影响。
 	const overviewLines: string[] = [];
 	if (!m.emptyFallback) {
-		overviewLines.push(...m.mods, ...m.geju);
+		if (topic !== "personality") {
+			overviewLines.push(...m.mods, ...m.geju);
+		}
 		if (m.summary) {
 			overviewLines.push(m.summary);
 		}
@@ -174,17 +237,27 @@ export function getTopicReport(
 		lines.push(...overviewLines, "");
 	}
 
-	// ── 核心论断：本宫主星的该宫语境全文 + 亮度补充 + 同宫第二主星 ──
+	// ── 核心论断：本宫主星的该宫语境全文 + 亮度补充 + 同宫第二主星（简述 + 全文）──
 	const verdictLines: string[] = [];
 	if (!m.emptyFallback) {
 		if (m.content) {
 			verdictLines.push(m.content);
+			// 主场登记（不查询）：本板块核心论断全文恒输出（spec「本宫核心论断」豁免），
+			// 登记让后续板块的三方联动把同文降级指引回此处。装配层已预登记同值，此
+			// set 对未预扫描的调用方兜底，对已登记者是幂等重写。
+			options.dedupe?.set(m.content, TOPIC_LABEL[topic]);
 		}
 		if (m.brightNote) {
 			verdictLines.push(m.brightNote);
 		}
 		if (m.secondStar) {
 			verdictLines.push(m.secondStar);
+		}
+		if (m.secondStarContent) {
+			// 双主星主场展开：第二主星全文在本板块（语义主场）首现并登记，三方联动
+			// 的指引指回正确板块（改前全文漂移到别的板块三方联动，指引指错主场）。
+			verdictLines.push(m.secondStarContent);
+			options.dedupe?.set(m.secondStarContent, TOPIC_LABEL[topic]);
 		}
 	}
 	if (verdictLines.length > 0) {
@@ -206,38 +279,40 @@ export function getTopicReport(
 	// ── 三方四正联动（叶子 view，剥头）──
 	lines.push("### 三方四正联动");
 	lines.push("");
-	lines.push(...asMarkdownBlock(renderSanFang(ctx)));
+	lines.push(...asMarkdownBlock(renderSanFang(ctx, options.dedupe)));
 
 	// ── 四化路径分析：本命四化会照 + 魁钺贵人 ──
+	// 注句经去重表全报告首现一次（四化注首现原则），落点行恒出（renderMutagen 内）。
 	lines.push("### 四化路径分析");
 	lines.push("");
-	lines.push(...asMarkdownBlock(renderMutagen(ctx)));
+	lines.push(...asMarkdownBlock(renderMutagen(ctx, options.dedupe)));
 	const kuiYue = renderKuiYue(ctx);
 	if (kuiYue.length > 0) {
 		lines.push("");
 		lines.push(...asMarkdownBlock(kuiYue));
 	}
 
-	// ── 当前大限（未起运时给童限提示）──
-	lines.push("### 当前大限");
-	lines.push("");
-	const decadal = renderDecadal(ctx);
-	if (decadal.length > 0) {
-		lines.push(...asMarkdownBlock(decadal));
-	} else {
-		lines.push("（尚未起运 —— 虚岁小于五行局数时不入大限，按命宫论，见 SKILL「童限」口径。）");
+	// ── 当前大限（未起运时给童限提示；--report 装配省略，由文档头区独立节承接）──
+	if (!options.omitDecadal) {
+		lines.push("### 当前大限");
+		lines.push("");
+		const decadal = renderDecadal(ctx);
+		if (decadal.length > 0) {
+			lines.push(...asMarkdownBlock(decadal));
+		} else {
+			lines.push(
+				"（尚未起运 —— 虚岁小于五行局数时不入大限，按命宫论，见 SKILL「童限」口径。）"
+			);
+		}
 	}
 
-	// ── 主题专属补充：疾厄取象（health）/ 性格深描（personality）──
-	const extra =
-		topic === "health"
-			? renderHealth(ctx)
-			: topic === "personality"
-				? renderPersonality(ctx)
-				: [];
+	// ── 主题专属补充：疾厄取象（health）──
+	// personality 不渲染「性格深描」：其内容与核心论断逐字同源（同一 personality 键），
+	// 板块总览唯一（spec report-assembly）；--topic 终端路径（getTopicAnalysis）不受影响。
+	const extra = topic === "health" ? renderHealth(ctx) : [];
 	if (extra.length > 0) {
 		lines.push("");
-		lines.push(topic === "health" ? "### 健康取象（宫位主轴 · 倪师原法）" : "### 性格深描");
+		lines.push("### 健康取象（宫位主轴 · 倪师原法）");
 		lines.push("");
 		lines.push(...asMarkdownBlock(extra));
 	}
@@ -289,11 +364,15 @@ export function getTopicReport(
 		lines.push("");
 	}
 
-	// ── 综合建议（TOPIC_SUGGESTIONS 三条；「继续深度追问」是交互尾巴，报告不带）──
+	// ── 综合建议（按盘推算；「继续深度追问」是交互尾巴，报告不带）──
 	lines.push("### 综合建议");
 	lines.push("");
-	for (const s of TOPIC_SUGGESTIONS[topic]) {
-		lines.push(`→ ${s}`);
+	for (const s of buildTopicSuggestions(ctx)) {
+		lines.push(
+			s.basis === "无命中信号"
+				? `→ ${s.text}（本盘无此主题的直接信号，此为通用收束）`
+				: `→ ${s.text}`
+		);
 	}
 	lines.push("");
 

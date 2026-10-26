@@ -70,10 +70,14 @@ export function renderOverview(ctx: AnalysisContext): string[] {
 			lines.push(m.brightNote);
 		}
 
-		// 同宫第二主星
+		// 同宫第二主星（简述 + 同宫语境全文；全文无数据时只有简述行）
 		if (m.secondStar) {
 			lines.push("");
 			lines.push(m.secondStar);
+		}
+		if (m.secondStarContent) {
+			lines.push("");
+			lines.push(m.secondStarContent);
 		}
 	} else {
 		lines.push(m.emptyFallback);
