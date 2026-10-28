@@ -39,7 +39,7 @@
 
 标准形态（`astrology --json`，不带 `--palaces`）顶层固定 10 键（实测）：
 
-```
+```text
 chart / patterns / mingGongSummary / nativeSiHua / liuNianSiHua / liuYueSiHua / liuNianPalace / xiaoXian / lateZi / basis
 ```
 
@@ -49,7 +49,7 @@ chart / patterns / mingGongSummary / nativeSiHua / liuNianSiHua / liuYueSiHua / 
 
 依赖没装或 Node 版本过低时，引导层用统一格式拦下所有命令（实测原文，路径与版本随环境变）：
 
-```
+```text
 [ziwei 启动失败] 无法加载 @/algorithm
   Cannot find package 'iztro' imported from <skill根>/scripts/algorithm.ts
   当前内核根：<skill根>/scripts（来源：技能自带内核）
@@ -69,7 +69,7 @@ chart / patterns / mingGongSummary / nativeSiHua / liuNianSiHua / liuYueSiHua / 
 ```bash
 node scripts/purple-star.ts selftest   # 回归自检（排盘 / 古籍 / 合盘三段，项数以输出末行自报为准，勿以文档数字为验收标准；2026-10-09 实测 128/128）
 npm test                               # 仓库级回归：cli / 排盘不变量 / 三合派约束 / 引文核对（test/citations.test.ts）都在这条里
-```
+```text
 
 ⚠️ 2026-09-30 三 skill 合一后**仓库根就是 skill 根**，`npm test` 直接在本目录跑——旧的「`npm test` 不在本 skill 内」「引文核对扫描全部三个 skill」等说法已过时，现在就是同一个仓库的一套测试。合盘改动主要碰：
 

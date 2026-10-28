@@ -1,0 +1,12 @@
+# markdownlint 忽略清单
+# notes/ 是由 `npm run notes:export` 自动生成的 Obsidian 知识库（文件头明令「勿手改」），
+# books/ 是 OCR 古籍转录数据；二者均非手写文档，markdownlint 的文档规则对其误判且手改会破坏
+# 生成约定 / 转录保真，故移出 lint 范围。
+notes/
+books/
+
+# 依赖与生成/暂存产物
+node_modules/
+.git/
+.history/
+.codegraph/

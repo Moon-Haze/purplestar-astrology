@@ -3,6 +3,7 @@
 本文件为在此仓库工作的 AI 助手提供指导。
 
 <!-- CODEGRAPH_START -->
+
 ## CodeGraph
 
 In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:
@@ -109,6 +110,24 @@ npm run pack
 ---
 
 ## 架构
+
+### 顶层目录一览
+
+`scripts/` 内部结构见下方「数据流」；这里只列它的兄弟目录（`✔/✘` = 进 / 不进）：
+
+| 目录                                                                                 | 是什么                                                                                                                                                                                                                                   | git  | 分发件 |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------ |
+| `references/`                                                                        | skill 细则（`SKILL.md` 骨架的延伸，见「这是什么」的三级渐进披露）                                                                                                                                                                        | ✔    | ✔      |
+| `test/`                                                                              | 七层基准回归；结构、效力边界与升级 iztro 流程见 [test/README.md](test/README.md)                                                                                                                                                         | ✔    | ✘      |
+| `docs/`                                                                              | 仓库级文档（user-guide / code / manual / plans / reviews / 勘误）；目录表与维护纪律见 [docs/README.md](docs/README.md)                                                                                                                   | ✔    | ✘      |
+| `tools/`                                                                             | 开发工具脚本（bench / cli-samples / review-gate / pack / db 构建-导出-查询 / corpus 导入 / notes 笔记导出 / samples 夹具），经 `npm run query` / `pack` / `review` / `cli-samples` / `bench:startup` / `notes:export` 调用，进 typecheck 与 lint/format 面 | ✔    | ✘      |
+| `notes/`                                                                             | 紫微斗数知识 Obsidian vault（六仓知识精选整理，自包含 vault）；由 `tools/notes/export-notes.ts` 从外部数据源仓生成（`npm run notes:export`，可复现），维护纪律与许可见 [notes/README.md](notes/README.md)                                   | ✔    | ✘      |
+| `db/`                                                                                | 基准语料：`dataset/` 的 `samples` + `palaces` parquet 入库（约 12.8 MiB）；`topics-*.parquet` 已出库（.gitignore 注明已下线数据路线，磁盘保留、可经 `tools/db/build-duckdb.ts` 重建）；`ziwei.duckdb`（641.5 MiB）是构建中间物，随时可弃 | 部分 | ✘      |
+| `openspec/`                                                                          | OpenSpec 规范工作流（specs + changes），见文末「规范工作流」                                                                                                                                                                             | ✔    | ✘      |
+| `.claude/` `.agents/` `.zcode/` `.codebuddy/`                                        | 各 AI 宿主的 commands / skills 协作用件；`openspec-*` 技能是 CLI 生成物但已纳管（见文末「产物纪律」）                                                                                                                                    | ✔    | ✘      |
+| `.codegraph/` `.history/` `.mimosa/` `.script_test/` `html/` `dist/` `node_modules/` | 代码索引 / 编辑器历史 / 安全扫描状态 / 脚本测试暂存 / 本地 HTML 报告 / 打包产物 / 依赖，均被 `.gitignore` 忽略                                                                                                                           | ✘    | ✘      |
+
+⚠️ 本机 `ls` 是 `eza` 别名（带 `--git-ignore`）：核查被 `.gitignore` 忽略的内容（如 `db/ziwei.duckdb` 是否存在）请用 `find` / `stat` / `du`，不要依据 `ls` 的输出下结论。
 
 ### 数据流
 
@@ -350,6 +369,21 @@ CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 ## 内核的来源
 
 排盘内核提取自上游开源项目 `ziwei-master`（未发布到 npm），**在本项目内独立演化**。线上站点的 14 主星 × 13 主题论断库（`STAR_DB`）与 `lib/seo/` 不在其中；本仓自带分析数据库（`analysis/`）。
+
+## 多根工作区与数据血统
+
+本仓是宿主「紫微斗数」多根工作区的主仓，六仓中唯一的**产品仓**——其余五仓全是为本仓供给数据与知识（口径 2026-10-27 由用户拍板）。供给分两条链，**知识链是重心**：
+
+**知识链**：`purplestar-voice`（视频 → 文字）→ `nihai-tianji-corpus`（语料结构化）→ 本仓 `corpus/`。
+
+- `purplestar-voice`（自有，Python）：FunASR/SenseVoice 转写倪师课程视频（`video/` → `transcripts/`），再用本地 LLM 矫正同音字（「紫为」→「紫微」）出 `corrected/`，另有主题化的 `markdown/`。它与语料库加工链的衔接关系未确认。
+- `nihai-tianji-corpus`（GitHub 外部，metisziwei 开源，CC BY-NC-SA 4.0）：4886 条原子判语（`data/entries.jsonl`），每条 = 倪师原话短引文 + 十一册体系归属 + B 站视频精确到秒的出处；kb/ 是其 Obsidian 第二大脑视图。
+- **接收端三件套**（本仓）：`tools/corpus/import-tianji.ts` 只导**紫微五册**（主星 / 十二宫 / 格局 / 四化 / 疾厄，易经 / 堪舆 / 铁板不属本 skill 知识面）→ 生成快照 `corpus/data/tianji.ts`（1125 条，**勿手改**，重导 `npx tsx tools/corpus/import-tianji.ts`，语料库位置硬编码在工具的 `CORPUS_ROOT`）→ `knowledge/sources/tianji.ts` 懒加载检索（重语料不进 CLI 主链路，检索结果带溯源 + 回放直链）。
+- `corpus/data/annotations.ts`（引文防回流禁语清单）数据源另在 `ziwei-samples-toolkit/corpus/annotations.json`——两条链在引文质检上交汇。
+
+**基准数据链**（服务排盘回归，一行带过）：`ziwei-doushu`（GitHub 外部，Renhuai123 开源引擎，上游参照）→ `ziwei-samples-toolkit`（数据集导出，518,400 条样本，`npm test` 基准与 `db/dataset/` 源头）→ `purplestar-db-slim`（转 DuckDB 的工具仓，`topics-*` 出库即其 F1 成果）。
+
+许可双轨：引入的**数据集**走 CC BY 4.0、**语料**走 CC BY-NC-SA 4.0——这是本仓代码许可与语料许可分开声明的根源，新引内容先对号入座。
 
 ## 代码审查
 

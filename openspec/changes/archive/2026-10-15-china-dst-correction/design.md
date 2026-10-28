@@ -38,7 +38,8 @@ tzdata 是操作系统与排盘软件链的事实基准；表驱动比动态算�
 ### 换算函数：`calcTrueSolar` 加 `dstMinutes` 选项
 
 `opts.dstMinutes?: number`（默认 0），`totalRaw = clockMins + longitudeRaw + eotRaw
-- dstMinutes`；返回值加 `dstMinutes` 字段（取整后）。回拨与经度、均时差同列，
+
+- dstMinutes`；返回值加`dstMinutes` 字段（取整后）。回拨与经度、均时差同列，
 dayOffset / solar 的负数路径本就走 `Math.floor` + 双模，天然安全
 （00:30 回拨 60 分 → 前一日 23:30 会正确产生 dayOffset −1，跨午夜测试口径复用）。
 

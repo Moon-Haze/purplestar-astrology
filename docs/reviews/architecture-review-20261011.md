@@ -10,7 +10,7 @@
 
 ## 候选 1 · 把「跑一条命令」的分发协议收成一个 module　【Strong · ports & adapters】
 
-**涉及文件**
+### 涉及文件
 
 - `scripts/purple-star.ts`（main 271–326：--help 拦截 276–291、--out 通道 316–319、未知命令 306）
 - `scripts/cli/selftest.ts`（90–107：runCli / call）
@@ -21,7 +21,7 @@
 
 **Solution**　把「解析 → 查命令表 → help 拦截 → 执行 → out 落盘 → 错误前缀 + 退出码」整条链沉成一个深 module，interface 只表达「给 argv 与上下文，拿三元组」；6 个调用点各自退化为该 seam 上的 adapter（写 stderr / 收进 Assertion / 渲染样例 / 断言）。
 
-**Before → After**
+### Before → After
 
 ```mermaid
 flowchart TB
@@ -42,7 +42,7 @@ flowchart TB
     D --- T5["cli.test：断言三元组"]
   end
   classDef deep fill:#0f172a,color:#f8fafc,stroke:#0f172a
-```
+```text
 
 **Wins**
 
@@ -83,7 +83,7 @@ flowchart TB
   classDef leak fill:#fef2f2,stroke:#dc2626,color:#b91c1c
 ```
 
-**Wins**
+### Wins
 
 - locality：4 种策略 → 1 张声明
 - 改 help 标题不再拆检测
@@ -95,7 +95,7 @@ flowchart TB
 
 ## 候选 3 · 专题旗标 → section 的接线升为测试面　【Strong · in-process】（与候选 1 同链）
 
-**涉及文件**
+### 涉及文件
 
 - `scripts/cli/astrology.ts`（603–639 接线 + 604–620 守卫链）
 - `scripts/cli/selftest/render.ts`（128–237：8 条 section 直调断言）
@@ -106,7 +106,7 @@ flowchart TB
 
 **Solution**　把「给定一组 args，产出 section 序列」提升为可直调的 interface，让接线本身成为被测物；fortune 各 `*Section` 退为 implementation 零件，守卫链与包裹逻辑沉进同一实现。
 
-**Before → After**
+### Before → After
 
 ```mermaid
 flowchart TB
@@ -122,7 +122,7 @@ flowchart TB
   end
   classDef gap fill:#fff,stroke:#dc2626,stroke-dasharray:4 4,color:#b91c1c
   classDef deep fill:#0f172a,color:#f8fafc,stroke:#0f172a
-```
+```text
 
 **Wins**
 
@@ -164,7 +164,7 @@ flowchart TB
   classDef leak fill:#fef2f2,stroke:#dc2626,color:#b91c1c
 ```
 
-**Wins**
+### Wins
 
 - locality：转录 → 投影，漂移不可能
 - `--out` 全局性一处声明
@@ -176,7 +176,7 @@ flowchart TB
 
 ## 候选 5 · 断言组 interface 统一，消灭 rootLabel 分叉　【Worth exploring · in-process / mock】
 
-**涉及文件**
+### 涉及文件
 
 - `scripts/cli/selftest.ts`（90、97、111–138 的 27 个 `run*(deps)` 硬序列表、162 `srcNote`）
 - `scripts/cli/selftest-kit.ts`、`scripts/corpus/selftest-asserts.ts`（42–61）、`scripts/synastry/selftest-asserts.ts`（155–163）
@@ -186,7 +186,7 @@ flowchart TB
 
 **Solution**　把「断言组 = 拿 deps → 吐 Assertion[]」收成一个 interface（corpus/synastry 的 `asserts` 成为注入 `SelftestDeps` 的 adapter），ctx 与 root/rootLabel 构造沉进 selftest-kit，label 由构造点产出。
 
-**Before → After**
+### Before → After
 
 ```mermaid
 flowchart TB
@@ -206,7 +206,7 @@ flowchart TB
   end
   classDef deep fill:#0f172a,color:#f8fafc,stroke:#0f172a
   classDef leak fill:#fef2f2,stroke:#dc2626,color:#b91c1c
-```
+```text
 
 **Wins**
 
@@ -246,7 +246,7 @@ BirthInfoResult 9 字段                   ┌───────────�
                                         → render sections / report / JSON
 ```
 
-**Wins**
+### Wins
 
 - locality：6 种形状 → 1 个 basis
 - clockTime 重复计算消失
@@ -257,7 +257,7 @@ BirthInfoResult 9 字段                   ┌───────────�
 
 ## 候选 7 · 性别过滤上 analysis 公开面，给它一个测试面　【Worth exploring · local-substitutable】
 
-**涉及文件**
+### 涉及文件
 
 - `scripts/analysis/lookups.ts`（28–78：filterGenderContent，50 行 3 条规则）
 - `scripts/analysis/index.ts`（99–102 口径注释、126 调用、135 公开面 re-export）
@@ -267,7 +267,7 @@ BirthInfoResult 9 字段                   ┌───────────�
 
 **Solution**　把性别过滤提升为公开面一等能力（或让「已过滤」承诺成为可断言的 interface 属性），两个调用点经同一 interface 进入——「拼接后过滤」从注释变成实现内的结构必然：只有一个入口，就不可能逐节调。
 
-**Before → After**
+### Before → After
 
 ```mermaid
 flowchart TB
@@ -284,7 +284,7 @@ flowchart TB
   end
   classDef deep fill:#0f172a,color:#f8fafc,stroke:#0f172a
   classDef leak fill:#fef2f2,stroke:#dc2626,color:#b91c1c
-```
+```text
 
 **Wins**
 
@@ -320,7 +320,7 @@ surroundNames（邻宫；算术 ×3 处重复）      └───────�
                                            独立预言机不动；6 个 detector 为调用方
 ```
 
-**Wins**
+### Wins
 
 - deletion test：算术散落 6 个 detector
 - locality：三方四正公式一处

@@ -8,10 +8,14 @@
             "li",
             "table",
             "tr",
-            "td"
+            "td",
+            "command",
+            "details",
+            "summary"
         ]
     },
     "MD060": false,
+    "no-blanks-blockquote": false,
     "code-block-style": {
         "style": "fenced"
     },
@@ -43,7 +47,8 @@
             "shell",
             "sql",
             "ts",
-            "typescript"
+            "typescript",
+            "yaml"
         ],
         "language_only": true
     },
@@ -85,7 +90,7 @@
         ]
     },
     "reference-links-images": {
-        "shortcut_syntax": true
+        "shortcut_syntax": false
     },
     "strong-style": {
         "style": "asterisk"

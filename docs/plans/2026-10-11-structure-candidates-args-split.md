@@ -1,4 +1,4 @@
-## 目标
+# 目标
 
 落地 [docs/reviews/structure-review-20261011.md](docs/reviews/structure-review-20261011.md) 的候选 1（`OptionScope` 类型归位）与候选 2（`args.ts` 声明数据与解析逻辑分离）。候选 3–5 按报告结论不动。
 

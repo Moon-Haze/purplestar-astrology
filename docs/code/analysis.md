@@ -459,7 +459,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 联动的指引指回正确板块；无对应语境数据时 `undefined` 维持一句简述），
 > 返回结构化段落；两个编排器（`views/overview.ts` 的【】版式与 `report.ts` 的
 >
-> ### 版式）只做版式装配。
+> ### 版式）只做版式装配
 >
 > `starBadge` 是星曜徽标（星名 + 化象 + `（庙旺）/（落陷）` 全角括号）的全仓单点，
 > `palace-query.ts` 的 `descPalaceStars` 同式引它。

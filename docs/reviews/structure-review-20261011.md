@@ -30,7 +30,7 @@
 分发/帮助  commands(72)  help(287)
 自检       selftest(185) + selftest/(8 文件) + selftest-kit
 入口       purple-star.ts(311)（引导层 + main）
-```
+```text
 
 值得肯定的三点：命令按文件拆分后聚合薄（`commands.ts` 仅 72 行）；`selftest` 已
 完成编排/断言组分离；各文件「存在理由」注释使依赖约束可机检（selftest 有对应断言）。

@@ -15,7 +15,7 @@
 
 改后门禁全绿（逐条单独跑，未用 `&&` 串联）：
 
-```
+```text
 typecheck 0 · lint 0（0 error，9 存量 warning）· selftest 151/151 · npm test 588/588
 分发形态（拷 4 项）selftest 151/151，EXIT 0，其中 1 条标 ⏭ 跳过
 ```
@@ -30,7 +30,7 @@ typecheck 0 · lint 0（0 error，9 存量 warning）· selftest 151/151 · npm 
 
 实测（`cp -r` 四项到干净目录后真跑）：
 
-```
+```text
 selftest 151/151 · EXIT 0 · astrology / knowledge 等命令全部正常
 ```
 
@@ -42,7 +42,7 @@ selftest 151/151 · EXIT 0 · astrology / knowledge 等命令全部正常
 
 ## 〇、先说结论
 
-**这个 skill 的内核质量在同类里属于上游，包元信息质量接近零。**
+### 这个 skill 的内核质量在同类里属于上游，包元信息质量接近零
 
 它做到了一件绝大多数 skill 做不到的事——**把命理逻辑从模型的自由发挥区彻底赶了出去**：排盘由 `iztro` + 6万行确定性内核产出，模型只负责解读；151 项自检 + 七层基准回归 + 引文守卫 + 体系口径断言，把「不能编造」这件事钉在了代码层而不是提示词层。
 
@@ -82,7 +82,7 @@ allowed-tools:
   - scripts/bash
   - scripts/python
 ---
-```
+```text
 
 ⚠️ 三条格式硬约束：
 

@@ -8,6 +8,7 @@
 **目标**：把 `scripts/` 的顶层 8 个文件按「契约 / 数据 / 计算」三层归位，消除三处已确认的结构缺陷，同时**保持全部对外行为逐字节不变**。
 
 **非目标**：
+
 - 不改任何命理口径、算法、输出文案。
 - 不动 `analysis/`（5004 行，已有清晰模块化）与 `patterns/`。
 - 不碰 `types.ts` 的绊线字段（`Palace.selfMutagen` 等）。
@@ -34,7 +35,7 @@
 
 ## 3. 目标结构
 
-```
+```text
 scripts/
 ├── types.ts                    契约层（不动）
 ├── palace-relations.ts         契约层（不动）
@@ -89,7 +90,7 @@ scripts/cli/data/
 ```js
 const cities = readFileSync(resolve(ctx.root, "ziwei", "cities.ts"), "utf8");
 if (!/export const PROVINCES/.test(cities)) throw new Error("ziwei/cities.ts 的 PROVINCES 不在了");
-```
+```text
 
 cities 迁走后门面只有 `export { PROVINCES } from ...`，**该正则不匹配、断言会红**。这是断言写死实现细节的固有缺陷，处置：断言改为读 `cli/data/cities.ts` 的真实定义处，并把注释里 `ziwei/cities.ts` 的旧口径一并更正。
 
@@ -114,6 +115,7 @@ npm test                 # 549/549，计数以实跑为准不写死
 ```
 
 **附加验收**：
+
 - `node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州 --json > /tmp/before.json`，拆分前后逐字节 diff = 0。
 - 故意破坏一张 SB 表，确认 CLI 启动即抛错（D3 生效证据）。
 - 5 张零消费者表逐一从门面 import 并断言非 undefined（D4 防漏项）。
