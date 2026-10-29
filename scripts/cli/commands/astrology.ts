@@ -40,6 +40,7 @@ import {
 	ageSection,
 } from "./fortune";
 import { generateChartCached } from "../chart/chart-cache";
+import { lateZiCounterChart } from "../chart/late-zi";
 import { detectPatterns } from "@/patterns";
 import { getMingGongSummary } from "@/analysis/soul-summary";
 import {
@@ -392,7 +393,7 @@ export function composeSections(
 	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour, basis, info } = opts;
 	const out: string[] = [];
 	out.push(...birthplaceSection(basis));
-	out.push(...lateZiSection(chart, info, basis));
+	out.push(...lateZiSection(chart, basis, lateZiCounterChart(info, basis)));
 	// 深掘判据从声明派生（deep: true 六旗标），与 cmdAstrology 同源。
 	const deepDive = DEEP_DIVE_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
 	if (!deepDive) {
@@ -555,7 +556,7 @@ export function cmdAstrology(args: CliArgs) {
 			"",
 		];
 		out.push(...birthplaceSection(basis));
-		out.push(...lateZiSection(chart, info, basis));
+		out.push(...lateZiSection(chart, basis, lateZiCounterChart(info, basis)));
 		out.push("─".repeat(56));
 		for (const p2 of chart.palaces) {
 			out.push(renderPalace(p2, chart), "");

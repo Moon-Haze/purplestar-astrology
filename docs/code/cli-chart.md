@@ -16,8 +16,8 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 >
 > 拆自 purple-star.ts。只依赖 `@/` 内核，不依赖本目录的其他模块 —— 唯一例外是
 > `import type { CaliberBasis } from "../birth/birth-info-defs"`（候选 6 的 basis 签名，
-> 类型 import 运行时被完全擦除，不形成运行时边）与 `./chart-cache`（晚子时对照盘
-> 走排盘缓存，birth-info → render（fmtDate）的依赖方向同样不破）。
+> 类型 import 运行时被完全擦除，不形成运行时边）。晚子时对照盘的取数住同目录
+> `./late-zi`（调用方排好对照盘作参数递入 `lateZiSection`），render 零排盘、零 IO。
 > 故本文件仍处依赖图底层（args / render 并列底层）。
 >
 > ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故这里可以放心用
@@ -35,15 +35,14 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 地支名（子/丑/…）不在此表，由匹配处单独比对。
 > 整张表从 `IZTRO_TO_PROJECT_PALACE` 派生，故不会与内核映射表漂移。
 
-### 1.3 `palaceAtBranch` 薄壳
+### 1.3 查宫单点（已上移内核）
 
-> 命宫 / 身宫地支必定落在 `palaces` 内，这是排盘不变量；取不到即说明内核输出已损坏。
-> 此处遵循项目一贯立场：宁可当场失败，也不要渲染出一张缺了命宫的盘。
->
-> 实现已收敛至 `@/palace-relations` 的 `mustPalaceAtBranch`（候选 8）——
-> 本函数是薄壳，保持既有调用方与导出名不变。
+> render 的 `palaceAtBranch` 薄壳与 `mustPalace` 已删（前者全仓零调用，后者唯一消费者
+> 是测试）。「按项目口径宫名取宫、取不到即抛」的契约现住内核 `@/palace-relations` 的
+> `mustPalaceByName` —— 此前 render 与 synastry/chart-view 各持一份、错误文案各异，
+> 收编为单点后错误文案跟内核走（chart-view 保持「纯 JSON 消费方」立场不持实现）。
 
-### 1.4 `mustPalace`：宫名口径漂移的代价
+### 1.4 `mustPalaceByName`：宫名口径漂移的代价
 
 > 这里原先写的是 `find(p => p.name === "夫妻")`（iztro 旧口径）。宫名改为项目口径后
 > 它会静默返回 undefined，而调用点紧接着就读 `.branch` —— 合盘会以 TypeError 崩掉，
@@ -61,13 +60,14 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 先按 `branch` 排序再拼接，使指纹与 `palaces` 的数组顺序无关（该顺序实测为
 > 寅起的 `2,3,…,11,0,1`，不是 0-11）。
 
-### 1.6 `lateZiSection`：晚子时两盘并列
+### 1.6 `lateZiSection`：晚子时两盘并列（对照盘是参数）
 
-> 23:00–23:59 出生时，子时横跨两日：「当日早子时」与「晚子时算次日」排出的是两张不同的盘。
-> 故这里会**另排一张对照盘**并把两张盘的紫微位与命宫主星并列出来（`isLateZi` 时对照当日早子时
-> `timeIndex: 0`，否则对照晚子时 `timeIndex: 12`）。对照盘与主盘走**同一个缓存层**
-> （`./chart-cache`，键是出生信息哈希）——它是另一份 BirthInfo，故占另一个缓存条目，
-> 但同样只排一次。
+> 23:00–23:59 出生时子时横跨两日：「当日早子时」与「晚子时算次日」排出的是两张不同的盘。
+> 本函数把两张盘的紫微位与命宫主星并列出来；对照盘是**参数不是本函数排的** ——
+> 取数在同目录 `./late-zi` 的 `lateZiCounterChart`（`isLateZi` 时对照当日早子时
+> `timeIndex: 0`，`lateZiCandidate` 时对照晚子时 `timeIndex: 12`），调用方排好递入，
+> render 因此零排盘、零 IO。对照盘与主盘走**同一个缓存层**（`./chart-cache`，键是
+> 出生信息哈希）——它是另一份 BirthInfo，故占另一个缓存条目，但同样只排一次。
 >
 > 措辞锚在「校正后」而非「你给的钟表时间」：开 `--eot` 或西部城市时，落在 23:00–23:59 的
 > 往往是校正后的真太阳时，钟表时间可能在别处（如喀什 02:30 校正后是前一日 23:37）。

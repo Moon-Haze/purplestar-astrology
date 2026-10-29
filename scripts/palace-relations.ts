@@ -83,11 +83,55 @@ export function palaceAtBranch(chart: ZiweiChart, branch: number): Palace | unde
  *
  * ⚠️ 与 {@link palaceAtBranch} 不同，本函数**不做取模**：越界入参会按原样匹配不到
  * 而抛错（文案里 `BRANCHES[branch]` 越界时回退显示数字），与旧 render 实现一致。
+ *
+ * 入参只读 `palaces` 与宫位的 `branch`，故签名是**最小结构**（宫位类型 `P` 泛型
+ * 由调用方的盘原样保留）—— 合盘消费方契约（synastry/chart-view）自带的**子集盘类型**
+ * 无需断言即可直接消费。
  */
-export function mustPalaceAtBranch(chart: ZiweiChart, branch: number, what: string): Palace {
+export function mustPalaceAtBranch<P extends { branch: number }>(
+	chart: { palaces: P[] },
+	branch: number,
+	what: string
+): P {
 	const p = chart.palaces.find(x => x.branch === branch);
 	if (!p) {
 		throw new Error(`排盘异常：${what}（地支 ${BRANCHES[branch] ?? branch}）不在十二宫内`);
+	}
+	return p;
+}
+
+// ────────────────── 按宫名取宫（必得）──────────────────
+
+/**
+ * 按**项目口径**的宫名取宫位，取不到当场抛错。
+ *
+ * @param chart - 命盘
+ * @param palaceName - 项目口径的宫名**全名**，如 `"夫妻宫"` / `"福德宫"`
+ * @returns 该宫名的宫位
+ * @throws 当十二宫内无此宫名时；错误信息里会列出该盘实际的十二宫
+ *
+ * @remarks
+ * ⚠️ 只认全名（第 8 宫是「交友宫」）：iztro 旧口径「仆役宫」与去宫字简写的宽容归
+ *    参数解析层（FOCUS_ALIASES），不得渗进取宫层 —— 宽容渗进来会让写错的名字
+ *    悄悄取到「最像的那个宫」，正是本项目反复防的静默错盘。
+ *
+ * ⚠️ 取不到就必须当场说清是哪个名字、当前十二宫叫什么：静默返回 undefined 的旧实现
+ *    （曾住 cli/chart/render 与 synastry/chart-view 两处，口径各异）会让调用点读
+ *    `.branch` 时以 TypeError 崩掉且指不到真因 —— 两份实现已收编到本单点。
+ *
+ * 入参只读 `palaces`，故签名收窄为最小结构（宫位类型 `P` 泛型由调用方的盘原样保留）——
+ * 合盘消费方契约（synastry/chart-view）自带的**子集盘类型**无需断言即可直接消费。
+ */
+export function mustPalaceByName<P extends { name: string }>(
+	chart: { palaces: P[] },
+	palaceName: string
+): P {
+	const p = chart.palaces.find(x => x.name === palaceName);
+	if (!p) {
+		throw new Error(
+			`找不到「${palaceName}」宫 —— 宫名口径与 data/ganzhi.ts 的 IZTRO_TO_PROJECT_PALACE 不一致？\n` +
+				`  该盘实际十二宫：${chart.palaces.map(x => x.name).join("、")}`
+		);
 	}
 	return p;
 }

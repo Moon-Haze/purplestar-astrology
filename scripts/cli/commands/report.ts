@@ -22,6 +22,7 @@ import { detectPatterns } from "@/patterns";
 import { getMutagenByStem } from "@/mutagen";
 import { BRANCHES, STEMS } from "@/data/ganzhi";
 import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua } from "../chart/render";
+import { lateZiCounterChart } from "../chart/late-zi";
 import type { CaliberBasis } from "../birth/birth-info-defs";
 
 /**
@@ -165,9 +166,10 @@ export function buildReport(chart: ZiweiChart, info: BirthInfo, basis: CaliberBa
 	);
 
 	// 口径提示（出生地 / 晚子时）—— 有则随报告，作为引用块紧跟文档头
-	const basisNotes = [...birthplaceSection(basis), ...lateZiSection(chart, info, basis)].filter(
-		l => l.trim() !== ""
-	);
+	const basisNotes = [
+		...birthplaceSection(basis),
+		...lateZiSection(chart, basis, lateZiCounterChart(info, basis)),
+	].filter(l => l.trim() !== "");
 	if (basisNotes.length > 0) {
 		header.push("", "> **口径提示**");
 		header.push(...basisNotes.map(l => `> ${l}`));

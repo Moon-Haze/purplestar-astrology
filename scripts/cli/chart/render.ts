@@ -2,19 +2,19 @@
  * 命盘渲染层 —— 把排盘内核输出的结构化数据，渲染成给模型读的文本片段。
  *
  * 拆自 purple-star.ts。只依赖 `@/` 内核，不依赖本目录其他模块 —— 唯一例外是
- * `import type { CaliberBasis }`（类型 import 运行时擦除，不形成运行时边）与
- * `./chart-cache`（晚子时对照盘走排盘缓存）。故本文件仍处依赖图底层。
+ * `import type { CaliberBasis }`（类型 import 运行时擦除，不形成运行时边）。
+ * 晚子时对照盘的**取数**住同目录 `./late-zi`：调用方排好对照盘后作参数递入
+ * `lateZiSection`，本文件零排盘、零 IO。故本文件仍处依赖图底层。
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心用静态 import 引内核与
  *    `@/` 别名；但**不要**反过来让 purple-star.ts 静态引本文件。
  *    依赖方向、宫名别名表、指纹唯一实现与晚子时对照盘的论证见 docs/code/cli-chart.md。
  */
 
-import type { BirthInfo, Palace, Star, ZiweiChart, Mutagen } from "@/types";
+import type { Palace, Star, ZiweiChart, Mutagen } from "@/types";
 import type { CaliberBasis } from "../birth/birth-info-defs";
 import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/data/ganzhi";
-import { mustPalaceAtBranch, surroundBranches } from "@/palace-relations";
-import { generateChartCached } from "./chart-cache";
+import { surroundBranches } from "@/palace-relations";
 
 // ══════════════════════ 共用格式化 ══════════════════════
 
@@ -54,49 +54,6 @@ for (const [iztroName, projectName] of Object.entries(IZTRO_TO_PROJECT_PALACE)) 
 	FOCUS_ALIASES.set(projectName.replace(/宫$/, ""), projectName); // 交友
 	FOCUS_ALIASES.set(iztroName, projectName); // 仆役
 	FOCUS_ALIASES.set(iztroName + "宫", projectName); // 仆役宫
-}
-
-/**
- * 按地支取宫，取不到直接抛错。
- *
- * @param chart - 命盘
- * @param branch - 地支索引 0–11（0=子 … 11=亥）
- * @param what - 该地支的语义（「命宫」「身宫」「甲方命宫」…），只用于错误文案
- * @returns 落在该地支上的宫位
- * @throws 当地支不在 `chart.palaces` 内时
- *
- * @remarks
- * 命宫 / 身宫地支必定落在 `palaces` 内（排盘不变量）；取不到即内核输出已损坏 —— 宁可
- * 当场失败，也不要渲染出一张缺了命宫的盘。
- *
- * 实现已收敛至 `@/palace-relations` 的 `mustPalaceAtBranch`，本函数是薄壳。
- */
-export function palaceAtBranch(chart: ZiweiChart, branch: number, what: string): Palace {
-	return mustPalaceAtBranch(chart, branch, what);
-}
-
-/**
- * 按**项目口径**的宫名取宫位，取不到当场抛错。
- *
- * @param chart - 命盘
- * @param palaceName - 项目口径的宫名，如 `"夫妻宫"` / `"福德宫"`
- * @returns 该宫名的宫位
- * @throws 当十二宫内无此宫名时；错误信息里会列出该盘实际的十二宫
- *
- * @remarks
- * ⚠️ 取不到就必须当场说清是哪个名字、当前十二宫叫什么：这里原先写的是 iztro 旧口径的
- *    `find(p => p.name === "夫妻")`，宫名改项目口径后它静默返回 undefined，而调用点紧接
- *    着读 `.branch` —— 合盘以 TypeError 崩掉且指不到真因（见 docs/code/cli-chart.md）。
- */
-export function mustPalace(chart: ZiweiChart, palaceName: string): Palace {
-	const p = chart.palaces.find(x => x.name === palaceName);
-	if (!p) {
-		throw new Error(
-			`找不到「${palaceName}」宫 —— 宫名口径与 constants.ts 的 IZTRO_TO_PROJECT_PALACE 不一致？\n` +
-				`  该盘实际十二宫：${chart.palaces.map(x => x.name).join("、")}`
-		);
-	}
-	return p;
 }
 
 // ══════════════════════ 片段渲染 ══════════════════════
@@ -310,41 +267,41 @@ function mingMajorBrief(c: ZiweiChart): string {
  * 晚子时口径提醒。
  *
  * @param chart - 本次实际排出的盘
- * @param info - 出生信息；重排对照盘时只改 `timeIndex`，其余照用
  * @param basis - 口径载体（只读 `isLateZi` 与 `lateZiCandidate` 两字段）—— 整包传入（候选 6）
+ * @param alt - 对照盘（调用方经 `./late-zi` 的 `lateZiCounterChart` 排好）：`isLateZi` 时
+ *   为**当日早子时**口径，`lateZiCandidate` 时为**晚子时·算次日**口径；两种口径都
+ *   不涉及时为 `null`（与 `lateZiCounterChart` 同一判据派生，配对不变量见其注释）
  * @returns 待追加进输出数组的若干行；命中任一口径时末尾带一个空行作分隔
  *
  * @remarks
- * 23:00–23:59 出生时子时横跨两日，两种口径排出的是**两张不同的盘** —— 故这里**另排一张
- * 对照盘**（`isLateZi` 时对照 `timeIndex: 0`，否则对照 12）并把两盘的紫微位与命宫主星
- * 并列出来；对照盘与主盘走同一个缓存层，只排一次。
+ * 23:00–23:59 出生时子时横跨两日，两种口径排出的是**两张不同的盘** —— 本函数把两盘的
+ * 紫微位与命宫主星并列出来；对照盘是**参数不是本函数排的**（取数在调用方，经 `./late-zi`
+ * 走缓存层），本函数零排盘、零 IO。
  *
  * ⚠️ 措辞锚在「校正后」而非「你给的钟表时间」：开 `--eot` 或西部城市时，落在 23:00–23:59
  *    的往往是校正后的真太阳时（如喀什 02:30 校正后是前一日 23:37）。见 docs/code/cli-chart.md。
  */
 export function lateZiSection(
 	chart: ZiweiChart,
-	info: BirthInfo,
-	basis: Pick<CaliberBasis, "isLateZi" | "lateZiCandidate">
+	basis: Pick<CaliberBasis, "isLateZi" | "lateZiCandidate">,
+	alt: ZiweiChart | null
 ): string[] {
 	const out: string[] = [];
+	if (!alt) {
+		return out;
+	}
 	if (basis.isLateZi) {
 		out.push("【晚子时口径】");
 		out.push("  本次按【晚子时·算次日】排盘（--late-zi / --branch 12）。");
 		out.push(
 			"  注意：安星依据的是次日的农历日数，故下方「农历」栏显示的是出生当日，与安星所用日相差一天，属正常。"
 		);
-		const alt = generateChartCached({ ...info, timeIndex: 0 });
 		out.push(
 			`  对照【当日早子时】口径：紫微落 ${ziweiBranchOf(alt)} · 命宫主星 ${mingMajorBrief(alt)}`
 		);
 		out.push("");
 		return out;
 	}
-	if (!basis.lateZiCandidate) {
-		return out;
-	}
-	const alt = generateChartCached({ ...info, timeIndex: 12 });
 	out.push("【⚠️ 晚子时口径提醒】");
 	out.push(
 		"  校正后的真太阳时落在 23:00–23:59。子时横跨两日，两种口径排出的是**两张不同的盘**。"

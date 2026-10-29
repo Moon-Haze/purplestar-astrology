@@ -10,10 +10,11 @@ import {
 	fmtDate,
 	genderCN,
 	majorsOf,
-	mustPalace,
-	palaceAtBranch,
 	readAnalyzeJson,
 } from "@/synastry/chart-view";
+// 查宫走内核单点（必得语义：取不到当场抛错）—— chart-view 不持查宫实现，
+// 保持其「纯 JSON 消费方、不 import 源码模块」的自包含立场。
+import { mustPalaceAtBranch, mustPalaceByName } from "@/palace-relations";
 import {
 	STAR_IN_FUQI_GU,
 	SIHUA_IN_FUQI_GU,
@@ -70,12 +71,12 @@ export function cmdSynastry(args: CliArgs): string {
 	const biA = ca.birthInfo;
 	const biB = cb.birthInfo;
 
-	const mingA = palaceAtBranch(ca, ca.soulBranch, "甲方命宫");
-	const mingB = palaceAtBranch(cb, cb.soulBranch, "乙方命宫");
-	const fuqiA = mustPalace(ca, "夫妻宫");
-	const fuqiB = mustPalace(cb, "夫妻宫");
-	const fudeA = mustPalace(ca, "福德宫");
-	const fudeB = mustPalace(cb, "福德宫");
+	const mingA = mustPalaceAtBranch(ca, ca.soulBranch, "甲方命宫");
+	const mingB = mustPalaceAtBranch(cb, cb.soulBranch, "乙方命宫");
+	const fuqiA = mustPalaceByName(ca, "夫妻宫");
+	const fuqiB = mustPalaceByName(cb, "夫妻宫");
+	const fudeA = mustPalaceByName(ca, "福德宫");
+	const fudeB = mustPalaceByName(cb, "福德宫");
 
 	const mA = majorsOf(mingA),
 		mB = majorsOf(mingB);
@@ -206,8 +207,8 @@ export function cmdSynastry(args: CliArgs): string {
 	// 双盘四化互参（五步法第 4 步的数据底座）：甲方四化星落乙方何宫、乙方落甲方何宫。
 	// 数据两份 JSON 里本就齐备，这里只是渲染成对照，免得助手自己排两份详表手工对星。
 	// 跨盘匹配按「同名宫位」（甲方化禄星落自己夫妻宫 → 看乙方盘上同名的那座宫），
-	// 与 guide 的「飞化互参」口径一致；宫名查找沿用 mustPalace 的 find 惯用形态，
-	// 但找不到不抛错 —— 互参是对照表，兜底一行「未上盘」即可（理论上十二宫名固定都能找到）。
+	// 与 guide 的「飞化互参」口径一致；宫名查找是 loose 的 find 形态（不走 mustPalaceByName
+	// 的必得语义），找不到不抛错 —— 互参是对照表，兜底一行「未上盘」即可（理论上十二宫名固定都能找到）。
 	out.push("【双盘四化互参】", "  甲方四化 → 落乙方宫位：");
 	for (const x of A.nativeSiHua.located) {
 		const palace = x.palace ? (cb.palaces.find(p => p.name === x.palace)?.name ?? null) : null;

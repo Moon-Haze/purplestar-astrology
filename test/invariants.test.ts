@@ -51,7 +51,9 @@ const {
 // 文墨亮度表（混合口径的亮度数据源）—— 锚点断言见「文墨亮度表」组。
 const { wenmoStarBrightness, setBrightnessSchool, getBrightnessSchool } =
 	await load<typeof import("@/wenmo-brightness")>("@/wenmo-brightness");
-const { mustPalace, locateSihua } = await loadRender();
+const { locateSihua } = await loadRender();
+// 查宫单点（按项目口径宫名取宫、取不到即抛）已上移内核 —— 守卫盯的就是生产入口。
+const { mustPalaceByName } = await load<typeof import("@/palace-relations")>("@/palace-relations");
 
 const MAJOR_STARS = [
 	"紫微",
@@ -552,15 +554,15 @@ describe("排盘结构不变量", () => {
 
 	// ── 合盘的取宫入口 ──
 	//
-	// cmdsynastry 取夫妻宫 / 福德宫一律经 mustPalace，它是按**项目口径宫名**精确查找的，
-	// 取不到当场抛错 —— 与项目「宁可启动失败，也不静默产出错盘」的立场一致。
+	// cmdsynastry 取夫妻宫 / 福德宫一律经内核 mustPalaceByName，它是按**项目口径宫名**
+	// 精确查找的，取不到当场抛错 —— 与项目「宁可启动失败，也不静默产出错盘」的立场一致。
 	// 上面「十二宫」块的偏移恒等式保证了 `chart.palaces` 的宫名与位置自洽；
 	// 这里守的是**入口本身**的契约：只认全名，认不出就抛，不返回 undefined、也不退化匹配。
-	describe("合盘取宫入口（mustPalace）", () => {
+	describe("合盘取宫入口（mustPalaceByName）", () => {
 		it("12 个项目口径宫名都能取到，且落在偏移恒等式要求的位置", () => {
 			for (const { birth, chart } of charts) {
 				for (let k = 0; k < 12; k++) {
-					const p = mustPalace(chart, PALACE_NAMES_ORDER[k]);
+					const p = mustPalaceByName(chart, PALACE_NAMES_ORDER[k]);
 					assert.equal(
 						p.branch,
 						(chart.soulBranch - k + 12) % 12,
@@ -577,7 +579,7 @@ describe("排盘结构不变量", () => {
 			const chart = charts[0].chart;
 			for (const bad of ["仆役", "仆役宫", "夫妻", "福德", "财帛", "兄弟", "命", ""]) {
 				assert.throws(
-					() => mustPalace(chart, bad),
+					() => mustPalaceByName(chart, bad),
 					/找不到/,
 					`「${bad}」不是项目口径全名，应当抛错`
 				);
@@ -587,9 +589,9 @@ describe("排盘结构不变量", () => {
 
 	// ── 生年四化落宫：合盘「四化入夫妻宫」的上游 ──
 	//
-	// cli/commands/index.ts 的 cmdsynastry 按 `x.palace === fuqi.name` 判断四化是否落进夫妻宫，
+	// cli/commands/synastry.ts 的 cmdsynastry 按 `x.palace === fuqi.name` 判断四化是否落进夫妻宫，
 	// 而 `x` 来自 cli/chart/render.ts 的 locateSihua。这条链路上有两个**静默失效**口：
-	//   1. 四化表（constants.ts 的 SI_HUA_TABLE）里某个星名写错 / 混进杂曜 ——
+	//   1. 四化表（内核 data/ 的 SI_HUA_TABLE）里某个星名写错 / 混进杂曜 ——
 	//      locateSihua 找不到该星，返回 `palace: null` 而**不抛错**；
 	//   2. locateSihua 的落宫口径漂移。
 	// 两者都不报错，只是让合盘永远不命中，输出照旧是一句「双方夫妻宫均无生年四化落入」，

@@ -40,6 +40,10 @@ describe("内核对外契约（冻结 @ 2026-10-12）", () => {
 			isFn(palaceRelations.mustPalaceAtBranch),
 			"palace-relations.mustPalaceAtBranch 必须在契约面"
 		);
+		assert.ok(
+			isFn(palaceRelations.mustPalaceByName),
+			"palace-relations.mustPalaceByName 必须在契约面"
+		);
 		assert.equal(palaceRelations.oppositeBranch.length, 1, "oppositeBranch 签名应为 (branch)");
 	});
 

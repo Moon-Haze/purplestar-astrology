@@ -137,52 +137,9 @@ export const genderCN = (g: "male" | "female") => (g === "male" ? "男" : "女")
 
 // ══════════════════════ 查宫 ══════════════════════
 
-/**
- * 按**项目口径**的宫名取宫位，取不到当场抛错。
- *
- * @param chart - 命盘（来自 `analyze --json` 的 `chart` 字段）
- * @param palaceName - 项目口径的宫名，如 `"夫妻宫"` / `"福德宫"`
- * @returns 该宫名的宫位
- * @throws 当十二宫内无此宫名时；错误信息里会列出该盘实际的十二宫
- *
- * @remarks
- * 找不到时**不返回 undefined**：调用点紧接着就读 `.branch`，返回 undefined 会让合盘
- * 以一句「Cannot read properties of undefined」崩掉，报错指不到真正的原因。宫名是与
- * 排盘方唯一的耦合点之一，取不到就该当场说清是哪个名字、这份盘里叫什么。
- */
-export function mustPalace(chart: ZiweiChart, palaceName: string): Palace {
-	const p = chart.palaces.find(x => x.name === palaceName);
-	if (!p) {
-		throw new Error(
-			`命盘里找不到「${palaceName}」宫 —— 这份 JSON 是 purplestar-astrology 排的吗？\n` +
-				`  该盘实际十二宫：${chart.palaces.map(x => x.name).join("、")}`
-		);
-	}
-	return p;
-}
-
-/**
- * 按地支取宫，取不到直接抛错。
- *
- * @param chart - 命盘
- * @param branch - 地支索引 0–11（0=子 … 11=亥）
- * @param what - 该地支的语义（「甲方命宫」…），只用于错误文案
- * @returns 落在该地支上的宫位
- * @throws 当地支不在 `chart.palaces` 内时
- *
- * @remarks
- * 命宫 / 身宫地支必定落在 `palaces` 内，这是排盘不变量；取不到即说明这份 JSON 已损坏。
- * 此处遵循项目一贯立场：宁可当场失败，也不要渲染出一张缺了命宫的盘。
- */
-export function palaceAtBranch(chart: ZiweiChart, branch: number, what: string): Palace {
-	const p = chart.palaces.find(x => x.branch === branch);
-	if (!p) {
-		throw new Error(
-			`命盘异常：${what}（地支 ${BRANCHES[branch] ?? branch}）不在十二宫内 —— 这份 JSON 已损坏`
-		);
-	}
-	return p;
-}
+// 查宫的必得语义（按宫名 / 按地支，取不到即抛）已收编进内核 `palace-relations`
+// （mustPalaceByName / mustPalaceAtBranch）—— 命令层经 `@/` 直接消费；本文件保持
+// 「纯 JSON 消费方」的自包含立场，不再持有自己的查宫实现。
 
 /**
  * 取一宫的**主星**名（`type === "major"`，即十四主星）。
