@@ -257,7 +257,8 @@ async function collectTopic(
 	// 文本列取自 contentKey 的首个主题（别名视图共用源列，见 TOPIC_CONTENT_SOURCE）
 	const sql = `SELECT major_stars[1] AS star, ${TOPIC_CONTENT_SOURCE[topic]} AS text
 FROM topics JOIN palaces USING (sample_id)
-WHERE palace_name = '${palace}' AND len(major_stars) > 0`;
+WHERE palace_name = '${palace}' AND len(major_stars) > 0
+ORDER BY sample_id`;
 	const result = await conn.run(sql);
 	const rows = (await result.getRowObjectsJS()) as Array<{ star: string; text: string }>;
 
@@ -369,7 +370,7 @@ async function collectCombo(
 FROM (SELECT sample_id, palace_name, UNNEST(major_stars) AS star FROM palaces) s
 JOIN (SELECT sample_id, palace_name, UNNEST(list_concat(lucky_stars, sha_stars)) AS aux FROM palaces) a
   ON s.sample_id = a.sample_id AND s.palace_name = a.palace_name
-GROUP BY 1, 2 ORDER BY 1, 3 DESC`;
+GROUP BY 1, 2 ORDER BY 1, 2, 3 DESC`;
 	return (await (await conn.run(sql)).getRowObjectsJS()) as Array<{
 		star: string;
 		aux: string;
@@ -640,7 +641,7 @@ SELECT DISTINCT line FROM l WHERE line LIKE '⭐%'`;
 	}
 
 	// patterns 侧：抽样 2000 盘实测 detectPatterns 全名目（跳过非法公历日期）
-	const sampleSql = `SELECT year, month, day, hour, gender, longitude FROM samples WHERE sample_id % 259 = 0 LIMIT 2000`;
+	const sampleSql = `SELECT year, month, day, hour, gender, longitude FROM samples WHERE sample_id % 259 = 0 ORDER BY sample_id LIMIT 2000`;
 	const samples = (await (await conn.run(sampleSql)).getRowObjectsJS()) as Array<{
 		year: number;
 		month: number;
