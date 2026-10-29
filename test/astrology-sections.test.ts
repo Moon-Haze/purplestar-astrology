@@ -17,41 +17,22 @@ import assert from "node:assert/strict";
 import { load } from "./lib/loader.ts";
 
 const astrology = await load<typeof import("@/cli/commands/astrology")>("@/cli/commands/astrology");
-const {
-	composeSections,
-	cmdAstrology,
-	parseYearlyArg,
-	parseMonthlyArg,
-	parseDailyArg,
-	parseHourlyArg,
-} = astrology;
+const { composeSections, cmdAstrology } = astrology;
+// 装配链单点（评审候选 4 / W1）：ctx()/chartFor()/caliberChart() 全部消费同一 seam，
+// 本文件不再复刻「applyConfig → buildBirthInfo → toBasis → 排盘 → parse*Arg」管线。
+const { prepareAstrologyContext } =
+	await load<typeof import("@/cli/commands/astrology-context")>(
+		"@/cli/commands/astrology-context"
+	);
 const { parseArgs } = await load<typeof import("@/cli/args")>("@/cli/args");
-const { buildBirthInfo } =
-	await load<typeof import("@/cli/birth/birth-info")>("@/cli/birth/birth-info");
-const { toBasis } = await load<typeof import("@/cli/birth/birth-info-defs")>(
-	"@/cli/birth/birth-info-defs"
-);
-const { generateChart } = await load<typeof import("@/algorithm")>("@/algorithm");
 
-/** 用与 CLI 完全相同的管线造一份 chart + composeSections 所需上下文。 */
+/** 用与 CLI 完全相同的管线（prepareAstrologyContext）造一份装配上下文。 */
 function ctx(extra: string[]) {
 	const args = parseArgs(
 		["--date", "1990-05-15", "--time", "09:30", "--no-dst", "--gender", "male", ...extra],
 		"astrology"
 	);
-	const built = buildBirthInfo(args);
-	const basis = toBasis(built, args.time);
-	const chart = generateChart(built.info);
-	return {
-		chart,
-		args,
-		basis,
-		info: built.info,
-		liuNianYear: parseYearlyArg(args),
-		liuYueMonth: parseMonthlyArg(args),
-		liuRiDay: parseDailyArg(args),
-		liuShiHour: parseHourlyArg(args),
-	};
+	return prepareAstrologyContext(args);
 }
 
 describe("专题旗标→section 接线（候选 3）", () => {
@@ -67,14 +48,7 @@ describe("专题旗标→section 接线（候选 3）", () => {
 			"--ages",
 			"45",
 		]);
-		const out = composeSections(c.chart, c.args, {
-			liuNianYear: c.liuNianYear,
-			liuYueMonth: c.liuYueMonth,
-			liuRiDay: c.liuRiDay,
-			liuShiHour: c.liuShiHour,
-			basis: c.basis,
-			info: c.info,
-		}).join("\n");
+		const out = composeSections(c).join("\n");
 		const iPattern = out.indexOf("【格局识别】");
 		const iMutagen = out.indexOf("【生年四化】");
 		const iYearly = out.indexOf("流年】");
@@ -97,27 +71,13 @@ describe("专题旗标→section 接线（候选 3）", () => {
 
 	it("composeSections 含 focus 节（--focus 财帛 落到 focus 专题）", () => {
 		const c = ctx(["--focus", "财帛"]);
-		const out = composeSections(c.chart, c.args, {
-			liuNianYear: c.liuNianYear,
-			liuYueMonth: c.liuYueMonth,
-			liuRiDay: c.liuRiDay,
-			liuShiHour: c.liuShiHour,
-			basis: c.basis,
-			info: c.info,
-		}).join("\n");
+		const out = composeSections(c).join("\n");
 		assert.ok(out.includes("财帛"), "--focus 财帛 应产出财帛宫专题节");
 	});
 
 	it("无深掘旗标时带信息面板、不含任何专题节", () => {
 		const c = ctx([]);
-		const out = composeSections(c.chart, c.args, {
-			liuNianYear: c.liuNianYear,
-			liuYueMonth: c.liuYueMonth,
-			liuRiDay: c.liuRiDay,
-			liuShiHour: c.liuShiHour,
-			basis: c.basis,
-			info: c.info,
-		}).join("\n");
+		const out = composeSections(c).join("\n");
 		assert.ok(out.includes("命宫"), "无深掘应输出信息面板（含命宫）");
 		assert.ok(!out.includes("【格局识别】"), "无深掘不应含格局专题");
 		assert.ok(!out.includes("【生年四化】"), "无深掘不应含四化专题");
@@ -197,15 +157,11 @@ const { buildReport, topicCitations } = reportCmd;
 const lookups = await load<typeof import("@/analysis/lookups")>("@/analysis/lookups");
 const dataModule = await load<typeof import("@/analysis/data")>("@/analysis/data");
 
-/** 造一份指定日期时辰的盘 + buildReport 所需口径（与 ctx() 同管线）。 */
+/** 造一份指定日期时辰的盘 + buildReport 所需口径（与 ctx() 同管线：prepareAstrologyContext）。 */
 function chartFor(date: string, time = "09:30") {
-	const args = parseArgs(
-		["--date", date, "--time", time, "--no-dst", "--gender", "male"],
-		"astrology"
+	return prepareAstrologyContext(
+		parseArgs(["--date", date, "--time", time, "--no-dst", "--gender", "male"], "astrology")
 	);
-	const built = buildBirthInfo(args);
-	const basis = toBasis(built, args.time);
-	return { chart: generateChart(built.info), info: built.info, basis };
 }
 
 describe("全盘报告装配：大限节唯一与全文首现", () => {
@@ -402,9 +358,9 @@ const NEVER_MUTAGEN = [
 ];
 
 function caliberChart(date: string) {
-	const args = parseArgs(["--date", date, "--time", "10:00", "--no-dst", "--gender", "male"], "astrology");
-	const built = buildBirthInfo(args);
-	return generateChart(built.info);
+	return prepareAstrologyContext(
+		parseArgs(["--date", date, "--time", "10:00", "--no-dst", "--gender", "male"], "astrology")
+	).chart;
 }
 
 describe("会照口径：三方四正本命四化的星曜口径", () => {

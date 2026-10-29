@@ -7,16 +7,13 @@
 import type { BirthInfo, Mutagen, ZiweiChart } from "@/types";
 import type { CliArgs } from "../args";
 import {
-	BIRTH_KEYS,
 	camelKey,
 	DEEP_DIVE_KEYS,
 	EXCLUSIVE_PRIORITY_LABEL,
-	INTENT_KEYS,
 	SHADOWABLE_KEYS,
 } from "../args/table";
-import { applyConfig, renderTemplate } from "../args/config-input";
-import { buildBirthInfo } from "../birth/birth-info";
-import { clockOptsFromBasis, toBasis, type CaliberBasis } from "../birth/birth-info-defs";
+import { renderTemplate } from "../args/config-input";
+import { clockOptsFromBasis } from "../birth/birth-info-defs";
 import {
 	birthplaceSection,
 	fmtDate,
@@ -41,6 +38,12 @@ import {
 } from "./fortune";
 import { generateChartCached } from "../chart/chart-cache";
 import { lateZiCounterChart } from "../chart/late-zi";
+import {
+	parseMonthlyArg,
+	parseYearlyArg,
+	prepareAstrologyContext,
+	type AstrologyContext,
+} from "./astrology-context";
 import { detectPatterns } from "@/patterns";
 import { getMingGongSummary } from "@/analysis/soul-summary";
 import { buildMutagenChain } from "@/mutagen";
@@ -67,86 +70,6 @@ const VIEW_ALIASES: Record<string, AnalysisView> = {
 	yearly: "liunian",
 	monthly: "liuyue",
 };
-
-/**
- * `--yearly` 的年份校验（`analyze` 的流年专题与 `topic` 的流年论断共用）。
- *
- * @param args - CLI 参数表
- * @returns 流年年份；未给或裸开关时默认当前公历年（裸开关的语义就是「深入今年」）
- * @throws 非整数或超出 1-9999 时
- *
- * @remarks
- * 非数字静默传下去会得到「NaN 天干 → 四空串」的垃圾输出 —— 与 `--monthly` 同一纪律：
- * 宁可报错，不静默产出错盘（见 docs/code/cli-commands.md）。
- */
-export function parseYearlyArg(args: CliArgs): number {
-	const y =
-		args.yearly !== undefined && args.yearly !== true
-			? Number(args.yearly)
-			: new Date().getFullYear();
-	if (!Number.isInteger(y) || y < 1 || y > 9999) {
-		throw new Error(`--yearly 应为 1-9999 的整数年份，收到：${args.yearly}`);
-	}
-	return y;
-}
-
-/**
- * `--monthly` 的农历月校验（`analyze` 与 `topic` 共用）。
- *
- * @param args - CLI 参数表
- * @returns 农历月 1-12；未给时为 `null`（表示「不算流月」）
- * @throws 非整数或超出 1-12 时
- */
-export function parseMonthlyArg(args: CliArgs): number | null {
-	// 裸开关必须报错：Number(true) = 1 会让它被静默当成农历一月（与 --yearly 不同，
-	// 流月的「当前月」没有明确语义 —— 农历月随流年干五虎遁推，不设默认）。
-	if (args.monthly === true) {
-		throw new Error("--monthly 需要一个农历月值（如 --monthly 6）");
-	}
-	const m = args.monthly !== undefined ? Number(args.monthly) : null;
-	if (m !== null && (!Number.isInteger(m) || m < 1 || m > 12)) {
-		throw new Error("--monthly 应为农历月 1-12");
-	}
-	return m;
-}
-
-/**
- * `--daily` 的农历日校验。
- *
- * @returns 农历日 1-30；未给时为 `null`（表示「不算流日」）
- * @throws 裸开关、非整数或超出 1-30 时
- *
- * @remarks
- * 与 `--monthly` 同一纪律：流日的「当前日」没有明确语义，不设默认 —— 裸开关直接报错
- * 指路（见 docs/code/cli-commands.md）。
- */
-export function parseDailyArg(args: CliArgs): number | null {
-	if (args.daily === true) {
-		throw new Error("--daily 需要一个农历日值（如 --daily 15）");
-	}
-	const d = args.daily !== undefined ? Number(args.daily) : null;
-	if (d !== null && (!Number.isInteger(d) || d < 1 || d > 30)) {
-		throw new Error("--daily 应为农历日 1-30");
-	}
-	return d;
-}
-
-/**
- * `--hourly` 的时支校验。
- *
- * @returns 时支 0-12（12 = 晚子时）；未给时为 `null`（表示「不算流时」）
- * @throws 裸开关、非整数或超出 0-12 时
- */
-export function parseHourlyArg(args: CliArgs): number | null {
-	if (args.hourly === true) {
-		throw new Error("--hourly 需要一个时支值（如 --hourly 5，12=晚子时）");
-	}
-	const h = args.hourly !== undefined ? Number(args.hourly) : null;
-	if (h !== null && (!Number.isInteger(h) || h < 0 || h > 12)) {
-		throw new Error("--hourly 应为时支 0-12（12 = 晚子时）");
-	}
-	return h;
-}
 
 /**
  * 抬头行（命盘总览式）：`【标题】[名字 ]日期 说明 · 性别` —— --info / --topic /
@@ -280,17 +203,6 @@ export function buildAnalyzeJson(input: {
 	);
 }
 
-/**
- * 零输入演示的内置虚构样例 —— 与 help 示例、`--template` 配置模板同源（2011-06-24 07:45
- * 杭州 male），输出自带「虚构」声明（见 docs/code/cli-commands.md）。
- */
-const SAMPLE_BIRTH: Partial<CliArgs> = {
-	date: "2011-06-24",
-	time: "07:45",
-	city: "杭州",
-	gender: "male",
-};
-
 /** 零输入演示的头部声明（面板前）与用法指路（面板后）。 */
 const SAMPLE_HEADER = "（未给出生信息 —— 以下为内置虚构示例的演示盘）";
 const SAMPLE_TRAILER = [
@@ -357,24 +269,12 @@ function assertNoShadowedFeatures(
  * 则跳过基底，按 pattern → mutagen → yearly → decadal → ages → focus 固定序追加）。
  * 候选 3 的收益见 docs/code/cli-commands.md。
  *
- * @param chart - 已生成的命盘
- * @param args - CLI 参数表
- * @param opts - 派生好的上下文：流年/流月/流日/流时、口径 basis、出生信息 info
+ * @param ctx - 装配上下文（`prepareAstrologyContext` 的产物）：chart / args / 流年月日时 /
+ *   口径 basis / 出生信息 info —— cmdAstrology 与测试跨同一 seam（评审候选 4）
  * @returns 已按顺序拼好的输出行（不含末尾 join）
  */
-export function composeSections(
-	chart: ZiweiChart,
-	args: CliArgs,
-	opts: {
-		liuNianYear: number;
-		liuYueMonth: number | null;
-		liuRiDay: number | null;
-		liuShiHour: number | null;
-		basis: CaliberBasis;
-		info: BirthInfo;
-	}
-): string[] {
-	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour, basis, info } = opts;
+export function composeSections(ctx: AstrologyContext): string[] {
+	const { chart, args, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, basis, info } = ctx;
 	const out: string[] = [];
 	out.push(...birthplaceSection(basis));
 	out.push(...lateZiSection(chart, basis, lateZiCounterChart(info, basis)));
@@ -448,36 +348,12 @@ export function cmdAstrology(args: CliArgs) {
 	if (args.template) {
 		return renderTemplate();
 	}
-	// --config：配置是基底，命令行同名键覆盖（spec §3.3）
-	args = applyConfig(args);
-	// ── 零输入演示契约：出生信息一项没给且未表达其他输出意图时，改以内置虚构样例演示
-	// 基本信息面板。部分输入不适用（想排特定的盘），--json / --palaces / --topic /
-	// 专题参数在场同样不适用：那是明确的输出意图（见 docs/code/cli-commands.md）。
-	const usingSample =
-		BIRTH_KEYS.every(k => (args as Record<string, unknown>)[k] === undefined) &&
-		!INTENT_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
-	if (usingSample) {
-		args = { ...args, ...SAMPLE_BIRTH, info: true };
-	}
-	// 口径字段整包收进 basis（候选 6）：8 个局部变量逐个传递改为一包传递，
-	// clockTime 折算由 toBasis 单点完成（此前两处 infoSection 各自逐字重复）。
-	const built = buildBirthInfo(args);
-	const basis = toBasis(built, args.time);
-	const { info } = built;
-	// 排盘走缓存层（键 = 出生信息 sha256）：同一份出生信息在本农历年内只排一次，
-	// 换专题参数 / 换视角重跑时只付「读文件 + 渲染」。--no-cache 强制直排。
-	const chart = generateChartCached(info, { noCache: args.noCache === true });
-
-	// 注意：流年用 --yearly，不可复用 --year —— 后者是出生年的回退参数。
-	// 二者同时给出不会报错：流年取 --yearly；而出生日期一旦给了 --date/--lunar，
-	// --year 就被静默忽略（buildBirthInfo 里 --date/--lunar 优先），不会有任何提示。
-	const liuNianYear = parseYearlyArg(args);
-	// 流月：农历月 1-12，取流年干推五虎遁（可选）
-	const liuYueMonth = parseMonthlyArg(args);
-	// 流日 / 流时：取值校验在此（数值域），组合护栏（须配 --mutagen / --monthly / --daily）
-	// 只守文本路径 —— --json 的对应顶层键是独立键，程序消费方自担取值链（基准对拍依赖裸 --json --monthly）。
-	const liuRiDay = parseDailyArg(args);
-	const liuShiHour = parseHourlyArg(args);
+	// 装配链单点（评审候选 4 / W1）：--config 覆盖 → 零输入回退 → 出生信息 → 口径
+	// basis → 命盘缓存 → 运限参数解析。顺序与前提自此是 interface 的一部分，
+	// 测试直调同一函数（astrology-context.ts），不再各持一份装配复刻。
+	const actx = prepareAstrologyContext(args);
+	args = actx.args;
+	const { info, basis, chart, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, usingSample } = actx;
 
 	// ── 融合分支（spec §1）──
 	// --info：只输出信息面板这一节（面板本身在默认输出里无条件存在，本参数是「只看面板」）
@@ -637,12 +513,5 @@ export function cmdAstrology(args: CliArgs) {
 	// ── 未深入形态的输出基底 ──
 	// 基本信息面板 + 运限速览 + 专题指路 / 深掘专题详版，统一交给 composeSections
 	// （候选 3：旗标→section 接线升为可测 interface，接线本身成为被测物）。
-	return composeSections(chart, args, {
-		liuNianYear,
-		liuYueMonth,
-		liuRiDay,
-		liuShiHour,
-		basis,
-		info,
-	}).join("\n");
+	return composeSections(actx).join("\n");
 }
