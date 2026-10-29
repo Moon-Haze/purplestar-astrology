@@ -165,12 +165,7 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		return "--palaces/--topic/--report/--json 四组独占语义全部指路；--palaces --json 契约保留";
 	});
 	ok("命令面：--report 产出 13 板块 Markdown 且为纯本命静态口径", () => {
-		const t = cmdAstrology(
-			parseArgs(
-				[...SAMPLE_ARGV, "--report"],
-				"astrology"
-			)
-		);
+		const t = cmdAstrology(parseArgs([...SAMPLE_ARGV, "--report"], "astrology"));
 		if (!t.startsWith("# 紫微斗数全盘报告")) {
 			throw new Error("报告应以一级标题开头");
 		}

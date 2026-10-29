@@ -5,13 +5,7 @@
  */
 
 import type { CliArgs } from "../args";
-import {
-	branchName,
-	fmtDate,
-	genderCN,
-	majorsOf,
-	readAnalyzeJson,
-} from "@/synastry/chart-view";
+import { branchName, fmtDate, genderCN, majorsOf, readAnalyzeJson } from "@/synastry/chart-view";
 // 查宫走内核单点（必得语义：取不到当场抛错）—— chart-view 不持查宫实现，
 // 保持其「纯 JSON 消费方、不 import 源码模块」的自包含立场。
 import { mustPalaceAtBranch, mustPalaceByName } from "@/palace-relations";

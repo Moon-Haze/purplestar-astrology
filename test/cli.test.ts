@@ -1214,11 +1214,7 @@ describe("CLI 端到端", () => {
 					mismatched.push(`[exit ${r.code}] ${s.args.join(" ")}`);
 				}
 			}
-			assert.deepEqual(
-				mismatched,
-				[],
-				"退出码与样例预期不符 —— dispatch 侧或样例预期已漂移"
-			);
+			assert.deepEqual(mismatched, [], "退出码与样例预期不符 —— dispatch 侧或样例预期已漂移");
 		});
 
 		it("抽样 3 条：dispatch 直调 ≡ 真子进程（stdout / stderr / exit code）", async () => {

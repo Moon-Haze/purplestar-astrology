@@ -43,8 +43,10 @@ export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions
 	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour } = options;
 	// 六层取数链单点（@/mutagen 的 buildMutagenChain）：本函数只渲染不派生，
 	// 与 --json 的 buildAnalyzeJson 同一取数来源（对拍断言钉在 astrology-sections 测试）。
-	const { native, liuNian, liuYue, liuRi, liuShi, daXian, decadalNotStarted } =
-		buildMutagenChain(chart, options);
+	const { native, liuNian, liuYue, liuRi, liuShi, daXian, decadalNotStarted } = buildMutagenChain(
+		chart,
+		options
+	);
 
 	const out = [`【生年四化】年干 ${native.stemName}`];
 	out.push(...sihuaLines(chart, native.transforms));

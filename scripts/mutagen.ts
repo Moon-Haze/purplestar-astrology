@@ -419,9 +419,12 @@ export function buildMutagenChain(chart: ZiweiChart, input: MutagenChainInput): 
 		liuYueMonth != null && liuRiDay != null
 			? getDailyMutagen(liuNianYear, liuYueMonth, liuRiDay)
 			: null;
-	const liuShi = liuRi && liuShiHour != null ? getHourlyMutagen(liuRi.stemIndex, liuShiHour) : null;
+	const liuShi =
+		liuRi && liuShiHour != null ? getHourlyMutagen(liuRi.stemIndex, liuShiHour) : null;
 	const daXian =
-		chart.currentDecadalIndex === -1 ? null : getDaXianMutagen(chart, chart.currentDecadalIndex);
+		chart.currentDecadalIndex === -1
+			? null
+			: getDaXianMutagen(chart, chart.currentDecadalIndex);
 	return {
 		yearStem: native.stemIndex,
 		native,

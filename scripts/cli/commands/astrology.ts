@@ -6,12 +6,7 @@
 
 import type { BirthInfo, Mutagen, ZiweiChart } from "@/types";
 import type { CliArgs } from "../args";
-import {
-	camelKey,
-	DEEP_DIVE_KEYS,
-	EXCLUSIVE_PRIORITY_LABEL,
-	SHADOWABLE_KEYS,
-} from "../args/table";
+import { camelKey, DEEP_DIVE_KEYS, EXCLUSIVE_PRIORITY_LABEL, SHADOWABLE_KEYS } from "../args/table";
 import { renderTemplate } from "../args/config-input";
 import { clockOptsFromBasis } from "../birth/birth-info-defs";
 import {
@@ -353,7 +348,8 @@ export function cmdAstrology(args: CliArgs) {
 	// 测试直调同一函数（astrology-context.ts），不再各持一份装配复刻。
 	const actx = prepareAstrologyContext(args);
 	args = actx.args;
-	const { info, basis, chart, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, usingSample } = actx;
+	const { info, basis, chart, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, usingSample } =
+		actx;
 
 	// ── 融合分支（spec §1）──
 	// --info：只输出信息面板这一节（面板本身在默认输出里无条件存在，本参数是「只看面板」）

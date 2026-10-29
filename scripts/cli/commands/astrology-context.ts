@@ -165,5 +165,15 @@ export function prepareAstrologyContext(args: CliArgs): AstrologyContext {
 	const liuRiDay = parseDailyArg(args);
 	const liuShiHour = parseHourlyArg(args);
 
-	return { args, info, basis, chart, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, usingSample };
+	return {
+		args,
+		info,
+		basis,
+		chart,
+		liuNianYear,
+		liuYueMonth,
+		liuRiDay,
+		liuShiHour,
+		usingSample,
+	};
 }

@@ -20,10 +20,9 @@ const astrology = await load<typeof import("@/cli/commands/astrology")>("@/cli/c
 const { composeSections, cmdAstrology } = astrology;
 // 装配链单点（评审候选 4 / W1）：ctx()/chartFor()/caliberChart() 全部消费同一 seam，
 // 本文件不再复刻「applyConfig → buildBirthInfo → toBasis → 排盘 → parse*Arg」管线。
-const { prepareAstrologyContext } =
-	await load<typeof import("@/cli/commands/astrology-context")>(
-		"@/cli/commands/astrology-context"
-	);
+const { prepareAstrologyContext } = await load<typeof import("@/cli/commands/astrology-context")>(
+	"@/cli/commands/astrology-context"
+);
 const { parseArgs } = await load<typeof import("@/cli/args")>("@/cli/args");
 
 /** 用与 CLI 完全相同的管线（prepareAstrologyContext）造一份装配上下文。 */
@@ -457,13 +456,29 @@ describe("六层四化取数链对拍（评审候选 3）", () => {
 			assert.ok(m, `文本专题应含 ${re.source} 段`);
 			return m[1];
 		};
-		assert.equal(stemOf(/【生年四化】年干 ([^（\s]+)/), json.nativeSiHua?.stem, "生年层两路分叉");
-		assert.equal(stemOf(/【\d+ 流年四化】年干 ([^（\s]+)/), json.liuNianSiHua?.stem, "流年层两路分叉");
+		assert.equal(
+			stemOf(/【生年四化】年干 ([^（\s]+)/),
+			json.nativeSiHua?.stem,
+			"生年层两路分叉"
+		);
+		assert.equal(
+			stemOf(/【\d+ 流年四化】年干 ([^（\s]+)/),
+			json.liuNianSiHua?.stem,
+			"流年层两路分叉"
+		);
 		assert.equal(stemOf(/流月四化】月干 ([^（\s]+)/), json.liuYueSiHua?.stem, "流月层两路分叉");
 		assert.equal(stemOf(/流日四化】日干 ([^（\s]+)/), json.liuRiSiHua?.stem, "流日层两路分叉");
-		assert.equal(stemOf(/流时四化[^】]*】时干 ([^（\s]+)/), json.liuShiSiHua?.stem, "流时层两路分叉");
+		assert.equal(
+			stemOf(/流时四化[^】]*】时干 ([^（\s]+)/),
+			json.liuShiSiHua?.stem,
+			"流时层两路分叉"
+		);
 		if (json.daXianSiHua) {
-			assert.equal(stemOf(/大限四化：宫干 ([^（\s]+)（/), json.daXianSiHua.stem, "大限层两路分叉");
+			assert.equal(
+				stemOf(/大限四化：宫干 ([^（\s]+)（/),
+				json.daXianSiHua.stem,
+				"大限层两路分叉"
+			);
 		} else {
 			assert.match(
 				text,
