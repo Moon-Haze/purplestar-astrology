@@ -17,7 +17,8 @@ import { generateChartCached } from "../chart/chart-cache";
 
 /**
  * 零输入演示的内置虚构样例 —— 与 help 示例、`--template` 配置模板同源（2011-06-24 07:45
- * 杭州 male），输出自带「虚构」声明（见 docs/code/cli-commands.md）。
+ * 杭州 male），输出自带「虚构」声明（见 docs/code/cli-commands.md）。argv / 位置参数
+ * 形态的单点在 `cli/selftest/sample.ts` 的 `DEMO_*`（值驻本处，角色是运行时演示）。
  */
 const SAMPLE_BIRTH: Partial<CliArgs> = {
 	date: "2011-06-24",

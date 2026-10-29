@@ -17,6 +17,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
+// 虚构样本的 argv 单点（评审候选 6 / W4）：不再本地手写同款组合。
+import { DEMO_ARGV, DEMO_FEMALE_ARGV } from "../scripts/cli/selftest/sample.ts";
 
 const execFileAsync = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -62,10 +64,10 @@ async function cmdFails(args: string[]): Promise<string> {
 	assert.fail(`命令本应失败却成功了：${args.join(" ")}`);
 }
 
-/** 男盘（help 示例同款，命宫有主星）。 */
-const MALE = ["--date", "2011-06-24", "--time", "07:45", "--city", "杭州", "--gender", "male"];
+/** 男盘（help 示例同款，命宫有主星）—— argv 单点见 cli/selftest/sample.ts。 */
+const MALE = [...DEMO_ARGV];
 /** 女盘（命宫空宫，借对宫论事 —— 覆盖 report 的借宫路径）。 */
-const FEMALE = ["--date", "1999-11-3", "--time", "15:20", "--city", "成都", "--gender", "female"];
+const FEMALE = [...DEMO_FEMALE_ARGV];
 
 describe("astrology --report 全盘报告", () => {
 	it("13 个板块齐全且顺序符合用户口径（财运在事业前、性格在感情后）", async () => {

@@ -14,6 +14,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { eq, type SelftestDeps } from "./kit";
+import { SAMPLE_ARGV } from "./sample";
 
 /** astrology 输出形态：未深入/深入/零输入/--palaces/--topic/--focus/--config/--template。 */
 export function runAstrologyShapes({ ok, call }: Pick<SelftestDeps, "ok" | "call">): void {
@@ -342,7 +343,7 @@ export function runAstrologyShapes({ ok, call }: Pick<SelftestDeps, "ok" | "call
 	// 解析通了但 section 没接上的回归，没有任何断言会红。期望文案取自实跑
 	// （Task 5 Step 2）；写入时先以假期望验红（四条同红、红因各指检查点），
 	// 再换实文案转绿 —— 保护性断言同样要证明它真的在读输出。
-	const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
+	const base = [...SAMPLE_ARGV];
 	ok("组合层：--decadal 端到端经 cmdAstrology 出大限节（候选 3）", () => {
 		const r = call(["astrology", ...base, "--decadal", "37"]);
 		eq(r.code, 0, r.err);

@@ -22,7 +22,7 @@ import { cmdKnowledge } from "../knowledge";
 import { cmdAstrology, buildAnalyzeJson } from "../commands/astrology";
 import { cmdSynastry } from "../commands/synastry";
 import { renderCommandHelp, renderOverviewHelp } from "../commands/help";
-import { SAMPLE } from "./sample";
+import { SAMPLE, SAMPLE_ARGV } from "./sample";
 import type { SelftestDeps } from "./kit";
 
 /** 命令面：knowledge 四域（books/stars/tianji/oracle）的形态与指路、astrology 参数纪律、合盘交付。 */
@@ -116,7 +116,7 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		// 文本路径约束：--json 的 liuYueSiHua 是独立顶层键，不带 --mutagen 合法（基准对拍依赖）。
 		// （组合层曾有一条同守卫的重复断言，已删——本条多一段正向断言且载体同源，
 		// 见 architecture-review-20261016 候选 2。）
-		const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
+		const base = [...SAMPLE_ARGV];
 		let msg: string | null = null;
 		try {
 			cmdAstrology(parseArgs([...base, "--monthly", "6"], "astrology"));
@@ -134,7 +134,7 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		}
 	});
 	ok("命令面：独占分支激活时被吞的功能参数必须指路（不静默）", () => {
-		const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
+		const base = [...SAMPLE_ARGV];
 		for (const [argv, keyword] of [
 			[[...base, "--palaces", "--pattern"], "--pattern"],
 			[[...base, "--palaces", "--mutagen"], "--mutagen"],
@@ -167,7 +167,7 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("命令面：--report 产出 13 板块 Markdown 且为纯本命静态口径", () => {
 		const t = cmdAstrology(
 			parseArgs(
-				["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--report"],
+				[...SAMPLE_ARGV, "--report"],
 				"astrology"
 			)
 		);

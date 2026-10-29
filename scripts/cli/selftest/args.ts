@@ -20,6 +20,7 @@ import { renderCommandHelp } from "../commands/help";
 // namespace：断言要检查 help 是否仍手抄 OPTION_OWNERSHIP（不存在的导出用 `in` 探测）
 import * as helpNs from "../commands/help";
 import { eq, type SelftestDeps } from "./kit";
+import { SAMPLE_ARGV } from "./sample";
 
 /** 解析引擎：util.parseArgs tokens 底座、重复参数报错、拼音别名归一、三连删除。 */
 export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {
@@ -128,7 +129,7 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		// 专题参数族：每个参数对应一个输出专题，加了就只出该专题的详版（英文名主名，
 		// 拼音别名见 OPTION_ALIASES）。switch 型裸开关给 true；decadal / ages 是可选值
 		// 形态，带值给字符串、裸开关（= 默认当前虚岁）给 true。
-		const base = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"];
+		const base = [...SAMPLE_ARGV];
 		const a = parseArgs([...base, "--info", "--pattern", "--mutagen"], "astrology");
 		eq(a.info, true, "--info ");
 		eq(a.pattern, true, "--pattern ");

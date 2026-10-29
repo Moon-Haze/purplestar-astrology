@@ -30,6 +30,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEMO_POSITIONAL } from "../scripts/cli/selftest/sample.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // tools/
 const SKILL_ROOT = resolve(HERE, "..");
@@ -408,8 +409,8 @@ function touchesDir(paths: string[], frag: string): boolean {
 /** 快照目录（仓库内；已进 .gitignore，故不会被 stash 卷进去、也不会被误提交）。 */
 const SNAP_DIR = resolve(SKILL_ROOT, ".review-tmp");
 
-/** 样例盘（虚构数据，与 help 的示例同款）。 */
-const SAMPLE_BIRTH = ["2011-06-24", "07:45", "男", "杭州"];
+/** 样例盘（虚构数据，与 help 的示例同款）—— argv 单点在 cli/selftest/sample.ts。 */
+const SAMPLE_BIRTH: readonly string[] = DEMO_POSITIONAL;
 
 interface Scenario {
 	name: string;
