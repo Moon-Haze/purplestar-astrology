@@ -21,7 +21,7 @@ import {
 	type StarContent,
 	type TopicKey,
 } from "../analysis/data";
-import { getPalaceMutagen, getPalaceStars, getSanFangSiZheng } from "../analysis/palace-query";
+import { getPalaceStars, getSanFangSiZheng, mutagenInPalaces } from "../analysis/palace-query";
 import { getMutagenNote } from "../analysis/lookups";
 
 /** 三方四正范围内的一条本命四化（即 {@link AnalysisContext.mutagenInSanFang} 的元素）。 */
@@ -134,12 +134,10 @@ export function makeContext(
 	// 三方四正范围内的本命四化：原先在「三、本命四化会照」现算、被「三点五」读作
 	// 去重集，现提前到这里算一次（见文件头）。算式与拆分前逐字一致。
 	const mutagenInSanFang: MutagenInSanFang[] = [];
-	sanFang.forEach(p => {
-		getPalaceMutagen(p).forEach(({ name, mutagen }) => {
-			const note = getMutagenNote(name, mutagen, chart.birthInfo.gender);
-			mutagenInSanFang.push({ palaceName: p.name, starName: name, mutagen, note });
-		});
-	});
+	for (const { palace, starName, mutagen } of mutagenInPalaces(sanFang)) {
+		const note = getMutagenNote(starName, mutagen, chart.birthInfo.gender);
+		mutagenInSanFang.push({ palaceName: palace.name, starName, mutagen, note });
+	}
 
 	return {
 		chart,

@@ -13,7 +13,7 @@ import { resolve } from "node:path";
 import { astro } from "iztro";
 import { generateChart } from "@/algorithm";
 import { detectPatterns } from "@/patterns";
-import { palaceAtBranch } from "@/palace-relations";
+import { palaceAtBranch, surroundBranches } from "@/palace-relations";
 import { checkForbiddenFeatures } from "@/school/guard";
 import { SCHOOLS, DEFAULT_SCHOOL_ID } from "@/school/registry";
 import { getPalaceByBranch } from "@/patterns/helpers";
@@ -22,6 +22,12 @@ import { STEMS, BRANCHES } from "@/data/ganzhi";
 import { yearlyBranchOf, agePalaceOf, parseAgesArg } from "../commands/fortune";
 import { SAMPLE } from "./sample";
 import { eq, type SelftestDeps } from "./kit";
+import type { BirthInfo } from "@/types";
+import { makeContext } from "@/analysis/context";
+import { getSanFangSiZheng, mutagenInPalaces } from "@/analysis/palace-query";
+import { TOPIC_KEYS } from "@/analysis/data";
+import { renderDecadal } from "@/analysis/views/decadal";
+import { renderLiuNian } from "@/analysis/views/yearly";
 
 /** 排盘不变量：十二宫齐全 / 地支不重复 / 命宫唯一 / 五行局合法 / 空宫借宫字段。 */
 export function runChartInvariants({ ok }: Pick<SelftestDeps, "ok">): void {
@@ -338,5 +344,149 @@ export function runFortuneLocator({ ok }: Pick<SelftestDeps, "ok">): void {
 			}
 			eq(threw, true, `非法值 ${bad} `);
 		}
+	});
+}
+
+/**
+ * 会照口径样例盘：1986-07-15 巳时（时辰序号 5），男 —— 丙年，文昌化科。
+ *
+ * @remarks
+ * 与 {@link SAMPLE}（1990 庚年）分开：庚年盘**没有**辅星四化（见 `data/sihua` 的
+ * `SI_HUA_TABLE`），拿它守「含辅星」这条口径会恒绿。
+ */
+const CALIBER_SAMPLE: BirthInfo = { year: 1986, month: 7, day: 15, timeIndex: 5, gender: "male" };
+
+/**
+ * 会照行在节文案里的形态（`本命X化Y`）—— 大限 / 流年两节逐字同形。
+ *
+ * ⚠️ 星名限定为 1–3 个汉字：放任 `.+?` 会从「本命四化星固定不动…本命化禄」这类
+ *    解说句里跨句捞出假命中（本组第一版就栽在这里）。
+ */
+const CITE_RE = /本命([\u4e00-\u9fa5]{1,3})化(禄|权|科|忌)/g;
+
+/**
+ * 「三方四正会照本命四化」的星曜口径断言组（候选 3）。
+ *
+ * @remarks
+ * 口径本身见 `analysis/palace-query` 的 {@link mutagenInPalaces}：**只按 `mutagen`
+ * 真值取，不按 `Star.type` 过滤**。本组的任务是让「谁又加回 `type === "major"`」
+ * 这件事有红灯 —— 改前四节零断言，口径漂移只能靠肉眼读整篇 diff 发现。
+ */
+export function runMutagenCaliber({ ok }: Pick<SelftestDeps, "ok">): void {
+	ok("会照口径：主题主宫三方四正与会照单点同源（14 主题逐一比对，含辅星四化）", () => {
+		const chart = generateChart(CALIBER_SAMPLE);
+		// 空转防护：样例盘必须确有辅星带四化，否则「含辅星」这条口径无从检验
+		const soft = chart.palaces.flatMap(p =>
+			p.stars.filter(s => s.mutagen && s.type !== "major")
+		);
+		if (soft.length === 0) {
+			throw new Error("样例盘无辅星四化 —— 本条会恒真，须重选样例盘");
+		}
+		for (const topic of TOPIC_KEYS) {
+			const ctx = makeContext(chart, topic, {});
+			if (!ctx) {
+				throw new Error(`主题 ${topic} 建不出上下文`);
+			}
+			const expect = mutagenInPalaces(getSanFangSiZheng(chart, ctx.palaceName))
+				.map(h => `${h.palace.name}/${h.starName}/${h.mutagen}`)
+				.join("|");
+			const actual = ctx.mutagenInSanFang
+				.map(m => `${m.palaceName}/${m.starName}/${m.mutagen}`)
+				.join("|");
+			eq(actual, expect, `主题 ${topic} 会照集合 `);
+		}
+		return `样例盘辅星四化：${soft.map(s => `${s.name}化${s.mutagen}`).join("、")}`;
+	});
+
+	ok("会照口径：非四化星不在会照集合内（天魁 / 天钺 / 禄存 / 天马 / 四煞 / 地空地劫）", () => {
+		const chart = generateChart(CALIBER_SAMPLE);
+		const banned = [
+			"天魁",
+			"天钺",
+			"禄存",
+			"天马",
+			"擎羊",
+			"陀罗",
+			"火星",
+			"铃星",
+			"地空",
+			"地劫",
+		];
+		const present = chart.palaces.flatMap(p => p.stars.filter(s => banned.includes(s.name)));
+		// 空转防护：这些星确实在盘上，否则「漏进 0 颗」恒真
+		if (present.length === 0) {
+			throw new Error("样例盘不含上述任一星 —— 计数断言会恒真");
+		}
+		const leaked = present.filter(s => s.mutagen);
+		eq(leaked.length, 0, `漏进会照的非四化星：${leaked.map(s => s.name).join("、")} `);
+		return `盘上非四化星 ${present.length} 颗，带四化者 0`;
+	});
+
+	ok("会照口径：大限节与会照单点同口径（辅星四化行在场、行数与条目数相等）", () => {
+		const chart = generateChart(CALIBER_SAMPLE);
+		const ctx = makeContext(chart, "overview", {});
+		if (!ctx) {
+			throw new Error("overview 建不出上下文");
+		}
+		const dx = chart.decadals[chart.currentDecadalIndex];
+		const dxPalace = chart.palaces.find(p => p.branch === dx.palaceBranch);
+		if (!dxPalace) {
+			throw new Error(`找不到大限宫（地支 ${dx.palaceBranch}）`);
+		}
+		const hits = mutagenInPalaces(
+			chart.palaces.filter(p => surroundBranches(dxPalace.branch).includes(p.branch))
+		);
+		const typeOf = new Map(chart.palaces.flatMap(p => p.stars).map(s => [s.name, s.type]));
+		// 空转防护：本盘大限三方四正须确有辅星四化，否则这条守不住「含辅星」
+		if (!hits.some(h => typeOf.get(h.starName) !== "major")) {
+			throw new Error("本盘大限三方四正无辅星四化 —— 换样例盘后重算期望");
+		}
+		const out = renderDecadal(ctx).join("\n");
+		for (const h of hits) {
+			if (!out.includes(`本命${h.starName}化${h.mutagen}`)) {
+				throw new Error(`大限节缺会照行：本命${h.starName}化${h.mutagen}`);
+			}
+		}
+		const shown = [...out.matchAll(CITE_RE)].map(m => `${m[1]}/${m[2]}`).join("|");
+		eq(shown, hits.map(h => `${h.starName}/${h.mutagen}`).join("|"), "大限节会照行 ");
+		return `大限三方四正会照 ${hits.length} 条：${hits.map(h => `${h.starName}化${h.mutagen}`).join("、")}`;
+	});
+
+	ok("会照口径：流年节与会照单点同口径（12 个流年逐一比对）", () => {
+		const chart = generateChart(CALIBER_SAMPLE);
+		const typeOf = new Map(chart.palaces.flatMap(p => p.stars).map(s => [s.name, s.type]));
+		let softSeen = 0;
+		for (let year = 2026; year <= 2037; year++) {
+			const ctx = makeContext(chart, "overview", { view: "liunian", liunianYear: year });
+			if (!ctx) {
+				throw new Error(`流年 ${year} 建不出上下文`);
+			}
+			const lnBranch = (((year - 4) % 12) + 12) % 12;
+			const lnPalace = chart.palaces.find(p => p.branch === lnBranch);
+			if (!lnPalace) {
+				throw new Error(`流年 ${year} 找不到落宫`);
+			}
+			const hits = mutagenInPalaces(
+				chart.palaces.filter(p => surroundBranches(lnPalace.branch).includes(p.branch))
+			);
+			const out = renderLiuNian(ctx).join("\n");
+			for (const h of hits) {
+				if (!out.includes(`本命${h.starName}化${h.mutagen}`)) {
+					throw new Error(`流年 ${year} 节缺会照行：本命${h.starName}化${h.mutagen}`);
+				}
+			}
+			const shown = [...out.matchAll(CITE_RE)].map(m => `${m[1]}/${m[2]}`).join("|");
+			eq(
+				shown,
+				hits.map(h => `${h.starName}/${h.mutagen}`).join("|"),
+				`流年 ${year} 会照行 `
+			);
+			softSeen += hits.filter(h => typeOf.get(h.starName) !== "major").length;
+		}
+		// 空转防护：12 个流年里至少要有一年的会照集合含辅星四化
+		if (softSeen === 0) {
+			throw new Error("12 个流年无一含辅星四化 —— 本条守不住「含辅星」");
+		}
+		return `12 个流年累计辅星四化会照 ${softSeen} 条`;
 	});
 }

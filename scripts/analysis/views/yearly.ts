@@ -19,7 +19,7 @@ import { surroundBranches } from "../../palace-relations";
 import { getYearStemIndex } from "../../mutagen";
 import { mutagenSymbol } from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
-import { descPalaceStars } from "../../analysis/palace-query";
+import { descPalaceStars, mutagenInPalaces } from "../../analysis/palace-query";
 
 /** 渲染「四点五、流年」与「四点六、流月」两节（视角不符时返回空数组）。 */
 export function renderLiuNian(ctx: AnalysisContext): string[] {
@@ -48,16 +48,12 @@ export function renderLiuNian(ctx: AnalysisContext): string[] {
 			const lnSanFangPalaces = chart.palaces.filter(p =>
 				lnSanFangBranches.includes(p.branch)
 			);
-			const lnHits: string[] = [];
-			lnSanFangPalaces.forEach(p => {
-				p.stars
-					.filter(s => s.mutagen && s.type === "major")
-					.forEach(s => {
-						lnHits.push(
-							`${mutagenSymbol(s.mutagen!)} **本命${s.name}化${s.mutagen}** 在${p.name}${p.branch === lnPalace.branch ? "（流年本宫）" : "（流年三方四正）"}`
-						);
-					});
-			});
+			// 星曜口径取 palace-query 的会照单点（含文昌/文曲/左辅/右弼四颗辅星四化），
+			// 不再在此处按 type === "major" 另立一套。
+			const lnHits = mutagenInPalaces(lnSanFangPalaces).map(
+				({ palace, starName, mutagen }) =>
+					`${mutagenSymbol(mutagen)} **本命${starName}化${mutagen}** 在${palace.name}${palace.branch === lnPalace.branch ? "（流年本宫）" : "（流年三方四正）"}`
+			);
 			if (lnHits.length > 0) {
 				lines.push(`**流年三方四正会本命四化**：`);
 				lnHits.forEach(x => lines.push(x));

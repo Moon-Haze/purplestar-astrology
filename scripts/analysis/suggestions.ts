@@ -13,6 +13,7 @@
  */
 
 import {
+	SIHUA_CHAR_TO_KEY,
 	TOPIC_SUGGESTION_DECADAL,
 	TOPIC_SUGGESTION_FALLBACK,
 	TOPIC_SUGGESTION_TEMPLATES,
@@ -68,7 +69,12 @@ export function buildTopicSuggestions(ctx: AnalysisContext): SuggestionLine[] {
 			out.push({ text: fill(t.text, slots), basis: "主星亮度" });
 		}
 		if (t.kind === "lu" || t.kind === "ji") {
-			const hit = ctx.mutagenInSanFang.find(m => m.mutagen === t.kind);
+			// ⚠️ `m.mutagen` 是中文四化字（禄 / 权 / 科 / 忌），模板 `kind` 是 lu / ji ——
+			//    两侧不同形，必须过 `SIHUA_CHAR_TO_KEY`；早年直接 `m.mutagen === t.kind` 恒假，
+			//    「本命四化」槽**从未命中过**（主星、辅星都一样），本行即该缺陷的修复点。
+			const hit = ctx.mutagenInSanFang.find(
+				m => SIHUA_CHAR_TO_KEY[m.mutagen] === t.kind
+			);
 			if (hit) {
 				out.push({
 					text: fill(t.text, {

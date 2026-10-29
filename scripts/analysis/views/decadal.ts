@@ -14,7 +14,7 @@
 import { mutagenSymbol } from "../../analysis/data";
 import { surroundBranches } from "../../palace-relations";
 import type { AnalysisContext } from "../../analysis/context";
-import { descPalaceStars } from "../../analysis/palace-query";
+import { descPalaceStars, mutagenInPalaces } from "../../analysis/palace-query";
 
 /** 渲染「四、当前大限分析」整节（无当前大限时返回空数组）。 */
 export function renderDecadal(ctx: AnalysisContext): string[] {
@@ -55,16 +55,12 @@ export function renderDecadal(ctx: AnalysisContext): string[] {
 			const dxSanFangPalaces = chart.palaces.filter(p =>
 				dxSanFangBranches.includes(p.branch)
 			);
-			const sihuaInDxSanFang: string[] = [];
-			dxSanFangPalaces.forEach(p => {
-				p.stars
-					.filter(s => s.mutagen && s.type === "major")
-					.forEach(s => {
-						sihuaInDxSanFang.push(
-							`${mutagenSymbol(s.mutagen!)} **本命${s.name}化${s.mutagen}** 落${p.name} ${p.branch === dxPalace.branch ? "（大限本宫）" : "（大限三方四正）"}`
-						);
-					});
-			});
+			// 星曜口径取 palace-query 的会照单点（含文昌/文曲/左辅/右弼四颗辅星四化），
+			// 不再在此处按 type === "major" 另立一套。
+			const sihuaInDxSanFang = mutagenInPalaces(dxSanFangPalaces).map(
+				({ palace, starName, mutagen }) =>
+					`${mutagenSymbol(mutagen)} **本命${starName}化${mutagen}** 落${palace.name} ${palace.branch === dxPalace.branch ? "（大限本宫）" : "（大限三方四正）"}`
+			);
 			if (sihuaInDxSanFang.length > 0) {
 				lines.push("");
 				lines.push(`**大限三方四正会照的本命四化**（倪师批大限的核心）：`);

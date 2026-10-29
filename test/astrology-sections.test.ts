@@ -373,3 +373,88 @@ describe("条件分支投影（武曲·财帛四连全枚举）", () => {
 		assert.ok(!out.includes("化权则凭自身能力累积大财"), "无四化时全部分支消失");
 	});
 });
+
+// ── 会照口径：三方四正本命四化的星曜口径（change: mutagen-sanfang-caliber）──
+//
+// 口径本身在 `analysis/palace-query` 的 mutagenInPalaces：**只按 `mutagen` 真值取，
+// 不按 `Star.type` 过滤** —— 文昌 / 文曲 / 左辅 / 右弼在丙 / 戊 / 己 / 辛 / 壬五年干下
+// 带四化（见 `data/sihua` 的 SI_HUA_TABLE），与十四主星同等计入。改前大限 / 流年两节各
+// 自带一份 `type === "major"` 过滤，且**没有任何断言盯这四节**（口径漂移只靠肉眼 diff）。
+const { mutagenInPalaces } =
+	await load<typeof import("@/analysis/palace-query")>("@/analysis/palace-query");
+const { surroundBranches } = await load<typeof import("@/palace-relations")>("@/palace-relations");
+
+/** 会照口径取样盘：丙 / 戊 / 己 / 辛 / 壬 + 庚年对照（庚年无辅星四化）。 */
+const CALIBER_DATES = ["1986-07-15", "1988-07-15", "1989-07-15", "1991-07-15", "1992-07-15"];
+const CONTROL_DATE = "1990-07-15";
+/** 恒不带四化的星：天魁 / 天钺 / 禄存 / 天马 / 四煞 / 地空地劫。 */
+const NEVER_MUTAGEN = [
+	"天魁",
+	"天钺",
+	"禄存",
+	"天马",
+	"擎羊",
+	"陀罗",
+	"火星",
+	"铃星",
+	"地空",
+	"地劫",
+];
+
+function caliberChart(date: string) {
+	const args = parseArgs(["--date", date, "--time", "10:00", "--no-dst", "--gender", "male"], "astrology");
+	const built = buildBirthInfo(args);
+	return generateChart(built.info);
+}
+
+describe("会照口径：三方四正本命四化的星曜口径", () => {
+	it("反向注入：丙 / 戊 / 己 / 辛 / 壬年干盘的辅星四化计入会照集合", () => {
+		for (const date of CALIBER_DATES) {
+			const chart = caliberChart(date);
+			// 空转防护：本盘必须确有辅星带四化，否则「含辅星」这条口径无从检验
+			const soft = chart.palaces.flatMap(p =>
+				p.stars
+					.filter(s => s.mutagen && s.type !== "major")
+					.map(s => ({ palace: p, name: s.name, mutagen: s.mutagen! }))
+			);
+			assert.ok(soft.length > 0, `${date} 盘应含辅星四化（空转防护：否则本断言恒真）`);
+			for (const { palace, name, mutagen } of soft) {
+				const sanFang = chart.palaces.filter(p =>
+					surroundBranches(palace.branch).includes(p.branch)
+				);
+				const hits = mutagenInPalaces(sanFang);
+				assert.ok(
+					hits.some(h => h.starName === name && h.mutagen === mutagen),
+					`${date} 盘：${name}化${mutagen} 应计入 ${palace.name} 的三方四正会照`
+				);
+			}
+		}
+	});
+
+	it("计数：非四化星在会照集合中的条目数为 0（含庚年对照盘）", () => {
+		for (const date of [...CALIBER_DATES, CONTROL_DATE]) {
+			const chart = caliberChart(date);
+			const present = chart.palaces.flatMap(p =>
+				p.stars.filter(s => NEVER_MUTAGEN.includes(s.name))
+			);
+			// 空转防护：这些星确实在盘上，否则「漏进 0 条」恒真
+			assert.ok(present.length > 0, `${date} 盘应含上述非四化星（空转防护）`);
+			const leaked = mutagenInPalaces(chart.palaces).filter(h =>
+				NEVER_MUTAGEN.includes(h.starName)
+			);
+			assert.equal(
+				leaked.length,
+				0,
+				`${date} 盘漏进会照的非四化星：${leaked.map(h => h.starName).join("、")}`
+			);
+		}
+	});
+
+	it("庚年对照盘：无辅星四化（口径收紧到只主星时，这一条会红）", () => {
+		const chart = caliberChart(CONTROL_DATE);
+		const soft = chart.palaces.flatMap(p =>
+			p.stars.filter(s => s.mutagen && s.type !== "major")
+		);
+		assert.equal(soft.length, 0, `${CONTROL_DATE} 盘不应有辅星带四化（庚干四化全在主星上）`);
+	});
+});

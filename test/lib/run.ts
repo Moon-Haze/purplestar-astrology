@@ -169,7 +169,10 @@ const LAYERS = [
 	{
 		label: "层 2 CLI 端到端",
 		file: "astrology-sections.test.ts",
-		suites: ["专题旗标→section 接线（候选 3）"],
+		suites: [
+			"专题旗标→section 接线（候选 3）",
+			"会照口径：三方四正本命四化的星曜口径",
+		],
 	},
 	{ label: "层 2 CLI 端到端", file: "report.test.ts", suites: ["astrology --report 全盘报告"] },
 	{

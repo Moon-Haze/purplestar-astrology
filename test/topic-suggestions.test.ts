@@ -59,13 +59,19 @@ describe("综合建议按盘推算", () => {
 	});
 
 	it("降级显式可见：无信号组合给通用收束句并标注「无命中信号」", () => {
-		// 2024-11-20 未起运盘：田宅宫主星亮度 normal 且主题三方无本命禄忌 → 无信号（探针实测）
-		const ctx = chartCtx(CHILD, "home");
+		// 2026-03-10 未起运盘：命宫主星亮度非庙旺、三方四正虽有四化但不是禄 / 忌、
+		// 大限未起 → 三个槽位全空 → 降级（探针实测）。
+		// ⚠️ 原用例用 2024-11-20 home（田宅宫）：修好「本命四化」槽后，该盘三方四正里的
+		//    本命禄 / 忌开始命中，不再降级 —— 换盘是修槽的直接连带，不是放宽判据。
+		const ctx = chartCtx(
+			["--date", "2026-03-10", "--time", "09:00", "--gender", "male", "--no-dst"],
+			"overview"
+		);
 		assert.ok(ctx, "上下文应可建立");
 		const lines = buildTopicSuggestions(ctx);
 		assert.equal(lines.length, 1, "降级时恰一条通用收束句");
 		assert.equal(lines[0].basis, "无命中信号", "降级条目必须显式标注");
-		assert.ok(lines[0].text.includes("田宅宫主星"), "降级句仍带主题主宫槽位（可指回）");
+		assert.ok(lines[0].text.includes("命宫"), "降级句仍带主题主宫槽位（可指回）");
 	});
 
 	it("两端同源：--topic 与 --report 的建议行集合一致", () => {
@@ -80,6 +86,32 @@ describe("综合建议按盘推算", () => {
 			.filter(l => l.startsWith("→ "))
 			.map(l => l.replace(/（本盘无此主题的直接信号，此为通用收束）$/, ""));
 		assert.deepEqual(reportLines, viewLines, "两端建议行应一致（仅版式差异）");
+	});
+
+	it("反向注入：三方内唯一的本命四化由辅星承载时，按「本命四化」出句而不降级", () => {
+		// 1949-06-15（己干，文曲化忌落财帛宫）：财帛主题的三方四正内**只有**这一条四化，
+		// 且它由辅星承载 —— 口径若收紧到只主星，这里会静默降级成「无命中信号」。
+		const ctx = chartCtx(["--date", "1949-06-15", "--time", "10:00", "--gender", "male"], "wealth");
+		assert.ok(ctx, "上下文应可建立");
+		const softOnly = ctx.mutagenInSanFang.every(
+			m =>
+				ctx.sanFang.flatMap(p => p.stars).find(s => s.name === m.starName)?.type !== "major"
+		);
+		assert.ok(
+			ctx.mutagenInSanFang.length > 0 && softOnly,
+			"空转防护：本盘财帛三方四正的四化应全为辅星承载"
+		);
+		const lines = buildTopicSuggestions(ctx);
+		const hua = lines.filter(l => l.basis === "本命四化");
+		assert.ok(hua.length > 0, "辅星四化是唯一信号时，仍须按「本命四化」出句");
+		assert.ok(
+			hua.some(l => l.text.includes("文曲")),
+			`建议句应提及该辅星，实得：${hua.map(l => l.text).join(" / ")}`
+		);
+		assert.ok(
+			!lines.some(l => l.basis === "无命中信号"),
+			"有信号时不得降级为通用收束句"
+		);
 	});
 
 	it("槽位无残留：渲染输出不含未填充的模板槽", () => {

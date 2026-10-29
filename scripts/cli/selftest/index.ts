@@ -27,6 +27,7 @@ import {
 	runSchoolGuard,
 	runPatternMutagen,
 	runFortuneLocator,
+	runMutagenCaliber,
 } from "./chart";
 import { runKnowledgeSource, runTopicRender } from "./render";
 import { runParseEngine, runArgSurface, runDeclarationTable, runSkillArgsAudit } from "./args";
@@ -110,6 +111,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	runFortuneData(deps);
 	runSchoolGuard(deps);
 	runPatternMutagen(deps);
+	runMutagenCaliber(deps);
 	runKnowledgeSource(deps);
 	runParseEngine(deps);
 	runBirthInfoShape(deps);

@@ -65,3 +65,37 @@ export function descPalaceStars(palace: Palace): string {
 export function getPalaceMutagen(palace: Palace): { name: string; mutagen: string }[] {
 	return palace.stars.filter(s => s.mutagen).map(s => ({ name: s.name, mutagen: s.mutagen! }));
 }
+
+/**
+ * 会照条目：宫集合里的一颗带四化的星（连它落在哪个宫一起给出）。
+ *
+ * @remarks
+ * **星曜口径是本模块唯一的会照口径**：只按 `mutagen` 真值取，不按 `Star.type` 过滤——
+ * 文昌 / 文曲 / 左辅 / 右弼四颗辅星在丙 / 戊 / 己 / 辛 / 壬年干下带四化（见
+ * `../data/sihua` 的 `SI_HUA_TABLE`），与十四主星同等计入。三处消费方（主题主宫三方四正、
+ * 大限宫三方四正、流年宫三方四正）的宫范围各自不同，共用的只有这一步。
+ */
+export interface MutagenHit {
+	/** 该四化落在哪个宫 */
+	palace: Palace;
+	/** 带四化的星名 */
+	starName: string;
+	/** 四化字：禄 / 权 / 科 / 忌 */
+	mutagen: string;
+}
+
+/**
+ * 取一组宫（通常是一宫的三方四正）里会照的本命四化，按「宫序 → 宫内星序」展开。
+ *
+ * @param palaces - 参与比对的宫集合，由调用方按自己的范围给出（主题主宫 / 大限宫 / 流年宫）
+ * @returns 会照条目；无四化时为空数组（调用方据此出兜底句）
+ */
+export function mutagenInPalaces(palaces: readonly Palace[]): MutagenHit[] {
+	const hits: MutagenHit[] = [];
+	for (const palace of palaces) {
+		for (const { name, mutagen } of getPalaceMutagen(palace)) {
+			hits.push({ palace, starName: name, mutagen });
+		}
+	}
+	return hits;
+}
