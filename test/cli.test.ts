@@ -9,7 +9,7 @@
 // 故这条断言守的不是「两份副本别分叉」，而是「进程内内核与真实 CLI 子进程排出同一张盘」。
 import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
@@ -19,6 +19,10 @@ import { fileURLToPath } from "node:url";
 import type { BirthInfo, ZiweiChart } from "@/types";
 import { loadAlgorithm, loadSihua, loadData, load, ROOT, ROOT_LABEL } from "./lib/loader.ts";
 import { BRANCHES, chartSignature } from "./lib/compare.ts";
+// 样例表 + dispatch 端口（tools/cli-samples，评审候选 5 / W5 的等价性断言消费）。
+// 放在 loader 之后 import：@/ 钩子由 loader 注册，cli-samples 的静态 @/ 导入才可达。
+const { dispatch } = await load<typeof import("@/cli/host/dispatch")>("@/cli/host/dispatch");
+const { SAMPLES, PORTS } = await import("../tools/cli-samples.ts");
 // 主题数**派生**而非写死：加主题时本断言自动跟上，不必回来改数字。
 const { TOPIC_KEYS } = await load<typeof import("@/analysis/data")>("@/analysis/data");
 
@@ -1193,6 +1197,55 @@ describe("CLI 端到端", () => {
 				viaCli.chart.lunarInfo,
 				"农历信息也应一致（--lng 120 时无真太阳时校正）"
 			);
+		});
+	});
+
+	describe("cli-samples 等价性（评审候选 5 / W5）", () => {
+		// 样例文档此前由 tools/cli-samples 的内联分发协议执行（绕过 dispatch seam 的
+		// 第七份实现），已收编走 dispatch。这里把「文档命令可复制到终端复现」从注释
+		// 承诺变成断言：全表直调 dispatch 退出码符合样例预期；抽样 3 条与真子进程
+		// 逐字对拍 stdout / stderr / exit code。
+		it("样例表全量直调 dispatch：退出码全部符合预期", async () => {
+			const mismatched: string[] = [];
+			for (const s of SAMPLES) {
+				const r = await dispatch(s.args, PORTS);
+				const expectedOk = !s.expectFail;
+				if (expectedOk !== (r.code === 0)) {
+					mismatched.push(`[exit ${r.code}] ${s.args.join(" ")}`);
+				}
+			}
+			assert.deepEqual(
+				mismatched,
+				[],
+				"退出码与样例预期不符 —— dispatch 侧或样例预期已漂移"
+			);
+		});
+
+		it("抽样 3 条：dispatch 直调 ≡ 真子进程（stdout / stderr / exit code）", async () => {
+			const picks = [
+				["astrology", "2011-06-24", "07:45", "男", "杭州", "--mutagen"],
+				["knowledge", "--search", "机月同梁", "--limit", "3"],
+				["astrology", "2011-06-24", "07:45", "男", "杭州", "--ctiy", "喀什"], // 错误路径
+			];
+			for (const argv of picks) {
+				const direct = await dispatch(argv, PORTS);
+				const sub = spawnSync(process.execPath, [CLI.astrology, ...argv], {
+					encoding: "utf8",
+					cwd: SKILL_ROOT,
+				});
+				assert.equal(sub.status, direct.code, `exit code 分叉：${argv.join(" ")}`);
+				// 真子进程的 stdout 比 dispatch 直调多一个末尾换行（宿主 console.log 补的）。
+				assert.equal(
+					(sub.stdout ?? "").replace(/\n$/, ""),
+					direct.out,
+					`stdout 分叉：${argv.join(" ")}`
+				);
+				assert.equal(
+					(sub.stderr ?? "").replace(/\n$/, ""),
+					direct.err,
+					`stderr 分叉：${argv.join(" ")}`
+				);
+			}
 		});
 	});
 

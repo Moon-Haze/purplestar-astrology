@@ -21,10 +21,9 @@
 // 意外成功）。意外不代表文档不生成 —— markdown 照常输出，意外条目在文末
 // 「汇总」节列明细并标 ⚠。
 //
-// 直调与子进程的两点口径差（都不影响输出形态核对）：
-//   1. 错误路径：CLI 是 stderr「错误：<msg>」+ exit 1；这里由 try/catch 复刻同一前缀与退出码。
-//   2. 引导层路径：help / <cmd> --help 由 CLI 入口在命令表之前拦截，直调则直接
-//      调 help 模块的同一渲染函数。
+// 执行走 dispatch seam（评审候选 5）：help 拦截 / 查表 / parseArgs / 错误前缀
+// 「错误：」与 CLI 宿主（purple-star.ts main）同一实现 —— 此前 44 行内联分发
+// 协议（自称第七份实现）已删，直调与子进程不再有口径差。
 //
 // ⚠️ 样例表是**手动维护**的：新增 CLI 参数时在 SAMPLES 里补一条（组别就近），
 //    本文档才跟着覆盖到。示例数据均为虚构（与 help 的示例同款），无真实人物。
@@ -42,15 +41,30 @@ import { fileURLToPath } from "node:url";
 import { parseArgs, type CliContext } from "@/cli/args";
 import { OPTION_GROUPS } from "@/cli/args/table";
 import { COMMANDS } from "@/cli/commands";
-import { unknownCommandMessage } from "@/cli/host/dispatch";
+import { COMMAND_NAMES } from "@/cli/commands/command-meta";
+import { dispatch, type DispatchPorts } from "@/cli/host/dispatch";
 import { renderCommandHelp, renderOverviewHelp } from "@/cli/commands/help";
 import { writeOutFile } from "@/cli/host/out";
-import { cmdSelftest } from "@/cli/selftest/index";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <仓库根>/tools
 const SKILL_ROOT = resolve(HERE, "..");
 /** 内核根与 CLI 启动时的口径一致（purple-star.ts 传的就是 scripts/ 目录） */
 const CTX: CliContext = { root: resolve(SKILL_ROOT, "scripts"), rootLabel: "仓库自带内核" };
+
+/**
+ * dispatch 端口 —— 与 purple-star.ts 宿主同一装配形态：help 走轻路径（commandNames
+ * 用 command-meta 的 COMMAND_NAMES，与宿主一致），执行走命令表 + parseArgs。
+ */
+export const PORTS: DispatchPorts = {
+	loadCore: async () => ({ COMMANDS, parseArgs }),
+	loadHelp: async () => ({
+		renderOverviewHelp,
+		renderCommandHelp: (cmd: string) =>
+			renderCommandHelp(cmd as Parameters<typeof renderCommandHelp>[0]),
+		commandNames: COMMAND_NAMES,
+	}),
+	ctx: CTX,
+};
 
 /** 一条样例：一条真实执行的命令 + 文档里的展示信息。 */
 interface Sample {
@@ -68,7 +82,7 @@ interface Sample {
 
 // ── 样例表：覆盖 help 的 OPTIONS 段全部参数 + 五个命令域 + 常见报错 ──
 // 出生信息统一用 help 示例同款（2011-06-24 07:45 男 杭州；女盘用 1999-11-3 15:20 成都）。
-const SAMPLES: Sample[] = [
+export const SAMPLES: Sample[] = [
 	// ── 帮助 ──
 	{
 		group: "帮助",
@@ -1051,50 +1065,12 @@ async function main(): Promise<void> {
 		console.error(`  [${n}/${SAMPLES.length}] ${s.args.join(" ")}`);
 		const t0 = Date.now();
 
-		// 执行（分派口径见文件头注释；错误前缀「错误：」与 CLI stderr 一致）
-		const [cmd, ...rest] = s.args;
-		let exitCode: number;
-		let stdout: string;
-		let stderr: string;
-		if (cmd === "help" || !cmd) {
-			exitCode = 0;
-			stdout = renderOverviewHelp();
-			stderr = "";
-		} else if (rest.includes("--help") || rest.includes("-h")) {
-			exitCode = 0;
-			stdout = renderCommandHelp(cmd as Parameters<typeof renderCommandHelp>[0]);
-			stderr = "";
-		} else if (cmd === "selftest") {
-			try {
-				stdout = await cmdSelftest(CTX);
-				exitCode = 0;
-				stderr = "";
-			} catch (err) {
-				stdout = "";
-				exitCode = 1;
-				stderr = `错误：${(err as Error).message}`;
-			}
-		} else {
-			const fn = COMMANDS[cmd as keyof typeof COMMANDS];
-			if (!fn) {
-				stdout = "";
-				exitCode = 1;
-				stderr = unknownCommandMessage(cmd, Object.keys(COMMANDS));
-			} else {
-				// cmdClassics 是 async（四域分发，tianji/oracle 懒加载）——
-				// async 命令直接 await，其余同步命令 await 同步值等价于原值。
-				try {
-					const out = await fn(parseArgs(rest, cmd), CTX);
-					stdout = String(out);
-					exitCode = 0;
-					stderr = "";
-				} catch (err) {
-					stdout = "";
-					exitCode = 1;
-					stderr = `错误：${(err as Error).message}`;
-				}
-			}
-		}
+		// 执行走 dispatch seam（评审候选 5 / W5）：help 拦截 / 查表 / parseArgs /
+		// 错误前缀全部与 CLI 宿主同一实现（PORTS 与 purple-star.ts main 同构）。
+		const r = await dispatch(s.args, PORTS);
+		const exitCode = r.code;
+		const stdout = r.out;
+		const stderr = r.err;
 		const ms = Date.now() - t0;
 		totalMs += ms;
 		const ok = s.expectFail ? exitCode !== 0 : exitCode === 0;
