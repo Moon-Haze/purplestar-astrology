@@ -57,6 +57,7 @@ describe("内核对外契约（冻结 @ 2026-10-12）", () => {
 			"getDaXianMutagen",
 			"getDailyMutagen",
 			"getHourlyMutagen",
+			"buildMutagenChain",
 		] as const) {
 			assert.ok(isFn(sihua[name]), `mutagen.${name} 必须在契约面`);
 		}
@@ -65,6 +66,8 @@ describe("内核对外契约（冻结 @ 2026-10-12）", () => {
 		// 生年层的 chart 适配收进内核（原 cli/fortune 的 nativeSiHuaOf）：签名 (chart)、
 		// 返回与六层同形（stemIndex / stemName / transforms）—— 年干取 lunarInfo.yearStem。
 		assert.equal(sihua.getNativeMutagen.length, 1, "getNativeMutagen 签名应为 (chart)");
+		// 六层取数链单点（评审候选 3）：签名 (chart, input)，两条渲染路径共用同一来源。
+		assert.equal(sihua.buildMutagenChain.length, 2, "buildMutagenChain 签名应为 (chart, input)");
 	});
 
 	it("亮度查询在契约面", () => {

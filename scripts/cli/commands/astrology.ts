@@ -43,14 +43,7 @@ import { generateChartCached } from "../chart/chart-cache";
 import { lateZiCounterChart } from "../chart/late-zi";
 import { detectPatterns } from "@/patterns";
 import { getMingGongSummary } from "@/analysis/soul-summary";
-import {
-	getMutagenByStem,
-	getYearlyMutagen,
-	getMonthlyMutagen,
-	getDaXianMutagen,
-	getDailyMutagen,
-	getHourlyMutagen,
-} from "@/mutagen";
+import { buildMutagenChain } from "@/mutagen";
 import { STEMS, BRANCHES } from "@/data/ganzhi";
 import { buildReport } from "./report";
 import {
@@ -192,32 +185,23 @@ export function buildAnalyzeJson(input: {
 }): string {
 	const { chart, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, basis } = input;
 	// 派生收进实现内部（caller 只给语义参数，_interface_ 上不存在「传错组合」的态空间）：
-	// 年干取农历口径（与宫详表同源），生年四化与流年/流月四化由查表函数从年号重算 ——
-	// 全是纯函数，重算零成本，换来的是少 7 个参数与天然一致。
-	const yearStem = chart.lunarInfo.yearStem;
-	const native = getMutagenByStem(yearStem);
-	const liuNian = getYearlyMutagen(liuNianYear);
-	const liuYue = liuYueMonth !== null ? getMonthlyMutagen(liuNian.stemIndex, liuYueMonth) : null;
-	// 大限四化（文墨排盘口径）：随当前大限宫干走；童限期（未起运）为 null。
-	const daXian =
-		chart.currentDecadalIndex === -1
-			? null
-			: getDaXianMutagen(chart, chart.currentDecadalIndex);
-	const liuRi =
-		liuYueMonth !== null && liuRiDay != null
-			? getDailyMutagen(liuNianYear, liuYueMonth, liuRiDay)
-			: null;
-	const liuShi =
-		liuRi && liuShiHour != null ? getHourlyMutagen(liuRi.stemIndex, liuShiHour) : null;
+	// 六层取数链单点在 @/mutagen 的 buildMutagenChain（生年取农历年干、童限特判、
+	// 逐级依赖全部内聚在那，含 1990-01-15 反例的红线注释），本函数只做 JSON 装配。
+	const { native, liuNian, liuYue, liuRi, liuShi, daXian } = buildMutagenChain(chart, {
+		liuNianYear,
+		liuYueMonth,
+		liuRiDay,
+		liuShiHour,
+	});
 	return JSON.stringify(
 		{
 			chart,
 			patterns: detectPatterns(chart),
 			mingGongSummary: getMingGongSummary(chart),
 			nativeSiHua: {
-				stem: STEMS[yearStem],
-				transforms: native,
-				located: locateSihua(chart, native),
+				stem: native.stemName,
+				transforms: native.transforms,
+				located: locateSihua(chart, native.transforms),
 			},
 			liuNianSiHua: {
 				year: liuNianYear,
@@ -484,20 +468,12 @@ export function cmdAstrology(args: CliArgs) {
 	// 换专题参数 / 换视角重跑时只付「读文件 + 渲染」。--no-cache 强制直排。
 	const chart = generateChartCached(info, { noCache: args.noCache === true });
 
-	// 生年四化的年干必须取**农历年干**（chart.lunarInfo.yearStem），与 iztro 落在
-	// Star.mutagen 上的 mutagen 同源。不可用 getYearStemIndex(info.year)：那是公历年取模，
-	// 1-2 月出生（农历仍在上一年）者两口径分叉，本区块会与宫详表自相矛盾
-	// （实测 1990-01-15：农历己巳年 → 武曲化禄，公历取模却得庚 → 化权武曲）。
-	const yearStem = chart.lunarInfo.yearStem;
-	const native = getMutagenByStem(yearStem);
 	// 注意：流年用 --yearly，不可复用 --year —— 后者是出生年的回退参数。
 	// 二者同时给出不会报错：流年取 --yearly；而出生日期一旦给了 --date/--lunar，
 	// --year 就被静默忽略（buildBirthInfo 里 --date/--lunar 优先），不会有任何提示。
 	const liuNianYear = parseYearlyArg(args);
-	const liuNian = getYearlyMutagen(liuNianYear);
 	// 流月：农历月 1-12，取流年干推五虎遁（可选）
 	const liuYueMonth = parseMonthlyArg(args);
-	const liuYue = liuYueMonth !== null ? getMonthlyMutagen(liuNian.stemIndex, liuYueMonth) : null;
 	// 流日 / 流时：取值校验在此（数值域），组合护栏（须配 --mutagen / --monthly / --daily）
 	// 只守文本路径 —— --json 的对应顶层键是独立键，程序消费方自担取值链（基准对拍依赖裸 --json --monthly）。
 	const liuRiDay = parseDailyArg(args);

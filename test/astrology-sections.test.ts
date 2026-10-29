@@ -458,3 +458,62 @@ describe("会照口径：三方四正本命四化的星曜口径", () => {
 		assert.equal(soft.length, 0, `${CONTROL_DATE} 盘不应有辅星带四化（庚干四化全在主星上）`);
 	});
 });
+
+// ── 六层四化取数链对拍（评审候选 3）──
+//
+// buildAnalyzeJson（JSON 侧）与 mutagenSection（文本侧）是两条独立渲染路径，此前
+// 各自实现取数链、无断言互钉 —— 一侧改口径（如换公历年干）不会红。取数链收进
+// buildMutagenChain 单点后，这里对同一 chart + 同一参数逐层比对两侧给出的干支，
+// 盯的是「单点没有被哪条路径绕开」。
+describe("六层四化取数链对拍（评审候选 3）", () => {
+	it("JSON 侧与文本专题的六层干支一致", async () => {
+		const { mutagenSection } =
+			await load<typeof import("@/cli/fortune/mutagen")>("@/cli/fortune/mutagen");
+		const c = ctx([
+			"--mutagen",
+			"--yearly",
+			"2027",
+			"--monthly",
+			"5",
+			"--daily",
+			"10",
+			"--hourly",
+			"3",
+		]);
+		const json = JSON.parse(
+			astrology.buildAnalyzeJson({
+				chart: c.chart,
+				liuNianYear: c.liuNianYear,
+				liuYueMonth: c.liuYueMonth,
+				liuRiDay: c.liuRiDay,
+				liuShiHour: c.liuShiHour,
+				basis: c.basis,
+			})
+		) as Record<string, { stem: string } | null>;
+		const text = mutagenSection(c.chart, {
+			liuNianYear: c.liuNianYear,
+			liuYueMonth: c.liuYueMonth,
+			liuRiDay: c.liuRiDay,
+			liuShiHour: c.liuShiHour,
+		}).join("\n");
+		const stemOf = (re: RegExp): string => {
+			const m = text.match(re);
+			assert.ok(m, `文本专题应含 ${re.source} 段`);
+			return m[1];
+		};
+		assert.equal(stemOf(/【生年四化】年干 ([^（\s]+)/), json.nativeSiHua?.stem, "生年层两路分叉");
+		assert.equal(stemOf(/【\d+ 流年四化】年干 ([^（\s]+)/), json.liuNianSiHua?.stem, "流年层两路分叉");
+		assert.equal(stemOf(/流月四化】月干 ([^（\s]+)/), json.liuYueSiHua?.stem, "流月层两路分叉");
+		assert.equal(stemOf(/流日四化】日干 ([^（\s]+)/), json.liuRiSiHua?.stem, "流日层两路分叉");
+		assert.equal(stemOf(/流时四化[^】]*】时干 ([^（\s]+)/), json.liuShiSiHua?.stem, "流时层两路分叉");
+		if (json.daXianSiHua) {
+			assert.equal(stemOf(/大限四化：宫干 ([^（\s]+)（/), json.daXianSiHua.stem, "大限层两路分叉");
+		} else {
+			assert.match(
+				text,
+				/童限未起运|定位异常/,
+				"daXianSiHua 为 null 时文本侧应给出童限/定位异常标注"
+			);
+		}
+	});
+});

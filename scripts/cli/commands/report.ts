@@ -19,7 +19,7 @@ import {
 	type TopicKey,
 } from "@/analysis";
 import { detectPatterns } from "@/patterns";
-import { getMutagenByStem } from "@/mutagen";
+import { getNativeMutagen } from "@/mutagen";
 import { BRANCHES, STEMS } from "@/data/ganzhi";
 import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua } from "../chart/render";
 import { lateZiCounterChart } from "../chart/late-zi";
@@ -142,9 +142,9 @@ export function topicCitations(meta: {
  *   口径提示必须随报告走，不能只在终端概览里出现
  */
 export function buildReport(chart: ZiweiChart, info: BirthInfo, basis: CaliberBasis): string {
-	const yearStem = chart.lunarInfo.yearStem;
-	const native = getMutagenByStem(yearStem);
-	const sihuaLine = locateSihua(chart, native)
+	const native = getNativeMutagen(chart);
+	const yearStem = native.stemIndex;
+	const sihuaLine = locateSihua(chart, native.transforms)
 		.map(l => `${l.star}化${l.hua}${l.palace ? `（落${l.palace}）` : ""}`)
 		.join(" ｜ ");
 	const patterns = detectPatterns(chart);

@@ -49,6 +49,7 @@ export function getMutagenByStem(stemIndex: number): Record<Mutagen, string> {
  * ⚠️ **生年四化必须用农历年干，不可用公历取模**（{@link getYearStemIndex} 只服务流年）：
  *    1–2 月出生者两者的年干会相差一位，走错口径会让【生年四化】与宫详表自相矛盾。
  *    该红线的 chart 适配收进本函数，与流年层的警告同址 —— `test/cli.test.ts` 盯着这条。
+ *    实测反例 1990-01-15：农历己巳年 → 武曲化禄，公历取模却得庚 → 化权武曲。
  */
 export function getNativeMutagen(chart: ZiweiChart): {
 	stemIndex: number;
@@ -355,4 +356,80 @@ export function getEffectiveMonthlyMonth(month: number, options: MonthlyMonthOpt
 		return normalized;
 	}
 	return normalized >= 12 ? 1 : normalized + 1;
+}
+
+// ─── 9) 六层取数链（单点） ───────────────────────────────────
+
+/** {@link buildMutagenChain} 的入参：流年必给；月 / 日 / 时逐级可选（取值校验在 CLI 层）。 */
+export interface MutagenChainInput {
+	/** 流年公历年（`--yearly` 的值；缺省当年由 caller 经 parseYearlyArg 归一后传入） */
+	liuNianYear: number;
+	/** 农历月 1–12；`null` / 省略 = 不算流月（其下的流日流时一并不算） */
+	liuYueMonth?: number | null;
+	/** 农历日 1–30（须配 {@link liuYueMonth}） */
+	liuRiDay?: number | null;
+	/** 时支 0–12（须配 {@link liuRiDay}；12 = 晚子时，按当日日干起遁） */
+	liuShiHour?: number | null;
+}
+
+/**
+ * 六层四化取数链的产物：生年 / 大限宫干 / 流年 / 流月 / 流日 / 流时一次取齐。
+ *
+ * @remarks
+ * 消费方（`--json` 的 buildAnalyzeJson 与 `--mutagen` 文本专题）**只渲染、不派生** ——
+ * 逐级依赖、童限特判与「生年四化取农历年干」的红线全部内聚在取数单点，改口径只动一处。
+ */
+export interface MutagenChain {
+	/** 农历年干索引（与 {@link getNativeMutagen} 的 chart 适配同源） */
+	yearStem: number;
+	native: ReturnType<typeof getNativeMutagen>;
+	liuNian: ReturnType<typeof getYearlyMutagen>;
+	liuYue: ReturnType<typeof getMonthlyMutagen> | null;
+	/**
+	 * `null` = 未给月 / 日，**或该农历日在流年该月内不存在** —— 后者在文本路径
+	 * （mutagenSection）抛「--daily X … 不存在」，在 JSON 路径静默为 `null`（顶层键
+	 * 独立、程序消费方自担取值链），差异是刻意契约，处置归消费方。
+	 */
+	liuRi: ReturnType<typeof getDailyMutagen> | null;
+	liuShi: ReturnType<typeof getHourlyMutagen> | null;
+	/** 大限宫干四化（文墨排盘口径）；童限未起运或定位异常时为 `null` */
+	daXian: ReturnType<typeof getDaXianMutagen>;
+	/** 童限未起运（`currentDecadalIndex === -1`）—— daXian 为 null 的原因之一，渲染层据此措辞 */
+	decadalNotStarted: boolean;
+}
+
+/**
+ * 六层四化取数链 —— 生年 / 大限宫干 / 流年 / 流月 / 流日 / 流时的**取数单点**。
+ *
+ * @param chart - 命盘
+ * @param input - 流年必给；月 / 日 / 时逐级可选
+ *
+ * @remarks
+ * 此前这条链在 `buildAnalyzeJson`（cli/commands/astrology）与 `mutagenSection`
+ * （cli/fortune/mutagen）各实现一遍 —— 输出形状不同、取数规则须逐字同步且无对拍
+ * 断言，生年层入口曾出现三种形态。收编后口径改动只动本函数（对拍断言钉在
+ * test/astrology-sections.test.ts 的「六层四化取数链对拍」）。
+ */
+export function buildMutagenChain(chart: ZiweiChart, input: MutagenChainInput): MutagenChain {
+	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour } = input;
+	const native = getNativeMutagen(chart);
+	const liuNian = getYearlyMutagen(liuNianYear);
+	const liuYue = liuYueMonth != null ? getMonthlyMutagen(liuNian.stemIndex, liuYueMonth) : null;
+	const liuRi =
+		liuYueMonth != null && liuRiDay != null
+			? getDailyMutagen(liuNianYear, liuYueMonth, liuRiDay)
+			: null;
+	const liuShi = liuRi && liuShiHour != null ? getHourlyMutagen(liuRi.stemIndex, liuShiHour) : null;
+	const daXian =
+		chart.currentDecadalIndex === -1 ? null : getDaXianMutagen(chart, chart.currentDecadalIndex);
+	return {
+		yearStem: native.stemIndex,
+		native,
+		liuNian,
+		liuYue,
+		liuRi,
+		liuShi,
+		daXian,
+		decadalNotStarted: chart.currentDecadalIndex === -1,
+	};
 }

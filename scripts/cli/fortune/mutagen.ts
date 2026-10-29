@@ -4,15 +4,8 @@
  */
 
 import type { ZiweiChart } from "@/types";
-import { STEMS, BRANCHES } from "@/data/ganzhi";
-import {
-	getNativeMutagen,
-	getYearlyMutagen,
-	getMonthlyMutagen,
-	getDaXianMutagen,
-	getDailyMutagen,
-	getHourlyMutagen,
-} from "@/mutagen";
+import { BRANCHES } from "@/data/ganzhi";
+import { buildMutagenChain } from "@/mutagen";
 import { sameStarPairs, sihuaLines } from "./sihua-helpers";
 
 /**
@@ -48,20 +41,21 @@ export interface MutagenSectionOptions {
  */
 export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions): string[] {
 	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour } = options;
-	const native = getNativeMutagen(chart);
-	const liuNian = getYearlyMutagen(liuNianYear);
+	// 六层取数链单点（@/mutagen 的 buildMutagenChain）：本函数只渲染不派生，
+	// 与 --json 的 buildAnalyzeJson 同一取数来源（对拍断言钉在 astrology-sections 测试）。
+	const { native, liuNian, liuYue, liuRi, liuShi, daXian, decadalNotStarted } =
+		buildMutagenChain(chart, options);
 
 	const out = [`【生年四化】年干 ${native.stemName}`];
 	out.push(...sihuaLines(chart, native.transforms));
 
 	// 大限四化：大限宫的宫干查四化表（文墨排盘口径）。童限未起运时无宫干可取。
 	out.push("");
-	if (chart.currentDecadalIndex === -1) {
+	if (decadalNotStarted) {
 		out.push(
 			`【当前大限四化】童限未起运（虚岁 ${chart.currentAge} 小于五行局数）—— 暂无大限宫干四化`
 		);
 	} else {
-		const daXian = getDaXianMutagen(chart, chart.currentDecadalIndex);
 		if (!daXian) {
 			out.push("【当前大限四化】（当前大限定位异常，跳过）");
 		} else {
@@ -76,18 +70,17 @@ export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions
 	out.push("");
 	out.push(`【${liuNianYear} 流年四化】年干 ${liuNian.stemName}`);
 	out.push(...sihuaLines(chart, liuNian.transforms));
-	if (liuYueMonth != null) {
-		const liuYue = getMonthlyMutagen(liuNian.stemIndex, liuYueMonth);
+	if (liuYueMonth != null && liuYue) {
 		out.push("");
 		out.push(
 			`【${liuNianYear} 年 农历${liuYueMonth}月 流月四化】月干 ${liuYue.stemName}（五虎遁，由流年干 ${liuNian.stemName} 推）`
 		);
 		out.push(...sihuaLines(chart, liuYue.transforms));
 		if (liuRiDay != null) {
-			// 流日取数口径：农历年序 = 流年公历年（--daily 的语义是「流年 Y 的农历 M 月 D 日」）。
+			// 流日取数在链单点（农历年序 = 流年公历年，--daily 的语义是「流年 Y 的农历 M 月 D 日」）。
 			// 闰月内核层支持（getDailyMutagen 的 isLeapMonth），CLI 暂未接旗标 —— 出生 --leap
-			// 是另一个概念，不能混用。
-			const liuRi = getDailyMutagen(liuNianYear, liuYueMonth, liuRiDay);
+			// 是另一个概念，不能混用。该农历日不存在时链返回 null，此处抛错指路
+			// （JSON 路径静默为 null，差异是刻意的顶层键契约）。
 			if (!liuRi) {
 				throw new Error(
 					`--daily ${liuRiDay} 在 ${liuNianYear} 年农历 ${liuYueMonth} 月中不存在（该月天数不足），请核对农历日`
@@ -98,8 +91,7 @@ export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions
 				`【${liuNianYear} 年 农历${liuYueMonth}月${liuRiDay}日 流日四化】日干 ${liuRi.stemName}（日柱现算）`
 			);
 			out.push(...sihuaLines(chart, liuRi.transforms));
-			if (liuShiHour != null) {
-				const liuShi = getHourlyMutagen(liuRi.stemIndex, liuShiHour);
+			if (liuShiHour != null && liuShi) {
 				const hourLabel = liuShiHour === 12 ? "晚子时" : `${BRANCHES[liuShiHour]}时`;
 				out.push("");
 				out.push(
