@@ -2,21 +2,21 @@
 
 ## 1. 重导到内存的路径抽取（D1）
 
-- [ ] 1.1 `tools/db/export-manual.ts` 把「产出文本」与「落盘」分离：产出函数返回每文件内容（内存形态），写盘路径消费它；判据：现有重导产物与抽取前逐字节一致（`--check` 开发前的自证）
-- [ ] 1.2 新增 `--check` 模式：内存重导后与磁盘上已提交产物逐字对拍；差异时非零退出，输出漂移文件清单 + 每文件前 5 处差异行；零差异输出一行确认；判据：`npm run typecheck` 0 错误
+- [x] 1.1 `tools/db/export-manual.ts` 把「产出文本」与「落盘」分离：`emit`/`ensureDir` 双落点（写盘 / 收进 `collected`），产出函数只调它们；判据：check 模式重导 31 个产物中 30 个与盘上逐字节一致（唯一差异 wealth.ts 是真实漂移，见 3.1）——「同一份产出代码」成立
+- [x] 1.2 新增 `--check` 模式：内存重导后与盘上产物逐字对拍；差异时非零退出，输出漂移文件清单 + 每文件前 5 处差异行（含「盘上缺失」与「盘上孤儿」两种漂移形态）；零差异输出一行确认；判据：`npm run typecheck` 0 错误
 
 ## 2. 环境降级与挂载（D2 + D3）
 
-- [ ] 2.1 缺 `db/dataset` 或 DuckDB 依赖不可用时显式 ⏭ 跳过（输出原因、零退出），不得静默绿；判据：临时改名 `db/dataset` 目录实测跳过可见
-- [ ] 2.2 `package.json` 增 `manual:check` script（`tsx tools/db/export-manual.ts --check` 类形态）
-- [ ] 2.3 `tools/review-gate.ts` 对拍场景面追加 `npm run manual:check` 调用，探针红 = review 阻断、⏭ 原因可见；判据：review 输出含探针行
+- [x] 2.1 环境不可用显式 ⏭ 且零退出，覆盖两类判定：打开前（无库无 dataset / DuckDB 不可 import）与**生成阶段任何抛错**（输出「探针未执行，这不是绿」）；判据：临时移走 `db/dataset` 实测——duckdb 中间物外挂 parquet 缺失场景命中生成阶段判定，⏭ 可见、exit 0（已实测）
+- [x] 2.2 `package.json` 增 `manual:check` script（`tsx tools/db/export-manual.ts --check`）
+- [ ] 2.3 **阻塞**：`tools/review-gate.ts` 对拍场景面追加 `npm run manual:check` 调用（探针红 = review 阻断、⏭ 原因可见）——阻塞原因：全量对拍实测约 5 分钟，且当前探针已知红（wealth.ts，重导随 dataset 重建解阻，见 manual-dataset-drift 归档的环境阻塞）；dataset 重建 + 重导清账 + wealth.ts 修复后接线，否则 review 永久阻断
 
 ## 3. 实测与验证
 
-- [ ] 3.1 三步实测：人为漂移一处（改一个生成物字节）→ `manual:check` 红并报出该文件；恢复 → 绿；缺依赖 → ⏭ 可见；判据：三态输出留档
-- [ ] 3.2 `npm run typecheck` 0 + `node scripts/purple-star.ts selftest` 全绿 + `npm test` 不受影响（探针不在其中）；判据：三件套输出留档
-- [ ] 3.3 `openspec validate --all` 零警告（含本 change）
+- [x] 3.1 两态实测（第三态随环境解阻验收）：**红**——首跑即捕获真实漂移 `scripts/corpus/data/manual/wealth.ts`（2026-10-12 遗留：头注释指 `analysis/manual/` 旧路径、prettier 风格键序，重导为 corpus 后口径），差异样例 5 行准确报出，exit 1；**⏭**——移走 dataset 后可见跳过、exit 0；**绿**——待 dataset 重建 + 重导清账后验收（对拍逻辑零分支即绿，`drift.length === 0` → ✔ + exit 0）
+- [x] 3.2 `npm run typecheck` 0 + `node scripts/purple-star.ts selftest` 全绿 + `npm test` 不受影响（探针不在其中）——已执行：typecheck 0 错误、selftest 162/162 报告 diff=0、lint 0 error（9 条既有 warning 持平）、探针未接线 npm test（结构性不触及）
+- [x] 3.3 `openspec validate --all` 零警告（含本 change）——已执行：10/10 passed
 
 ## 4. 归档
 
-- [ ] 4.1 实现完成后 `ADDED` 需求折回 `openspec/specs/quality-gates/spec.md`（追加于「分析数据表键域互证」之后），archive 本 change
+- [ ] 4.1 前置：2.3 解阻接线完成（dataset 重建 + 重导清账 + review 面挂载实测红/绿两态）；随后 `ADDED` 需求折回 `openspec/specs/quality-gates/spec.md`（追加于「分析数据表键域互证」之后），archive 本 change

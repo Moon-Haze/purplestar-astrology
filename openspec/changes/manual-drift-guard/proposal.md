@@ -30,5 +30,5 @@
 
 - **代码**：`tools/db/export-manual.ts`（重导到内存的路径抽取 + `--check` 参数）、`package.json`（`manual:check` script）、`tools/review-gate.ts`（面调用）。全部在 tools 层，不触内核与 CLI 行为。
 - **规范面**：`quality-gates` ADDED 一条需求（本 change）。
-- **顺序约束**：apply 须排在 `manual-dataset-drift`（重导落地）之后——该 change 已于 2026-10-29 归档，前置已满足；启用时探针应直接全绿（若红，说明落地后又有漂移，属探针本职）。
-- **验证义务**：tools 层改动 → `npm run typecheck` + `selftest` 必跑；探针自身行为用「人为漂移一处 → 红、恢复 → 绿、缺依赖 → ⏭」三步实测。
+- **顺序约束与已知状态**：前置 change `manual-dataset-drift` 已于 2026-10-29 归档，但其**重导被环境阻塞**（`db/dataset` 为 09-26 快照、相对内核陈旧——重导会把「倪海夏」错字植回手册；重建需 518k 语料、本机无）。故本 change apply 时探针**已知红**：`wealth.ts`（2026-10-12 遗留，头注释仍指 `analysis/manual/` 旧路径）——这是探针本职捕获的真实漂移；其修复（重导）与 review 面挂载一并随 dataset 重建解阻。
+- **验证义务**：tools 层改动 → `npm run typecheck` + `selftest` 必跑；探针自身行为用「红（有差异样例）/ ⏭（缺依赖可见跳过、零退出）」两态实测钉住；「绿」态随 dataset 重建后验收。

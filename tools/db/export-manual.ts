@@ -7,10 +7,16 @@
  *   npx tsx tools/db/export-manual.ts geju     # 格局名目对拍（db 渲染集 vs patterns 现库）
  *   npx tsx tools/db/export-manual.ts code     # 手册整理成 TS 数据，落 scripts/corpus/data/manual/
  *   npx tsx tools/db/export-manual.ts all      # 以上全部
+ *   npx tsx tools/db/export-manual.ts --check  # 漂移探针：内存重导对拍已提交产物，脏则非零退出
  *
  * 数据血缘（重要）：库里的主题文本是**本仓 analysis 内核在 518,400 个设计样本上的
  * 预计算产物**（`npm run build:db`），不是独立内容源 —— 本工具只做**导出与对拍**，
  * 不产新断语。断语的修订一律改内核（scripts/analysis/），再重建库、再导出。
+ *
+ * 漂移探针（--check，npm run manual:check）：生成物与「当前内核表 + 当前导出工具」
+ * 的一致性守卫 —— 内核或工具改了而生成物未重导时非零退出报警（差异文件清单 + 每文件
+ * 前 5 处差异行；盘上多出的孤儿生成物同样算漂移）。缺 db/dataset 或 DuckDB 依赖时
+ * 显式 ⏭ 跳过（零退出，跳过必须可见），不进 npm test 日常回归（重导对拍耗时数十秒）。
  *
  * 宫名口径：库内列值与 `./data` 散表同为紧凑口径（不带「宫」字、「仆役」），
  * 内核侧 `Palace.name` 是项目口径（带「宫」字）—— 本工具内的 `compactPalaceKey`
@@ -19,7 +25,7 @@
  * 输出目录：docs/manual/（topics/ 子目录 + 两个独立 md）。只读库（spec §6），不落 SQL
  * 用户输入（全部固定字面量，与 query.ts 同纪律）。
  */
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,6 +45,29 @@ const HERE = dirname(fileURLToPath(import.meta.url)); // tools/db
 const SKILL_ROOT = resolve(HERE, "../..");
 const OUT_DIR = resolve(SKILL_ROOT, "docs/manual");
 const TOPICS_DIR = join(OUT_DIR, "topics");
+
+// ── 落点双形态：写盘（默认）或收进内存（--check 对拍）──
+// 产出函数只调 emit/ensureDir，「生成什么」与「落到哪」分离 —— check 模式因此跑的是
+// 与真重导**同一份产出代码**，不引入第二套对拍实现（manual-drift-guard D1）。
+const CHECK_MODE = process.argv.includes("--check");
+/** check 模式的内存产物：绝对路径 → 内容（与 writeFileSync 收到的字符串逐字同源）。 */
+const collected = new Map<string, string>();
+
+/** 落一个生成物：写盘，或（--check）收进内存待对拍。 */
+function emit(absPath: string, content: string): void {
+	if (CHECK_MODE) {
+		collected.set(absPath, content);
+		return;
+	}
+	writeFileSync(absPath, content);
+}
+
+/** 建目录：写盘模式创建，check 模式跳过（不触碰磁盘）。 */
+function ensureDir(absPath: string): void {
+	if (!CHECK_MODE) {
+		mkdirSync(absPath, { recursive: true });
+	}
+}
 
 // 内核 patterns / 排盘模块 —— 相对导入，tools/ 不走 @/ 别名
 const { generateChart } = await import("../../scripts/algorithm");
@@ -321,7 +350,7 @@ ORDER BY sample_id`;
 }
 
 async function exportTopics(conn: DuckDBConnection): Promise<void> {
-	mkdirSync(TOPICS_DIR, { recursive: true });
+	ensureDir(TOPICS_DIR);
 	for (const topic of TOPIC_KEYS) {
 		const { byStar, sanFangByStar, starSamples } = await collectTopic(conn, topic);
 
@@ -355,7 +384,7 @@ async function exportTopics(conn: DuckDBConnection): Promise<void> {
 				}
 			}
 		}
-		writeFileSync(join(TOPICS_DIR, `${topic}.md`), [...head, ...body].join("\n"));
+		emit(join(TOPICS_DIR, `${topic}.md`), [...head, ...body].join("\n"));
 		console.error(
 			`topics/${topic}.md：${byStar.size} 星 × 共 ${[...byStar.values()].reduce((n, m) => n + m.size, 0)} 行`
 		);
@@ -379,7 +408,7 @@ GROUP BY 1, 2 ORDER BY 1, 2, 3 DESC`;
 }
 
 async function exportCombo(conn: DuckDBConnection): Promise<void> {
-	mkdirSync(OUT_DIR, { recursive: true });
+	ensureDir(OUT_DIR);
 	const rows = await collectCombo(conn);
 	const stars = [...new Set(rows.map(r => r.star))].sort();
 	const auxes = [...new Set(rows.map(r => r.aux))];
@@ -403,7 +432,7 @@ async function exportCombo(conn: DuckDBConnection): Promise<void> {
 		"",
 		`全表 ${stars.length} 主星 × ${auxes.length} 辅煞 = ${rows.length} 组合，单格最大 ${total.toLocaleString("en-US")} 盘。`,
 	];
-	writeFileSync(join(OUT_DIR, "combo-frequency.md"), md.join("\n") + "\n");
+	emit(join(OUT_DIR, "combo-frequency.md"), md.join("\n") + "\n");
 	console.error(`combo-frequency.md：${rows.length} 组合`);
 }
 
@@ -422,7 +451,7 @@ const lit = (s: string): string => JSON.stringify(s);
  * md 供人读（扁平），ts 供代码查询（结构化）。
  */
 async function exportCode(conn: DuckDBConnection): Promise<void> {
-	mkdirSync(CODE_DIR, { recursive: true });
+	ensureDir(CODE_DIR);
 
 	// 共享类型文件（主题文件 import type，避免 index 与主题文件循环依赖）
 	const typeLines = [
@@ -466,7 +495,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 		`\tother: string[];`,
 		`}`,
 	];
-	writeFileSync(join(CODE_DIR, "types.ts"), typeLines.join("\n"));
+	emit(join(CODE_DIR, "types.ts"), typeLines.join("\n"));
 
 	for (const topic of TOPIC_KEYS) {
 		// 别名视图（contentKey 与他主题共用，如 study → career）：不重复生成一份大文件，
@@ -474,7 +503,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 		// 复制会让库内不存在的一列内容在代码侧翻倍，且两处日后必然漂移。
 		const source = TOPIC_CONTENT_SOURCE[topic];
 		if (source !== topic) {
-			writeFileSync(
+			emit(
 				join(CODE_DIR, `${topic}.ts`),
 				[
 					"/**",
@@ -560,7 +589,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 			lines.push(`\t},`);
 		}
 		lines.push(`};`, "");
-		writeFileSync(join(CODE_DIR, `${topic}.ts`), lines.join("\n"));
+		emit(join(CODE_DIR, `${topic}.ts`), lines.join("\n"));
 	}
 
 	// 组合频率数据
@@ -581,7 +610,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 		`];`,
 		"",
 	];
-	writeFileSync(join(CODE_DIR, "combo-frequency.ts"), comboLines.join("\n"));
+	emit(join(CODE_DIR, "combo-frequency.ts"), comboLines.join("\n"));
 
 	// 懒加载索引：每个 TOPIC_KEYS 一行（动态模板 import 在类型层拿不到形状）
 	const indexLines = [
@@ -619,7 +648,7 @@ async function exportCode(conn: DuckDBConnection): Promise<void> {
 		`}`,
 		"",
 	];
-	writeFileSync(join(CODE_DIR, "index.ts"), indexLines.join("\n"));
+	emit(join(CODE_DIR, "index.ts"), indexLines.join("\n"));
 
 	console.error(
 		`analysis/manual/：${TOPIC_KEYS.length} 主题数据 + combo-frequency + index（${combo.length} 组合）`
@@ -721,13 +750,119 @@ SELECT DISTINCT line FROM l WHERE line LIKE '⭐%'`;
 		"",
 		...dbUnmatched.sort().map(n => `- ${n}`),
 	];
-	writeFileSync(join(OUT_DIR, "geju-audit.md"), md.join("\n") + "\n");
+	emit(join(OUT_DIR, "geju-audit.md"), md.join("\n") + "\n");
 	console.error(
 		`geju-audit.md：现库 ${patNames.length} 名目，db ${dbNameToLine.size} 名目，差集 ${patUnmatched.length}/${dbUnmatched.length}`
 	);
 }
 
+// ── 漂移探针（--check）：内存重导 ↔ 磁盘已提交产物逐字对拍 ──────────────────────
+
+/** 两文本的前 n 处差异行样例（定位用，不做完整 diff）。 */
+function firstDiffs(onDisk: string, regen: string, n = 5): string[] {
+	const a = onDisk.split("\n");
+	const b = regen.split("\n");
+	const out: string[] = [];
+	for (let i = 0; i < Math.max(a.length, b.length) && out.length < n; i++) {
+		const x = a[i] ?? "（无此行）";
+		const y = b[i] ?? "（无此行）";
+		if (x !== y) {
+			out.push(`  第${i + 1}行：盘上「${x.slice(0, 60)}」↔ 重导「${y.slice(0, 60)}」`);
+		}
+	}
+	return out;
+}
+
+/** 对拍内存产物与磁盘产物：内容差异与盘上孤儿（不可再生成的残留）都算漂移。 */
+function compareArtifacts(): number {
+	const drift: string[] = [];
+	for (const [absPath, regen] of [...collected.entries()].sort()) {
+		const rel = absPath.slice(SKILL_ROOT.length + 1);
+		if (!existsSync(absPath)) {
+			drift.push(`${rel}：盘上缺失（重导会新建）`);
+			continue;
+		}
+		const onDisk = readFileSync(absPath, "utf8");
+		if (onDisk !== regen) {
+			drift.push(`${rel}：内容漂移`, ...firstDiffs(onDisk, regen));
+		}
+	}
+	// 孤儿检测：产物目录里「盘上有、重导不再生成」的文件（如主题退役后的残留）。
+	const produced = new Set(collected.keys());
+	for (const [dir, ext] of [
+		[TOPICS_DIR, ".md"],
+		[CODE_DIR, ".ts"],
+	] as const) {
+		if (!existsSync(dir)) {
+			continue;
+		}
+		for (const f of readdirSync(dir)) {
+			const abs = join(dir, f);
+			if (f.endsWith(ext) && !produced.has(abs)) {
+				drift.push(`${abs.slice(SKILL_ROOT.length + 1)}：盘上孤儿（重导不再生成，应删除）`);
+			}
+		}
+	}
+	for (const name of ["combo-frequency.md", "geju-audit.md"]) {
+		const abs = join(OUT_DIR, name);
+		if (existsSync(abs) && !produced.has(abs)) {
+			drift.push(`${abs.slice(SKILL_ROOT.length + 1)}：盘上孤儿（重导不再生成，应删除）`);
+		}
+	}
+	if (drift.length > 0) {
+		console.error(
+			`✘ 生成物漂移 ${drift.length} 处 —— 内核表或导出工具改了、产物未重导（改内核后重建库再重导）：`
+		);
+		for (const d of drift) {
+			console.error(`  ${d}`);
+		}
+		return 1;
+	}
+	console.error(`✔ 生成物与当前内核表 / 导出工具一致（${collected.size} 个文件逐字对拍）`);
+	return 0;
+}
+
 async function main() {
+	// --check：漂移探针 —— 固定跑全量、固定用仓库默认库位（--out 与子命令均忽略）；
+	// 产物走内存（emit/ensureDir 的 check 形态），生成完与盘上已提交产物对拍。
+	if (CHECK_MODE) {
+		const target = resolveQueryTarget(join(SKILL_ROOT, "db"));
+		if (target.kind === "none") {
+			// 环境缺失不是缺陷：显式 ⏭ 且零退出 —— 跳过必须可见，不得静默绿。
+			console.error("⏭ 跳过生成物漂移探针：既无库也无 dataset（本机未建库时探针不适用）");
+			return;
+		}
+		let db: typeof import("./db");
+		try {
+			db = await import("./db");
+		} catch {
+			console.error("⏭ 跳过生成物漂移探针：DuckDB 依赖不可用（npm install 后可启用）");
+			return;
+		}
+		try {
+			const conn =
+				target.kind === "db"
+					? await db.openReadOnly(target.dbPath)
+					: await db.openDataset(target.datasetDir);
+			try {
+				await exportTopics(conn);
+				await exportCombo(conn);
+				await auditGeju(conn);
+				await exportCode(conn);
+			} finally {
+				conn.closeSync();
+			}
+		} catch (e) {
+			// 生成阶段的失败是「环境不可用」（如 duckdb 中间物引用的 parquet 已移走、
+			// 依赖残缺），不是漂移证据 —— 探针未执行必须显式说清，不得报红也不得静默绿。
+			console.error(
+				`⏭ 跳过生成物漂移探针：重导未完成（${e instanceof Error ? e.message.split("\n")[0] : String(e)}）—— 探针未执行，这不是绿`
+			);
+			return;
+		}
+		process.exitCode = compareArtifacts();
+		return;
+	}
 	const outDir = process.argv.includes("--out")
 		? resolve(process.argv[process.argv.indexOf("--out") + 1])
 		: join(SKILL_ROOT, "db");

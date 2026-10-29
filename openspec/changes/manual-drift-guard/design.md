@@ -4,7 +4,7 @@
 
 生成链四段：内核表（`analysis/data.ts`、`data/ganzhi.ts` 等）→ `db/dataset`（518k 样本 parquet，权威来源，git 跟踪）→ `tools/db/export-manual.ts`（读 parquet + 内核表，依赖方向正确：引用不复制）→ 生成物（`docs/manual/` ×14 + `scripts/corpus/data/manual/` ×15）。`invariants` 守着键域互证，但没有内容级漂移探针——2026-10-29 的 `manual-dataset-drift` 归档刚清掉 3.2 万行级欠账，这笔账之所以能欠下，就是因为「内核改了、生成物没人重导」不会让任何闸门变红。
 
-前置已满足：`manual-dataset-drift` 已归档（重导已落地提交），探针启用时应直接全绿。
+前置已满足：`manual-dataset-drift` 已归档。但归档时其**重导被环境阻塞**：`db/dataset`（09-26 快照）相对内核陈旧——重导会把「倪海夏」错字植回手册（内核已修「倪海厦」），dataset 重建需 518k 语料、本机无。因此仓内当前存在**已知漂移**（`wealth.ts`，2026-10-12 遗留），探针 apply 即红属本职捕获；修复路径与探针的 review 面挂载共用同一个环境解阻点。另：duckdb 中间物（`ziwei.duckdb`）的表**外挂引用** dataset parquet——dataset 移走时 open 仍成功、首个查询才报 IO 错，降级判定必须覆盖「生成阶段失败」而不仅是「打开前检测」。
 
 ## Goals / Non-Goals
 
@@ -22,13 +22,13 @@
 
 对拍「同工具 + 同输入」才守得住「工具或内核变了」两类漂移：抽样对拍要自己实现一套对拍逻辑，本身就是新的漂移面。代价是耗时（全量重导约数十秒）——因此**不进 `npm test`**，挂独立命令 + review 面。重导路径需从导出器内部抽出「产出到内存」的形态（不写盘），这是本 change 的主要代码工作。
 
-### D2 挂载点：`npm run manual:check` + review-gate 面
+### D2 挂载点：`npm run manual:check` 先行，review 面挂载随 dataset 重建解阻
 
-独立 script 供随时手跑；`tools/review-gate.ts` 的对拍场景面追加调用（探针红 = review 阻断）。未来若有 CI 再挂 CI，本期不做。
+实测全量重导对拍约 **5 分钟**（423s user / 175% CPU，设计时预估「数十秒」错误）——独立 script 供随时手跑不受影响；review 闸门面追加调用会使每次 review +5 分钟，且当前探针已知红（见 Context），**立即挂载会让 review 永久阻断**。故分两步：本 change 交付 script 与探针本体；review 面挂载（探针红 = review 阻断）作为**阻塞任务**随 dataset 重建 + 重导清账后接线。未来若有 CI 再挂 CI，本期不做。
 
-### D3 降级：缺 `db/dataset` 或 DuckDB 时显式 ⏭
+### D3 降级：环境不可用时显式 ⏭，且「生成阶段失败」同样按环境处理
 
-与 `skipUnlessRepo` 同纪律：跳过必须可见、不得静默绿。判据：目录不存在或 `@duckdb/node-api` 不可 import → 输出「⏭ 跳过：<原因>」并**零退出**（环境缺失不是缺陷），但 review 面输出里必须能看到这一行。
+与 `skipUnlessRepo` 同纪律：跳过必须可见、不得静默绿。两处判定：打开前（`resolveQueryTarget` 为 none、`@duckdb/node-api` 不可 import）与**生成阶段任何抛错**（如 duckdb 中间物外挂的 parquet 缺失）——后者输出「⏭ … 探针未执行，这不是绿」并零退出；环境缺失不是缺陷，但 review / 日志里必须能看到这一行。只有 `compareArtifacts` 的对拍结论才有权报红。
 
 ### D4 差异输出：文件清单 + 每文件前 5 处差异行
 
@@ -40,7 +40,7 @@
 
 ## Risks / Trade-offs
 
-- **耗时**：review 面每次多数十秒（可接受：review 本就是提交流程的慢闸门）。
+- **耗时**：全量对拍约 5 分钟——独立命令无碍；review 面挂载因此顺延到 dataset 解阻后（D2）。
 - **内存对拍路径与写盘路径分叉**：抽取时导出器保持「同一产出函数、两种落点（内存 / 磁盘）」，避免两条实现。
 - **parquet 与内核表**谁漂移谁：探针报差异不归因（归因看 diff 内容），不引入归因逻辑。
 
