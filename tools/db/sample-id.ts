@@ -38,13 +38,17 @@ export function decodeSampleId(id: number): {
 // 's' 对应 samples 表别名）。构建与验证共用此定义，避免公式分叉。
 // 两侧一致性由 tests/db.test.ts 锁定。
 //
-// 必须把 year 显式转 BIGINT：read_json 的 columns 把 year/month/day/timeIndex 声明为 SMALLINT，
+// ⚠️ 源字段名是 `hour`（toolkit samples-out 的导出口径），**语义是时辰索引 0–11**、
+//    不是钟点 —— 与 db-slim 基准实现（lib/db/sample-id.ts）逐字对齐；曾误改成本仓
+//    内部命名 timeIndex，导致 read_json 永远取 NULL、palaces.sample_id 全数违约。
+//
+// 必须把 year 显式转 BIGINT：read_json 的 columns 把 year/month/day/hour 声明为 SMALLINT，
 // 而 DuckDB 会把「能容纳于 SMALLINT 的字面量」下推为 SMALLINT，使整式在 INT16 内求值 ——
 // 真实数据（720 分片）上从 1928-07 起必然 "Overflow in multiplication of INT16"。
 // 一旦首项为 BIGINT，其后各级运算随之提升，最大中间值 518,399 亦无碍。
 export function sqlSampleIdExpr(prefix: string): string {
 	return (
-		`(((((CAST(${prefix}.year AS BIGINT) - 1924) * 12 + (${prefix}.month - 1)) * 30 + (${prefix}.day - 1)) * 12 + ${prefix}.timeIndex) * 2 ` +
+		`(((((CAST(${prefix}.year AS BIGINT) - 1924) * 12 + (${prefix}.month - 1)) * 30 + (${prefix}.day - 1)) * 12 + ${prefix}.hour) * 2 ` +
 		`+ CASE WHEN ${prefix}.gender = 'male' THEN 0 ELSE 1 END) + 1`
 	);
 }

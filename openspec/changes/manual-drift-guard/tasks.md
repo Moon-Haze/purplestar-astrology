@@ -9,7 +9,7 @@
 
 - [x] 2.1 环境不可用显式 ⏭ 且零退出，覆盖两类判定：打开前（无库无 dataset / DuckDB 不可 import）与**生成阶段任何抛错**（输出「探针未执行，这不是绿」）；判据：临时移走 `db/dataset` 实测——duckdb 中间物外挂 parquet 缺失场景命中生成阶段判定，⏭ 可见、exit 0（已实测）
 - [x] 2.2 `package.json` 增 `manual:check` script（`tsx tools/db/export-manual.ts --check`）
-- [ ] 2.3 **阻塞**：`tools/review-gate.ts` 对拍场景面追加 `npm run manual:check` 调用（探针红 = review 阻断、⏭ 原因可见）——阻塞原因：全量对拍实测约 5 分钟，且当前探针已知红（wealth.ts，重导随 dataset 重建解阻，见 manual-dataset-drift 归档的环境阻塞）；dataset 重建 + 重导清账 + wealth.ts 修复后接线，否则 review 永久阻断
+- [ ] 2.3 **阻塞**：`tools/review-gate.ts` 对拍场景面追加 `npm run manual:check` 调用（探针红 = review 阻断、⏭ 原因可见）——阻塞原因（2026-10-30 核实更新）：① 全量对拍实测约 5 分钟；② 探针已知红不止 wealth.ts——**toolkit samples-out 是 2026-04-24 内容快照**（topics 含「倪海夏」错字 861 处/百行，内核已修；当前手册零错字），从它重建的 dataset 重导即内容回退。解阻链：toolkit 用当前内核再生成 samples-out → `build:db`（管线已修复实测跑通）→ 重导清账 → 接线，否则 review 永久阻断
 
 ## 3. 实测与验证
 

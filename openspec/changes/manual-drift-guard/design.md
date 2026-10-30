@@ -4,7 +4,7 @@
 
 生成链四段：内核表（`analysis/data.ts`、`data/ganzhi.ts` 等）→ `db/dataset`（518k 样本 parquet，权威来源，git 跟踪）→ `tools/db/export-manual.ts`（读 parquet + 内核表，依赖方向正确：引用不复制）→ 生成物（`docs/manual/` ×14 + `scripts/corpus/data/manual/` ×15）。`invariants` 守着键域互证，但没有内容级漂移探针——2026-10-29 的 `manual-dataset-drift` 归档刚清掉 3.2 万行级欠账，这笔账之所以能欠下，就是因为「内核改了、生成物没人重导」不会让任何闸门变红。
 
-前置已满足：`manual-dataset-drift` 已归档。但归档时其**重导被环境阻塞**：`db/dataset`（09-26 快照）相对内核陈旧——重导会把「倪海夏」错字植回手册（内核已修「倪海厦」），dataset 重建需 518k 语料、本机无。因此仓内当前存在**已知漂移**（`wealth.ts`，2026-10-12 遗留），探针 apply 即红属本职捕获；修复路径与探针的 review 面挂载共用同一个环境解阻点。另：duckdb 中间物（`ziwei.duckdb`）的表**外挂引用** dataset parquet——dataset 移走时 open 仍成功、首个查询才报 IO 错，降级判定必须覆盖「生成阶段失败」而不仅是「打开前检测」。
+前置已满足：`manual-dataset-drift` 已归档。但归档时其**重导被阻塞**，本轮（2026-10-30）核实并推进：`ziwei-samples-toolkit/samples-out`（5.5GB）就在本机，「本机无语料」不成立；本仓 build 管线的字段漂移已修复（源侧字段名对齐 db-slim 基准：`hour`/`mingGongBranch`/`siHua`/`daXianAge`…，含 idx_birth 索引列名），重建实测跑通（720 分片 8.6 分钟，git 跟踪的 samples+palaces parquet 逐字节未变）。**但语料本身是 2026-04-24 的内容快照**——topics 文本含「倪海夏」错字 861 处/百行（内核已修；当前手册 24 文件零错字），从它重导即内容回退。真正的解阻点在**上游**：toolkit 用当前内核再生成 samples-out。在此之前探针已知红（wealth.ts + 重建库与手册的内容代差），属本职捕获；修复路径与 review 面挂载共用该解阻点。另：duckdb 中间物（`ziwei.duckdb`）的表**外挂引用** dataset parquet——dataset 移走时 open 仍成功、首个查询才报 IO 错，降级判定必须覆盖「生成阶段失败」而不仅是「打开前检测」。
 
 ## Goals / Non-Goals
 

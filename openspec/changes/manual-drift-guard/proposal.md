@@ -30,5 +30,5 @@
 
 - **代码**：`tools/db/export-manual.ts`（重导到内存的路径抽取 + `--check` 参数）、`package.json`（`manual:check` script）、`tools/review-gate.ts`（面调用）。全部在 tools 层，不触内核与 CLI 行为。
 - **规范面**：`quality-gates` ADDED 一条需求（本 change）。
-- **顺序约束与已知状态**：前置 change `manual-dataset-drift` 已于 2026-10-29 归档，但其**重导被环境阻塞**（`db/dataset` 为 09-26 快照、相对内核陈旧——重导会把「倪海夏」错字植回手册；重建需 518k 语料、本机无）。故本 change apply 时探针**已知红**：`wealth.ts`（2026-10-12 遗留，头注释仍指 `analysis/manual/` 旧路径）——这是探针本职捕获的真实漂移；其修复（重导）与 review 面挂载一并随 dataset 重建解阻。
-- **验证义务**：tools 层改动 → `npm run typecheck` + `selftest` 必跑；探针自身行为用「红（有差异样例）/ ⏭（缺依赖可见跳过、零退出）」两态实测钉住；「绿」态随 dataset 重建后验收。
+- **顺序约束与已知状态**：前置 change `manual-dataset-drift` 已于 2026-10-29 归档，其重导阻塞经本轮核实**再深一层**：不是「本机缺语料」——`ziwei-samples-toolkit/samples-out`（5.5GB）就在本机——而是**语料本身是 2026-04-24 的内容快照**（topics 文本含「倪海夏」错字 861 处/百行，内核已修「倪海厦」；当前手册 24 文件零错字，是修复后内核的产物）。从它重建 dataset（已实测跑通，8.6 分钟）不解决内容代差，重导即大规模回退。真正的解阻点：**toolkit 用当前内核再生成 samples-out**（跨仓，518k 全量）→ build:db（管线已修复可用）→ 重导 → 探针绿。故本 change apply 时探针**已知红**：`wealth.ts`（2026-10-12 遗留，头注释仍指 `analysis/manual/` 旧路径）——修复随上述链条。
+- **验证义务**：tools 层改动 → `npm run typecheck` + `selftest` 必跑；探针自身行为用「红（有差异样例）/ ⏭（缺依赖可见跳过、零退出）」两态实测钉住；「绿」态随 toolkit 再生成 + 重导后验收。
