@@ -24,6 +24,9 @@ db/dataset/topics-*.parquet
 db/dataset.staging/
 db/ziwei.duckdb*
 
+# 518k 分片语料（tools/db/generate-shards.ts 生成，约 5.5GB；build:db 的默认 --src）
+samples-out/
+
 # ── 评审闸门的快照目录（tools/review-gate.ts --byte-diff 用）──────────
 # 落仓库内而非会被清空的 /tmp（曾致误报 DIFFERS）；防 stash 卷走与 git add -A 误提交。
 .review-tmp/
