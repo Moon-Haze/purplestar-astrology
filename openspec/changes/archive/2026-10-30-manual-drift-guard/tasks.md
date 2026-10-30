@@ -9,14 +9,14 @@
 
 - [x] 2.1 环境不可用显式 ⏭ 且零退出，覆盖两类判定：打开前（无库无 dataset / DuckDB 不可 import）与**生成阶段任何抛错**（输出「探针未执行，这不是绿」）；判据：临时移走 `db/dataset` 实测——duckdb 中间物外挂 parquet 缺失场景命中生成阶段判定，⏭ 可见、exit 0（已实测）
 - [x] 2.2 `package.json` 增 `manual:check` script（`tsx tools/db/export-manual.ts --check`）
-- [ ] 2.3 **阻塞**：`tools/review-gate.ts` 对拍场景面追加 `npm run manual:check` 调用（探针红 = review 阻断、⏭ 原因可见）——阻塞原因（2026-10-30 核实更新）：① 全量对拍实测约 5 分钟；② 探针已知红不止 wealth.ts——**toolkit samples-out 是 2026-04-24 内容快照**（topics 含「倪海夏」错字 861 处/百行，内核已修；当前手册零错字），从它重建的 dataset 重导即内容回退。解阻链：toolkit 用当前内核再生成 samples-out → `build:db`（管线已修复实测跑通）→ 重导清账 → 接线，否则 review 永久阻断
+- [x] 2.3 `tools/review-gate.ts` 闸门面追加 `npm run manual:check` 调用（探针红 = review 阻断、⏭ 原因可见；「轻」档跳过——全量对拍约 5 分钟）——2026-10-30 随解阻链落地：toolkit 语料 4 月快照问题由主仓自建 `tools/db/generate-shards.ts` 根治（当前内核直出 518k 分片，5 路并行 33 分钟，错字零），dataset 重建于 `--out db` 正位、全量重导后探针 33 文件逐字一致
 
 ## 3. 实测与验证
 
-- [x] 3.1 两态实测（第三态随环境解阻验收）：**红**——首跑即捕获真实漂移 `scripts/corpus/data/manual/wealth.ts`（2026-10-12 遗留：头注释指 `analysis/manual/` 旧路径、prettier 风格键序，重导为 corpus 后口径），差异样例 5 行准确报出，exit 1；**⏭**——移走 dataset 后可见跳过、exit 0；**绿**——待 dataset 重建 + 重导清账后验收（对拍逻辑零分支即绿，`drift.length === 0` → ✔ + exit 0）
+- [x] 3.1 三态实测：**红**——首跑捕获 wealth.ts 真实漂移（差异样例 5 行，exit 1）；**⏭**——移走 dataset 后可见跳过、exit 0；**绿**——2026-10-30 主仓生成器重产语料 + `build:db --out db` 重建 + 全量重导后，`manual:check` 输出「✔ 33 个文件逐字对拍」零退出
 - [x] 3.2 `npm run typecheck` 0 + `node scripts/purple-star.ts selftest` 全绿 + `npm test` 不受影响（探针不在其中）——已执行：typecheck 0 错误、selftest 162/162 报告 diff=0、lint 0 error（9 条既有 warning 持平）、探针未接线 npm test（结构性不触及）
 - [x] 3.3 `openspec validate --all` 零警告（含本 change）——已执行：10/10 passed
 
 ## 4. 归档
 
-- [ ] 4.1 前置：2.3 解阻接线完成（dataset 重建 + 重导清账 + review 面挂载实测红/绿两态）；随后 `ADDED` 需求折回 `openspec/specs/quality-gates/spec.md`（追加于「分析数据表键域互证」之后），archive 本 change
+- [x] 4.1 2.3 已接线、红/⏭/绿三态实测齐；`ADDED` 需求折回 `openspec/specs/quality-gates/spec.md`（「分析数据表键域互证」之后），archive 本 change（2026-10-30）

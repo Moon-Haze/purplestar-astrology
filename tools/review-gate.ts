@@ -581,6 +581,11 @@ function runGates(tier: Tier): Gate[] {
 	// 「轻」档不必重跑全量回归 —— 但若动了 .ts 类型面，typecheck 已在必跑里
 	if (tier !== "轻") {
 		gates.push({ name: "npm test", cmd: "npm test", pass: true, tail: "" });
+		// 生成物漂移探针（manual-drift-guard tasks 2.3）：内核表或导出工具改了而
+		// docs/manual / corpus/data/manual 未重导 → 非零退出（差异文件 + 样例行）；
+		// 环境不可用（无库无 dataset / DuckDB 残缺）时探针自身 ⏭ 可见跳过且零退出。
+		// 全量重导对拍实测约 5 分钟，故不进「轻」档、也不进 npm test 日常回归。
+		gates.push({ name: "manual:check", cmd: "npm run manual:check", pass: true, tail: "" });
 	}
 	for (const g of gates) {
 		const r = spawnSync(g.cmd, {
