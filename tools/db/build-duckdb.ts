@@ -1,7 +1,8 @@
 // 用法: npm run build:db [-- --out=DIR] [-- --force] [-- --mode=inline|dataset]
 //                      [-- --from-year=N] [-- --to-year=N] [-- --src=DIR]
 //      参数同时支持 --key=value 与 --key value 两种写法
-// 默认 src=./samples-out out=仓库根（spec §6）；--mode 默认 inline。
+// 默认 src=./samples-out out=./db（与 query 的 DEFAULT_OUT 同址——读写同位，
+// 此前默认仓库根曾把库/进度/staging 洒在根目录）；--mode 默认 inline。
 // --out 只给一个目录，目录内的名字全部固定（唯一定义处：tools/db/db.ts 的 dbPathIn / datasetDirIn）：
 //   <out>/ziwei.duckdb               库文件
 //   <out>/dataset/                   分发 parquet 目录（仅 --mode=dataset）
@@ -55,7 +56,9 @@ interface Args {
 function parseArgs(argv: string[]): Args {
 	const a: Args = {
 		src: path.join(ROOT, "samples-out"),
-		out: ROOT,
+		// 默认与消费方同址（query-args 的 DEFAULT_OUT = <root>/db）：库 / 进度 /
+		// staging 全是 --out 的伴生物，默认落 db/ 下，仓库根不出现构建产物。
+		out: path.join(ROOT, "db"),
 		force: false,
 		mode: "inline", // spec §3.1：不传 = 与已验收版本逐项一致
 		minFreeGb: 40, // spec §9：默认 40GB 门槛
