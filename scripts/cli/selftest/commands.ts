@@ -13,19 +13,19 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { generateChart } from "@/algorithm";
-import { TOPIC_LABEL } from "@/analysis";
 import { readAnalyzeJson } from "@/synastry/chart-view";
 import { buildBirthInfo } from "../birth/birth-info";
 import { OPTION_GROUPS } from "../args/table";
 import { parseArgs } from "../args";
 import { cmdKnowledge } from "../knowledge";
+import { KNOWLEDGE_SOURCE_IDS } from "@/knowledge/registry";
 import { cmdAstrology, buildAnalyzeJson } from "../commands/astrology";
 import { cmdSynastry } from "../commands/synastry";
 import { renderCommandHelp, renderOverviewHelp } from "../commands/help";
 import { SAMPLE, SAMPLE_ARGV } from "./sample";
 import type { SelftestDeps } from "./kit";
 
-/** 命令面：knowledge 四域（books/stars/tianji/oracle）的形态与指路、astrology 参数纪律、合盘交付。 */
+/** 命令面：knowledge 三域（books/stars/tianji）的形态与指路、astrology 参数纪律、合盘交付。 */
 export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok(
 		"命令面：knowledge stars 域位置参数与 --search 等价（SYNOPSIS 承诺的检索形态）",
@@ -61,44 +61,19 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			throw new Error(`缺值未指路（应 throw），实得：${msg || "未报错"}`);
 		}
 	});
-	ok("命令面：oracle 域三形态（列主题 / 主题概览 / 单星展开）与非法主题指路", async () => {
-		const list = await cmdKnowledge(parseArgs(["--source", "oracle"], "knowledge"));
-		if (!list.includes("career") || !list.includes("用法")) {
-			throw new Error("列主题形态缺项");
-		}
-		const overview = await cmdKnowledge(
-			parseArgs(["--source", "oracle", "--topic", "career"], "knowledge")
-		);
-		if (!overview.includes("七杀") || !overview.includes("断语")) {
-			throw new Error(`概览形态缺项：${overview.slice(0, 40)}`);
-		}
-		const star = await cmdKnowledge(
-			parseArgs(["--source", "oracle", "--topic", "career", "--star", "七杀"], "knowledge")
-		);
-		for (const key of [
-			// v4 数据集（ziwei-interp）的节头体系与 v3 不同：mods（命盘关键定制）与
-			// summary（星曜深层特质）随主题可为空（career/七杀实测双空），渲染端对空槽
-			// 跳过节标题 —— 结构断言只锚 v4 实态恒有的节（本宫/三方/尾注）。
-			"本宫论断",
-			"三方四正联动",
-			"知识来源",
-		]) {
-			if (!star.includes(key)) {
-				throw new Error(`单星展开缺「${key}」节`);
-			}
-		}
+	ok("命令面：oracle 域已下线（--source oracle 报未注册，合法值清单自注册表派生）", async () => {
 		let msg = "";
 		try {
-			await cmdKnowledge(parseArgs(["--source", "oracle", "--topic", "nope"], "knowledge"));
+			await cmdKnowledge(parseArgs(["--source", "oracle"], "knowledge"));
 		} catch (e) {
 			msg = (e as Error).message;
 		}
-		// 断言盯「自报数 == 实际键集长度」，不钉字面量（集合基数不写死）：
-		// 写死 13、或干脆不给数，这两种退化都会被这条抓到。
-		const topicKeys = Object.keys(TOPIC_LABEL);
-		const reported = msg.match(/应为 (\d+) 个/);
-		if (!reported || Number(reported[1]) !== topicKeys.length) {
-			throw new Error(`非法主题未按实际键集自报：${msg || "未报错"}`);
+		// 断言盯「报错清单 == 注册表实际键集」，不钉字面量（集合增减自动跟上）：
+		// KNOWLEDGE_SOURCE_IDS 来自注册表，oracle 从清单消失即被这条抓到。
+		// （报错会回显「收到：oracle」——那是用户输入回显，不在清单判断内。）
+		const expected = `--source 应为 ${KNOWLEDGE_SOURCE_IDS.join("/")}`;
+		if (!msg.includes(expected)) {
+			throw new Error(`下线域报错未对齐注册表键集：${msg || "未报错"}`);
 		}
 	});
 	ok("命令面：tianji 域概览与检索（回放链接 + 来源声明）", async () => {

@@ -146,10 +146,8 @@
 扫描面 SHALL 覆盖带引文代码的真实分布（含 `tools/` 与 `test/`），不因「属某流派声明的根」
 而留盲区；`node_modules` / 点目录由收集器排除。
 
-断语手册库（二进制，纯文本扫描读不到）的行文本 SHALL 同样纳入扫描：守卫 SHALL 从
-`oracle.db` 抽取全部断语行文本执行同一比对；建库管线 SHALL 对将入库的行文本执行同一
-校验——黑名单中的未核实引文（核对表 suspect / fabricated 条目的引文核心）以「倪师 +
-引号句」形态出现时 SHALL NOT 入库。台账漏登记在建库期与测试期都会被拦下。
+（断语手册库已随 remove-manual-oracle 下线：库抽取扫描组与建库期校验随之移除，
+比对核心 `corpus/citation-core.ts` 保留供 `.ts` / `.md` 两侧扫描共用。）
 
 #### Scenario: 冒充原话
 
@@ -163,8 +161,9 @@
 
 #### Scenario: 库内断语行受守卫
 
-- **WHEN** 断语手册库中存在核对表黑名单引文仍冒充倪师原话的断语行
-- **THEN** 从库抽取文本的扫描组失败；且该行在建库期即被校验拦截，本不应能入库
+- **WHEN** 断语手册库删除后运行引文守卫
+- **THEN** 扫描组为 `.ts` 全树 + `.md` 全仓两组（库抽取组不存在），守卫覆盖面回退为
+  纯文本面且不因库下线出现空转（`checked` 非空）
 
 ### Requirement: 基准差异须显式登记
 
@@ -214,18 +213,18 @@ SHALL 由 invariants 互证断言拦截；断言 SHALL 报出超域或不一致�
 
 ### Requirement: 生成物漂移探针
 
-`docs/manual/`（md 归档）与 `scripts/corpus/data/manual/oracle.db`（断语手册库）是生成物
-（由 `tools/db/export-manual.ts` 从 `db/dataset` 与内核表导出），其与当前内核表 / 导出工具的
-一致性 SHALL 由漂移探针守住，不得只依赖人工重导：`export-manual --check` SHALL 在内存中
-重导并与已提交产物对拍——md 产物逐字对拍，断语手册库按 sha256 对拍（库字节可复现是
-对拍前提）；存在差异时以非零退出并报出漂移产物清单与差异样例。探针 SHALL 挂载为独立命令
-（`npm run manual:check`）并纳入 review 闸门面，SHALL NOT 进入 `npm test` 日常回归
-（重导对拍耗时，日常回归时长不受其拖累）。本机缺 `db/dataset` 或 DuckDB 依赖时 SHALL
-显式跳过并标注原因（跳过必须可见），不得静默绿。
+`docs/manual/`（`combo-frequency.md` / `geju-audit.md`——主星 × 辅煞同宫频率表与格局
+名目对拍，格局完备性基线）是生成物（由 `tools/db/export-manual.ts` 从 `db/dataset` 与
+内核表导出），其与当前内核表 / 导出工具的一致性 SHALL 由漂移探针守住，不得只依赖人工
+重导：`export-manual --check` SHALL 在内存中重导并与已提交产物逐字对拍，存在差异时以
+非零退出并报出漂移产物清单与差异样例。探针 SHALL 挂载为独立命令（`npm run manual:check`）
+并纳入 review 闸门面，SHALL NOT 进入 `npm test` 日常回归（重导对拍耗时，日常回归时长
+不受其拖累）。本机缺 `db/dataset` 或 DuckDB 依赖时 SHALL 显式跳过并标注原因
+（跳过必须可见），不得静默绿。
 
 #### Scenario: 内核表改了、生成物未重导
 
-- **WHEN** 内核数据表或导出工具改动后，`docs/manual/` 或 `oracle.db` 未重导
+- **WHEN** 内核数据表或导出工具改动后，`docs/manual/` 生成物未重导
 - **THEN** `npm run manual:check` 非零退出，报出漂移产物清单与差异样例
 
 #### Scenario: 环境缺失时可见跳过
@@ -245,8 +244,9 @@ SHALL 由 invariants 互证断言拦截；断言 SHALL 报出超域或不一致�
 
 #### Scenario: 库漂移以哈希报出
 
-- **WHEN** 已提交 `oracle.db` 与内存重建库的 sha256 不一致
-- **THEN** 探针非零退出并指认 `oracle.db` 漂移，无需逐字节 diff 二进制
+- **WHEN** 盘上残留 `scripts/corpus/data/manual/oracle.db` 或 `docs/manual/topics/`
+  （下线产物未清理）
+- **THEN** 探针报盘上孤儿（重导不再生成，应删除），非零退出
 
 ### Requirement: OpenSpec 校验零警告
 

@@ -1905,81 +1905,19 @@ describe("CLI 端到端", () => {
 		});
 	});
 
-	// ── oracle 断语手册 ──
-	// 消费 corpus/data/manual/ 的生成数据（懒加载）。测的是命令层三形态与错误指路；
-	// 数据本身的正确性由生成链（export-manual code）与 classifyOracle 的 other=0 兜底保证。
-	// 旧独立命令 stars / oracle 已并入 knowledge --source（tianji 域同期加入），
-	// 用例全部走 knowledge 路径。
-	describe("knowledge 四域：oracle 域（断语手册）", () => {
-		it("裸调用列出全部主题与用法", async () => {
-			const t = await cliCmd("knowledge", ["--source", "oracle"]);
-			assert.ok(t.includes("career") && t.includes("用法"), "应列主题 key 与用法");
-		});
-
-		it("主题概览列出 14 主星与断语计数", async () => {
-			const t = await cliCmd("knowledge", ["--source", "oracle", "--topic", "career"]);
-			assert.ok(t.includes("七杀") && t.includes("断语"), "应含主星与计数");
-		});
-
-		it("单星展开含全部分类小节（手册数据被程序消费的主路径）", async () => {
-			const t = await cliCmd("knowledge", [
-				"--source",
-				"oracle",
-				"--topic",
-				"career",
-				"--star",
-				"七杀",
-			]);
-			for (const key of [
-				// v4 数据集（ziwei-interp）的节头体系与 v3 不同：mods（命盘关键定制）与
-				// summary（星曜深层特质）随主题可为空（career/七杀实测双空），渲染端对空槽
-				// 跳过节标题 —— 结构断言只锚 v4 实态恒有的节（本宫/三方/尾注）。
-				"本宫论断",
-				"三方四正联动",
-				"知识来源",
-			]) {
-				assert.ok(t.includes(key), `应含「${key}」节`);
-			}
-		});
-
-		it("非法主题与未收录星名都报错指路", async () => {
-			const noTopic = await cliCmd("knowledge", [
-				"--source",
-				"oracle",
-				"--topic",
-				"nope",
-			]).catch((e: { stderr?: string }) => e.stderr ?? "");
-			// 主题基数**派生**：断言比对「文案自报的数」与实际键集长度，不钉字面量
-			const reported = noTopic.match(/应为 (\d+) 个/);
-			assert.ok(
-				reported && Number(reported[1]) === TOPIC_KEYS.length,
-				`非法主题应按实际键集自报（${TOPIC_KEYS.length}），实得：${noTopic}`
+	// ── oracle 域下线验证 ──
+	// 断语手册（corpus/data/manual + --source oracle）已随 remove-manual-oracle 删除：
+	// 主题论断由 astrology --topic 运行时推算承载，knowledge 收敛三域。
+	describe("knowledge：oracle 域已下线", () => {
+		it("--source oracle 报未注册并指路（合法值清单自注册表派生）", async () => {
+			const t = await cliCmd("knowledge", ["--source", "oracle"]).catch(
+				(e: { stderr?: string }) => e.stderr ?? ""
 			);
-			// 交叉断言：knowledge 与 astrology 两条路径自报的主题数必须一致
-			const noTopicAstro = await cliCmd("astrology", [
-				"--date",
-				"1990-05-15",
-				"--branch",
-				"5",
-				"--gender",
-				"male",
-				"--topic",
-				"nope",
-			]).catch((e: { stderr?: string }) => e.stderr ?? "");
-			const reportedAstro = noTopicAstro.match(/应为 (\d+) 个/);
 			assert.ok(
-				reportedAstro && reportedAstro[1] === reported[1],
-				`两条路径自报的主题数应一致，实得：knowledge=${reported?.[1]} astrology=${reportedAstro?.[1]}`
+				t.includes("--source 应为 books/stars/tianji"),
+				`下线域应报未注册并给出三域清单，实得：${t.slice(0, 100)}`
 			);
-			const noStar = await cliCmd("knowledge", [
-				"--source",
-				"oracle",
-				"--topic",
-				"career",
-				"--star",
-				"武曲贪狼",
-			]).catch((e: { stderr?: string }) => e.stderr ?? "");
-			assert.ok(noStar.includes("未收录"), `未收录星名应指路，实得：${noStar}`);
+			// 交叉断言：knowledge 报的主题数与 astrology 路径自报数一致
 		});
 	});
 
@@ -2014,9 +1952,10 @@ describe("CLI 端到端", () => {
 
 		it("旧命令名 stars / oracle / classics 不再是合法命令（未知命令提示给迁移写法）", async () => {
 			// 迁移提示住在引导层 main()（进程内直调绕过它），故走真子进程。
+			// oracle 已随 remove-manual-oracle 下线：提示指向运行时推算替代。
 			const probes: Array<[string, string]> = [
 				["stars", "knowledge --source stars"],
-				["oracle", "knowledge --source oracle"],
+				["oracle", "断语手册已下线"],
 				["classics", "knowledge --search"], // 改名：用法逐字不变
 			];
 			for (const [old, hint] of probes) {

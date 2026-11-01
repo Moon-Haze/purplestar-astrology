@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-01
+# 断语手册库能力整体下线：manual-store 主 spec 的全部 requirement 被 REMOVED，
+# 同步时退役该能力（删除 openspec/specs/manual-store/）。
+retire_capabilities: true

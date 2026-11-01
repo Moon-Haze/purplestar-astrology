@@ -347,7 +347,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				cmds: ["knowledge"],
 				kind: "value",
 				value: "books",
-				desc: "knowledge 知识域：books 古籍（默认）/ stars 星曜释义 / tianji 天纪判语 / oracle 断语手册",
+				desc: "knowledge 知识域：books 古籍（默认）/ stars 星曜释义 / tianji 天纪判语",
 			},
 			{
 				name: "book",
@@ -355,13 +355,6 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				kind: "value",
 				value: "01-stars",
 				desc: "knowledge tianji 域限册（册代号或中文名，如 主星/十二宫/格局/四化/疾厄）",
-			},
-			{
-				name: "star",
-				cmds: ["knowledge"],
-				kind: "value",
-				value: "七杀",
-				desc: "knowledge oracle 域选星（配合 --topic；缺省列 14 星概览）",
 			},
 			{
 				name: "config",

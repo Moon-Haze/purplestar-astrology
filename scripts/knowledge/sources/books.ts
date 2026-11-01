@@ -16,7 +16,7 @@ export const booksSource: KnowledgeSource = {
 	search(query: KnowledgeQuery): string {
 		if (!query.term && !query.positional.length) {
 			return [
-				"知识检索四域：books 古籍（默认）· stars 星曜释义 · tianji 天纪判语 · oracle 断语手册",
+				"知识检索三域：books 古籍（默认）· stars 星曜释义 · tianji 天纪判语",
 				"",
 				`已收录古籍 ${ALL_BOOKS.length} 部，共 ${TOTAL_PARAGRAPHS} 段：`,
 				...ALL_BOOKS.map(
@@ -24,7 +24,7 @@ export const booksSource: KnowledgeSource = {
 				),
 				"",
 				"用法：knowledge --search <关键词>",
-				"其他域：--source stars（星曜释义）/ --source tianji（天纪判语）/ --source oracle（断语手册）",
+				"其他域：--source stars（星曜释义）/ --source tianji（天纪判语）",
 			].join("\n");
 		}
 		const q = query.term ?? query.positional.join(" ");

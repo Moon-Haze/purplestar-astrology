@@ -48,18 +48,19 @@ export interface DispatchResult {
 }
 
 /**
- * 旧命令迁移提示行（stars / oracle / classics），无匹配返回空串。
+ * 旧命令迁移提示行（stars / classics / oracle），无匹配返回空串。
  *
  * @remarks
- * 旧命令并入提示：stars / oracle 已并入 --source 选域，classics 随四域合并改名
- * knowledge —— 敲旧名给一条可直接照抄的迁移写法，而不是让用户自己从 help 里找。
+ * 旧命令并入提示：stars 已并入 --source 选域，classics 随四域合并改名 knowledge ——
+ * 敲旧名给一条可直接照抄的迁移写法，而不是让用户自己从 help 里找。
+ * oracle（断语手册）已随 remove-manual-oracle 整体下线，提示指向运行时推算替代。
  */
 export function unknownCommandMerged(cmd: string): string {
 	if (cmd === "stars") {
 		return `—— 星曜释义已并入：knowledge --source stars --search <星名>`;
 	}
 	if (cmd === "oracle") {
-		return `—— 断语手册已并入：knowledge --source oracle --topic <主题> [--star <星名>]`;
+		return `—— 断语手册已下线：主题论断用 astrology <出生信息> --topic <主题> 现场推算`;
 	}
 	if (cmd === "classics") {
 		return "—— 本命令原名 classics，已改名：knowledge --search <词>（古籍用法逐字不变）";

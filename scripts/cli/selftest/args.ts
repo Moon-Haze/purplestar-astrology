@@ -162,6 +162,7 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 	ok("声明表：语义角色派生与原字符串反推等价（候选 2）", () => {
 		// 期望值 = 迁移前 astrology.ts 三处 startsWith 字符串反推的实测快照（Step 1）。
+		// （star 曾随 knowledge oracle 域入 I 集合，oracle 下线后随声明一并移除。）
 		// B 为修漏组后的 12 项：「其他出生信息」组（gender / lng / city / province / name）
 		// 现状被 startsWith("出生") 漏掉，只给 --gender/--city 会误走零输入演示盘；
 		// 按 role 标 birth 后进集合，与注释承诺的「部分输入 → 缺一问一」一致（见 ledger Ruling）。
@@ -169,7 +170,7 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 		const snap = {
 			S: "ages,decadal,focus,info,monthly,mutagen,pattern,report,topic,yearly",
 			B: "branch,city,date,eot,gender,lateZi,leap,lng,lunar,name,noDst,province,time",
-			I: "ages,book,daily,decadal,focus,hourly,json,limit,monthly,mutagen,out,palaces,pattern,report,search,source,star,template,topic,view,yearly",
+			I: "ages,book,daily,decadal,focus,hourly,json,limit,monthly,mutagen,out,palaces,pattern,report,search,source,template,topic,view,yearly",
 		};
 		eq(
 			[...(table.SHADOWABLE_KEYS ?? [])].sort().join(","),

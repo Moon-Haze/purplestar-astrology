@@ -1,15 +1,15 @@
 /**
- * `knowledge` 命令：统一知识检索 —— 四域合一（books 古籍 / stars 星曜释义 /
- * tianji 天纪判语 / oracle 断语手册）。
+ * `knowledge` 命令：统一知识检索 —— 三域合一（books 古籍 / stars 星曜释义 /
+ * tianji 天纪判语；oracle 断语手册已随 remove-manual-oracle 下线）。
  *
  * Phase 1 · KnowledgeSource 接缝：分发走 `KNOWLEDGE_SOURCES` 注册表，本文件做
  * 「前置守卫 → 查表 → 调 `search`」，不再写 `switch`（ADR-002：清单注册）。
  * 新增域只加一个源文件 + 一行注册，不必改本入口（接缝与各域参数见
  * docs/code/cli-commands.md）。
  *
- * 参数样板的单点：`--search` 裸开关与 `--limit` 值域是四域同形的东西，由
+ * 参数样板的单点：`--search` 裸开关与 `--limit` 值域是三域同形的东西，由
  * {@link decodeKnowledgeQuery} 在入口统一拦截（throw → stderr + 非零退出）；
- * 位置参数回退是**域知识**（books/stars/tianji 回退为检索词、oracle 回退为
+ * 位置参数回退是**域知识**（books/stars/tianji 回退为检索词，原 oracle 回退为
  * topic/star），留在各域实现内。
  */
 
@@ -59,11 +59,11 @@ function decodeKnowledgeQuery(args: CliArgs, source: string): KnowledgeQuery {
 }
 
 /**
- * `knowledge` 命令：统一知识检索（四域）。
+ * `knowledge` 命令：统一知识检索（三域）。
  *
- * @param args - CLI 参数表；`--source` 选域（books 缺省 / stars / tianji / oracle），
+ * @param args - CLI 参数表；`--source` 选域（books 缺省 / stars / tianji），
  *   各域参数：books `--search/--limit`、stars `--search`、tianji `--search/--book/--limit`、
- *   oracle `--topic/--star`
+ *   （已下线的）oracle 曾用 `--topic/--star`
  * @returns 已渲染好的文本
  *
  * @remarks

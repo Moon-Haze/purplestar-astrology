@@ -56,11 +56,10 @@ const OVERVIEW_EXAMPLES = [
   node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --json --out /tmp/b.json
   node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json`,
 	"",
-	`  # 知识检索四域：古籍 / 星曜释义 / 天纪判语 / 断语手册（--source 选域，缺省 books）
+	`  # 知识检索三域：古籍 / 星曜释义 / 天纪判语（--source 选域，缺省 books）
   node scripts/purple-star.ts knowledge --search 机月同梁
   node scripts/purple-star.ts knowledge --source stars --search 紫微
-  node scripts/purple-star.ts knowledge --source tianji 半空折翅
-  node scripts/purple-star.ts knowledge --source oracle --topic career --star 七杀`,
+  node scripts/purple-star.ts knowledge --source tianji 半空折翅`,
 	"",
 	FICTION_NOTE,
 ];
@@ -81,7 +80,6 @@ const COMMAND_EXAMPLES: Record<CommandName, readonly string[]> = {
 		"  node scripts/purple-star.ts knowledge --search 机月同梁",
 		"  node scripts/purple-star.ts knowledge --source stars --search 紫微",
 		"  node scripts/purple-star.ts knowledge --source tianji 半空折翅 --book 主星",
-		"  node scripts/purple-star.ts knowledge --source oracle --topic career --star 七杀",
 		"",
 		FICTION_NOTE,
 	],
@@ -224,7 +222,7 @@ export function renderCommandHelp(cmd: CommandName): string {
 	} else if (cmd === "knowledge") {
 		lines.push(
 			"  node scripts/purple-star.ts knowledge [--search <关键词>] [--limit N]",
-			"  node scripts/purple-star.ts knowledge --source <books|stars|tianji|oracle> [域参数…]"
+			"  node scripts/purple-star.ts knowledge --source <books|stars|tianji> [域参数…]"
 		);
 	} else {
 		lines.push(`  node scripts/purple-star.ts ${cmd} [options]`);

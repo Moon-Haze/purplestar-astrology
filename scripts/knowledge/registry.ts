@@ -6,7 +6,7 @@
  * `COMMAND_TABLE` 哲学一致）。新增一个域 = 写一个 `sources/<id>.ts` + 下面加一行，
  * 不必改 `cli/knowledge/index.ts`。
  *
- * 懒加载纪律：tianji / oracle 两域的重语料（392KB / 4.4MB）在各自 `search` 体内
+ * 懒加载纪律：tianji 域的重语料（392KB）在 `search` 体内
  * `await import`，注册表静态 import 的源模块本身是轻的，不会把重数据拉进 CLI 启动。
  * 四域是「实现即插件」形态：渲染逻辑直接住在 `sources/<id>.ts`，无转发壳。
  *
@@ -20,14 +20,12 @@ import type { KnowledgeSource } from "./types";
 import { booksSource } from "./sources/books";
 import { starsSource } from "./sources/stars";
 import { tianjiSource } from "./sources/tianji";
-import { oracleSource } from "./sources/oracle";
 
 /** 所有已注册知识源（键 = `--source` 取值）。顺序即概览列出与报错提示的顺序。 */
 export const KNOWLEDGE_SOURCES: Record<string, KnowledgeSource> = {
 	books: booksSource,
 	stars: starsSource,
 	tianji: tianjiSource,
-	oracle: oracleSource,
 };
 
 /** 注册表键集合（稳定顺序）；CLI 报错提示与自检断言复用，不手抄字符串。 */

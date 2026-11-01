@@ -782,7 +782,7 @@ export const SAMPLES: Sample[] = [
 		args: ["astrology", "--config", "tools/samples/config.example.json"],
 	},
 
-	// ── knowledge：四域（books 默认 / stars / tianji / oracle）──
+	// ── knowledge：三域（books 默认 / stars / tianji）──
 	{
 		group: "knowledge · 知识检索",
 		title: "--search 古籍原文检索（books 域，默认）",
@@ -812,12 +812,6 @@ export const SAMPLES: Sample[] = [
 		title: "--book 限册检索（tianji 域）",
 		desc: "天纪域限定单册（册代号或中文名：主星/十二宫/格局/四化/疾厄）",
 		args: ["knowledge", "--source", "tianji", "--book", "主星", "紫微"],
-	},
-	{
-		group: "knowledge · 知识检索",
-		title: "--source oracle 断语手册",
-		desc: "13 主题 × 十四主星的分类断语快照（--topic 选主题 --star 选星）",
-		args: ["knowledge", "--source", "oracle", "--topic", "career", "--star", "七杀"],
 	},
 	{
 		group: "knowledge · 古籍检索",

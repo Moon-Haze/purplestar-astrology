@@ -80,7 +80,7 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 export const COMMAND_DESC: Record<CommandName, string> = {
 	astrology: "排盘分析一条命令（概览默认 + 功能参数：专题/--palaces/--topic）★ 最常用",
 	knowledge:
-		"统一知识检索（--source 四域：books 古籍默认 / stars 星曜释义 / tianji 天纪判语 / oracle 断语手册）",
+		"统一知识检索（--source 三域：books 古籍默认 / stars 星曜释义 / tianji 天纪判语）",
 	synastry: "合盘（双宫联参 + 夫妻宫断语 + 四化入夫妻宫）",
 	selftest:
 		"回归自检（排盘 / 古籍 / 合盘三段：农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",

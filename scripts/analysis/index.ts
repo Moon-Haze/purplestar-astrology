@@ -29,13 +29,12 @@ import { renderDecadal, renderDecadalItems } from "../analysis/views/decadal";
 import { renderHealth, renderHealthItems } from "../analysis/views/health";
 import { renderKuiYue, renderKuiYueItems } from "../analysis/views/patron";
 import { renderLiuNian, renderLiuNianItems } from "../analysis/views/yearly";
-import { renderOverview, renderOverviewItems } from "../analysis/views/overview";
+import { renderOverview } from "../analysis/views/overview";
 import { renderPersonality, renderPersonalityItems } from "../analysis/views/personality";
 import { renderSanFang, renderSanFangItems } from "../analysis/views/surround";
 import { renderMutagen, renderMutagenItems } from "../analysis/views/mutagen";
 import { renderSuggestions, renderSuggestionsItems } from "../analysis/views/suggestions";
 import { renderYearStem, renderYearStemItems } from "../analysis/views/year-stem";
-import { formatItems, type AnalysisItem } from "../analysis/items";
 import {
 	getTopicReport,
 	getTopicReportMeta,
@@ -67,47 +66,28 @@ export function getTopicAnalysis(
 	topic: TopicKey,
 	options: AnalysisOptions = {}
 ): string {
-	const items = getTopicAnalysisItems(chart, topic, options);
-	if (typeof items === "string") {
-		return items;
-	}
-	// 性别已在各 view 经 selectGender 投影，此处仅拼接，不再做整篇正则过滤。
-	return formatItems(items).join("\n");
-}
-
-/**
- * 生成某个主题的**结构化条目流**（一源双投影的数据面）。
- *
- * @returns 条目流；主宫找不到时返回与 {@link getTopicAnalysis} 同口径的兜底提示串
- *   （该形态无结构化面——调用方以 `typeof === "string"` 分流）。
- *
- * @remarks
- * 与 {@link getTopicAnalysis} 同一编排序（小节序即条目拼接序），各 view 的
- * `renderXxxItems` 产出条目、文本行由 `formatItems` 投影 —— 两个投影同源，
- * 文本形态由基线 diff=0 锚定（structure-analysis-outputs）。
- */
-export function getTopicAnalysisItems(
-	chart: ZiweiChart,
-	topic: TopicKey,
-	options: AnalysisOptions = {}
-): AnalysisItem[] | string {
 	const ctx = makeContext(chart, topic, options);
 	if (!ctx) {
 		return `无法找到${TOPIC_PALACE_NAME[topic]}相关信息。`;
 	}
 
-	return [
-		...renderOverviewItems(ctx), // 一、总论
-		...renderSanFangItems(ctx), // 二、三方四正联动分析
-		...renderMutagenItems(ctx), // 三、本命四化会照
-		...renderYearStemItems(ctx), // 三点五、年干四化·全局关键宫位解读
-		...renderDecadalItems(ctx), // 四、当前大限分析
-		...renderLiuNianItems(ctx), // 四点五、流年 + 四点六、流月
-		...renderPersonalityItems(ctx), // 五、性格专属补充
-		...renderHealthItems(ctx), // 五点五、疾厄宫
-		...renderKuiYueItems(ctx), // 五点六、魁钺贵人倾向细分
-		...renderSuggestionsItems(ctx), // 六、综合建议
+	// 各 view 产结构化条目流（renderXxxItems），文本行是 formatItems 投影——
+	// 条目化是 views 的内部实现形态（structure-analysis-outputs 落地后保留）。
+	const lines: string[] = [
+		...renderOverview(ctx), // 一、总论
+		...renderSanFang(ctx), // 二、三方四正联动分析
+		...renderMutagen(ctx), // 三、本命四化会照
+		...renderYearStem(ctx), // 三点五、年干四化·全局关键宫位解读
+		...renderDecadal(ctx), // 四、当前大限分析
+		...renderLiuNian(ctx), // 四点五、流年 + 四点六、流月
+		...renderPersonality(ctx), // 五、性格专属补充
+		...renderHealth(ctx), // 五点五、疾厄宫
+		...renderKuiYue(ctx), // 五点六、魁钺贵人倾向细分
+		...renderSuggestions(ctx), // 六、综合建议
 	];
+
+	// 性别已在各 view 经 selectGender 投影，此处仅拼接，不再做整篇正则过滤。
+	return lines.join("\n");
 }
 
 // ─── 公开面 re-export ────────────────────────────────────────────────────────
@@ -127,4 +107,4 @@ export {
 	getTopicMainContentTexts,
 	getDecadalSection,
 };
-export type { AnalysisOptions, AnalysisView, TopicKey, ReportCitation, ReportOptions, AnalysisItem };
+export type { AnalysisOptions, AnalysisView, TopicKey, ReportCitation, ReportOptions };

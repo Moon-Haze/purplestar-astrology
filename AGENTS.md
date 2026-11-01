@@ -47,7 +47,7 @@ node scripts/purple-star.ts astrology \
 # 合盘：先排两张盘，再逗号分隔交给 synastry（甲先乙后；本命令不排盘）
 node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json > /tmp/a.json
 node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json
-# 知识检索四域合一（--source：books 古籍默认 / stars 星曜 / tianji 天纪 / oracle 断语）
+# 知识检索三域合一（--source：books 古籍默认 / stars 星曜 / tianji 天纪；oracle 断语手册已下线）
 node scripts/purple-star.ts knowledge --search 机月同梁
 node scripts/purple-star.ts knowledge --source stars --search 紫微
 
@@ -164,7 +164,7 @@ npm run pack
     │   ├── report.ts                --report 全盘主题报告的文档装配层
     │   └── synastry.ts              合盘命令（--charts 输入）
     ├── cli/knowledge/               知识检索命令入口（四域合一：books 古籍 / stars 星曜 /
-    │   └── index.ts                 tianji 天纪 / oracle 断语；前置守卫 + 注册表分发，
+    │   └── index.ts                 tianji 天纪判语；前置守卫 + 注册表分发，
     │                                四域渲染实现住 knowledge/sources/「实现即插件」
     │                                ⚠️ 本目录与 `cli/commands/` **平级**，非其子目录
     ├── cli/host/                    宿主装配（引导层按需加载的端口）
@@ -184,10 +184,10 @@ npm run pack
     │                               + selftest-asserts（断言组，主 selftest 汇总执行）
     │                               ⚠️ 天纪语料在 data/tianji.ts，corpus 下**没有** tianji/ 目录
     ├── knowledge/                  扩展点接缝 Phase 1（KnowledgeSource）：types.ts 接口 +
-    │   ├── registry.ts              registry.ts 清单注册四域（books/stars/tianji/oracle）
+    │   ├── registry.ts              registry.ts 清单注册三域（books/stars/tianji）
     │   ├── types.ts                 + sources/ 各域实现（新增域 = 写源 + 加一行，不改 CLI）
     │   └── sources/                 ⚠️ 重数据懒加载：tianji 在 search 内 await import、
-    │                                oracle 在 search 内开断语手册库（node:sqlite 只读）
+
     ├── school/                     扩展点接缝 Phase 3（SchoolAdapter）：types / registry +
     │   ├── guard.ts                 guard 三合派约束守卫 + schools/wenmo-nishi（当前唯一流派）
     │   ├── registry.ts              ⚠️ **引用而非迁移**：citationRoots 引用内核 ANNOTATIONS，
@@ -262,7 +262,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
   与知识内容（`analysis/` / `corpus/` / `synastry/`）严格分层。**插件层禁止反向依赖 `cli/`，
   禁止修改内核模块状态。**
 - 新增知识内容（古籍 / 主题断语 / 新流派）**不得触碰排盘内核与 CLI 分发**，也不因此需要重跑内核回归。
-- 轻路径纪律：重语料（tianji / oracle）只能在各自 `search` 体内 `await import`，
+- 轻路径纪律：重语料（tianji）只能在 `search` 体内 `await import`，
   注册表静态 import 的源必须轻；help / 未知命令路径不得触发 iztro 加载（`command-meta` 禁 import 命令实现与内核）。
 
 ### 注册表纪律（ADR-002）
@@ -278,15 +278,15 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 - analysis 侧按宫名索引的数据表（次星宫位文案表 / 宫位内容键映射 / 主题关键宫位）一律用**展开形**宫名键，
   与运行时宫名域 `PALACE_NAMES_ORDER` 同域——带「宫」字，第 8 宫是交友宫，**不是** iztro 旧口径的「仆役宫」。
   紧凑形宫名键只作归一中间量，不得直接出现在数据表里。
-- 十四主星名以 `scripts/data/stars.ts` 为唯一真相源；星曜内容表、简述表、主题断语手册的主星键集与之一致。
+- 十四主星名以 `scripts/data/stars.ts` 为唯一真相源；星曜内容表、简述表的主星键集与之一致。
 - 键域漂移（数据表键与运行时键不一致导致的静默 miss）由 `test/invariants.test.ts` 拦截；消费点不得用 `?? ""` 掩盖 miss。
 
 ### 引文纪律
 
 - 凡出现「倪师 / 倪海厦 + 引号句」形态，必须在 `analysis/grades.ts` 登记档位，否则 `npm test` 引文守卫变红。
   **占位或自撰内容绝不可挂倪师引语**（属伪造引文）。
-- 守卫扫描面同时覆盖 `.ts` 与 `.md`（`docs/` / `SKILL.md` / `references/` 等，见 `test/lib/citation-guard.ts` 的 `scanMarkdownCitations`）；`docs/manual/` 是生成导出，按路径排除。断语手册库（`corpus/data/manual/oracle.db`）的行文本经建库期闸门与测试期抽取扫描双道拦截（比对核心住 `corpus/citation-core.ts`，test 与建库工具同引一份）。
-- 断语手册库是**生成物**（`npx tsx tools/db/export-manual.ts db`，字节可复现），不手改；修订链 = 改内核 `scripts/analysis/` → `npm run build:db` → 重建库 → `npm run manual:check` 对拍。
+- 守卫扫描面同时覆盖 `.ts` 与 `.md`（`docs/` / `SKILL.md` / `references/` 等，见 `test/lib/citation-guard.ts` 的 `scanMarkdownCitations`）；`docs/manual/` 是生成导出（格局基线与频率表），按路径排除。引文比对核心住 `corpus/citation-core.ts`（test 与各扫描面同引一份）。
+
 
 ### 缓存
 
@@ -297,7 +297,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 ### 最小 diff 与生成物
 
 - 只格式化本次真正新增 / 改动的行，**不夹带无关格式改动**：整跑 format 会产出数万行纯排版噪声，逐字节 diff 与评审双双失效。
-- 生成文件不手改、改生成器再重导（`data/wenmo-tables.ts`、`corpus/data/tianji.ts`、`corpus/data/manual/oracle.db`、cli-samples 产物）；重导前先想清楚 diff 只含预期变化。
+- 生成文件不手改、改生成器再重导（`data/wenmo-tables.ts`、`corpus/data/tianji.ts`、cli-samples 产物）；重导前先想清楚 diff 只含预期变化。
 - 「重构不改行为」的任务，验收必须含**与改动前基线逐字节 diff=0**（先取基线再动手）。
 
 ### 抽象与重构判据
