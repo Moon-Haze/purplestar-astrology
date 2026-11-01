@@ -48,3 +48,9 @@ package-lock.json
 .Trash-**
 .**test/
 books/**
+
+# ── loop-me 开发产物（grilling 会话产物，不入库）──────────────
+# NOTES.md 与 workflows/ 是 autonomous-loops / loop-me 技能产生的 loop 规格与
+# 运行产物，非 skill 分发件，也不应进版本控制。
+NOTES.md
+workflows/
