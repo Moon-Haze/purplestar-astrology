@@ -13,7 +13,9 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"review": "tsx tools/review-gate.ts",
 		"cli-samples": "tsx tools/cli-samples.ts",
-		"manual:check": "tsx tools/db/export-manual.ts --check",
+		"manual:check": "NODE_OPTIONS=--max-old-space-size=16384 tsx tools/db/export-manual.ts --check",
+		"manual:export": "NODE_OPTIONS=--max-old-space-size=16384 tsx tools/db/export-manual.ts all",
+		"notes:export": "tsx tools/notes/export-notes.ts",
 		"lint": "eslint scripts/ tools/ test/",
 		"lint:fix": "eslint scripts/ tools/ test/ --fix",
 		"format": "prettier --write scripts/ tools/ test/"

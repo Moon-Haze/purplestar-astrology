@@ -34,7 +34,8 @@ import {
 	DATASET_PART_MAX_BYTES,
 	type DbLayout,
 } from "./db";
-import { SQL_SAMPLE_ID_EXPR } from "./sample-id";
+import { sqlSampleIdExpr, type Calendar } from "./sample-id";
+import { materializeTarShards } from "./tar-source";
 
 // ROOT 是 **skill 根**（仓库根），不是 tools/：本文件在 <skill 根>/tools/db/ 下，
 // 故要退两层。少退一层会让默认 --src 落到 tools/samples-out（不存在）——
@@ -164,7 +165,7 @@ export const READ_JSON_COLUMNS = `{
   'system': 'VARCHAR'
 }`;
 
-export function shardSql(): {
+export function shardSql(calendar: Calendar): {
 	temp: string;
 	cleanPalaces: string;
 	cleanSamples: string;
@@ -183,7 +184,8 @@ export function shardSql(): {
 	// 幂等插入：先按本分片的 sample_id 删掉旧行再插。这使「已提交但尚未记账」（进度
 	// 未落盘即崩溃）的分片可以安全重做，而不必撞主键冲突后被永久跳过。
 	// 正常路径上删 0 行，走主键索引，开销可忽略。
-	const idInShard = `SELECT ${SQL_SAMPLE_ID_EXPR} FROM shard`;
+	const idExpr = sqlSampleIdExpr("birthInfo", calendar);
+	const idInShard = `SELECT ${idExpr} FROM shard`;
 	const topicNames = STORAGE_TOPIC_KEYS.map(k => `'${k}'`).join(", ");
 	const topicCols = STORAGE_TOPIC_KEYS.map(k => `topics.${k}`).join(", ");
 	return {
@@ -193,7 +195,7 @@ export function shardSql(): {
 		cleanTopicLines: `DELETE FROM topic_lines WHERE sample_id IN (${idInShard})`,
 		palaces: `
       INSERT INTO palaces
-      SELECT ${SQL_SAMPLE_ID_EXPR} AS sample_id,
+      SELECT ${idExpr} AS sample_id,
         p.name AS palace_name, p.branch, p.stem,
         list_transform(list_filter(p.stars, s -> s.type='major'), s -> s.name) AS major_stars,
         list_transform(list_filter(p.stars, s -> s.type='lucky'),  s -> s.name) AS lucky_stars,
@@ -207,12 +209,12 @@ export function shardSql(): {
       FROM shard, UNNEST(shard.chart.palaces) AS u(p)`,
 		samples: `
       WITH sx AS (
-        SELECT ${SQL_SAMPLE_ID_EXPR} AS sample_id, st.name AS star, st.siHua AS sihua, p.name AS palace
+        SELECT ${idExpr} AS sample_id, st.name AS star, st.siHua AS sihua, p.name AS palace
         FROM shard, UNNEST(shard.chart.palaces) AS u(p), UNNEST(p.stars) AS t(st)
         WHERE st.siHua IS NOT NULL AND st.siHua <> ''
       )
       INSERT INTO samples
-      SELECT ${SQL_SAMPLE_ID_EXPR}, j.birthInfo.year, j.birthInfo.month, j.birthInfo.day, j.birthInfo.hour,
+      SELECT ${idExpr}, j.birthInfo.year, j.birthInfo.month, j.birthInfo.day, j.birthInfo.hour,
         j.birthInfo.gender, j.birthInfo.longitude,
         j.chart.lunarInfo.lunarYear, j.chart.lunarInfo.lunarMonth, j.chart.lunarInfo.lunarDay,
         j.chart.lunarInfo.yearStem, j.chart.lunarInfo.yearBranch, j.chart.lunarInfo.isLeapMonth,
@@ -227,14 +229,14 @@ export function shardSql(): {
           max(CASE WHEN sihua='科' THEN star END)   AS ke_star,   max(CASE WHEN sihua='科' THEN palace END)   AS ke_palace,
           max(CASE WHEN sihua='忌' THEN star END)   AS ji_star,   max(CASE WHEN sihua='忌' THEN palace END)   AS ji_palace
         FROM sx GROUP BY sample_id
-      ) f ON f.sample_id = ${SQL_SAMPLE_ID_EXPR}`,
+      ) f ON f.sample_id = ${idExpr}`,
 		// 13 个文本列展开成 (topic, txt) 行。必须写成「同一 SELECT 列表里两个 unnest」——
 		// DuckDB 会按位置并行展开（zip），而不是笛卡尔积（实测 13 列 × 2,160 样本 = 28,080 行，
 		// 而非 2,160²）。这也是唯一能容纳全量主题文本的写法：13 路 UNION ALL 在同规模下直接 OOM
 		// （spec §9.1 第 3 层）。
 		topicPairs: `CREATE OR REPLACE TEMP TABLE shard_pairs AS
       SELECT sample_id, topic, txt FROM (
-        SELECT ${SQL_SAMPLE_ID_EXPR} AS sample_id,
+        SELECT ${idExpr} AS sample_id,
                unnest([${topicNames}]) AS topic,
                unnest([${topicCols}])  AS txt
         FROM shard
@@ -270,7 +272,7 @@ export function shardSql(): {
 		// 必须带上 sample_id：视图按 SELECT * 暴露，行必须能对回 samples。
 		topicsTo: (parquetPath: string) => `
       COPY (
-        SELECT ${SQL_SAMPLE_ID_EXPR} AS sample_id,
+        SELECT ${idExpr} AS sample_id,
           topics.overview, topics.personality, topics.love, topics.career, topics.wealth,
           topics.health, topics.family, topics.children, topics.move, topics.friends,
           topics.home, topics.spirit, topics.parents
@@ -301,8 +303,12 @@ async function dropTempsQuietly(conn: DuckDBConnection, stmts: string[]): Promis
 }
 
 // pass 1 单分片：只扫字典，不写任何样本数据（不含事务）
-export async function scanShardDict(conn: DuckDBConnection, gzPath: string): Promise<void> {
-	const sql = shardSql();
+export async function scanShardDict(
+	conn: DuckDBConnection,
+	gzPath: string,
+	calendar: Calendar
+): Promise<void> {
+	const sql = shardSql(calendar);
 	try {
 		await conn.run(sql.temp, [gzPath]);
 		await conn.run(sql.topicPairs);
@@ -317,9 +323,10 @@ export async function scanShardDict(conn: DuckDBConnection, gzPath: string): Pro
 export async function encodeShard(
 	conn: DuckDBConnection,
 	gzPath: string,
-	topicsParquetPath?: string
+	topicsParquetPath: string | undefined,
+	calendar: Calendar
 ): Promise<void> {
-	const sql = shardSql();
+	const sql = shardSql(calendar);
 	try {
 		await conn.run(sql.temp, [gzPath]);
 		await conn.run(sql.cleanPalaces);
@@ -359,11 +366,12 @@ async function rollbackQuietly(conn: DuckDBConnection): Promise<void> {
 export async function buildShard(
 	conn: DuckDBConnection,
 	gzPath: string,
-	topicsParquetPath?: string
+	topicsParquetPath: string | undefined,
+	calendar: Calendar
 ): Promise<void> {
 	await conn.run("BEGIN TRANSACTION");
 	try {
-		await encodeShard(conn, gzPath, topicsParquetPath);
+		await encodeShard(conn, gzPath, topicsParquetPath, calendar);
 		await conn.run("COMMIT");
 	} catch (e) {
 		await conn.run("ROLLBACK");
@@ -422,7 +430,9 @@ export async function repackDataset(
 		throw new Error("--out 路径不允许包含 .. 段");
 	}
 	await conn.run("SET threads=4");
-	await conn.run("SET memory_limit='4GB'");
+	// v4 代（ziwei-interp）的解读文本约为 v3 代的 2 倍长，收尾聚合的内存水位随之抬高
+	// —— 4GB 在 924 分片收尾时 OOM（实测 3.7GiB 打满），提到 12GB（机器 30GB 物理内存）。
+	await conn.run("SET memory_limit='12GB'");
 	await conn.run("SET preserve_insertion_order=false");
 	const glob = sqlLiteral(path.join(stagingDir, "*.parquet"));
 	const files: string[] = [];
@@ -540,13 +550,27 @@ async function main() {
 	// 「目录不存在」与「目录存在但没有分片」必须分开报，且都要给出可执行的动作。
 	// 裸的 ENOENT scandir 只打系统路径，读的人分不出是参数打错还是语料真丢了 ——
 	// 而这两者的处置完全相反（改路径 vs 去找/重建语料），误判代价最大。
-	if (!existsSync(args.src)) {
-		throw new Error(
-			`语料目录不存在: ${args.src}\n` +
-				`  --src 默认 <skill 根>/samples-out（60 个年份目录 / 720 个 jsonl.gz）。\n` +
-				`  同一份语料的只读原始快照在 reference/ziwei-samples-toolkit/samples-out，\n` +
-				`  加 --src=<目录> 指向它即可，不必复制。`
+	//
+	// tar 源（ziwei-interp 分发格式：--src=…tar）：先物化成月分片目录再走既有管线 ——
+	// v3 行原样直通，v4 行现场排盘补 chart（ms 交叉校验）。物化幂等（MANIFEST 作
+	// 完成标记），重复构建不重付转换成本。calendar 由此决定 sample_id 编码口径；
+	// 目录源（v3 形态分片）恒为 synthetic。
+	let calendar: Calendar;
+	if (args.src.endsWith(".tar")) {
+		const materialized = await materializeTarShards(
+			args.src,
+			path.join(path.dirname(args.out), path.basename(args.out), "tar-shards")
 		);
+		args.src = materialized.shardDir;
+		calendar = materialized.calendar;
+	} else {
+		if (!existsSync(args.src)) {
+			throw new Error(
+				`语料目录不存在: ${args.src}\n` +
+					`  --src 接月分片目录（year-<YYYY>/*.jsonl.gz）或 ziwei-interp 分发 tar（内含 year-*.jsonl.zst）。`
+			);
+		}
+		calendar = "synthetic";
 	}
 
 	// 只读校验一律排在破坏性操作之前：--force 会删掉旧库、旧进度与字典副本，
@@ -664,7 +688,7 @@ async function main() {
 		for (const rel of shards) {
 			try {
 				await conn.run("BEGIN TRANSACTION");
-				await scanShardDict(conn, path.join(args.src, rel));
+				await scanShardDict(conn, path.join(args.src, rel), calendar);
 				await conn.run("COMMIT");
 			} catch (e) {
 				await rollbackQuietly(conn);
@@ -755,7 +779,7 @@ async function main() {
 				if (stage) {
 					staged.push(stage);
 				}
-				await encodeShard(conn, path.join(args.src, rel), stage?.tmp);
+				await encodeShard(conn, path.join(args.src, rel), stage?.tmp, calendar);
 				done.push(rel);
 				inserted++;
 			}

@@ -247,6 +247,15 @@ function collectMdFiles(root: string, dir = ""): string[] {
 			if (dir === "docs" && entry.name === "manual") {
 				continue;
 			}
+			if (dir === "" && entry.name === "notes") {
+				// notes/ 是知识素材工作台（Obsidian vault：考据台账 + notes:export 生成的
+				// 主题手册 + 课程笔记），文本形态就是大段「倪师说「…」」的原貌记录与整理
+				// —— 实测 189 文件 1167 行命中形态，逐条登记不可行也不该登记。守卫的
+				// 受众是规范面（SKILL.md / references / docs）与源码断语；素材场里的
+				// 引文在进产品面（手册 / corpus / 内核断语）时自然会受本守卫拦截。
+				// 理由与 docs/manual 同款：写注释 + 元测试钉住排除范围不扩大。
+				continue;
+			}
 			out.push(...collectMdFiles(root, rel));
 		} else if (entry.name.endsWith(".md")) {
 			out.push(rel);

@@ -239,8 +239,10 @@ describe("引文守卫：仓库级 .ts 真扫描（流派声明根之外的盲�
 	 * `citationRoots`，塞进流派声明会污染「各流派只扫自己内容」的隔离语义 ——
 	 * 与 `.md` 侧按仓库根扫描（design D4）同一理由、两侧对称。收集器的排除规则同样
 	 * 对称：`.ts` 侧排除 `node_modules` / 点目录 / `corpus/data/manual`（生成快照），
-	 * `.md` 侧排除 `node_modules` / `dist` / 点目录 / `docs/manual` —— 排除的是
-	 * 生成镜像与依赖，不是手写源码。
+	 * `.md` 侧排除 `node_modules` / `dist` / 点目录 / `docs/manual` / `notes/` —— 排除的是
+	 * 生成镜像与依赖（docs/manual）以及素材工作台（notes/：考据台账与 export 生成的
+	 * 主题手册，其功能就是原样记录「倪师说…」形态，进产品面时自然受守卫拦截），
+	 * 不是手写源码。
 	 */
 	const TS = scanCitations(REPO_ROOT);
 

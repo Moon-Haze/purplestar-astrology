@@ -316,6 +316,16 @@ export const ANNOTATIONS: AnnotationEntry[] = [
 	},
 	{ text: "倪师说「田宅化忌，家破财散」", status: "suspect", note: "传统口诀" },
 	{
+		text: "倪师说「田宅宫化忌，家破财散」",
+		status: "suspect",
+		note: "带宫字变体（notes/60-方法/引文真伪分级.md 台账考据行）。已查证 purplestar-voice 全量转写语料零命中「家破财散」，markdown 层同名标题系整理层所编、正文无关 —— 无据",
+	},
+	{
+		text: "倪师说「自化者，能量自耗或自成」",
+		status: "fabricated",
+		note: "编造句（同上台账）。字面语料零命中；语料中「自化」实为疾厄「解厄自化」语境（凶星化解、天府例外），与北派宫干自化的「能量自耗」概念无关 —— 应改为『北派四化论』",
+	},
+	{
 		text: "倪师重点警示：「福德宫化忌，夫妻宫未见生离，必定死别」",
 		status: "suspect",
 		note: "⚠️ 疑似北派钦天，非倪师",

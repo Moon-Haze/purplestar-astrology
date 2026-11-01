@@ -351,7 +351,10 @@ export async function openDataset(datasetDir: string): Promise<DuckDBConnection>
 	const conn = await instance.connect();
 	try {
 		await conn.run("SET threads=4");
-		await conn.run("SET memory_limit='4GB'");
+		// v4 代（ziwei-interp）的解读文本约为 v3 代的 2 倍长。此限与 build-duckdb 的
+		// 12GB 不同：导出/查询与 node 侧 collectTopic 同进程共存，须给宿主留物理内存
+		// （30GB 机器上 node 10GB + DuckDB 6GB + 系统 ≈ 安全水位，物理 OOM killer 实测会杀 node）。
+		await conn.run("SET memory_limit='6GB'");
 		for (const stmt of datasetSchemaSql(datasetDir)) {
 			await conn.run(stmt);
 		}

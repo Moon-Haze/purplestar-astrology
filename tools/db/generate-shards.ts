@@ -27,8 +27,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compactPalaceKey } from "../../scripts/data/ganzhi";
 import { STORAGE_TOPIC_KEYS } from "../../scripts/analysis/data";
+import { toShardChart } from "./shard-format";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // tools/db
 const SKILL_ROOT = resolve(HERE, "../..");
@@ -59,46 +59,7 @@ if (
 	throw new Error(`--from-year/--to-year 应为 ${YEAR_MIN}–${YEAR_MAX} 内的整数年段`);
 }
 
-// ── 本仓 chart → 导出口径 ─────────────────────────────────────────────────────
-const STAR_TYPE_OUT: Record<string, string> = {
-	major: "major",
-	minor: "minor",
-	soft: "lucky",
-	tough: "sha",
-};
-
-type AnyChart = ReturnType<typeof generateChart>;
-
-/** 本仓 ZiweiChart → 分片 chart（导出口径字段名 + 紧凑宫名 + lucky/sha 星型）。 */
-function toShardChart(chart: AnyChart, birth: Record<string, unknown>) {
-	return {
-		birthInfo: birth,
-		lunarInfo: chart.lunarInfo,
-		mingGongBranch: chart.soulBranch,
-		shenGongBranch: chart.bodyBranch,
-		wuxingJu: chart.fiveElementsClass,
-		wuxingJuName: chart.fiveElementsClassName,
-		ziweiPos: chart.ziweiPos,
-		palaces: chart.palaces.map(p => ({
-			branch: p.branch,
-			stem: p.stem,
-			name: compactPalaceKey(p.name),
-			stars: p.stars.map(s => ({
-				name: s.name,
-				type: STAR_TYPE_OUT[s.type],
-				...(s.brightness !== undefined ? { brightness: s.brightness } : {}),
-				siHua: s.mutagen ?? "",
-			})),
-			daXianAge: p.decadalRange,
-			isMingGong: p.isSoulPalace,
-			isShenGong: p.isBodyPalace,
-			isCurrentDaXian: p.isCurrentDecadal,
-		})),
-		daXians: chart.decadals.map(d => ({ ...d, palaceName: compactPalaceKey(d.palaceName) })),
-		currentAge: chart.currentAge,
-		currentDaXianIndex: chart.currentDecadalIndex,
-	};
-}
+// ── 本仓 chart → 导出口径的映射在 ./shard-format（与 tar-source 共用的序列化单点）──
 
 // ── 主循环：年（常量域遍历 + 过滤）→ 月分片（30 日 × 12 时辰 × 2 性别 = 720 行/片）
 const t0 = Date.now();

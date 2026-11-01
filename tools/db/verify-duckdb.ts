@@ -174,7 +174,7 @@ export async function verifyDimensions(conn: DuckDBConnection): Promise<CheckRes
 	const drift = await one(
 		conn,
 		`
-    SELECT count(*) FROM samples s WHERE s.sample_id <> (${sqlSampleIdExpr("s")})`
+    SELECT count(*) FROM samples s WHERE s.sample_id <> (${sqlSampleIdExpr("s", "synthetic")})`
 	);
 	const n = Number((await one(conn, "SELECT count(*) FROM samples"))[0]);
 	const isFullBuild = n === FULL_BUILD_SAMPLES;
@@ -264,7 +264,7 @@ export async function verifySampling(conn: DuckDBConnection, src: string): Promi
 
 // 源文件定位：id → year/month → 分片；流式解压扫描匹配 birthInfo 的行
 async function readSourceRecord(src: string, id: number): Promise<Record<string, any> | null> {
-	const { year, month, day, timeIndex, gender } = decodeSampleId(id);
+	const { year, month, day, timeIndex, gender } = decodeSampleId(id, "synthetic");
 	const file = path.join(
 		src,
 		`year-${year}`,
@@ -644,14 +644,14 @@ export async function verifyTopicText(
 			problems.push(`源分片缺失 ${absent[0]}`);
 			continue;
 		}
-		const lo = sampleId(chunk[0].year, chunk[0].month, 1, 0, "male");
+		const lo = sampleId(chunk[0].year, chunk[0].month, 1, 0, "male", "synthetic");
 		const last = chunk[chunk.length - 1];
-		const hi = sampleId(last.year, last.month, 30, 11, "female");
+		const hi = sampleId(last.year, last.month, 30, 11, "female", "synthetic");
 		// read_json 不接受 LIST 绑定参数（实测 "Cannot create values of type ANY"），
 		// 故文件列表必须拼成 SQL 列表字面量，路径按规范转义单引号
 		await conn.run(`CREATE OR REPLACE TEMP TABLE src_h AS
       SELECT sample_id, topic, md5(txt) AS h FROM (
-        SELECT ${sqlSampleIdExpr("r.birthInfo")} AS sample_id,
+        SELECT ${sqlSampleIdExpr("r.birthInfo", "synthetic")} AS sample_id,
                unnest([${topicNames}]) AS topic,
                unnest([${topicCols}])  AS txt
         FROM read_json([${files.map(sqlLiteral).join(", ")}],
