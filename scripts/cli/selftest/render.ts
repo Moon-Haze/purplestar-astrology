@@ -79,19 +79,8 @@ export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">
 		return "mingpan / daxian / liunian / liuyue";
 	});
 	ok("引导层豁免有界：boot-hooks.ts 只依赖 node: 内置", () => {
-		// scripts/boot-hooks.ts 是引导层**唯一**被允许静态 import 的非 node: 模块。
-		// 「引导层不得出现普通静态 import」那条规则的实质是「禁止在钩子注册前触发 .ts 解析」，
-		// 而 boot-hooks.ts 只依赖 node: 内置、调用点又写全了 .ts 扩展名，故由 Node 原生
-		// 类型擦除加载，不触碰钩子 —— 这份豁免正是靠这一点成立。
-		//
-		// ⚠️ 越界有两种形态，只有一种会自己喊出来（两种都实测过）：
-		//   · 省略扩展名（`import … from "./constants"`）→ 钩子尚未注册，CLI 当场崩
-		//     ERR_MODULE_NOT_FOUND。吵，但不危险 —— 不需要本断言。
-		//   · 写全扩展名（`import … from "./constants.ts"`）→ **照常跑通**，
-		//     因为那个文件恰好没有自己的依赖。实测此时 48/49：除本断言外全绿。
-		//     这是颗哑雷 —— 哪天该文件多一个 `@/` 或省略扩展名的 import，引导层就会在
-		//     钩子注册前崩掉，而崩因指向的是一次看似无关的改动。
-		// 本断言守的是后一种。
+		// boot-hooks 豁免为何成立 + 「写全扩展名」哑雷（⚠️ 本断言守的就是后一种）：
+		// 详见 docs/code/cli-selftest.md
 		const src = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
 		const specs = [...src.matchAll(/^\s*import\s[^;]*?from\s+["']([^"']+)["']/gm)].map(
 			m => m[1]

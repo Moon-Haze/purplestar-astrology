@@ -218,17 +218,8 @@ function detectHuoTanLingTan({ chart }: DetectContext): Pattern[] {
 		return [];
 	}
 
-	// 判定域：火/铃与贪狼**同宫**。
-	//
-	// ⚠️ 口径由「同宫或三方四正会照 + 贪狼须会照命宫三方」收窄，取 topic 侧
-	// （analysis.ts 的 detectGeJu）口径 —— 它只要求 `贪狼宫内有火铃`。
-	// 旧口径的两个毛病：① 三方四正**不可传递**，`sameOrTrine` 比的是**贪狼的**三方，
-	// 而 `isInSanFang` 只约束贪狼本身，于是命中盘里有一部分煞星其实照不到命宫
-	// （旧断言实测 32 次命中里 12 次如此）；② 判词写「主突发横财」，但贪狼在命宫三方
-	// 之外（如田宅宫）逢火铃也算，与命格无关。
-	// 代价：格局不再锚定命宫，贪狼在田宅/夫妻等宫逢火铃同样成格 —— `required` 如实写出这一点。
-	//
-	// 火铃**同时**同宫于贪狼时只出「火贪格」：沿用 topic 的 `else if` 语义，不并列两条。
+	// 判定域：火/铃与贪狼**同宫**。⚠️ 口径收窄的理由、与命宫解锚的代价、
+	// 火铃同宫只出一条的并列语义：详见 docs/code/patterns.md
 	const hasFire = hasStar(tan, "火星");
 	const hasLing = hasStar(tan, "铃星");
 	if (!hasFire && !hasLing) {

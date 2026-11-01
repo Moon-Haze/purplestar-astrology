@@ -96,18 +96,8 @@ export function dictPathFor(dbPath: string): string {
 
 // 库内 topics 视图：13 列文本由行号数组拼回。列序与原先的外置 Parquet 版本一致，
 // 故所有既有查询 SQL 无需改动。
-//
-// 两处写法都是必需的（均为实测结论）：
-//
-// 1. 必须走 unnest 展开路径：string_agg 只在输入为多行标量时按行拼接，直接传数组会被
-//    字符串化成 "[a, '']" 这样的字面量并返回，不报错但结果全错（spec §6.1）。
-// 2. 两处都必须是 LEFT JOIN，不能写逗号连接 + JOIN：
-//       FROM topic_lines tl, unnest(tl.line_ids) u(id)  →  空数组产生 0 行，
-//     「该主题文本为 NULL」的 (样本, 主题) 对会整行消失；若某个样本 13 个主题全是 NULL，
-//    该样本会从视图里凭空消失（实测 3 行输入只剩 2 行：[] 的那行没了）。
-//    LEFT JOIN unnest(...) ON TRUE + LEFT JOIN topic_dict 让该行留下、string_agg 无输入
-//    → 输出 NULL，正是源侧 NULL 的语义。
-//    实测 25,920 样本上两种写法耗时无差（全量重建 0.313s vs 0.334s，点查 0.017s vs 0.014s）。
+// ⚠️ unnest 展开与两处 LEFT JOIN 缺一不可（实测：数组字面量化 / NULL 行整对消失）：
+// 详见 docs/code/db-tools.md
 export function topicsViewSql(): string {
 	const cols = STORAGE_TOPIC_KEYS.map(
 		k =>
@@ -152,18 +142,8 @@ export async function openReadOnly(p: string): Promise<DuckDBConnection> {
 export type DbLayout = "inline" | "parquet";
 
 // ── 输出位置的唯一定义处 ──
-// build / verify / query 三个脚本都从这里取名字，不各自拼装：路径规则只有一份，
-// 改一次即三处同步，不会出现「build 写到 A、query 读 B」这类只在下游才暴露的漂移。
-//
-// 命令行只给一个目录（--out=DIR），名字全部固定：
-//   <DIR>/ziwei.duckdb                 库文件（inline 与 dataset 的构建载体）
-//   <DIR>/dataset/                     分发 parquet 目录（仅 --mode=dataset）
-//   <DIR>/ziwei.duckdb.dict.jsonl      行字典副本（见 dictPathFor）
-//   <DIR>/ziwei.duckdb.progress.json   构建进度（断点续跑）
-//
-// 路径参数契约（与 cli/host/out.ts 的 --out 同款）：拒收含 `..` 段的**原始**路径，
-// 绝对路径与子目录不受影响，相对位置的跳转一律用绝对路径表达。校验必须写在
-// 各自函数体内（内联 if-throw），抽公共函数则调用方视图中断不了污点流。
+// build / verify / query 三脚本共用；四个固定文件名与 `..` 段拒收契约（⚠️ 校验必须内联在
+// 各自函数体内，抽公共函数断不了污点流）：详见 docs/code/db-tools.md
 export function dbPathIn(outDir: string): string {
 	if (outDir.split(/[\\/]/).includes("..")) {
 		throw new Error("--out 路径不允许包含 .. 段");
@@ -312,16 +292,9 @@ export async function detectLayout(conn: DuckDBConnection): Promise<DbLayout | "
 }
 
 // ── 读侧：查询目标解析与 dataset 形态的打开 ──
-//
 // 形态判定（spec §6.1）：有 dataset/ 就走 dataset，库只在没有 dataset/ 时才用。
-//
-// 顺序不能反。dataset 形态下视图与宏都是**每次查询时**按当次 --out 现建的，路径永远指向
-// 本次目录；而库在 dataset 形态下只是构建载体——库内 topics 视图把构建时的绝对路径烧死
-// 在定义里（搬到别处就查不了，原目录还在时更会静默读旧数据），且库里根本没有
-// search_topic 宏。所以「库在就用库」会让本地 build:db --mode=dataset 之后这一最常见
-// 状态既查不到 search_topic，又在搬运产物目录后读到旧数据。
-//
-// inline 形态不产 dataset/，仍然走库——本顺序对它没有影响。
+// ⚠️ 顺序不能反（dataset 形态下视图/宏按次现建，库内定义烧死构建期路径、且无宏）：
+// 详见 docs/code/db-tools.md
 export type QueryTarget =
 	{ kind: "db"; dbPath: string } | { kind: "dataset"; datasetDir: string } | { kind: "none" };
 

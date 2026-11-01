@@ -12,6 +12,7 @@
 		"bench:startup": "tsx tools/bench/startup.ts",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"review": "tsx tools/review-gate.ts",
+		"code-style:check": "tsx tools/code-style/long-comment-check.ts",
 		"cli-samples": "tsx tools/cli-samples.ts",
 		"manual:check": "NODE_OPTIONS=--max-old-space-size=16384 tsx tools/db/export-manual.ts --check",
 		"manual:export": "NODE_OPTIONS=--max-old-space-size=16384 tsx tools/db/export-manual.ts all",

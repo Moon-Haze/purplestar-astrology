@@ -559,21 +559,8 @@ export async function verifyReferentialIntegrity(conn: DuckDBConnection): Promis
 // 第 3 层 · 文本逐字节对账（spec §9.1）：按分片分块，块内两侧都归约为
 // (sample_id, topic, md5(文本)) 后**一次比对抓两个方向**。md5 对整段文本计算，
 // 故行序错乱同样会抓到。
-//
-// 比对用 FULL OUTER JOIN + IS DISTINCT FROM，不用 EXCEPT（实测）：
-// 两个含 unnest 的**视图**做 EXCEPT，即使只取 6,000 个样本、只比 2 个主题列，
-// 在 4GB 内存上限下也直接 OOM；把四个 EXCEPT 计数写成同一个 SELECT 的四个兄弟标量子
-// 查询同样 OOM。EXCEPT 两侧必须是已物化且行数已被分块限住的临时表才可行，
-// 而一旦两侧都是临时表，FULL OUTER JOIN 就是更省的选择：实测 2,160 样本 / 28,080 行
-// 上 2ms 完成，且能同时报告「仅源有」「仅库有」与「哈希不同」三种差异。
-//
-// 源侧取构建时的输入 .jsonl.gz——源文件是构建真正读入的原始数据，比库侧视图更强。
-// 源侧必须是单次扫描 + 对齐 unnest：13 路 UNION ALL
-// 在同规模下直接 OOM（实测 3 分片 / 2GB）。
-//
-// 分块按「库里实际有哪些月份」推导，故范围构建（--from-year/--to-year）也能正确对账，
-// 不会把库里没有的月份算成差异。实测 3 分片 / 2,160 样本 / 28,080 行：232ms 通过，
-// 差异 0；12 分片 / 8,640 样本在 2GB 下 OOM。块的约束来自文本总量而非样本数。
+// ⚠️ 三条实测纪律（FULL OUTER JOIN 代 EXCEPT 防 OOM / 源侧单次扫描 + 对齐 unnest /
+// 分块按库内实际月份推导）：详见 docs/code/db-tools.md
 export async function verifyTopicText(
 	conn: DuckDBConnection,
 	src: string,

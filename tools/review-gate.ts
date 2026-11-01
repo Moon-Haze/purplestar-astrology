@@ -31,6 +31,7 @@ import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:f
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEMO_POSITIONAL } from "../scripts/cli/selftest/sample.ts";
+import { checkLongComments } from "./code-style/long-comment-check.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // tools/
 const SKILL_ROOT = resolve(HERE, "..");
@@ -326,6 +327,22 @@ function mechanical(files: ChangedFile[], adds: AddedLine[]): Finding[] {
 		}
 	}
 
+	// 长注释：code-style spec 硬条款（连续 >10 行外置 docs/code/），这里只报位置与行数，
+	// 阈值与排除口径的登记处在该 spec。存量已一次性清零，新增/改动文件必须守；
+	// 级别 🔴 —— 报而不拦等于没守（proposal 的验证义务）。
+	const longComments = checkLongComments(files.filter(f => f.status !== "D").map(f => f.path));
+	if (longComments.length) {
+		out.push({
+			level: "🔴",
+			title: "新增/改动文件含 >10 行连续注释",
+			where: longComments
+				.slice(0, 5)
+				.map(h => `${h.file}:${h.line}（${h.lines} 行）`)
+				.join("  "),
+			why: "code-style spec：连续注释 >10 行 SHALL 外置 docs/code/<topic>.md，源码留单行引用（头块/JSDoc/test/ 除外）。",
+		});
+	}
+
 	// 新增行里的倪师引句形态 —— **只报位置，不判是否已登记**（判据归 selftest）
 	const niQuote = adds.filter(
 		a => isContentLine(a) && /(?<!非)倪(?:师|海厦)[^「」"“”]{0,18}[：:]?[「"]/.test(a.text)
@@ -394,16 +411,8 @@ function touchesDir(paths: string[], frag: string): boolean {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// 逐字节对拍 —— 重构类变更的硬证据
-//
-// 本会话手工做过三次，每次都踩坑，故固化成工具：
-//   ① 快照落 /tmp → 它会被清空 → cmp 对**两个都不存在**的文件返回失败
-//      → 9 个场景全报 DIFFERS，差点当成「改动破坏了全部输出」否掉一次正确改动。
-//      故快照落**仓库内** .review-tmp/（已 .gitignore），并逐个校验快照非空。
-//   ② `cmd | grep -c X && next` 在零匹配时 grep 返回 1、next 根本不执行 ——
-//      闸门"跑过"是假的。故比对前**显式校验每个快照**，校验不过报「验证手段失准」
-//      并以失败退出，**绝不**报成 DIFFERS。
-//   ③ stash 必须保证还原。故用 try/finally，并核对还原后的工作区与 stash 前一致。
+// 逐字节对拍 —— 重构类变更的硬证据。三条实测教训（快照落点 / 快照校验 / stash 还原）：
+// 详见 docs/code/review-gate.md
 // ══════════════════════════════════════════════════════════════════════
 
 /** 快照目录（仓库内；已进 .gitignore，故不会被 stash 卷进去、也不会被误提交）。 */

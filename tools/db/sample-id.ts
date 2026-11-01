@@ -48,18 +48,8 @@ export function decodeSampleId(
 
 // SQL 侧同一公式，列名以 prefix 限定（'birthInfo' 对应 read_json 的 struct 字段，
 // 's' 对应 samples 表别名）。构建按源数据集的日历口径传入 calendar，避免公式分叉。
-//
-// ⚠️ 源字段名是 `hour`（ziwei-interp 分片的导出口径），**语义是时辰索引 0–11**、
-//    不是钟点 —— 曾误改成本仓内部命名 timeIndex，导致 read_json 永远取 NULL、
-//    palaces.sample_id 全数违约。
-//
-// ⚠️ day 容器必须与日历口径配套：solar（真实公历）若用 30 容器，31 日会与次月 1 号
-//    撞 id（(m-1)*30+30 = m*30+0）。
-//
-// 必须把 year 显式转 BIGINT：read_json 的 columns 把 year/month/day/hour 声明为 SMALLINT，
-// 而 DuckDB 会把「能容纳于 SMALLINT 的字面量」下推为 SMALLINT，使整式在 INT16 内求值 ——
-// 真实数据上必然 "Overflow in multiplication of INT16"。
-// 一旦首项为 BIGINT，其后各级运算随之提升（solar 最大 686,880 亦无碍）。
+// ⚠️ 三个实测陷阱（源字段名 `hour` 实为时辰索引 / day 容器须配日历口径 / year 必须显式
+// BIGINT 防 SMALLINT 溢出）：详见 docs/code/db-tools.md
 export function sqlSampleIdExpr(prefix: string, calendar: Calendar): string {
 	const { baseYear, dayContainer } = CALIBER[calendar];
 	return (
