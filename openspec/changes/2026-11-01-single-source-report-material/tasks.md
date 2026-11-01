@@ -8,7 +8,7 @@
 - [x] 1.1 取基线：固定样本盘（`--date 2005-05-05 --time 09:30 --city 北京 --gender male`）
       落盘 `--report` 全量输出与 `--topic` 全部主题输出到 `/tmp/`（各一份）。
       判据 `[退出码]`：两条命令退出码均为 0；两份基线文件非空且行数 > 0。
-- [ ] 1.2 `scripts/analysis/overview-material.ts`：在 `OverviewMaterial` 增 `mainStarLine: string`
+- [x] 1.2 `scripts/analysis/overview-material.ts`：在 `OverviewMaterial` 增 `mainStarLine: string`
       与 `loanTag: string`，注释写明「两形态共用单点」；`buildOverviewMaterial` 的**两个返回
       分支都要给值**（兜底分支按 `isLoan` 计算借宫注，保持该分支现有逐字形态）。
       判据 `[计数]`：`grep -rn "本宫主星：" scripts/` 命中数由 2 处降为 1 处（只在

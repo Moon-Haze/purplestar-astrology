@@ -53,6 +53,17 @@ export interface OverviewMaterial {
 	mainBadge: string;
 	/** 借宫注记（`（X空宫，借对宫Y论事）`），非借宫为空串 */
 	loanNote: string;
+	/**
+	 * 「本宫主星」整行（`本宫主星：` + 借宫注 + 主星徽标 + overview 主题的五行局尾）。
+	 *
+	 * @remarks
+	 * 两形态共用单点：`views/overview.ts` 的【】版式与 `report.ts` 的 ### 版式都取
+	 * 此字段——此前它们各拼一遍，同一行已实测逐字分叉（借宫时报告侧丢了星名）。
+	 * 编排器只做版式装配，不得重建这行的拼式。
+	 */
+	mainStarLine: string;
+	/** 借宫徽标（借宫为「借对宫」，否则空串）—— 供 `--report` 板块标题用 */
+	loanTag: string;
 	/** 技术性星曜详解全文（overview 用 mingGong，其余按 contentKey） */
 	content: string | undefined;
 	/** 亮度补充行（`▶ …` 前缀已带） */
@@ -76,16 +87,24 @@ export interface OverviewMaterial {
  */
 export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	const { chart, topic, palaceName, mainStars, primaryStar, profile, isLoan, gender } = ctx;
+	// 五行局尾：仅 overview 主题追加，两个编排器此前各写一遍（同 derivation 的第二处复写）
+	const fiveTail = topic === "overview" ? `，${chart.fiveElementsClassName}` : "";
 
 	if (!(primaryStar && profile)) {
+		// 兜底分支（主宫与对宫俱无主星）：借宫注按 isLoan 单独算（无星名可写），
+		// 逐字保持该分支现有形态。
+		const loanNote = isLoan ? `（${palaceName}空宫，借对宫论事）` : "";
+		const mainBadge = "空宫";
 		return {
 			mods: [],
 			modsMeta: [],
 			gejuMeta: [],
 			geju: [],
 			summary: undefined,
-			mainBadge: "空宫",
-			loanNote: "",
+			mainBadge,
+			loanNote,
+			mainStarLine: `本宫主星：${loanNote}${mainBadge}${fiveTail}`,
+			loanTag: isLoan ? "借对宫" : "",
 			content: undefined,
 			brightNote: undefined,
 			secondStar: undefined,
@@ -131,6 +150,7 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 
 	const mainBadge = mainStars.map(s => starBadge(s)).join("、") || "空宫";
 	const loanNote = isLoan ? `（${palaceName}空宫，借对宫${primaryStar.name}论事）` : "";
+	const mainStarLine = `本宫主星：${loanNote}${mainBadge}${fiveTail}`;
 
 	const contentKey = TOPIC_CONTENT_KEY[topic];
 	const contentRaw =
@@ -171,6 +191,8 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 		summary,
 		mainBadge,
 		loanNote,
+		mainStarLine,
+		loanTag: isLoan ? "借对宫" : "",
 		content,
 		brightNote,
 		secondStar,
