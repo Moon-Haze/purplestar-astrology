@@ -37,7 +37,27 @@ import {
 import { ALL_SKILLS, REPO_ROOT, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
 // ⚠️ 核对表是**唯一一份数据资产**，它留在内核里 —— 数据留原地，逻辑搬到测试侧。
 import { ANNOTATIONS } from "../scripts/corpus/data/annotations.ts";
+import { findViolations } from "../scripts/corpus/citation-core.ts";
 import { SCHOOLS, SCHOOL_IDS } from "../scripts/school/registry.ts";
+import { DatabaseSync } from "node:sqlite";
+
+// ── 断语手册库的行文本抽取（进程内算一次，供下方库扫描组消费）──
+//
+// 库是二进制，`.ts` 收集面读不到——抽取是库形态下守卫不失明的唯一途径。texts 是全部
+// 入库文本的字典（patterns / sihua 的判词也在其中），抽它即全量。库在 `scripts/` 分发面
+// 内，仓库态与分发态都可用；缺库在本模块加载时即抛错（文件级红，宁可红不假绿）。
+const DB_BODIES: string[] = (() => {
+	const db = new DatabaseSync(resolve(REPO_ROOT, "scripts/corpus/data/manual/oracle.db"), {
+		readOnly: true,
+	});
+	try {
+		return (db.prepare("SELECT body FROM texts").all() as Array<{ body: string }>).map(
+			r => r.body
+		);
+	} finally {
+		db.close();
+	}
+})();
 
 /**
  * 从核对表里现取一条未核实引文的核心，用作违例样本。
@@ -266,6 +286,21 @@ describe("引文守卫：仓库级 .ts 真扫描（流派声明根之外的盲�
 			TS.violations,
 			[],
 			`以下未核实引文在仓库 .ts 里仍冒充倪师原话（应改古诀云/紫微斗数有云/一说，或补核对记录）：\n${TS.violations.join("\n")}`
+		);
+	});
+});
+
+describe("引文守卫：断语手册库抽取扫描（oracle.db 行文本）", () => {
+	it("真的抽到了断语文本 —— 空转防护（库为空时守卫无事可做）", () => {
+		assert.ok(DB_BODIES.length > 0, "一行断语都没抽到 —— 库是空的还是路径歪了？");
+	});
+
+	it("零违例：库内没有黑名单引文仍冒充倪师原话（建库期闸门漏网的双保险）", () => {
+		const violations = findViolations(DB_BODIES);
+		assert.deepEqual(
+			violations,
+			[],
+			`以下黑名单引文在断语手册库中仍冒充倪师原话（建库期闸门应已拦截——两道闸都失守才到这里）：\n${violations.join("\n")}`
 		);
 	});
 });

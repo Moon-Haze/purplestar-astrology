@@ -1,0 +1,2 @@
+# 断语手册库是构建产物（二进制 SQLite），diff 无逐行意义——防 git 伪 diff 噪声
+scripts/corpus/data/manual/oracle.db binary

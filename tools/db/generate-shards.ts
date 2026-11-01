@@ -15,6 +15,12 @@
  * --from-year / --to-year 只做**过滤**不进路径。格式与 toolkit samples-out /
  * db-slim read_json 契约逐字一致：
  *   year-YYYY/YYYY-MM.jsonl.gz，每行 {birthInfo, chart, topics, system}，其中
+ *
+ * 结构化第二产出（structure-analysis-outputs）：每行另含 `items` 字段 ——
+ * `getTopicAnalysisItems` 的 13 主题条目流（{topic, items}），**已过滤**
+ * `kind === "head"` 与空行条目（渲染面专属，不入数据面）。时钟依赖条目保留
+ * `clockDependent` 标记随行携带，由消费端（build-duckdb 入库）排除——标记在
+ * 源头、排除在消费，比导出时静默丢弃可见。
  *   - birthInfo.hour = **时辰索引 0–11**（导出口径的字段名，语义非钟点）
  *   - chart 用导出口径字段名（mingGongBranch/siHua/daXianAge/isMingGong…），
  *     宫名为**紧凑键**（compactPalaceKey：交友宫→仆役），星曜 type soft→lucky、tough→sha
@@ -40,7 +46,7 @@ const YEAR_MAX = 1983;
 
 // 相对导入（tools/ 不走 @/ 别名），与 export-manual.ts 同款
 const { generateChart } = await import("../../scripts/algorithm");
-const { getTopicAnalysis } = await import("../../scripts/analysis");
+const { getTopicAnalysis, getTopicAnalysisItems } = await import("../../scripts/analysis");
 
 // ── 参数（仅年段过滤，值域校验，不进路径）───────────────────────────────────
 const argv = process.argv.slice(2);
@@ -85,14 +91,23 @@ for (let year = YEAR_MIN; year <= YEAR_MAX; year++) {
 						longitude: 120,
 					});
 					const topics: Record<string, string> = {};
+					const structured: Array<{ topic: string; items: unknown[] }> = [];
 					for (const t of STORAGE_TOPIC_KEYS) {
 						topics[t] = getTopicAnalysis(chart, t, { view: "mingpan" });
+						const its = getTopicAnalysisItems(chart, t, { view: "mingpan" });
+						if (typeof its !== "string") {
+							structured.push({
+								topic: t,
+								items: its.filter(it => it.kind !== "head" && it.text !== ""),
+							});
+						}
 					}
 					lines.push(
 						JSON.stringify({
 							birthInfo,
 							chart: toShardChart(chart, birthInfo),
 							topics,
+							items: structured,
 							system: "倪海厦紫微斗数",
 						})
 					);

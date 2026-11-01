@@ -38,6 +38,13 @@ export function starBadge(star: { name: string; mutagen?: string; brightness?: s
 export interface OverviewMaterial {
 	/** 命盘关键定制（topic_mods 的亮度 / 四化双键注入），仅核心主题（含 personality）非空 */
 	mods: string[];
+	/**
+	 * mods 的语义元数据（与 mods 同序同源——拼串处的原始键值双份透出，供结构化
+	 * 条目携带，禁止从成文反解）。
+	 */
+	modsMeta: Array<{ brightness?: string; mutagen?: string }>;
+	/** geju 的格局名元数据（与 geju 同序同源） */
+	gejuMeta: Array<{ name: string }>;
 	/** 格局行（`⭐ **名**：描述`），仅 overview / personality 主题非空 */
 	geju: string[];
 	/** 星曜深层特质（summary），仅核心 5 主题（不含 personality）非空 */
@@ -73,6 +80,8 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	if (!(primaryStar && profile)) {
 		return {
 			mods: [],
+			modsMeta: [],
+			gejuMeta: [],
 			geju: [],
 			summary: undefined,
 			mainBadge: "空宫",
@@ -90,6 +99,7 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 
 	// ── 动态内容优先：命盘关键定制（亮度 + 四化的 topic_mods，仅核心主题）──
 	const mods: string[] = [];
+	const modsMeta: Array<{ brightness?: string; mutagen?: string }> = [];
 	if (isCoreTopic) {
 		const topicMod = profile.topic_mods?.[summaryKey as keyof typeof profile.topic_mods];
 		const brightnessKey =
@@ -103,17 +113,18 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 			: null;
 		if (brightnessKey && topicMod?.[brightnessKey]) {
 			mods.push(selectGender(topicMod[brightnessKey], gender));
+			modsMeta.push({ brightness: primaryStar.brightness });
 		}
 		if (sihuaKey && topicMod?.[sihuaKey]) {
 			mods.push(selectGender(topicMod[sihuaKey], gender));
+			modsMeta.push({ mutagen: primaryStar.mutagen });
 		}
 	}
 
 	// 格局识别（仅 overview / personality 展示）
-	const geju =
-		topic === "overview" || topic === "personality"
-			? detectGeJu(chart).map(gj => `⭐ **${gj.name}**：${gj.description}`)
-			: [];
+	const gejuDetected =
+		topic === "overview" || topic === "personality" ? detectGeJu(chart) : [];
+	const geju = gejuDetected.map(gj => `⭐ **${gj.name}**：${gj.description}`);
 
 	// 静态白话总论（summary，核心 5 主题；personality 跳过避免与 overview 雷同）
 	const summary = SUMMARY_TOPICS.has(topic) ? profile.summary?.[gender]?.[summaryKey] : undefined;
@@ -154,6 +165,8 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 
 	return {
 		mods,
+		modsMeta,
+		gejuMeta: gejuDetected.map(gj => ({ name: gj.name })),
 		geju,
 		summary,
 		mainBadge,

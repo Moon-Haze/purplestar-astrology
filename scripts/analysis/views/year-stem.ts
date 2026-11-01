@@ -7,17 +7,22 @@
  * 一条都没剩时整节不输出（连标题都不出），这与「三」的「留一段中性判语」不同：
  * 这里没内容是**正常**的，不值得占版面。完整口径见 docs/code/analysis.md。
  *
+ * 产出**结构化条目流**（一源双投影，见 `../items`）：条目携带 star / mutagen / palace
+ * 语义字段。
+ *
  * @packageDocumentation
  */
 
 import { SIHUA_CHAR_TO_KEY, TOPIC_KEY_PALACES, mutagenSymbol } from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
+import type { AnalysisItem } from "../items";
+import { blankItem, contentItem, formatItems, headItem } from "../items";
 
-/** 渲染「三点五、年干四化·全局关键宫位影响」整节（无命中时返回空数组）。 */
-export function renderYearStem(ctx: AnalysisContext): string[] {
+/** 渲染「三点五」整节的结构化条目流（slot = `year-stem`；无命中时返回空数组）。 */
+export function renderYearStemItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, topic, mutagenInSanFang } = ctx;
 
-	const lines: string[] = [];
+	const items: AnalysisItem[] = [];
 
 	const keyPalaceRules = TOPIC_KEY_PALACES[topic];
 
@@ -60,15 +65,24 @@ export function renderYearStem(ctx: AnalysisContext): string[] {
 	});
 
 	if (globalKeyFindings.length > 0) {
-		lines.push(`**【年干四化·关键宫位影响】**`);
-		lines.push("");
+		items.push(headItem(`**【年干四化·关键宫位影响】**`, "year-stem"));
+		items.push(blankItem("year-stem"));
 		globalKeyFindings.forEach(({ palace, star, mutagen, meaning }) => {
-			lines.push(
-				`${mutagenSymbol(mutagen)} **${star}化${mutagen}**（落${palace}）→ ${meaning}`
+			items.push(
+				contentItem(
+					`${mutagenSymbol(mutagen)} **${star}化${mutagen}**（落${palace}）→ ${meaning}`,
+					"year-stem",
+					{ star, mutagen, palace }
+				)
 			);
 		});
-		lines.push("");
+		items.push(blankItem("year-stem"));
 	}
 
-	return lines;
+	return items;
+}
+
+/** 渲染「三点五、年干四化·全局关键宫位影响」整节（文本投影；无命中时返回空数组）。 */
+export function renderYearStem(ctx: AnalysisContext): string[] {
+	return formatItems(renderYearStemItems(ctx));
 }

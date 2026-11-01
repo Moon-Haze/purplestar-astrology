@@ -8,6 +8,9 @@
  * 触发条件：流年段在 `view` 为 `liunian` / `liuyue` 时出，流月段只在 `liuyue` 时出。
  * 完整口径见 docs/code/analysis.md。
  *
+ * 产出**结构化条目流**（一源双投影，见 `../items`）：slot = `liunian` / `liuyue`，
+ * 全部条目 `clockDependent: true`（流年/流月取系统当前日期，预计算不可复现）。
+ *
  * @packageDocumentation
  */
 
@@ -20,12 +23,14 @@ import { getYearStemIndex } from "../../mutagen";
 import { mutagenSymbol } from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
 import { descPalaceStars, mutagenInPalaces } from "../../analysis/palace-query";
+import type { AnalysisItem } from "../items";
+import { blankItem, contentItem, formatItems, headItem } from "../items";
 
-/** 渲染「四点五、流年」与「四点六、流月」两节（视角不符时返回空数组）。 */
-export function renderLiuNian(ctx: AnalysisContext): string[] {
+/** 渲染「四点五、流年」与「四点六、流月」两节的结构化条目流（视角不符时返回空数组）。 */
+export function renderLiuNianItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, view, liunianYear, liuyueMonth } = ctx;
 
-	const lines: string[] = [];
+	const items: AnalysisItem[] = [];
 
 	// 流年地支：公历年 → 年支下标（`(year - 4) mod 12`，负数取正）。
 	// 流年段原用一次、流月段又算一次，此处单点。
@@ -34,14 +39,18 @@ export function renderLiuNian(ctx: AnalysisContext): string[] {
 	if (view === "liunian" || view === "liuyue") {
 		const lnYearStem = getYearStemIndex(liunianYear);
 		const lnPalace = chart.palaces.find(p => p.branch === lnYearBranch);
-		lines.push(
-			`**【${liunianYear}年 流年 · ${STEMS[lnYearStem]}${BRANCHES[lnYearBranch]}年】**`
+		items.push(
+			headItem(`**【${liunianYear}年 流年 · ${STEMS[lnYearStem]}${BRANCHES[lnYearBranch]}年】**`, "liunian")
 		);
-		lines.push("");
-		lines.push(
-			`流年命宫落${lnPalace?.name ?? BRANCHES[lnYearBranch]}（${lnPalace ? descPalaceStars(lnPalace) : ""}）——倪师正法：**流年只看年支移到哪里，本命四化星固定不动**，看流年三方四正会哪几颗本命化禄/化权/化科/化忌。`
+		items.push(blankItem("liunian"));
+		items.push(
+			contentItem(
+				`流年命宫落${lnPalace?.name ?? BRANCHES[lnYearBranch]}（${lnPalace ? descPalaceStars(lnPalace) : ""}）——倪师正法：**流年只看年支移到哪里，本命四化星固定不动**，看流年三方四正会哪几颗本命化禄/化权/化科/化忌。`,
+				"liunian",
+				{ clockDependent: true, palace: lnPalace?.name }
+			)
 		);
-		lines.push("");
+		items.push(blankItem("liunian"));
 
 		if (lnPalace) {
 			const lnSanFangBranches = surroundBranches(lnPalace.branch);
@@ -50,17 +59,30 @@ export function renderLiuNian(ctx: AnalysisContext): string[] {
 			);
 			// 星曜口径取 palace-query 的会照单点（含文昌/文曲/左辅/右弼四颗辅星四化），
 			// 不再在此处按 type === "major" 另立一套。
-			const lnHits = mutagenInPalaces(lnSanFangPalaces).map(
-				({ palace, starName, mutagen }) =>
-					`${mutagenSymbol(mutagen)} **本命${starName}化${mutagen}** 在${palace.name}${palace.branch === lnPalace.branch ? "（流年本宫）" : "（流年三方四正）"}`
-			);
+			const lnHits = mutagenInPalaces(lnSanFangPalaces);
 			if (lnHits.length > 0) {
-				lines.push(`**流年三方四正会本命四化**：`);
-				lnHits.forEach(x => lines.push(x));
-				lines.push("");
+				items.push(
+					contentItem(`**流年三方四正会本命四化**：`, "liunian", { clockDependent: true })
+				);
+				lnHits.forEach(({ palace, starName, mutagen }) => {
+					items.push(
+						contentItem(
+							`${mutagenSymbol(mutagen)} **本命${starName}化${mutagen}** 在${palace.name}${palace.branch === lnPalace.branch ? "（流年本宫）" : "（流年三方四正）"}`,
+							"liunian",
+							{ clockDependent: true, star: starName, mutagen, palace: palace.name }
+						)
+					);
+				});
+				items.push(blankItem("liunian"));
 			} else {
-				lines.push(`（流年三方四正未会本命四化，此年运势按本宫主星与本命格局判读。）`);
-				lines.push("");
+				items.push(
+					contentItem(
+						`（流年三方四正未会本命四化，此年运势按本宫主星与本命格局判读。）`,
+						"liunian",
+						{ clockDependent: true }
+					)
+				);
+				items.push(blankItem("liunian"));
 			}
 		}
 	}
@@ -68,13 +90,24 @@ export function renderLiuNian(ctx: AnalysisContext): string[] {
 	if (view === "liuyue") {
 		const lyBranch = (lnYearBranch + (liuyueMonth - 1)) % 12;
 		const lyPalace = chart.palaces.find(p => p.branch === lyBranch);
-		lines.push(`**【${liunianYear}年${liuyueMonth}月 流月 · ${BRANCHES[lyBranch]}月】**`);
-		lines.push("");
-		lines.push(
-			`流月落${lyPalace?.name ?? BRANCHES[lyBranch]}（${lyPalace ? descPalaceStars(lyPalace) : ""}）——倪师不主张按月柱重新起化，只看月支移到哪个本命宫位，借该宫主星与本命四化的会照判月运。`
+		items.push(
+			headItem(`**【${liunianYear}年${liuyueMonth}月 流月 · ${BRANCHES[lyBranch]}月】**`, "liuyue")
 		);
-		lines.push("");
+		items.push(blankItem("liuyue"));
+		items.push(
+			contentItem(
+				`流月落${lyPalace?.name ?? BRANCHES[lyBranch]}（${lyPalace ? descPalaceStars(lyPalace) : ""}）——倪师不主张按月柱重新起化，只看月支移到哪个本命宫位，借该宫主星与本命四化的会照判月运。`,
+				"liuyue",
+				{ clockDependent: true, palace: lyPalace?.name }
+			)
+		);
+		items.push(blankItem("liuyue"));
 	}
 
-	return lines;
+	return items;
+}
+
+/** 渲染「四点五、流年」与「四点六、流月」两节（文本投影；视角不符时返回空数组）。 */
+export function renderLiuNian(ctx: AnalysisContext): string[] {
+	return formatItems(renderLiuNianItems(ctx));
 }

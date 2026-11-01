@@ -1,7 +1,10 @@
 /**
- * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。
- * 结构定义与 `tools/db/export-manual.ts` 的 classifyOracle 对应：
- * 字段序即渲染序，各数组内行保首现序去重（跨盘变体保留）。
+ * 断语手册库的组装契约 —— 组装层（`./index.ts`）重建 `OracleStar` 的目标形状，
+ * 渲染端（`knowledge/sources/oracle.ts`）按字段序消费：字段序即渲染序，
+ * 各数组内行保首现序去重（跨盘变体保留）。
+ *
+ * 结构与建库分类器（`tools/db/export-manual.ts` 的 `classifyOracle`）对应；
+ * 行流到本结构的映射规则见 `./index.ts` 的 `SECTION` 约定。
  */
 export interface SanFangEntry {
 	/** ▍ 标签最后一个「·」之后的段（真实宫名；旧库错位标签前缀已丢弃） */

@@ -25,6 +25,8 @@ import {
 	loadSihua,
 } from "./lib/loader.ts";
 import { BRANCHES, type BaselineSample } from "./lib/compare.ts";
+import { REPO_ROOT } from "./lib/skills.ts";
+import * as GANZHI from "../scripts/data/ganzhi.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
@@ -1692,6 +1694,36 @@ describe("analysis 数据键域互证", () => {
 			[],
 			`以下星名键集与内核星表（单一真相源）不一致：\n${diff.map(([src, keys]) => `${src}: ${keys.join("、")}`).join("\n")}`
 		);
+	});
+
+	it("断语手册库 san_fang 宫名域：库内紧凑键全部落在内核紧凑宫名表值域内", async () => {
+		// 断语手册库的三方四正宫名是**库内紧凑口径**（compactPalaceKey 的目标域）——
+		// 键域漂移的同型防线：建库端宫名写错（错字/旧口径「仆役」）会静默产出检索 miss。
+		// 库经 node:sqlite 只读打开（分发态同样可用，库在 scripts/ 分发面内）。
+		const { DatabaseSync } = await import("node:sqlite");
+		const db = new DatabaseSync(
+			resolve(REPO_ROOT, "scripts/corpus/data/manual/oracle.db"),
+			{ readOnly: true }
+		);
+		const compactValues = new Set(Object.values(GANZHI.COMPACT_PALACE_KEY));
+		const bad: string[] = [];
+		for (const prefix of ["san_fang:", "san_fang_stars:"]) {
+			const rows = db
+				.prepare("SELECT name FROM sections WHERE name LIKE ? || '%'")
+				.all(prefix) as Array<{ name: string }>;
+			for (const r of rows) {
+				const palace = r.name.slice(prefix.length);
+				if (!compactValues.has(palace)) {
+					bad.push(r.name);
+				}
+			}
+		}
+		assert.deepEqual(
+			bad,
+			[],
+			`断语手册库的三方四正宫名键超出内核紧凑宫名表（错字/旧口径会静默 miss）：\n${bad.join("\n")}`
+		);
+		db.close();
 	});
 });
 

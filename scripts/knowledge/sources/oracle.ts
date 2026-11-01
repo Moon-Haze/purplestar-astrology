@@ -1,8 +1,9 @@
 /**
  * knowledge 的 **oracle 域**：断语手册检索（实现即插件：渲染逻辑与注册形态同址，无转发壳）。
  *
- * 数据（`corpus/data/manual/`，4.4MB 分类断语）在 `search` 体内动态 import 懒加载，
- * 本模块被 registry 静态 import 也不把语料拉进 CLI 主链路。
+ * 数据住断语手册库（`corpus/data/manual/oracle.db`，SQLite 只读，node:sqlite 按需
+ * 查询——见 `corpus/data/manual/index.ts`）：库在 `search` 体内才打开，本模块被
+ * registry 静态 import 也不把语料拉进 CLI 主链路。
  * 三形态：裸（列全部主题）/ 主题（十四主星概览）/ 主题+星（分类断语全展开）
  * —— 见 docs/code/cli-commands.md。
  */
@@ -15,7 +16,7 @@ type OracleStar = import("@/corpus/data/manual/types").OracleStar;
 /** 手册尾注：数据口径说明（每次查询输出都带，防止把快照断语当排盘结论）。 */
 const ORACLE_FOOTER = [
 	"─".repeat(56),
-	"⚠️ 知识来源：以上为断语手册（分析数据库在 51.84 万设计样本上的预计算快照，本命静态口径），",
+	"⚠️ 知识来源：以上为断语手册（分析数据库在设计样本全集上的预计算快照，本命静态口径），",
 	"   解读请结合具体命盘：astrology <出生信息> --topic <key>。数据修订走内核，勿改手册文件。",
 ];
 

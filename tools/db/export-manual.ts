@@ -5,7 +5,8 @@
  *   npx tsx tools/db/export-manual.ts topics   # 4 号：13 主题 × 十四主星断语全集（md）
  *   npx tsx tools/db/export-manual.ts combo    # 5 号：主星 × 辅煞同宫频率全表（md）
  *   npx tsx tools/db/export-manual.ts geju     # 格局名目对拍（db 渲染集 vs patterns 现库）
- *   npx tsx tools/db/export-manual.ts code     # 手册整理成 TS 数据，落 scripts/corpus/data/manual/
+ *   npx tsx tools/db/export-manual.ts db       # 手册物化为 SQLite 只读库（scripts/corpus/data/manual/oracle.db，
+ *                                              #   行级规范化 + 字节可复现，运行时经 node:sqlite 查询）
  *   npx tsx tools/db/export-manual.ts all      # 以上全部
  *   npx tsx tools/db/export-manual.ts --check  # 漂移探针：内存重导对拍已提交产物，脏则非零退出
  *
@@ -33,6 +34,7 @@ import type { DuckDBConnection } from "@duckdb/node-api";
 
 import { resolveQueryTarget } from "./db";
 import { compactPalaceKey } from "../../scripts/data/ganzhi";
+import { findViolations } from "../../scripts/corpus/citation-core";
 import {
 	TOPIC_KEYS,
 	TOPIC_DEFS,
@@ -83,9 +85,24 @@ const TOPIC_PALACE_COMPACT: Record<TopicKey, string> = Object.fromEntries(
 	TOPIC_KEYS.map(t => [t, compactPalaceKey(TOPIC_DEFS[t].palace)])
 ) as Record<TopicKey, string>;
 
-/** 主题文本的静态节白名单/黑名单 —— 按节截取，动态节（大限/流年/流月）与交互尾巴不进手册。 */
-const DYNAMIC_SECTION_RE = /当前大限|流年|流月|综合建议|继续深度追问/;
+/** 主题文本的静态节白名单/黑名单 —— 按节截取，动态节（大限/流年/流月）与交互尾巴不进手册。
+ *
+ * 黑名单的盘面定制四节（67 万盘全量节名分布甄别定案）：都是**第二人称/按盘枚举**形态，
+ * 真实排盘时由 analysis 内核按当前盘现场生成，预计算枚举 67 万盘的变体是纯噪声——
+ * 「针对你的命盘」一节即占生成物 90% 以上行数。「四化路径」前缀同时命中
+ * 「四化路径 · 你这盘」与「四化路径分析 · 落到你这盘」两个变体；「年干四化·关键宫位影响」
+ * 是本命静态内容（出生年干四化），不含「四化路径」子串、不受误伤。 */
+const DYNAMIC_SECTION_RE =
+	/当前大限|流年|流月|综合建议|继续深度追问|针对你的命盘|四化路径|风险提醒/;
 const SECTION_HEAD_RE = /^\*\*【(.+?)】\*\*$/;
+/**
+ * md 二级标题行（`## ⚙ 主辅煞组合精细论断…` / `## ✦ 双星同宫…`）—— 手册库的节体系只有
+ * `**【】**` 一族，这些标题是 html 渲染的块头泄漏进 md 文本：其块内容（盘面组合枚举、
+ * 引导行）是内核 html 版专属节的渲染镜像（report.ts「主辅煞组合精细论断」不在本仓知识源），
+ * 预计算枚举 67 万盘的变体是纯噪声（实测 16.5 万条「还同坐」引导行藏在【经典出处】节内）。
+ * 遇到即置 keep=false，整块丢弃到下一个 **【】** 节头。
+ */
+const MD_SUBHEAD_RE = /^## /;
 
 /** 一条主题文本 → 静态节行数组（保首现序）。
  *
@@ -102,6 +119,10 @@ function staticLines(text: string): string[] {
 			if (keep) {
 				out.push(line);
 			}
+			continue;
+		}
+		if (MD_SUBHEAD_RE.test(line)) {
+			keep = false;
 			continue;
 		}
 		if (keep && line.trim() !== "") {
@@ -292,14 +313,35 @@ async function collectTopic(
 	starSamples: Map<string, number>;
 }> {
 	const palace = TOPIC_PALACE_COMPACT[topic];
-	// 主星取该主题主宫的首颗主星（major_stars[1]，DuckDB 列表 1-based）；空宫（空列表）不计
-	// 文本列取自 contentKey 的首个主题（别名视图共用源列，见 TOPIC_CONTENT_SOURCE）
-	const sql = `SELECT major_stars[1] AS star, ${TOPIC_CONTENT_SOURCE[topic]} AS text
+
+	// 分段流式取数（内存护栏）：一次性 getRowObjectsJS 会把该主题**全部盘**的主题文本
+	// 拉进 JS 内存 —— 数十万盘 × 每盘数十 KB 是 OOM 级（67 万盘规模实测被内核击杀）。
+	// 按 sample_id 分批，批内 ORDER BY sample_id 保序，聚合语义与全量单次取数逐字一致；
+	// 聚合器（byStar / sanFangByStar，行级去重后的有界结构）内存与主题总盘数无关，
+	// 峰值由批次大小决定。与 build-duckdb 的 shard 分段同一模式。
+	const BATCH = 10000;
+	const rangeRow = (
+		await (
+			await conn.run(
+				"SELECT min(sample_id)::INT AS lo, max(sample_id)::INT AS hi FROM topics"
+			)
+		).getRowObjectsJS()
+	)[0] as { lo: number; hi: number };
+	async function* batchedRows(): AsyncGenerator<Array<{ star: string; text: string }>> {
+		// 主星取该主题主宫的首颗主星（major_stars[1]，DuckDB 列表 1-based）；空宫（空列表）不计
+		// 文本列取自 contentKey 的首个主题（别名视图共用源列，见 TOPIC_CONTENT_SOURCE）
+		for (let lo = rangeRow.lo; lo <= rangeRow.hi; lo += BATCH) {
+			const hi = lo + BATCH - 1;
+			const sql = `SELECT major_stars[1] AS star, ${TOPIC_CONTENT_SOURCE[topic]} AS text
 FROM topics JOIN palaces USING (sample_id)
-WHERE palace_name = '${palace}' AND len(major_stars) > 0
+WHERE palace_name = '${palace}' AND len(major_stars) > 0 AND sample_id BETWEEN ${lo} AND ${hi}
 ORDER BY sample_id`;
-	const result = await conn.run(sql);
-	const rows = (await result.getRowObjectsJS()) as Array<{ star: string; text: string }>;
+			yield (await (await conn.run(sql)).getRowObjectsJS()) as Array<{
+				star: string;
+				text: string;
+			}>;
+		}
+	}
 
 	const byStar = new Map<string, Map<string, string>>();
 	const sanFangByStar = new Map<
@@ -307,55 +349,56 @@ ORDER BY sample_id`;
 		Map<string, { stars: Set<string>; items: Set<string> }>
 	>();
 	const starSamples = new Map<string, number>();
-	for (const r of rows) {
-		starSamples.set(r.star, (starSamples.get(r.star) ?? 0) + 1);
-		if (!byStar.has(r.star)) {
-			byStar.set(r.star, new Map());
-			sanFangByStar.set(r.star, new Map());
-		}
-		const lines = byStar.get(r.star)!;
-		const sanFang = sanFangByStar.get(r.star)!;
+	for await (const rows of batchedRows())
+		for (const r of rows) {
+			starSamples.set(r.star, (starSamples.get(r.star) ?? 0) + 1);
+			if (!byStar.has(r.star)) {
+				byStar.set(r.star, new Map());
+				sanFangByStar.set(r.star, new Map());
+			}
+			const lines = byStar.get(r.star)!;
+			const sanFang = sanFangByStar.get(r.star)!;
 
-		let section = "";
-		let currentPalace: string | null = null;
-		for (const l of staticLines(r.text)) {
-			const head = l.match(SECTION_HEAD_RE);
-			if (head) {
-				section = head[1];
-				currentPalace = null;
-				continue;
-			}
-			// 三方节：盘内解析 ▍ 配对（宫归属只在单盘内精确）
-			if (section === "三方四正联动") {
-				const bar = l.match(/^▍\*\*(.+?)\*\*[：:](.*)$/);
-				if (bar) {
-					currentPalace = bar[1].includes("·")
-						? bar[1].split("·").pop()!.trim()
-						: bar[1].trim();
-					const entry = sanFang.get(currentPalace) ?? {
-						stars: new Set<string>(),
-						items: new Set<string>(),
-					};
-					sanFang.set(currentPalace, entry);
-					if (bar[2]) {
-						entry.stars.add(bar[2]);
+			let section = "";
+			let currentPalace: string | null = null;
+			for (const l of staticLines(r.text)) {
+				const head = l.match(SECTION_HEAD_RE);
+				if (head) {
+					section = head[1];
+					currentPalace = null;
+					continue;
+				}
+				// 三方节：盘内解析 ▍ 配对（宫归属只在单盘内精确）
+				if (section === "三方四正联动") {
+					const bar = l.match(/^▍\*\*(.+?)\*\*[：:](.*)$/);
+					if (bar) {
+						currentPalace = bar[1].includes("·")
+							? bar[1].split("·").pop()!.trim()
+							: bar[1].trim();
+						const entry = sanFang.get(currentPalace) ?? {
+							stars: new Set<string>(),
+							items: new Set<string>(),
+						};
+						sanFang.set(currentPalace, entry);
+						if (bar[2]) {
+							entry.stars.add(bar[2]);
+						}
+						continue;
 					}
+					const kui = l.match(/^✦ \*\*(.+?)\*\*[：:](.*)$/);
+					const body = l.replace(/^\s+/, "");
+					if (!currentPalace) {
+						continue;
+					}
+					const entry = sanFang.get(currentPalace)!;
+					entry.items.add(kui ? `✦ ${kui[1]}：${kui[2]}` : body);
 					continue;
 				}
-				const kui = l.match(/^✦ \*\*(.+?)\*\*[：:](.*)$/);
-				const body = l.replace(/^\s+/, "");
-				if (!currentPalace) {
-					continue;
+				if (!lines.has(l)) {
+					lines.set(l, section);
 				}
-				const entry = sanFang.get(currentPalace)!;
-				entry.items.add(kui ? `✦ ${kui[1]}：${kui[2]}` : body);
-				continue;
-			}
-			if (!lines.has(l)) {
-				lines.set(l, section);
 			}
 		}
-	}
 	return { byStar, sanFangByStar, starSamples };
 }
 
@@ -446,223 +489,239 @@ async function exportCombo(conn: DuckDBConnection): Promise<void> {
 	console.error(`combo-frequency.md：${rows.length} 组合`);
 }
 
-/** 生成 TS 数据文件的输出目录（内核域内 scripts/corpus/data/manual）——**生成快照，不在 analysis/index.ts 公开面**（按需懒加载，不碰 CLI 启动）；引文守卫对它语义化排除（内容是内核表的渲染镜像）。 */
+/** 断语手册库与手写契约文件的目录（内核域内 scripts/corpus/data/manual）：oracle.db 是唯一生成物，index.ts / types.ts 是手写契约；引文守卫对目录语义化排除（内容由建库管线统一校验）。 */
 const CODE_DIR = resolve(SKILL_ROOT, "scripts/corpus/data/manual");
 
-/** 生成 TS 字符串字面量：JSON.stringify 的双引号形态即合法 TS 字面量（转义齐全）。 */
-const lit = (s: string): string => JSON.stringify(s);
+// ── 断语手册库（db 模式）：规范化 SQLite 物化 ────────────────────────────────────
+
+/** 库产物落点：`scripts/` 分发面内，随 pack 四项自动进包。 */
+const ORACLE_DB_PATH = join(CODE_DIR, "oracle.db");
+
+/** --check 模式下内存重建的库字节（与文本产物的 emit/对拍同一双形态哲学）。 */
+let collectedDb: Buffer | null = null;
 
 /**
- * `code` 子命令：把手册内容**解析分类**成 TS 数据文件合并进代码（scripts/corpus/data/manual/）。
+ * lines.section 的值域 —— 建库端与组装层（`corpus/data/manual/index.ts`）的唯一约定。
  *
- * 形态：每主题一个文件（`<topic>.ts`，`ORACLE: Record<主星, OracleStar>`——按
- * 定制/总述/格局/本宫/三方/四化/贵人/专属节归类，见 {@link OracleStar}）+ 组合频率 +
- * 懒加载索引。生成物带 DO-NOT-EDIT 头与生成命令；文档版（docs/manual/）继续并存 ——
- * md 供人读（扁平），ts 供代码查询（结构化）。
+ * 固定槽用裸名；开放集（三方四正宫名、主题专属节名）用前缀编码，节名是行数据的
+ * 一部分而非表结构 —— 新增节零 DDL。组装层按固定前缀截取（`slice`），节名含冒号
+ * 不破坏解析。
  */
-async function exportCode(conn: DuckDBConnection): Promise<void> {
-	ensureDir(CODE_DIR);
+const SECTION = {
+	mods: "mods",
+	summary: "summary",
+	mainPalaceStars: "main_palace_stars",
+	mainPalace: "main_palace",
+	sanFangStars: "san_fang_stars:",
+	sanFang: "san_fang:",
+	kuiYue: "kui_yue",
+	extra: "extra:",
+	other: "other",
+} as const;
 
-	// 共享类型文件（主题文件 import type，避免 index 与主题文件循环依赖）
-	const typeLines = [
-		"/**",
-		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
-		" * 结构定义与 `tools/db/export-manual.ts` 的 classifyOracle 对应：",
-		" * 字段序即渲染序，各数组内行保首现序去重（跨盘变体保留）。",
-		" */",
-		`export interface SanFangEntry {`,
-		`\t/** ▍ 标签最后一个「·」之后的段（真实宫名；旧库错位标签前缀已丢弃） */`,
-		`\tpalace: string;`,
-		`\t/** 该宫跨盘的星曜概览变体（去重：「破军（庙旺)」/「破军」/「空宫借对宫」等） */`,
-		`\tstars: string[];`,
-		`\t/** 该宫断语：语境段落 / 缩进简述 / 借宫提示 / ✦ 次星（原行） */`,
-		`\titems: string[];`,
-		`}`,
-		`export interface SihuaEntry {`,
-		`\t/** 四化主行（emoji 后的原文，含星名/落宫；年干节行带「→ 意义」尾巴） */`,
-		`\ttext: string;`,
-		`\t/** 主行下的缩进说明（同星同化的语义补充） */`,
-		`\tnote?: string;`,
-		`}`,
-		`export interface OracleStar {`,
-		`\t/** 【命盘关键定制】亮度/化曜专属开场 */`,
-		`\tmods: string[];`,
-		`\t/** 【星曜深层特质】第二人称白话总述 */`,
-		`\tsummary: string[];`,
-		`\t/** ⭐ 特殊格局（同名格局跨盘判词变体已换行合并） */`,
-		`\tpatterns: { name: string; text: string }[];`,
-		`\t/** 【命盘推演】本宫主星行（多盘亮度变体）+ 宫语境段落 / ▶ 亮度补充 / 同宫第二主星 */`,
-		`\tmainPalace: { stars: string[]; content: string[] };`,
-		`\t/** 【三方四正联动】按宫聚合 */`,
-		`\tsanFang: SanFangEntry[];`,
-		`\t/** 四化（本命四化会照 + 年干关键宫位两节） */`,
-		`\tsihua: SihuaEntry[];`,
-		`\t/** 【贵人倾向·魁钺细分】◇ 行原文（去前缀） */`,
-		`\tkuiYue: string[];`,
-		`\t/** 主题专属节（性格深描 / 疾厄取象 / 女命妇科保养 …）—— 节名 → 行 */`,
-		`\textras: Record<string, string[]>;`,
-		`\t/** 未归类兜底（正常为空；非空 = 渲染层出现分类器不认识的新形态，须排查） */`,
-		`\tother: string[];`,
-		`}`,
-	];
-	emit(join(CODE_DIR, "types.ts"), typeLines.join("\n"));
+/**
+ * `db` 子命令：把手册内容整理物化为专用 SQLite 只读库
+ * （`scripts/corpus/data/manual/oracle.db`，构建期过滤整理 + 运行时按需查询）。
+ *
+ * 形态：行级规范化（topics / stars / texts 字典 + lines 行表 + patterns / sihua 两张
+ * 结构表）。**字节可复现**是本产物的硬契约：显式 INTEGER 主键（不用隐式 rowid）、
+ * 无 AUTOINCREMENT、固定 PRAGMA、插入序完全确定（topic → star → 组装序）、收尾
+ * VACUUM —— 同一输入两次建库 sha256 相同，`--check` 对拍以字节为锚。
+ *
+ * 入库闸门：每行文本先过引文比对核心（`corpus/citation-core`），核对表外的
+ * 「倪师 + 引号句」形态不得入库；违例时统一报错、不产出库文件。
+ *
+ * 主题循环走 `STORAGE_TOPIC_KEYS`（13 实体主题）：`study` 是 `career` 的别名视图，
+ * 库内不携带重复数据（组装层按 `TOPIC_CONTENT_SOURCE` 映射查询）。
+ */
+async function exportDb(conn: DuckDBConnection): Promise<void> {
+	const { DatabaseSync } = await import("node:sqlite");
+	const db = new DatabaseSync(":memory:");
+	try {
+		// PRAGMA 在建表前定死：页大小影响字节布局；journal/synchronous 关闭 ——
+		// 纯构建产物无崩溃恢复需求，也避免 -journal 残留扰动可复现性。
+		db.exec("PRAGMA page_size = 4096");
+		db.exec("PRAGMA journal_mode = OFF");
+		db.exec("PRAGMA synchronous = OFF");
+		// 跨表引用完整性由建库管线保证（插入序 + 字典 id 单点分配）；SQLite 默认不
+		// 强制外键，产物为只读构建物，不声明外键约束。
+		db.exec("CREATE TABLE topics (id INTEGER PRIMARY KEY, key TEXT NOT NULL UNIQUE)");
+		db.exec("CREATE TABLE stars (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE)");
+		db.exec("CREATE TABLE sections (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE)");
+		// texts 不建 UNIQUE 索引：唯一性由建库端 textId 字典单点保证（同 body 只插一次），
+		// 产物只读无并发写 —— 省一份 33MB 级的索引副本（索引对 17.6 万条随机序中文文本
+		// 的 B-tree 开销与表本体等量级）。
+		db.exec("CREATE TABLE texts (id INTEGER PRIMARY KEY, body TEXT NOT NULL)");
+		db.exec(`CREATE TABLE lines (
+			topic_id INTEGER NOT NULL,
+			star_id  INTEGER NOT NULL,
+			ord      INTEGER NOT NULL,
+			section_id INTEGER NOT NULL,
+			text_id  INTEGER NOT NULL,
+			PRIMARY KEY (topic_id, star_id, ord)
+		)`);
+		db.exec(`CREATE TABLE patterns (
+			topic_id INTEGER NOT NULL,
+			star_id  INTEGER NOT NULL,
+			ord      INTEGER NOT NULL,
+			name     TEXT NOT NULL,
+			text_id  INTEGER NOT NULL,
+			PRIMARY KEY (topic_id, star_id, ord)
+		)`);
+		db.exec(`CREATE TABLE sihua (
+			topic_id INTEGER NOT NULL,
+			star_id  INTEGER NOT NULL,
+			ord      INTEGER NOT NULL,
+			text_id  INTEGER NOT NULL,
+			note_id  INTEGER,
+			PRIMARY KEY (topic_id, star_id, ord)
+		)`);
 
-	for (const topic of TOPIC_KEYS) {
-		// 别名视图（contentKey 与他主题共用，如 study → career）：不重复生成一份大文件，
-		// 直接转出内容源的文件。**不复制数据**是这里的关键 —— career.ts 体积可观，
-		// 复制会让库内不存在的一列内容在代码侧翻倍，且两处日后必然漂移。
-		const source = TOPIC_CONTENT_SOURCE[topic];
-		if (source !== topic) {
-			emit(
-				join(CODE_DIR, `${topic}.ts`),
-				[
-					"/**",
-					" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
-					` * 本主题是**别名视图**：TOPIC_DEFS.${topic}.contentKey 与 ${source} 同源，`,
-					` * 故断语内容直接转出 ${source}.ts（库内亦共用 ${source} 一列，本主题无独立列）。`,
-					" * 内容修订请改 contentKey 所属主题的文件。",
-					" */",
-					`export { ORACLE } from "./${source}.ts";`,
-					"",
-				].join("\n")
+		// 全部入库走预编译语句 + 参数绑定（值经 ? 占位符，无任何字符串内插）；
+		// 主键显式赋值 —— 不依赖隐式 rowid 分配。
+		const placeholders = (n: number): string => Array.from({ length: n }, () => "?").join(", ");
+		const stmt = (table: string, cols: readonly string[]) =>
+			db.prepare(
+				`INSERT INTO ${table} (${cols.join(", ")}) VALUES (${placeholders(cols.length)})`
 			);
-			continue;
-		}
-		const { byStar, sanFangByStar } = await collectTopic(conn, topic);
-		const lines: string[] = [
-			"/**",
-			" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
-			` * 源：样本库 518,400 设计样本 × analysis 内核（${topic} 主题静态节，动态节不进数据）。`,
-			" * 断语修订：改内核 `scripts/analysis/` → `npm run build:db` → 重导本目录。",
-			" * 查询入口：`corpus/data/manual/index.ts`（按主题懒加载，不在 CLI 主 import 链上）。",
-			" */",
-			`import type { OracleStar } from "./types.ts";`,
-			"",
-			`export const ORACLE: Readonly<Record<string, OracleStar>> = {`,
-		];
-		for (const [star, ls] of [...byStar.entries()].sort()) {
-			const o = classifyOracle(ls, sanFangByStar.get(star)!);
-			lines.push(`\t${lit(star)}: {`);
-			lines.push(`\t\tmods: [${o.mods.map(lit).join(", ")}],`);
-			lines.push(`\t\tsummary: [`);
-			for (const l of o.summary) {
-				lines.push(`\t\t\t${lit(l)},`);
+		const insTopic = stmt("topics", ["id", "key"]);
+		const insStar = stmt("stars", ["id", "name"]);
+		const insSection = stmt("sections", ["id", "name"]);
+		const insText = stmt("texts", ["id", "body"]);
+		const insLine = stmt("lines", ["topic_id", "star_id", "ord", "section_id", "text_id"]);
+		const insPattern = stmt("patterns", ["topic_id", "star_id", "ord", "name", "text_id"]);
+		const insSihua = stmt("sihua", ["topic_id", "star_id", "ord", "text_id", "note_id"]);
+
+		/** 行文本字典：跨主题跨星共享的同一行只存一份，id 按首现序分配。 */
+		const textIds = new Map<string, number>();
+		const textId = (body: string): number => {
+			const found = textIds.get(body);
+			if (found !== undefined) {
+				return found;
 			}
-			lines.push(`\t\t],`);
-			lines.push(`\t\tpatterns: [`);
-			for (const p of o.patterns) {
-				lines.push(`\t\t\t{ name: ${lit(p.name)}, text: ${lit(p.text)} },`);
+			const id = textIds.size + 1;
+			textIds.set(body, id);
+			insText.run(id, body);
+			return id;
+		};
+
+		/** 节名字典：lines 经 id 引用（25 万行 × 节名逐行重复，字典化省一份副本）。 */
+		const sectionIds = new Map<string, number>();
+		const sectionId = (name: string): number => {
+			const found = sectionIds.get(name);
+			if (found !== undefined) {
+				return found;
 			}
-			lines.push(`\t\t],`);
-			lines.push(`\t\tmainPalace: {`);
-			lines.push(`\t\t\tstars: [${o.mainPalace.stars.map(lit).join(", ")}],`);
-			lines.push(`\t\t\tcontent: [`);
-			for (const l of o.mainPalace.content) {
-				lines.push(`\t\t\t\t${lit(l)},`);
+			const id = sectionIds.size + 1;
+			sectionIds.set(name, id);
+			insSection.run(id, name);
+			return id;
+		};
+
+		// 建库期引文校验：违例收集到统一报错（不逐条中断，一次交代全貌）。
+		const citationHits: string[] = [];
+		const guard = (body: string, where: string): void => {
+			for (const v of findViolations([body])) {
+				citationHits.push(`${where}：${v}`);
 			}
-			lines.push(`\t\t\t],`);
-			lines.push(`\t\t},`);
-			lines.push(`\t\tsanFang: [`);
-			for (const sf of o.sanFang) {
-				lines.push(
-					`\t\t\t{ palace: ${lit(sf.palace)}, stars: [${sf.stars.map(lit).join(", ")}], items: [`
-				);
-				for (const it of sf.items) {
-					lines.push(`\t\t\t\t${lit(it)},`);
+		};
+
+		// 维表：topics = 13 实体主题，id = STORAGE_TOPIC_KEYS 声明序（确定性来源）。
+		STORAGE_TOPIC_KEYS.forEach((k, i) => insTopic.run(i + 1, k));
+
+		// 单遍写入（内存护栏）：star id 按**首现序**即时分配 —— 不预收全星集，免去
+		// 同时持有 13 主题的聚合结构（去重行全集，JS 对象开销数倍于文本量）。遍历序
+		// 固定（topic 声明序 × 星名字典序），id 分配因此确定。
+		let nextStarId = 1;
+		const starIds = new Map<string, number>();
+
+		// 行写入：ord 为 per (topic, star) 的组装序 —— 组装层按它重建 OracleStar 的
+		// 字段序与 sanFang 宫序（宫序 = 该宫首行的 ord）。写入顺序即分类器字段序。
+		let lineCount = 0;
+		for (const topic of STORAGE_TOPIC_KEYS) {
+			const topicId = STORAGE_TOPIC_KEYS.indexOf(topic) + 1;
+			const c = await collectTopic(conn, topic);
+			for (const [star, ls] of [...c.byStar.entries()].sort()) {
+				let starId = starIds.get(star);
+				if (starId === undefined) {
+					starId = nextStarId++;
+					starIds.set(star, starId);
+					insStar.run(starId, star);
 				}
-				lines.push(`\t\t\t] },`);
-			}
-			lines.push(`\t\t],`);
-			lines.push(`\t\tsihua: [`);
-			for (const s of o.sihua) {
-				lines.push(
-					`\t\t\t{ text: ${lit(s.text)}${s.note !== undefined ? `, note: ${lit(s.note)}` : ""} },`
-				);
-			}
-			lines.push(`\t\t],`);
-			lines.push(`\t\tkuiYue: [${o.kuiYue.map(lit).join(", ")}],`);
-			const extraKeys = Object.keys(o.extras);
-			if (extraKeys.length === 0) {
-				lines.push(`\t\textras: {},`);
-			} else {
-				lines.push(`\t\textras: {`);
-				for (const k of extraKeys) {
-					lines.push(`\t\t\t${lit(k)}: [`);
-					for (const l of o.extras[k]) {
-						lines.push(`\t\t\t\t${lit(l)},`);
-					}
-					lines.push(`\t\t\t],`);
+				const o = classifyOracle(ls, c.sanFangByStar.get(star)!);
+				let ord = 0;
+				const put = (section: string, body: string): void => {
+					guard(body, `${topic}/${star}/${section}`);
+					insLine.run(topicId, starId, ord++, sectionId(section), textId(body));
+					lineCount++;
+				};
+				for (const l of o.mods) put(SECTION.mods, l);
+				for (const l of o.summary) put(SECTION.summary, l);
+				for (const l of o.mainPalace.stars) put(SECTION.mainPalaceStars, l);
+				for (const l of o.mainPalace.content) put(SECTION.mainPalace, l);
+				for (const sf of o.sanFang) {
+					for (const s of sf.stars) put(`${SECTION.sanFangStars}${sf.palace}`, s);
+					for (const it of sf.items) put(`${SECTION.sanFang}${sf.palace}`, it);
 				}
-				lines.push(`\t\t},`);
+				for (const l of o.kuiYue) put(SECTION.kuiYue, l);
+				for (const [k, ls] of Object.entries(o.extras)) {
+					for (const l of ls) put(`${SECTION.extra}${k}`, l);
+				}
+				for (const l of o.other) put(SECTION.other, l);
+				o.patterns.forEach((p, i) => {
+					guard(p.text, `${topic}/${star}/pattern:${p.name}`);
+					insPattern.run(topicId, starId, i, p.name, textId(p.text));
+				});
+				o.sihua.forEach((s, i) => {
+					guard(s.text, `${topic}/${star}/sihua`);
+					if (s.note !== undefined) guard(s.note, `${topic}/${star}/sihua-note`);
+					insSihua.run(
+						topicId,
+						starId,
+						i,
+						textId(s.text),
+						s.note === undefined ? null : textId(s.note)
+					);
+				});
 			}
-			lines.push(`\t\tother: [${o.other.map(lit).join(", ")}],`);
-			lines.push(`\t},`);
 		}
-		lines.push(`};`, "");
-		emit(join(CODE_DIR, `${topic}.ts`), lines.join("\n"));
+
+		if (citationHits.length > 0) {
+			console.error(
+				`✘ 建库期引文校验失败 ${citationHits.length} 处 —— 核对表外引文形态不得入库（先在 annotations.ts 登记档位再重建）：`
+			);
+			for (const h of citationHits.slice(0, 10)) {
+				console.error(`  ${h}`);
+			}
+			process.exitCode = 1;
+			return;
+		}
+
+		// 唯一性自检：texts 无 UNIQUE 约束（省随机序索引开销），唯一性由 textId 字典
+		// 单点保证 —— 这里以查询钉住，字典失效当场爆而不是静默产出脏库。
+		const dupTexts = db
+			.prepare(
+				"SELECT COUNT(*) AS n FROM (SELECT body FROM texts GROUP BY body HAVING COUNT(*) > 1)"
+			)
+			.get();
+		if (dupTexts && Number(dupTexts.n) > 0) {
+			throw new Error(`texts 出现 ${dupTexts.n} 组重复 body —— 建库端字典失效`);
+		}
+
+		db.exec("VACUUM");
+		const buf = Buffer.from(db.serialize());
+		if (CHECK_MODE) {
+			collectedDb = buf;
+		} else {
+			writeFileSync(ORACLE_DB_PATH, buf);
+		}
+		console.error(
+			`oracle.db：${STORAGE_TOPIC_KEYS.length} 主题 × ${starIds.size} 主星，` +
+				`${lineCount} 行（texts 字典 ${textIds.size} 条）`
+		);
+	} finally {
+		db.close();
 	}
-
-	// 组合频率数据
-	const combo = await collectCombo(conn);
-	const comboLines = [
-		"/**",
-		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
-		" * 主星 × 辅煞同宫频率（196 组合，518,400 设计样本 × 12 宫）。",
-		" * 用途：主辅煞组合断语矩阵的口径与完备性基线（每个组合都有万级样本兜底）。",
-		" */",
-		`export interface ComboFrequency {`,
-		`\tstar: string;`,
-		`\taux: string;`,
-		`\tcount: number;`,
-		`}`,
-		`export const COMBO_FREQUENCY: readonly ComboFrequency[] = [`,
-		...combo.map(r => `\t{ star: ${lit(r.star)}, aux: ${lit(r.aux)}, count: ${r.cnt} },`),
-		`];`,
-		"",
-	];
-	emit(join(CODE_DIR, "combo-frequency.ts"), comboLines.join("\n"));
-
-	// 懒加载索引：每个 TOPIC_KEYS 一行（动态模板 import 在类型层拿不到形状）
-	const indexLines = [
-		"/**",
-		" * 断语手册数据（analysis/manual/）的查询入口 —— 按主题懒加载。",
-		" *",
-		" * ⚠️ 本目录是**生成数据**（内核域 analysis/manual，不在 analysis/index.ts 公开面）：CLI 主链路不",
-		" * import 这些文件（零启动开销），需要消费时经本入口动态引入。",
-		" *",
-		" * ⚠️ 生成文件 —— 由 `npx tsx tools/db/export-manual.ts code` 生成，**不要手改**。",
-		" */",
-		`import type { TopicKey } from "../../../analysis/data";`,
-		`import type { OracleStar } from "./types.ts";`,
-		"",
-		`export type { OracleStar, SanFangEntry, SihuaEntry } from "./types.ts";`,
-		`/** 一个主题的断语全集：主星 → 分类断语集（mods/summary/patterns/mainPalace/sanFang/…）。 */`,
-		`export type StarTopicOracle = Readonly<Record<string, OracleStar>>;`,
-		`export type { ComboFrequency } from "./combo-frequency.ts";`,
-		`export { COMBO_FREQUENCY } from "./combo-frequency.ts";`,
-		"",
-		`const LOADERS: Record<TopicKey, () => Promise<{ ORACLE: StarTopicOracle }>> = {`,
-		...TOPIC_KEYS.map(k => `\t${k}: () => import("./${k}.ts"),`),
-		`};`,
-		"",
-		`/** 加载一个主题的断语全集；文件缺失（未导出）时抛带指引的错误。 */`,
-		`export async function loadTopicOracle(topic: TopicKey): Promise<StarTopicOracle> {`,
-		`\ttry {`,
-		`\t\treturn (await LOADERS[topic]()).ORACLE;`,
-		`\t} catch (e) {`,
-		`\t\tthrow new Error(`,
-		`\t\t\t\`断语数据 \${topic} 未生成。先 npx tsx tools/db/export-manual.ts code（前置：npm run build:db）。\` +`,
-		`\t\t\t\t\` 原始错误：\${e instanceof Error ? e.message : String(e)}\`,`,
-		`\t\t);`,
-		`\t}`,
-		`}`,
-		"",
-	];
-	emit(join(CODE_DIR, "index.ts"), indexLines.join("\n"));
-
-	console.error(
-		`analysis/manual/：${TOPIC_KEYS.length} 主题数据 + combo-frequency + index（${combo.length} 组合）`
-	);
 }
 
 /** 格局名目对拍：db 渲染集（⭐ 行）vs patterns 现库（多样本实测产出全集）。 */
@@ -799,10 +858,7 @@ function compareArtifacts(): number {
 	}
 	// 孤儿检测：产物目录里「盘上有、重导不再生成」的文件（如主题退役后的残留）。
 	const produced = new Set(collected.keys());
-	for (const [dir, ext] of [
-		[TOPICS_DIR, ".md"],
-		[CODE_DIR, ".ts"],
-	] as const) {
+	for (const [dir, ext] of [[TOPICS_DIR, ".md"]] as const) {
 		if (!existsSync(dir)) {
 			continue;
 		}
@@ -817,6 +873,19 @@ function compareArtifacts(): number {
 		const abs = join(OUT_DIR, name);
 		if (existsSync(abs) && !produced.has(abs)) {
 			drift.push(`${abs.slice(SKILL_ROOT.length + 1)}：盘上孤儿（重导不再生成，应删除）`);
+		}
+	}
+	// 断语手册库：二进制产物不逐字 diff，以 sha256 为锚（可复现性见 exportDb）。
+	if (collectedDb !== null) {
+		if (!existsSync(ORACLE_DB_PATH)) {
+			drift.push("scripts/corpus/data/manual/oracle.db：盘上缺失（重导会新建）");
+		} else {
+			const onDisk = readFileSync(ORACLE_DB_PATH);
+			if (!onDisk.equals(collectedDb)) {
+				drift.push(
+					"scripts/corpus/data/manual/oracle.db：内容漂移（sha256 与内存重建不一致）"
+				);
+			}
 		}
 	}
 	if (drift.length > 0) {
@@ -855,10 +924,11 @@ async function main() {
 					? await db.openReadOnly(target.dbPath)
 					: await db.openDataset(target.datasetDir);
 			try {
+				await conn.run("SET memory_limit='4GB'");
 				await exportTopics(conn);
 				await exportCombo(conn);
 				await auditGeju(conn);
-				await exportCode(conn);
+				await exportDb(conn);
 			} finally {
 				conn.closeSync();
 			}
@@ -888,6 +958,9 @@ async function main() {
 			? await openReadOnly(target.dbPath)
 			: await openDataset(target.datasetDir);
 	try {
+		// DuckDB 侧内存护栏：分段流式已把 JS 峰值与主题总盘数解耦，这里再给引擎本身
+		// 设上限（超限溢盘而非吃满机器），与 build-duckdb / verify-duckdb 的先例同款。
+		await conn.run("SET memory_limit='4GB'");
 		const cmd = process.argv[2] ?? "all";
 		if (cmd === "topics" || cmd === "all") {
 			await exportTopics(conn);
@@ -898,11 +971,11 @@ async function main() {
 		if (cmd === "geju" || cmd === "all") {
 			await auditGeju(conn);
 		}
-		if (cmd === "code" || cmd === "all") {
-			await exportCode(conn);
+		if (cmd === "db" || cmd === "all") {
+			await exportDb(conn);
 		}
-		if (!["topics", "combo", "geju", "code", "all"].includes(cmd)) {
-			console.error(`未知子命令「${cmd}」：topics / combo / geju / code / all`);
+		if (!["topics", "combo", "geju", "db", "all"].includes(cmd)) {
+			console.error(`未知子命令「${cmd}」：topics / combo / geju / db / all`);
 			process.exitCode = 2;
 		}
 	} finally {

@@ -1,19 +1,12 @@
 /**
- * 引文守卫 —— 源码里凡以「倪海厦 / 倪师…说」带出的引文，不得与核对记录对不上。
+ * 引文守卫的**收集面与扫描组装** —— 源码里凡以「倪海厦 / 倪师…说」带出的引文，
+ * 不得与核对记录对不上。比对核心（黑名单构造 / 形态正则 / 违例提取）住
+ * `scripts/corpus/citation-core.ts`：引文质检属知识域，建断语手册库的工具侧要跑
+ * 同一判据，核心放 corpus 让所有调用面引同一份。本文件只回答「扫哪里」：
  *
- * **位置**：本文件住在仓库的 `test/lib/` 下。移出的理由有三条：
- *
- * 1. **守卫的受众是改内核的开发者，不是拷贝走 skill 的用户。** 分发一个 skill 时只带走
- *    `SKILL.md + scripts/ + package.json`，`test/` 不带走 —— 一处收拢即可，不必每个
- *    skill 背一份。
- * 2. **一处扫全仓，覆盖面反而扩大。** 从前是「源扫自己的内核树」「合盘扫自己的断语库」，
- *    各扫各的：源扫不到合盘的断语、合盘扫不到源的格局库。现在由 `test/citations.test.ts`
- *    对**每个 skill 的 `scripts/`** 各跑一次，两个盲区一并消失。
- * 3. **它本来就不是产品代码。** 一个只在测试里被调用的函数住在内核里，等于给每个 skill
- *    增加一份分发重量。
- *
- * ⚠️ **它不自己决定扫哪里** —— {@link scanCitations} 收一个根，扫哪个根是调用方的事。
- * 本模块只提供「怎么扫」与「怎么判违例」。
+ * - {@link scanCitations}：递归收一棵源码树的全部 `.ts`
+ * - {@link scanMarkdownCitations}：递归收仓库的手写 `.md`
+ * - {@link scanCitationsForRoots}：多流派 (根, 核对表) 分派
  *
  * ## 守卫在防什么
  *
@@ -37,17 +30,16 @@
  * （它是核对表，不是被核对的对象）；判断依据是**它声明了 `ANNOTATIONS`**，而不是它的
  * 文件名，故改名或拆分后如果仍导出这张表，仍会被正确排除。见 {@link isChecklistSource}。
  *
- * 另一类是 `corpus/data/manual/`（生成快照目录，见 {@link collectTsFiles}）——
- * 内容是内核表的渲染镜像而非手写断语，同样「不是被核对的对象」。
+ * 另一类是 `corpus/data/manual/`（见 {@link collectTsFiles}）——那里是断语手册库的
+ * 构建源物料目录，内容是内核表的渲染镜像而非手写断语，同样「不是被核对的对象」。
  *
  * ## `.md` 侧：{@link scanMarkdownCitations}
  *
  * 源码树之外，本仓还有一捆**手写文档**带着倪师引文：`SKILL.md` / `references/`（skill 的
  * 规范面，LLM 解读时真正读到的文本）、`docs/code/`（源码长注释的搬迁目的地，引文从源码
- * 原文照搬而来）、`README.md` / `CLAUDE.md` 等。它们与源码受**同一条纪律**约束，故由
- * {@link scanMarkdownCitations} 按仓库根再扫一遍，与 {@link scanCitations} 共用同一份
- * 黑名单构造与同一套形态正则（见 {@link buildBannedSet} / {@link findViolations}）——
- * 不出现「文档一份判据、源码一份判据」的分叉。
+ * 原文照搬而来）、`README.md` / `CLAUDE.md` 等。它们与源码受**同一条纪律**约束，与
+ * {@link scanCitations} 共用同一份黑名单构造与同一套形态正则（住
+ * `citation-core.ts`）—— 不出现「文档一份判据、源码一份判据」的分叉。
  *
  * `.md` 侧排除 `docs/manual/`（`tools/db/export-manual.ts` 的生成导出），理由与 `.ts` 侧
  * 排除 `corpus/data/manual/` 同源：源头 `analysis/data.ts` 本就在 `.ts` 扫描范围内，
@@ -65,28 +57,14 @@ import { resolve } from "node:path";
 // ⚠️ 字面相对路径 + 写全 `.ts` 扩展名：本模块靠 Node 的原生类型擦除加载，不走解析钩子。
 //    核对表是**唯一一份数据资产**，它留在内核里（`corpus/data/annotations.ts`）——
 //    全仓的引文都对照它，故本模块 import 它而不是自存一份。
+import {
+	buildBannedSet,
+	findViolations,
+	type CitationScan,
+} from "../../scripts/corpus/citation-core.ts";
 import { ANNOTATIONS, type AnnotationEntry } from "../../scripts/corpus/data/annotations.ts";
 
-/** 一次扫描的结果。 */
-export interface CitationScan {
-	/** 违例的引文核心（已截断到 40 字），按出现顺序 */
-	violations: string[];
-	/** 参与比对的源码文件，相对扫描根、已排序 —— 供调用方交代覆盖面，也是防「扫了个空」的证据 */
-	checked: string[];
-	/**
-	 * 因是核对表自身而被跳过的文件。
-	 *
-	 * @remarks
-	 * 扫**单个** skill 的 `scripts/` 时正常恰好 1 个（源 skill 的 `corpus/data/annotations.ts`），
-	 * 其余 skill 为 0 个（它们不持有核对表）。**两者都不是异常**，故调用方不该断言它非零 ——
-	 * 该断言的是「所有根合计至少有 1 个」，见 `test/citations.test.ts`。
-	 *
-	 * 但某一栏为空仍有诊断价值：`checked` 为空说明根写歪或递归坏了；`skipped` 全仓为空
-	 * 说明 {@link isChecklistSource} 失配 —— 核对表已进比对集，那些 suspect 引文会把自己
-	 * 报成违例。两种都是调用方该立刻发现的状态，故单独记一栏而不是并进 `checked` 里。
-	 */
-	skipped: string[];
-}
+export type { CitationScan };
 
 /**
  * 该文件是否是核对表自身。
@@ -115,10 +93,11 @@ function isChecklistSource(source: string): boolean {
  * 跳过 `node_modules` 与点开头的目录：前者不该出现在内核根下（依赖装在 skill 根），
  * 后者是工具目录，都不属于被核对的源码。
  *
- * 还跳过 `corpus/data/manual/`：那里是**生成快照**（`tools/db/export-manual.ts`
- * 把样本库的主题文本转印成 TS 数据），全部内容是内核数据表的渲染镜像，不含任何手写
- * 断语 —— 源头（`data.ts` 等）本就在扫描范围内。镜像可能带着旧版库的历史引文形态
- * （库落后于内核清修时），那是 db 版本问题、重建即消，不是新写的未核实引文。
+ * 还跳过 `corpus/data/manual/`：那里是**断语手册库的构建源物料目录**
+ * （`tools/db/export-manual.ts` 把样本库的主题文本整理入库），全部内容是内核数据表的
+ * 渲染镜像，不含任何手写断语 —— 源头（`data.ts` 等）本就在扫描范围内。镜像可能带着
+ * 旧版库的历史引文形态（库落后于内核清修时），那是 db 版本问题、重建即消，
+ * 不是新写的未核实引文；入库那道闸另有建库期校验守着（同一份比对核心）。
  */
 function collectTsFiles(root: string, dir = ""): string[] {
 	const out: string[] = [];
@@ -128,7 +107,7 @@ function collectTsFiles(root: string, dir = ""): string[] {
 			if (entry.name === "node_modules" || entry.name.startsWith(".")) {
 				continue;
 			}
-			// 生成快照（tools/db/export-manual.ts 转印）随知识数据聚拢迁至 corpus/data/manual。
+			// 生成数据目录随知识数据聚拢迁至 corpus/data/manual。
 			// 按相对路径**后缀**判断而非整段相等：本收集器既被以 `scripts/` 为根调用
 			// （流派 citationRoots，dir = "corpus/data"），也被以仓库根调用
 			// （test/citations.test.ts 的仓库级组，dir = "scripts/corpus/data"）——
@@ -145,42 +124,6 @@ function collectTsFiles(root: string, dir = ""): string[] {
 }
 
 /**
- * 黑名单：核对表里 suspect / fabricated 条目的**引文核心**（书名号 / 引号内的部分）。
- *
- * @remarks
- * `.ts` 侧与 `.md` 侧共用这一个构造 —— 判据只有一份，改口径时两边同时变，
- * 不会出现「文档放行了、源码还拦着」的分叉。
- */
-function buildBannedSet(checklist: readonly AnnotationEntry[]): Set<string> {
-	return new Set(
-		checklist
-			.filter(e => e.status === "suspect" || e.status === "fabricated")
-			.flatMap(e => [...e.text.matchAll(/[「"『]([^」"』]{4,})[」"』]/g)].map(m => m[1]))
-	);
-}
-
-/**
- * 在给定的文本块里找出仍以倪师名义出现的未核实引文。
- *
- * @param chunks - 参与比对的文本（源码或文档），由调用方收集
- * @param banned - 黑名单（见 {@link buildBannedSet}）
- * @returns 违例的引文核心（已截断到 40 字），按出现顺序
- *
- * @remarks
- * 形态正则与 `.ts` 侧**逐字相同**：`倪(海厦|师)` + 最多 10 个非句号非换行字符 +
- * 说 / 言 / 称 / 警示 / 警告 / 明言 / 强调 / 描述 / 提醒 + 可选冒号 + 引号内 4 字以上。
- * 不为 `.md` 放松任何一项 —— 放宽的那天就是失效的那天。
- */
-function findViolations(chunks: readonly string[], banned: ReadonlySet<string>): string[] {
-	// 源码 / 文档中所有「倪海厦/倪师…说/言/警示…：『引文』」的引文核心
-	const citeRe =
-		/倪(?:海厦|师)[^。\n]{0,10}(?:说|言|称|警示|警告|明言|强调|描述|提醒)[：:]?\s*[「"『]([^」"』]{4,})[」"』]/g;
-	return [...chunks.join("\n").matchAll(citeRe)]
-		.filter(m => banned.has(m[1]))
-		.map(m => m[1].slice(0, 40));
-}
-
-/**
  * 扫描一棵源码树，找出仍以倪师名义出现的未核实引文。
  *
  * @param root - 扫描根（一个 skill 的 `scripts/`）
@@ -189,7 +132,7 @@ function findViolations(chunks: readonly string[], banned: ReadonlySet<string>):
  * @remarks
  * 比对方式：把 `ANNOTATIONS` 里 suspect / fabricated 条目的**引文核心**（书名号 / 引号内的
  * 部分）收成一个黑名单，再看源码里所有「倪海厦 / 倪师…说 / 言 / 警示…：『引文』」的引文核心
- * 是否落在其中。
+ * 是否落在其中。黑名单与形态正则见 `scripts/corpus/citation-core.ts`。
  *
  * ⚠️ **`violations` 为空不等于没问题**：目录为空、路径写歪、递归写坏，都会得到零违例。
  * 调用方必须同时检查 `checked` 非空 —— 那样的「零违例」是假绿。`test/citations.test.ts`

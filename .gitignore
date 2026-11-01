@@ -23,6 +23,7 @@ db/dataset/topics-*.parquet
 # duckdb（641.5 MiB 超限）是构建中间物，随时可弃；.staging/ 半截产物误入 git add -A 会写进历史。
 db/dataset.staging/
 db/ziwei.duckdb*
+db/tar-shards/
 
 # 518k 分片语料（tools/db/generate-shards.ts 生成，约 5.5GB；build:db 的默认 --src）
 samples-out/

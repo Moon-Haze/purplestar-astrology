@@ -8,17 +8,22 @@
  *
  * 完整口径见 docs/code/analysis.md。
  *
+ * 产出**结构化条目流**（一源双投影，见 `../items`）：slot = `kui-yue`，条目带 aux
+ * （魁/钺星名）与 palace（所在宫）。
+ *
  * @packageDocumentation
  */
 
 import { KUI_YUE_GUIREN_MAP } from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
+import type { AnalysisItem } from "../items";
+import { blankItem, contentItem, formatItems, headItem } from "../items";
 
-/** 渲染「五点六、魁钺贵人倾向细分」整节（主题不符或无命中时返回空数组）。 */
-export function renderKuiYue(ctx: AnalysisContext): string[] {
+/** 渲染「五点六、魁钺贵人倾向细分」的结构化条目流（主题不符或无命中时返回空数组）。 */
+export function renderKuiYueItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, topic } = ctx;
 
-	const lines: string[] = [];
+	const items: AnalysisItem[] = [];
 
 	if (
 		topic === "overview" ||
@@ -28,26 +33,41 @@ export function renderKuiYue(ctx: AnalysisContext): string[] {
 	) {
 		const kuiPalaceForTopic = chart.palaces.find(p => p.stars.some(s => s.name === "天魁"));
 		const yuePalaceForTopic = chart.palaces.find(p => p.stars.some(s => s.name === "天钺"));
-		const notes: string[] = [];
+		const notes: Array<{ star: string; palace: string; text: string }> = [];
 		if (kuiPalaceForTopic) {
 			const map = KUI_YUE_GUIREN_MAP[kuiPalaceForTopic.name];
 			if (map?.kui) {
-				notes.push(`**天魁在${kuiPalaceForTopic.name}**：${map.kui}`);
+				notes.push({
+					star: "天魁",
+					palace: kuiPalaceForTopic.name,
+					text: `**天魁在${kuiPalaceForTopic.name}**：${map.kui}`,
+				});
 			}
 		}
 		if (yuePalaceForTopic) {
 			const map = KUI_YUE_GUIREN_MAP[yuePalaceForTopic.name];
 			if (map?.yue) {
-				notes.push(`**天钺在${yuePalaceForTopic.name}**：${map.yue}`);
+				notes.push({
+					star: "天钺",
+					palace: yuePalaceForTopic.name,
+					text: `**天钺在${yuePalaceForTopic.name}**：${map.yue}`,
+				});
 			}
 		}
 		if (notes.length > 0) {
-			lines.push(`**【贵人倾向·魁钺细分】**`);
-			lines.push("");
-			notes.forEach(n => lines.push(`◇ ${n}`));
-			lines.push("");
+			items.push(headItem(`**【贵人倾向·魁钺细分】**`, "kui-yue"));
+			items.push(blankItem("kui-yue"));
+			notes.forEach(({ star, palace, text }) => {
+				items.push(contentItem(`◇ ${text}`, "kui-yue", { aux: star, palace }));
+			});
+			items.push(blankItem("kui-yue"));
 		}
 	}
 
-	return lines;
+	return items;
+}
+
+/** 渲染「五点六、魁钺贵人倾向细分」整节（文本投影；主题不符或无命中时返回空数组）。 */
+export function renderKuiYue(ctx: AnalysisContext): string[] {
+	return formatItems(renderKuiYueItems(ctx));
 }

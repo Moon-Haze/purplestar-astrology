@@ -71,12 +71,14 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > `await import("@/corpus/data/tianji")`，只在查询时加载，本模块被 registry 静态
 > import 也不把语料拉进 CLI 主链路。
 
-### 3.4 `oracle.ts`：懒加载 4.4MB 断语
+### 3.4 `oracle.ts`：懒加载断语手册库
 
 > knowledge 的 **oracle 域**：断语手册检索（实现即插件，无转发壳）。
 >
-> **懒加载纪律**：`corpus/data/manual/`（4.4MB 分类断语）在 `search` 体内
-> `await import("@/corpus/data/manual/index.ts")`，只在查询时加载，CLI 主链路不吃它。
+> **懒加载纪律**：断语住 SQLite 只读库 `corpus/data/manual/oracle.db`（生成物，字节可
+> 复现，`npm run manual:check` 对拍），`search` 体内经 `corpus/data/manual/index.ts`
+> 按需开库（`node:sqlite` 只读 + 参数绑定）查询，CLI 主链路不吃它；断语修订链 =
+> 改内核 → `build:db` → 重建库。
 
 ---
 

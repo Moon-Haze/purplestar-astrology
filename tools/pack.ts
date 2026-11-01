@@ -68,6 +68,15 @@ const INCLUDE = ["SKILL.md", "package.json", "references", "scripts"] as const;
 /** 目录内排除项：`scripts/` 下理论上没有，但一旦有人手滑拷进来也不该进包 */
 const EXCLUDE_DIRS = new Set(["node_modules", ".git", ".cache"]);
 
+/**
+ * 点目录一律不进包：分发面（`scripts/` 等）内只应有产物与契约文件，工具状态目录
+ * （如 `.mimosa` 安全扫描状态）出现在内核目录旁时不该被夹带——分发件里多一个
+ * 隐匿目录既增大包体又是噪声。文件不受此规则影响（如 `.gitignore` 语义不同）。
+ */
+function isExcludedDir(name: string): boolean {
+	return EXCLUDE_DIRS.has(name) || name.startsWith(".");
+}
+
 // ── 枚举（排序固定，否则产物字节随文件系统返回序漂移） ──────────────
 
 interface Entry {
@@ -80,7 +89,7 @@ interface Entry {
 function walk(absDir: string, zipPrefix: string, acc: Entry[]): void {
 	const names = readdirSync(absDir).sort(); // 排序是「字节可复现」的一半
 	for (const name of names) {
-		if (EXCLUDE_DIRS.has(name)) {
+		if (isExcludedDir(name)) {
 			continue;
 		}
 		const abs = join(absDir, name);
@@ -124,8 +133,8 @@ const DOS_TIME = 0;
  * @remarks
  * 实现的最小 ZIP 子集：deflate 压缩 + 32 位 CRC + 无 extra field / 无 Zip64。
  * 分发件全部条目 < 4 GB、单文件 < 65535 字节名，那些都用不上 ——
- * 写它们只会增加出错面。本仓最大条目是 `scripts/corpus/data/manual/overview.ts`
- * （约 500 KB），离两个上限都很远。
+ * 写它们只会增加出错面。本仓最大条目是 `scripts/corpus/data/manual/oracle.db`
+ * （约 5.9 MB），离两个上限都很远。
  */
 function buildZip(entries: Entry[]): Buffer {
 	const locals: Buffer[] = [];

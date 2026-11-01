@@ -75,7 +75,7 @@ npm run pack
 
 ### 分发：`npm run pack` 打 zip（`scripts/` 不拍平）
 
-产物 `dist/purplestar-astrology.zip`（约 1.2 MB；条目数以 `npm run pack` 实跑自报为准），只含
+产物 `dist/purplestar-astrology.zip`（实测约 2.3 MB / 124 条目（以 `npm run pack` 实跑自报为准）），只含
 `SKILL.md` `package.json` `references/` `scripts/` 四项，顶层目录 `purplestar-astrology/`。
 `dist/` 在 `.gitignore` 内。
 
@@ -180,13 +180,14 @@ npm run pack
     │                               palace-relations / types
     ├── corpus/                     古籍与文献语料内核：data/（三部古籍 quanshu/quanji/gusuifu
     │                               + tianji.ts 天纪判语 + 引文核对表 annotations + 格局判词
-    │                               + manual/ 各主题断语）+ index（检索纯函数）
+    │                               + citation-core 引文比对核心）+ index（检索纯函数）
     │                               + selftest-asserts（断言组，主 selftest 汇总执行）
     │                               ⚠️ 天纪语料在 data/tianji.ts，corpus 下**没有** tianji/ 目录
     ├── knowledge/                  扩展点接缝 Phase 1（KnowledgeSource）：types.ts 接口 +
     │   ├── registry.ts              registry.ts 清单注册四域（books/stars/tianji/oracle）
     │   ├── types.ts                 + sources/ 各域实现（新增域 = 写源 + 加一行，不改 CLI）
-    │   └── sources/                 ⚠️ 重数据懒加载：tianji/oracle 在 search 内 await import
+    │   └── sources/                 ⚠️ 重数据懒加载：tianji 在 search 内 await import、
+    │                                oracle 在 search 内开断语手册库（node:sqlite 只读）
     ├── school/                     扩展点接缝 Phase 3（SchoolAdapter）：types / registry +
     │   ├── guard.ts                 guard 三合派约束守卫 + schools/wenmo-nishi（当前唯一流派）
     │   ├── registry.ts              ⚠️ **引用而非迁移**：citationRoots 引用内核 ANNOTATIONS，
@@ -284,7 +285,8 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 - 凡出现「倪师 / 倪海厦 + 引号句」形态，必须在 `analysis/grades.ts` 登记档位，否则 `npm test` 引文守卫变红。
   **占位或自撰内容绝不可挂倪师引语**（属伪造引文）。
-- 守卫扫描面同时覆盖 `.ts` 与 `.md`（`docs/` / `SKILL.md` / `references/` 等，见 `test/lib/citation-guard.ts` 的 `scanMarkdownCitations`）；`docs/manual/` 是生成导出，按路径排除。
+- 守卫扫描面同时覆盖 `.ts` 与 `.md`（`docs/` / `SKILL.md` / `references/` 等，见 `test/lib/citation-guard.ts` 的 `scanMarkdownCitations`）；`docs/manual/` 是生成导出，按路径排除。断语手册库（`corpus/data/manual/oracle.db`）的行文本经建库期闸门与测试期抽取扫描双道拦截（比对核心住 `corpus/citation-core.ts`，test 与建库工具同引一份）。
+- 断语手册库是**生成物**（`npx tsx tools/db/export-manual.ts db`，字节可复现），不手改；修订链 = 改内核 `scripts/analysis/` → `npm run build:db` → 重建库 → `npm run manual:check` 对拍。
 
 ### 缓存
 
@@ -295,7 +297,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 ### 最小 diff 与生成物
 
 - 只格式化本次真正新增 / 改动的行，**不夹带无关格式改动**：整跑 format 会产出数万行纯排版噪声，逐字节 diff 与评审双双失效。
-- 生成文件不手改、改生成器再重导（`data/wenmo-tables.ts`、`corpus/data/tianji.ts`、`corpus/data/manual/`、cli-samples 产物）；重导前先想清楚 diff 只含预期变化。
+- 生成文件不手改、改生成器再重导（`data/wenmo-tables.ts`、`corpus/data/tianji.ts`、`corpus/data/manual/oracle.db`、cli-samples 产物）；重导前先想清楚 diff 只含预期变化。
 - 「重构不改行为」的任务，验收必须含**与改动前基线逐字节 diff=0**（先取基线再动手）。
 
 ### 抽象与重构判据
