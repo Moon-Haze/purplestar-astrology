@@ -13,7 +13,7 @@
       分支都要给值**（兜底分支按 `isLoan` 计算借宫注，保持该分支现有逐字形态）。
       判据 `[计数]`：`grep -rn "本宫主星：" scripts/` 命中数由 2 处降为 1 处（只在
       `overview-material.ts`）；`grep -rn "借对宫" scripts/analysis/` 命中数由 3 处降为 1 处。
-- [ ] 1.3 `scripts/analysis/views/overview.ts:79-85` 改消费 `m.mainStarLine`（结构化字段
+- [x] 1.3 `scripts/analysis/views/overview.ts:79-85` 改消费 `m.mainStarLine`（结构化字段
       `star` / slot `main-palace` 不变）。判据 `[逐字节]`：`--topic` 全部主题输出与 1.1 基线
       `diff` 为 0 行。
 - [ ] 1.4 `scripts/analysis/report.ts:272-276` 改消费 `m.mainStarLine`、`:201` 的 `loanTag`

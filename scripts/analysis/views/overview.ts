@@ -25,7 +25,7 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
  * ctx.mainStars），不从成文反解。
  */
 export function renderOverviewItems(ctx: AnalysisContext): AnalysisItem[] {
-	const { topic, topicLabel, mainStars, primaryStar } = ctx;
+	const { topicLabel, mainStars, primaryStar } = ctx;
 	const m = buildOverviewMaterial(ctx);
 
 	const items: AnalysisItem[] = [];
@@ -76,13 +76,8 @@ export function renderOverviewItems(ctx: AnalysisContext): AnalysisItem[] {
 		// 命盘推演标题及本宫主星说明
 		items.push(headItem(`**【命盘推演】**`, "main-palace"));
 		items.push(blankItem("main-palace"));
-		items.push(
-			contentItem(
-				`本宫主星：${m.loanNote}${m.mainBadge}${topic === "overview" ? `，${ctx.chart.fiveElementsClassName}` : ""}`,
-				"main-palace",
-				{ star: primaryStar?.name }
-			)
-		);
+		// 整行取 material 单点：与 `--report` 形态同源，不得在此重建拼式
+		items.push(contentItem(m.mainStarLine, "main-palace", { star: primaryStar?.name }));
 		items.push(blankItem("main-palace"));
 
 		// 技术性星曜详解
