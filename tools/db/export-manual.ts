@@ -171,6 +171,8 @@ function classifyOracle(
 		other: [] as string[],
 	};
 	let lastSihua: SihuaEntry | null = null;
+	/** 上一处理行是否 emoji 四化主行（缩进 note 的紧邻归属判据，v4 起按上下文而非节名） */
+	let lastWasSihuaMain = false;
 	const uniq = (arr: string[], line: string): void => {
 		if (!arr.includes(line)) {
 			arr.push(line);
@@ -181,9 +183,13 @@ function classifyOracle(
 		const indent = line.match(/^\s+(.*)/);
 		const body = indent ? indent[1] : line;
 
-		// 缩进行：四化节的 note（同主行多变体换行合并）
+		// 缩进行：四化主行的 note（同主行多变体换行合并）。
+		// 归属判据 v4 起（ziwei-interp 数据集）改为**紧邻上下文**：四化行不再有专属节
+		// （挂在「事业总览」等主题大节下混排），按节名合并的 v3 白名单失效 —— 缩进
+		// 即从属标记，上一行是 emoji 四化主行时缩进行就是它的说明，跨节成立。
+		// v3 的两个专属节名下缩进行同样紧邻主行，行为不变。
 		if (indent) {
-			if ((section === "本命四化会照" || section === "年干四化·关键宫位影响") && lastSihua) {
+			if (lastWasSihuaMain && lastSihua) {
 				lastSihua.note =
 					lastSihua.note === undefined
 						? body
@@ -199,6 +205,7 @@ function classifyOracle(
 		let m: RegExpMatchArray | null;
 		// ⭐ 格局：同名跨盘变体合并（追加判词）
 		if ((m = line.match(/^⭐ \*\*(.+?)\*\*[：:](.*)$/))) {
+			lastWasSihuaMain = false;
 			const found = oracle.patterns.find(p => p.name === m![1]);
 			if (found) {
 				if (m[2] && !found.text.includes(m[2])) {
@@ -213,11 +220,13 @@ function classifyOracle(
 		if (/^[🔴🟡🔵🟢]/u.test(line)) {
 			const existing = oracle.sihua.find(s => s.text === body);
 			lastSihua = existing ?? { text: body };
+			lastWasSihuaMain = true;
 			if (!existing) {
 				oracle.sihua.push(lastSihua);
 			}
 			continue;
 		}
+		lastWasSihuaMain = false;
 		if (line.startsWith("本宫主星")) {
 			uniq(oracle.mainPalace.stars, body);
 			continue;
@@ -236,6 +245,7 @@ function classifyOracle(
 			uniq(oracle.mainPalace.content, line);
 		} else if (section === "本命四化会照" || section === "年干四化·关键宫位影响") {
 			lastSihua = { text: line };
+			lastWasSihuaMain = true;
 			oracle.sihua.push(lastSihua);
 		} else if (section !== "") {
 			if (!oracle.extras.has(section)) {

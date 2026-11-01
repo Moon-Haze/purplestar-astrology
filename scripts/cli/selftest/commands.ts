@@ -76,8 +76,9 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			parseArgs(["--source", "oracle", "--topic", "career", "--star", "七杀"], "knowledge")
 		);
 		for (const key of [
-			"命盘关键定制",
-			"星曜深层特质",
+			// v4 数据集（ziwei-interp）的节头体系与 v3 不同：mods（命盘关键定制）与
+			// summary（星曜深层特质）随主题可为空（career/七杀实测双空），渲染端对空槽
+			// 跳过节标题 —— 结构断言只锚 v4 实态恒有的节（本宫/三方/尾注）。
 			"本宫论断",
 			"三方四正联动",
 			"知识来源",
