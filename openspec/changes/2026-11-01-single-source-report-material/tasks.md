@@ -41,6 +41,7 @@
 ## 3. 验证与收尾
 
 - [ ] 3.1 `npm run typecheck`。判据 `[退出码]`：退出码 0、报错 0（不用 `any` / `@ts-ignore` 绕过）。
+  <!-- skipped: 实现候选全部失败（hy4-preview: 模型额度耗尽（429）; hy3: 无暂存产出（尾:  The typecheck gate for task 3.1 is satisfied. ✔ Worked for 1m 38s ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── > ──────────）） -->
 - [ ] 3.2 `node scripts/purple-star.ts selftest`。判据 `[计数]`：全绿，项数以首行自报为准
       （与改动前自报数一致 —— 本次不改 selftest）。
 - [ ] 3.3 `ZIWEI_NO_CACHE=1 npm test`。判据 `[退出码]`：退出码 0；末行分层项数中，层 1 与
