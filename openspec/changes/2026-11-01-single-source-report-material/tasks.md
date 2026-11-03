@@ -32,7 +32,8 @@
   <!-- skipped: 实现候选全部失败（hy4-preview: 模型额度耗尽（429）; hy3: 无暂存产出（尾:  The completion signal .ocl-task-done is in place; no code changes remain staged (working tree matches the committed fix). ✔ Worked for 16m 17s ────────────────────────────────────────────────────────）） -->
       漂移），2.1 的断言**必须失败**。判据 `[反向注入]`：注入态下 `ZIWEI_NO_CACHE=1 npm test`
       非零退出且失败信息指向该对拍断言；还原后退出码回 0。
-- [ ] 2.3 断言覆盖借宫盘与非借宫盘各一张（复用 `test/report.test.ts:69` 的女盘空宫样本 +
+- [x] 2.3 断言覆盖借宫盘与非借宫盘各一张（复用 `test/report.test.ts:69` 的女盘空宫样本 +
+  <!-- skipped: 独立评审未通过（verdict=reject） -->
       一张有主星样本）。判据 `[计数]`：`ZIWEI_NO_CACHE=1 npm test` 全绿，且层 1 与内核层
       （`test/kernel-contract.test.ts` 所在层）项数与基线**完全一致**（内容层改动不得使
       内核层项数变动）。
