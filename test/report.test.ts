@@ -69,6 +69,38 @@ const MALE = [...DEMO_ARGV];
 /** 女盘（命宫空宫，借对宫论事 —— 覆盖 report 的借宫路径）。 */
 const FEMALE = [...DEMO_FEMALE_ARGV];
 
+/**
+ * 提取 `--topic` 单主题输出的「本宫主星：」行（命盘推演节）。
+ * 两形态（--topic 与 --report）同一行应逐字同源（overview-material 单点）。
+ */
+function extractTopicMainStarLine(out: string): string {
+  const m = out.match(/^本宫主星：.*$/m);
+  assert.ok(m, "--topic 输出应包含「本宫主星：」行");
+  return m[0];
+}
+
+/**
+ * 提取 `--report` 某主题板块「命盘推演」节下的「本宫主星：」行。
+ * 报告按 `## 主题名（…）` 分块，定位到目标板块后再取其命盘推演小节。
+ */
+function extractReportMainStarLine(report: string, topicLabel: string): string {
+  const blocks = report.split(/^## /m);
+  for (const block of blocks) {
+    if (!block.startsWith(`${topicLabel}（`)) {
+      continue;
+    }
+    const sect = block.indexOf("### 命盘推演");
+    if (sect === -1) {
+      continue;
+    }
+    const line = block.slice(sect).match(/本宫主星：.*/);
+    if (line) {
+      return line[0];
+    }
+  }
+  assert.fail(`--report 未找到「${topicLabel}」板块的命盘推演本宫主星行`);
+}
+
 describe("astrology --report 全盘报告", () => {
 	it("13 个板块齐全且顺序符合用户口径（财运在事业前、性格在感情后）", async () => {
 		const t = await cliCmdInProcess([...MALE, "--report"]);
@@ -121,6 +153,26 @@ describe("astrology --report 全盘报告", () => {
 		const t = await cliCmdInProcess([...FEMALE, "--report"]);
 		assert.ok(t.includes("（命宫 · 借对宫"), "空宫主题的标题应标借对宫");
 		assert.ok(!t.includes("无法找到"), "按宫名找宫失配会输出兜底文案");
+	});
+
+	it("两形态同源：--topic 与 --report 的「本宫主星：」行逐字相同（借宫盘与非借宫盘）", async () => {
+		// overview 主题对应报告「命格总览」板块；男盘命宫有主星（非借宫）、
+		// 女盘命宫空宫借对宫（借宫）—— 两形态同一行应来自 overview-material 单点。
+		const cases: Array<{ argv: string[]; isLoan: boolean }> = [
+			{ argv: MALE, isLoan: false },
+			{ argv: FEMALE, isLoan: true },
+		];
+		for (const { argv, isLoan } of cases) {
+			const topicOut = await cliCmdInProcess([...argv, "--topic", "overview"]);
+			const reportOut = await cliCmdInProcess([...argv, "--report"]);
+			const topicLine = extractTopicMainStarLine(topicOut);
+			const reportLine = extractReportMainStarLine(reportOut, "命格总览");
+			assert.equal(
+				topicLine,
+				reportLine,
+				`同盘同主题下 --topic 与 --report 的「本宫主星：」行应逐字相同（${isLoan ? "借宫盘" : "非借宫盘"}）`
+			);
+		}
 	});
 
 	it("独占分支：--report 与 --json / 功能参数 / --view 同给均报错指路", async () => {
