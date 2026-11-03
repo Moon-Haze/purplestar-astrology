@@ -156,22 +156,50 @@ describe("astrology --report 全盘报告", () => {
 	});
 
 	it("两形态同源：--topic 与 --report 的「本宫主星：」行逐字相同（借宫盘与非借宫盘）", async () => {
-		// overview 主题对应报告「命格总览」板块；男盘命宫有主星（非借宫）、
-		// 女盘命宫空宫借对宫（借宫）—— 两形态同一行应来自 overview-material 单点。
-		const cases: Array<{ argv: string[]; isLoan: boolean }> = [
-			{ argv: MALE, isLoan: false },
-			{ argv: FEMALE, isLoan: true },
+		// overview 主题对应报告「命格总览」板块；男盘命宫有主星（非借宫）。
+		// 2.3 覆盖两种借宫形态（期望值均来自真实 CLI 实跑，非评审转述）：
+		//  - 女盘命宫空宫借对宫：行带「借对宫天机论事」注（1.4 修复的漂移形态）；
+		//  - 女盘财帛宫空宫借天梁化科：非命宫借宫块，行直接落借入星（无注）。
+		const cases: Array<{
+			argv: string[];
+			topic: string;
+			reportLabel: string;
+			expectInLine?: string;
+			note: string;
+		}> = [
+			{ argv: MALE, topic: "overview", reportLabel: "命格总览", note: "非借宫盘" },
+			{
+				argv: FEMALE,
+				topic: "overview",
+				reportLabel: "命格总览",
+				expectInLine: "借对宫天机论事",
+				note: "命宫借宫（行带借宫注）",
+			},
+			{
+				argv: FEMALE,
+				topic: "wealth",
+				reportLabel: "财富运势",
+				expectInLine: "天梁化科（落陷）",
+				note: "非命宫借宫块（行落借入星）",
+			},
 		];
-		for (const { argv, isLoan } of cases) {
-			const topicOut = await cliCmdInProcess([...argv, "--topic", "overview"]);
+		for (const { argv, topic, reportLabel, expectInLine, note } of cases) {
+			const topicOut = await cliCmdInProcess([...argv, "--topic", topic]);
 			const reportOut = await cliCmdInProcess([...argv, "--report"]);
+			const reportLine = extractReportMainStarLine(reportOut, reportLabel);
+			// 对拍为主断言：两形态必须逐字同源（漂移回潮时第一个红的就是它）。
 			const topicLine = extractTopicMainStarLine(topicOut);
-			const reportLine = extractReportMainStarLine(reportOut, "命格总览");
 			assert.equal(
 				topicLine,
 				reportLine,
-				`同盘同主题下 --topic 与 --report 的「本宫主星：」行应逐字相同（${isLoan ? "借宫盘" : "非借宫盘"}）`
+				`同盘同主题下 --topic 与 --report 的「本宫主星：」行应逐字相同（${note}）`
 			);
+			if (expectInLine !== undefined) {
+				assert.ok(
+					reportLine.includes(expectInLine),
+					`${note}：--report 行应体现借宫语义（期望含「${expectInLine}」），实得：${reportLine}`
+				);
+			}
 		}
 	});
 
