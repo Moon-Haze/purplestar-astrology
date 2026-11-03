@@ -16,7 +16,7 @@
 - [x] 1.3 `scripts/analysis/views/overview.ts:79-85` 改消费 `m.mainStarLine`（结构化字段
       `star` / slot `main-palace` 不变）。判据 `[逐字节]`：`--topic` 全部主题输出与 1.1 基线
       `diff` 为 0 行。
-- [ ] 1.4 `scripts/analysis/report.ts:272-276` 改消费 `m.mainStarLine`、`:201` 的 `loanTag`
+- [x] 1.4 `scripts/analysis/report.ts:272-276` 改消费 `m.mainStarLine`、`:201` 的 `loanTag`
       改消费 `m.loanTag`；`report.ts` 内不再出现「借对宫」字面量与「本宫主星：」拼式。
       判据 `[逐字节]`：`--report` 输出与 1.1 基线的 diff 行数 = 该盘借宫主题数（固定样本盘 = 2），
       且每行差异仅为「借对宫」后补回星名（形态：`借对宫论事）` → `借对宫<星名>论事）`），
@@ -24,11 +24,12 @@
 
 ## 2. 两形态对拍断言（层 2）
 
-- [ ] 2.1 在 `test/report.test.ts` 新增断言：同盘同主题下，`--topic` 输出的「本宫主星：」行
+- [x] 2.1 在 `test/report.test.ts` 新增断言：同盘同主题下，`--topic` 输出的「本宫主星：」行
       与 `--report`「命盘推演」节同一行逐字相同（剥离 Markdown 标题行与空行后比对）。
       判据 `[计数]`：`ZIWEI_NO_CACHE=1 npm test` 全绿，且层 2「`astrology --report` 全盘报告」
       套件项数 = 基线 + 1。
 - [ ] 2.2 反向注入：临时把 `buildOverviewMaterial` 的借宫注改回无星名版本（模拟本次修掉的
+  <!-- skipped: 实现候选全部失败（hy4-preview: 模型额度耗尽（429）; hy3: 无暂存产出（尾:  The completion signal .ocl-task-done is in place; no code changes remain staged (working tree matches the committed fix). ✔ Worked for 16m 17s ────────────────────────────────────────────────────────）） -->
       漂移），2.1 的断言**必须失败**。判据 `[反向注入]`：注入态下 `ZIWEI_NO_CACHE=1 npm test`
       非零退出且失败信息指向该对拍断言；还原后退出码回 0。
 - [ ] 2.3 断言覆盖借宫盘与非借宫盘各一张（复用 `test/report.test.ts:69` 的女盘空宫样本 +
