@@ -48,7 +48,8 @@
 - [ ] 3.3 `ZIWEI_NO_CACHE=1 npm test`。判据 `[退出码]`：退出码 0；末行分层项数中，层 1 与
   <!-- skipped: 实现候选全部失败（hy4-preview: 模型额度耗尽（429）; hy3: 无暂存产出（尾:  Staged (no-op) and created .ocl-task-done. ✔ Worked for 1m 42s ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── > ─────────────）） -->
       内核层项数与基线一致。
-- [ ] 3.4 `docs/code/analysis.md` 若描述了「本宫主星」行 / 借宫注的口径，同步为「两形态
+- [x] 3.4 `docs/code/analysis.md` 若描述了「本宫主星」行 / 借宫注的口径，同步为「两形态
+  <!-- skipped: 独立评审未通过（verdict=reject） -->
       共用 overview-material 单点」的描述。判据 `[计数]`：`grep -rn "本宫主星" docs/ references/
       SKILL.md` 中指向旧两处实现的描述数 = 0。
 - [ ] 3.5 收尾卫生：只对本次新增 / 改动的行跑 prettier（不整跑 `npm run format`）。
