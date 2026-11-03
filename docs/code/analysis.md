@@ -473,3 +473,9 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > `palace-query.ts` 的 `descPalaceStars` 同式引它。
 > 原先两编排器各写一遍取材、徽标两式并存、兜底句两份措辞——均已收敛
 > （architecture-review-20261016 候选 1）。
+>
+> 「本宫主星」行与借宫注同为单点字段（2026-11-01-single-source-report-material）：
+> `mainStarLine` 是「本宫主星：…」**整行**的唯一出处，`views/overview.ts`（【】版式）
+> 与 `report.ts`（### 版式）**两形态都只消费它**；借宫注（`（命宫空宫，借对宫天机论事）`
+> 形态）随行内嵌，不再有第二份拼式。`loanTag`（借对宫 / 空串）是板块标题徽注，
+> **仅 `report.ts` 的 `## 主题（宫 · 徽）` 标题行消费**。
