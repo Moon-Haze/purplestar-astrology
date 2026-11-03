@@ -46,6 +46,7 @@
   <!-- skipped: 实现候选全部失败（hy4-preview: 模型额度耗尽（429）; hy3: 无暂存产出（尾:  No code changes were required for task 3.2 itself — it is a verification gate, and the prior implementation passes it. ✔ Worked for 1m 07s ────────────────────────────────────────────────────────────）） -->
       （与改动前自报数一致 —— 本次不改 selftest）。
 - [ ] 3.3 `ZIWEI_NO_CACHE=1 npm test`。判据 `[退出码]`：退出码 0；末行分层项数中，层 1 与
+  <!-- skipped: 实现候选全部失败（hy4-preview: 模型额度耗尽（429）; hy3: 无暂存产出（尾:  Staged (no-op) and created .ocl-task-done. ✔ Worked for 1m 42s ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── > ─────────────）） -->
       内核层项数与基线一致。
 - [ ] 3.4 `docs/code/analysis.md` 若描述了「本宫主星」行 / 借宫注的口径，同步为「两形态
       共用 overview-material 单点」的描述。判据 `[计数]`：`grep -rn "本宫主星" docs/ references/
