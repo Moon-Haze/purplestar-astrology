@@ -141,8 +141,7 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	}
 
 	// 格局识别（仅 overview / personality 展示）
-	const gejuDetected =
-		topic === "overview" || topic === "personality" ? detectGeJu(chart) : [];
+	const gejuDetected = topic === "overview" || topic === "personality" ? detectGeJu(chart) : [];
 	const geju = gejuDetected.map(gj => `⭐ **${gj.name}**：${gj.description}`);
 
 	// 静态白话总论（summary，核心 5 主题；personality 跳过避免与 overview 雷同）
