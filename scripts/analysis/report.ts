@@ -197,9 +197,8 @@ export function getTopicReport(
 	const lines: string[] = [];
 	const m = buildOverviewMaterial(ctx);
 
-	// ── 节标题：主题名（主宫 · 主星徽标）──
-	const loanTag = ctx.isLoan ? "借对宫" : "";
-	lines.push(`## ${TOPIC_LABEL[topic]}（${ctx.palaceName} · ${loanTag}${m.mainBadge}）`);
+	// ── 节标题：主题名（主宫 · 主星徽标；loanTag 取 material 单点）──
+	lines.push(`## ${TOPIC_LABEL[topic]}（${ctx.palaceName} · ${m.loanTag}${m.mainBadge}）`);
 	lines.push("");
 
 	// ── 一句话定调：主星一句简述（STAR_BRIEF），空宫给借宫提示 ──
@@ -266,14 +265,10 @@ export function getTopicReport(
 		lines.push(...verdictLines, "");
 	}
 
-	// ── 命盘推演：本宫主星一行（含借宫注明，overview 附五行局）──
+	// ── 命盘推演：本宫主星一行（含借宫注明，overview 附五行局；取 material 单点）──
 	lines.push("### 命盘推演");
 	lines.push("");
-	lines.push(
-		`本宫主星：${ctx.isLoan ? `（${ctx.palaceName}空宫，借对宫论事）` : ""}` +
-			`${m.mainBadge}` +
-			`${topic === "overview" ? `，${chart.fiveElementsClassName}` : ""}`
-	);
+	lines.push(m.mainStarLine);
 	lines.push("");
 
 	// ── 三方四正联动（叶子 view，剥头）──
