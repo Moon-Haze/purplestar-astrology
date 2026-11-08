@@ -43,7 +43,7 @@ export type ReportOptions = AnalysisOptions & {
 	 * 报告装配层的跨节去重状态：键 = 论断全文文本，值 = 该文的首现 / 主场板块名。
 	 * 三方联动的 fullContent 渲染前查此表，命中即降级为「徽标 + 指引行」；缺省
 	 * （`--topic` 单主题路径）为 `undefined`，输出与不去重时逐字节一致。
-	 * 主场登记由装配层经 {@link getTopicMainContentText} 预扫描完成 —— 见其注释。
+	 * 主场登记由装配层经 {@link getTopicMainContentTexts} 预扫描完成 —— 见其注释。
 	 */
 	dedupe?: Map<string, string>;
 	/**
@@ -123,9 +123,11 @@ export function getTopicReportMeta(
 }
 
 /**
- * 单主题核心论断需登记主场的全文集合（第一主星 `m.content` + 双主星的
+ * 「本板块哪些全文登记主场」的**唯一实现**（spec report-assembly「主场登记单一
+ * 权威」）：单主题核心论断需登记主场的全文集合（第一主星 `m.content` + 双主星的
  * `m.secondStarContent`，与 {@link getTopicReport} 同源同投影，同走
- * {@link buildOverviewMaterial}）—— 供 `--report` 装配层**预登记**主场板块。
+ * {@link buildOverviewMaterial}）—— 供 `--report` 装配层**预登记**主场板块；
+ * 渲染路径（{@link getTopicReport}）不另行登记本板块主星全文。
  *
  * @remarks
  * 为什么必须预扫描而非渲染时登记：渲染按板块序进行，更早板块的三方联动会先遇到
@@ -241,10 +243,6 @@ export function getTopicReport(
 	if (!m.emptyFallback) {
 		if (m.content) {
 			verdictLines.push(m.content);
-			// 主场登记（不查询）：本板块核心论断全文恒输出（spec「本宫核心论断」豁免），
-			// 登记让后续板块的三方联动把同文降级指引回此处。装配层已预登记同值，此
-			// set 对未预扫描的调用方兜底，对已登记者是幂等重写。
-			options.dedupe?.set(m.content, TOPIC_LABEL[topic]);
 		}
 		if (m.brightNote) {
 			verdictLines.push(m.brightNote);
@@ -253,10 +251,7 @@ export function getTopicReport(
 			verdictLines.push(m.secondStar);
 		}
 		if (m.secondStarContent) {
-			// 双主星主场展开：第二主星全文在本板块（语义主场）首现并登记，三方联动
-			// 的指引指回正确板块（改前全文漂移到别的板块三方联动，指引指错主场）。
 			verdictLines.push(m.secondStarContent);
-			options.dedupe?.set(m.secondStarContent, TOPIC_LABEL[topic]);
 		}
 	}
 	if (verdictLines.length > 0) {

@@ -151,7 +151,12 @@ describe("专题旗标→section 接线（候选 3）", () => {
 // 三条装配行为锁定：大限节唯一、论断全文首现（复现降级指引）、单主题路径零影响；
 // 以及经典出处的双通道相关性过滤（主题星判定 / 语境词共现，专章免滤）。
 const reportCmd = await load<typeof import("@/cli/commands/report")>("@/cli/commands/report");
-const { getTopicReport } = await load<typeof import("@/analysis")>("@/analysis");
+const { getTopicReport, getTopicMainContentTexts, TOPIC_LABEL } =
+	await load<typeof import("@/analysis")>("@/analysis");
+const { makeContext } = await load<typeof import("@/analysis/context")>("@/analysis/context");
+const { buildOverviewMaterial } = await load<typeof import("@/analysis/overview-material")>(
+	"@/analysis/overview-material"
+);
 const { buildReport, topicCitations } = reportCmd;
 const lookups = await load<typeof import("@/analysis/lookups")>("@/analysis/lookups");
 const dataModule = await load<typeof import("@/analysis/data")>("@/analysis/data");
@@ -262,6 +267,79 @@ describe("全盘报告装配：大限节唯一与全文首现", () => {
 		const { chart } = chartFor("1990-05-15");
 		const single = getTopicReport(chart, "wealth", {});
 		assert.ok(single.includes("### 当前大限"), "缺省（--topic）行为不变");
+	});
+
+	it("主场登记单一权威：预扫描=渲染取材、渲染不登记主星全文、主场落点 0 落空", () => {
+		const { chart, info, basis } = chartFor("2000-04-06", "00:15");
+		const dxIndex = chart.currentDecadalIndex >= 0 ? chart.currentDecadalIndex : 0;
+
+		// 断言 1 · 取材对拍：预扫描（缺省视角）与渲染侧取材（非缺省 AnalysisOptions）
+		// 逐字相等 —— 钉「核心论断全文与视角/流年/流月/大限下标无关」的等价前提
+		//（spec report-assembly「主场登记单一权威」· 预扫描与渲染展开对拍）。
+		const prescan = new Map<string, string[]>();
+		for (const topic of dataModule.TOPIC_KEYS) {
+			const texts = getTopicMainContentTexts(chart, topic);
+			prescan.set(topic, texts);
+			const ctx = makeContext(chart, topic, {
+				view: "daxian",
+				liunianYear: 2027,
+				liuyueMonth: 5,
+				daXianIndex: dxIndex,
+			});
+			const m = ctx ? buildOverviewMaterial(ctx) : null;
+			const rendered = m
+				? [m.content, m.secondStarContent].filter((t): t is string => !!t)
+				: [];
+			assert.deepEqual(
+				rendered,
+				texts,
+				`${topic}：渲染侧取材（非缺省视角）应与预扫描清单逐字相等`
+			);
+		}
+
+		// 断言 2 · 表键检查：fresh dedupe 过一遍渲染，本板块预扫描全文不得入表 ——
+		// 钉「渲染路径不登记主星全文」（内联 set 回归即红；spec「渲染路径不登记主星全文」）。
+		// 结构前提：单板块渲染内 surround 不可能登记本板块主星全文（本宫被 isMain 跳过、
+		// sanFang 各宫 contentKey 互异），渲染期仅可能登记他星全文与四化注（两个独立协议）。
+		for (const topic of dataModule.TOPIC_KEYS) {
+			const dedupe = new Map<string, string>();
+			getTopicReport(chart, topic, { dedupe });
+			const texts = prescan.get(topic) ?? [];
+			const leaked = texts.filter(t => dedupe.has(t));
+			assert.equal(
+				leaked.length,
+				0,
+				`${topic}：渲染路径不应登记本板块主星全文（泄漏 ${leaked.length} 条）`
+			);
+		}
+
+		// 断言 3 · 主场落点：每条渲染取材展开的全文（断言 1 保证其等于预扫描清单）在其
+		// 语义主场板块内、全报告恰一次 —— 钉端到端 0 落空（预扫描漏登 → 首现被更早板块
+		// 的三方联动抢走 = 出现两次，多登/少登都红；spec「主场落点 0 落空」）。
+		// 文本集独立于 getTopicMainContentTexts 取（直接 buildOverviewMaterial 展开），
+		// 预扫描函数被砍项时本断言仍能经「全报告恰一次」抓到漂移。
+		const report = buildReport(chart, info, basis);
+		for (const topic of dataModule.TOPIC_KEYS) {
+			if (topic === "study") {
+				continue; // study 复用 career 内容但不在 --report 13 板块（REPORT_TOPICS）
+			}
+			const ctx = makeContext(chart, topic, {});
+			const m = ctx ? buildOverviewMaterial(ctx) : null;
+			const texts = m ? [m.content, m.secondStarContent].filter((t): t is string => !!t) : [];
+			const home = report.split("\n## ").find(s => s.startsWith(`${TOPIC_LABEL[topic]}（`));
+			assert.ok(home !== undefined, `应存在「${TOPIC_LABEL[topic]}」板块`);
+			for (const text of texts) {
+				assert.equal(
+					report.split(text).length - 1,
+					1,
+					`${topic} 主场全文应全报告恰出现一次（首现漂移即 ≥2）`
+				);
+				assert.ok(
+					home.includes(text),
+					`${topic} 主场全文应落在「${TOPIC_LABEL[topic]}」板块内`
+				);
+			}
+		}
 	});
 });
 
