@@ -41,12 +41,12 @@
 
 ## 3. 死 import 清除（独立 commit，不顺带）
 
-- [ ] 3.1 【实现】`scripts/analysis/report.ts:23`：import 中删去 `starBadge` 名
+- [x] 3.1 【实现】`scripts/analysis/report.ts:23`：import 中删去 `starBadge` 名
       （`buildOverviewMaterial` 保留——`:144`、`:198` 在用）。`views/surround.ts` 的同名使用
       不受影响（它自带 import）。
       完成判据：`grep -c "starBadge" scripts/analysis/report.ts` 输出 `0`；
       `npm run typecheck` 0 错误；`npm run lint` 通过。
-- [ ] 3.2 【人工验证】本 commit 单独提交（不与任务 2 混装），提交信息注明「复核发现：仅
+- [x] 3.2 【人工验证】本 commit 单独提交（不与任务 2 混装），提交信息注明「复核发现：仅
       import 行 1 处命中」。判据：`git log` 中任务 2 与任务 3 为两个独立 commit；
       CLI 产物与 2.4 对账后基线仍逐字节一致（import 清除不影响输出）。
 
@@ -77,18 +77,18 @@
 
 ## 5. spec 与文档收口（人工验证）
 
-- [ ] 5.1 【人工验证】`docs/code/analysis.md` 复核：十节「第二主星……在本板块核心论断首现并
+- [x] 5.1 【人工验证】`docs/code/analysis.md` 复核：十节「第二主星……在本板块核心论断首现并
       登记主场」句在删码后是否仍无歧义（登记动作已归预扫描）。判读标准：概念句仍真则**不改**
       （最小 diff）；若读起来像「渲染时登记」则微调一语，改动 ≤ 2 行。
-- [ ] 5.2 【人工验证】`docs/code/cli-commands.md` 快速复核 `--report` 装配描述是否有「渲染时
+- [x] 5.2 【人工验证】`docs/code/cli-commands.md` 快速复核 `--report` 装配描述是否有「渲染时
       登记」表述需同步（grep 预登记 / 首现 / 主场）。判据：无表述漂移，或同步 ≤ 2 行。
 
 ## 6. 全量验收（人工验证，闸门命令退出码直取、不接管道）
 
-- [ ] 6.1 【实现】跑齐三件套：
+- [x] 6.1 【实现】跑齐三件套：
       `npm run typecheck`（0 错误）→ `node scripts/purple-star.ts selftest`（全绿，项数以首行
       自报为准）→ `ZIWEI_NO_CACHE=1 npm test`（全绿）。
       判据：三命令退出码均为 0。
-- [ ] 6.2 【人工验证】终态对账清单（对照 1.x 基线逐项核）：CLI 产物 diff=0（5/5）；层 2 +1、
+- [x] 6.2 【人工验证】终态对账清单（对照 1.x 基线逐项核）：CLI 产物 diff=0（5/5）；层 2 +1、
       层 1/3 不动；selftest 项数自报不因本 change 减少；提交序列 = commit A（主删改 + 断言，
       或按评审习惯再分）+ commit B（死 import）。判据：清单 6 项全勾，缺一不归档。

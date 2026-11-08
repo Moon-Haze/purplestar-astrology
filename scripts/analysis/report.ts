@@ -20,7 +20,7 @@ import {
 	type TopicKey,
 } from "../analysis/data";
 import { makeContext } from "../analysis/context";
-import { buildOverviewMaterial, starBadge } from "../analysis/overview-material";
+import { buildOverviewMaterial } from "../analysis/overview-material";
 import { descPalaceStars } from "../analysis/palace-query";
 import { buildTopicSuggestions } from "../analysis/suggestions";
 import { BRANCHES } from "@/data/ganzhi";
