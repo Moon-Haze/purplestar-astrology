@@ -285,6 +285,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			{
 				name: "daily",
 				cmds: ["astrology"],
+				shadow: true,
 				kind: "value",
 				value: "1-30",
 				desc: "配合 --mutagen --monthly：追加该农历日的流日四化（日干由 lunar-typescript 现算）",
@@ -292,6 +293,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			{
 				name: "hourly",
 				cmds: ["astrology"],
+				shadow: true,
 				kind: "value",
 				value: "0-12",
 				desc: "配合 --mutagen --monthly --daily：追加该时支的流时四化（五鼠遁，由日干推；12=晚子时按当日日干）",

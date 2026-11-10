@@ -219,6 +219,43 @@ describe("astrology --report 全盘报告", () => {
 		assert.ok(err2.includes("--info"), "report 视角下 --info 也应被点名");
 	});
 
+	it("独占分支 × 运限层级参数：monthly/daily/hourly 被吞必点名，--topic 消费白名单必放行", async () => {
+		// block 方向：四条独占分支 × {monthly, daily, hourly} 必须点名。被吞检测域
+		// 由声明表 shadow 标志单一派生——daily/hourly 漏标时（2026-11-09
+		// exclusive-branch-shadowable-gap 之前）它们被静默吞掉，违反失败可见性约束；
+		// 期望值来自 CLI 实跑行为（独立路径），与 selftest 的同源快照断言分工不同。
+		// 例外：--topic × monthly 走消费白名单（consumed = ["yearly","monthly"]），
+		// 属 allow 方向，不在被吞域（任务单原写「全组合」未扣此格，按提案 allow 条款修正）。
+		for (const branch of [["--info"], ["--palaces"], ["--topic", "love"], ["--report"]]) {
+			for (const [flag, value] of [
+				["--monthly", "5"],
+				["--daily", "10"],
+				["--hourly", "3"],
+			] as const) {
+				if (branch[0] === "--topic" && flag === "--monthly") {
+					continue;
+				}
+				const err = await cmdFails([...MALE, ...branch, flag, value]);
+				assert.ok(
+					err.includes(flag) && err.includes("不会生效"),
+					`独占分支 ${branch.join(" ")} 应点名被吞参数 ${flag}，实得：${err}`
+				);
+			}
+		}
+		// allow 方向：--topic 的消费白名单（yearly/monthly）是承重墙——SHADOWABLE 域
+		// 扩容后不得反向误伤合法消费。
+		for (const extra of [
+			["--yearly", "2027"],
+			["--monthly", "5"],
+		] as const) {
+			const out = await cliCmdInProcess([...MALE, "--topic", "love", ...extra]);
+			assert.ok(
+				out.includes("本宫主星：") && !out.includes("不会生效"),
+				`--topic 消费 ${extra[0]} 应正常出主题论断（无误伤报错）`
+			);
+		}
+	});
+
 	it("零输入 --report 报「缺一问一」，不喂虚构演示盘", async () => {
 		const err = await cmdFails(["--report"]);
 		assert.ok(err.includes("缺少出生日期"), `应报缺出生日期，实得：${err}`);

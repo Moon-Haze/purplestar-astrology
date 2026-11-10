@@ -89,8 +89,9 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 - `SHADOWABLE_KEYS`：
     > 可被独占分支吞掉的功能参数（kebab 原名）—— 专题深入组除 `palaces`（noShadow）
-    > 之外的全部，加上输出与选题组标了 `shadow` 的五项（yearly / monthly / focus /
-    > topic / report）。独占参数自身也在集合里，是为了让「两个独占分支同给」被指路
+    > 之外的全部，加上输出与选题组标了 `shadow` 的七项（yearly / monthly / daily /
+    > hourly / focus / topic / report；daily / hourly 于 2026-11-09 补标，修独占守卫域
+    > 缺口）。独占参数自身也在集合里，是为了让「两个独占分支同给」被指路
     > 而非静默吞掉低优先级的那个（自指由调用处的 `n !== exclusive` 过滤兜住）。
 - `BIRTH_KEYS`：
     > 出生相关参数名（camelCase）—— `role: "birth"` 三个组的全部参数。零输入演示的

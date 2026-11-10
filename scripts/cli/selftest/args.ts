@@ -167,8 +167,11 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 		// 现状被 startsWith("出生") 漏掉，只给 --gender/--city 会误走零输入演示盘；
 		// 按 role 标 birth 后进集合，与注释承诺的「部分输入 → 缺一问一」一致（见 ledger Ruling）。
 		// 数组经 join 归一成串再比：kit 的 eq 是 !==，直接比数组恒红。
+		// S 为修守卫域缺口后的 12 项：daily/hourly 补标 shadow（2026-11-09
+		// exclusive-branch-shadowable-gap），运限四化层级族全员进入独占分支被吞检测域
+		// ——有理由的基线推进，非漂移迁就；行为钉点在 test/report.test.ts 独占分支 describe。
 		const snap = {
-			S: "ages,decadal,focus,info,monthly,mutagen,pattern,report,topic,yearly",
+			S: "ages,daily,decadal,focus,hourly,info,monthly,mutagen,pattern,report,topic,yearly",
 			B: "branch,city,date,eot,gender,lateZi,leap,lng,lunar,name,noDst,province,time",
 			I: "ages,book,daily,decadal,focus,hourly,json,limit,monthly,mutagen,out,palaces,pattern,report,search,source,template,topic,view,yearly",
 		};
