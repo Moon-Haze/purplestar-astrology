@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-05
+goal: 工具 usage ≡ main 实收；守卫面 = 现役生成物面
+skip_specs: true

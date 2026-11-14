@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-05
+goal: 恢复「每个生成文件恰有一个生成器」不变量，export-notes 自报行重新可信
+skip_specs: true

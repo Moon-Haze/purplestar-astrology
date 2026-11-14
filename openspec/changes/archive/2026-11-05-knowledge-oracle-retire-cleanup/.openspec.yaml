@@ -1,0 +1,3 @@
+schema: spec-driven
+created: 2026-11-05
+goal: knowledge 的 interface 面（help 文案、KnowledgeQuery、解码、参数归属）与三域注册表实态重新一致
