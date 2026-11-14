@@ -60,7 +60,8 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 免得「加参数」变成一件要读文档才敢做的事。
 
 语义标志（候选 2）与归属标志（候选 4）各自承载一套派生，四格之外均为可选标志：
-`shadow`（可被独占分支吞掉）· `noShadow`（排除出可吞集合）· `deep`（专题深入旗标）·
+`shadow`（可被独占分支吞掉）· `noShadow`（显式声明不在可吞集合，两个 role 均可作表态）·
+`deep`（专题深入旗标）·
 `noIntent`（排除出「输出意图」判据）· `cmds`（读取本参数的命令）· `global`（任意命令可用）。
 
 ### 2.5 `OPTION_GROUPS` 的口径
@@ -89,10 +90,12 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 - `SHADOWABLE_KEYS`：
     > 可被独占分支吞掉的功能参数（kebab 原名）—— 专题深入组除 `palaces`（noShadow）
-    > 之外的全部，加上输出与选题组标了 `shadow` 的七项（yearly / monthly / daily /
-    > hourly / focus / topic / report；daily / hourly 于 2026-11-09 补标，修独占守卫域
-    > 缺口）。独占参数自身也在集合里，是为了让「两个独占分支同给」被指路
-    > 而非静默吞掉低优先级的那个（自指由调用处的 `n !== exclusive` 过滤兜住）。
+    > 之外的全部，加上输出与选题组标了 `shadow` 的八项（yearly / monthly / daily /
+    > hourly / view / focus / topic / report；daily / hourly 于 2026-11-09 补标修独占
+    > 守卫域缺口，view 于 2026-11-11 补标——此前被静默吞）。独占参数自身也在集合里，
+    > 是为了让「两个独占分支同给」被指路而非静默吞掉低优先级的那个（自指由调用处的
+    > `n !== exclusive` 过滤兜住）。output-select × astrology 参数的 shadow/noShadow
+    > 决策由 selftest 穷尽性断言守增长方向（未表态当场红）。
 - `BIRTH_KEYS`：
     > 出生相关参数名（camelCase）—— `role: "birth"` 三个组的全部参数。零输入演示的
     > 判据之一：这些键**全部**缺席。「其他出生信息」组（gender / lng / city /

@@ -33,9 +33,10 @@ export interface OptionSpec {
 	/** 一行说明，即 help 里那一行的描述列 */
 	desc: string;
 	// ── 语义标志（候选 2）：四套派生的真相源，均可选、缺省即「不属于」 ──
-	/** 可被独占分支吞掉（输出与选题组的 yearly / monthly / focus / topic / report） */
+	/** 可被独占分支吞掉（输出与选题组的 yearly / monthly / daily / hourly / focus / topic / report / view） */
 	shadow?: true;
-	/** 显式排除出可吞集合（专题深入组的 palaces —— 它自身就是独占参数） */
+	/** 显式声明不在被吞检测域（两个 role 均可作表态：topic-deep 组默认入域、output-select
+	 *  组默认域外——标它把「有意不在域内」从沉默写成声明，供穷尽性断言核对） */
 	noShadow?: true;
 	/** 专题深入旗标（pattern / mutagen / yearly / decadal / ages / focus）——
 	 *  深入态基底显隐的判据（旧 astrology 里硬编码的 deepDive 六旗标） */
@@ -247,12 +248,14 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			{
 				name: "json",
 				cmds: ["astrology", "synastry"],
+				noShadow: true,
 				kind: "switch",
 				desc: "输出原始 JSON（供程序消费）",
 			},
 			{
 				name: "no-cache",
 				cmds: ["astrology"],
+				noShadow: true,
 				noIntent: true,
 				kind: "switch",
 				desc: "跳过排盘缓存，强制现排（默认同一农历年内复用 .cache/charts 里的排盘结果）",
@@ -319,6 +322,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			{
 				name: "view",
 				cmds: ["astrology"],
+				shadow: true,
 				kind: "value",
 				value: "mingpan",
 				desc: "主题论断展示口径：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月），后三者也接受同名英文 decadal/yearly/monthly",
@@ -361,6 +365,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			{
 				name: "config",
 				cmds: ["astrology"],
+				noShadow: true,
 				noIntent: true,
 				kind: "value",
 				value: "my.json",
@@ -369,6 +374,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			{
 				name: "template",
 				cmds: ["astrology"],
+				noShadow: true,
 				kind: "switch",
 				desc: "打印可直接使用的配置模板到 stdout（--template > my.json 落盘）",
 			},

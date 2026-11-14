@@ -170,8 +170,10 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 		// S 为修守卫域缺口后的 12 项：daily/hourly 补标 shadow（2026-11-09
 		// exclusive-branch-shadowable-gap），运限四化层级族全员进入独占分支被吞检测域
 		// ——有理由的基线推进，非漂移迁就；行为钉点在 test/report.test.ts 独占分支 describe。
+		// S 13 项（2026-11-11 shadow-decision-exhaustive-guard）：view 显式表态入域
+		// （此前被静默吞）——有理由的基线推进，非漂移迁就。
 		const snap = {
-			S: "ages,daily,decadal,focus,hourly,info,monthly,mutagen,pattern,report,topic,yearly",
+			S: "ages,daily,decadal,focus,hourly,info,monthly,mutagen,pattern,report,topic,view,yearly",
 			B: "branch,city,date,eot,gender,lateZi,leap,lng,lunar,name,noDst,province,time",
 			I: "ages,book,daily,decadal,focus,hourly,json,limit,monthly,mutagen,out,palaces,pattern,report,search,source,template,topic,view,yearly",
 		};
@@ -206,6 +208,32 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 		}
 		return "role 标注齐、四套派生与优先级链同源";
 	});
+	ok(
+		"声明表：output-select × astrology 参数的 shadow/noShadow 决策显式表态（穷尽性守卫）",
+		() => {
+			// 失败可见性的增长方向守卫：output-select 组默认域外，漏标 shadow = 结构性静默
+			// 落域外——daily/hourly（2026-11-09）与 view（2026-11-11）两次静默吞同根因，
+			// 现行快照（冻结镜像）与行为测试（封闭枚举）都只守收缩方向。本断言要求每个
+			// 该组 astrology 参数显式二选一表态，「隐式默认域外」的开放枚举收敛为封闭
+			// 声明义务，决策单点回 table.ts；未表态当场红并点名。
+			const group = (table.OPTION_GROUPS ?? []).find(g => g.role === "output-select");
+			if (!group) {
+				throw new Error("声明表缺 output-select 组 —— role 派生守卫失效");
+			}
+			const undecided = group.options
+				.filter(o => (o.cmds ?? []).includes("astrology"))
+				.filter(o => o.shadow !== true && o.noShadow !== true)
+				.map(o => o.name);
+			if (undecided.length) {
+				throw new Error(
+					`output-select 组 astrology 参数未表态（shadow / noShadow 必须二选一）：` +
+						undecided.join("、")
+				);
+			}
+			const total = group.options.filter(o => (o.cmds ?? []).includes("astrology")).length;
+			return `output-select × astrology ${total} 个参数 shadow/noShadow 全部显式表态`;
+		}
+	);
 	ok("归属：OPTION_OWNERSHIP 从声明投影而非手抄（候选 4）", () => {
 		// 同步断言：kit 的 ok 不 await async 断言体（Promise 恒 truthy = 假绿），
 		// 依赖一律走本文件已有的静态 import（table / helpNs）。

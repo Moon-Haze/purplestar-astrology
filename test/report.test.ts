@@ -224,15 +224,21 @@ describe("astrology --report 全盘报告", () => {
 		// 由声明表 shadow 标志单一派生——daily/hourly 漏标时（2026-11-09
 		// exclusive-branch-shadowable-gap 之前）它们被静默吞掉，违反失败可见性约束；
 		// 期望值来自 CLI 实跑行为（独立路径），与 selftest 的同源快照断言分工不同。
-		// 例外：--topic × monthly 走消费白名单（consumed = ["yearly","monthly"]），
-		// 属 allow 方向，不在被吞域（任务单原写「全组合」未扣此格，按提案 allow 条款修正）。
+		// 例外：--topic × monthly 走消费白名单（consumed = ["yearly","monthly","view"]），
+		// 属 allow 方向，不在被吞域（任务单原写「全组合」未扣此格，按提案 allow 条款修正）；
+		// --report × --view 由 bespoke 检查单独报错（文案无「不会生效」，见 :211-212 的既有
+		// 断言），不进本通用枚举。
 		for (const branch of [["--info"], ["--palaces"], ["--topic", "love"], ["--report"]]) {
 			for (const [flag, value] of [
 				["--monthly", "5"],
 				["--daily", "10"],
 				["--hourly", "3"],
+				["--view", "daxian"],
 			] as const) {
-				if (branch[0] === "--topic" && flag === "--monthly") {
+				if (
+					(branch[0] === "--topic" || branch[0] === "--report") &&
+					(flag === "--monthly" || flag === "--view")
+				) {
 					continue;
 				}
 				const err = await cmdFails([...MALE, ...branch, flag, value]);
@@ -242,11 +248,12 @@ describe("astrology --report 全盘报告", () => {
 				);
 			}
 		}
-		// allow 方向：--topic 的消费白名单（yearly/monthly）是承重墙——SHADOWABLE 域
+		// allow 方向：--topic 的消费白名单（yearly/monthly/view）是承重墙——SHADOWABLE 域
 		// 扩容后不得反向误伤合法消费。
 		for (const extra of [
 			["--yearly", "2027"],
 			["--monthly", "5"],
+			["--view", "daxian"],
 		] as const) {
 			const out = await cliCmdInProcess([...MALE, "--topic", "love", ...extra]);
 			assert.ok(

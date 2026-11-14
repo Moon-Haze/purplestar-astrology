@@ -150,10 +150,11 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 但它自身也是独占分支 —— 只输出面板一节；`--json` 仅与完整概览或 `--palaces` 组合，
 > 见各自分支）。
 
-- `--topic` 消费 `--yearly` / `--monthly`：
-    > `--topic` 自身**消费** `--yearly` / `--monthly`（流年 / 流月视角的年份与农历月）——
-    > 它们不是被吞参数，检测必须放行，否则 `--topic love --yearly 2027`（流年论断指定年份）
-    > 这一合法用法会被误伤。
+- `--topic` 消费 `--yearly` / `--monthly` / `--view`：
+    > `--topic` 自身**消费** `--yearly` / `--monthly` / `--view`（流年 / 流月视角的年份与
+    > 农历月、主题论断的展示口径）——它们不是被吞参数，检测必须放行，否则
+    > `--topic love --yearly 2027`（流年论断指定年份）与 `--topic love --view daxian`
+    > （大限视角单主题论断）这些合法用法会被误伤。
 - 独占参数自指：
     > 排除独占参数自身：`info` 在 SHADOWABLE 集合里（专题深入组），不过滤会报出
     > 「`--info` 不会生效：`--info`」的自指文案。

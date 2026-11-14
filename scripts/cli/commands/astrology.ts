@@ -222,7 +222,7 @@ function assertNoShadowedFeatures(
 	// --topic 自身**消费** --yearly / --monthly（流年/流月视角的年份与农历月，见 topic
 	// 分支的 parseYearlyArg / parseMonthlyArg）——它们不是被吞参数，检测必须放行，
 	// 否则 `--topic love --yearly 2027`（流年论断指定年份）这一合法用法会被误伤。
-	const consumed = exclusive === "--topic" ? ["yearly", "monthly"] : [];
+	const consumed = exclusive === "--topic" ? ["yearly", "monthly", "view"] : [];
 	const shadowed = [...SHADOWABLE_KEYS]
 		// 排除独占参数自身：info 在 SHADOWABLE 集合里（专题深入组），不过滤会报出
 		// 「--info 不会生效：--info」的自指文案（palaces / topic 本就不在集合中，无影响）。
@@ -484,12 +484,16 @@ export function cmdAstrology(args: CliArgs) {
 				"--report 是独占分支，与 --json 不可同给：全盘报告只有 Markdown 文本形态（--json 仅与完整概览或 --palaces 组合）。"
 			);
 		}
-		assertNoShadowedFeatures(args, "--report");
+		// view 的 bespoke 检查必须在通用独占检测（assertNoShadowedFeatures）之前：
+		// view 已入 SHADOWABLE 域（2026-11-11-shadow-decision-exhaustive-guard），通用
+		// 文案会先触发使 bespoke 变死代码；保留 bespoke 是因为「运限视角见
+		// --topic <key> --view …」这条指路比通用点名信息量更高。
 		if (args.view !== undefined) {
 			throw new Error(
 				"--report 为本命静态口径，不接受 --view（运限视角的单主题论断见 --topic <key> --view daxian|liunian|liuyue）。"
 			);
 		}
+		assertNoShadowedFeatures(args, "--report");
 		return buildReport(chart, info, basis);
 	}
 
