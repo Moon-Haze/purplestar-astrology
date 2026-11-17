@@ -202,6 +202,9 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 			"--palaces > --topic > --report > 其他功能参数",
 			"优先级链文案 "
 		);
+		// ↑ 该对拍自 EXCLUSIVE_PRIORITY_LABEL 改由 EXCLUSIVE_BRANCHES 清单序派生起
+		//   （2026-11-17-exclusive-branch-allow-chain-declaration），从「文案快照」
+		//   升格为「清单顺序守卫」：改清单序 / 显示段即红，不另加重复断言。
 		const unmarked = (table.OPTION_GROUPS ?? []).filter(g => !g.role).map(g => g.title);
 		if (unmarked.length) {
 			throw new Error(`存在未标 role 的选项组：${unmarked.join("、")}`);
@@ -234,6 +237,34 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 			return `output-select × astrology ${total} 个参数 shadow/noShadow 全部显式表态`;
 		}
 	);
+	ok("声明表：独占分支清单跨字段不变量（放行 ⊆ 被吞域、分支名已声明）", () => {
+		// EXCLUSIVE_BRANCHES 清单（2026-11-17-exclusive-branch-allow-chain-declaration）
+		// 是判定链唯一表态处，两表（清单 × OPTION_GROUPS）不许漂移：
+		// ① consumes ⊆ SHADOWABLE_KEYS —— 放行的参数必须同在被吞域（被吞后由清单放行），
+		//   域外放行 = 检测看不见它 = 静默吞后门重开；
+		// ② 条目分支名必须是已声明参数 —— 清单只声明分支级关系，参数存在性仍归
+		//   OPTION_GROUPS（防清单成为第二份参数清单）。
+		const branches = table.EXCLUSIVE_BRANCHES ?? [];
+		if (branches.length === 0) {
+			throw new Error("EXCLUSIVE_BRANCHES 清单为空 —— 独占判定链声明丢失");
+		}
+		const declared = new Set(
+			(table.OPTION_GROUPS ?? []).flatMap(g => (g.options ?? []).map(o => o.name))
+		);
+		for (const b of branches) {
+			if (!declared.has(b.name)) {
+				throw new Error(`独占分支清单条目「${b.name}」不在参数声明表 —— 分支名漂移`);
+			}
+			const illegal = (b.consumes ?? []).filter(c => !table.SHADOWABLE_KEYS?.has(c));
+			if (illegal.length) {
+				throw new Error(
+					`独占分支 ${b.name} 的消费白名单含被吞域外参数：` +
+						`${illegal.join("、")}（放行 ⊆ 被吞域，域外放行即静默吞后门）`
+				);
+			}
+		}
+		return `独占分支清单 ${branches.length} 条：consumes ⊆ SHADOWABLE_KEYS、分支名均已声明`;
+	});
 	ok("归属：OPTION_OWNERSHIP 从声明投影而非手抄（候选 4）", () => {
 		// 同步断言：kit 的 ok 不 await async 断言体（Promise 恒 truthy = 假绿），
 		// 依赖一律走本文件已有的静态 import（table / helpNs）。

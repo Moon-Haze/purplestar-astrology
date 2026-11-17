@@ -69,6 +69,10 @@ const MALE = [...DEMO_ARGV];
 /** 女盘（命宫空宫，借对宫论事 —— 覆盖 report 的借宫路径）。 */
 const FEMALE = [...DEMO_FEMALE_ARGV];
 
+// 独占分支判定链声明（2026-11-17-exclusive-branch-allow-chain-declaration）：组合
+// 矩阵的跳过条件从它派生，不再手抄第二份「谁被消费 / 谁 bespoke」清单。
+const argsTable = await load<typeof import("@/cli/args/table")>("@/cli/args/table");
+
 /**
  * 提取 `--topic` 单主题输出的「本宫主星：」行（命盘推演节）。
  * 两形态（--topic 与 --report）同一行应逐字同源（overview-material 单点）。
@@ -209,7 +213,12 @@ describe("astrology --report 全盘报告", () => {
 		const patErr = await cmdFails([...MALE, "--report", "--pattern"]);
 		assert.ok(patErr.includes("--pattern"), "被吞参数必须点名");
 		const viewErr = await cmdFails([...MALE, "--report", "--view", "daxian"]);
-		assert.ok(viewErr.includes("--report") && viewErr.includes("--view"));
+		assert.ok(
+			viewErr.includes("--report") &&
+				viewErr.includes("--view") &&
+				viewErr.includes("不接受"),
+			"bespoke 文案必须点名并含「不接受」指路——通用文案也能过前两个子串，此钉子串防止 bespoke 被通用检测抢跑成死代码（次序回退即红）"
+		);
 	});
 
 	it("独占分支：--topic 与 --report 互斥（两个独占分支同给必报错）", async () => {
@@ -219,15 +228,25 @@ describe("astrology --report 全盘报告", () => {
 		assert.ok(err2.includes("--info"), "report 视角下 --info 也应被点名");
 	});
 
-	it("独占分支 × 运限层级参数：monthly/daily/hourly 被吞必点名，--topic 消费白名单必放行", async () => {
-		// block 方向：四条独占分支 × {monthly, daily, hourly} 必须点名。被吞检测域
-		// 由声明表 shadow 标志单一派生——daily/hourly 漏标时（2026-11-09
-		// exclusive-branch-shadowable-gap 之前）它们被静默吞掉，违反失败可见性约束；
-		// 期望值来自 CLI 实跑行为（独立路径），与 selftest 的同源快照断言分工不同。
-		// 例外：--topic × monthly 走消费白名单（consumed = ["yearly","monthly","view"]），
-		// 属 allow 方向，不在被吞域（任务单原写「全组合」未扣此格，按提案 allow 条款修正）；
-		// --report × --view 由 bespoke 检查单独报错（文案无「不会生效」，见 :211-212 的既有
-		// 断言），不进本通用枚举。
+	it("独占分支 × 功能参数矩阵：被吞必点名（跳过格由声明表派生），--topic 消费白名单必放行", async () => {
+		// block 方向：四条独占分支 × {monthly, daily, hourly, view} 中未被放行/ bespoke
+		// 接管的格必须点名「不会生效」。跳过条件从 table.ts 的 EXCLUSIVE_BRANCHES 派生
+		//（flag ∈ 该分支 consumes ∪ bespoke keys）——声明表新增表态时矩阵自动跟随，
+		// 不再手抄第二份清单（2026-11-11 前的 daily/hourly 静默吞即手抄漏格所致）。
+		// --report × --monthly 随派生解禁进入通用断言（它不被消费也不 bespoke，探针
+		// 证实通用断言在该格成立）；--topic × {monthly, view} 走 allow 断言、
+		// --report × --view 走 bespoke 钉点（「不接受」，见上方 it）。
+		const skip = (branchName: string, flag: string): boolean => {
+			const entry = argsTable.EXCLUSIVE_BRANCHES?.find(b => `--${b.name}` === branchName);
+			if (!entry) {
+				return false;
+			}
+			const bare = flag.slice(2);
+			return (
+				entry.consumes.includes(bare) ||
+				(entry.rejectsWithNote?.keys.includes(bare) ?? false)
+			);
+		};
 		for (const branch of [["--info"], ["--palaces"], ["--topic", "love"], ["--report"]]) {
 			for (const [flag, value] of [
 				["--monthly", "5"],
@@ -235,10 +254,7 @@ describe("astrology --report 全盘报告", () => {
 				["--hourly", "3"],
 				["--view", "daxian"],
 			] as const) {
-				if (
-					(branch[0] === "--topic" || branch[0] === "--report") &&
-					(flag === "--monthly" || flag === "--view")
-				) {
+				if (skip(branch[0], flag)) {
 					continue;
 				}
 				const err = await cmdFails([...MALE, ...branch, flag, value]);

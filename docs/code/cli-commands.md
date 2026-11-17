@@ -148,13 +148,16 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 生效 —— 静默吞违反「宁可启动失败，也不静默产出错盘」，在这里指路。优先级链：
 > `--palaces` > `--topic` > `--report` > 其他功能参数（`--info` 属于链上的「其他功能参数」，
 > 但它自身也是独占分支 —— 只输出面板一节；`--json` 仅与完整概览或 `--palaces` 组合，
-> 见各自分支）。
+> 见各自分支）。链与放行集合的单点在 `args/table.ts` 的 `EXCLUSIVE_BRANCHES` 清单
+> （按优先序声明每条分支的 `consumes` 放行集合与 bespoke 拒收文案），命令侧检测、
+> `--info` 上级梯与优先级文案均为派生——2026-11-17-exclusive-branch-allow-chain-declaration。
 
 - `--topic` 消费 `--yearly` / `--monthly` / `--view`：
     > `--topic` 自身**消费** `--yearly` / `--monthly` / `--view`（流年 / 流月视角的年份与
     > 农历月、主题论断的展示口径）——它们不是被吞参数，检测必须放行，否则
     > `--topic love --yearly 2027`（流年论断指定年份）与 `--topic love --view daxian`
-    > （大限视角单主题论断）这些合法用法会被误伤。
+    > （大限视角单主题论断）这些合法用法会被误伤。消费集合声明于 `EXCLUSIVE_BRANCHES`
+    > 清单条目的 `consumes`（命令侧为派生，见本节开头）。
 - 独占参数自指：
     > 排除独占参数自身：`info` 在 SHADOWABLE 集合里（专题深入组），不过滤会报出
     > 「`--info` 不会生效：`--info`」的自指文案。

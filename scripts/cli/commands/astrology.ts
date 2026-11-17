@@ -6,7 +6,13 @@
 
 import type { BirthInfo, Mutagen, ZiweiChart } from "@/types";
 import type { CliArgs } from "../args";
-import { camelKey, DEEP_DIVE_KEYS, EXCLUSIVE_PRIORITY_LABEL, SHADOWABLE_KEYS } from "../args/table";
+import {
+	camelKey,
+	DEEP_DIVE_KEYS,
+	EXCLUSIVE_BRANCHES,
+	EXCLUSIVE_PRIORITY_LABEL,
+	SHADOWABLE_KEYS,
+} from "../args/table";
 import { renderTemplate } from "../args/config-input";
 import { clockOptsFromBasis } from "../birth/birth-info-defs";
 import {
@@ -212,17 +218,30 @@ const SAMPLE_TRAILER = [
  * 独占分支（`--palaces` / `--topic` / `--report` / `--info`）激活时，其余功能参数不会生效
  * —— 静默吞违反「宁可启动失败，也不静默产出错盘」，在这里指路。
  *
- * 优先级链：`--palaces` > `--topic` > `--report` > 其他功能参数（`--info` 属于链上的
- * 「其他功能参数」，但它自身也是独占分支）。链的完整表述见 docs/code/cli-commands.md。
+ * 判定链单点在 `../args/table` 的 `EXCLUSIVE_BRANCHES` 清单（按优先序）：本函数是其
+ * 统一检测入口——前置段按条目的 bespoke 拒收表态抛专用文案（`--report × --view`），
+ * 后置段做通用被吞检测（放行集合 = 条目 `consumes`）。清单序即优先级，文案由其派生。
+ * 链的完整表述见 docs/code/cli-commands.md。
  */
 function assertNoShadowedFeatures(
 	args: CliArgs,
 	exclusive: "--palaces" | "--topic" | "--report" | "--info"
 ): void {
-	// --topic 自身**消费** --yearly / --monthly（流年/流月视角的年份与农历月，见 topic
-	// 分支的 parseYearlyArg / parseMonthlyArg）——它们不是被吞参数，检测必须放行，
-	// 否则 `--topic love --yearly 2027`（流年论断指定年份）这一合法用法会被误伤。
-	const consumed = exclusive === "--topic" ? ["yearly", "monthly", "view"] : [];
+	const entry = EXCLUSIVE_BRANCHES.find(b => `--${b.name}` === exclusive);
+	// 前置段（bespoke 拒收，清单表态驱动）：先于通用检测，使「不接受 --view」这类
+	// 信息量更高的指路不被通用文案抢跑——次序由唯一入口内的调用结构固定，不存在
+	// 可对调的两个调用点（2026-11-11 的移序前提至此成为结构）。
+	const bespoke = entry?.rejectsWithNote;
+	if (bespoke) {
+		for (const key of bespoke.keys) {
+			if ((args as Record<string, unknown>)[camelKey(key)] !== undefined) {
+				throw new Error(bespoke.note.replace("{flag}", `--${key}`));
+			}
+		}
+	}
+	// 后置段（通用检测）：被吞域 = SHADOWABLE_KEYS − 独占参数自身 − 本分支放行集合
+	//（consumes 从清单派生，不再手抄——放行是清单表态，见 EXCLUSIVE_BRANCHES）。
+	const consumed = entry?.consumes ?? [];
 	const shadowed = [...SHADOWABLE_KEYS]
 		// 排除独占参数自身：info 在 SHADOWABLE 集合里（专题深入组），不过滤会报出
 		// 「--info 不会生效：--info」的自指文案（palaces / topic 本就不在集合中，无影响）。
@@ -359,19 +378,16 @@ export function cmdAstrology(args: CliArgs) {
 				"--info 是独占分支，与 --json 不可同给：--info 只输出文本面板（--json 仅与完整概览或 --palaces 组合）。"
 			);
 		}
-		// 优先级链落地：--palaces / --topic / --report 在场时，若放行到下面各分支，
-		// 独占分支会被本分支**抢跑**吞掉（本分支排在它们之前）——指路，不静默。--info
-		// 属于链上的「其他功能参数」：--palaces > --topic > --report > --info。
-		const higher = args.palaces
-			? "--palaces"
-			: args.topic !== undefined
-				? "--topic"
-				: args.report
-					? "--report"
-					: null;
-		if (higher) {
+		// 优先级链落地：清单中排在 info 之前、第一个在场的分支抢跑指路（派生自
+		// EXCLUSIVE_BRANCHES 清单序，不再手写三元梯）。--info 属于链上的「其他功能参数」
+		// ：--palaces > --topic > --report > --info。
+		const higherEntry = EXCLUSIVE_BRANCHES.slice(
+			0,
+			EXCLUSIVE_BRANCHES.findIndex(b => b.name === "info")
+		).find(b => (args as Record<string, unknown>)[camelKey(b.name)] !== undefined);
+		if (higherEntry) {
 			throw new Error(
-				`${higher} 是独占分支，以下功能参数不会生效：--info。` +
+				`--${higherEntry.name} 是独占分支，以下功能参数不会生效：--info。` +
 					`独占分支请单独使用（优先级：${EXCLUSIVE_PRIORITY_LABEL}）。`
 			);
 		}
@@ -477,20 +493,12 @@ export function cmdAstrology(args: CliArgs) {
 	}
 
 	// --report：全盘主题报告（Markdown，独占分支）。13 个板块一次出全，
-	// 本命静态口径 —— 视角 / 流年 / 流月参数不属于它，由独占检测与 --view 检查指路。
+	// 本命静态口径 —— 视角 / 流年 / 流月参数不属于它，由独占检测指路（--view 的
+	// bespoke 文案由清单前置段驱动，见 assertNoShadowedFeatures）。
 	if (args.report) {
 		if (args.json) {
 			throw new Error(
 				"--report 是独占分支，与 --json 不可同给：全盘报告只有 Markdown 文本形态（--json 仅与完整概览或 --palaces 组合）。"
-			);
-		}
-		// view 的 bespoke 检查必须在通用独占检测（assertNoShadowedFeatures）之前：
-		// view 已入 SHADOWABLE 域（2026-11-11-shadow-decision-exhaustive-guard），通用
-		// 文案会先触发使 bespoke 变死代码；保留 bespoke 是因为「运限视角见
-		// --topic <key> --view …」这条指路比通用点名信息量更高。
-		if (args.view !== undefined) {
-			throw new Error(
-				"--report 为本命静态口径，不接受 --view（运限视角的单主题论断见 --topic <key> --view daxian|liunian|liuyue）。"
 			);
 		}
 		assertNoShadowedFeatures(args, "--report");

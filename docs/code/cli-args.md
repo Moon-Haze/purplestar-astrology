@@ -96,6 +96,14 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
     > 是为了让「两个独占分支同给」被指路而非静默吞掉低优先级的那个（自指由调用处的
     > `n !== exclusive` 过滤兜住）。output-select × astrology 参数的 shadow/noShadow
     > 决策由 selftest 穷尽性断言守增长方向（未表态当场红）。
+- `EXCLUSIVE_BRANCHES`：
+    > 独占分支判定链的唯一表态处（2026-11-17-exclusive-branch-allow-chain-declaration，
+    > 按优先序 palaces > topic > report > info）：每条目声明 `consumes`（放行集合）
+    > 与可选 bespoke 拒收文案（现仅 `--report × --view`「不接受」指路）。
+    > `EXCLUSIVE_PRIORITY_LABEL`、命令侧被吞检测的放行集合、`--info` 上级梯与
+    > report.test 组合矩阵的跳过格全部由此派生；selftest 不变量守两表不许漂移
+    > （consumes ⊆ SHADOWABLE_KEYS、条目分支名必已声明），既有文案对拍升格为清单
+    > 顺序守卫（改序即红）。
 - `BIRTH_KEYS`：
     > 出生相关参数名（camelCase）—— `role: "birth"` 三个组的全部参数。零输入演示的
     > 判据之一：这些键**全部**缺席。「其他出生信息」组（gender / lng / city /

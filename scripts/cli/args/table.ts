@@ -468,8 +468,53 @@ export const DEEP_DIVE_KEYS: readonly string[] = OPTION_GROUPS.flatMap(g =>
 	g.options.filter(o => o.deep === true).map(o => camelKey(o.name))
 );
 
-/** 独占分支优先级链文案 —— astrology 报错与 help 说明共用的唯一真相源。 */
-export const EXCLUSIVE_PRIORITY_LABEL = "--palaces > --topic > --report > 其他功能参数";
+/**
+ * 独占分支条目 —— 判定链「谁被吞 / 谁被消费 / 谁优先 / 谁 bespoke 拒收」的分支级
+ * 关系表态（2026-11-17-exclusive-branch-allow-chain-declaration）：参数本身的存在性
+ * 仍以 {@link OPTION_GROUPS} 为准，本表只声明分支级关系。
+ */
+export interface ExclusiveBranchSpec {
+	/** 独占分支名（kebab，须是 OPTION_GROUPS 已声明的参数名 —— 由 selftest 不变量钉住） */
+	name: string;
+	/** 该分支合法消费（放行）的功能参数（kebab，与 SHADOWABLE_KEYS 同域；放行 ⊆ 被吞域） */
+	consumes: readonly string[];
+	/** bespoke 拒收：keys 中任一参数在场即抛 note（`{flag}` 占位符由检测入口替换为
+	 *  `--<key>`），统一检测入口保证它先于通用文案（2026-11-11 移序前提的结构化） */
+	rejectsWithNote?: { keys: readonly string[]; note: string };
+	/** 优先级链显示段（缺省 `--<name>`；链上「其他功能参数」段用它） */
+	chainLabel?: string;
+}
+
+/**
+ * 独占分支判定链的唯一表态处，按优先序排列（palaces > topic > report > info）：
+ * 命令侧的被吞检测、消费放行、--info 上级梯、优先级文案与 report.test 组合矩阵
+ * 全部从本清单派生——新增/退役独占分支或放行参数回到「此处一项/一行」。
+ */
+export const EXCLUSIVE_BRANCHES: readonly ExclusiveBranchSpec[] = [
+	{ name: "palaces", consumes: [] },
+	{
+		name: "topic",
+		consumes: ["yearly", "monthly", "view"],
+	},
+	{
+		name: "report",
+		consumes: [],
+		rejectsWithNote: {
+			keys: ["view"],
+			note: "--report 为本命静态口径，不接受 {flag}（运限视角的单主题论断见 --topic <key> --view daxian|liunian|liuyue）。",
+		},
+	},
+	{ name: "info", consumes: [], chainLabel: "其他功能参数" },
+];
+
+/**
+ * 独占分支优先级链文案 —— 由 {@link EXCLUSIVE_BRANCHES} 清单序派生（info 的显示段
+ * 为「其他功能参数」）：astrology 报错与 help 说明共用；selftest 的冻结镜像对拍
+ * 因派生而升格为清单顺序守卫（改序即红）。
+ */
+export const EXCLUSIVE_PRIORITY_LABEL = EXCLUSIVE_BRANCHES.map(
+	b => b.chainLabel ?? `--${b.name}`
+).join(" > ");
 
 // ══════════════════ 归属投影（候选 4）══════════════════
 // 「哪个参数归哪条命令」此前是 help.ts 手抄的第二真相源（零正向测试、早已漂移），
