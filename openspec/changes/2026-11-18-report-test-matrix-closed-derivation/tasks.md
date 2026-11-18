@@ -70,15 +70,15 @@
 
 ## 5. 验收（人工验证）
 
-- [ ] 5.1 **[人工验证]** 三件套 + 风格：`npm run typecheck` / `ZIWEI_NO_CACHE=1
+- [x] 5.1 **[人工验证]** 三件套 + 风格：`npm run typecheck` / `ZIWEI_NO_CACHE=1
       node scripts/purple-star.ts selftest` / `npm test` 退出码全 0（直接取命令
       本身，不接管道）；`npm run lint` 0 错误。
-- [ ] 5.2 **[人工验证]** 运行链路零改动核对：`git diff --stat` 只含
+- [x] 5.2 **[人工验证]** 运行链路零改动核对：`git diff --stat` 只含
       `test/report.test.ts`、`docs/code/cli-args.md` 与本变更 openspec 工件——
       `scripts/` 下零文件改动（CLI 行为逐字节不变的结构保证）、无新 test 文件、
       `test/README.md` 层表与 `test/lib/run.ts` LAYERS 未动、内核层测试项数不变
       （AGENTS.md:311-312 越界报警器无感）。
-- [ ] 5.3 **[人工验证]** 接缝判据闭合演练（AGENTS.md:307 实证留档）：临时往
+- [x] 5.3 **[人工验证]** 接缝判据闭合演练（AGENTS.md:307 实证留档）：临时往
       `EXCLUSIVE_BRANCHES` 追加 `{ name: "focus", consumes: [] }`（第 5 条分支
       场景）→ 跑矩阵 it → 缺名守卫红并点名 focus（「新分支未入矩阵」不静默）；
       补一行探针映射 → 矩阵自动出现 focus 列。若 focus × 某旗标格断言红，
