@@ -25,7 +25,7 @@ import { guSuiFu } from "../../scripts/corpus/data/gusuifu.ts";
 import { ziWeiQuanJi } from "../../scripts/corpus/data/quanji.ts";
 import { ziWeiQuanShu } from "../../scripts/corpus/data/quanshu.ts";
 import { PATTERN_VERDICTS } from "../../scripts/corpus/data/patterns.ts";
-import { STAR_CONTENT_MAP, TOPIC_KEYS, TOPIC_LABEL } from "../../scripts/analysis/data.ts";
+import { STAR_CONTENT_MAP, TOPIC_LABEL } from "../../scripts/analysis/data.ts";
 import {
 	STAR_IN_FUQI_GU,
 	SIHUA_IN_FUQI_GU,
@@ -51,12 +51,11 @@ const BOOK_DIRS: Record<string, string> = {
 	"04-sihua": "40-四化",
 	"05-illness": "50-疾厄",
 };
-/** 脚本清空重建的目录（手写页不在这里，重导安全）。 */
+/** 脚本清空重建的目录（手写页不在这里，重导安全）。80-主题手册 已随 remove-manual-oracle 下线。 */
 const MANAGED_DIRS = [...new Set(Object.values(BOOK_DIRS))].concat(
 	"55-古籍",
 	"70-课程笔记",
 	"75-主星论断",
-	"80-主题手册",
 	"85-合盘断语"
 );
 /** 60-方法 下由本脚本托管的文件名（该目录另有手写页，不能整目录清空）。 */
@@ -721,9 +720,7 @@ async function main(): Promise<void> {
 	console.log(
 		`notes 导出完成：判语 ${noteCount} 条 → ${groups.length} 篇 + 古籍 ${
 			ziWeiQuanShu.chapters.length + ziWeiQuanJi.chapters.length + guSuiFu.chapters.length
-		} 章 + 方法论页 + 课程笔记 + 主星论断 ${Object.keys(STAR_CONTENT_MAP).length} 篇 + 主题手册 ${
-			TOPIC_KEYS.length
-		} 篇 + 格局判词表 + 合盘断语；输出 ${OUT}`
+		} 章 + 方法论页 + 课程笔记 + 主星论断 ${Object.keys(STAR_CONTENT_MAP).length} 篇 + 格局判词表 + 合盘断语；输出 ${OUT}`
 	);
 }
 
