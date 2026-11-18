@@ -414,3 +414,18 @@ knowledge-retrieval / quality-gates / synastry），`openspec/config.yaml` 的 `
   技能目录虽为 CLI 生成物，但**已纳管**（与 `.claude/` 协作用件同口径，克隆即得
   openspec 工作流）——别手改，要变更请重跑 CLI 生成后再提交。
 - 改完 specs 跑 `openspec validate --all`，须全部通过、零警告。
+
+## 记忆分库（2026-11-05 起）
+
+三个记忆后端在本仓的隔离方式，由本仓 workspace `.zcode/config.json` 提供
+（`Code/TypeScriptProjects/.zcode/config.json` 有同份配置，覆盖六仓家族）：
+
+| 后端 | 服务器 | 存储 | 用法 |
+|---|---|---|---|
+| qdrant | `qdrant-purplestar` | collection `purplestar`（命名向量 `fast-jina-embeddings-v2-base-zh`，768 Cosine，与 wiki 的 `knowledge` 同配置） | 本仓知识/文档语义检索与写入 |
+| memory 图谱 | `memory-purplestar` | `~/.memory/purplestar.jsonl`（原全局 memory.jsonl 的 91 条实体已于 2026-11-05 迁入） | 结构化实体关系 |
+| longmemory | 全局 `long-memory`（单 SQLite） | `user_id: "purplestar"` | 本仓经验/决策/任务状态，**存取都要带这个 user_id**；wiki 项目用 `wikinotes`，勿混 |
+
+- 工具名带前缀：`mcp__qdrant-purplestar__*` / `mcp__memory-purplestar__*`
+- ⚠️ 用户级全局 `qdrant`（→ `knowledge`）与 `memory`（→ `~/.memory/memory.jsonl`，现已清空）在本仓会话里也会连着——**本仓一律用带 `-purplestar` 前缀的服务器**，不要用全局的
+- qdrant 容器无持久卷：容器重启两个 collection 都会丢，wiki 侧有重建流程（见 wiki 仓 AGENTS.md）；`purplestar` 空库重建只需 PUT 同款向量配置

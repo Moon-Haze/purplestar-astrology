@@ -54,3 +54,5 @@ books/**
 # 运行产物，非 skill 分发件，也不应进版本控制。
 NOTES.md
 workflows/
+.zcode/config.json
+.memory/
