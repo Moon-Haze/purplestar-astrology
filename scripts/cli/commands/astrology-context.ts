@@ -154,9 +154,9 @@ export function prepareAstrologyContext(args: CliArgs): AstrologyContext {
 	// 换专题参数 / 换视角重跑时只付「读文件 + 渲染」。--no-cache 强制直排。
 	const chart = generateChartCached(info, { noCache: args.noCache === true });
 
-	// 注意：流年用 --yearly，不可复用 --year —— 后者是出生年的回退参数。
-	// 二者同时给出不会报错：流年取 --yearly；而出生日期一旦给了 --date/--lunar，
-	// --year 就被静默忽略（buildBirthInfo 里 --date/--lunar 优先），不会有任何提示。
+	// 流年只认 --yearly（裸开关 = 当年）。--year 三连已于 2026-09-30 删除：误敲
+	// `--year` 会在 parseArgs 层报「未知参数」并建议最接近的 --yearly（selftest
+	// 解析引擎段钉住该行为）——不存在「出生年回退」或「静默忽略」的旧路径。
 	const liuNianYear = parseYearlyArg(args);
 	// 流月：农历月 1-12，取流年干推五虎遁（可选）
 	const liuYueMonth = parseMonthlyArg(args);
