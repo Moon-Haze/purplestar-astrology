@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { generateChart } from "@/algorithm";
 import { readAnalyzeJson } from "@/synastry/chart-view";
 import { buildBirthInfo } from "../birth/birth-info";
-import { OPTION_GROUPS } from "../args/table";
+import { EXCLUSIVE_BRANCHES, OPTION_GROUPS } from "../args/table";
 import { parseArgs } from "../args";
 import { cmdKnowledge } from "../knowledge";
 import { KNOWLEDGE_SOURCE_IDS } from "@/knowledge/registry";
@@ -121,9 +121,14 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			[[...base, "--json", "--info"], "--info"],
 			[[...base, "--json", "--topic", "love"], "--topic"],
 			// --info 自身也是独占分支（面板单独输出）：其余功能参数同给必须指路，
-			// 不能静默吞参只出面板（终审 C1；SKILL.md / options.md 均有此承诺）。
+			// 不能静默吞参只出面板（终审 C1；`SKILL.md` / `references/options.md` 均有此承诺）。
 			[[...base, "--info", "--pattern"], "--pattern"],
 			[[...base, "--info", "--mutagen"], "--mutagen"],
+			// --info 上级让路梯方向钉点（2026-11-18 扫描发现：梯子此前零测试覆盖，
+			// 删除变异实证删梯后 --palaces 被静默吞且三件套全绿）。本行当前必过；
+			// 删梯后 msg=null 当场红。方向翻转（--info 吞 --palaces）由下方
+			// 「优先级链方向」断言的报错者锚定分管——本行查不出翻转。
+			[[...base, "--info", "--palaces"], "--palaces"],
 		] as const) {
 			let msg: string | null = null;
 			try {
@@ -139,6 +144,48 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		const json = cmdAstrology(parseArgs([...base, "--palaces", "--json"], "astrology"));
 		JSON.parse(json);
 		return "--palaces/--topic/--report/--json 四组独占语义全部指路；--palaces --json 契约保留";
+	});
+	ok("命令面：优先级链方向——清单相邻对同给必上级抢跑（报错者锚定）", () => {
+		// EXCLUSIVE_BRANCHES 清单序是优先级的「声明」，行为优先级的载体却是 cmdAstrology
+		// 的分支 if 链序（与清单序方向相反）——两者无一致性守卫时，改链序会产生「同一句
+		// 报错自相矛盾」（宣称的优先级与实际抢跑者相反）且全部闸门保持全绿（2026-11-18
+		// 扫描发现，复核员 worktree 注入实证）。本断言对每对相邻分支 X > Y 锚定报错者：
+		// 消息必须以「--X 是独占分支」开头且点名 --Y——清单序与行为序分叉当场红。
+		const branches = EXCLUSIVE_BRANCHES ?? [];
+		if (branches.length < 2) {
+			throw new Error("EXCLUSIVE_BRANCHES 清单不足两条 —— 优先级链方向探针失效");
+		}
+		const kindOf = new Map(
+			OPTION_GROUPS.flatMap(g => g.options.map(o => [o.name, o.kind] as const))
+		);
+		// 带值分支的探针取值（夹具，同 report.test 矩阵的 D2/D3 纪律）：非 switch 分支
+		// 缺席即红——新分支未入方向探针不静默。
+		const probeArgs: Record<string, readonly string[]> = { topic: ["love"] };
+		for (let i = 0; i < branches.length - 1; i++) {
+			const higher = branches[i];
+			const lower = branches[i + 1];
+			const argvOf = (name: string): readonly string[] => {
+				const probe = probeArgs[name];
+				if (kindOf.get(name) !== "switch" && probe === undefined) {
+					throw new Error(`独占分支 --${name} 未登记探针取值 —— 新分支未入方向探针`);
+				}
+				return [`--${name}`, ...(probe ?? [])];
+			};
+			const argv = [...SAMPLE_ARGV, ...argvOf(higher.name), ...argvOf(lower.name)];
+			let msg: string | null = null;
+			try {
+				cmdAstrology(parseArgs(argv as unknown as string[], "astrology"));
+			} catch (e) {
+				msg = (e as Error).message;
+			}
+			const head = `--${higher.name} 是独占分支`;
+			if (!msg || !msg.startsWith(head) || !msg.includes(`--${lower.name}`)) {
+				throw new Error(
+					`优先级链方向分叉（${head} 应抢跑 --${lower.name}）：${msg ?? "未报错且静默输出"}`
+				);
+			}
+		}
+		return `清单 ${branches.length} 条的 ${branches.length - 1} 对相邻方向均与行为一致（报错者锚定）`;
 	});
 	ok("命令面：--report 产出 13 板块 Markdown 且为纯本命静态口径", () => {
 		const t = cmdAstrology(parseArgs([...SAMPLE_ARGV, "--report"], "astrology"));
@@ -441,12 +488,26 @@ export function runHelpEnrich({ ok }: Pick<SelftestDeps, "ok">): void {
 		}
 		const knowledge = renderCommandHelp("knowledge");
 		if (!knowledge.includes("--search") || !knowledge.includes("--source")) {
-			throw new Error("knowledge --help 应列 --search 与 --source（四域）");
+			throw new Error("knowledge --help 应列 --search 与 --source（三域）");
 		}
 		if (knowledge.includes("--pattern")) {
 			throw new Error("knowledge --help 不该列 --pattern（归属过滤）");
 		}
 		return "归属过滤双向成立";
+	});
+	ok("knowledge help：oracle 域说明段已随 remove-manual-oracle 退役", () => {
+		const knowledge = renderCommandHelp("knowledge");
+		if (knowledge.includes("oracle：")) {
+			throw new Error("knowledge --help 仍宣传 oracle 域说明段（退役收尾 2026-11-05）");
+		}
+		return "oracle 域说明段不在（迁移提示字样不计）";
+	});
+	ok("knowledge help：--topic 已收归 astrology", () => {
+		const knowledge = renderCommandHelp("knowledge");
+		if (knowledge.includes("--topic")) {
+			throw new Error("knowledge --help 不应出现 --topic（已收归 astrology，2026-11-05）");
+		}
+		return "help 全文无 --topic";
 	});
 	ok("help 强化：示例用新虚构组合且注明「示例数据为虚构」", () => {
 		const out = renderOverviewHelp();
