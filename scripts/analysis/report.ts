@@ -2,7 +2,7 @@
  * 全盘报告编排层 —— 与 {@link ./index|getTopicAnalysis} 平级的第二编排器（Markdown 形态）。
  *
  * ⚠️ 本模块**只编排、不算命**：建一次 {@link makeContext} 上下文，把各 `renderXxx` 的行
- *    按报告小节序拼接，最后整体过一遍性别过滤（跨行内子句只能作用在整篇文本上）。
+ *    按报告小节序拼接；性别已在各 view 经 `selectGender` 投影，编排层仅拼接。
  * ⚠️ 「经典出处」引文由 CLI 层查古籍后从 `options.citations` 递入，本模块不引古籍库 ——
  *    保持「排盘内核不依赖古籍域」的分层。
  *
@@ -367,7 +367,7 @@ export function getTopicReport(
 	lines.push("");
 
 	// view 之间的多空行在 Markdown 里与单个空行同义，统一压平成规范形态；
-	// 性别过滤与 getTopicAnalysis 同口径：作用在整篇文本上（跨行内子句）
+	// 性别已在各 view 经 selectGender 投影，编排层仅拼接，不再整篇过滤
 	const text = trimBlanks(lines)
 		.join("\n")
 		.replace(/\n{3,}/g, "\n\n");

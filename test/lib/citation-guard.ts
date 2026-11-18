@@ -37,7 +37,7 @@
  *
  * 源码树之外，本仓还有一捆**手写文档**带着倪师引文：`SKILL.md` / `references/`（skill 的
  * 规范面，LLM 解读时真正读到的文本）、`docs/code/`（源码长注释的搬迁目的地，引文从源码
- * 原文照搬而来）、`README.md` / `CLAUDE.md` 等。它们与源码受**同一条纪律**约束，与
+ * 原文照搬而来）、`README.md` / `AGENTS.md` 等。它们与源码受**同一条纪律**约束，与
  * {@link scanCitations} 共用同一份黑名单构造与同一套形态正则（住
  * `citation-core.ts`）—— 不出现「文档一份判据、源码一份判据」的分叉。
  *

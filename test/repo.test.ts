@@ -21,7 +21,7 @@
 //
 // ## 为什么登记一致性也要测
 //
-// 计数类事实（层数、项数、断言数）一律不写死在文档里，理由见 `CLAUDE.md` 的
+// 计数类事实（层数、项数、断言数）一律不写死在文档里，理由见 `AGENTS.md` 的
 // 「SKILL.md 与 CLI 的耦合」一节。但**层表是内容不是计数**：新增一个测试文件，就该在
 // README 里有一行、在 LAYERS 里有一条。README 是文档不是构建产物，派不出单一来源，
 // 所以只能双向断言。
@@ -383,5 +383,105 @@ describe("解析钩子候选序（boot-hooks）", () => {
 			"./data.json/index.ts",
 			"./data.json",
 		]);
+	});
+});
+
+// ── 注释指针有效性：四波改名各留一批断锚，现有闸门全查不到 ─────────────────────
+// 只查「指向的文件是否存在」，不审查注释说了什么对不对（那是 review 的事）。
+// 白名单逐项写明理由；下面断言盯住每项都真的被命中过，跳过不会退化成静默豁免。
+const MD_POINTER_ALLOWLIST: Readonly<Record<string, string>> = {
+	"docs/plans/2026-09-25-duckdb-corpus-source-design.md":
+		"历史设计文档已随 docs/plans 清理删除，注释保留沿革出处，不是现行契约指针",
+};
+
+const MD_POINTER =
+	/(?:^|[\s`（「『"'=])((?:[A-Za-z0-9_-]+\.md)|(?:(?:docs|references|notes|test|scripts|tools)\/)[A-Za-z0-9_./-]*\.md)/g;
+
+/** 递归列出目录下的 .ts 文件（相对仓库根）。 */
+function tsFilesUnder(dir: string): string[] {
+	const out: string[] = [];
+	const walk = (abs: string): void => {
+		for (const entry of readdirSync(abs, { withFileTypes: true })) {
+			if (entry.name.startsWith(".")) {
+				continue;
+			}
+			const p = resolve(abs, entry.name);
+			if (entry.isDirectory()) {
+				walk(p);
+			} else if (entry.name.endsWith(".ts")) {
+				out.push(p.slice(SKILL_ROOT.length + 1));
+			}
+		}
+	};
+	walk(resolve(SKILL_ROOT, dir));
+	return out.sort();
+}
+
+/** 逐行取出注释文本；块注释状态跨行保持，指针词元形态已收窄到根级名与几个既有目录。 */
+function commentSpans(text: string): { line: number; body: string }[] {
+	const out: { line: number; body: string }[] = [];
+	let inBlock = false;
+	text.split("\n").forEach((line, i) => {
+		let body = "";
+		if (inBlock) {
+			const end = line.indexOf("*/");
+			body = end >= 0 ? line.slice(0, end) : line;
+			inBlock = end < 0;
+		} else {
+			const lineAt = line.indexOf("//");
+			const blockAt = line.indexOf("/*");
+			if (blockAt >= 0 && (lineAt < 0 || blockAt < lineAt)) {
+				const end = line.indexOf("*/", blockAt + 2);
+				body = line.slice(blockAt + 2, end < 0 ? undefined : end);
+				inBlock = end < 0;
+			} else if (lineAt >= 0) {
+				body = line.slice(lineAt + 2);
+			}
+		}
+		if (body) {
+			out.push({ line: i + 1, body });
+		}
+	});
+	return out;
+}
+
+describe("注释指针有效性（源码注释的 .md 引用必须存在）", () => {
+	it("scripts/ test/ tools/ 注释里的 .md 引用都指向仓库内实际存在的文件", t => {
+		const files = ["scripts", "test", "tools"].flatMap(tsFilesUnder);
+		const hits: { file: string; line: number; token: string }[] = [];
+		for (const rel of files) {
+			const text = readFileSync(resolve(SKILL_ROOT, rel), "utf8");
+			for (const { line, body } of commentSpans(text)) {
+				for (const m of body.matchAll(MD_POINTER)) {
+					if (m[1]) {
+						hits.push({ file: rel, line, token: m[1] });
+					}
+				}
+			}
+		}
+		assert.ok(files.length > 100, `扫描面异常：只找到 ${files.length} 个 .ts 文件`);
+		assert.ok(hits.length > 0, "未提取到任何 .md 引用词元，守卫恒真");
+		const skipped = hits.filter(h => h.token in MD_POINTER_ALLOWLIST);
+		const violations = hits.filter(
+			h => !(h.token in MD_POINTER_ALLOWLIST) && !existsSync(resolve(SKILL_ROOT, h.token))
+		);
+		if (skipped.length > 0) {
+			t.diagnostic(
+				`白名单跳过 ${skipped.length} 项：` +
+					[...new Set(skipped.map(h => h.token))]
+						.map(tok => `${tok}（${MD_POINTER_ALLOWLIST[tok]}）`)
+						.join("、")
+			);
+		}
+		assert.deepEqual(
+			Object.keys(MD_POINTER_ALLOWLIST).filter(tok => skipped.every(h => h.token !== tok)),
+			[],
+			"白名单里有从未命中的条目（疑似静默豁免），请删除或修正"
+		);
+		assert.deepEqual(
+			violations,
+			[],
+			`注释指针断裂：\n${violations.map(v => `${v.file}:${v.line} → ${v.token}`).join("\n")}`
+		);
 	});
 });

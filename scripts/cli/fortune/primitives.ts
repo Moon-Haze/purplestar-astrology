@@ -55,7 +55,7 @@ export function agePalaceOf(chart: ZiweiChart, age: number): Palace {
  * @throws 非整数、超出 1–120 时
  *
  * @remarks
- * 与 `parseLiuNianArg` 同一条纪律：非数字静默传下去会产出错盘，宁可报错。
+ * 与 `parseYearlyArg`（现住 `cli/commands/astrology-context.ts`）同一条纪律：非数字静默传下去会产出错盘，宁可报错。
  * 裸开关（`true`）不报错 —— 它的语义就是「看当前」。
  */
 export function parseAgesArg(

@@ -13,7 +13,7 @@ import { sameStarPairs, sihuaLines } from "./sihua-helpers";
  *
  * @remarks
  * 取值链**逐级依赖**：流日须有流月（日干挂在农历年月日上）、流时须有流日（时干由日干
- * 五鼠遁）。护栏（谁缺谁报错）在 `cli/astrology.ts` 的分发层，本函数只按「给了才算」组装。
+ * 五鼠遁）。护栏（谁缺谁报错）在 `cli/commands/astrology.ts` 的分发层，本函数只按「给了才算」组装。
  */
 export interface MutagenSectionOptions {
 	/** 流年公历年（`--yearly` 的值；缺省当年由 caller 经 parseYearlyArg 归一后传入） */

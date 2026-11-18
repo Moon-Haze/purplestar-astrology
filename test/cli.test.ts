@@ -31,7 +31,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(HERE, "..");
 
 // ── 各 skill 的 CLI 入口 ──
-// 三个 skill 互相独立、各有各的 purple-star.ts 与内核（见 CLAUDE.md「三个 skill 之间没有关系」），
+// 三个 skill 互相独立、各有各的 purple-star.ts 与内核（见 AGENTS.md「单 skill 形态（2026-09-30 三 skill 合一）」），
 // 因此必须**逐个入口**测到 —— 只测排盘那份的话，另两个 skill 的 CLI 入口写错在测试里看不见。
 // ── CLI 入口 ──
 // 三 skill 合一后只有一条入口（仓库根 scripts/purple-star.ts）；表保留三键，

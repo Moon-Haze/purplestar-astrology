@@ -2,8 +2,9 @@
  * 命令注册薄层 —— 只留 COMMAND_TABLE 与 COMMAND_DESC。
  *
  * 各命令实现按文件拆分：`cmdXxx` 住在**同目录**下的 `<命令名>.ts`（astrology /
- * fortune / report / synastry），知识检索在 `knowledge/` 子目录；本文件只做注册 ——
- * 改某条命令去它的文件，加命令则在这里挂一行（漏挂的命令敲了就是「未知命令」）。
+ * report / synastry；`fortune.ts` 只是 `../fortune/` 的 re-export 壳），知识检索在
+ * `knowledge/` 子目录；本文件只做注册 —— 改某条命令去它的文件，加命令则在这里
+ * 挂一行（漏挂的命令敲了就是「未知命令」）。
  *
  * ⚠️ 本文件即 `@/cli/commands` 的落点（原 `cli/commands.ts`，2026-10-13 重组时并入
  * `cli/commands/` 并成为该目录的 index）—— 故外部对该目录的引用不需要改写。

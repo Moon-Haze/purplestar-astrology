@@ -240,7 +240,7 @@ export function parseWuxingJu(name: string): number {
  * @remarks
  * **只做组装、不做推算**：调 iztro 排盘 → 逐宫翻译宫名与星曜 → 算虚岁与当前大限
  * → 补借对宫字段。**大限四化已主动下线**（不再生成 `decadals[].mutagen` / `stemIndex`）。
- * 各步纪律见 docs/code/chart-kernel.md；体系立场见仓库根 `CLAUDE.md` 与 `SKILL.md`。
+ * 各步纪律见 docs/code/chart-kernel.md；体系立场见仓库根 `AGENTS.md` 与 `SKILL.md`。
  *
  * @example
  * ```ts

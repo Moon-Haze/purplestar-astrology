@@ -82,7 +82,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  * 同处一层。因此 `@/` 别名指向的是 `scripts/`，而**不是** skill 根。
  *
  * 这里刻意**没有**「宿主项目」候选：每个 skill 自带内核，不存在「实时内核 vs 分发副本」
- * 的双模式。（本仓已无 skill 间的副本关系 —— 见 `CLAUDE.md`「三个 skill 之间没有关系」。）
+ * 的双模式。（本仓已无 skill 间的副本关系 —— 见 `AGENTS.md`「单 skill 形态（2026-09-30 三 skill 合一）」。）
  * 两级优先级的完整论证见 docs/code/boot-layer.md。
  */
 const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
@@ -95,7 +95,7 @@ const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
  *
  * @remarks
  * 由调用方传入而非写死在 `boot-hooks.ts`：各 skill 各有各的内核，古籍检索 skill 里
- * 根本没有内核入口 `algorithm.ts`（见 `CLAUDE.md` 的「skill 的布局」）。
+ * 根本没有内核入口 `algorithm.ts`（见 `AGENTS.md` 的「架构」）。
  */
 const KERNEL_ENTRY = "algorithm.ts";
 

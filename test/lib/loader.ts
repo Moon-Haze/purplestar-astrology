@@ -78,7 +78,7 @@ export const load = makeLoader(ROOT, ROOT_LABEL, f => {
 // 仓库根 scripts/ 下的真实模块（从而拿到**真实导出签名**，内核签名变了这里跟着红）；
 // 运行时该类型整体擦除，实际加载仍走上面的动态 import + 解析钩子。
 // ⚠️ `load<T>()` 是字符串动态导入，tsc 本不检查 —— 类型锚定全靠这里的 typeof import，
-//    这正是 CLI 引导层同款模式（详见 CLAUDE.md「CLI 如何既自举又拿到内核类型」）。
+//    这正是 CLI 引导层同款模式（详见 AGENTS.md「CLI 如何既自举又拿到内核类型」）。
 export const loadAlgorithm = () => load<typeof import("@/algorithm")>("@/algorithm");
 export const loadData = () => load<typeof import("@/data")>("@/data");
 export const loadPatterns = () => load<typeof import("@/patterns")>("@/patterns");
