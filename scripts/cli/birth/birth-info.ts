@@ -586,8 +586,3 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 		isLateZi: timeIndex === 12,
 	};
 }
-
-// ─── 公开面 re-export ────────────────────────────────────────────────────────
-// 拆分前从本模块导出的 4 个名字，拆分后**逐名仍可从这里 import**（实际住在
-// `./birth-info-defs`，此处只做转发，调用方一行不用改）。
-export type { BirthInfoResult, LongitudeHit, TrueSolarOptions, TrueSolarResult };

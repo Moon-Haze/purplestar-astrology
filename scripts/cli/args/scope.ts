@@ -33,10 +33,6 @@ export interface OptionScope {
 	 * `sidePrefixes` 非空就放行，`selftest --a-chart` 会从「报错」变成「静默忽略」。
 	 */
 	readonly prefixedCommands: readonly string[];
-	/**
-	 * 按参数名覆盖 help 里的说明文案（声明表的 desc 是全集视角时用）。
-	 */
-	readonly descOverrides?: Readonly<Record<string, string>>;
 }
 
 /**

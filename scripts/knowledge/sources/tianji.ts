@@ -32,7 +32,7 @@ export const tianjiSource: KnowledgeSource = {
 	id: "tianji",
 	label: "天纪判语",
 	async search(query: KnowledgeQuery): Promise<string> {
-		const q = query.term ?? query.positional.join(" ") ?? "";
+		const q = query.term ?? query.positional.join(" ");
 		const limit = Math.floor(query.limit);
 
 		// 限册：接受册代号（01-stars）或中文名（主星）。裸开关已在入口 throw，这里直接读 string。
