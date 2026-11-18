@@ -144,7 +144,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 古籍检索自检断言组 —— 从 classics 自带的 selftest.ts 抽出。
 >
 > 断言体基本原样；适配点只有一类：**参数面断言改跑合并后的根 CLI**
-> （`node scripts/purple-star.ts knowledge …`，命令原名 classics、四域合并时改名），
+> （`node scripts/purple-star.ts knowledge …`，命令原名 classics、统一检索合并时改名），
 > 因为它不再有独立入口。
 >
 > 合并引擎（cac 底座）在 `--limit -3` 贪婪取值与取值参数裸写拒收上与 classics

@@ -266,7 +266,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 加一个主题会让数据集查询整体报 `column not found`）：
 >
 > 1. **运行时注册表**（本数组全部元素）—— 主题元数据派生表、CLI `--topic` 分发、
->    oracle 域主题清单、测试断言。新增主题在此加一项即可。
+>    测试断言。新增主题在此加一项即可。
 > 2. **数据集物理列**（只有 {@link STORAGE_TOPIC_KEYS}）—— `topics` 表是**每主题一列**，
 >    而**别名视图主题无独立列**（见 {@link TOPIC_CONTENT_SOURCE}）。所有拼 SQL 遍历
 >    列的地方必须走 `STORAGE_TOPIC_KEYS`，不能走本数组。

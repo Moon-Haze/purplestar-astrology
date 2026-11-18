@@ -23,7 +23,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > cli/birth/ 出生信息解析（真太阳时、农历换算、城市容错）
 > cli/chart/ 命盘渲染（宫位 / 星曜 / 四化 / 晚子时提示 / 宫名口径）+ 排盘缓存
 > cli/commands/ 命令实现：astrology（四命令合一）/ fortune（运限）/ report（--report）
-> / synastry（合盘）/ knowledge/（知识检索四域）/ help / command-meta /
+> / synastry（合盘）/ knowledge/（知识检索三域）/ help / command-meta /
 > index（COMMAND_TABLE 注册薄层）
 > cli/host/ dispatch（argv → 三元组的分发协议）+ out（--out 落盘通道）
 > cli/selftest/ 回归自检（index = 排盘 / 古籍 / 合盘三段合一；kit = 共用 harness）

@@ -243,8 +243,9 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 ### 3.5 旧命令迁移提示
 
-> 旧命令并入提示：stars / oracle 已并入 `--source` 选域，classics 随四域合并改名
-> knowledge —— 敲旧名给一条可直接照抄的迁移写法，而不是让用户自己从 help 里找。
+> 旧命令迁移提示：stars 已并入 `--source` 选域；oracle 断语手册已下线（旧命令名给
+> 「主题论断改由 astrology 按盘现场推算」的指路）；classics 随合并改名 knowledge ——
+> 敲旧名给一条可直接照抄的迁移写法，而不是让用户自己从 help 里找。
 
 ## 四、`host/out.ts`：`--out` 落盘通道
 

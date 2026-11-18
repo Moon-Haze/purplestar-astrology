@@ -2,7 +2,7 @@
 
 本篇覆盖 `scripts/knowledge/`：`types.ts`（`KnowledgeSource` 接缝）·
 `registry.ts`（声明式注册表）· `sources/books.ts` / `sources/stars.ts` /
-`sources/tianji.ts` / `sources/oracle.ts`（四域「实现即插件」）。
+`sources/tianji.ts`（三域「实现即插件」）。
 
 收录的是这些文件里 **B 类模块头论文**与 **C 类 ⚠️ 防呆警告**的原文；A 类 TSDoc 契约与
 D 类口径锁留在源码。分类判据见 [README.md](README.md)。
@@ -13,15 +13,15 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 > 知识源插件接口（Phase 1 · KnowledgeSource 接缝）
 >
-> 架构文档 §4.1：把 `knowledge` 命令的四域（books/stars/tianji/oracle）从
+> 架构文档 §4.1：把 `knowledge` 命令的三域（books/stars/tianji）从
 > `cli/knowledge/index.ts` 的硬编码 `switch` 抽成自包含、可注册的插件。新增一个域
 > = 写一个 `KnowledgeSource` 文件 + 在 registry 加一行，不必改 CLI 分发入口
 > （ADR-002：清单注册而非文件系统自动发现）。
 >
 > `search` 收 CLI 无关的 `KnowledgeQuery`（精确字段，由 `cli/knowledge/index.ts` 的
-> `decodeKnowledgeQuery` 从 `CliArgs` 解码而来）：`--search`/`--limit`/`--book`/`--topic`
+> `decodeKnowledgeQuery` 从 `CliArgs` 解码而来）：`--search`/`--limit`/`--book`
 > 的三态与值域校验在入口单点承担，位置参数回退是域知识、留在各域实现内
-> （books/stars/tianji 回退为检索词，oracle 回退为 topic/star）。
+> （books/stars/tianji 回退为检索词）。
 >
 > `citations` 是引文核对表的扩展点占位：Phase 3（SchoolAdapter + 按流派引文守卫）落地时，
 > 把 `corpus/annotations.ts` 的全局核对表收进各源，并按流派分派。Phase 1 不填充它，
@@ -33,21 +33,21 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 
 > 知识源注册表（Phase 1 · KnowledgeSource 接缝）
 >
-> 把 `knowledge` 命令的四域收成一张声明式注册表。CLI 分发入口只查这张表，不再写
+> 把 `knowledge` 命令的三域收成一张声明式注册表。CLI 分发入口只查这张表，不再写
 > `switch`（ADR-002：清单注册而非文件系统自动发现——typecheck 兜底、与现有
 > `COMMAND_TABLE` 哲学一致）。新增一个域 = 写一个 `sources/<id>.ts` + 下面加一行，
 > 不必改 `cli/knowledge/index.ts`。
 >
-> 懒加载纪律：tianji / oracle 两域的重语料（392KB / 4.4MB）在各自 `search` 体内
+> 懒加载纪律：tianji 域的重语料（392KB）在其 `search` 体内
 > `await import`，注册表静态 import 的源模块本身是轻的，不会把重数据拉进 CLI 启动。
-> 四域是「实现即插件」形态：渲染逻辑直接住在 `sources/<id>.ts`，无转发壳。
+> 三域是「实现即插件」形态：渲染逻辑直接住在 `sources/<id>.ts`，无转发壳。
 
 ⚠️ `KNOWLEDGE_SOURCES` 的**键序即概览列出与报错提示的顺序**；`KNOWLEDGE_SOURCE_IDS`
 是键集合的单一真相源，CLI 报错提示与自检断言复用它，**不手抄字符串**。
 
 ---
 
-## 三、`sources/`：四域「实现即插件」
+## 三、`sources/`：三域「实现即插件」
 
 ### 3.1 `books.ts`：默认域，无懒加载顾虑
 

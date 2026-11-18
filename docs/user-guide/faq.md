@@ -10,7 +10,7 @@
 | `未知参数 --ctiy。最接近的是 --city`                       | 拼错了参数名。报错会给最近邻建议，按提示改；全部合法参数以 `help` 为准                  |
 | `参数 --date 重复给出（含主名与别名同现）。每个参数只给一次` | 同一参数给了两次（含主名与拼音别名同现，如 `--geju --pattern`）。删掉重复的那个           |
 | `--late-zi 需配合 --time 使用`                             | `--late-zi` 是 `--time` 的修饰旗标。直接指定时辰的晚子时用 `--branch 12`，二者不可同给    |
-| `--source 应为 books/stars/tianji/oracle`                  | `knowledge` 的域代码写错，四选一（旧命令名 `classics` / `stars` / `oracle` 已并入 `--source`） |
+| `--source 应为 books/stars/tianji`                         | `knowledge` 的域代码写错，三选一（旧命令名 `classics` / `stars` 已并入 `--source`；oracle 断语手册已下线） |
 | `未知命令「--template」`                                   | `--template` 是参数不是命令，须挂在命令下：`astrology --template > my.json`             |
 | `--decadal` / `--ages` 越界报错                            | 值域是 1–120 虚岁，越界不静默兜底，改合法值                                          |
 | `--out` 路径被拒                                           | 路径不允许 `..` 段（穿越防护）；子目录与绝对路径不受影响                              |

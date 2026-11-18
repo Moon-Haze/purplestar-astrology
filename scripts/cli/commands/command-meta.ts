@@ -10,7 +10,7 @@
  */
 
 // 优先级链的真相源在声明表（纯数据零依赖，不破本文件的轻模块底线）——
-// 旧手抄文案漏了 `--report`，与 astrology 实际报错和 options.md 均不符，收拢即修正。
+// 旧手抄文案漏了 `--report`，与 astrology 实际报错和 `references/options.md` 均不符，收拢即修正。
 import { EXCLUSIVE_PRIORITY_LABEL } from "../args/table";
 
 /** 合法命令名（顺序即 help COMMANDS 节的展示序）。 */
@@ -45,17 +45,15 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 		"⚠️ 排盘四必问：日期、时间、性别、出生地 —— 缺一问一，不要猜。",
 	],
 	knowledge: [
-		"统一知识检索，四域合一（--source 选域，缺省 books）。",
+		"统一知识检索，三域合一（--source 选域，缺省 books）。",
 		"books（默认）：古籍原文检索（骨髓赋 / 紫微斗数全集 / 全书三部全文），逐段子串匹配，",
 		"  检索词按空白分词，多关键词须全部出现在同一段才命中（AND）；",
 		"  --limit 控制命中上限（默认 15）——解读需要引原句佐证时用它，不要凭记忆转写古籍。",
 		"stars：星曜释义（--search <星名>，或位置参数；缺省列全部星曜的「关键词 · 星性 · 五行」）。",
 		"tianji：天纪判语检索（《天纪》讲稿原话 + 秒级回放溯源，紫微五册：主星 / 十二宫 / 格局 /",
 		"  四化 / 疾厄；--book 限册、--limit 限条），引用「倪师说」时用它找原话出处；语料 CC BY-NC-SA 4.0。",
-		"oracle：断语手册（各主题 × 十四主星的分类断语快照；--topic <key> [--star <星名>]，",
-		"  缺 --star 时列 14 星概览）；快照为本命静态口径，解读仍需结合具体命盘。",
-		"⚠️ 本命令原名 classics（四域合并时改名，books 用法逐字不变）；旧命令 stars / oracle",
-		"已并入（--source …），原命令名不再保留。",
+		"⚠️ 本命令原名 classics（改名时 books 用法逐字不变）；旧命令 stars 已并入（--source stars），",
+		"oracle 断语手册已下线——主题论断改由 astrology 按盘现场推算。",
 	],
 	synastry: [
 		"合盘（双宫联参）：看婚姻不能只看夫妻宫，必须同时看福德宫（倪海厦口径）。",

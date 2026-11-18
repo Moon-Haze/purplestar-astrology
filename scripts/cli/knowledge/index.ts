@@ -9,8 +9,7 @@
  *
  * 参数样板的单点：`--search` 裸开关与 `--limit` 值域是三域同形的东西，由
  * {@link decodeKnowledgeQuery} 在入口统一拦截（throw → stderr + 非零退出）；
- * 位置参数回退是**域知识**（books/stars/tianji 回退为检索词，原 oracle 回退为
- * topic/star），留在各域实现内。
+ * 位置参数回退是**域知识**（books/stars/tianji 回退为检索词），留在各域实现内。
  */
 
 import type { CliArgs } from "../args";
@@ -23,8 +22,10 @@ import { KNOWLEDGE_SOURCES, KNOWLEDGE_SOURCE_IDS } from "@/knowledge/registry";
  * @remarks
  * 校验与解码合并在这里，域实现不再各抄一份（历史上 books 的 `--search` 缺值走
  * return、其余三域走 throw，exit code 曾实际漂移）：
- * - `--search`/`--book`/`--topic` 裸开关（解析层存成 `true`）一律 throw——不把报错
+ * - `--search`/`--book` 裸开关（解析层存成 `true`）一律 throw——不把报错
  *   当正常输出打 stdout，机器路径（退出码）可感知；
+ * - `--topic`（astrology 的主题论断参数）出现即 throw——oracle 域退役后它对本命令
+ *   无语义，显式报错而非静默吞参（失败可见性）；
  * - `--limit` 给了就必须是正整数（books/tianji 两份文案合一）；
  * - 取值参数解码为精确 `string`（或 `undefined`），裸开关的 boolean 形态在此被拦截，
  *   各源无需再 `typeof x === "boolean"` 收窄。位置参数回退仍是域知识，原样透传。
@@ -44,8 +45,10 @@ function decodeKnowledgeQuery(args: CliArgs, source: string): KnowledgeQuery {
 	if (typeof args.book === "boolean") {
 		throw new Error("--book 需要一个册名（如 --book 01-stars）。");
 	}
-	if (typeof args.topic === "boolean") {
-		throw new Error("--topic 需要一个主题 key（如 --topic career），或直接写位置参数。");
+	if (args.topic !== undefined) {
+		throw new Error(
+			"--topic 是 astrology 的主题论断参数；knowledge 检索用 --search 或直接写位置参数，--source 选域。"
+		);
 	}
 
 	return {
@@ -53,8 +56,6 @@ function decodeKnowledgeQuery(args: CliArgs, source: string): KnowledgeQuery {
 		positional: args._,
 		limit: args.limit === undefined ? 15 : Number(args.limit),
 		book: typeof args.book === "string" ? args.book : undefined,
-		topic: typeof args.topic === "string" ? args.topic : undefined,
-		star: args.star === undefined ? undefined : String(args.star),
 	};
 }
 

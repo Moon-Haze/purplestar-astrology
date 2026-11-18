@@ -44,7 +44,7 @@
 | `--no-cache` | 跳过排盘缓存强制现排（默认同一农历年内复用缓存，见 [faq.md](faq.md)） |
 | `--config <my.json>` | 读 JSON 配置文件（键 = 参数 camelCase 主名；命令行同名参数覆盖配置） |
 
-## knowledge —— 知识检索（四域合一）
+## knowledge —— 知识检索（三域合一）
 
 `--source` 选域，缺省 `books`：
 
@@ -53,7 +53,6 @@
 | `books`  | 三部古籍全文（默认）       | `--limit <15>`        |
 | `stars`  | 星曜释义（关键词/星性/五行） | `--search <星名>`     |
 | `tianji` | 天纪判语（含秒级回放溯源） | `--book <册>`         |
-| `oracle` | 断语手册（主题 × 十四主星） | `--topic <key> [--star <星名>]` |
 
 多关键词是 **AND** 语义：须全部出现在同一段才命中。检索词既可走 `--search` 也可走位置
 参数（`knowledge 机月同梁` 等价于 `--search 机月同梁`）。
@@ -83,11 +82,11 @@ node scripts/purple-star.ts astrology --date 2011-06-24 --time 07:45 --city 杭�
 node scripts/purple-star.ts astrology --date 1999-11-03 --time 15:20 --city 成都 --gender female --json --out /tmp/b.json
 node scripts/purple-star.ts synastry --charts /tmp/a.json,/tmp/b.json
 
-# 6. 检索佐证：古籍原文 / 星曜释义 / 天纪判语 / 断语手册
+# 6. 检索佐证：古籍原文 / 星曜释义 / 天纪判语
 node scripts/purple-star.ts knowledge --search 机月同梁
 node scripts/purple-star.ts knowledge --source stars --search 紫微
 node scripts/purple-star.ts knowledge --source tianji 半空折翅
-node scripts/purple-star.ts knowledge --source oracle --topic career --star 七杀
+# （主题论断不走检索：oracle 断语手册已下线，用 astrology --topic 按盘现场推算）
 
 # 7. 批量 / 复用同一组输入：先生成配置模板，改完用它
 node scripts/purple-star.ts astrology --template > my.json

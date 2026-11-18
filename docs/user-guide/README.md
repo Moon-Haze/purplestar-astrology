@@ -12,7 +12,7 @@ node scripts/purple-star.ts <command> [options]
 | 命令        | 干什么           | 最小示例                                       |
 | ----------- | ---------------- | ---------------------------------------------- |
 | `astrology` | 排盘分析         | `astrology 2011-06-24 07:45 男 杭州`           |
-| `knowledge` | 知识检索（四域） | `knowledge --search 机月同梁`                  |
+| `knowledge` | 知识检索（三域） | `knowledge --search 机月同梁`                  |
 | `synastry`  | 双人合盘         | `synastry --charts a.json,b.json`（先各排一盘） |
 
 ## 环境要求

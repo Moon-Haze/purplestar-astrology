@@ -369,7 +369,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 			},
 			{
 				name: "topic",
-				cmds: ["astrology", "knowledge"],
+				cmds: ["astrology"],
 				shadow: true,
 				kind: "value",
 				value: "key",

@@ -2,7 +2,7 @@
 
 本篇覆盖 `scripts/cli/commands/`（`index.ts` · `command-meta.ts` · `help.ts` ·
 `astrology.ts` · `fortune.ts` · `report.ts` · `synastry.ts`）、`scripts/cli/fortune/`
-（运限八节）与 `scripts/cli/knowledge/`（四域合一的知识检索命令）。
+（运限八节）与 `scripts/cli/knowledge/`（三域合一的知识检索命令）。
 
 收录的是这些文件里 **B 类模块头论文**与 **C 类 ⚠️ 防呆警告**的原文；A 类 TSDoc 契约与
 D 类口径锁留在源码。分类判据见 [README.md](README.md)。
@@ -265,30 +265,21 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核
 > 与同层模块。
 
-## 八、`cli/knowledge/`：四域合一的知识检索命令
+## 八、`cli/knowledge/`：三域合一的知识检索命令
 
 ### 8.1 `index.ts`
 
-> `knowledge` 命令：统一知识检索 —— 四域合一（books 古籍 / stars 星曜释义 /
-> tianji 天纪判语 / oracle 断语手册）。
+> `knowledge` 命令：统一知识检索 —— 三域合一（books 古籍 / stars 星曜释义 /
+> tianji 天纪判语；oracle 断语手册已随 remove-manual-oracle 下线）。
 >
 > Phase 1 · KnowledgeSource 接缝：分发走 `KNOWLEDGE_SOURCES` 注册表，本文件只做
 > 「查表 → 调 `search`」，不再写 `switch`（ADR-002：清单注册）。域由 `--source` 选择
-> （缺省 `books`，与「classics 只搜古籍」的历史用法向后兼容）。新增域只加一个源文件 +
-> 一行注册，不必改本入口。
+> （缺省 `books`）。新增域只加一个源文件 + 一行注册，不必改本入口。
 >
-> `--source books`（缺省）为古籍检索，行为与「classics 只搜古籍」的旧用法逐字兼容。
-> tianji / oracle 域的实现在各自源文件内动态 import 懒加载（见 `knowledge/sources/`）。
+> `--source books`（缺省）为古籍检索。tianji 域的实现在其源文件内动态 import 懒加载
+> （见 `knowledge/sources/`）。
 
-### 8.2 `oracle.ts`
-
-> knowledge 的 **oracle 域**：断语手册检索。由 `knowledge --source oracle` 进入
-> （原独立 `oracle` 命令已并入，旧命令名不保留）。数据（`corpus/data/manual/`，
-> 4.4MB 分类断语）在函数体内动态 import 懒加载。
->
-> 三形态：裸（列 13 主题）/ 主题（14 星概览）/ 主题+星（分类断语全展开）。
-
-### 8.3 `stars.ts`
+### 8.2 `stars.ts`
 
 > knowledge 的 **stars 域**：星曜释义。由 `knowledge --source stars` 进入
 > （原独立 `stars` 命令已并入，旧命令名不保留）。数据是内核轻表
@@ -297,7 +288,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 裸开关（`--search` 落在参数末尾）会被解析层存成 `true`（可选值形态），先拦下指路，
 > 否则 `String(true) = "true"` 被当成星名，静默产出错结果。
 
-### 8.4 `tianji.ts`
+### 8.3 `tianji.ts`
 
 > knowledge 的 **tianji 域**：天纪判语检索。由 `knowledge --source tianji` 进入。
 > 数据（`corpus/data/tianji.ts`，392KB、1125 条）在函数体内动态 import 懒加载 ——

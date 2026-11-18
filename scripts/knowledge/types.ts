@@ -1,15 +1,15 @@
 /**
  * 知识源插件接口（Phase 1 · KnowledgeSource 接缝）
  *
- * 架构文档 §4.1：把 `knowledge` 命令的四域（books/stars/tianji/oracle）从
+ * 架构文档 §4.1：把 `knowledge` 命令的三域（books/stars/tianji）从
  * `cli/knowledge/index.ts` 的硬编码 `switch` 抽成自包含、可注册的插件。新增一个域
  * = 写一个 `KnowledgeSource` 文件 + 在 registry 加一行，不必改 CLI 分发入口
  * （ADR-002：清单注册而非文件系统自动发现）。
  *
  * `search` 收 CLI 无关的 `KnowledgeQuery`（精确字段，由 `cli/knowledge/index.ts` 的
- * `decodeKnowledgeQuery` 从 `CliArgs` 解码而来）：`--search`/`--limit`/`--book`/`--topic`
+ * `decodeKnowledgeQuery` 从 `CliArgs` 解码而来）：`--search`/`--limit`/`--book`
  * 的三态与值域校验在入口单点承担，位置参数回退是域知识、留在各域实现内
- * （books/stars/tianji 回退为检索词，oracle 回退为 topic/star）。
+ * （books/stars/tianji 回退为检索词）。
  *
  * `citations` 是引文核对表的扩展点占位：Phase 3（SchoolAdapter + 按流派引文守卫）落地时，
  * 把 `corpus/annotations.ts` 的全局核对表收进各源，并按流派分派。Phase 1 不填充它，
@@ -34,10 +34,6 @@ export interface KnowledgeQuery {
 	limit: number;
 	/** `--book` 的字符串值（限册代号或中文名）；未给为 `undefined` */
 	book?: string;
-	/** `--topic` 的字符串值；未给为 `undefined` */
-	topic?: string;
-	/** `--star` 的字符串值；未给为 `undefined` */
-	star?: string;
 }
 
 /** 一条引文核对项（占位形状；Phase 3 落地时与 annotations.ts 对齐）。 */
