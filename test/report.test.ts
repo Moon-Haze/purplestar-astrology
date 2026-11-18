@@ -69,8 +69,8 @@ const MALE = [...DEMO_ARGV];
 /** 女盘（命宫空宫，借对宫论事 —— 覆盖 report 的借宫路径）。 */
 const FEMALE = [...DEMO_FEMALE_ARGV];
 
-// 独占分支判定链声明（2026-11-17-exclusive-branch-allow-chain-declaration）：组合
-// 矩阵的跳过条件从它派生，不再手抄第二份「谁被消费 / 谁 bespoke」清单。
+// 独占分支判定链声明（2026-11-17 判定链收拢 + 2026-11-18 矩阵封闭派生）：组合
+// 矩阵三根轴（分支轴 / 被吞旗标轴 / allow 方向）从它派生，测试面无手抄副本。
 const argsTable = await load<typeof import("@/cli/args/table")>("@/cli/args/table");
 
 /**
@@ -228,55 +228,92 @@ describe("astrology --report 全盘报告", () => {
 		assert.ok(err2.includes("--info"), "report 视角下 --info 也应被点名");
 	});
 
-	it("独占分支 × 功能参数矩阵：被吞必点名（跳过格由声明表派生），--topic 消费白名单必放行", async () => {
-		// block 方向：四条独占分支 × {monthly, daily, hourly, view} 中未被放行/ bespoke
-		// 接管的格必须点名「不会生效」。跳过条件从 table.ts 的 EXCLUSIVE_BRANCHES 派生
-		//（flag ∈ 该分支 consumes ∪ bespoke keys）——声明表新增表态时矩阵自动跟随，
-		// 不再手抄第二份清单（2026-11-11 前的 daily/hourly 静默吞即手抄漏格所致）。
-		// --report × --monthly 随派生解禁进入通用断言（它不被消费也不 bespoke，探针
-		// 证实通用断言在该格成立）；--topic × {monthly, view} 走 allow 断言、
-		// --report × --view 走 bespoke 钉点（「不接受」，见上方 it）。
-		const skip = (branchName: string, flag: string): boolean => {
-			const entry = argsTable.EXCLUSIVE_BRANCHES?.find(b => `--${b.name}` === branchName);
-			if (!entry) {
-				return false;
-			}
-			const bare = flag.slice(2);
-			return (
-				entry.consumes.includes(bare) ||
-				(entry.rejectsWithNote?.keys.includes(bare) ?? false)
-			);
+	it("独占分支 × 功能参数矩阵（三根轴封闭派生）：被吞必点名、消费白名单必放行", async () => {
+		// 三根轴（分支轴 / 被吞旗标轴 / allow 方向）全部从 table.ts 声明表派生，构成
+		// 封闭枚举（2026-11-18-report-test-matrix-closed-derivation）：新增/退役分支
+		// 或旗标、调整放行 = 声明表一处表态，测试面零协同。两张探针映射只是「怎么调用」
+		// 的夹具（design D2），不重复声明表的任何决策；派生条目在映射缺席时由缺名守卫
+		// 当场红（design D3）——「新分支/旗标未入矩阵」从静默变失败可见。跳过格各有
+		// 指名的分管断言：自指格（旗标即分支自身）端到端触发 parse 层参数判重而非被吞
+		// 文案；放行格由下方 allow 断言分管；bespoke 格（report × view）由上方
+		//「不接受」子串钉点分管。覆盖格数由派生轴计算自报，不写死（落地时点 45 + 3）。
+		const { EXCLUSIVE_BRANCHES, SHADOWABLE_KEYS, OPTION_GROUPS } = argsTable;
+		// 形态判定单一来源：声明表 kind 字段（switch 不带值；value / optionalValue
+		// 统一按带值调用，不影响被吞语义）。
+		const kindOf = new Map(
+			OPTION_GROUPS.flatMap(g => g.options.map(o => [o.name, o.kind] as const))
+		);
+		// 探针映射（design D2 夹具）：分支取值映射（其余分支裸旗标）+ 值形态旗标的
+		// 合法样本值（switch 形态 mutagen / pattern / info / report 不需要条目）。
+		const branchProbeArgs: Record<string, readonly string[]> = { topic: ["love"] };
+		const flagProbeValue: Record<string, string> = {
+			ages: "34",
+			daily: "10",
+			decadal: "2",
+			focus: "财帛",
+			hourly: "3",
+			monthly: "5",
+			topic: "love",
+			view: "daxian",
+			yearly: "2027",
 		};
-		for (const branch of [["--info"], ["--palaces"], ["--topic", "love"], ["--report"]]) {
-			for (const [flag, value] of [
-				["--monthly", "5"],
-				["--daily", "10"],
-				["--hourly", "3"],
-				["--view", "daxian"],
-			] as const) {
-				if (skip(branch[0], flag)) {
+		// 缺名守卫（design D3）：派生轴上非 switch 形态的条目缺席探针取值即红并点名，
+		// 「未入矩阵」不静默。
+		const branchArgv = (name: string): readonly string[] => {
+			const probe = branchProbeArgs[name];
+			if (kindOf.get(name) !== "switch" && probe === undefined) {
+				assert.fail(`独占分支 --${name} 未登记探针取值，新分支未入矩阵`);
+			}
+			return [`--${name}`, ...(probe ?? [])];
+		};
+		const flagArgv = (flag: string): readonly string[] => {
+			const value = flagProbeValue[flag];
+			if (kindOf.get(flag) !== "switch" && value === undefined) {
+				assert.fail(`被吞旗标 --${flag} 未登记探针取值，新旗标未入矩阵`);
+			}
+			return value === undefined ? [`--${flag}`] : [`--${flag}`, value];
+		};
+		let genericCells = 0;
+		let allowCells = 0;
+		for (const entry of EXCLUSIVE_BRANCHES) {
+			for (const flag of SHADOWABLE_KEYS) {
+				const skip =
+					flag === entry.name ||
+					entry.consumes.includes(flag) ||
+					(entry.rejectsWithNote?.keys.includes(flag) ?? false);
+				if (skip) {
 					continue;
 				}
-				const err = await cmdFails([...MALE, ...branch, flag, value]);
+				const err = await cmdFails([...MALE, ...branchArgv(entry.name), ...flagArgv(flag)]);
 				assert.ok(
-					err.includes(flag) && err.includes("不会生效"),
-					`独占分支 ${branch.join(" ")} 应点名被吞参数 ${flag}，实得：${err}`
+					err.includes(`--${flag}`) && err.includes("不会生效"),
+					`独占分支 --${entry.name} 应点名被吞参数 --${flag}，实得：${err}`
 				);
+				genericCells += 1;
 			}
 		}
-		// allow 方向：--topic 的消费白名单（yearly/monthly/view）是承重墙——SHADOWABLE 域
-		// 扩容后不得反向误伤合法消费。
-		for (const extra of [
-			["--yearly", "2027"],
-			["--monthly", "5"],
-			["--view", "daxian"],
-		] as const) {
-			const out = await cliCmdInProcess([...MALE, "--topic", "love", ...extra]);
-			assert.ok(
-				out.includes("本宫主星：") && !out.includes("不会生效"),
-				`--topic 消费 ${extra[0]} 应正常出主题论断（无误伤报错）`
-			);
+		// allow 方向：consumes 非空的分支自动进放行断言循环，消费白名单在 table.ts
+		// 是唯一表态处。断言子串「本宫主星：」是 --topic 主题论断的形态契约；新分支
+		// 的放行产物形态不同时，在此以其实际契约替换并留注释指名（显式表态，非静默跟随）。
+		for (const entry of EXCLUSIVE_BRANCHES.filter(b => b.consumes.length > 0)) {
+			for (const flag of entry.consumes) {
+				const out = await cliCmdInProcess([
+					...MALE,
+					...branchArgv(entry.name),
+					...flagArgv(flag),
+				]);
+				assert.ok(
+					out.includes("本宫主星：") && !out.includes("不会生效"),
+					`--${entry.name} 消费 --${flag} 应正常出主题论断（无误伤报错）`
+				);
+				allowCells += 1;
+			}
 		}
+		console.log(
+			`[矩阵自报] 分支 ${EXCLUSIVE_BRANCHES.length} × 旗标 ${SHADOWABLE_KEYS.size}，` +
+				`通用断言 ${genericCells} 格 + allow ${allowCells} 格` +
+				`（跳过格归自指/放行/bespoke 各自的分管断言）`
+		);
 	});
 
 	it("零输入 --report 报「缺一问一」，不喂虚构演示盘", async () => {

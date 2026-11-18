@@ -101,7 +101,8 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
     > 按优先序 palaces > topic > report > info）：每条目声明 `consumes`（放行集合）
     > 与可选 bespoke 拒收文案（现仅 `--report × --view`「不接受」指路）。
     > `EXCLUSIVE_PRIORITY_LABEL`、命令侧被吞检测的放行集合、`--info` 上级梯与
-    > report.test 组合矩阵的跳过格全部由此派生；selftest 不变量守两表不许漂移
+    > report.test 组合矩阵的三根轴（分支轴 / 被吞旗标轴 / allow 方向）全部由此
+    > 派生；selftest 不变量守两表不许漂移
     > （consumes ⊆ SHADOWABLE_KEYS、条目分支名必已声明），既有文案对拍升格为清单
     > 顺序守卫（改序即红）。
 - `BIRTH_KEYS`：
