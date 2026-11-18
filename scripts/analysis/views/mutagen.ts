@@ -25,7 +25,7 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
  *   （四化注首现原则），落点行恒出不隐藏四化事实。缺省（`--topic` 单主题路径）
  *   为 `undefined`，注句照常输出，行为与不去重时一致。
  */
-export function renderMutagenItems(ctx: AnalysisContext, dedupe?: Map<string, string>): AnalysisItem[] {
+function renderMutagenItems(ctx: AnalysisContext, dedupe?: Map<string, string>): AnalysisItem[] {
 	const { mutagenInSanFang } = ctx;
 
 	const items: AnalysisItem[] = [];

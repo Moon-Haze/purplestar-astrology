@@ -8,8 +8,7 @@
  * 大限宫为空宫时借对宫论事，与 `palace-query.ts` 的空宫口径一致。
  * 完整口径见 docs/code/analysis.md。
  *
- * 产出**结构化条目流**（一源双投影，见 `../items`）：slot = `decadal`，全部条目
- * `clockDependent: true`（当前大限随系统日期漂移，预计算不可复现，直出链排除）。
+ * 产出**内部条目流**（views 的实现形态，见 `../items`）：slot = `decadal`。
  *
  * @packageDocumentation
  */
@@ -22,7 +21,7 @@ import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
 /** 渲染「四、当前大限分析」整节的结构化条目流（无当前大限时返回空数组）。 */
-export function renderDecadalItems(ctx: AnalysisContext): AnalysisItem[] {
+function renderDecadalItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, currentDx } = ctx;
 
 	const items: AnalysisItem[] = [];
@@ -42,14 +41,13 @@ export function renderDecadalItems(ctx: AnalysisContext): AnalysisItem[] {
 			contentItem(
 				`现走**${currentDx.palaceName}**大限（${dxStarsDesc}），此十年是人生的重要阶段。`,
 				"decadal",
-				{ clockDependent: true, palace: currentDx.palaceName }
+				{ palace: currentDx.palaceName }
 			)
 		);
 		items.push(
 			contentItem(
 				`倪师《天纪 03》明示：「四化星永远固定在那个宫上面不要动…我们每年是流年在动，星都不动」——大限只看**宫位移动**，而非按宫干重新起化。`,
-				"decadal",
-				{ clockDependent: true }
+				"decadal"
 			)
 		);
 
@@ -63,7 +61,7 @@ export function renderDecadalItems(ctx: AnalysisContext): AnalysisItem[] {
 					contentItem(
 						`▶ 大限宫为空宫，借**${dxPalace.borrowedFromName ?? ""}**的${oppStars.join("、")}入事——倪师强调「空宫必借对宫论事」。`,
 						"decadal",
-						{ clockDependent: true, palace: currentDx.palaceName }
+						{ palace: currentDx.palaceName }
 					)
 				);
 			}
@@ -85,16 +83,14 @@ export function renderDecadalItems(ctx: AnalysisContext): AnalysisItem[] {
 			if (sihuaInDxSanFang.length > 0) {
 				items.push(blankItem("decadal"));
 				items.push(
-					contentItem(`**大限三方四正会照的本命四化**（倪师批大限的核心）：`, "decadal", {
-						clockDependent: true,
-					})
+					contentItem(`**大限三方四正会照的本命四化**（倪师批大限的核心）：`, "decadal")
 				);
 				sihuaInDx.forEach(({ palace, starName, mutagen }) => {
 					items.push(
 						contentItem(
 							`${mutagenSymbol(mutagen)} **本命${starName}化${mutagen}** 落${palace.name} ${palace.branch === dxPalace.branch ? "（大限本宫）" : "（大限三方四正）"}`,
 							"decadal",
-							{ clockDependent: true, star: starName, mutagen, palace: palace.name }
+							{ star: starName, mutagen, palace: palace.name }
 						)
 					);
 				});
@@ -104,8 +100,7 @@ export function renderDecadalItems(ctx: AnalysisContext): AnalysisItem[] {
 				items.push(
 					contentItem(
 						`（大限三方四正未会本命四化，此十年走平盘，重点看落宫主星本身。）`,
-						"decadal",
-						{ clockDependent: true }
+						"decadal"
 					)
 				);
 				items.push(blankItem("decadal"));

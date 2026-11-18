@@ -20,7 +20,7 @@ import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
 /** 渲染「五点六、魁钺贵人倾向细分」的结构化条目流（主题不符或无命中时返回空数组）。 */
-export function renderKuiYueItems(ctx: AnalysisContext): AnalysisItem[] {
+function renderKuiYueItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, topic } = ctx;
 
 	const items: AnalysisItem[] = [];

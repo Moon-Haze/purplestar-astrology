@@ -6,8 +6,8 @@
  * 取材规则住 `../overview-material`（单点），本文件只做【】版式装配；
  * 「动态优先、静态兜底」的三段结构见 docs/code/analysis.md。
  *
- * 产出**结构化条目流**（一源双投影，见 `../items`）：`renderOverviewItems` 是数据面
- * （条目流与行流一一对应），`renderOverview` 经 `formatItems` 投影为文本行。
+ * 产出**内部条目流**（views 的实现形态，见 `../items`）：条目流与行流一一对应，
+ * `renderOverview` 是公开的文本投影；条目形态不构成公开 interface。
  *
  * @packageDocumentation
  */
@@ -20,11 +20,10 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
 /**
  * 渲染「一、总论」整节的结构化条目流。
  *
- * slot 域：`topic-head` / `mods` / `geju` / `summary` / `main-palace`——与断语手册库
- * v2 的槽位同域。语义字段全部来自 material 透出的中间量（modsMeta / gejuMeta /
- * ctx.mainStars），不从成文反解。
+ * slot 域：`topic-head` / `mods` / `geju` / `summary` / `main-palace`。语义字段全部
+ * 来自 material 与 ctx 透出的中间量，不从成文反解。
  */
-export function renderOverviewItems(ctx: AnalysisContext): AnalysisItem[] {
+function renderOverviewItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { topicLabel, mainStars, primaryStar } = ctx;
 	const m = buildOverviewMaterial(ctx);
 
@@ -38,14 +37,8 @@ export function renderOverviewItems(ctx: AnalysisContext): AnalysisItem[] {
 		if (m.mods.length > 0) {
 			items.push(headItem(`**【命盘关键定制】**`, "mods"));
 			items.push(blankItem("mods"));
-			m.mods.forEach((p, i) => {
-				items.push(
-					contentItem(p, "mods", {
-						star: primaryStar?.name,
-						brightness: m.modsMeta[i]?.brightness,
-						mutagen: m.modsMeta[i]?.mutagen,
-					})
-				);
+			m.mods.forEach(p => {
+				items.push(contentItem(p, "mods", { star: primaryStar?.name }));
 				items.push(blankItem("mods"));
 			});
 		}
@@ -54,13 +47,8 @@ export function renderOverviewItems(ctx: AnalysisContext): AnalysisItem[] {
 		if (m.geju.length > 0) {
 			items.push(headItem(`**【命盘特殊格局】**`, "geju"));
 			items.push(blankItem("geju"));
-			m.geju.forEach((gj, i) => {
-				items.push(
-					contentItem(gj, "geju", {
-						star: primaryStar?.name,
-						patternName: m.gejuMeta[i]?.name,
-					})
-				);
+			m.geju.forEach(gj => {
+				items.push(contentItem(gj, "geju", { star: primaryStar?.name }));
 				items.push(blankItem("geju"));
 			});
 		}

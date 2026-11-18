@@ -17,7 +17,7 @@ import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
 /** 渲染「五、性格专属补充」整节的结构化条目流（非 personality 主题返回空数组）。 */
-export function renderPersonalityItems(ctx: AnalysisContext): AnalysisItem[] {
+function renderPersonalityItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { topic, primaryStar, profile, gender } = ctx;
 
 	const items: AnalysisItem[] = [];

@@ -37,7 +37,7 @@ const SLOT_FEMALE = "extra:女命妇科保养";
  * 《天纪 05》原话条目（化忌在酉 = 肾、火星地空在丑 = 肝、头肩胸 = 妇科子宫 / 右卵巢）
  * 见 docs/code/analysis.md。
  */
-export function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
+function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, topic, mainPalace, primaryStar, sanFang } = ctx;
 
 	const items: AnalysisItem[] = [];

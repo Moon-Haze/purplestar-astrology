@@ -34,25 +34,21 @@ export function starBadge(star: { name: string; mutagen?: string; brightness?: s
 	return `${star.name}${hua}${bright}`;
 }
 
-/** 总览取材结果：各字段已是可直接入行成文的文本（头与行距由版式层管）。 */
+/** 总览取材结果：各字段已是可直接入行成文的文本（头与行距由版式层管）。
+ *
+ * @remarks
+ * `mainStarLine` 是「本宫主星」行的唯一成文形态；`mainBadge` / `loanTag` 仅供标题
+ * 徽标与借宫标记，SHALL NOT 用部件重建拼式。
+ */
 export interface OverviewMaterial {
 	/** 命盘关键定制（topic_mods 的亮度 / 四化双键注入），仅核心主题（含 personality）非空 */
 	mods: string[];
-	/**
-	 * mods 的语义元数据（与 mods 同序同源——拼串处的原始键值双份透出，供结构化
-	 * 条目携带，禁止从成文反解）。
-	 */
-	modsMeta: Array<{ brightness?: string; mutagen?: string }>;
-	/** geju 的格局名元数据（与 geju 同序同源） */
-	gejuMeta: Array<{ name: string }>;
 	/** 格局行（`⭐ **名**：描述`），仅 overview / personality 主题非空 */
 	geju: string[];
 	/** 星曜深层特质（summary），仅核心 5 主题（不含 personality）非空 */
 	summary: string | undefined;
 	/** 本宫主星徽标串（多星顿号相连），空宫为「空宫」 */
 	mainBadge: string;
-	/** 借宫注记（`（X空宫，借对宫Y论事）`），非借宫为空串 */
-	loanNote: string;
 	/**
 	 * 「本宫主星」整行（`本宫主星：` + 借宫注 + 主星徽标 + overview 主题的五行局尾）。
 	 *
@@ -93,17 +89,14 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	if (!(primaryStar && profile)) {
 		// 兜底分支（主宫与对宫俱无主星）：借宫注按 isLoan 单独算（无星名可写），
 		// 逐字保持该分支现有形态。
-		const loanNote = isLoan ? `（${palaceName}空宫，借对宫论事）` : "";
+		const loanText = isLoan ? `（${palaceName}空宫，借对宫论事）` : "";
 		const mainBadge = "空宫";
 		return {
 			mods: [],
-			modsMeta: [],
-			gejuMeta: [],
 			geju: [],
 			summary: undefined,
 			mainBadge,
-			loanNote,
-			mainStarLine: `本宫主星：${loanNote}${mainBadge}${fiveTail}`,
+			mainStarLine: `本宫主星：${loanText}${mainBadge}${fiveTail}`,
 			loanTag: isLoan ? "借对宫" : "",
 			content: undefined,
 			brightNote: undefined,
@@ -118,7 +111,6 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 
 	// ── 动态内容优先：命盘关键定制（亮度 + 四化的 topic_mods，仅核心主题）──
 	const mods: string[] = [];
-	const modsMeta: Array<{ brightness?: string; mutagen?: string }> = [];
 	if (isCoreTopic) {
 		const topicMod = profile.topic_mods?.[summaryKey as keyof typeof profile.topic_mods];
 		const brightnessKey =
@@ -132,11 +124,9 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 			: null;
 		if (brightnessKey && topicMod?.[brightnessKey]) {
 			mods.push(selectGender(topicMod[brightnessKey], gender));
-			modsMeta.push({ brightness: primaryStar.brightness });
 		}
 		if (sihuaKey && topicMod?.[sihuaKey]) {
 			mods.push(selectGender(topicMod[sihuaKey], gender));
-			modsMeta.push({ mutagen: primaryStar.mutagen });
 		}
 	}
 
@@ -148,8 +138,8 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	const summary = SUMMARY_TOPICS.has(topic) ? profile.summary?.[gender]?.[summaryKey] : undefined;
 
 	const mainBadge = mainStars.map(s => starBadge(s)).join("、") || "空宫";
-	const loanNote = isLoan ? `（${palaceName}空宫，借对宫${primaryStar.name}论事）` : "";
-	const mainStarLine = `本宫主星：${loanNote}${mainBadge}${fiveTail}`;
+	const loanText = isLoan ? `（${palaceName}空宫，借对宫${primaryStar.name}论事）` : "";
+	const mainStarLine = `本宫主星：${loanText}${mainBadge}${fiveTail}`;
 
 	const contentKey = TOPIC_CONTENT_KEY[topic];
 	const contentRaw =
@@ -184,12 +174,9 @@ export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 
 	return {
 		mods,
-		modsMeta,
-		gejuMeta: gejuDetected.map(gj => ({ name: gj.name })),
 		geju,
 		summary,
 		mainBadge,
-		loanNote,
 		mainStarLine,
 		loanTag: isLoan ? "借对宫" : "",
 		content,

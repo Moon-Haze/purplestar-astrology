@@ -25,16 +25,16 @@ import {
 	type TopicKey,
 } from "../analysis/data";
 import { makeContext } from "../analysis/context";
-import { renderDecadal, renderDecadalItems } from "../analysis/views/decadal";
-import { renderHealth, renderHealthItems } from "../analysis/views/health";
-import { renderKuiYue, renderKuiYueItems } from "../analysis/views/patron";
-import { renderLiuNian, renderLiuNianItems } from "../analysis/views/yearly";
+import { renderDecadal } from "../analysis/views/decadal";
+import { renderHealth } from "../analysis/views/health";
+import { renderKuiYue } from "../analysis/views/patron";
+import { renderLiuNian } from "../analysis/views/yearly";
 import { renderOverview } from "../analysis/views/overview";
-import { renderPersonality, renderPersonalityItems } from "../analysis/views/personality";
-import { renderSanFang, renderSanFangItems } from "../analysis/views/surround";
-import { renderMutagen, renderMutagenItems } from "../analysis/views/mutagen";
-import { renderSuggestions, renderSuggestionsItems } from "../analysis/views/suggestions";
-import { renderYearStem, renderYearStemItems } from "../analysis/views/year-stem";
+import { renderPersonality } from "../analysis/views/personality";
+import { renderSanFang } from "../analysis/views/surround";
+import { renderMutagen } from "../analysis/views/mutagen";
+import { renderSuggestions } from "../analysis/views/suggestions";
+import { renderYearStem } from "../analysis/views/year-stem";
 import {
 	getTopicReport,
 	getTopicReportMeta,
@@ -52,13 +52,13 @@ import {
  * @param chart - 已排好的命盘
  * @param topic - 主题键（14 个之一，见 `./data` 的 `TOPIC_KEYS`）
  * @param options - 视角 / 流年年月 / 大限下标
- * @returns 报告全文（已按出生性别过滤掉无关性别的句子）
+ * @returns 报告全文（性别已在各 view 经 `selectGender` 投影）
  *
  * @remarks
  * 本函数是**编排层**：建一次上下文，按小节序把十一个 `renderXxx` 的行首尾相接。
  *
- * ⚠️ 两点不要动：① 下面的拼接顺序即报告小节序，调整会改变输出；② 性别过滤作用在
- *    **整篇**文本上而非逐节（跨行内子句，逐节会漏掉跨节边界的句子）——
+ * ⚠️ 两点不要动：① 下面的拼接顺序即报告小节序，调整会改变输出；② 性别已在各 view
+ *    经 `selectGender` 投影，编排层仅拼接、不再对整篇文本跑正则过滤——
  *    理由见 docs/code/analysis.md。
  */
 export function getTopicAnalysis(
@@ -71,8 +71,8 @@ export function getTopicAnalysis(
 		return `无法找到${TOPIC_PALACE_NAME[topic]}相关信息。`;
 	}
 
-	// 各 view 产结构化条目流（renderXxxItems），文本行是 formatItems 投影——
-	// 条目化是 views 的内部实现形态（structure-analysis-outputs 落地后保留）。
+	// 各 view 内部先产结构化条目流再投影为文本行——条目化是 views 的
+	// 内部实现形态，不构成公开 interface（2026-11-05 第二投影降级）。
 	const lines: string[] = [
 		...renderOverview(ctx), // 一、总论
 		...renderSanFang(ctx), // 二、三方四正联动分析

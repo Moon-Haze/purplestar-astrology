@@ -7,8 +7,7 @@
  *
  * 完整口径见 docs/code/analysis.md。
  *
- * 产出**结构化条目流**（一源双投影，见 `../items`）：slot = `suggestions`，「当前大限」
- * 依据的建议条目 `clockDependent: true`。
+ * 产出**内部条目流**（views 的实现形态，见 `../items`）：slot = `suggestions`。
  *
  * @packageDocumentation
  */
@@ -20,7 +19,7 @@ import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
 /** 渲染「六、综合建议」整节的结构化条目流。 */
-export function renderSuggestionsItems(ctx: AnalysisContext): AnalysisItem[] {
+function renderSuggestionsItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { topic } = ctx;
 
 	const items: AnalysisItem[] = [];
@@ -34,8 +33,7 @@ export function renderSuggestionsItems(ctx: AnalysisContext): AnalysisItem[] {
 				s.basis === "无命中信号"
 					? `→ ${s.text}（本盘无此主题的直接信号，此为通用收束）`
 					: `→ ${s.text}`,
-				"suggestions",
-				{ ...(s.basis === "当前大限" ? { clockDependent: true } : {}) }
+				"suggestions"
 			)
 		);
 	}

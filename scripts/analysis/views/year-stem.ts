@@ -19,7 +19,7 @@ import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
 /** 渲染「三点五」整节的结构化条目流（slot = `year-stem`；无命中时返回空数组）。 */
-export function renderYearStemItems(ctx: AnalysisContext): AnalysisItem[] {
+function renderYearStemItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, topic, mutagenInSanFang } = ctx;
 
 	const items: AnalysisItem[] = [];

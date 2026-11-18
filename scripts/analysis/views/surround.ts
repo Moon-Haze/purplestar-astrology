@@ -39,7 +39,7 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
  *   缺省（`--topic` 单主题路径）为 `undefined`，输出与不去重时逐字节一致。
  *   主场登记由装配层预扫描完成（见 `analysis/report.ts` 的 `getTopicMainContentText`）。
  */
-export function renderSanFangItems(
+function renderSanFangItems(
 	ctx: AnalysisContext,
 	dedupe?: Map<string, string>
 ): AnalysisItem[] {
