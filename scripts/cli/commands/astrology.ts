@@ -12,6 +12,8 @@ import {
 	EXCLUSIVE_BRANCHES,
 	EXCLUSIVE_PRIORITY_LABEL,
 	SHADOWABLE_KEYS,
+	VIEW_ALIASES,
+	VIEW_TEXT,
 } from "../args/table";
 import { renderTemplate } from "../args/config-input";
 import { clockOptsFromBasis } from "../birth/birth-info-defs";
@@ -50,27 +52,13 @@ import { getMingGongSummary } from "@/analysis/soul-summary";
 import { buildMutagenChain } from "@/mutagen";
 import { STEMS, BRANCHES } from "@/data/ganzhi";
 import { buildReport } from "./report";
-import {
-	getTopicAnalysis,
-	TOPIC_LABEL,
-	TOPIC_PALACE_NAME,
-	type TopicKey,
-	type AnalysisView,
-} from "@/analysis";
+import { getTopicAnalysis, TOPIC_LABEL, TOPIC_PALACE_NAME, type TopicKey } from "@/analysis";
+import { KNOWLEDGE_GRADE_ORDER } from "../../analysis/grades";
 
 /**
- * `--view` 取值别名：英文主名与参数别名表（`OPTION_ALIASES`）同名同义 ——
- * decadal = daxian / yearly = liunian / monthly = liuyue（mingpan 无英文对应）。
+ * `--view` 取值别名表与值域文案已收进 `../args/table`（VIEW_ALIASES / VIEW_TEXT，
+ * 2026-11-18 扫描发现 3 的单点化）：本模块经 import 消费，不再持有本地拷贝。
  */
-const VIEW_ALIASES: Record<string, AnalysisView> = {
-	mingpan: "mingpan",
-	daxian: "daxian",
-	liunian: "liunian",
-	liuyue: "liuyue",
-	decadal: "daxian",
-	yearly: "liunian",
-	monthly: "liuyue",
-};
 
 /**
  * 抬头行（命盘总览式）：`【标题】[名字 ]日期 说明 · 性别` —— --info / --topic /
@@ -458,8 +446,8 @@ export function cmdAstrology(args: CliArgs) {
 				`${Object.keys(TOPIC_LABEL).length} 个主题（--topic <key> 选其一）：`,
 				...rows,
 				"",
-				"view 可选：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月）",
-				"　　　　 也可用同名英文：decadal / yearly / monthly",
+				`view 可选：${VIEW_TEXT.choices}`,
+				`　　　　 也可用同名英文：${VIEW_TEXT.enSpaced}`,
 				"示例：node scripts/purple-star.ts astrology 2011-06-24 07:45 男 杭州 --topic love（示例数据为虚构）",
 			].join("\n");
 		}
@@ -473,7 +461,7 @@ export function cmdAstrology(args: CliArgs) {
 		const view = VIEW_ALIASES[viewRaw];
 		if (!view) {
 			throw new Error(
-				`--view 应为 mingpan/daxian/liunian/liuyue（或同名英文 decadal/yearly/monthly），收到：${args.view}`
+				`--view 应为 ${VIEW_TEXT.zhSlashed}（或同名英文 ${VIEW_TEXT.enSlashed}），收到：${args.view}`
 			);
 		}
 		const text = getTopicAnalysis(chart, topic, {
@@ -487,7 +475,7 @@ export function cmdAstrology(args: CliArgs) {
 			text,
 			"",
 			"⚠️ 知识来源分级：以上论断出自分析数据库 —— 其中「倪师说」引号句部分为传统口诀的",
-			"   风格化转述，不一定是《天纪》逐字原话（verified / traditional / methodology / suspect 四级），",
+			`   风格化转述，不一定是《天纪》逐字原话（${KNOWLEDGE_GRADE_ORDER.join(" / ")} 四级），`,
 			"   引用下断语时请注明口径。",
 		].join("\n");
 	}

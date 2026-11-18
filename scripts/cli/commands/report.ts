@@ -18,11 +18,13 @@ import {
 	type ReportCitation,
 	type TopicKey,
 } from "@/analysis";
+import { KNOWLEDGE_GRADE_ORDER } from "../../analysis/grades";
 import { detectPatterns } from "@/patterns";
 import { getNativeMutagen } from "@/mutagen";
 import { BRANCHES, STEMS } from "@/data/ganzhi";
 import { birthplaceSection, fmtDate, genderCN, lateZiSection, locateSihua } from "../chart/render";
 import { lateZiCounterChart } from "../chart/late-zi";
+import { VIEW_TEXT } from "../args/table";
 import type { CaliberBasis } from "../birth/birth-info-defs";
 
 /**
@@ -211,10 +213,12 @@ export function buildReport(chart: ZiweiChart, info: BirthInfo, basis: CaliberBa
 	const footer = [
 		"---",
 		"",
-		"⚠️ **知识来源分级**：以上论断出自分析数据库 —— 其中「倪师说」引号句部分为传统口诀的风格化转述，不一定是《天纪》逐字原话（verified / traditional / methodology / suspect 四级）；「经典出处」引文出自本仓古籍库（《骨髓赋》《紫微斗数全集》《紫微斗数全书》），公版定本。",
+		`⚠️ **知识来源分级**：以上论断出自分析数据库 —— 其中「倪师说」引号句部分为传统口诀的风格化转述，不一定是《天纪》逐字原话（${KNOWLEDGE_GRADE_ORDER.join(" / ")} 四级）；「经典出处」引文出自本仓古籍库（《骨髓赋》《紫微斗数全集》《紫微斗数全书》），公版定本。`,
 		"",
 		"- 年龄一律**虚岁**（以农历年为界），与 CLI 各命令同口径，不要换算成周岁。",
-		"- 本报告为**本命盘静态论断**；大限 / 流年 / 流月动态见 `--decadal`、`--yearly`、`--topic <key> --view daxian|liunian|liuyue`。",
+		"- 本报告为**本命盘静态论断**；大限 / 流年 / 流月动态见 `--decadal`、`--yearly`、`--topic <key> --view " +
+			VIEW_TEXT.runtimePiped +
+			"`。",
 	];
 
 	// 末尾不带换行：引导层统一 console.log 输出时补上唯一一个，文件以单换行结尾

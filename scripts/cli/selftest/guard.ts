@@ -205,8 +205,10 @@ export async function runGradeRegistry({
 	const grades = await import("@/analysis/grades");
 
 	ok("知识分级：data.ts 全部倪师引句在 grades.ts 有登记且档位合法（零缺失）", () => {
-		const { NI_GRADES } = grades;
-		const legal = new Set(["verified", "traditional", "suspect", "methodology"]);
+		const { NI_GRADES, KNOWLEDGE_GRADE_ORDER } = grades;
+		// legal 集合从 grades 的展示序常量派生（2026-11-18 扫描发现 5）：档位改名/调序
+		// 只改常量一处，本守卫自动跟随，不再手抄第二份档位清单。
+		const legal = new Set(KNOWLEDGE_GRADE_ORDER);
 		for (const e of NI_GRADES) {
 			if (!legal.has(e.grade)) {
 				throw new Error(`grades.ts 的「${e.quote}」档位非法：${e.grade}`);

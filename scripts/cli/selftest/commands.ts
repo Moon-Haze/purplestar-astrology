@@ -16,6 +16,7 @@ import { generateChart } from "@/algorithm";
 import { readAnalyzeJson } from "@/synastry/chart-view";
 import { buildBirthInfo } from "../birth/birth-info";
 import { EXCLUSIVE_BRANCHES, OPTION_GROUPS } from "../args/table";
+import { KNOWLEDGE_GRADE_ORDER } from "@/analysis/grades";
 import { parseArgs } from "../args";
 import { cmdKnowledge } from "../knowledge";
 import { KNOWLEDGE_SOURCE_IDS } from "@/knowledge/registry";
@@ -186,6 +187,17 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			}
 		}
 		return `清单 ${branches.length} 条的 ${branches.length - 1} 对相邻方向均与行为一致（报错者锚定）`;
+	});
+	ok("命令面：知识来源分级尾注与档位常量对拍（派生，不手抄）", () => {
+		// 尾注的档位段（--topic 三行版与 --report 合并版）此前两份手抄、枚举序与类型
+		// 序互倒（2026-11-18 扫描发现 5）：现由 grades 的 KNOWLEDGE_GRADE_ORDER 拼装，
+		// 本断言钉住「尾注 ↔ 常量」——调序/改名只改常量一处，尾注漂移当场红。
+		const t = cmdAstrology(parseArgs([...SAMPLE_ARGV, "--topic", "love"], "astrology"));
+		const gradesSegment = `（${KNOWLEDGE_GRADE_ORDER.join(" / ")} 四级）`;
+		if (!t.includes(gradesSegment)) {
+			throw new Error(`--topic 尾注缺派生档位段 ${gradesSegment} —— 尾注与档位常量漂移`);
+		}
+		return `--topic 尾注含派生档位段（${KNOWLEDGE_GRADE_ORDER.join(" / ")} 四级）`;
 	});
 	ok("命令面：--report 产出 13 板块 Markdown 且为纯本命静态口径", () => {
 		const t = cmdAstrology(parseArgs([...SAMPLE_ARGV, "--report"], "astrology"));

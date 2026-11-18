@@ -10,6 +10,63 @@
  *    声明表的来历与各套派生的论证见 docs/code/cli-args.md。
  */
 
+// 类型引入在 TS 擦除后不留任何运行期依赖——本文件「零依赖纯数据」（help 轻路径直载）
+// 的纪律不被破坏；AnalysisView 只是 --view 域的类型锚（值域数据在下方 VIEW_DOMAIN）。
+import type { AnalysisView } from "../../analysis/data";
+
+/**
+ * `--view` 展示口径域（2026-11-18 扫描发现 3：值域文案五处手抄的单点）。
+ *
+ * @remarks
+ * 键序即展示序（首项为缺省）。`zh` 是中文口径名（各处文案的唯一来源），`en` 是
+ * 英文别名（收进 {@link VIEW_ALIASES}），`runtime` 标记「运限视角」投影子集——
+ * `--report` / 尾注只列三态（本命静态口径不含 mingpan），这是文案语义不是派生遗漏。
+ */
+export interface ViewDomainEntry {
+	key: AnalysisView;
+	zh: string;
+	en?: string;
+	runtime?: true;
+}
+
+export const VIEW_DOMAIN: readonly ViewDomainEntry[] = [
+	{ key: "mingpan", zh: "本命" },
+	{ key: "daxian", zh: "当前大限", en: "decadal", runtime: true },
+	{ key: "liunian", zh: "流年", en: "yearly", runtime: true },
+	{ key: "liuyue", zh: "流月", en: "monthly", runtime: true },
+];
+
+/** `--view` 别名表（别名 → AnalysisView）：英文别名归一到**拼音主键**（yearly → liunian），键与别名一并收录。 */
+export const VIEW_ALIASES: Record<string, AnalysisView> = Object.fromEntries(
+	VIEW_DOMAIN.flatMap(v => {
+		const entries: [string, AnalysisView][] = [[v.key, v.key]];
+		if (v.en) {
+			entries.push([v.en, v.key]);
+		}
+		return entries;
+	})
+);
+
+/** 值域文案的派生单点：五种形态全部由 {@link VIEW_DOMAIN} 拼装，任何引用处不再手抄。 */
+export const VIEW_TEXT = {
+	/** 「可选清单」形态——`--topic` 裸开关指路第一行（全角括号后接「/ 」，无前置空格） */
+	choices: VIEW_DOMAIN.map((v, i) => `${v.key}（${v.zh}${i === 0 ? "，默认" : ""}）`).join("/ "),
+	/** 中文口径键紧排——非法值报错 */
+	zhSlashed: VIEW_DOMAIN.map(v => v.key).join("/"),
+	/** 英文别名空格排——`--topic` 指路第二行 */
+	enSpaced: VIEW_DOMAIN.filter(v => v.en)
+		.map(v => v.en as string)
+		.join(" / "),
+	/** 英文别名紧排——声明表 desc */
+	enSlashed: VIEW_DOMAIN.filter(v => v.en)
+		.map(v => v.en as string)
+		.join("/"),
+	/** 运限视角投影子集（domain − mingpan）竖排——bespoke note / --report 尾注 */
+	runtimePiped: VIEW_DOMAIN.filter(v => v.runtime)
+		.map(v => v.key)
+		.join("|"),
+} as const;
+
 /**
  * 一个参数的完整声明。
  *
@@ -325,7 +382,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				shadow: true,
 				kind: "value",
 				value: "mingpan",
-				desc: "主题论断展示口径：mingpan（本命，默认）/ daxian（当前大限）/ liunian（流年）/ liuyue（流月），后三者也接受同名英文 decadal/yearly/monthly",
+				desc: `主题论断展示口径：${VIEW_TEXT.choices}，后三者也接受同名英文 ${VIEW_TEXT.enSlashed}`,
 			},
 			{
 				name: "report",
@@ -501,7 +558,7 @@ export const EXCLUSIVE_BRANCHES: readonly ExclusiveBranchSpec[] = [
 		consumes: [],
 		rejectsWithNote: {
 			keys: ["view"],
-			note: "--report 为本命静态口径，不接受 {flag}（运限视角的单主题论断见 --topic <key> --view daxian|liunian|liuyue）。",
+			note: `--report 为本命静态口径，不接受 {flag}（运限视角的单主题论断见 --topic <key> --view ${VIEW_TEXT.runtimePiped}）。`,
 		},
 	},
 	{ name: "info", consumes: [], chainLabel: "其他功能参数" },

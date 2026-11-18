@@ -8,7 +8,17 @@
  *
  * 档位判定规则与 52 条引句的实测口径，见 docs/code/analysis.md。
  */
-export type KnowledgeGrade = "verified" | "traditional" | "suspect" | "methodology";
+/**
+ * 档位的运行期展示序（= 尾注文案序）：verified / traditional / methodology / suspect。
+ *
+ * @remarks
+ * `KnowledgeGrade` 类型运行期擦除，此前尾注两份（--topic / --report）、注释两份与
+ * guard 的 legal Set 全靠手抄对齐（2026-11-18 扫描发现 5）。档位改名或调序只改本
+ * 常量一处：类型由它派生，尾注由它拼装，selftest 对拍钉住「尾注 ↔ 常量」。
+ */
+export const KNOWLEDGE_GRADE_ORDER = ["verified", "traditional", "methodology", "suspect"] as const;
+
+export type KnowledgeGrade = (typeof KNOWLEDGE_GRADE_ORDER)[number];
 
 export interface NiGradeEntry {
 	/** 引句所属主星（STAR_CONTENT_MAP 的键）；不隶属单一主星的表外条目记「—」 */
