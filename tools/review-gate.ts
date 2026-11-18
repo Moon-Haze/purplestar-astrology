@@ -55,7 +55,10 @@ const FROZEN_SURFACE = [
 ];
 
 /** 生成文件：头里写明「不要手改」，手改会被下次重跑静默覆盖。 */
-const GENERATED = [/^scripts\/corpus\/data\/manual\/.+\.ts$/];
+const GENERATED = [
+	/^docs\/manual\/[^/]+\.md$/,
+	/^notes\/(?:70-课程笔记|75-主星论断|85-合盘断语)\/.+$/,
+];
 
 /** 真相源：动它们等于动全仓的一致性，评审必看。 */
 const SOURCES_OF_TRUTH = [
@@ -315,7 +318,7 @@ function mechanical(files: ChangedFile[], adds: AddedLine[]): Finding[] {
 				level: "🔴",
 				title: "改了已入库的生成文件",
 				where: f.path,
-				why: "由 tools/db/export-manual.ts code 产出，直接改会被下次重跑静默覆盖。改生成器。",
+				why: "由 npm run manual:export / npm run notes:export 产出，直接改会被下次重导静默覆盖。改生成器或数据源。",
 			});
 		} else if (f.status === "A") {
 			out.push({
@@ -577,7 +580,7 @@ interface Gate {
  *
  * 为什么要这张表：`typecheck` 成功时**一个字都不打**。空着会让读闸门的人分不清
  * 「通过了」与「压根没跑」—— 而这两种情况的后果完全相反。计数类事实自报，
- * 是本仓库的既有纪律（CLAUDE.md「计数类事实一律不写死」）。
+ * 是本仓库的既有纪律（AGENTS.md「计数类事实一律不写死」）。
  */
 const GATE_QUIET_PASS: Record<string, string> = {
 	typecheck: "0 错误（静默通过）",
@@ -591,7 +594,7 @@ function runGates(tier: Tier): Gate[] {
 	if (tier !== "轻") {
 		gates.push({ name: "npm test", cmd: "npm test", pass: true, tail: "" });
 		// 生成物漂移探针（manual-drift-guard tasks 2.3）：内核表或导出工具改了而
-		// docs/manual / corpus/data/manual 未重导 → 非零退出（差异文件 + 样例行）；
+		// docs/manual 未重导 → 非零退出（差异文件 + 样例行）；
 		// 环境不可用（无库无 dataset / DuckDB 残缺）时探针自身 ⏭ 可见跳过且零退出。
 		// 全量重导对拍实测约 5 分钟，故不进「轻」档、也不进 npm test 日常回归。
 		gates.push({ name: "manual:check", cmd: "npm run manual:check", pass: true, tail: "" });

@@ -2,17 +2,13 @@
  * 手册导出工具（tools/db）—— 从样本库（db/ziwei.duckdb 或 dataset/ parquet）
  * 导出可归档的资料产物到 docs/manual/：
  *
- *   npx tsx tools/db/export-manual.ts topics   # 4 号：13 主题 × 十四主星断语全集（md）
- *   npx tsx tools/db/export-manual.ts combo    # 5 号：主星 × 辅煞同宫频率全表（md）
+ *   npx tsx tools/db/export-manual.ts combo    # 主星 × 辅煞同宫频率全表（md）
  *   npx tsx tools/db/export-manual.ts geju     # 格局名目对拍（db 渲染集 vs patterns 现库）
- *   npx tsx tools/db/export-manual.ts db       # 手册物化为 SQLite 只读库（scripts/corpus/data/manual/oracle.db，
- *                                              #   行级规范化 + 字节可复现，运行时经 node:sqlite 查询）
- *   npx tsx tools/db/export-manual.ts all      # 以上全部
+ *   npx tsx tools/db/export-manual.ts all      # 以上两项
  *   npx tsx tools/db/export-manual.ts --check  # 漂移探针：内存重导对拍已提交产物，脏则非零退出
  *
- * 数据血缘（重要）：库里的主题文本是**本仓 analysis 内核在 518,400 个设计样本上的
- * 预计算产物**（`npm run build:db`），不是独立内容源 —— 本工具只做**导出与对拍**，
- * 不产新断语。断语的修订一律改内核（scripts/analysis/），再重建库、再导出。
+ * 数据血缘（重要）：样本库是**本仓 analysis 内核在 518,400 个设计样本上的
+ * 预计算产物**（`npm run build:db`），不是独立内容源 —— 本工具只做**导出与对拍**。
  *
  * 漂移探针（--check，npm run manual:check）：生成物与「当前内核表 + 当前导出工具」
  * 的一致性守卫 —— 内核或工具改了而生成物未重导时非零退出报警（差异文件清单 + 每文件
@@ -23,8 +19,8 @@
  * 内核侧 `Palace.name` 是项目口径（带「宫」字）—— 本工具内的 `compactPalaceKey`
  * 负责这一处归一。
  *
- * 输出目录：docs/manual/（topics/ 子目录 + 两个独立 md）。只读库（spec §6），不落 SQL
- * 用户输入（全部固定字面量，与 query.ts 同纪律）。
+ * 输出目录：docs/manual/（两个独立 md）。不落 SQL 用户输入（全部固定字面量，
+ * 与 query.ts 同纪律）。
  */
 import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -34,11 +30,9 @@ import type { DuckDBConnection } from "@duckdb/node-api";
 
 import { resolveQueryTarget } from "./db";
 import { compactPalaceKey } from "../../scripts/data/ganzhi";
-import { findViolations } from "../../scripts/corpus/citation-core";
 import {
 	TOPIC_KEYS,
 	TOPIC_DEFS,
-	TOPIC_CONTENT_SOURCE,
 	STORAGE_TOPIC_KEYS,
 	type TopicKey,
 } from "../../scripts/analysis/data";
@@ -76,13 +70,6 @@ const patterns = await import("../../scripts/patterns/index");
 
 // 宫名归一（项目口径 → 库内紧凑键）的表与函数住内核 scripts/data/ganzhi.ts
 // （COMPACT_PALACE_KEY / compactPalaceKey），此处只引用 —— 见其注释的口径论证。
-
-// 主题 → 紧凑口径主宫名（库内 palace_name 值域）。由 TOPIC_DEFS[topic].palace（项目口径）
-// 经 compactPalaceKey 归一**派生**，不再手抄 —— 与 Phase 2 的单一真相源同一纪律：
-// 加主题只改 TOPIC_DEFS 一处，此表自动跟上。
-const TOPIC_PALACE_COMPACT: Record<TopicKey, string> = Object.fromEntries(
-	TOPIC_KEYS.map(t => [t, compactPalaceKey(TOPIC_DEFS[t].palace)])
-) as Record<TopicKey, string>;
 
 /** 196 组合频率行（md 与 ts 两种渲染共用的收集层）。 */
 async function collectCombo(
