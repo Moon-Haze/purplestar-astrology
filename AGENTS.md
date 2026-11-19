@@ -26,6 +26,8 @@ If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is 
 
 **路径约定**：仓库根 = skill 根，一切命令写 `node scripts/purple-star.ts`（仓库级文档与 skill 内文档从此同一口径，不再有 `skills/<name>/` 前缀）。
 
+**术语口径**：领域与工程术语的定义速查见 [GLOSSARY.md](GLOSSARY.md)（只做定义；纪律与约束仍以本文件为单一真相源）。
+
 ## 命令
 
 **没有构建步骤**（`.ts` 直接跑，见「为什么能直接跑 TypeScript」）。代码风格闸门有两条：`npm run lint`（ESLint，规则见 `eslint.config.mjs`）与 `npm run format`（Prettier，见 `.prettierrc`），二者独立于 `typecheck` —— `typecheck` 只管类型自洽，不管风格。排盘与解读全部经由 CLI 入口（`npm test` 只跑测试，不参与运行）。
@@ -71,11 +73,13 @@ npm run pack
 
 **改过内核或升级 `iztro` 之后，两层都要跑；动过 `.ts` 的类型标注，`npm run typecheck` 也要跑。** `selftest` 测「代码逻辑自洽」，覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、性别护栏、排盘不变量、三合派体系约束、知识源可用性、古籍检索行为、合盘护栏与参数面契约；`npm test` 是**外部基准比对**，用 300 条真实盘逐字段对标，能抓住 `selftest` 那几条固定样例漏掉的行为漂移。测试的性质与效力边界见 [test/README.md](test/README.md)。
 
+回归报告**三段合一**（排盘 / 古籍 / 合盘，首行合计）：古籍与合盘的断言组（`*/selftest-asserts.ts`）由主 `selftest` 汇总执行；`npm test` 只管排盘基准。
+
 三者分工不同，谁都替代不了谁：`typecheck` 只看类型**自洽**，不看类型**标得对不对**——把 `Star` 写成 `any` 它一样全绿，所以我们**不用 `any` 绕过报错**。
 
 ### 分发：`npm run pack` 打 zip（`scripts/` 不拍平）
 
-产物 `dist/purplestar-astrology.zip`（实测约 2.3 MB / 124 条目（以 `npm run pack` 实跑自报为准）），只含
+产物 `dist/purplestar-astrology.zip`（体积与条目数**不写死在文档**，以 `npm run pack` 实跑自报为准），只含
 `SKILL.md` `package.json` `references/` `scripts/` 四项，顶层目录 `purplestar-astrology/`。
 `dist/` 在 `.gitignore` 内。
 
@@ -163,9 +167,9 @@ npm run pack
     │   ├── fortune.ts               运限专题（流年/大限/小限/信息/格局/四化/聚焦各节）
     │   ├── report.ts                --report 全盘主题报告的文档装配层
     │   └── synastry.ts              合盘命令（--charts 输入）
-    ├── cli/knowledge/               知识检索命令入口（四域合一：books 古籍 / stars 星曜 /
+    ├── cli/knowledge/               知识检索命令入口（三域合一：books 古籍 / stars 星曜 /
     │   └── index.ts                 tianji 天纪判语；前置守卫 + 注册表分发，
-    │                                四域渲染实现住 knowledge/sources/「实现即插件」
+    │                                渲染实现住 knowledge/sources/「实现即插件」
     │                                ⚠️ 本目录与 `cli/commands/` **平级**，非其子目录
     ├── cli/host/                    宿主装配（引导层按需加载的端口）
     │   ├── dispatch.ts              argv → { code, out, err, outFile } 的分发协议（唯一真相源）
@@ -334,10 +338,6 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 `ALL_SKILLS` 由磁盘推导（判据：根下有 `SKILL.md`），单 skill 形态下只有一项；`CHART_LIKE` 手写——「排不排盘」是语义。
 
-## 内核回归的主场
-
-排盘内核的回归在 `npm test` 与 `selftest` 的排盘段；古籍与合盘的断言组（`*/selftest-asserts.ts`）由主 `selftest` 汇总执行——**三段都在同一条 selftest 里**，报告分段（排盘 / 古籍 / 合盘）、首行合计。
-
 ## 依赖变更的后果
 
 `iztro` 是排盘引擎，**升级它会改变排盘结果**。`package-lock.json` 已提交以锁定精确版本（iztro 2.6.1 / lunar-typescript 1.8.6）。动过依赖后先跑 `selftest` **与 `npm test`** 再交付解读。
@@ -352,7 +352,11 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 **参数面单点声明**：`cli/args/table.ts` 的 `OPTION_GROUPS` 是「有哪些参数」的唯一来源（`cli/args/parse.ts` 解析器消费它）——help 的参数段据它派生、`parseArgs` 据它拒绝未知参数、`OPTION_ALIASES` 声明拼音别名（归一到英文主名）、`selftest` 断言 `SKILL.md` 提到的参数都有声明。拼错参数（`--ctiy 喀什`）报错并给最近邻建议，不再静默落回默认经度。
 
-**解析引擎**（2026-09-30 重写）：`util.parseArgs` `tokens` 模式做**底座**（token 化交给标准库），薄适配层做四件事——声明表校验（未知参数中文报错）、别名归一、判重（重复参数报错，旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值；Node 版本敏感，selftest 钉死）。`knowledge` / `synastry` 等命令的位置参数语义各自独立（检索词 / `--charts` 路径），`astrology` 的位置参数按形态归类（日期/时刻/性别/城市）。⚠️ `--charts` 与前缀退役后，`cli/args/scope.ts` 的 `sidePrefixes` / `prefixedCommands` 是空表（概念保留，机制不可达）；作用域清单本身也已差量化（2026-10-01）：`excluded` 空表即默认全集、显式声明排除项，`OPTION_NAMES` 由 `cli/args/parse.ts` 从全集按排除项派生。
+**解析引擎**（2026-09-30 重写）：`util.parseArgs` `tokens` 模式做**底座**（token 化交给标准库），薄适配层做四件事——声明表校验（未知参数中文报错）、别名归一、判重（重复参数报错，旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值；Node 版本敏感，selftest 钉死）。其余三条口径：
+
+- 位置参数语义各命令独立：`knowledge` / `synastry` 各自解释（检索词 / `--charts` 路径），`astrology` 按形态归类（日期/时刻/性别/城市）。
+- ⚠️ `--charts` 与前缀退役后，`cli/args/scope.ts` 的 `sidePrefixes` / `prefixedCommands` 是空表（概念保留，机制不可达）。
+- 作用域清单已差量化（2026-10-01）：`excluded` 空表即默认全集、显式声明排除项，`OPTION_NAMES` 由 `cli/args/parse.ts` 从全集按排除项派生。
 
 三条约束，改动时别踩：
 
