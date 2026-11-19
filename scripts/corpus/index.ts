@@ -1,7 +1,8 @@
 /**
  * 古籍原典查询库 — 入口
  *
- * 汇总三部古籍数据 + 提供「按 slug / 章节序号 / 段落 id 取用」与「全文检索」两组 API。
+ * 汇总三部古籍数据 + 提供全文检索与书目/段落统计（`searchClassics` /
+ * `ALL_BOOKS` / `TOTAL_PARAGRAPHS`）。
  * 数据以 TS 模块静态打包进代码（见 `data/`），零 DB 依赖、零网络请求。
  *
  * ⚠️ {@link ALL_BOOKS} 的数组顺序即检索命中顺序，调整会改变输出排列。
@@ -34,57 +35,6 @@ export const TOTAL_PARAGRAPHS = ALL_BOOKS.reduce(
 	(sum, b) => sum + b.chapters.reduce((s, c) => s + c.paragraphs.length, 0),
 	0
 );
-
-/**
- * 按 slug 取书。
- *
- * @param slug - 书的 slug（URL 用标识），如 `"gusuifu"` / `"quanji"` / `"quanshu"`
- * @returns 命中的 {@link Book}；未收录该 slug 时返回 `null`
- */
-export function getBookBySlug(slug: string): Book | null {
-	return ALL_BOOKS.find(b => b.slug === slug) ?? null;
-}
-
-/**
- * 按「书 slug + 章节序号」取章节。
- *
- * @param bookSlug - 书的 slug，取值见 {@link getBookBySlug}
- * @param chapterIdx - 章节序号，是 `book.chapters` 的**数组下标（从 0 起）**，不是原文里的卷次
- * @returns 含 `book` / `chapter` / `chapterIdx` 的对象；书不存在或下标越界时返回 `null`
- */
-export function getChapter(bookSlug: string, chapterIdx: number) {
-	const book = getBookBySlug(bookSlug);
-	if (!book) {
-		return null;
-	}
-	const chapter = book.chapters[chapterIdx];
-	if (!chapter) {
-		return null;
-	}
-	return { book, chapter, chapterIdx };
-}
-
-/**
- * 按段落 id 取段落，连同所属书与章节一并返回。
- *
- * @param id - 段落 id，如 `"gsf-1-1"`（各书的 id 前缀见对应 `data/*.ts`）
- * @returns 含 `book` / `chapter` / `chapterIdx` / `paragraph` 的对象；未命中时返回 `null`
- *
- * @remarks
- * 线性全表扫描（书 → 章节 → 段落）。数据量小、调用不频繁，故不建索引。
- */
-export function getParagraphById(id: string) {
-	for (const book of ALL_BOOKS) {
-		for (let i = 0; i < book.chapters.length; i++) {
-			const ch = book.chapters[i];
-			const p = ch.paragraphs.find(p => p.id === id);
-			if (p) {
-				return { book, chapter: ch, chapterIdx: i, paragraph: p };
-			}
-		}
-	}
-	return null;
-}
 
 /**
  * 古籍全文检索。

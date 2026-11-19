@@ -105,6 +105,3 @@ export function renderTemplate(): string {
 		2
 	);
 }
-
-/** 导出声明表引用（模板与校验共用一张 OPTION_GROUPS，防两处漂移）。 */
-export const CONFIG_OPTION_GROUPS = OPTION_GROUPS;

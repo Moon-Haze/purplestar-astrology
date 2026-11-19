@@ -293,7 +293,3 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > - **`--template`**：打印可直接使用的示例 JSON 模板到 stdout（含 `_说明` 键），
 >   用户 `--template > my.json` 落盘后可直接 `--config my.json` —— 模板本身
 >   必须是合法可跑的配置（selftest 有吃回闭环断言盯着）。
-
-`CONFIG_OPTION_GROUPS`：
-
-> 导出声明表引用（模板与校验共用一张 OPTION_GROUPS，防两处漂移）。

@@ -23,9 +23,9 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 的三态与值域校验在入口单点承担，位置参数回退是域知识、留在各域实现内
 > （books/stars/tianji 回退为检索词）。
 >
-> `citations` 是引文核对表的扩展点占位：Phase 3（SchoolAdapter + 按流派引文守卫）落地时，
-> 把 `corpus/annotations.ts` 的全局核对表收进各源，并按流派分派。Phase 1 不填充它，
-> 以免破坏 `citations.test.ts` 的全局扫描（该测试在 Phase 3 重构）。
+> 引文核对表不在此接缝：按流派收编走 `SchoolAdapter.citationRoots`（引用内核核对表，
+> 见 `school/types.ts` 与 `citations.test.ts`）——知识源只管检索渲染，不带流派与
+> 核对表字段。
 
 ---
 
@@ -84,5 +84,5 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 2. 在 `registry.ts` 的 `KNOWLEDGE_SOURCES` 加一行（键 = `--source` 取值）；
 3. 完事 —— `cli/knowledge/index.ts` 的分发入口、概览文案与报错提示都从注册表派生。
 
-⚠️ Phase 3 落地时 `citations` 会从占位变成真核对表，届时 `citations.test.ts` 的
-全局扫描一并重构 —— 两件事必须同批做，不要只填一半。
+⚠️ 引文核对表按流派收在 `SchoolAdapter.citationRoots`（见 `school/types.ts` 与
+`citations.test.ts`），`KnowledgeSource` 不带流派与核对表字段——不要再给它加同类死成员。
