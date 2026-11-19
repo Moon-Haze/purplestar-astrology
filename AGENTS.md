@@ -128,7 +128,7 @@ npm run pack
 | `notes/`                                                                             | 紫微斗数知识 Obsidian vault（六仓知识精选整理，自包含 vault）；由 `tools/notes/export-notes.ts` 从外部数据源仓生成（`npm run notes:export`，可复现），维护纪律与许可见 [notes/README.md](notes/README.md)                                   | ✔    | ✘      |
 | `db/`                                                                                | 基准语料：`dataset/` 的 `samples` + `palaces` parquet 入库（约 12.8 MiB）；`topics-*.parquet` 已出库（.gitignore 注明已下线数据路线，磁盘保留、可经 `tools/db/build-duckdb.ts` 重建）；`ziwei.duckdb`（641.5 MiB）是构建中间物，随时可弃 | 部分 | ✘      |
 | `openspec/`                                                                          | OpenSpec 规范工作流（specs + changes），见文末「规范工作流」                                                                                                                                                                             | ✔    | ✘      |
-| `.claude/` `.agents/` `.zcode/` `.codebuddy/`                                        | 各 AI 宿主的 commands / skills 协作用件；`openspec-*` 技能是 CLI 生成物但已纳管（见文末「产物纪律」）                                                                                                                                    | ✔    | ✘      |
+| `.claude/` `.zcode/`                                                                 | 宿主本地配置（`.claude/settings.json` 入 git；`.zcode/config.json` 记忆分库配置，gitignore）；openspec 协作套件已上移用户级 `~/.agents/`，仓库不再托管 commands / skills（见文末「产物纪律」）                                           | ✔    | ✘      |
 | `.codegraph/` `.history/` `.mimosa/` `.script_test/` `html/` `dist/` `node_modules/` | 代码索引 / 编辑器历史 / 安全扫描状态 / 脚本测试暂存 / 本地 HTML 报告 / 打包产物 / 依赖，均被 `.gitignore` 忽略                                                                                                                           | ✘    | ✘      |
 
 ⚠️ 本机 `ls` 是 `eza` 别名（带 `--git-ignore`）：核查被 `.gitignore` 忽略的内容（如 `db/ziwei.duckdb` 是否存在）请用 `find` / `stat` / `du`，不要依据 `ls` 的输出下结论。
@@ -414,9 +414,10 @@ knowledge-retrieval / quality-gates / synastry），`openspec/config.yaml` 的 `
   `openspec-update-change` / `openspec-sync-specs` / `openspec-archive-change`，
   或直接用 CLI（`openspec list` / `openspec show <名>` / `openspec validate --all`）。
   propose 只产出规划工件**不动代码**，apply 才实现，archive 把变更折回 specs。
-- **产物纪律**：`openspec/` 已跟踪入 git，是手写真相源；`.agents/` 下的 `openspec-*`
-  技能目录虽为 CLI 生成物，但**已纳管**（与 `.claude/` 协作用件同口径，克隆即得
-  openspec 工作流）——别手改，要变更请重跑 CLI 生成后再提交。
+- **产物纪律**：`openspec/` 已跟踪入 git，是手写真相源。openspec 工作流的宿主技能
+  （`openspec-*`）2026-11-19 起上移用户级（`~/.agents/skills/openspec-*`），仓库内
+  不再托管副本——走工作流用用户级技能或直接用 CLI，`openspec/` 下的 specs 与
+  changes 照旧手写入库。
 - 改完 specs 跑 `openspec validate --all`，须全部通过、零警告。
 
 ## 记忆分库（2026-11-05 起）
