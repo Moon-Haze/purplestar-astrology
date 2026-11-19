@@ -1634,7 +1634,7 @@ const KERNEL_STAR_TABLE = await load<typeof import("@/data/stars")>("@/data/star
 describe("analysis 数据键域互证", () => {
 	const domain = new Set(PALACE_NAMES_ORDER);
 
-	it("宫名键域：三张分析表的每个宫名键都在 PALACE_NAMES_ORDER 域内", () => {
+	it("宫名键域：四张分析表的每个宫名键都在 PALACE_NAMES_ORDER 域内", () => {
 		const bad: string[] = [];
 		for (const [star, byPalace] of Object.entries(ANALYSIS_DATA.MINOR_STAR_PALACE_CONTENT)) {
 			for (const k of Object.keys(byPalace)) {
@@ -1655,6 +1655,11 @@ describe("analysis 数据键域互证", () => {
 				}
 			}
 		}
+		for (const k of Object.keys(ANALYSIS_DATA.KUI_YUE_GUIREN_MAP)) {
+			if (!domain.has(k)) {
+				bad.push(`KUI_YUE_GUIREN_MAP.${k}`);
+			}
+		}
 		assert.deepEqual(
 			bad,
 			[],
@@ -1667,6 +1672,11 @@ describe("analysis 数据键域互证", () => {
 			Object.keys(ANALYSIS_DATA.PALACE_TO_CONTENT_KEY).length,
 			PALACE_NAMES_ORDER.length,
 			"PALACE_TO_CONTENT_KEY 应覆盖全部十二宫"
+		);
+		assert.equal(
+			Object.keys(ANALYSIS_DATA.KUI_YUE_GUIREN_MAP).length,
+			PALACE_NAMES_ORDER.length,
+			"KUI_YUE_GUIREN_MAP 应覆盖全部十二宫（魁钺落任何宫都有贵人倾向断语）"
 		);
 		const sparse = Object.entries(ANALYSIS_DATA.MINOR_STAR_PALACE_CONTENT)
 			.filter(([, t]) => Object.keys(t).length !== PALACE_NAMES_ORDER.length)
