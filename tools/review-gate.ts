@@ -32,6 +32,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEMO_POSITIONAL } from "../scripts/cli/selftest/sample.ts";
 import { DIRECT_CHART_ENV } from "../scripts/cli/chart/direct-env.ts";
+import {
+	MANUAL_MANAGED_PATHS,
+	NOTES_MANAGED_DIRS,
+	NOTES_MANAGED_METHOD_FILES,
+	REGISTERED_GENERATED,
+	TIANJI_MANAGED_PATHS,
+} from "./db/managed-paths.ts";
 import { checkLongComments } from "./code-style/long-comment-check.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // tools/
@@ -40,7 +47,7 @@ const RULE = "─".repeat(58);
 
 // ── 内核层基线 ────────────────────────────────────────────────────────────────
 // 跨阶段护栏盯的是**层 3**（排盘结构不变量 + 内核契约），不是总项数 —— 总数会被
-// 新增插件项合法抬高。基线值由 tests/db.test.ts 之外的评审流程守护；变动时**同步更新
+// 新增插件项合法抬高。基线值由评审流程守护；变动时**同步更新
 // 本常量并记入 docs/plans/2026-10-12-extensibility-roadmap-plan.md §9**。
 // 减少 = 守卫被削弱或删除（阻断）；增加 = 冻结面可能长胖了（提示复核）。
 const KERNEL_BASELINE = { invariants: 112, kernelContract: 5 };
@@ -55,11 +62,23 @@ const FROZEN_SURFACE = [
 	"scripts/corpus/data/annotations.ts",
 ];
 
-/** 生成文件：头里写明「不要手改」，手改会被下次重跑静默覆盖。 */
-const GENERATED = [
-	/^docs\/manual\/[^/]+\.md$/,
-	/^notes\/(?:70-课程笔记|75-主星论断|85-合盘断语)\/.+$/,
+/**
+ * 生成文件：头里写明「不要手改」，手改会被下次重跑静默覆盖。
+ *
+ * 清单真相源在 tools/db/managed-paths.ts（生成器与闸门共同消费，评审候选 3——手抄单
+ * 曾三处漂移：README 误伤 / notes 分区缺位 / wenmo-tables、tianji 缺位）。matcher 支持
+ * 精确路径与目录前缀两种形态；手写文件（docs/manual/README.md）刻意不在列。
+ */
+const GENERATED: readonly ((path: string) => boolean)[] = [
+	...MANUAL_MANAGED_PATHS.map(p => (path: string): boolean => path === p),
+	...NOTES_MANAGED_DIRS.map(d => (path: string): boolean => path.startsWith(`notes/${d}/`)),
+	...NOTES_MANAGED_METHOD_FILES.map(
+		f => (path: string): boolean => path === `notes/60-方法/${f}`
+	),
+	...TIANJI_MANAGED_PATHS.map(p => (path: string): boolean => path === p),
+	...REGISTERED_GENERATED.map(p => (path: string): boolean => path === p),
 ];
+const isGenerated = (path: string): boolean => GENERATED.some(fn => fn(path));
 
 /** 真相源：动它们等于动全仓的一致性，评审必看。 */
 const SOURCES_OF_TRUTH = [
@@ -195,7 +214,7 @@ function classify(base: string | null, files: ChangedFile[], adds: AddedLine[]):
 		kinds.add("冻结面");
 		reasons.push("触及 0C 冻结面：插件只可引用，不可修改");
 	}
-	if (paths.some(p => GENERATED.some(re => re.test(p)))) {
+	if (paths.some(p => isGenerated(p))) {
 		kinds.add("生成文件");
 		reasons.push("触及生成文件：应改生成器，不是改产物");
 	}
@@ -311,7 +330,7 @@ function mechanical(files: ChangedFile[], adds: AddedLine[]): Finding[] {
 	// 生成文件：**改动**是阻断（会被下次重跑静默覆盖），**新增**只提示
 	// —— 新增一个生成物本身合理（首次落地），要确认的是「生成器也会产出它」。
 	for (const f of files) {
-		if (!GENERATED.some(re => re.test(f.path))) {
+		if (!isGenerated(f.path)) {
 			continue;
 		}
 		if (f.status === "M") {

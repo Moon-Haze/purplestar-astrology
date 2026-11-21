@@ -107,11 +107,12 @@ function collectTsFiles(root: string, dir = ""): string[] {
 			if (entry.name === "node_modules" || entry.name.startsWith(".")) {
 				continue;
 			}
-			// 生成数据目录随知识数据聚拢迁至 corpus/data/manual。
+			// 「corpus/data/manual」生成目录已随断语手册下线退役——排除分支保留意为：
+			// 若该目录名在未来重现（重建手册），快照里的历史引文形态不得把真违例淹没。
 			// 按相对路径**后缀**判断而非整段相等：本收集器既被以 `scripts/` 为根调用
 			// （流派 citationRoots，dir = "corpus/data"），也被以仓库根调用
 			// （test/citations.test.ts 的仓库级组，dir = "scripts/corpus/data"）——
-			// 写死整段会让换根时排除静默失效，快照里的历史引文形态会把真违例淹没。
+			// 写死整段会让换根时排除静默失效。
 			if (entry.name === "manual" && dir.endsWith("corpus/data")) {
 				continue;
 			}

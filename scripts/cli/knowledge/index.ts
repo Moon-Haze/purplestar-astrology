@@ -69,7 +69,8 @@ function decodeKnowledgeQuery(args: CliArgs, source: string): KnowledgeQuery {
  *
  * @remarks
  * `--source books`（缺省）为古籍检索，行为与「classics 只搜古籍」的旧用法逐字兼容。
- * tianji / oracle 域的重语料在各自 `search` 内动态 import 懒加载（见 `knowledge/sources/`）。
+ * tianji 域的重语料在 `search` 内动态 import 懒加载（见 `knowledge/sources/`）。
+ * oracle 域已下线——断语手册由 astrology 按盘现场推算取代（a234a96）。
  */
 export async function cmdKnowledge(args: CliArgs): Promise<string> {
 	const source = String(args.source ?? "books");

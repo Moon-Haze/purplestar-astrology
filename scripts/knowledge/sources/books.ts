@@ -9,7 +9,7 @@
 import type { KnowledgeQuery, KnowledgeSource } from "../types";
 import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/corpus";
 
-/** 渲染 books 域：无关键词列四域概览，有关键词出古籍命中。 */
+/** 渲染 books 域：无关键词列三域概览，有关键词出古籍命中。 */
 export const booksSource: KnowledgeSource = {
 	id: "books",
 	label: "古籍",
@@ -45,4 +45,4 @@ export const booksSource: KnowledgeSource = {
 	},
 };
 
-// 四域包装的迁移史与懒加载纪律见 docs/code/knowledge.md。
+// 三域包装的迁移史与懒加载纪律见 docs/code/knowledge.md。

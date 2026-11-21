@@ -179,7 +179,7 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 > 「给定 args + 排盘上下文 → 产出专题 section 序列」—— 候选 3 把旗标 → section 的接线
 > 升为可直测 interface（原 `cmdAstrology` 默认路径的内联块）。
 >
-> 收益：接线本身成为被测物（`test/cli/astrology-sections.test.ts`），fortune 各
+> 收益：接线本身成为被测物（`test/astrology-sections.test.ts`），fortune 各
 > `*Section` 退为 implementation 零件，守卫链（monthly / daily / hourly 须配 mutagen / 层级）
 > 与 `parseAgesArg` / `deepDive` 门沉进同一实现。调用方只消费返回的 `string[]`，
 > 不再手抄顺序与守卫。

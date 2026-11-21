@@ -9,8 +9,8 @@
  * **归属**：本文件只住在本仓 `scripts/synastry/`（单 skill 合一前属 `purplestar-synastry`
  * skill）。排盘内核里没有对应物，故不存在「改源再同步」这回事 —— 要补断语、改措辞，就地改。
  *
- * **消费者**：`commands.ts`（`synastry` 的断语输出与 `--json`）、
- * `selftest.ts`（非空断言，防知识库被搬空却不报错）。
+ * **消费者**：`cli/commands/synastry.ts`（`synastry` 的断语输出与 `--json`）、
+ * `synastry/selftest-asserts.ts`（非空断言，防知识库被搬空却不报错）。
  *
  * **方法论与评分标准不在这里**：它们是恒定静态文本，住在本 skill 的
  * `references/synastry-guide.md`（按需读取，不经 CLI 输出）—— 改方法论改那个 md，

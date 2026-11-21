@@ -1,8 +1,8 @@
 # 格局基线（docs/manual）
 
-从样本库（`db/ziwei.duckdb` / `db/dataset/`）导出的**格局完备性基线**。**本目录全部内容由
-`tools/db/export-manual.ts` 生成，不要手改**——修订断语请改内核 `scripts/analysis/`，
-重建库（`npm run build:db`）后重导。
+从样本库（`db/ziwei.duckdb` / `db/dataset/`）导出的**格局完备性基线**。**除本 README
+（手写）外，本目录内容由 `tools/db/export-manual.ts` 生成，不要手改**——修订断语请改内核
+`scripts/analysis/`，重建库（`npm run build:db`）后重导。
 
 ```bash
 npx tsx tools/db/export-manual.ts all    # 全量重导（combo / geju）

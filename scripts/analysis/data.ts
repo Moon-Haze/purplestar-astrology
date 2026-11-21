@@ -1662,8 +1662,8 @@ export type TopicKey = (typeof TOPIC_KEYS)[number];
 // ─── 主题定义（单一真相源 · Phase 2 收编）──────────────────────────────────────
 // 原 8 张平行 `TOPIC_*` 表（palace / label / sanFang / contentKey / summaryKey /
 // keyPalaces / suggestions + `SUMMARY_TOPICS`）统一收进 `TOPIC_DEFS`，下方 8 张具名表
-// 改为由它派生。**加一个主题 = 只在 TOPIC_DEFS 加一个条目**（断语内容仍走
-// `corpus/data/manual/` 生成管线 + `LOADERS` 注册表）。
+// 改为由它派生。**加一个主题 = 只在 TOPIC_DEFS 加一个条目**（断语内容住本表，
+// 生成管线与 `LOADERS` 注册表已随断语手册下线退役）。
 // ⚠️ 与执行计划 §4 的偏差及「为何不造 13 个 TopicProvider 文件」的论证，见
 //    docs/code/analysis.md。
 

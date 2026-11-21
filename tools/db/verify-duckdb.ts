@@ -1,4 +1,4 @@
-// 用法: npm run verify:db [-- --out=DIR] [-- --src=DIR]
+// 用法: npx tsx tools/db/verify-duckdb.ts [-- --out=DIR] [-- --src=DIR]
 //      参数同时支持 --key=value 与 --key value 两种写法
 // --out 只给目录，库名与字典副本名固定（与 build:db / query 同一套规则）
 // spec §8：总量 / 维度覆盖 / 抽样深度比对 / 四化一致性 / 报告
@@ -432,7 +432,7 @@ export async function verifySize(
 		};
 	}
 	// search_topic 宏的定义体无法从 SQL 目录读回，其无外部依赖由 tools/db/db.ts 的构造代码
-	// 保证（tests/db.test.ts 覆盖）；这里只能扫视图定义。
+	// 保证（db 库不在 npm test 面，无断言级覆盖）；这里只能扫视图定义。
 	const external = await one(
 		conn,
 		"SELECT count(*) FROM duckdb_views() WHERE sql ILIKE '%read_parquet%'" +
@@ -614,7 +614,7 @@ export async function verifyTopicText(
 		const chunk = months.slice(i, i + chunkShards);
 		// 进度走 stderr：真实的 720 分片对账要跑几分钟、期间毫无输出，看起来像卡住。
 		// 不走 stdout 是因为 stdout 必须与验收版逐项一致（spec §9.1），容不下进度行；
-		// 副作用是 `verify:db | tee` 之类的管道仍能得到干净的报告。
+		// 副作用是 `npx tsx tools/db/verify-duckdb.ts | tee` 之类的管道仍能得到干净的报告。
 		console.error(
 			`文本对账: [${i / chunkShards + 1}/${totalChunks}] ` +
 				`${chunk[0].year}-${chunk[0].month} 起 ${chunk.length} 个月`

@@ -34,4 +34,4 @@ export const starsSource: KnowledgeSource = {
 	},
 };
 
-// 四域的「实现即插件」形态与懒加载纪律见 docs/code/knowledge.md。
+// 三域的「实现即插件」形态与懒加载纪律见 docs/code/knowledge.md。

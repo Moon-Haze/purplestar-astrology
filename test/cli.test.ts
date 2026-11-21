@@ -34,15 +34,11 @@ const SKILL_ROOT = resolve(HERE, "..");
 // 三个 skill 互相独立、各有各的 purple-star.ts 与内核（见 AGENTS.md「单 skill 形态（2026-09-30 三 skill 合一）」），
 // 因此必须**逐个入口**测到 —— 只测排盘那份的话，另两个 skill 的 CLI 入口写错在测试里看不见。
 // ── CLI 入口 ──
-// 三 skill 合一后只有一条入口（仓库根 scripts/purple-star.ts）；表保留三键，
-// 用例按命令族分发，路径全指根 CLI。
-const CLI = {
-	astrology: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
-	synastry: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
-	knowledge: resolve(SKILL_ROOT, "scripts/purple-star.ts"),
-} as const;
-/** 上面那张表的键。新增 skill 时这里会跟着报错，提醒把用例指过去。 */
-type Skill = keyof typeof CLI;
+// 单 skill 形态只有一条入口（scripts/purple-star.ts）。三 skill 时代的「按族三键表 +
+// 非 astrology 强制子进程」已清淤（评审 2026-11-20 Speculative #2）：进程内路径经
+// loader.load() 取 @/cli/commands 的同一张 COMMANDS 表，四命令同源分发；真子进程
+// 链路由 cliReal 冒烟与 CLI_SUBPROCESS 开关覆盖，不再按命令族绕行。
+const CLI_PATH = resolve(SKILL_ROOT, "scripts/purple-star.ts");
 
 // ── CLI --json 输出的形态 ──
 // chart 即 ZiweiChart 的 JSON 往返形态：值为 undefined 的可选键（如无四化的 Star.mutagen）
@@ -96,8 +92,8 @@ function asCliFailure(msg: string): Error & { stderr: string } {
 }
 
 // 进程内复用的 COMMANDS 表（懒加载一次；含 iztro/analysis，仅付一次冷启动税）。
-// ⚠️ 这条快捷方式恒指向**排盘解读 skill**（loader 的 ROOT 只装一次钩子），故只服务于
-//    skill === "astrology" 的用例；其余 skill 见 cliCmd 的注释。
+// 四命令（astrology / knowledge / synastry / selftest）同源分发——单 skill 形态下
+// 不存在「另一份 skill 代码」，无需按命令族绕子进程。
 let commandsMod: typeof import("@/cli/commands") | null = null;
 let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
 
@@ -130,7 +126,7 @@ async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 
 /** 永远走真子进程（防漂移冒烟用）：进程内路径替代不了它对子进程入口的覆盖。 */
 async function cliReal(args: string[]): Promise<string> {
-	const { stdout } = await execFileAsync("node", [CLI.astrology, "astrology", ...args], {
+	const { stdout } = await execFileAsync("node", [CLI_PATH, "astrology", ...args], {
 		cwd: SKILL_ROOT,
 	});
 	return stdout;
@@ -143,17 +139,12 @@ async function cliReal(args: string[]): Promise<string> {
  * 从 ~150s 降到 ~5s）。语义等价已用「进程内输出 ≡ 真子进程 stdout（仅差 console.log 尾部换行）」
  * 逐字节验证。真子进程入口由「内核加载防漂移」断言（cliReal）持续冒烟。
  * 需要全量真子进程时设 CLI_SUBPROCESS=1。
- *
- * ⚠️ `skill` 不是 `"astrology"` 时**强制走子进程**，不是偷懒：进程内那条路经 loader 的 `load()`
- * 取 `@/cli/commands`，而 loader 的 ROOT 唯一地钉在排盘 skill 上（解析钩子只装了一次）。
- * 拿它去「进程内跑合盘/古籍」，实际执行的是**排盘那份**代码，另两个 skill 的入口写错也会显示成绿的。
- * 它们只有真起子进程才测得到自己那一份代码。
  */
-async function cliCmd(sub: string, args: string[], skill: Skill = "astrology"): Promise<string> {
-	if (skill === "astrology" && !process.env.CLI_SUBPROCESS) {
+async function cliCmd(sub: string, args: string[]): Promise<string> {
+	if (!process.env.CLI_SUBPROCESS) {
 		return cliCmdInProcess(sub, args);
 	}
-	const { stdout } = await execFileAsync("node", [CLI[skill], sub, ...args], { cwd: SKILL_ROOT });
+	const { stdout } = await execFileAsync("node", [CLI_PATH, sub, ...args], { cwd: SKILL_ROOT });
 	return stdout;
 }
 
@@ -780,7 +771,7 @@ describe("CLI 端到端", () => {
 	describe("synastry 合盘", () => {
 		it("--json 的夫妻宫/福德宫派生字段与 chart 自洽", async () => {
 			const o = JSON.parse(
-				await cliCmd("synastry", [...synastry_PAIR, "--json"], "synastry")
+				await cliCmd("synastry", [...synastry_PAIR, "--json"])
 			) as synastryJson;
 			for (const side of ["a", "b"] as const) {
 				const chart = o[side].chart;
@@ -802,7 +793,7 @@ describe("CLI 端到端", () => {
 		});
 
 		it("文本路径同样跑通（宫名查找失败在此路径表现为崩溃）", async () => {
-			const text = await cliCmd("synastry", synastry_PAIR, "synastry");
+			const text = await cliCmd("synastry", synastry_PAIR);
 			assert.match(text, /【合盘/);
 			assert.match(text, /夫妻宫/);
 			assert.match(text, /福德宫/);
@@ -817,7 +808,7 @@ describe("CLI 端到端", () => {
 		// ⚠️ 断言的是**块标题字面量**而非「方法论」三个字：末尾那行指针本身就要说「方法论」，
 		// 盯前者才能既拦住重印、又允许指针存在。
 		it("不含已拆出的两段静态文本，且末尾指针指向真实存在的参考文档", async () => {
-			const text = await cliCmd("synastry", synastry_PAIR, "synastry");
+			const text = await cliCmd("synastry", synastry_PAIR);
 			assert.ok(!text.includes("【评分标准】"), "评分标准被重新塞回了 synastry 输出");
 			assert.ok(!text.includes("【完整方法论】"), "完整方法论被重新塞回了 synastry 输出");
 
@@ -919,21 +910,21 @@ describe("CLI 端到端", () => {
 		const pairJson = memo(
 			async () =>
 				JSON.parse(
-					await cliCmd("synastry", [...(await argsOf(A, B)), "--json"], "synastry")
+					await cliCmd("synastry", [...(await argsOf(A, B)), "--json"])
 				) as synastryJson
 		);
 		const swapJson = memo(
 			async () =>
 				JSON.parse(
-					await cliCmd("synastry", [...(await argsOf(B, A)), "--json"], "synastry")
+					await cliCmd("synastry", [...(await argsOf(B, A)), "--json"])
 				) as synastryJson
 		);
-		const pairText = memo(async () => cliCmd("synastry", await argsOf(A, B), "synastry"));
+		const pairText = memo(async () => cliCmd("synastry", await argsOf(A, B)));
 		const crossText = memo(async () =>
-			cliCmd("synastry", await argsOf(CROSS_A, CROSS_B), "synastry")
+			cliCmd("synastry", await argsOf(CROSS_A, CROSS_B))
 		);
 		const emptyText = memo(async () =>
-			cliCmd("synastry", await argsOf(EMPTY_A, B), "synastry")
+			cliCmd("synastry", await argsOf(EMPTY_A, B))
 		);
 
 		it("交换 --charts 的两份输入后，两方命盘精确互换", async () => {
@@ -1065,11 +1056,7 @@ describe("CLI 端到端", () => {
 			//
 			// ⚠️ 口径**不在 synastry 里选**：提醒必须把用户送回**排盘命令**（同一条 CLI 的
 			// analyze --late-zi）重排。
-			const t = await cliCmd(
-				"synastry",
-				await argsOf({ ...A, time: "23:30" }, B),
-				"synastry"
-			);
+			const t = await cliCmd("synastry", await argsOf({ ...A, time: "23:30" }, B));
 			assert.ok(t.includes("⚠️ 甲方出生时间落在 23:00–23:59"), "应提示甲方落在晚子时");
 			assert.ok(t.includes("重排"), "应把用户送回排盘命令用晚子时口径重排");
 			assert.ok(!t.includes("⚠️ 乙方出生时间"), "乙方不在晚子时，不应被提示");
@@ -1142,7 +1129,7 @@ describe("CLI 端到端", () => {
 		// 两者各自都能靠「把正文删光」通过。同一次比对两边的正文，才排得掉这种退化解。
 		it("同一份正文：在参考文档里，且不在 synastry 输出里", async () => {
 			const md = readFileSync(GUIDE, "utf8");
-			const synastry = await cliCmd("synastry", synastry_PAIR, "synastry");
+			const synastry = await cliCmd("synastry", synastry_PAIR);
 
 			for (const [label, needle] of [
 				["方法论首章标题", "## 合盘分析核心框架（倪海厦体系 + 《紫微斗数全书》综合）"],
@@ -1217,6 +1204,35 @@ describe("CLI 端到端", () => {
 			assert.deepEqual(mismatched, [], "退出码与样例预期不符 —— dispatch 侧或样例预期已漂移");
 		});
 
+		it("覆盖守卫随 npm test：SAMPLES 覆盖声明表全部参数（评审候选 4）", async () => {
+			// 与 tools/cli-samples main() 内的自检同式（双保险同源）：docs/cli-samples.md 是
+			// gitignore 本地物、日常无人重导，覆盖检查不能只住在低频入口 —— 新增参数忘补
+			// 样例时文档会静默缺节，这里让它当场红。
+			const { OPTION_GROUPS } = await load<typeof import("@/cli/args/table")>(
+				"@/cli/args/table"
+			);
+			const coveredParams = new Set<string>();
+			for (const s of SAMPLES) {
+				for (const a of s.args) {
+					if (a.startsWith("--")) {
+						coveredParams.add(a.split("=")[0]);
+					}
+				}
+			}
+			const declaredParams = new Set<string>();
+			for (const group of OPTION_GROUPS) {
+				for (const opt of group.options) {
+					declaredParams.add(`--${opt.name}`);
+				}
+			}
+			const uncovered = [...declaredParams].filter(name => !coveredParams.has(name));
+			assert.deepEqual(
+				uncovered,
+				[],
+				`以下声明参数在 SAMPLES 里没有样例（文档将静默缺节）：\n${uncovered.join("\n")}`
+			);
+		});
+
 		it("抽样 3 条：dispatch 直调 ≡ 真子进程（stdout / stderr / exit code）", async () => {
 			const picks = [
 				["astrology", "2011-06-24", "07:45", "男", "杭州", "--mutagen"],
@@ -1225,7 +1241,7 @@ describe("CLI 端到端", () => {
 			];
 			for (const argv of picks) {
 				const direct = await dispatch(argv, PORTS);
-				const sub = spawnSync(process.execPath, [CLI.astrology, ...argv], {
+				const sub = spawnSync(process.execPath, [CLI_PATH, ...argv], {
 					encoding: "utf8",
 					cwd: SKILL_ROOT,
 				});
@@ -2037,7 +2053,7 @@ describe("CLI 端到端", () => {
 			// 查城市的正路从此是 `astrology --city <名>`（解析结果见【出生地解析】节）。
 			// ⚠️ 真子进程：未知命令的报错发生在命令分发层，进程内快捷路径不覆盖它。
 			const { stderr } = await execFileAsync("node", [
-				CLI.astrology,
+				CLI_PATH,
 				"cities",
 				"--search",
 				"海",
@@ -2206,18 +2222,18 @@ describe("CLI 端到端", () => {
 		});
 
 		it("无参数时列出全部书目；未命中给明确文案", async () => {
-			const t = await cliCmd("knowledge", [], "knowledge");
+			const t = await cliCmd("knowledge", []);
 			for (const b of ["gusuifu", "quanji", "quanshu"]) {
 				assert.ok(t.includes(b), `书目清单应含 ${b}`);
 			}
 			assert.ok(t.includes("用法：knowledge --search"), "应给出用法");
 
-			const miss = await cliCmd("knowledge", ["--search", "紫微星"], "knowledge");
+			const miss = await cliCmd("knowledge", ["--search", "紫微星"]);
 			assert.equal(miss.trim(), "古籍中未找到「紫微星」。", "未命中应有明确文案");
 		});
 
 		it("CLI 把 <mark> 高亮转成『』（不透出 HTML 标签）", async () => {
-			const t = await cliCmd("knowledge", ["--search", "紫微", "--limit", "2"], "knowledge");
+			const t = await cliCmd("knowledge", ["--search", "紫微", "--limit", "2"]);
 			assert.ok(t.includes("『紫微』"), `命中词应被『』裹住，实得：\n${t}`);
 			assert.ok(!t.includes("<mark>"), "不该把 <mark> 透给终端用户");
 		});
@@ -2230,7 +2246,7 @@ describe("CLI 端到端", () => {
 			for (const bad of ["0", "-3", "abc"]) {
 				let stderr = "";
 				try {
-					await cliCmd("knowledge", ["--search", "星", "--limit", bad], "knowledge");
+					await cliCmd("knowledge", ["--search", "星", "--limit", bad]);
 				} catch (err) {
 					stderr = (err as { stderr?: string }).stderr ?? (err as Error).message;
 				}

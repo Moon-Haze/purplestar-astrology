@@ -16,11 +16,16 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { TIANJI_MANAGED_PATHS } from "../db/managed-paths.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // tools/corpus
 // 本工具住在 skill 根的 tools/corpus/ 下，skill 根 = 上两级（dirname 链取根）
 const ROOT = resolve(dirname(dirname(HERE)));
 const OUT = join(ROOT, "scripts/corpus", "data", "tianji.ts");
+// 托管清单自证（评审候选 3）：产出物必须与共同真相源对齐，漂移当场炸（闸门只消费清单）。
+if (TIANJI_MANAGED_PATHS[0] !== "scripts/corpus/data/tianji.ts") {
+	throw new Error("TIANJI_MANAGED_PATHS 与本工具产出物不对齐——先改 tools/db/managed-paths.ts。");
+}
 const BOOKS = ["01-stars", "02-palaces", "03-patterns", "04-sihua", "05-illness"] as const;
 
 /** 语料库根目录（本地克隆位置；换机重导时改这里）。 */

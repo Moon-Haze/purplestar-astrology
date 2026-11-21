@@ -134,8 +134,8 @@ const DOS_TIME = 0;
  * @remarks
  * 实现的最小 ZIP 子集：deflate 压缩 + 32 位 CRC + 无 extra field / 无 Zip64。
  * 分发件全部条目 < 4 GB、单文件 < 65535 字节名，那些都用不上 ——
- * 写它们只会增加出错面。本仓最大条目是 `scripts/corpus/data/manual/oracle.db`
- * （约 5.9 MB），离两个上限都很远。
+ * 写它们只会增加出错面。本仓最大条目是语料快照 `scripts/corpus/data/tianji.ts`
+ * （体量以文件为准），离两个上限都很远。
  */
 function buildZip(entries: Entry[]): Buffer {
 	const locals: Buffer[] = [];

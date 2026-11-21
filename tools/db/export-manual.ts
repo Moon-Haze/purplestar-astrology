@@ -29,6 +29,7 @@ import { fileURLToPath } from "node:url";
 import type { DuckDBConnection } from "@duckdb/node-api";
 
 import { resolveQueryTarget } from "./db";
+import { MANUAL_MANAGED_PATHS } from "./managed-paths.ts";
 import { compactPalaceKey } from "../../scripts/data/ganzhi";
 import {
 	TOPIC_KEYS,
@@ -47,6 +48,15 @@ const OUT_DIR = resolve(SKILL_ROOT, "docs/manual");
 const CHECK_MODE = process.argv.includes("--check");
 /** check 模式的内存产物：绝对路径 → 内容（与 writeFileSync 收到的字符串逐字同源）。 */
 const collected = new Map<string, string>();
+
+// ── 托管清单自证（评审候选 3）：产出名单必须与共同真相源对齐，漂移当场炸 ──
+for (const name of ["combo-frequency.md", "geju-audit.md"]) {
+	if (!(MANUAL_MANAGED_PATHS as readonly string[]).includes(`docs/manual/${name}`)) {
+		throw new Error(
+			`产出 docs/manual/${name} 未登记进 tools/db/managed-paths.ts——review 闸门只消费清单，先登记再扩产出。`
+		);
+	}
+}
 
 /** 落一个生成物：写盘，或（--check）收进内存待对拍。 */
 function emit(absPath: string, content: string): void {

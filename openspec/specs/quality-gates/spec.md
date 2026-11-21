@@ -232,6 +232,12 @@ SHALL 由 invariants 互证断言拦截；断言 SHALL 报出超域或不一致�
 不受其拖累）。本机缺 `db/dataset` 或 DuckDB 依赖时 SHALL 显式跳过并标注原因
 （跳过必须可见），不得静默绿。
 
+review 闸门的生成物清单（GENERATED）SHALL 由各生成器**自报**的托管面派生：
+`export-manual` / `tools/notes/export-notes.ts` / `tools/corpus/import-tianji.ts` 各
+export 自己托管的路径；无本地生成器的生成物（如 `data/wenmo-tables.ts`，提取脚本在
+上游仓）以带理由的登记常量入册。清单 SHALL NOT 手抄第二份；手写文件（如
+`docs/manual/README.md`）SHALL NOT 被当成生成物拦截。
+
 #### Scenario: 内核表改了、生成物未重导
 
 - **WHEN** 内核数据表或导出工具改动后，`docs/manual/` 生成物未重导
@@ -257,6 +263,17 @@ SHALL 由 invariants 互证断言拦截；断言 SHALL 报出超域或不一致�
 - **WHEN** 盘上残留 `scripts/corpus/data/manual/oracle.db` 或 `docs/manual/topics/`
   （下线产物未清理）
 - **THEN** 探针报盘上孤儿（重导不再生成，应删除），非零退出
+
+#### Scenario: 手写文件不再被误伤
+
+- **WHEN** 手改 `docs/manual/README.md`（自述文件，非生成物）
+- **THEN** review 闸门不再按「改了已入库的生成文件」拦截
+
+#### Scenario: 新增托管面即入册
+
+- **WHEN** 某生成器新增托管路径或托管分区
+- **THEN** 其自报清单随之演化，review 闸门自动覆盖——「生成器加了托管面、闸门不知道」
+  的 miss 类从结构上消失
 
 ### Requirement: OpenSpec 校验零警告
 
@@ -311,18 +328,35 @@ selftest SHALL 以断言守**增长方向**：任一该域参数未表态时断�
 
 ### Requirement: 注释指针有效性守卫
 
-`scripts/` `test/` `tools/` 下 `.ts` 源码注释中出现的 `.md` 引用词元（根级文件名如
+`scripts/` `test/` `tools/` 下 `.ts` 源码**注释**中出现的 `.md` 引用词元（根级文件名如
 `AGENTS.md` / `SKILL.md`，及 `docs/…` / `references/…` 相对路径）SHALL 指向仓库内实际
-存在的文件。守卫 SHALL 以文本扫描实现、纳入 `npm test` 的 repo 层；命中不存在的指针
-SHALL 报出文件与行。守卫只查指针对象**存在性**，SHALL NOT 审查注释内容的技术正确性。
-确属误报的引用 SHALL 在守卫内显式登记白名单并带理由（跳过必须看得见），SHALL NOT
-静默豁免。
+存在的文件。注释与字符串字面量中出现的 `npm run <name>` SHALL 指向 `package.json`
+scripts 里真实存在的命令；字符串字面量中 `references/…​.md` 形态的路径 SHALL 指向仓库
+内实际存在的文件；注释中出现的裸 `*.test.ts` 文件名 SHALL 指向 `test/` 下实际存在的
+文件。守卫 SHALL 以文本扫描实现、纳入 `npm test` 的 repo 层；命中不存在的指针 SHALL
+报出文件与行。守卫只查指针对象**存在性**，SHALL NOT 审查内容的技术正确性。确属误报
+的引用 SHALL 在守卫内显式登记白名单并带理由（跳过必须看得见），SHALL NOT 静默豁免。
 
 #### Scenario: 注入断锚即红灯
 
 - **WHEN** 任一被扫描文件的注释出现指向不存在 `.md` 的引用（如临时写入
   「见 docs/code/not-exist.md」）
 - **THEN** `ZIWEI_NO_CACHE=1 npm test` repo 层失败，报出文件与行；还原后恢复全绿
+
+#### Scenario: npm run 断针红灯
+
+- **WHEN** 注释或用户可见字符串写入 `npm run <不存在>`（如历史 `build:db` 腐烂）
+- **THEN** repo 层失败，报出文件、行与缺失的 script 名；补别名或改指向后恢复全绿
+
+#### Scenario: 字符串路径断针红灯
+
+- **WHEN** 字符串字面量（如运行时提示「已移至 references/x.md」）指向不存在的文件
+- **THEN** repo 层失败——指针写在哪种语法里不再决定受不受保护
+
+#### Scenario: 断言覆盖者断针红灯
+
+- **WHEN** 注释承诺某覆盖由某 `xxx.test.ts` 承担而该文件不存在
+- **THEN** repo 层失败，报出断针位置
 
 #### Scenario: 存量清零
 
@@ -401,3 +435,22 @@ report.test 的独占分支 × 功能参数组合矩阵 SHALL 由声明表单一
   手写跳过格——自指格（旗标即分支自身）归 parse 层参数判重语义分管、放行格归
   allow 断言分管、bespoke 格（旗标 ∈ 条目 bespoke 拒收集合）归 bespoke 子串
   钉点分管
+
+### Requirement: 样例表参数覆盖随回归守卫
+
+cli-samples 的样例表（SAMPLES）对参数面（`OPTION_GROUPS`）的覆盖 SHALL 由 `npm test`
+的派生断言守住（样例覆盖的参数 ⊇ 声明表全部参数），SHALL NOT 只依赖生成文档时的低频
+自检——`main()` 内的覆盖检查 SHALL 保留（双保险同源）。样例表的演示出生串 SHALL 消费
+`scripts/cli/selftest/sample.ts` 的单点常量（组件值或 argv 形态派生），SHALL NOT 手抄
+同款串（确属其他样例组的生辰除外，须可数）。
+
+#### Scenario: 新增参数忘补样例
+
+- **WHEN** `OPTION_GROUPS` 新增参数而 SAMPLES 未补样例
+- **THEN** `npm test` 当场失败，报出缺样例的参数清单；补样例后恢复全绿
+
+#### Scenario: 换样例组只动一处
+
+- **WHEN** 演示出生信息更换（如换生辰）
+- **THEN** `sample.ts` 单点一处修改，SAMPLES 经引用自动跟上；漏改的散落字面量由
+  存在性对拍暴露

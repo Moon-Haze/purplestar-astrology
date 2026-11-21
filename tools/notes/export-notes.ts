@@ -25,6 +25,7 @@ import { guSuiFu } from "../../scripts/corpus/data/gusuifu.ts";
 import { ziWeiQuanJi } from "../../scripts/corpus/data/quanji.ts";
 import { ziWeiQuanShu } from "../../scripts/corpus/data/quanshu.ts";
 import { PATTERN_VERDICTS } from "../../scripts/corpus/data/patterns.ts";
+import { NOTES_MANAGED_DIRS, NOTES_MANAGED_METHOD_FILES } from "../db/managed-paths.ts";
 import { STAR_CONTENT_MAP, TOPIC_LABEL } from "../../scripts/analysis/data.ts";
 import {
 	STAR_IN_FUQI_GU,
@@ -60,6 +61,20 @@ const MANAGED_DIRS = [...new Set(Object.values(BOOK_DIRS))].concat(
 );
 /** 60-方法 下由本脚本托管的文件名（该目录另有手写页，不能整目录清空）。 */
 const MANAGED_METHOD_FILES = ["引文真伪分级.md", "已核对论断"];
+
+// ── 托管清单自证（评审候选 3）：本脚本的托管面必须与共同真相源对齐，漂移当场炸 ──
+{
+	const inManifest = [...NOTES_MANAGED_DIRS].sort().join("|");
+	const inScript = [...MANAGED_DIRS].sort().join("|");
+	if (inManifest !== inScript) {
+		throw new Error(
+			`托管分区与 tools/db/managed-paths.ts 不对齐：脚本=${inScript} 清单=${inManifest}。先改清单再改托管面——review 闸门只消费清单。`
+		);
+	}
+	if (MANAGED_METHOD_FILES.join("|") !== NOTES_MANAGED_METHOD_FILES.join("|")) {
+		throw new Error("60-方法 托管文件与 tools/db/managed-paths.ts 不对齐，先改清单再改托管面。");
+	}
+}
 
 const GENERATED_BANNER = [
 	"> [!warning] 生成物，勿手改",

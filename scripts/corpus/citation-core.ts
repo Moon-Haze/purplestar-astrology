@@ -41,8 +41,8 @@ export interface CitationScan {
  * 黑名单：核对表里 suspect / fabricated 条目的**引文核心**（书名号 / 引号内的部分）。
  *
  * @remarks
- * 所有扫描面（`.ts` / `.md` / 断语手册库）共用这一个构造 —— 判据只有一份，改口径时
- * 处处同时变，不会出现「一处放行了、另一处还拦着」的分叉。
+ * 所有扫描面（`.ts` / `.md`；断语手册库扫描面已随手册下线退役）共用这一个构造 —— 判据
+ * 只有一份，改口径时处处同时变，不会出现「一处放行了、另一处还拦着」的分叉。
  */
 export function buildBannedSet(checklist: readonly AnnotationEntry[]): Set<string> {
 	return new Set(

@@ -446,6 +446,20 @@ function commentSpans(text: string): { line: number; body: string }[] {
 	return out;
 }
 
+/** 逐行取出字符串字面量文本（单引号 / 双引号 / 同行反引号，忽略转义）；字符串侧指针的扫描面。 */
+function stringSpans(text: string): { line: number; body: string }[] {
+	const out: { line: number; body: string }[] = [];
+	text.split("\n").forEach((line, i) => {
+		for (const m of line.matchAll(/"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|`([^`]*)`/g)) {
+			const body = m[1] ?? m[2] ?? m[3];
+			if (body) {
+				out.push({ line: i + 1, body });
+			}
+		}
+	});
+	return out;
+}
+
 describe("注释指针有效性（源码注释的 .md 引用必须存在）", () => {
 	it("scripts/ test/ tools/ 注释里的 .md 引用都指向仓库内实际存在的文件", t => {
 		const files = ["scripts", "test", "tools"].flatMap(tsFilesUnder);
@@ -483,6 +497,70 @@ describe("注释指针有效性（源码注释的 .md 引用必须存在）", ()
 			violations,
 			[],
 			`注释指针断裂：\n${violations.map(v => `${v.file}:${v.line} → ${v.token}`).join("\n")}`
+		);
+	});
+
+	// ── 词元扩展（评审 2026-11-21 候选 2）：三类「承诺某物在某处」的形态各有守卫 ──
+	it("scripts/ test/ tools/ 注释与字符串里的 npm run X 都指向 package.json scripts 现有命令", () => {
+		const scripts = Object.keys(
+			JSON.parse(readFileSync(resolve(SKILL_ROOT, "package.json"), "utf8")).scripts
+		) as string[];
+		const files = ["scripts", "test", "tools"].flatMap(tsFilesUnder);
+		const hits: { file: string; line: number; token: string }[] = [];
+		for (const rel of files) {
+			const text = readFileSync(resolve(SKILL_ROOT, rel), "utf8");
+			for (const { line, body } of [...commentSpans(text), ...stringSpans(text)]) {
+				for (const m of body.matchAll(/npm run ([a-z0-9][a-z0-9:._-]*)/g)) {
+					hits.push({ file: rel, line, token: m[1] });
+				}
+			}
+		}
+		assert.ok(hits.length > 0, "未提取到任何 npm run 词元，守卫恒真");
+		const bad = hits.filter(h => !scripts.includes(h.token));
+		assert.deepEqual(
+			bad,
+			[],
+			`npm run 指向不存在的 script（补别名或改指向）：\n${bad.map(b => `${b.file}:${b.line} → npm run ${b.token}`).join("\n")}`
+		);
+	});
+
+	it("字符串字面量里 references/ 前缀的 .md 路径都指向仓库内实际存在的文件", () => {
+		const files = ["scripts", "test", "tools"].flatMap(tsFilesUnder);
+		const hits: { file: string; line: number; token: string }[] = [];
+		for (const rel of files) {
+			const text = readFileSync(resolve(SKILL_ROOT, rel), "utf8");
+			for (const { line, body } of stringSpans(text)) {
+				for (const m of body.matchAll(/references\/[A-Za-z0-9_./-]*\.md/g)) {
+					hits.push({ file: rel, line, token: m[0] });
+				}
+			}
+		}
+		assert.ok(hits.length > 0, "未提取到任何字符串路径词元，守卫恒真");
+		const bad = hits.filter(h => !existsSync(resolve(SKILL_ROOT, h.token)));
+		assert.deepEqual(
+			bad,
+			[],
+			`字符串路径断裂：\n${bad.map(b => `${b.file}:${b.line} → ${b.token}`).join("\n")}`
+		);
+	});
+
+	it(".ts 注释里的裸 *.test.ts 文件名都指向 test/ 下实际存在的文件", () => {
+		const files = ["scripts", "test", "tools"].flatMap(tsFilesUnder);
+		const hits: { file: string; line: number; token: string }[] = [];
+		for (const rel of files) {
+			const text = readFileSync(resolve(SKILL_ROOT, rel), "utf8");
+			for (const { line, body } of commentSpans(text)) {
+				for (const m of body.matchAll(/\b([A-Za-z0-9_-]+\.test\.ts)\b/g)) {
+					hits.push({ file: rel, line, token: m[1] });
+				}
+			}
+		}
+		assert.ok(hits.length > 0, "未提取到任何裸 .test.ts 词元，守卫恒真");
+		const bad = hits.filter(h => !existsSync(resolve(SKILL_ROOT, "test", h.token)));
+		assert.deepEqual(
+			bad,
+			[],
+			`断言覆盖者断针（注释承诺的测试文件不存在）：\n${bad.map(b => `${b.file}:${b.line} → test/${b.token}`).join("\n")}`
 		);
 	});
 });

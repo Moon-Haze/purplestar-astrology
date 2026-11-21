@@ -18,28 +18,44 @@ export const SAMPLE: BirthInfo = { year: 1990, month: 5, day: 15, timeIndex: 5, 
 /** SAMPLE 的 CLI 旗标形态（selftest 各断言组的 base 数组由此派生）。 */
 export const SAMPLE_ARGV = ["--date", "1990-05-15", "--branch", "5", "--gender", "male"] as const;
 
-/** help 示例同款虚构盘（2011-06-24 07:45 杭州男）—— 旗标形态。 */
+/** help 示例同款虚构盘（2011-06-24 07:45 杭州男）—— 组件值单点（评审候选 4：换样例组改这里）。 */
+export const DEMO_PARTS = {
+	date: "2011-06-24",
+	time: "07:45",
+	city: "杭州",
+	gender: "male",
+} as const;
+
+/** 同款女盘（1999-11-03 15:20 成都女）—— 组件值单点。 */
+export const DEMO_FEMALE_PARTS = {
+	date: "1999-11-03",
+	time: "15:20",
+	city: "成都",
+	gender: "female",
+} as const;
+
+/** DEMO 盘的旗标形态（cli-samples 样例表等消费）。 */
 export const DEMO_ARGV = [
 	"--date",
-	"2011-06-24",
+	DEMO_PARTS.date,
 	"--time",
-	"07:45",
+	DEMO_PARTS.time,
 	"--city",
-	"杭州",
+	DEMO_PARTS.city,
 	"--gender",
-	"male",
+	DEMO_PARTS.gender,
 ] as const;
 
-/** 同款女盘（1999-11-03 15:20 成都女）—— 旗标形态。 */
+/** 同款女盘的旗标形态。 */
 export const DEMO_FEMALE_ARGV = [
 	"--date",
-	"1999-11-03",
+	DEMO_FEMALE_PARTS.date,
 	"--time",
-	"15:20",
+	DEMO_FEMALE_PARTS.time,
 	"--city",
-	"成都",
+	DEMO_FEMALE_PARTS.city,
 	"--gender",
-	"female",
+	DEMO_FEMALE_PARTS.gender,
 ] as const;
 
 /** DEMO 的位置参数形态（`astrology 2011-06-24 07:45 男 杭州`）。 */

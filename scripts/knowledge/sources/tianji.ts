@@ -1,7 +1,8 @@
 /**
  * knowledge 的 **tianji 域**：天纪判语检索（实现即插件：渲染逻辑与注册形态同址，无转发壳）。
  *
- * 数据（`corpus/data/tianji.ts`，392KB、1125 条）在 `search` 体内动态 import 懒加载，
+ * 数据（`corpus/data/tianji.ts`，全量快照——条数以自报 importedCount 为准）在 `search`
+ * 体内动态 import 懒加载，
  * 本模块被 registry 静态 import 也不把语料拉进 CLI 主链路。`--search` 三态与 `--limit`
  * 校验由命令入口守卫单点承担（`cli/knowledge/index.ts`）。
  *
@@ -95,4 +96,4 @@ export const tianjiSource: KnowledgeSource = {
 	},
 };
 
-// 四域的「实现即插件」形态与懒加载纪律见 docs/code/knowledge.md。
+// 三域的「实现即插件」形态与懒加载纪律见 docs/code/knowledge.md。

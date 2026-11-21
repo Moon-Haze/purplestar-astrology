@@ -1,14 +1,14 @@
 /**
  * 知识源注册表（Phase 1 · KnowledgeSource 接缝）
  *
- * 把 `knowledge` 命令的四域收成一张声明式注册表。CLI 分发入口只查这张表，不再写
+ * 把 `knowledge` 命令的三域收成一张声明式注册表。CLI 分发入口只查这张表，不再写
  * `switch`（ADR-002：清单注册而非文件系统自动发现——typecheck 兜底、与现有
  * `COMMAND_TABLE` 哲学一致）。新增一个域 = 写一个 `sources/<id>.ts` + 下面加一行，
  * 不必改 `cli/knowledge/index.ts`。
  *
- * 懒加载纪律：tianji 域的重语料（392KB）在 `search` 体内
- * `await import`，注册表静态 import 的源模块本身是轻的，不会把重数据拉进 CLI 启动。
- * 四域是「实现即插件」形态：渲染逻辑直接住在 `sources/<id>.ts`，无转发壳。
+ * 懒加载纪律：tianji 域的重语料（全量快照，条数以自报 importedCount 为准）在 `search`
+ * 体内 `await import`，注册表静态 import 的源模块本身是轻的，不会把重数据拉进 CLI 启动。
+ * 三域是「实现即插件」形态：渲染逻辑直接住在 `sources/<id>.ts`，无转发壳。
  *
  * ⚠️ `KNOWLEDGE_SOURCES` 的**键序即概览列出与报错提示的顺序**；`KNOWLEDGE_SOURCE_IDS`
  *    是键集合的单一真相源，CLI 报错提示与自检断言复用它，**不手抄字符串**。
