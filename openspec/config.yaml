@@ -48,7 +48,7 @@ operations:
               动内核或依赖 iztro 后两层都要跑，动过类型标注另跑 `npm run typecheck`
             - 验收命令的退出码直接取命令本身，不得接管道（`| tail` 后 `$?` 是 tail 的）
               或 `&&` 串接
-            - 回归链路恒设 `ZIWEI_NO_CACHE=1`，漏设会拿旧缓存假绿
+            - 回归链路显式禁缓存：selftest / 测试进程走缓存旁路 API，子进程排盘探针 argv 携带 --no-cache；回归链路零环境变量注入
             - 不夹带无关改动：format 只对本次真正新增 / 改动的行跑，不整跑
             - 不用 `any` / `@ts-ignore` 绕过 typecheck 报错，去改类型标注本身
     archive:
