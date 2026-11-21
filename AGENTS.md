@@ -264,7 +264,9 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 - 排盘内核（`algorithm.ts` / `mutagen.ts` / `patterns/` / `data/` / `wenmo-brightness.ts`）
   与知识内容（`analysis/` / `corpus/` / `synastry/`）严格分层。**插件层禁止反向依赖 `cli/`，
-  禁止修改内核模块状态。**
+  禁止修改内核模块状态。**（唯一豁免：corpus / synastry 的 `*/selftest-asserts.ts` 是 selftest
+  宿主的测试件——静态仅 `cli/selftest/kit`、动态仅 `cli/commands` / `cli/args` / `cli/args/scope`，
+  边界由层 6 扫描守卫钉住，扩散即红。）
 - 新增知识内容（古籍 / 主题断语 / 新流派）**不得触碰排盘内核与 CLI 分发**，也不因此需要重跑内核回归。
 - 轻路径纪律：重语料（tianji）只能在 `search` 体内 `await import`，
   注册表静态 import 的源必须轻；help / 未知命令路径不得触发 iztro 加载（`command-meta` 禁 import 命令实现与内核）。

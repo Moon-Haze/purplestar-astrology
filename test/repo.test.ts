@@ -44,7 +44,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ResolveHookSync } from "node:module";
 
@@ -339,6 +339,70 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 			r.stderr ?? "",
 			/已退役环境变量.*ZIWEI_NO_CACHE/,
 			"报错须点名退役变量并给移除指引"
+		);
+	});
+
+	it("ADR-003 豁免边界：插件树对 cli 的引用边与白名单逐边一致（多边 / 少边 / 锚点消失均红）", () => {
+		// corpus / synastry 的 selftest-asserts.ts 是 selftest 宿主的测试件，允许引用 cli 的
+		// kit（静态）与命令表 / 参数面（动态 import 打断「commands → selftest → 本文件」静态环）
+		// ——豁免按文件具名（spec：内核与内容严格分层「唯一豁免边界」）。本守卫把边界钉死：
+		// 任何插件文件出现白名单外的 cli 引用边、白名单少边、或白名单文件被改名 / 删除都当场红，
+		// 「测试件」名义不构成扩散通道（change exempt-selftest-asserts-from-layering）。
+		const whitelist: Record<string, { static: string[]; dynamic: string[] }> = {
+			"scripts/corpus/selftest-asserts.ts": {
+				static: ["../cli/selftest/kit"],
+				dynamic: ["../cli/commands", "../cli/args"],
+			},
+			"scripts/synastry/selftest-asserts.ts": {
+				static: ["../cli/selftest/kit"],
+				dynamic: ["../cli/commands", "../cli/args", "../cli/args/scope"],
+			},
+		};
+		// 反恒真锚点：白名单文件必须真实在盘——锚点失效不得静默降级为「扫到零边即绿」。
+		for (const f of Object.keys(whitelist)) {
+			assert.ok(
+				existsSync(resolve(SKILL_ROOT, f)),
+				`豁免白名单锚点失效：${f} 不在盘上（改名 / 删除须同步本守卫）`
+			);
+		}
+		const walk = (dir: string): string[] =>
+			readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+				e.isDirectory()
+					? walk(resolve(dir, e.name))
+					: e.name.endsWith(".ts")
+						? [resolve(dir, e.name)]
+						: []
+			);
+		const observed: string[] = [];
+		for (const plugin of ["corpus", "synastry"]) {
+			for (const f of walk(resolve(SKILL_ROOT, "scripts", plugin))) {
+				const rel = relative(resolve(SKILL_ROOT), f);
+				const text = readFileSync(f, "utf8");
+				// 静态边：import/export … from "spec"；动态边：import("spec")。命中 /cli/ 即记边。
+				for (const m of text.matchAll(/from\s*["']([^"']+)["']/g)) {
+					if (/\/cli\//.test(m[1])) {
+						observed.push(`${rel}#static#${m[1]}`);
+					}
+				}
+				for (const m of text.matchAll(/\bimport\(\s*["']([^"']+)["']\s*\)/g)) {
+					if (/\/cli\//.test(m[1])) {
+						observed.push(`${rel}#dynamic#${m[1]}`);
+					}
+				}
+			}
+		}
+		const expected = Object.entries(whitelist)
+			.flatMap(([f, kinds]) => [
+				...kinds.static.map(s => `${f}#static#${s}`),
+				...kinds.dynamic.map(s => `${f}#dynamic#${s}`),
+			])
+			.sort();
+		const extra = observed.filter(e => !expected.includes(e));
+		const missing = expected.filter(e => !observed.includes(e));
+		assert.deepEqual(
+			observed.sort(),
+			expected,
+			`插件树 cli 引用边与 ADR-003 豁免白名单不一致——多出的边：${extra.join("、") || "无"}；缺失的边：${missing.join("、") || "无"}`
 		);
 	});
 });
