@@ -31,11 +31,11 @@
 | 2 指针守卫面 | 机制面成立 + 新增实例（AGENTS.md notes 行 / cli-commands.md 测试路径） | `c2df450` |
 | 3 GENERATED 漂移 | 变形：README 误伤 / wenmo-tianji 缺位 / notes 死规则 | `c2df450` |
 | 4 cli-samples 覆盖休眠 | 成立 + help 与 cli-samples 日期分叉 | `c2df450` |
-| 6 建议行投影双写 | 成立                                             | 挂账未动   |
+| 6 建议行投影双写 | 成立                                             | `0124032` |
 | 7 测试基建 locality | 成立且扩大（直调 seam 五处）                    | `56a0c1e`（直排豁免半边）|
 | 9 星曜键集 | 成立（soul-summary 两表 / STAR_IN_FUQI_GU）        | `56a0c1e` |
 | 10 --no-cache 腐烂 | 部分失效（残留两处）                            | `2829a2e` + `c2df450` |
-| 13 --topic 重解析 | 成立（actx 先建、:469 重解析）                    | 挂账未动   |
+| 13 --topic 重解析 | 成立（actx 先建、:469 重解析）                    | `0124032` |
 
 Speculative #1 ZIWU_LIUZHU 退役（`c4bcb3a`，重建等发起）；#2 三键表清淤、#5 bench 注释、#6 注释腐烂批、#7 意图标注、#8 import 统一（`2829a2e`）；#4 config 措辞（`279521d`）；#3 LAYERS 脱钩断言**拍板继续挂账**（reporter 刻意不依赖树形状）。候选 6 / 13 仍挂账（本轮未拍板）。
 
@@ -54,4 +54,4 @@ Speculative #1 ZIWU_LIUZHU 退役（`c4bcb3a`，重建等发起）；#2 三键�
 ## 尾巴与挂账（本轮结束态）
 
 - **内容尾巴**：ZIWU_LIUZHU 方法论重建（退役已落、表保留待重建，等发起）。
-- **挂账**：第五轮 Speculative #3（LAYERS 脱钩断言）、第五轮候选 6（建议行投影双写）与 13（--topic 分支重解析）——本轮未拍板，留待下轮评审。
+- **挂账**：第五轮 Speculative #3（LAYERS 脱钩断言，拍板保留）。候选 6 / 13 已于 2026-11-21 收口（`0124032`）——本节初稿写于收口前，同步于此。
