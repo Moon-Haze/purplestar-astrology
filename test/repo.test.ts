@@ -33,6 +33,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	existsSync,
 	mkdirSync,
@@ -48,7 +49,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ResolveHookSync } from "node:module";
 
 import { ALL_SKILLS, CHART_LIKE, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
-import { DIRECT_CHART_ENV } from "../scripts/cli/chart/direct-env.ts";
 // ⚠️ 字面相对路径，带 `.ts` 扩展名，理由同 lib/loader.ts 的同一行：boot-hooks.ts 只依赖
 //    `node:` 内置，故可在解析钩子注册之前被 Node 的原生类型擦除加载。
 // ⚠️ 内核在仓库根 scripts/，挪内核时本行会静默失效。
@@ -306,10 +306,13 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 			undefined,
 			"skipUnlessRepo 在仓库态应放行 —— 探针锚点（包根 AGENTS.md）是否已被移动或删除？"
 		);
+		// selftest 入口自带缓存旁路（cmdSelftest 的 setCacheBypassAll），子进程无需再注入
 		const r = spawnSync(
 			process.execPath,
 			[resolve(SKILL_ROOT, "scripts", "purple-star.ts"), "selftest"],
-			{ encoding: "utf8", env: { ...process.env, ...DIRECT_CHART_ENV } }
+			{
+				encoding: "utf8",
+			}
 		);
 		assert.equal(r.status, 0, `selftest 应全绿退出，stderr：${(r.stderr ?? "").slice(0, 200)}`);
 		const skippedLines = (r.stdout ?? "").split("\n").filter(l => l.includes("⏭"));
@@ -561,6 +564,78 @@ describe("注释指针有效性（源码注释的 .md 引用必须存在）", ()
 			bad,
 			[],
 			`断言覆盖者断针（注释承诺的测试文件不存在）：\n${bad.map(b => `${b.file}:${b.line} → test/${b.token}`).join("\n")}`
+		);
+	});
+});
+
+// ── 五、数据集指纹对账 ──
+//
+// 基准数据集（db/dataset 的两个 parquet）是日常回归的对标真值——它被静默替换过一次
+//（1924–1983 → 1950–2026，2026-11-21 实证），当时没有任何闸门报警。本组把「替换而未
+// 重登记」变成当场红：登记面（MANIFEST.json）由导出工具在导出收尾自报（build-duckdb
+// 的 writeDatasetManifest），本组只读文件字节算哈希比对——不查库内容、不引 DuckDB
+// 原生依赖，日常回归的零依赖前提不破。
+describe("数据集指纹对账（db/dataset 替换而未重登记即红）", () => {
+	const MANIFEST = resolve(SKILL_ROOT, "db/dataset/MANIFEST.json");
+	const sha256 = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
+
+	it("登记面存在且字段齐备——缺失即红并指路，不静默放行", () => {
+		assert.ok(
+			existsSync(MANIFEST),
+			"db/dataset/MANIFEST.json 缺失——重导数据集走生成器自报登记（build-duckdb --mode=dataset），" +
+				"或确认现值后按同一函数补登记"
+		);
+		const m = JSON.parse(readFileSync(MANIFEST, "utf8")) as {
+			files?: Record<string, { sha256?: string; bytes?: number }>;
+			sampleCount?: number;
+			yearRange?: number[];
+		};
+		assert.ok(
+			m.files && typeof m.files === "object" && Object.keys(m.files).length > 0,
+			"登记面缺 files 节"
+		);
+		for (const [name, entry] of Object.entries(m.files ?? {})) {
+			assert.ok(
+				entry?.sha256 && /^[0-9a-f]{64}$/.test(entry.sha256),
+				`${name} 的 sha256 缺失或非 64 位十六进制`
+			);
+			assert.ok(
+				Number.isFinite(entry?.bytes) && (entry?.bytes ?? 0) > 0,
+				`${name} 的 bytes 缺失或非法`
+			);
+		}
+		assert.ok(
+			Number.isFinite(m.sampleCount) && (m.sampleCount ?? 0) > 0,
+			"sampleCount 缺失或非法"
+		);
+		assert.ok(
+			Array.isArray(m.yearRange) &&
+				m.yearRange.length === 2 &&
+				m.yearRange.every(Number.isFinite),
+			"yearRange 缺失或非法"
+		);
+	});
+
+	it("指纹比对：parquet 实测哈希 ≡ 登记哈希（字节级）", () => {
+		const m = JSON.parse(readFileSync(MANIFEST, "utf8")) as {
+			files: Record<string, { sha256: string }>;
+		};
+		const mismatches: string[] = [];
+		for (const [name, entry] of Object.entries(m.files)) {
+			const p = resolve(SKILL_ROOT, "db/dataset", name);
+			assert.ok(existsSync(p), `登记面列出的 ${name} 不在盘上`);
+			const actual = sha256(p);
+			if (actual !== entry.sha256) {
+				mismatches.push(
+					`${name}: 登记 ${entry.sha256.slice(0, 16)}… ≠ 实测 ${actual.slice(0, 16)}…`
+				);
+			}
+		}
+		assert.deepEqual(
+			mismatches,
+			[],
+			`数据集指纹不一致——文件被替换而登记未更新？${mismatches.join("；")}。出路两条：` +
+				"重导数据集走生成器自报登记（build-duckdb --mode=dataset），或确认变更后按同一函数显式重登记"
 		);
 	});
 });

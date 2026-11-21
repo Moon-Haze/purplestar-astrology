@@ -59,7 +59,7 @@ node scripts/purple-star.ts astrology --help # 每命令（归属参数子集）
 # 第一层：CLI 自带自检（排盘 / 古籍 / 合盘三段合一，项数由首行自报）
 node scripts/purple-star.ts selftest
 
-# 第二层：基准回归，用 toolkit 的 518,400 条样本对标排盘结果（默认跑 300 条抽样，约 8 秒）
+# 第二层：基准回归，用 db/dataset 全量样本（674,976 条，1950–2026）对标排盘结果（默认跑 385 条抽样，约 10 秒）
 npm test
 npm run test:corpus -- --year 1960    # 全量核验（需 reference/ 存在，不入日常回归）
 
@@ -71,7 +71,7 @@ npm run typecheck
 npm run pack
 ```
 
-**改过内核或升级 `iztro` 之后，两层都要跑；动过 `.ts` 的类型标注，`npm run typecheck` 也要跑。** `selftest` 测「代码逻辑自洽」，覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、性别护栏、排盘不变量、三合派体系约束、知识源可用性、古籍检索行为、合盘护栏与参数面契约；`npm test` 是**外部基准比对**，用 300 条真实盘逐字段对标，能抓住 `selftest` 那几条固定样例漏掉的行为漂移。测试的性质与效力边界见 [test/README.md](test/README.md)。
+**改过内核或升级 `iztro` 之后，两层都要跑；动过 `.ts` 的类型标注，`npm run typecheck` 也要跑。** `selftest` 测「代码逻辑自洽」，覆盖农历换算、真太阳时校正、晚子时等价性、城市名容错、性别护栏、排盘不变量、三合派体系约束、知识源可用性、古籍检索行为、合盘护栏与参数面契约；`npm test` 是**外部基准比对**，用 385 条真实盘逐字段对标，能抓住 `selftest` 那几条固定样例漏掉的行为漂移。测试的性质与效力边界见 [test/README.md](test/README.md)。
 
 回归报告**三段合一**（排盘 / 古籍 / 合盘，首行合计）：古籍与合盘的断言组（`*/selftest-asserts.ts`）由主 `selftest` 汇总执行；`npm test` 只管排盘基准。
 
@@ -119,17 +119,17 @@ npm run pack
 
 `scripts/` 内部结构见下方「数据流」；这里只列它的兄弟目录（`✔/✘` = 进 / 不进）：
 
-| 目录                                                                                 | 是什么                                                                                                                                                                                                                                   | git  | 分发件 |
-| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------ |
-| `references/`                                                                        | skill 细则（`SKILL.md` 骨架的延伸，见「这是什么」的三级渐进披露）                                                                                                                                                                        | ✔    | ✔      |
-| `test/`                                                                              | 七层基准回归；结构、效力边界与升级 iztro 流程见 [test/README.md](test/README.md)                                                                                                                                                         | ✔    | ✘      |
-| `docs/`                                                                              | 仓库级文档（user-guide / code / manual / plans / reviews / 勘误）；目录表与维护纪律见 [docs/README.md](docs/README.md)                                                                                                                   | ✔    | ✘      |
+| 目录                                                                                 | 是什么                                                                                                                                                                                                                                                     | git  | 分发件 |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------ |
+| `references/`                                                                        | skill 细则（`SKILL.md` 骨架的延伸，见「这是什么」的三级渐进披露）                                                                                                                                                                                          | ✔    | ✔      |
+| `test/`                                                                              | 七层基准回归；结构、效力边界与升级 iztro 流程见 [test/README.md](test/README.md)                                                                                                                                                                           | ✔    | ✘      |
+| `docs/`                                                                              | 仓库级文档（user-guide / code / manual / plans / reviews / 勘误）；目录表与维护纪律见 [docs/README.md](docs/README.md)                                                                                                                                     | ✔    | ✘      |
 | `tools/`                                                                             | 开发工具脚本（bench / cli-samples / review-gate / pack / db 构建-导出-查询 / corpus 导入 / notes 笔记导出 / samples 夹具），经 `npm run query` / `pack` / `review` / `cli-samples` / `bench:startup` / `notes:export` 调用，进 typecheck 与 lint/format 面 | ✔    | ✘      |
-| `notes/`                                                                             | 紫微斗数知识 Obsidian vault **产物**（`tools/notes/export-notes.ts` 从外部数据源仓生成，`npm run notes:export` 按需再生）；工作台目录已于 2026-11-18 删除（ac16258），产物不入库、磁盘可随时删除重建 | ✘    | ✘      |
-| `db/`                                                                                | 基准语料：`dataset/` 的 `samples` + `palaces` parquet 入库（约 12.8 MiB）；`topics-*.parquet` 已出库（.gitignore 注明已下线数据路线，磁盘保留、可经 `tools/db/build-duckdb.ts` 重建）；`ziwei.duckdb`（641.5 MiB）是构建中间物，随时可弃 | 部分 | ✘      |
-| `openspec/`                                                                          | OpenSpec 规范工作流（specs + changes），见文末「规范工作流」                                                                                                                                                                             | ✔    | ✘      |
-| `.claude/` `.zcode/`                                                                 | 宿主本地配置（`.claude/settings.json` 入 git；`.zcode/config.json` 记忆分库配置，gitignore）；openspec 协作套件已上移用户级 `~/.agents/`，仓库不再托管 commands / skills（见文末「产物纪律」）                                           | ✔    | ✘      |
-| `.codegraph/` `.history/` `.mimosa/` `.script_test/` `html/` `dist/` `node_modules/` | 代码索引 / 编辑器历史 / 安全扫描状态 / 脚本测试暂存 / 本地 HTML 报告 / 打包产物 / 依赖，均被 `.gitignore` 忽略                                                                                                                           | ✘    | ✘      |
+| `notes/`                                                                             | 紫微斗数知识 Obsidian vault **产物**（`tools/notes/export-notes.ts` 从外部数据源仓生成，`npm run notes:export` 按需再生）；工作台目录已于 2026-11-18 删除（ac16258），产物不入库、磁盘可随时删除重建                                                       | ✘    | ✘      |
+| `db/`                                                                                | 基准语料：`dataset/` 的 `samples` + `palaces` parquet 入库（约 17 MiB）；`topics-*.parquet` 已出库（.gitignore 注明已下线数据路线，磁盘保留、可经 `tools/db/build-duckdb.ts` 重建）；`ziwei.duckdb`（836 MiB）是构建中间物，随时可弃                       | 部分 | ✘      |
+| `openspec/`                                                                          | OpenSpec 规范工作流（specs + changes），见文末「规范工作流」                                                                                                                                                                                               | ✔    | ✘      |
+| `.claude/` `.zcode/`                                                                 | 宿主本地配置（`.claude/settings.json` 入 git；`.zcode/config.json` 记忆分库配置，gitignore）；openspec 协作套件已上移用户级 `~/.agents/`，仓库不再托管 commands / skills（见文末「产物纪律」）                                                             | ✔    | ✘      |
+| `.codegraph/` `.history/` `.mimosa/` `.script_test/` `html/` `dist/` `node_modules/` | 代码索引 / 编辑器历史 / 安全扫描状态 / 脚本测试暂存 / 本地 HTML 报告 / 打包产物 / 依赖，均被 `.gitignore` 忽略                                                                                                                                             | ✘    | ✘      |
 
 ⚠️ 本机 `ls` 是 `eza` 别名（带 `--git-ignore`）：核查被 `.gitignore` 忽略的内容（如 `db/ziwei.duckdb` 是否存在）请用 `find` / `stat` / `du`，不要依据 `ls` 的输出下结论。
 
@@ -291,11 +291,12 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
   **占位或自撰内容绝不可挂倪师引语**（属伪造引文）。
 - 守卫扫描面同时覆盖 `.ts` 与 `.md`（`docs/` / `SKILL.md` / `references/` 等，见 `test/lib/citation-guard.ts` 的 `scanMarkdownCitations`）；`docs/manual/` 是生成导出（格局基线与频率表），按路径排除。引文比对核心住 `corpus/citation-core.ts`（test 与各扫描面同引一份）。
 
-
 ### 缓存
 
 - 改排盘内核输出结构或升级 `iztro` 时**必须递增 `CACHE_VERSION`**，否则旧缓存被当有效读回。
-- 回归链路恒设 `ZIWEI_NO_CACHE=1`，漏设会拿旧缓存**假绿**。
+- 回归链路**显式禁缓存**：selftest / 测试进程经缓存模块的旁路 API（`setCacheBypassAll`）
+  整链直排，子进程排盘探针在 argv 携带 `--no-cache`——环境变量注入通道已删除，
+  旁路漏配由「直调 ≡ 子进程」对拍断言兜底。
 - 缓存是性能优化，**绝不参与正确性**：读失败静默降级现排、写失败不得让排盘失败——缓存故障的正确表现是「慢」，不是「错」。
 
 ### 最小 diff 与生成物
@@ -387,7 +388,7 @@ CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 - **接收端三件套**（本仓）：`tools/corpus/import-tianji.ts` 只导**紫微五册**（主星 / 十二宫 / 格局 / 四化 / 疾厄，易经 / 堪舆 / 铁板不属本 skill 知识面）→ 生成快照 `corpus/data/tianji.ts`（1125 条，**勿手改**，重导 `npx tsx tools/corpus/import-tianji.ts`，语料库位置硬编码在工具的 `CORPUS_ROOT`）→ `knowledge/sources/tianji.ts` 懒加载检索（重语料不进 CLI 主链路，检索结果带溯源 + 回放直链）。
 - `corpus/data/annotations.ts`（引文防回流禁语清单）数据源另在 `ziwei-samples-toolkit/corpus/annotations.json`——两条链在引文质检上交汇。
 
-**基准数据链**（服务排盘回归，一行带过）：`ziwei-doushu`（GitHub 外部，Renhuai123 开源引擎，上游参照）→ `ziwei-samples-toolkit`（数据集导出，518,400 条样本，`npm test` 基准与 `db/dataset/` 源头）→ `purplestar-db-slim`（转 DuckDB 的工具仓，`topics-*` 出库即其 F1 成果）。
+**基准数据链**（服务排盘回归，一行带过）：`ziwei-doushu`（GitHub 外部，Renhuai123 开源引擎，上游参照）→ `ziwei-samples-toolkit`（数据集导出，现为 674,976 条 / 1950–2026，`npm test` 基准与 `db/dataset/` 源头）→ `purplestar-db-slim`（转 DuckDB 的工具仓，`topics-*` 出库即其 F1 成果）。
 
 许可双轨：引入的**数据集**走 CC BY 4.0、**语料**走 CC BY-NC-SA 4.0——这是本仓代码许可与语料许可分开声明的根源，新引内容先对号入座。
 
@@ -425,11 +426,11 @@ knowledge-retrieval / quality-gates / synastry），`openspec/config.yaml` 的 `
 三个记忆后端在本仓的隔离方式，由本仓 workspace `.zcode/config.json` 提供
 （`Code/TypeScriptProjects/.zcode/config.json` 有同份配置，覆盖六仓家族）：
 
-| 后端 | 服务器 | 存储 | 用法 |
-|---|---|---|---|
-| qdrant | `qdrant-purplestar` | collection `purplestar`（命名向量 `fast-jina-embeddings-v2-base-zh`，768 Cosine，与 wiki 的 `knowledge` 同配置） | 本仓知识/文档语义检索与写入 |
-| memory 图谱 | `memory-purplestar` | `~/.memory/purplestar.jsonl`（原全局 memory.jsonl 的 91 条实体已于 2026-11-05 迁入） | 结构化实体关系 |
-| longmemory | 全局 `long-memory`（单 SQLite） | `user_id: "purplestar"` | 本仓经验/决策/任务状态，**存取都要带这个 user_id**；wiki 项目用 `wikinotes`，勿混 |
+| 后端        | 服务器                          | 存储                                                                                                             | 用法                                                                              |
+| ----------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| qdrant      | `qdrant-purplestar`             | collection `purplestar`（命名向量 `fast-jina-embeddings-v2-base-zh`，768 Cosine，与 wiki 的 `knowledge` 同配置） | 本仓知识/文档语义检索与写入                                                       |
+| memory 图谱 | `memory-purplestar`             | `~/.memory/purplestar.jsonl`（原全局 memory.jsonl 的 91 条实体已于 2026-11-05 迁入）                             | 结构化实体关系                                                                    |
+| longmemory  | 全局 `long-memory`（单 SQLite） | `user_id: "purplestar"`                                                                                          | 本仓经验/决策/任务状态，**存取都要带这个 user_id**；wiki 项目用 `wikinotes`，勿混 |
 
 - 工具名带前缀：`mcp__qdrant-purplestar__*` / `mcp__memory-purplestar__*`
 - ⚠️ 用户级全局 `qdrant`（→ `knowledge`）与 `memory`（→ `~/.memory/memory.jsonl`，现已清空）在本仓会话里也会连着——**本仓一律用带 `-purplestar` 前缀的服务器**，不要用全局的

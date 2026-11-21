@@ -3,7 +3,7 @@
 // 层 1 的排盘对标（chart.test.ts）比的是**内核直调**产物；本文件把对拍推进一层——
 // 对同一份基准 fixtures，进程内直调排盘与 JSON 装配单点（buildAnalyzeJson），断言
 // `--json` 顶层产物的冻结契约与 db 基准逐字段一致。把装配路径的对拍覆盖从
-// cli.test.ts 的单例断言扩到语料规模（300 条全集）。
+// cli.test.ts 的单例断言扩到语料规模（385 条全集）。
 //
 // 断言面四组（specs：quality-gates「JSON 契约语料级回归」）：
 //   1. 顶层键集冻结 —— 多键少键即红并点名（手抄清单是冻结测试的存在意义：
@@ -37,7 +37,6 @@ import {
 } from "./lib/compare.ts";
 
 // 年份筛选（npm test -- --year 1953），与 chart.test.ts 同口径：层 1 族一起收窄。
-const YEAR_FILTER = process.env.ZIWEI_TEST_YEAR ? Number(process.env.ZIWEI_TEST_YEAR) : null;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -156,9 +155,8 @@ describe("JSON 契约语料级回归", () => {
 	}
 
 	for (const [year, list] of [...byYear].sort((a, b) => a[0] - b[0])) {
-		if (YEAR_FILTER !== null && year !== YEAR_FILTER) {
-			continue;
-		}
+		// 年份过滤由 npm test -- --year 经 node --test 的 --test-name-pattern 在 runner 层完成
+		//（两阶段 spawn：非层 1 文件全量跑，本文件的用例名首段即出生年）——文件内不再读环境变量。
 		describe(`${year} 年`, () => {
 			for (const s of list) {
 				it(describeBirth(s), () => {
@@ -259,7 +257,7 @@ describe("JSON 契约语料级回归", () => {
 					assert.equal(parsed.liuShiSiHua, null, "未配置流时时 liuShiSiHua 应为 null");
 					// 大限层期望独立复算：expectedAge + 基准 decadals（外部数据），不抄内核
 					// currentDecadalIndex（其与期望的一致性已由 compareChart 断言过）。
-					// 本语料（1924–1983 生）当前虚岁 103+，恒已起运；童限分支保留为契约形态，
+					// 本语料最新队列（2024–2026 生）虚岁 1–3 为童限，该分支实际生效；其余队列恒已起运，
 					// 由 selftest 的童限用例覆盖该侧。
 					const age = expectedAge(s.birthInfo);
 					const expIdx = decadalsOf(s).findIndex(

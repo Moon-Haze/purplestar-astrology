@@ -1,0 +1,9 @@
+{
+	"description": "亮度分歧普查基线——信息级审计参照（非闸门）；重跑 brightness:census --check-baseline 与此对拍",
+	"savedAt": "2026-11-21",
+	"total": 5390,
+	"diff": 0,
+	"chartsWithDiff": 0,
+	"chartCount": 385,
+	"combos": []
+}

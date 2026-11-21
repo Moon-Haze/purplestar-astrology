@@ -11,6 +11,7 @@
 import { existsSync, statSync } from "node:fs";
 // readdir 仍被 listShards 用来枚举磁盘分片，不可删
 import { readFile, writeFile, readdir, rm, statfs, mkdir, rename } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { DuckDBConnection } from "@duckdb/node-api";
@@ -414,7 +415,7 @@ async function listShards(src: string, fromYear?: number, toYear?: number): Prom
 // 谓词推不穿 GROUP BY，任何分块都拦不住它物化全量文本（spec §3.3 记录的踩坑）。
 //
 // partSamples 可注入是为了让测试用 7 个样本验证边界，生产调用一律用默认值。
-// totalSamples 语义上是「最大的 sample_id」（区间上界）：sample_id 由自然键按 1..518400
+// totalSamples 语义上是「最大的 sample_id」（区间上界）：sample_id 由自然键按 1..674976
 // 稠密生成，生产下等于样本总数；测试用稀疏 id 时二者才分叉，故调用方须传 max(sample_id)。
 export async function repackDataset(
 	conn: DuckDBConnection,
@@ -459,6 +460,60 @@ export async function repackDataset(
 	return { files, maxBytes };
 }
 
+// ── 数据集指纹登记（导出即自报） ──
+//
+// dataset 的两个 parquet 是**入库的基准真值**，日常回归按 `MANIFEST.json` 的字节 sha256
+// 对账（repo 层「数据集指纹对账」）——数据集被以任何方式替换而未重新登记时当场红。
+// 指纹由本工具在导出收尾时自动写入，人工零协同：「改了数据忘了登记」的 miss 类
+// 从结构上消失。对账只读文件字节（不查库内容），日常回归不因此引入 DuckDB 依赖。
+//
+// 字节可复现性 2026-11-21 实证：同库重导两次与盘上现值三方哈希一致（含并行导出），
+// 故字节哈希成立，无需回落逻辑指纹。血统叙事（note）由调用方按登记语境给出——
+// 工具只知道「何时、从哪个库导出」，历史结论不由它代言。
+export interface DatasetManifest {
+	description: string;
+	registeredAt: string;
+	files: Record<string, { sha256: string; bytes: number }>;
+	sampleCount: number;
+	yearRange: [number, number];
+	note: string;
+}
+
+export async function writeDatasetManifest(
+	conn: DuckDBConnection,
+	datasetDir: string,
+	note: string
+): Promise<DatasetManifest> {
+	const files: Record<string, { sha256: string; bytes: number }> = {};
+	for (const t of ["samples", "palaces"]) {
+		const buf = await readFile(path.join(datasetDir, `${t}.parquet`));
+		files[`${t}.parquet`] = {
+			sha256: createHash("sha256").update(buf).digest("hex"),
+			bytes: buf.length,
+		};
+	}
+	const rows = (
+		await (
+			await conn.run("SELECT count(*) AS c, min(year) AS lo, max(year) AS hi FROM samples")
+		).getRowsJS()
+	)[0];
+	const manifest: DatasetManifest = {
+		description:
+			"db/dataset 指纹登记——由 build-duckdb --mode=dataset 导出时自报；日常回归按此对账，替换文件而不重登记即红",
+		registeredAt: new Date().toISOString().slice(0, 10),
+		files,
+		sampleCount: Number(rows[0]),
+		yearRange: [Number(rows[1]), Number(rows[2])],
+		note,
+	};
+	await writeFile(
+		path.join(datasetDir, "MANIFEST.json"),
+		JSON.stringify(manifest, null, "\t") + "\n",
+		"utf8"
+	);
+	return manifest;
+}
+
 // dataset 收尾：导出结构表、重打包、建视图、清暂存（spec §5.2）。
 //
 // 整段包在 try/finally 里：清理暂存放在 finally，任一处 throw（缺暂存、单片超限、
@@ -470,7 +525,8 @@ export async function finalizeDataset(
 	conn: DuckDBConnection,
 	stagingDir: string,
 	datasetDir: string,
-	done: string[]
+	done: string[],
+	note: string
 ): Promise<void> {
 	if (stagingDir.split(/[\\/]/).includes("..")) {
 		throw new Error("--out 路径不允许包含 .. 段");
@@ -506,8 +562,12 @@ export async function finalizeDataset(
 			);
 		}
 
+		// 指纹登记（导出即自报）：紧随两个结构表落盘，与本目录其余产物无关
+		//（topics-* 的增删不影响指纹面，MANIFEST 只覆盖两个结构表）。
+		await writeDatasetManifest(conn, datasetDir, note);
+
 		// 重打包按 sample_id 区间切片，区间上界取 max(sample_id) 而非 count(*)：sample_id
-		// 在真实数据里稠密（1..518400），二者相等；测试的迷你数据集 id 稀疏，count 会把
+		// 在真实数据里稠密（1..674976），二者相等；测试的迷你数据集 id 稀疏，count 会把
 		// 大 id 的样本整个漏掉。行数对账单独用 count(*)。
 		const sampleCount = Number(
 			(await (await conn.run("SELECT count(*) FROM samples")).getRowsJS())[0][0]
@@ -857,7 +917,14 @@ async function main() {
 
 	// ---- dataset 收尾：导出结构表、重打包、建视图、清暂存（spec §5.2）----
 	if (mode === "dataset") {
-		await finalizeDataset(conn, stagingDir, datasetDir, done);
+		await finalizeDataset(
+			conn,
+			stagingDir,
+			datasetDir,
+			done,
+			`由 build-duckdb --mode=dataset 从本库导出时自动登记（${new Date().toISOString().slice(0, 10)}）；` +
+				"指纹只覆盖 samples / palaces 两个结构表，topics-* 不在其列"
+		);
 	}
 
 	// 收尾对账：inline 直接对 topic_lines 断言三条不变量（不能写 `count(*) FROM topics`，

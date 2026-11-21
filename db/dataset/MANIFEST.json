@@ -1,0 +1,20 @@
+{
+	"description": "db/dataset 指纹登记——由 build-duckdb --mode=dataset 导出时自报；日常回归按此对账，替换文件而不重登记即红",
+	"registeredAt": "2026-11-21",
+	"files": {
+		"samples.parquet": {
+			"sha256": "780a6bf5a31f3b756be5d8e6c2489ef83e8ed27f29f48f63ee0c2b99a642af7a",
+			"bytes": 1042342
+		},
+		"palaces.parquet": {
+			"sha256": "2c3bc5c7e5910ff06419ccf0050c4cb82714d58e234db4a36b177b23d6138f8b",
+			"bytes": 16301779
+		}
+	},
+	"sampleCount": 674976,
+	"yearRange": [
+		1950,
+		2026
+	],
+	"note": "2026-11-21 追认登记：本目录 parquet 经实证与 db/ziwei.duckdb 同参重导三方哈希一致（同参导出×2 与盘上现值互同）；原始首次导出时间未记录（2026-11-21 前的静默重建），血统以 ziwei.duckdb 现内容为锚——重导即得本目录同物"
+}

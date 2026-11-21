@@ -23,12 +23,14 @@ import { fetchSample, openSource, closeSource, SourceError } from "../lib/sample
 const HERE = fileURLToPath(new URL(".", import.meta.url)); // <skill 根>/test/tools
 const OUT_DIR = resolve(HERE, "../fixtures");
 
-const YEAR_START = 1924;
-const YEAR_END = 1983;
+const YEAR_START = 1950;
+const YEAR_END = 2026;
 
-// 每年 5 条：4 条常规槽位 + 1 条闰月/年末槽位。60 × 5 = 300 条。
+// 每年 5 条：4 条常规槽位 + 1 条闰月/年末槽位。77 × 5 = 385 条。
+// （1950–2026 为 2026-11-21 拍板的基准范围：数据链已整体前移，1924–1949 原始分片不在盘上，
+//   追认见 openspec/changes/harden-baseline-data-chain/proposal.md。）
 //
-// 槽位的「月」与「时辰」**随年份序号轮转**，让 60 年自然铺满 12 个月 × 12 个时辰：
+// 槽位的「月」与「时辰」**随年份序号轮转**，让 77 年自然铺满 12 个月 × 12 个时辰：
 //   月   = (i*5 + s*3) % 12 + 1    —— gcd(5,12)=1，i 走满一圈时 5i%12 遍历全部 12 个值
 //   时辰 = (i*7 + s*3) % 12        —— gcd(7,12)=1，同理铺满 12 个时辰
 // 固定槽位（每月固定某日某时）只能盖到 4 个时辰、10 个月份，实测过，不够。

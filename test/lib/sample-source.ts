@@ -11,12 +11,12 @@
 //    test/sample-source.test.ts 只用**合成行**与**不存在的路径**测纯函数，不碰数据文件。
 //
 // 表结构（dataset 目录下两个 parquet 文件，经视图暴露为同名表）：
-//   samples  518,400 行 —— 出生信息 + 农历 + 盘级标量
+//   samples  674,976 行 —— 出生信息 + 农历 + 盘级标量（行数与范围随数据链演化，以 MANIFEST 为准）
 //   palaces  6,220,800 行 —— 每样本恒 12 行：宫位 + 星曜 + 大限区间
 //   topics —— 本次不用（论断文本），另有 db/dataset/topics-*.parquet 共 11 片
 //
 // 为什么是 parquet 而非单个 .duckdb：
-//   · samples + palaces 两张表 12.8 MiB。差额集中在星曜那 6 个 varchar[] 列：
+//   · samples + palaces 两张表约 17 MiB。差额集中在星曜那 6 个 varchar[] 列：
 //     DuckDB 逐元素存储，Parquet 对嵌套列做字典编码把星名压成索引
 //     （⚠️ 别把这当成整份数据集的压缩率 —— topics 也是纯文本、压不动，见 .gitignore）
 //   · 每个文件都在 GitHub 单文件上限（100 MiB）内，可直接入库分发，不再依赖
@@ -414,7 +414,7 @@ type JoinedRow = SampleRow & PalaceRow & { sample_id: bigint };
  * 本模块用到的全部列。`s.sample_id` 供流式遍历分组用（单条取时多余，但共用一条 SQL 更好维护）。
  *
  * ⚠️ 刻意**不** `SELECT *`：库里有 8 个本模块不用的 `sihua_*_star` / `sihua_*_palace` 列，
- *    还有 `topics` 那套论断文本。只取要用的，622 万行的流式读取才不会被无用列拖慢。
+ *    还有 `topics` 那套论断文本。只取要用的，810 万行的流式读取才不会被无用列拖慢。
  *
  * ⚠️ 列名带 `s.` / `p.` 前缀，**必须配 `FROM samples s JOIN palaces p USING (sample_id)`** 使用。
  *
@@ -512,7 +512,7 @@ export async function fetchSample(birthInfo: BirthInfo): Promise<BaselineSample 
  *          **这个返回值是刻意保留的** —— `full-corpus.ts` 的 `--limit` 逻辑靠它区分
  *          「扫完了」与「够了，停」。不要图省事改成 `void`。
  *
- * ⚠️ **不把 622 万行一次读进内存**：`conn.stream()` 按 2048 行一批吐出（实测无 WHERE 的
+ * ⚠️ **不把 810 万行一次读进内存**：`conn.stream()` 按 2048 行一批吐出（实测无 WHERE 的
  *    全量 JOIN + ORDER BY 查询首批 432 ms 到达、`WHERE year=1924 AND month=1` 首批 31 ms，
  *    DuckDB 的 ORDER_BY 是增量的），本函数只在内存里攒**当前这一个样本**的 12 行。
  */

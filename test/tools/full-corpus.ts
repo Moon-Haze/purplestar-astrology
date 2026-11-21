@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// ── 全量核验：把 db/dataset/ 里的全部 518,400 条样本跑一遍 ──
+// ── 全量核验：把 db/dataset/ 里的全部样本跑一遍（条数与年份范围运行时自报，不写死）──
 //
 // 与 npm test 的分工：
-//   npm test                 → test/fixtures/ 里 300 条**抽样**基准，秒级，日常回归
-//   本脚本                    → 数据集里**全量**语料，单线程约 2 小时，按需手动跑
+//   npm test                 → test/fixtures/ 里数百条**抽样**基准，秒级，日常回归
+//   本脚本                    → 数据集里**全量**语料，按需手动跑
 //
 // 什么时候需要它：
 //   · 升级 iztro 之后，确认「差异集合没有扩大」（抽样可能刚好没抽到变化的那一宫）
@@ -11,9 +11,9 @@
 //   · 排查某个特定年份/月份的问题
 //
 // 用法（在 skill 根执行）：
-//   node test/tools/full-corpus.ts                        # 全量，约 2 小时
-//   node test/tools/full-corpus.ts --year 1960            # 只跑 1960 年（8,640 条，约 2 分钟）
-//   node test/tools/full-corpus.ts --year 1960 --month 6  # 只跑 1960-06（720 条，约 12 秒）
+//   node test/tools/full-corpus.ts                        # 全量（条数自报）
+//   node test/tools/full-corpus.ts --year 1960            # 只跑 1960 年（条数自报）
+//   node test/tools/full-corpus.ts --year 1960 --month 6  # 只跑 1960-06（条数自报）
 //   node test/tools/full-corpus.ts --limit 5000           # 只跑前 5,000 条
 //   node test/tools/full-corpus.ts --quiet                # 不打印进度，只出报告
 //
@@ -102,6 +102,15 @@ async function main(): Promise<void> {
 	};
 	const t0 = Date.now();
 
+	// 范围标签自报：年份上下界从数据集现查（数据链会演化，不写死；--year/--month 覆盖时照实收敛）
+	const conn = await openSource();
+	const bounds = (
+		await (await conn.run("SELECT min(year) AS lo, max(year) AS hi FROM samples")).getRowsJS()
+	)[0] as unknown as [number, number];
+	const scope =
+		`${YEAR ?? bounds[0]}-${String(MONTH ?? 1).padStart(2, "0")} ~ ` +
+		`${YEAR ?? bounds[1]}-${String(MONTH ?? 12).padStart(2, "0")}`;
+
 	const done = await forEachSample(
 		{ year: YEAR ?? undefined, month: MONTH ?? undefined, limit: LIMIT },
 		raw => {
@@ -144,19 +153,34 @@ async function main(): Promise<void> {
 		}
 	);
 
-	report(stats, expectedTotal(), done, Date.now() - t0);
+	report(stats, await expectedTotal(), done, Date.now() - t0, scope);
 	closeSource();
 	process.exit(stats.dirty > 0 ? 1 : 0);
 }
 
-/** 本次过滤条件覆盖的样本总数（用于判断报告是否被 --limit 截断）。 */
-function expectedTotal(): number {
-	return (YEAR ? 1 : 60) * (MONTH ? 1 : 12) * 720;
+/** 本次过滤条件覆盖的样本总数（运行时从数据集查询自报——闰月样本使「每月恒 720」不成立）。 */
+async function expectedTotal(): Promise<number> {
+	const conn = await openSource();
+	const where: string[] = [];
+	if (YEAR !== null) {
+		where.push(`year = ${YEAR}`);
+	}
+	if (MONTH !== null) {
+		where.push(`month = ${MONTH}`);
+	}
+	const sql = `SELECT count(*) FROM samples${where.length ? ` WHERE ${where.join(" AND ")}` : ""}`;
+	const rows = (await (await conn.run(sql)).getRowsJS())[0];
+	return Number(rows[0]);
 }
 
-function report(s: CorpusStats, expected: number, completed: boolean, ms: number): void {
+function report(
+	s: CorpusStats,
+	expected: number,
+	completed: boolean,
+	ms: number,
+	scope: string
+): void {
 	const line = (k: string, v: string): void => console.log(`  ${k.padEnd(12, "　")} ${v}`);
-	const scope = `${YEAR ?? 1924}-${String(MONTH ?? 1).padStart(2, "0")} ~ ${YEAR ?? 1983}-${String(MONTH ?? 12).padStart(2, "0")}`;
 	// 只有「没读完」**且**「条数确实少于应有」才算截断。
 	// 单看 `!completed` 会误报：--limit 恰好等于总数时 forEachSample 也返回 false。
 	const limited = !completed && s.checked < expected;

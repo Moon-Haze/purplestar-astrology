@@ -8,7 +8,7 @@
 // 已从 sihua.ts 删除，全仓零调用点。本文件盯住这些字段**不被重新填回**。
 //
 // ⚠️ 这条约束在 CLI 的 selftest 里也有断言。两处并不重复：selftest 用固定样例，
-//    本文件用 300 条真实基准盘，覆盖面大得多（尤其大限字段在 12 步 × 300 盘上逐一检查）。
+//    本文件用 385 条真实基准盘，覆盖面大得多（尤其大限字段在 12 步 × 385 盘上逐一检查）。
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

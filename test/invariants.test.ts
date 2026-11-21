@@ -85,7 +85,23 @@ const charts = samples.map(s => ({ birth: s.birthInfo, chart: generateChart({ ..
 
 describe("排盘结构不变量", () => {
 	it(`样本量充足（${charts.length} 条）`, () => {
-		assert.equal(charts.length, 300);
+		// 基准设计容量 = 抽样方案的年数 × 每年槽位数（build-fixtures 的既定方案：每年 5 槽，
+		// 4 常规 + 1 闰月兜底）。重建若有槽位缺失（闰月兜底取不到等），会低于容量而在此暴露
+		// ——空转断言随样本面缩水。条数与范围全部从 manifest 自报派生，不写死字面量
+		//（旧断言曾钉死 300，基准范围 1950–2026 化后按方案容量推导）。
+		const manifest = JSON.parse(
+			readFileSync(resolve(HERE, "fixtures/manifest.json"), "utf8")
+		) as {
+			count: number;
+			yearRange: [number, number];
+		};
+		assert.equal(charts.length, manifest.count, "fixtures 行数应与 manifest 记录一致");
+		const span = manifest.yearRange[1] - manifest.yearRange[0] + 1;
+		assert.equal(
+			charts.length,
+			span * 5,
+			`样本量应等于抽样方案容量（${span} 年 × 每年 5 槽 = ${span * 5}）`
+		);
 	});
 
 	describe("十二宫", () => {
@@ -384,7 +400,7 @@ describe("排盘结构不变量", () => {
 			/**
 			 * 用 iztro 独立核对一张盘，返回它落在「已起运」还是「童限」。
 			 *
-			 * `ready` 供调用方传入**已经排好的盘**：主循环那 60 条样本在模块加载时
+			 * `ready` 供调用方传入**已经排好的盘**：主循环那 77 条样本在模块加载时
 			 * 就由 `charts`（第 45 行）排过一次，这里再排一遍纯属重复，约占本用例一半
 			 * 耗时。省略 `ready` 则照常现排 —— `recent` 那 12 条盘不在 `charts` 里，走这条。
 			 *
@@ -455,9 +471,9 @@ describe("排盘结构不变量", () => {
 				return "decadal";
 			};
 
-			// 基准样本：出生年 1924-1983，全部早已起运。horoscope() 较重，
-			// 故每 5 条抽 1（60 条）以控制日常回归耗时。
-			// 这 60 张盘 `charts` 已排好，直接复用，见上方 `check` 的 `ready` 参数。
+			// 基准样本：出生年 1950–2026（范围自 fixtures manifest 自报）。horoscope() 较重，
+			// 故每 5 条抽 1（每年恰好 1 条，共 77 条）以控制日常回归耗时。
+			// 这 77 张盘 `charts` 已排好，直接复用，见上方 `check` 的 `ready` 参数。
 			const sampled = charts.filter((_, i) => i % 5 === 0);
 			let baseDecadal = 0;
 			for (const { birth, chart } of sampled) {
@@ -468,15 +484,20 @@ describe("排盘结构不变量", () => {
 				}
 			}
 			decadal += baseDecadal;
-			// 末尾那两条 `> 0` 是弱断言：只证明「至少分到了一条」，不证明**分对了**。
-			// 基准样本最老的 1924 年生、最小的 1983 年生（今也已 40 余岁），必然条条已起运，
-			// 所以这里钉死「全部落在 decadal」。计数若被写反，decadal 会塌成 recent 里
-			// 的零星几条 —— 仍然 > 0，那两条弱断言照样全绿，只有这条会报出来。
-			assert.equal(baseDecadal, sampled.length, "基准样本应全部已起运（计数写反会在此暴露）");
+			// 分桶对账：每条样本必落两桶之一，且 decadal 桶非空——「计数写反」会让某桶
+			// 塌掉而在此暴露。（旧语料 1924–1983 时人人早已起运，此断言钉死「全部 decadal」；
+			// 基准范围 1950–2026 化后，最新队列虚岁 1–3 为童限，两桶各有其量——童限分支
+			// 由 fixtures 天然覆盖，下方的 recent 构造保留为不依赖数据集范围的稳定童限样本。）
+			assert.equal(
+				baseDecadal + childhood,
+				sampled.length,
+				"基准样本应恰好落进已起运/童限两桶之一（计数写反会在此暴露）"
+			);
+			assert.ok(baseDecadal > 0, "已起运桶不应为空（计数写反会在此暴露）");
 
-			// 童限分支：样本里永远走不到（最小的样本也已 43 岁），故另行构造近年出生的盘。
-			// 「今天出生」必然虚岁 1，而五行局起运最早也要 2 岁（水二局），故必定落在童限 ——
-			// 这样无论测试在哪一天跑，童限分支都保证被覆盖。
+			// 童限分支的**稳定样本**：基准范围化后 fixtures 已天然含童限盘（最新队列虚岁 1–3），
+			// 但那条覆盖随数据链演化会漂——「今天出生」必然虚岁 1，而五行局起运最早也要 2 岁
+			//（水二局），故必定落在童限，无论测试在哪一天跑、数据集范围怎么变都保证被覆盖。
 			const today = {
 				year: now.getFullYear(),
 				month: now.getMonth() + 1,
@@ -550,7 +571,7 @@ describe("排盘结构不变量", () => {
 					);
 				}
 			}
-			assert.ok(emptyCount > 0, "300 条基准中应存在空宫（否则该断言从未真正生效）");
+			assert.ok(emptyCount > 0, "基准样本中应存在空宫（否则该断言从未真正生效）");
 		});
 	});
 
@@ -972,8 +993,8 @@ describe("排盘结构不变量", () => {
 					}
 				}
 				// 两侧都要有样本，否则断言可能在「全 false」上空转全绿
-				assert.ok(yes > 0, `300 条样本里没有一条化${mutagen}入该宫，正例侧未生效`);
-				assert.ok(no > 0, `300 条样本里全部化${mutagen}入该宫，反例侧未生效`);
+				assert.ok(yes > 0, `基准样本里没有一条化${mutagen}入该宫，正例侧未生效`);
+				assert.ok(no > 0, `基准样本里全部化${mutagen}入该宫，反例侧未生效`);
 			});
 		}
 
@@ -992,7 +1013,8 @@ describe("排盘结构不变量", () => {
 		// 【效力边界 · 别高估】
 		// · 只核对「格局**是否触发**」。level（90/75/…）不覆盖 —— 它由 bonus/breaking
 		//   决定，属判词分级；description / conditions 的文案同理不覆盖
-		// · 「昌曲夹命」「火铃夹命」在 300 条基准里触发 **0** 次，其断言是**空转**的，已显式登记
+		// · 「昌曲夹命」在基准里触发 **0** 次，其断言是**空转**的，已显式登记
+		//   （「火铃夹命」在基准范围 1950–2026 化后实际触发，已移出登记回归真断言）
 		// · 预言机复刻的是**实现当前的口径**，不是照命理理想口径重写。两处口径曾与实现分歧
 		//   （火贪/铃贪的会照范围、紫府同宫是否限命/迁），已按「与 topic 侧统一」定案，
 		//   见 tanWithSha 与紫府同宫两处的说明 —— 现在是**照定案口径**复刻
@@ -1299,9 +1321,9 @@ describe("排盘结构不变量", () => {
 				({ chart }) => new Set(detectPatterns(chart).map(p => p.name))
 			);
 
-			// 300 条基准里触发 **0** 次的格局：断言会退化成空转，显式登记而非静默通过。
+			// 基准里触发 **0** 次的格局：断言会退化成空转，显式登记而非静默通过。
 			// 将来样本能触发它们时下面会失败，提醒把名字从这里删掉、让它回归真断言。
-			const NO_HIT_IN_FIXTURES = new Set(["昌曲夹命", "火铃夹命"]);
+			const NO_HIT_IN_FIXTURES = new Set(["昌曲夹命"]);
 
 			for (const [name, shouldFire] of Object.entries(ORACLE)) {
 				it(`${name}：逐盘与独立预言机一致`, () => {
@@ -1553,6 +1575,7 @@ describe("topic 长判词（Pattern.topicDescription）", () => {
 		"紫府朝垣格",
 		"羊陀夹命",
 		"英星入庙格",
+		"火铃夹命",
 		"辅弼夹命",
 		"铃贪格",
 		"魁钺夹命",

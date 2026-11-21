@@ -27,15 +27,11 @@ import {
 	type BaselineSample,
 } from "./lib/compare.ts";
 
-// 年份筛选（npm test -- --year 1953，由 test/lib/run.ts 经环境变量传入）。
-// 刻意用「空串视为无」而非 has 判断：run.ts 总是设置该变量（无筛选时置空），
-// 直接读值可避免「变量存在但为空」的歧义。
-const YEAR_FILTER = process.env.ZIWEI_TEST_YEAR ? Number(process.env.ZIWEI_TEST_YEAR) : null;
-
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 const manifest = JSON.parse(readFileSync(resolve(HERE, "fixtures/manifest.json"), "utf8")) as {
 	count: number;
+	yearRange: [number, number];
 };
 const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 	.split("\n")
@@ -50,12 +46,22 @@ const describeBirth = (b: BirthInfo): string =>
 
 // ── 先确认基准数据真的加载进来了 ──
 // 没有这条，fixtures 读空会让下面 0 个用例、「全绿」通过 —— 那是最危险的假阳性。
+// 条数与年份范围全部从 manifest 自报派生（计数纪律：不写死字面量——旧断言曾钉死
+// 「300 条（60 年 × 5 条）」，基准范围 1950–2026 化后按 manifest 语义互证）。
 test("基准数据可用", () => {
 	assert.equal(samples.length, manifest.count, "fixtures 行数应与 manifest 记录一致");
-	assert.equal(samples.length, 300, "基准应为 300 条（60 年 × 5 条）");
+	assert.ok(samples.length > 0, "fixtures 不应为空（空基准 = 全套件假绿）");
 	assert.ok(
 		samples.every(s => s.birthInfo && s.chart?.palaces?.length === 12),
 		"每条基准都应含 birthInfo 与完整十二宫"
+	);
+	assert.ok(
+		samples.every(
+			s =>
+				s.birthInfo.year >= manifest.yearRange[0] &&
+				s.birthInfo.year <= manifest.yearRange[1]
+		),
+		`每条基准的出生年都应落在 manifest 自报范围 ${manifest.yearRange[0]}–${manifest.yearRange[1]} 内`
 	);
 });
 
@@ -75,9 +81,8 @@ describe("排盘对标（基准：iztro 2.5.8 样本）", () => {
 	}
 
 	for (const [year, list] of [...byYear].sort((a, b) => a[0] - b[0])) {
-		if (YEAR_FILTER !== null && year !== YEAR_FILTER) {
-			continue;
-		}
+		// 年份过滤由 npm test -- --year 经 node --test 的 --test-name-pattern 在 runner 层完成
+		//（两阶段 spawn：非层 1 文件全量跑，本文件的用例名首段即出生年）——文件内不再读环境变量。
 		describe(`${year} 年`, () => {
 			for (const s of list) {
 				it(describeBirth(s.birthInfo), t => {
@@ -136,7 +141,7 @@ describe("随年份漂移的字段", () => {
 
 // ── 五行局名 → 局数 的解析 ──
 // `chart.fiveElementsClass` 的唯一来源，而它是**从局名这一字符串反推数字**得出的，故口径需单独锁住。
-// 上面的「排盘对标」只能覆盖 iztro 实际产出的中文数字写法（300 条样本全是「水二局」这类），
+// 上面的「排盘对标」只能覆盖 iztro 实际产出的中文数字写法（385 条样本全是「水二局」这类），
 // 覆盖不到口径变更后的形态 —— 那正是这里要盯的。
 describe("五行局名解析", () => {
 	it("五个标准局名各解析出对应局数", () => {
