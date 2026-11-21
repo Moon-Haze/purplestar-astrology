@@ -2479,6 +2479,26 @@ export const STAR_BRIEF: Record<string, string> = {
 	破军: "破坏创新星，六亲缘薄，宜技术专长走天下，化禄破而后立。",
 };
 
+/**
+ * 疾厄主轴：十二地支宫 → 脏腑（倪师《天纪 05》疾厄篇口径）。
+ *
+ * ⚠️ 映射唯一依据是倪师原话引用的《内经》歌诀（B 站 BV1KJsLekEfA p3 §11 @00:45:45
+ *    逐字可溯）：「肺寅大卯胃辰宫，脾巳心午小未中，申膀酉肾心包戌，亥焦子胆丑肝通。」
+ *    —— 按宫位**地支**查脏腑。旧表的「地支五行 → 传统脏腑」推演版与此是两套映射
+ *    （十二宫中八宫错位，如卯=大肠 vs 旧表肝胆），2026-11-21 按歌诀逐宫重写。
+ *    子宫倪师原话「子时开胆」，另说膀胱（语料原文注记）。advice 为通用养生参考
+ *    （自撰，非倪师口径）。
+ *
+ * ⚠️ 倪师真法三层（语料 05-illness「核心方法论(重大修正)」章节，逐条带回放）：
+ *    ① 疾厄宫**星曜**断病「参考可以，真批没有用」；② 真批先看**整个通盘**找最差的
+ *    宫（「两个宫都差，肝肾一起病」）；③ 最差宫的脏腑按本表（歌诀）查。
+ *    消费方 views/health.ts（唯一使用点）。
+ */
+
+/** 歌诀原话出处：倪师《天纪 05》疾厄篇（B 站 BV1KJsLekEfA p3 §11 @00:45:45 逐字可溯；子宫原话「子时开胆」另说膀胱）。值内含倪师锚点与引号——引文守卫（grades 对拍）的提取面。 */
+export const ZI_WU_ORGAN_VERSE =
+	"倪师引《内经》歌诀：「肺寅大卯胃辰宫，脾巳心午小未中，申膀酉肾心包戌，亥焦子胆丑肝通」";
+
 export const PALACE_BRANCH_ORGAN: Record<
 	number,
 	{
@@ -2489,198 +2509,76 @@ export const PALACE_BRANCH_ORGAN: Record<
 	}
 > = {
 	0: {
-		organ: "膀胱 / 泌尿系统",
-		meridian: "足太阳膀胱经",
-		peakTime: "申时 15-17 点膀胱经旺",
-		advice: "子宫为水，主生殖根源；忌长期憋尿与下焦受寒。",
+		organ: "胆（另说膀胱）",
+		meridian: "足少阳胆经",
+		peakTime: "子时 23-1 点胆经旺",
+		advice: "子时前入睡养胆；胆主决断，忌长期熬夜。",
 	},
 	1: {
-		organ: "肝（倪师天纪 05 明示）",
+		organ: "肝",
 		meridian: "足厥阴肝经",
 		peakTime: "丑时 1-3 点肝经旺",
 		advice: "丑时熟睡养肝；怒则伤肝，情绪疏泄为要。",
 	},
 	2: {
-		organ: "胆 / 呼吸道 / 四肢",
-		meridian: "足少阳胆经 / 手太阴肺经",
-		peakTime: "子时 23-1 点胆经旺、寅时 3-5 点肺经旺",
-		advice: "寅宫主动，筋骨呼吸需保养；忌熬夜。",
+		organ: "肺",
+		meridian: "手太阴肺经",
+		peakTime: "寅时 3-5 点肺经旺",
+		advice: "寅时深睡养肺；晨起深呼吸，防呼吸道受寒。",
 	},
 	3: {
-		organ: "肝胆 / 神经系统",
-		meridian: "足厥阴肝经 / 足少阳胆经",
-		peakTime: "丑时肝经旺",
-		advice: "肝木当令，养木之时，宜多食绿色蔬菜。",
+		organ: "大肠",
+		meridian: "手阳明大肠经",
+		peakTime: "卯时 5-7 点大肠经旺",
+		advice: "卯时空腹温水助排便；肠道通畅重在规律。",
 	},
 	4: {
-		organ: "脾胃 / 消化系统",
+		organ: "胃",
 		meridian: "足阳明胃经",
 		peakTime: "辰时 7-9 点胃经旺",
 		advice: "辰时早餐要吃好；脾胃为后天之本。",
 	},
 	5: {
-		organ: "心 / 小肠 / 面部",
-		meridian: "足太阴脾经 / 手太阳小肠经",
+		organ: "脾",
+		meridian: "足太阴脾经",
 		peakTime: "巳时 9-11 点脾经旺",
-		advice: "巳火上炎，护心防躁；小肠分清浊，宜温食。",
+		advice: "巳时健脾运化；思虑过度伤脾，宜饮食规律。",
 	},
 	6: {
-		organ: "心 / 头脑 / 眼目",
+		organ: "心",
 		meridian: "手少阴心经",
 		peakTime: "午时 11-13 点心经旺",
-		advice: "日丽中天之位，护眼护心；午时小憩最养心。",
+		advice: "午时小憩最养心；护心防躁，忌过劳。",
 	},
 	7: {
-		organ: "脾胃 / 四肢肌肉",
-		meridian: "足太阴脾经",
-		peakTime: "巳时脾经旺",
-		advice: "未宫属土，脾主四肢，宜运动排湿。",
+		organ: "小肠",
+		meridian: "手太阳小肠经",
+		peakTime: "未时 13-15 点小肠经旺",
+		advice: "未时小肠分清浊；午餐宜温宜缓，七分饱。",
 	},
 	8: {
-		organ: "肺 / 大肠 / 皮肤",
-		meridian: "手太阴肺经 / 手阳明大肠经",
-		peakTime: "寅时肺经旺、卯时 5-7 点大肠经旺",
-		advice: "卯时空腹温水助排便；防呼吸道与皮肤问题。",
+		organ: "膀胱",
+		meridian: "足太阳膀胱经",
+		peakTime: "申时 15-17 点膀胱经旺",
+		advice: "申时多饮水利膀胱；忌长期憋尿。",
 	},
 	9: {
-		organ: "肾（倪师天纪 05 明示）",
+		organ: "肾",
 		meridian: "足少阴肾经",
 		peakTime: "酉时 17-19 点肾经旺",
-		advice: "酉宫藏肾水，忌熬夜与纵欲；阴虚者当滋阴。",
+		advice: "酉时藏肾精；忌熬夜与纵欲，滋阴为要。",
 	},
 	10: {
-		organ: "脾胃 / 大肠 / 骨骼",
-		meridian: "足太阴脾经 / 手阳明大肠经",
-		peakTime: "辰时胃经旺",
-		advice: "戌宫为土金交界，老年骨质与消化并重。",
+		organ: "心包",
+		meridian: "手厥阴心包经",
+		peakTime: "戌时 19-21 点心包经旺",
+		advice: "戌时心包代心受邪；放松心情，宜散步静养。",
 	},
 	11: {
-		organ: "肾 / 膀胱 / 生殖系统 / 头部",
-		meridian: "足少阴肾经",
-		peakTime: "酉时肾经旺、亥时 21-23 点三焦经旺",
-		advice: "亥宫主水，养肾精；三焦通利则免疫强。",
-	},
-};
-
-/**
- * 辅助：14 主星五行属性（子午流注按星曜映射脏腑）
- *
- * ⚠️ 2026-11-21 退役待重建（评审拍板）：核对表判本表方法论 `fabricated`——倪师疾厄
- *    论断以『宫位（地支）→ 脏腑』为主轴（见 `PALACE_BRANCH_ORGAN`），不按星曜五行；
- *    现役输出（analysis/views/health.ts）已不再消费本表。表与导出**刻意保留**作重建
- *    素材，重建前不回接任何 view。口径史见 corpus/data/annotations.ts 同条目。
- */
-export const ZIWU_LIUZHU: Record<
-	string,
-	{
-		element: string;
-		organ: string;
-		meridian: string;
-		peakTime: string;
-		advice: string | GenderField;
-	}
-> = {
-	紫微: {
-		element: "己土",
-		organ: "脾胃",
-		meridian: "足太阴脾经 / 足阳明胃经",
-		peakTime: "巳时 9-11 点脾经旺、辰时 7-9 点胃经旺",
-		advice: "规律饮食、忌暴饮暴食；情绪压抑易伤脾胃。",
-	},
-	天机: {
-		element: "乙木",
-		organ: "肝胆神经",
-		meridian: "足厥阴肝经 / 足少阳胆经",
-		peakTime: "丑时 1-3 点肝经旺、子时 23-1 点胆经旺",
-		advice: "11 点前睡觉养肝；思虑过多伤肝气，需放松。",
-	},
-	太阳: {
-		element: "丙火",
-		organ: "心脏/眼目",
-		meridian: "手少阴心经 / 小肠经",
-		peakTime: "午时 11-13 点心经旺",
-		advice: "护眼、防高血压；午时小憩 15 分钟最养心。",
-	},
-	武曲: {
-		element: "辛金",
-		organ: "肺/鼻咽",
-		meridian: "手太阴肺经",
-		peakTime: "寅时 3-5 点肺经旺",
-		advice: "深度睡眠时段在寅时，此时不宜劳神；防呼吸道问题。",
-	},
-	天同: {
-		element: "壬水",
-		organ: "肾/膀胱",
-		meridian: "足少阴肾经 / 膀胱经",
-		peakTime: "酉时 17-19 点肾经旺、申时 15-17 点膀胱经旺",
-		advice: "酉时前后多饮温水护肾；晚上少喝水以免肾负担。",
-	},
-	廉贞: {
-		element: "丁火",
-		organ: "心血管/血分",
-		meridian: "手少阴心经 / 三焦经",
+		organ: "三焦",
+		meridian: "手少阳三焦经",
 		peakTime: "亥时 21-23 点三焦经旺",
-		advice: "防血分问题（血压、血糖）；化忌主血光，宜定期体检。",
-	},
-	天府: {
-		element: "戊土",
-		organ: "脾胃/口腔",
-		meridian: "足太阴脾经",
-		peakTime: "巳时脾经旺",
-		advice: "脾胃运化为重；天府守成需适度运动助消化。",
-	},
-	太阴: {
-		element: "癸水",
-		organ: "肾/妇科/生殖系统",
-		meridian: "足少阴肾经",
-		peakTime: "酉时肾经旺",
-		advice: {
-			common: "女命尤其注意妇科保养",
-			male: "；男命防肾阳不足",
-			suffix: "；忌熬夜伤肾。",
-		},
-	},
-	贪狼: {
-		element: "甲木",
-		organ: "肝胆/生殖系统",
-		meridian: "足厥阴肝经 / 胆经",
-		peakTime: "丑时肝经旺",
-		advice: "贪狼为欲望星，节制欲望护肝；防生殖系统疾病。",
-	},
-	巨门: {
-		element: "癸水",
-		organ: "口腔/肠胃/咽喉",
-		meridian: "足太阴脾经 / 胃经",
-		peakTime: "巳时脾经旺、辰时胃经旺",
-		advice: "巨门主口舌，口腔与咽喉最需保养；吃饭要慢。",
-	},
-	天相: {
-		element: "壬水",
-		organ: "膀胱/泌尿系统",
-		meridian: "足太阳膀胱经",
-		peakTime: "申时膀胱经旺",
-		advice: "申时及时小便不憋尿；防泌尿系统结石。",
-	},
-	天梁: {
-		element: "戊土",
-		organ: "脾胃/免疫系统",
-		meridian: "足太阴脾经",
-		peakTime: "巳时脾经旺",
-		advice: "天梁为荫星，免疫力较好，但需防过度耗损；宜清淡饮食。",
-	},
-	七杀: {
-		element: "庚金",
-		organ: "肺/大肠/骨骼",
-		meridian: "手太阴肺经 / 大肠经",
-		peakTime: "寅时肺经旺、卯时 5-7 点大肠经旺",
-		advice: "卯时空腹温水利排便；七杀冲劲大，防筋骨损伤。",
-	},
-	破军: {
-		element: "癸水",
-		organ: "肾/生殖系统/先天体质",
-		meridian: "足少阴肾经",
-		peakTime: "酉时肾经旺",
-		advice: "破军耗体质，尤其先天肾气；忌过劳、晚睡；善用酉时静养。",
+		advice: "亥时三焦通利则百脉调和，宜早睡。",
 	},
 };
 

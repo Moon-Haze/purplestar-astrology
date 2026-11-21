@@ -1,43 +1,63 @@
 /**
- * 五点五、疾厄宫 —— 地支主轴 + 煞忌警示（仅 health 主题出）。
+ * 五点五、疾厄宫 —— 通盘最差宫 + 煞忌警示（仅 health 主题出）。
  *
- * ⚠️ 结构（权重递减）：① **宫位主轴**（`PALACE_BRANCH_ORGAN`，疾厄宫落在哪个地支，
- *    倪师原法）→ ② **警示**（四煞入疾厄 / 三方四正见化忌 / 女命妇科保养）。
+ * ⚠️ 倪师真法三层（语料 05-illness「核心方法论(重大修正)」章节，逐条带回放）：
+ *    ① 疾厄宫**星曜**断病「参考可以，真批没有用」（「七杀在疾厄不是痔疮，这都没有
+ *    用」）——星曜断病内容不进现役输出；② 真批先看**整个通盘**找最差的宫
+ *    （「两个宫都差，肝肾一起病」）；③ 脏腑按《内经》歌诀查——按宫位**地支**，
+ *    不按星曜五行。
  *
- * ⚠️ 曾有的「星曜辅助」（`ZIWU_LIUZHU` 按星曜五行映射脏腑）已于 2026-11-21 从现役
- *    输出退役（评审拍板：核对表判该方法论 fabricated——倪师疾厄以宫位地支为主轴，
- *    不按星曜五行；表与导出保留待重建）。口径史见 docs/code/analysis.md §8.9 与
+ * ⚠️ 曾有的「星曜辅助」（`ZIWU_LIUZHU` 主星五行映射脏腑）2026-11-21 退役后经重审
+ *    **彻底删除**：倪师明说星曜断病无用，主星映射无重建依据（重建时曾查语料，
+ *    依据落在地支歌诀而非星曜）。口径史见 docs/code/analysis.md §8.9 与
  *    corpus/data/annotations.ts 同条目。
  *
- * 完整口径见 docs/code/analysis.md。
- *
  * 产出**结构化条目流**（一源双投影，见 `../items`）：三个逻辑组各成 slot
- * （`extra:倪师疾厄论 · 宫位主轴` / `extra:煞忌警示` / `extra:女命妇科保养`），
- * 警示行无节头但归属煞忌警示组。
+ * （`extra:倪师疾厄论 · 通盘最差宫` / `extra:疾厄宫参考` / `extra:煞忌警示`
+ * / `extra:女命妇科保养`）。
  *
  * @packageDocumentation
  */
 
-import { PALACE_BRANCH_ORGAN } from "../../analysis/data";
-import { SHA_HARD } from "../../corpus/data/patterns";
+import { PALACE_BRANCH_ORGAN, ZI_WU_ORGAN_VERSE } from "../../analysis/data";
+import { SHA_HARD, SHA_NAMES } from "../../corpus/data/patterns";
 import { BRANCHES } from "@/data/ganzhi";
 import type { AnalysisContext } from "../../analysis/context";
+import type { ZiweiChart } from "../../types";
 import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
-const SLOT_MAIN = "extra:倪师疾厄论 · 宫位主轴";
+const SLOT_MAIN = "extra:倪师疾厄论 · 通盘最差宫";
+const SLOT_REF = "extra:疾厄宫参考";
 const SLOT_WARN = "extra:煞忌警示";
 const SLOT_FEMALE = "extra:女命妇科保养";
 
 /**
- * 疾厄宫 · 地支宫位 → 脏腑映射（倪师体系主轴）
+ * 通盘最差宫判定（评审拍板 Q2：按语料示例**归纳**，非原话规则）——化忌落宫与煞星
+ * 聚合者为最凶（语料示例：「这个在子时是不是化忌，最凶的在什么胆，七杀在这边七杀
+ * 是个杀星」）。化忌权重高于单颗煞星；同分并列取前二（倪师「两个宫都差」的双宫
+ * 形态）。通盘无化忌无煞时返回空数组，主轴降级为「未见显著凶宫」。
+ */
+function worstPalaces(chart: ZiweiChart): number[] {
+	const scored = chart.palaces.map(p => {
+		const ji = p.stars.some(s => s.mutagen === "忌") ? 2 : 0;
+		const sha = p.stars.filter(s => SHA_NAMES.includes(s.name)).length;
+		return { branch: p.branch, score: ji + sha };
+	});
+	const max = Math.max(...scored.map(s => s.score));
+	if (max <= 0) {
+		return [];
+	}
+	return scored
+		.filter(s => s.score === max)
+		.slice(0, 2)
+		.map(s => s.branch);
+}
+
+/**
+ * 疾厄宫 · 通盘最差宫主轴（倪师真法）+ 疾厄宫参考（降级级）+ 煞忌警示。
  *
- * ⚠️ 倪师疾厄论断**以疾厄宫落在哪个地支为主轴**，星曜五行为辅 —— 这与「按星曜五行
- *    对应脏腑」的做法不同，后者是传统三合派用法。
- * ⚠️ 本函数是 `../data` 的 `PALACE_BRANCH_ORGAN` 的**唯一使用点**。
- *
- * 《天纪 05》原话条目（化忌在酉 = 肾、火星地空在丑 = 肝、头肩胸 = 妇科子宫 / 右卵巢）
- * 见 docs/code/analysis.md。
+ * ⚠️ 本函数是 `../data` 的 `PALACE_BRANCH_ORGAN` / `ZI_WU_ORGAN_VERSE` 的**唯一使用点**。
  */
 function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, topic, mainPalace, sanFang } = ctx;
@@ -45,23 +65,52 @@ function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 	const items: AnalysisItem[] = [];
 
 	if (topic === "health") {
-		// 主轴：疾厄宫所在地支 → 脏腑（倪师原法）
-		const branchOrgan = PALACE_BRANCH_ORGAN[mainPalace.branch];
-		if (branchOrgan) {
-			items.push(headItem(`**【倪师疾厄论 · 宫位主轴】**`, SLOT_MAIN));
+		// 主轴：通盘最差宫 → 歌诀查脏腑（倪师原法；歌诀常量值内含出处与锚点）
+		items.push(headItem(`**【倪师疾厄论 · 通盘最差宫】**`, SLOT_MAIN));
+		items.push(blankItem(SLOT_MAIN));
+		items.push(
+			contentItem(
+				`疾厄宫星曜断病只作参考——真批先看**整个通盘**找最差的宫，脏腑按歌诀查：${ZI_WU_ORGAN_VERSE}`,
+				SLOT_MAIN
+			)
+		);
+		items.push(
+			contentItem(
+				`判定口径（按语料示例归纳，非原话规则）：化忌落宫与煞星聚合者为最差宫。`,
+				SLOT_MAIN
+			)
+		);
+		const worst = worstPalaces(chart);
+		if (worst.length > 0) {
+			worst.forEach((branch, i) => {
+				const organ = PALACE_BRANCH_ORGAN[branch];
+				const label = worst.length > 1 && i > 0 ? "▸ 并列凶宫" : "▸ 最差宫";
+				items.push(
+					contentItem(
+						`${label}：**${BRANCHES[branch]}宫**——主管脏腑：**${organ.organ}**（${organ.meridian}，${organ.peakTime}）`,
+						SLOT_MAIN
+					)
+				);
+			});
+			if (worst.length > 1) {
+				items.push(contentItem(`两宫同差则脏腑同病——两处脏腑都列入观察。`, SLOT_MAIN));
+			}
+		} else {
+			items.push(contentItem(`▸ 通盘未见化忌与煞星聚合的显著凶宫。`, SLOT_MAIN));
+		}
+		// 疾厄宫参考（降级级：星曜断病只作参考，宫位地支的脏腑映射仍可参考）
+		const refOrgan = PALACE_BRANCH_ORGAN[mainPalace.branch];
+		if (refOrgan) {
 			items.push(blankItem(SLOT_MAIN));
 			items.push(
 				contentItem(
-					`疾厄宫落于 **${BRANCHES[mainPalace.branch]}宫**——倪师《天纪 05》原法：`,
-					SLOT_MAIN
+					`▸ 疾厄宫（**${BRANCHES[mainPalace.branch]}宫**）参考：${refOrgan.organ}——星曜断病只作参考，真批以通盘最差宫为准。`,
+					SLOT_REF
 				)
 			);
-			items.push(contentItem(`▸ 主管脏腑：**${branchOrgan.organ}**`, SLOT_MAIN));
-			items.push(contentItem(`▸ 对应经络：${branchOrgan.meridian}`, SLOT_MAIN));
-			// 子午流注与经络旺时是同一概念（同取 peakTime）—— 曾渲染成两行标签不同、
-			// 内容逐字相同的重复行（评审 N5），收为一行；《天纪》术语口径留「子午流注」。
-			items.push(contentItem(`▸ 子午流注映射：${branchOrgan.peakTime}`, SLOT_MAIN));
-			items.push(contentItem(`▸ 养生要点：${branchOrgan.advice}`, SLOT_MAIN));
+			items.push(
+				contentItem(`▸ 养生要点（通用参考，非倪师口径）：${refOrgan.advice}`, SLOT_REF)
+			);
 			items.push(blankItem(SLOT_MAIN));
 		}
 
@@ -78,14 +127,14 @@ function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 			items.push(blankItem(SLOT_WARN));
 		}
 
-		// 化忌叠加警示
+		// 化忌叠加警示（三方四正见化忌；脏腑取疾厄宫参考口径）
 		const jiInSanFang = sanFang.some(p =>
 			p.stars.some(s => s.mutagen === "忌" && s.type === "major")
 		);
-		if (jiInSanFang && branchOrgan) {
+		if (jiInSanFang && refOrgan) {
 			items.push(
 				contentItem(
-					`⚠️ 三方四正有化忌——倪师提醒：疾厄宫主管的 **${branchOrgan.organ}** 在化忌年份最需重点体检；经络旺时（${branchOrgan.peakTime.split("、")[0]}）应让该脏腑充分休息。`,
+					`⚠️ 三方四正有化忌——疾厄宫参考脏腑（**${refOrgan.organ}**）在化忌年份最需重点体检；旺时（${refOrgan.peakTime.split("、")[0]}）应让该脏腑充分休息。`,
 					SLOT_WARN,
 					{ mutagen: "忌" }
 				)

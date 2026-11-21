@@ -195,4 +195,12 @@ export const NI_GRADES: readonly NiGradeEntry[] = [
 	{ star: "—", field: "TOPIC_SUGGESTIONS.health[2]", quote: "开刀见血光", grade: "traditional" },
 	// L1724「倪师《天纪 06》原话」——带集数出处 → verified。
 	{ star: "—", field: "TOPIC_SUGGESTIONS.move[1]", quote: "半空折翅", grade: "verified" },
+	// ZI_WU_ORGAN_VERSE：倪师《天纪 05》疾厄篇引《内经》歌诀（B 站 BV1KJsLekEfA p3 §11
+	// @00:45:45 逐字可溯）——带秒级回放出处 → verified（2026-11-21 疾厄重建新增）。
+	{
+		star: "—",
+		field: "PALACE_BRANCH_ORGAN.verse",
+		quote: "肺寅大卯胃辰宫，脾巳心午",
+		grade: "verified",
+	},
 ];
