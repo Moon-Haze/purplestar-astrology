@@ -13,7 +13,7 @@
 
 import type { CliContext } from "../args";
 import { parseArgs } from "../args";
-import { DIRECT_CHART_ENV } from "../chart/direct-env";
+import { setCacheBypassAll } from "../chart/chart-cache";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { asserts as classicAsserts } from "@/corpus/selftest-asserts";
@@ -63,10 +63,9 @@ import {
  */
 export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	// 自检全程**强制直排、绕过排盘缓存**：回归要验的是「当前内核排出来的盘」，命中改动前
-	// 写下的条目会让回归拿着旧盘全绿 —— 那比没有回归更坏（假绿）。直排豁免常量单点在
-	// ../chart/direct-env（评审 N2）。
-	// 本行同时覆盖下方 runCli 的子进程（env 随进程继承）；见 docs/code/cli-selftest.md。
-	process.env.ZIWEI_NO_CACHE = DIRECT_CHART_ENV.ZIWEI_NO_CACHE;
+	// 写下的条目会让回归拿着旧盘全绿 —— 那比没有回归更坏（假绿）。旁路走缓存模块的显式
+	// API（取代旧的环境变量注入通道）：本行覆盖全部进程内直调排盘。
+	setCacheBypassAll(true);
 	// harness（Assertion / eq / ok）抽在 ./selftest-kit —— 原先与 classics / synastry
 	// 两个断言组逐字同形的三份本地定义由此归一。
 	const { results, ok } = createHarness();
@@ -81,8 +80,11 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	// 子进程探针只留给文末的冒烟（守「入口 → 解析 → 命令表 → 渲染 + 错误出口」真链路）；
 	// 输出形态断言用进程内直调：子进程约 3.2 秒 vs 直调约 25ms，判据同构
 	//（见 docs/code/cli-selftest.md）。
+	// 子进程是独立进程，模块旁路过不去：排盘命令在 argv 显式携带 --no-cache
+	//（synastry / knowledge 不排盘、不识别该旗标，故只加在 astrology 上）。
 	const runCli = (args: string[]): { code: number; out: string; err: string } => {
-		const r = spawnSync(process.execPath, [resolve(ctx.root, "purple-star.ts"), ...args], {
+		const argv = [...args, ...(args[0] === "astrology" ? ["--no-cache"] : [])];
+		const r = spawnSync(process.execPath, [resolve(ctx.root, "purple-star.ts"), ...argv], {
 			encoding: "utf8",
 		});
 		return { code: r.status ?? -1, out: r.stdout ?? "", err: r.stderr ?? "" };

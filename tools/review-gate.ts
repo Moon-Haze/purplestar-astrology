@@ -31,7 +31,6 @@ import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:f
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEMO_POSITIONAL } from "../scripts/cli/selftest/sample.ts";
-import { DIRECT_CHART_ENV } from "../scripts/cli/chart/direct-env.ts";
 import {
 	MANUAL_MANAGED_PATHS,
 	NOTES_MANAGED_DIRS,
@@ -70,13 +69,31 @@ const FROZEN_SURFACE = [
  * 精确路径与目录前缀两种形态；手写文件（docs/manual/README.md）刻意不在列。
  */
 const GENERATED: readonly ((path: string) => boolean)[] = [
-	...MANUAL_MANAGED_PATHS.map(p => (path: string): boolean => path === p),
-	...NOTES_MANAGED_DIRS.map(d => (path: string): boolean => path.startsWith(`notes/${d}/`)),
-	...NOTES_MANAGED_METHOD_FILES.map(
-		f => (path: string): boolean => path === `notes/60-方法/${f}`
+	...MANUAL_MANAGED_PATHS.map(
+		p =>
+			(path: string): boolean =>
+				path === p
 	),
-	...TIANJI_MANAGED_PATHS.map(p => (path: string): boolean => path === p),
-	...REGISTERED_GENERATED.map(p => (path: string): boolean => path === p),
+	...NOTES_MANAGED_DIRS.map(
+		d =>
+			(path: string): boolean =>
+				path.startsWith(`notes/${d}/`)
+	),
+	...NOTES_MANAGED_METHOD_FILES.map(
+		f =>
+			(path: string): boolean =>
+				path === `notes/60-方法/${f}`
+	),
+	...TIANJI_MANAGED_PATHS.map(
+		p =>
+			(path: string): boolean =>
+				path === p
+	),
+	...REGISTERED_GENERATED.map(
+		p =>
+			(path: string): boolean =>
+				path === p
+	),
 ];
 const isGenerated = (path: string): boolean => GENERATED.some(fn => fn(path));
 
@@ -473,12 +490,13 @@ function snapshot(tag: string, scenarios: readonly Scenario[]): Map<string, stri
 	mkdirSync(dir, { recursive: true });
 	const out = new Map<string, string>();
 	for (const s of scenarios) {
-		const r = spawnSync(process.execPath, ["scripts/purple-star.ts", ...s.args], {
+		// 直排豁免：byte-diff 是「重构不改行为」的验收证据，快照与当次两侧都必须绕过缓存
+		// —— 否则忘递增 CACHE_VERSION 的漂移在这里假绿。旁路走显式旗标（排盘命令 argv 携带
+		// --no-cache；synastry / knowledge 不排盘不带），环境变量注入通道已删除。
+		const argv = [...s.args, ...(s.args[0] === "astrology" ? ["--no-cache"] : [])];
+		const r = spawnSync(process.execPath, ["scripts/purple-star.ts", ...argv], {
 			cwd: SKILL_ROOT,
 			encoding: "utf8",
-			// 直排豁免（评审 N2）：byte-diff 是「重构不改行为」的验收证据，快照与当次两侧
-			// 都必须绕过缓存 —— 否则忘递增 CACHE_VERSION 的漂移在这里假绿。
-			env: { ...process.env, ...DIRECT_CHART_ENV },
 			maxBuffer: 1 << 26,
 		});
 		if (r.status !== 0) {

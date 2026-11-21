@@ -9,8 +9,9 @@
 //      白名单命中总数（比对器活着的证据）、最慢 5 项、失败明细
 //
 // 失败时尾部汇总照常打印并透传退出码 —— 红的时候更需要分层定位。
-// 额外参数：--year <N> 只跑层 1 该年基准（经 ZIWEI_TEST_YEAR 环境变量传给
-// chart.test.ts；其余各层都不读它、照常全跑）；其余参数原样透传给 node --test。
+// 额外参数：--year <N> 只跑层 1 该年基准（两阶段 spawn：非层 1 文件全量 +
+// 层 1 文件经 node --test 原生 --test-name-pattern 按用例名首段年份过滤；
+// 其余各层照常全跑）；其余参数原样透传给 node --test。
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,7 +20,6 @@ import { fileURLToPath } from "node:url";
 
 import { ROOT, ROOT_LABEL } from "./loader.ts";
 import type { TestEventRecord } from "./reporter.ts";
-import { DIRECT_CHART_ENV } from "../../scripts/cli/chart/direct-env.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/lib
 const SKILL_ROOT = resolve(HERE, "../..");
@@ -107,55 +107,6 @@ if (year !== null) {
 }
 console.log(RULE);
 
-// ── 跑：spec → stdout 照旧，聚合事件流 → 临时文件 ──
-const workDir = mkdtempSync(resolve(tmpdir(), "ziwei-test-"));
-const aggFile = resolve(workDir, "events.jsonl");
-const t0 = Date.now();
-const testRun = spawnSync(
-	"node",
-	[
-		"--test",
-		"--test-reporter",
-		"spec",
-		"--test-reporter-destination",
-		"stdout",
-		"--test-reporter",
-		resolve(HERE, "reporter.ts"),
-		"--test-reporter-destination",
-		aggFile,
-		...passthrough,
-		"test/**/*.test.ts",
-	],
-	{
-		stdio: "inherit",
-		cwd: SKILL_ROOT,
-		// ZIWEI_NO_CACHE=1：回归全程绕过排盘缓存。测试里有不少用例会跑 CLI 子进程
-		// （cli.test.ts 等），命中改动前写下的缓存条目就会假绿 —— 回归必须验当前内核。
-		// 豁免常量单点在 scripts/cli/chart/direct-env.ts（评审 N2）。
-		env: {
-			...process.env,
-			ZIWEI_TEST_YEAR: year === null ? "" : String(year),
-			...DIRECT_CHART_ENV,
-		},
-	}
-);
-const wallMs = Date.now() - t0;
-
-// ── 聚合：分层项数 / 耗时 / 白名单命中 / 最慢 / 失败明细 ──
-const records: TestEventRecord[] = existsSync(aggFile)
-	? readFileSync(aggFile, "utf8")
-			.split("\n")
-			.filter(Boolean)
-			.map(l => JSON.parse(l) as TestEventRecord)
-	: [];
-
-// 分层依据 = 测试文件（与 test/README.md 的层定义一一对应）。
-// 项数与层耗时取每个文件的 test:summary（官方口径，多文件并行下依然可靠）；
-// 事件流的 classname / nesting / parentId 在并行下会丢字段，一律不用。
-// ⚠️ `suites` 是该文件**全部顶层 describe 的名字**，用于把套件级的聚合耗时从「最慢 5 项」
-// 里排除掉（一个套件的 duration 是它所有子项之和，不排除就会霸榜）。写漏一个不会报错 ——
-// 症状只是最慢榜里混进一行套件名，而 describe 名只存在于运行时输出里，**没有断言盯得住
-// 这处脱钩**。故改 describe 标题时，顺手改这里；`repo.test.ts` 有一条断言只盯得住 file 字段。
 const LAYERS = [
 	{
 		label: "层 1 排盘对标",
@@ -227,6 +178,7 @@ const LAYERS = [
 			"仓库自洽（登记一致性 / skill 自包含 / 骨架接线）",
 			"解析钩子候选序（boot-hooks）",
 			"注释指针有效性（源码注释的 .md 引用必须存在）",
+			"数据集指纹对账（db/dataset 替换而未重登记即红）",
 		],
 	},
 	{
@@ -238,6 +190,78 @@ const LAYERS = [
 		],
 	},
 ] as const;
+
+// ── 跑：spec → stdout 照旧，聚合事件流 → 临时文件 ──
+const workDir = mkdtempSync(resolve(tmpdir(), "ziwei-test-"));
+const t0 = Date.now();
+const reporterArgs = [
+	"--test-reporter",
+	"spec",
+	"--test-reporter-destination",
+	"stdout",
+	"--test-reporter",
+	resolve(HERE, "reporter.ts"),
+	"--test-reporter-destination",
+] as const;
+// 单次 spawn 即一个聚合事件流文件；--year 两阶段各落一份，聚合时合并 records。
+const statuses: Array<number | null> = [];
+const runNodeTest = (files: string[], namePattern: string | null, aggPath: string) => {
+	const r = spawnSync(
+		"node",
+		[
+			"--test",
+			...(namePattern === null ? [] : ["--test-name-pattern", namePattern]),
+			...reporterArgs,
+			aggPath,
+			...passthrough,
+			...files,
+		],
+		{ stdio: "inherit", cwd: SKILL_ROOT, env: { ...process.env } }
+	);
+	statuses.push(r.status);
+};
+
+const aggFiles: string[] = [];
+if (year === null) {
+	// 默认：单次全量（glob 口径与既往一致）
+	const aggFile = resolve(workDir, "events.jsonl");
+	runNodeTest(["test/**/*.test.ts"], null, aggFile);
+	aggFiles.push(aggFile);
+} else {
+	// --year 两阶段（旗标过滤，零环境变量）：非层 1 文件全量——「其余各层照常全跑」的
+	// 鉴别语义（层 2/3 是层 1 红时的鉴别器）不变；层 1 文件经 node --test 原生的
+	// --test-name-pattern 按用例名首段年份过滤（层 1 用例名首段即出生年）。
+	// 文件清单从 LAYERS 派生（LAYERS ⊇ 全部测试文件由 repo 层断言钉住）。
+	const layer1Files = LAYERS.filter(l => l.label.startsWith("层 1")).map(l => `test/${l.file}`);
+	const otherFiles = [...new Set(LAYERS.map(l => `test/${l.file}`))].filter(
+		f => !layer1Files.includes(f)
+	);
+	const aggMain = resolve(workDir, "events.jsonl");
+	runNodeTest(otherFiles, null, aggMain);
+	aggFiles.push(aggMain);
+	const aggYear = resolve(workDir, "events-year.jsonl");
+	runNodeTest(layer1Files, String(year), aggYear);
+	aggFiles.push(aggYear);
+}
+const wallMs = Date.now() - t0;
+
+// ── 聚合：分层项数 / 耗时 / 白名单命中 / 最慢 / 失败明细 ──
+const records: TestEventRecord[] = aggFiles.flatMap(f =>
+	existsSync(f)
+		? readFileSync(f, "utf8")
+				.split("\n")
+				.filter(Boolean)
+				.map(l => JSON.parse(l) as TestEventRecord)
+		: []
+);
+
+// 分层依据 = 测试文件（与 test/README.md 的层定义一一对应）。
+// 项数与层耗时取每个文件的 test:summary（官方口径，多文件并行下依然可靠）；
+// 事件流的 classname / nesting / parentId 在并行下会丢字段，一律不用。
+// ⚠️ `suites` 是该文件**全部顶层 describe 的名字**，用于把套件级的聚合耗时从「最慢 5 项」
+// 里排除掉（一个套件的 duration 是它所有子项之和，不排除就会霸榜）。写漏一个不会报错 ——
+// 症状只是最慢榜里混进一行套件名，而 describe 名只存在于运行时输出里，**没有断言盯得住
+// 这处脱钩**。故改 describe 标题时，顺手改这里；`repo.test.ts` 有一条断言只盯得住 file 字段。
 const basename = (p: string | null): string => p?.split("/").pop() ?? "";
 const layerOf = (file: string | null): string =>
 	LAYERS.find(l => l.file === basename(file))?.label ?? "其他";
@@ -250,13 +274,21 @@ interface LayerStat {
 }
 const bucket = new Map<string, LayerStat>();
 // 全局 summary（file 为空）是各文件汇总的再合计 —— 记下用于对账，不进分层数字
+// --year 两阶段各有自己的全局 summary：跨阶段累加（每个 file 为空的记录是一段 run 的合计）
 let globalSummary: { total: number; passed: number; failed: number } | null = null;
 for (const r of records) {
 	if (r.type !== "summary" || !r.counts) {
 		continue;
 	}
 	if (!r.file) {
-		globalSummary = r.counts;
+		// 直接赋值而非经闭包——TS 的控制流分析不追踪闭包内写入，内联后对账处的窄化才成立
+		globalSummary = globalSummary
+			? {
+					total: globalSummary.total + r.counts.total,
+					passed: globalSummary.passed + r.counts.passed,
+					failed: globalSummary.failed + r.counts.failed,
+				}
+			: { ...r.counts };
 		continue;
 	}
 	const key = layerOf(r.file);
@@ -346,4 +378,5 @@ if (failed.length) {
 console.log(RULE);
 
 rmSync(workDir, { recursive: true, force: true });
-process.exit(testRun.status ?? 1);
+// 任一阶段失败即失败（status null = 被信号终止，按失败计）
+process.exit(statuses.some(s => (s ?? 1) !== 0) ? 1 : 0);

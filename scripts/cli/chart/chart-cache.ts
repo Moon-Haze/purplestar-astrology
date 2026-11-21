@@ -29,7 +29,7 @@ import type { BirthInfo, ZiweiChart } from "@/types";
  *    里的 `chart` 可能已经与新内核不同形。递增即整批失效，成本远小于「拿错盘」
  *    （见 docs/code/cli-chart.md）。
  */
-export const CACHE_VERSION = 1;
+export const CACHE_VERSION = 2;
 
 /**
  * 用户隔离标签：`u<uid>`（POSIX）或 `n<用户名>`（拿不到 uid 时，如 Windows）。
@@ -80,10 +80,23 @@ export interface CacheEntry {
 
 /** {@link generateChartCached} 的可选参数。 */
 export interface ChartCacheOptions {
-	/** 跳过缓存：不读也不写（`--no-cache` / `ZIWEI_NO_CACHE` 都走这里） */
+	/** 跳过缓存：不读也不写（`--no-cache` 旗标走这里；回归链路的整链旁路走 {@link setCacheBypassAll}） */
 	noCache?: boolean;
 	/** 时钟注入（测试用；缺省即 `new Date()`） */
 	now?: Date;
+}
+
+// ── 整链旁路（显式 API，取代旧的环境变量注入通道）──
+//
+// 回归链路（selftest 入口 / 测试进程）对缓存模块调用本函数一次，进程内后续所有
+// generateChartCached 一律直排——「哪些调用点被豁免」读设定点即知，不再靠环境变量的
+// 不可见继承。子进程是独立进程，模块状态过不去：真子进程探针在 argv 显式携带
+// `--no-cache`（见 selftest 的 runCli 与 cli.test 的 cliReal / CLI_SUBPROCESS 分支）。
+let bypassAll = false;
+
+/** 整链旁路开关：`true` 时本进程内所有缓存读写在单点判定处直排。仅回归链路调用。 */
+export function setCacheBypassAll(v: boolean): void {
+	bypassAll = v;
 }
 
 /**
@@ -225,14 +238,14 @@ function writeEntry(file: string, entry: CacheEntry): void {
  * @returns 命盘：命中缓存时是文件里那份，未命中时是现排的（并落盘供下次复用）
  *
  * @remarks
- * 禁缓存在此**单点**判定（`--no-cache` 与 `ZIWEI_NO_CACHE` 都归一到这里）：selftest 与
- * `npm test` 走进程内排盘，必须强制直排 —— 否则内核改动后回归会命中改动前写下的缓存
- * 文件而**假绿**，那比没有回归更坏。缓存失败一律静默降级为「现排、不缓存」
+ * 禁缓存在此**单点**判定（`--no-cache` 旗标与回归链路的整链旁路 {@link setCacheBypassAll}
+ * 都归一到这里）：selftest 与测试进程必须强制直排 —— 否则内核改动后回归会命中改动前
+ * 写下的缓存文件而**假绿**，那比没有回归更坏。缓存失败一律静默降级为「现排、不缓存」
  * （见 docs/code/cli-chart.md）。
  */
 export function generateChartCached(birth: BirthInfo, opts: ChartCacheOptions = {}): ZiweiChart {
 	const now = opts.now ?? new Date();
-	if (opts.noCache || process.env.ZIWEI_NO_CACHE) {
+	if (opts.noCache || bypassAll) {
 		return generateChart(birth);
 	}
 	const lunarYear = todayLunarYear(now);

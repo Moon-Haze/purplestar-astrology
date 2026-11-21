@@ -22,6 +22,12 @@ import { BRANCHES, chartSignature } from "./lib/compare.ts";
 // 样例表 + dispatch 端口（tools/cli-samples，评审候选 5 / W5 的等价性断言消费）。
 // 放在 loader 之后 import：@/ 钩子由 loader 注册，cli-samples 的静态 @/ 导入才可达。
 const { dispatch } = await load<typeof import("@/cli/host/dispatch")>("@/cli/host/dispatch");
+// 回归进程内直调一律绕过排盘缓存（显式旁路 API，取代旧的环境变量注入通道）——
+// 否则内核改动后命中改动前写下的缓存条目会假绿。真子进程面在 cliReal / CLI_SUBPROCESS
+// 分支的 argv 显式携带 --no-cache（模块状态过不了进程边界）。
+const { setCacheBypassAll } =
+	await load<typeof import("@/cli/chart/chart-cache")>("@/cli/chart/chart-cache");
+setCacheBypassAll(true);
 const { SAMPLES, PORTS } = await import("../tools/cli-samples.ts");
 // 主题数**派生**而非写死：加主题时本断言自动跟上，不必回来改数字。
 const { TOPIC_KEYS } = await load<typeof import("@/analysis/data")>("@/analysis/data");
@@ -126,7 +132,7 @@ async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 
 /** 永远走真子进程（防漂移冒烟用）：进程内路径替代不了它对子进程入口的覆盖。 */
 async function cliReal(args: string[]): Promise<string> {
-	const { stdout } = await execFileAsync("node", [CLI_PATH, "astrology", ...args], {
+	const { stdout } = await execFileAsync("node", [CLI_PATH, "astrology", ...args, "--no-cache"], {
 		cwd: SKILL_ROOT,
 	});
 	return stdout;
@@ -144,7 +150,10 @@ async function cliCmd(sub: string, args: string[]): Promise<string> {
 	if (!process.env.CLI_SUBPROCESS) {
 		return cliCmdInProcess(sub, args);
 	}
-	const { stdout } = await execFileAsync("node", [CLI_PATH, sub, ...args], { cwd: SKILL_ROOT });
+	// 子进程是独立进程，进程内旁路过不去：排盘命令在 argv 显式携带 --no-cache
+	//（synastry / knowledge 不排盘、不识别该旗标）。
+	const argv = [...args, ...(sub === "astrology" ? ["--no-cache"] : [])];
+	const { stdout } = await execFileAsync("node", [CLI_PATH, sub, ...argv], { cwd: SKILL_ROOT });
 	return stdout;
 }
 
@@ -920,12 +929,8 @@ describe("CLI 端到端", () => {
 				) as synastryJson
 		);
 		const pairText = memo(async () => cliCmd("synastry", await argsOf(A, B)));
-		const crossText = memo(async () =>
-			cliCmd("synastry", await argsOf(CROSS_A, CROSS_B))
-		);
-		const emptyText = memo(async () =>
-			cliCmd("synastry", await argsOf(EMPTY_A, B))
-		);
+		const crossText = memo(async () => cliCmd("synastry", await argsOf(CROSS_A, CROSS_B)));
+		const emptyText = memo(async () => cliCmd("synastry", await argsOf(EMPTY_A, B)));
 
 		it("交换 --charts 的两份输入后，两方命盘精确互换", async () => {
 			const d = await pairJson();
@@ -1208,9 +1213,8 @@ describe("CLI 端到端", () => {
 			// 与 tools/cli-samples main() 内的自检同式（双保险同源）：docs/cli-samples.md 是
 			// gitignore 本地物、日常无人重导，覆盖检查不能只住在低频入口 —— 新增参数忘补
 			// 样例时文档会静默缺节，这里让它当场红。
-			const { OPTION_GROUPS } = await load<typeof import("@/cli/args/table")>(
-				"@/cli/args/table"
-			);
+			const { OPTION_GROUPS } =
+				await load<typeof import("@/cli/args/table")>("@/cli/args/table");
 			const coveredParams = new Set<string>();
 			for (const s of SAMPLES) {
 				for (const a of s.args) {
@@ -1241,7 +1245,10 @@ describe("CLI 端到端", () => {
 			];
 			for (const argv of picks) {
 				const direct = await dispatch(argv, PORTS);
-				const sub = spawnSync(process.execPath, [CLI_PATH, ...argv], {
+				// 排盘命令的子进程显式带 --no-cache（直调侧经 dispatch 在旁路态进程内跑，
+				// 子进程模块状态过不去，须自携旗标才可比）——synastry / knowledge 不排盘不带。
+				const subArgv = [...argv, ...(argv[0] === "astrology" ? ["--no-cache"] : [])];
+				const sub = spawnSync(process.execPath, [CLI_PATH, ...subArgv], {
 					encoding: "utf8",
 					cwd: SKILL_ROOT,
 				});

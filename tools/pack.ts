@@ -42,7 +42,6 @@
 
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
 import { spawnSync } from "node:child_process";
-import { DIRECT_CHART_ENV } from "../scripts/cli/chart/direct-env.ts";
 import {
 	mkdirSync,
 	mkdtempSync,
@@ -270,13 +269,13 @@ function verify(zip: Buffer, entries: Entry[]): void {
 			}
 		);
 
+		// selftest 入口自带缓存旁路（cmdSelftest 的 setCacheBypassAll），子进程无需再注入
 		const r = spawnSync(
 			process.execPath,
 			[resolve(skillDir, "scripts", "purple-star.ts"), "selftest"],
 			{
 				cwd: skillDir,
 				encoding: "utf8",
-				env: { ...process.env, ...DIRECT_CHART_ENV },
 			}
 		);
 		const stdout = `${r.stdout ?? ""}`;

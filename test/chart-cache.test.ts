@@ -5,9 +5,9 @@
 // 手工往缓存文件里塞一份「mingZhu 被改成哨兵串」的合法命盘，再调缓存层：
 // 拿到哨兵 = 真的读了文件；拿到现排 = 走了失效路径重排。每个失效维度各测一次。
 //
-// 隔离：每个用例一个 mkdtemp 临时目录（经 ZIWEI_CACHE_DIR 注入），不碰仓库 .cache/；
-// 并在 beforeEach 里摘掉 ZIWEI_NO_CACHE —— npm test 会给全链设上它（防回归假绿），
-// 缓存层自己的用例必须能让缓存真的生效，故此处显式接管该变量。
+// 隔离：每个用例一个 mkdtemp 临时目录（经 ZIWEI_CACHE_DIR 注入），不碰仓库 .cache/。
+// 缓存层自己的用例要让缓存真的生效——回归链路的整链旁路（setCacheBypassAll）在
+// 本文件只在专门用例里开启并即时关闭，其余用例保持默认缓存态。
 import { afterEach, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
@@ -46,7 +46,6 @@ const FIXED = new Date(2026, 5, 24, 12, 0, 0);
 const SENTINEL = "__CACHE_SENTINEL__";
 
 let dir: string;
-let savedNoCache: string | undefined;
 
 /** 把一份合法缓存文件写到 `file`；`patch` 可覆盖任一 meta 字段（造失效场景用）。 */
 function writeCacheFile(
@@ -88,17 +87,9 @@ const asJson = (v: unknown): unknown => JSON.parse(JSON.stringify(v));
 beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), "ziwei-cache-"));
 	process.env.ZIWEI_CACHE_DIR = dir;
-	// 摘掉 npm test 设的禁缓存开关：缓存层自己的用例要让缓存生效
-	savedNoCache = process.env.ZIWEI_NO_CACHE;
-	delete process.env.ZIWEI_NO_CACHE;
 });
 
 afterEach(() => {
-	if (savedNoCache === undefined) {
-		delete process.env.ZIWEI_NO_CACHE;
-	} else {
-		process.env.ZIWEI_NO_CACHE = savedNoCache;
-	}
 	delete process.env.ZIWEI_CACHE_DIR;
 	rmSync(dir, { recursive: true, force: true });
 });
@@ -201,14 +192,20 @@ describe("chart-cache · 开关与时钟", () => {
 		assert.equal(entry.chart.mingZhu, SENTINEL, "--no-cache 不得覆写缓存文件");
 	});
 
-	it("ZIWEI_NO_CACHE 环境变量同样禁缓存（selftest / npm test 走这条）", () => {
+	it("整链旁路 API：setCacheBypassAll(true) 后不读也不写（selftest / 测试入口走这条）", () => {
 		writeCacheFile(cacheFile(), sentinelChart());
-		process.env.ZIWEI_NO_CACHE = "1";
+		const before = readdirSync(dir).sort();
+		cacheNs.setCacheBypassAll(true);
 		try {
 			const got = generateChartCached(SAMPLE, { now: FIXED });
-			assert.notEqual(got.mingZhu, SENTINEL, "环境变量须能禁掉缓存");
+			assert.notEqual(got.mingZhu, SENTINEL, "整链旁路须能禁掉缓存");
+			assert.deepEqual(
+				readdirSync(dir).sort(),
+				before,
+				"旁路下不得新增缓存文件（目录内容与旁路前一致）"
+			);
 		} finally {
-			delete process.env.ZIWEI_NO_CACHE;
+			cacheNs.setCacheBypassAll(false);
 		}
 	});
 
@@ -265,16 +262,15 @@ describe("chart-cache · CLI 端到端", () => {
 		"--json",
 	];
 
-	/** 子进程 env：清掉 npm test 的禁缓存开关（空串 = 不生效），指向本用例的临时目录。 */
-	const env = (noCache: string) => ({
+	/** 子进程 env：指向本用例的临时目录。 */
+	const env = () => ({
 		...process.env,
 		ZIWEI_CACHE_DIR: dir,
-		ZIWEI_NO_CACHE: noCache,
 	});
 
 	it("两次 CLI 调用输出逐字节一致，且只落一个缓存条目", async () => {
-		const a = await execFileAsync(process.execPath, [CLI, ...ARGS], { env: env("") });
-		const b = await execFileAsync(process.execPath, [CLI, ...ARGS], { env: env("") });
+		const a = await execFileAsync(process.execPath, [CLI, ...ARGS], { env: env() });
+		const b = await execFileAsync(process.execPath, [CLI, ...ARGS], { env: env() });
 		assert.equal(a.stdout, b.stdout, "命中缓存的输出须与冷排逐字节一致");
 		// 不断言键名：CLI 的出生信息经真太阳时换算（杭州经度校正 + 07:45 → 辰时），
 		// 与本文件的 SAMPLE 不是同一份，键自然不同。这里只守「落了且只落一个」。
@@ -288,15 +284,9 @@ describe("chart-cache · CLI 端到端", () => {
 
 	it("--no-cache 强排：不读也不写（子进程清空缓存目录后仍无文件）", async () => {
 		const out = await execFileAsync(process.execPath, [CLI, ...ARGS, "--no-cache"], {
-			env: env(""),
+			env: env(),
 		});
 		assert.ok(out.stdout.length > 0, "--no-cache 仍须正常输出");
 		assert.deepEqual(readdirSync(dir), [], "--no-cache 不得写缓存");
-	});
-
-	it("ZIWEI_NO_CACHE=1 的子进程不写缓存（回归链路保证）", async () => {
-		const out = await execFileAsync(process.execPath, [CLI, ...ARGS], { env: env("1") });
-		assert.ok(out.stdout.length > 0);
-		assert.deepEqual(readdirSync(dir), [], "禁缓存时不得写盘");
 	});
 });
