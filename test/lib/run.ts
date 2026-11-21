@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { retiredEnvVars } from "../../scripts/boot-hooks.ts";
 import { ROOT, ROOT_LABEL } from "./loader.ts";
 import type { TestEventRecord } from "./reporter.ts";
 
@@ -42,6 +43,18 @@ for (let i = 0; i < argv.length; i++) {
 	} else {
 		passthrough.push(argv[i]);
 	}
+}
+
+// ── 已退役环境变量守卫（失败可见性）──
+// 与 purple-star.ts 入口同款（清单单点在 boot-hooks）：外壳残留的退役变量会被
+// {...process.env} 带进全部测试子进程——读取点虽已删除，仍当场报错而非放行。
+const retiredVars = retiredEnvVars();
+if (retiredVars.length > 0) {
+	console.error(
+		`已退役环境变量：${retiredVars.join("、")}——其读取点已删除，不再有任何作用。` +
+			"请从运行环境中移除后重试（缓存旁路与年份过滤已改走显式旗标）。"
+	);
+	process.exit(2);
 }
 
 // ── 环境块的取数（各处失败都兜底成 "?" / "n/a"，环境块永远不该把测试跑挂） ──

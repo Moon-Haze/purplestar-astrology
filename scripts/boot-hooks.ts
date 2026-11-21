@@ -33,6 +33,20 @@ import { resolve } from "node:path";
  * 刻意用判别联合而非 `root: string | null` 一把抓：命中分支里 `label` 必然非空，
  * 调用点解构后无须非空断言即可拿到收窄后的 `string`。
  */
+// ── 已退役环境变量（回归链路注入通道删除的守卫清单）──
+//
+// 回归链路的环境变量注入已全部删除（ZIWEI_NO_CACHE：缓存旁路改走 chart-cache 的
+// setCacheBypassAll 显式 API；ZIWEI_TEST_YEAR：--year 过滤改走 run.ts 两阶段 spawn 的
+// --test-name-pattern 旗标）。外壳残留的退役变量会被 {...process.env} 静默携带进整条
+// 进程树——按「不静默忽略无效输入」的纪律，两个回归入口（purple-star / run.ts）用
+// retiredEnvVars() 探测后当场报错，而不是放行。
+export const RETIRED_ENV_VARS = ["ZIWEI_NO_CACHE", "ZIWEI_TEST_YEAR"] as const;
+
+/** 返回当前环境中实际存在（值非 undefined）的已退役变量名。 */
+export function retiredEnvVars(): string[] {
+	return RETIRED_ENV_VARS.filter(k => process.env[k] !== undefined);
+}
+
 export interface RootFound {
 	root: string;
 	label: string;

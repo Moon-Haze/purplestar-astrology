@@ -24,7 +24,13 @@ import { dirname, resolve } from "node:path";
 //    用的是带 `.ts` 扩展名的说明符，靠 Node 原生类型擦除即可加载，**不需要解析钩子**。
 //    铁律的实质不是「禁止静态 import」，而是「禁止在钩子注册前触发 `.ts` 解析」——
 //    `cli/selftest/index.ts` 有一条断言盯着 boot-hooks.ts 的 import 全是 `node:` 前缀。
-import { installHooks, loadFailureHint, makeLoader, pickRoot } from "./boot-hooks.ts";
+import {
+	installHooks,
+	loadFailureHint,
+	makeLoader,
+	pickRoot,
+	retiredEnvVars,
+} from "./boot-hooks.ts";
 
 // ── 类型层：`import type` 与 `typeof import(...)` 在运行时被**完全擦除**，不产生任何静态依赖 ──
 // 这是本文件能同时「自举注册 TS 钩子」与「拿到内核/子模块类型」的关键：ESM 的静态 import
@@ -243,6 +249,16 @@ async function loadCore() {
  * dispatch.ts，本函数不重复实现它们。
  */
 async function main() {
+	// 已退役环境变量守卫（失败可见性）：读取点已删除，外壳残留只会被静默携带——
+	// 当场报错而非放行。清单与探测函数单点在 boot-hooks（本文件与 run.ts 共用）。
+	const retired = retiredEnvVars();
+	if (retired.length > 0) {
+		console.error(
+			`已退役环境变量：${retired.join("、")}——其读取点已删除，不再有任何作用。` +
+				"请从运行环境中移除后重试（缓存旁路与年份过滤已改走显式旗标）。"
+		);
+		process.exit(2);
+	}
 	const argv = process.argv.slice(2);
 	const { dispatch, formatError } = await load<DispatchModule>("@/cli/host/dispatch");
 	const result = await dispatch(argv, {

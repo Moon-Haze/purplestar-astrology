@@ -322,6 +322,25 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 			`仓库态 selftest 出现跳过项（应要么移除断言对仓库级文档的依赖，要么该断言本不该跳过）：\n${skippedLines.join("\n")}`
 		);
 	});
+
+	it("退役环境变量在入口当场报错（失败可见性）", () => {
+		// 外壳残留的退役变量会被 {...process.env} 静默携带——入口（purple-star / run.ts）
+		// 对其当场拒收而非放行（spec：回归链路显式禁缓存「退役变量当场报错」）。
+		const r = spawnSync(
+			process.execPath,
+			[resolve(SKILL_ROOT, "scripts", "purple-star.ts"), "selftest"],
+			{
+				encoding: "utf8",
+				env: { ...process.env, ZIWEI_NO_CACHE: "1" },
+			}
+		);
+		assert.equal(r.status, 2, `退役变量注入应使入口退出码为 2，实际 ${r.status}`);
+		assert.match(
+			r.stderr ?? "",
+			/已退役环境变量.*ZIWEI_NO_CACHE/,
+			"报错须点名退役变量并给移除指引"
+		);
+	});
 });
 
 // ── 四、解析钩子的候选序 ──
