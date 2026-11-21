@@ -113,8 +113,10 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 >
 > 提为具名纯函数是为了让契约**一处生产、一处消费、一处对拍** —— 键名不再散落在
 > 分发函数中段，selftest 可以进程内直调本函数、把产物喂给消费方校验（原先是子进程
-> 端到端才能测的形状）。顶层键即输出契约：chart / patterns / mingGongSummary /
-> nativeSiHua / liuNianSiHua / liuYueSiHua / liuNianPalace / xiaoXian / lateZi / basis。
+> 端到端才能测的形状）。顶层键即输出契约（十三个键恒定，未配置的运限层为 `null`）：
+> chart / patterns / mingGongSummary / nativeSiHua / liuNianSiHua / liuYueSiHua /
+> daXianSiHua / liuRiSiHua / liuShiSiHua / liuNianPalace / xiaoXian / lateZi / basis
+> （2026-11-21 补齐——原清单漏运限层三键；顶层键以 buildAnalyzeJson 序列化对象为准）。
 
 `basis` 键（⚠️ 冻结契约）：
 

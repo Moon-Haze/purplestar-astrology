@@ -17,6 +17,26 @@ import type { Mutagen, ZiweiChart } from "./types";
 import { SI_HUA_TABLE } from "@/data/sihua";
 import { STEMS } from "@/data/ganzhi";
 
+/**
+ * 六层四化函数族的**同形收尾三元组**：`{ stemIndex, stemName, transforms }`。
+ *
+ * @remarks
+ * 六层（生年 / 流年 / 流月 / 大限宫干 / 流日 / 流时）拿到各自的 stemIndex 后，收尾都是
+ * 同一形态——评审 S3 把这份样板收成单点；各层函数保留自己的取干逻辑与返回类型标注，
+ * 契约形状（kernel-contract 的签名钉面）不变。
+ */
+function mutagenOf(stemIndex: number): {
+	stemIndex: number;
+	stemName: string;
+	transforms: Record<Mutagen, string>;
+} {
+	return {
+		stemIndex,
+		stemName: STEMS[stemIndex] ?? "",
+		transforms: getMutagenByStem(stemIndex),
+	};
+}
+
 // ─── 1) 由天干索引取四化四星 ───────────────────────────────────
 /**
  * 天干索引 → { 禄, 权, 科, 忌 } 对应星名。
@@ -57,11 +77,7 @@ export function getNativeMutagen(chart: ZiweiChart): {
 	transforms: Record<Mutagen, string>;
 } {
 	const stemIndex = chart.lunarInfo.yearStem;
-	return {
-		stemIndex,
-		stemName: STEMS[stemIndex] ?? "",
-		transforms: getMutagenByStem(stemIndex),
-	};
+	return mutagenOf(stemIndex);
 }
 
 // ─── 2) 公历年 → 年柱天干索引 ──────────────────────────────────
@@ -100,11 +116,7 @@ export function getYearlyMutagen(year: number): {
 	transforms: Record<Mutagen, string>;
 } {
 	const stemIndex = getYearStemIndex(year);
-	return {
-		stemIndex,
-		stemName: STEMS[stemIndex] ?? "",
-		transforms: getMutagenByStem(stemIndex),
-	};
+	return mutagenOf(stemIndex);
 }
 
 // ─── 4) 流月四化（月柱天干，由年干 + 月序推） ───────────────
@@ -163,11 +175,7 @@ export function getMonthlyMutagen(
 	transforms: Record<Mutagen, string>;
 } {
 	const stemIndex = getMonthlyStemIndex(yearStem, month);
-	return {
-		stemIndex,
-		stemName: STEMS[stemIndex] ?? "",
-		transforms: getMutagenByStem(stemIndex),
-	};
+	return mutagenOf(stemIndex);
 }
 
 // ─── 5) 大限四化（大限宫干，文墨排盘展示口径） ───────────────
@@ -201,11 +209,7 @@ export function getDaXianMutagen(
 		return null;
 	}
 	const stemIndex = palace.stem;
-	return {
-		stemIndex,
-		stemName: STEMS[stemIndex] ?? "",
-		transforms: getMutagenByStem(stemIndex),
-	};
+	return mutagenOf(stemIndex);
 }
 
 // ─── 6) 流日四化（农历日柱天干） ─────────────────────────────
@@ -261,11 +265,7 @@ export function getDailyMutagen(
 	if (stemIndex === null) {
 		return null;
 	}
-	return {
-		stemIndex,
-		stemName: STEMS[stemIndex] ?? "",
-		transforms: getMutagenByStem(stemIndex),
-	};
+	return mutagenOf(stemIndex);
 }
 
 // ─── 7) 流时四化（五鼠遁：日干起子时天干） ───────────────────
@@ -320,11 +320,7 @@ export function getHourlyMutagen(
 	transforms: Record<Mutagen, string>;
 } {
 	const stemIndex = getHourlyStemIndex(dayStemIndex, hourBranch);
-	return {
-		stemIndex,
-		stemName: STEMS[stemIndex] ?? "",
-		transforms: getMutagenByStem(stemIndex),
-	};
+	return mutagenOf(stemIndex);
 }
 
 // ─── 8) 闰月流月的月序换算（split 口径） ─────────────────────

@@ -45,6 +45,10 @@ function decodeKnowledgeQuery(args: CliArgs, source: string): KnowledgeQuery {
 	if (typeof args.book === "boolean") {
 		throw new Error("--book 需要一个册名（如 --book 01-stars）。");
 	}
+	// --topic 在此**硬拒收**是刻意的迁移礼遇，不是归属校验的双标（评审 S2 如实标注）：
+	// 它曾是 knowledge（oracle 域）自己的参数，旧命令行带着它来应得到指路而非静默吞；
+	// 其余从未属于本命令的 astrology 旗标（--pattern 等）按归属投影决策静默收下。
+	// 若未来再有「曾属本命令」的旗标退役，照此例各自硬拒收。
 	if (args.topic !== undefined) {
 		throw new Error(
 			"--topic 是 astrology 的主题论断参数；knowledge 检索用 --search 或直接写位置参数，--source 选域。"

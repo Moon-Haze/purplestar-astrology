@@ -76,9 +76,9 @@ function chartHeader(title: string, info: BirthInfo, note: string): string {
  *
  * @remarks
  * 提为具名纯函数是为了让契约**一处生产、一处消费、一处对拍** —— selftest 可进程内直调
- * 本函数、把产物喂给消费方校验。顶层键即输出契约：chart / patterns / mingGongSummary /
- * nativeSiHua / liuNianSiHua / liuYueSiHua / liuNianPalace / xiaoXian / lateZi / basis
- * （键集与 basis 冻结契约见 docs/code/cli-commands.md）。
+ * 本函数、把产物喂给消费方校验。顶层键以**本函数序列化对象为准**（十三个键恒定，未配置
+ * 的运限层为 null）——键集冻结面与逐键语义见 docs/code/cli-commands.md，此处不复述清单
+ * （评审 S1：手抄清单曾漏 daXianSiHua / liuRiSiHua / liuShiSiHua 三键，实现漂移无红灯）。
  */
 export function buildAnalyzeJson(input: {
 	chart: ZiweiChart;
