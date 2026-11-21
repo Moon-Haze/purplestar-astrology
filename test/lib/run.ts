@@ -162,6 +162,11 @@ const LAYERS = [
 		file: "chart.test.ts",
 		suites: ["排盘对标（基准：iztro 2.5.8 样本）"],
 	},
+	{
+		label: "层 1 排盘对标",
+		file: "json-contract.test.ts",
+		suites: ["JSON 契约语料级回归"],
+	},
 	{ label: "层 2 CLI 端到端", file: "cli.test.ts", suites: ["CLI 端到端"] },
 	{
 		label: "层 2 CLI 端到端",

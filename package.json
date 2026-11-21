@@ -7,6 +7,8 @@
 	"scripts": {
 		"test": "node test/lib/run.ts",
 		"test:corpus": "tsx test/tools/full-corpus.ts",
+		"test:midcorpus": "tsx test/tools/mid-corpus.ts",
+		"brightness:census": "tsx test/tools/brightness-census.ts",
 		"query": "tsx tools/db/query.ts",
 		"build:db": "tsx tools/db/build-duckdb.ts",
 		"pack": "tsx tools/pack.ts",
@@ -23,7 +25,7 @@
 		"format": "prettier --write scripts/ tools/ test/"
 	},
 	"dependencies": {
-		"iztro": "2.6.1",
+		"iztro": "2.6.5",
 		"lunar-typescript": "1.8.6"
 	},
 	"devDependencies": {
