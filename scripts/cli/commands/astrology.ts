@@ -41,12 +41,7 @@ import {
 } from "./fortune";
 import { generateChartCached } from "../chart/chart-cache";
 import { lateZiCounterChart } from "../chart/late-zi";
-import {
-	parseMonthlyArg,
-	parseYearlyArg,
-	prepareAstrologyContext,
-	type AstrologyContext,
-} from "./astrology-context";
+import { prepareAstrologyContext, type AstrologyContext } from "./astrology-context";
 import { detectPatterns } from "@/patterns";
 import { getMingGongSummary } from "@/analysis/soul-summary";
 import { buildMutagenChain } from "@/mutagen";
@@ -467,8 +462,8 @@ export function cmdAstrology(args: CliArgs) {
 		}
 		const text = getTopicAnalysis(chart, topic, {
 			view,
-			liunianYear: parseYearlyArg(args),
-			liuyueMonth: parseMonthlyArg(args) ?? undefined,
+			liunianYear: liuNianYear,
+			liuyueMonth: liuYueMonth ?? undefined,
 		});
 		return [
 			chartHeader(`【主题论断 · ${TOPIC_LABEL[topic]}】`, info, basis.note),

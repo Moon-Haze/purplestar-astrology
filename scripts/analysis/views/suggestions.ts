@@ -14,7 +14,7 @@
 
 import { TOPIC_LABEL } from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
-import { buildTopicSuggestions } from "../../analysis/suggestions";
+import { buildTopicSuggestions, suggestionLine } from "../../analysis/suggestions";
 import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
@@ -28,14 +28,7 @@ function renderSuggestionsItems(ctx: AnalysisContext): AnalysisItem[] {
 	items.push(blankItem("suggestions"));
 
 	for (const s of buildTopicSuggestions(ctx)) {
-		items.push(
-			contentItem(
-				s.basis === "无命中信号"
-					? `→ ${s.text}（本盘无此主题的直接信号，此为通用收束）`
-					: `→ ${s.text}`,
-				"suggestions"
-			)
-		);
+		items.push(contentItem(suggestionLine(s), "suggestions"));
 	}
 	items.push(blankItem("suggestions"));
 	items.push(headItem(`**【继续深度追问】**`, "suggestions"));

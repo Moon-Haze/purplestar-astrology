@@ -12,6 +12,10 @@
  */
 
 import type { ZiweiChart } from "../types";
+
+/** 童限未起运的占位行——`getDecadalSection` 与 `getTopicReport` 的未起运分支同句（单点收口，评审候选 6 附带项）。 */
+const CHILD_LIMIT_NOTE =
+	"（尚未起运 —— 虚岁小于五行局数时不入大限，按命宫论，见 SKILL「童限」口径。）";
 import {
 	STAR_BRIEF,
 	TOPIC_LABEL,
@@ -22,7 +26,7 @@ import {
 import { makeContext } from "../analysis/context";
 import { buildOverviewMaterial } from "../analysis/overview-material";
 import { descPalaceStars } from "../analysis/palace-query";
-import { buildTopicSuggestions } from "../analysis/suggestions";
+import { buildTopicSuggestions, suggestionLine } from "../analysis/suggestions";
 import { BRANCHES } from "@/data/ganzhi";
 import { renderDecadal } from "../analysis/views/decadal";
 import { renderHealth } from "../analysis/views/health";
@@ -163,7 +167,7 @@ export function getDecadalSection(chart: ZiweiChart): string {
 	}
 	const decadal = renderDecadal(ctx);
 	if (decadal.length === 0) {
-		return "（尚未起运 —— 虚岁小于五行局数时不入大限，按命宫论，见 SKILL「童限」口径。）";
+		return CHILD_LIMIT_NOTE;
 	}
 	return asMarkdownBlock(decadal).join("\n").trim();
 }
@@ -290,9 +294,7 @@ export function getTopicReport(
 		if (decadal.length > 0) {
 			lines.push(...asMarkdownBlock(decadal));
 		} else {
-			lines.push(
-				"（尚未起运 —— 虚岁小于五行局数时不入大限，按命宫论，见 SKILL「童限」口径。）"
-			);
+			lines.push(CHILD_LIMIT_NOTE);
 		}
 	}
 
@@ -358,11 +360,7 @@ export function getTopicReport(
 	lines.push("### 综合建议");
 	lines.push("");
 	for (const s of buildTopicSuggestions(ctx)) {
-		lines.push(
-			s.basis === "无命中信号"
-				? `→ ${s.text}（本盘无此主题的直接信号，此为通用收束）`
-				: `→ ${s.text}`
-		);
+		lines.push(suggestionLine(s));
 	}
 	lines.push("");
 

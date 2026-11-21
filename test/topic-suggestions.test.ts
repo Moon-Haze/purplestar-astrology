@@ -77,21 +77,22 @@ describe("综合建议按盘推算", () => {
 	it("两端同源：--topic 与 --report 的建议行集合一致", () => {
 		const chart = generateChart(bi.buildBirthInfo(argsMod.parseArgs(MALE, "astrology")).info);
 		const report = getTopicReport(chart, "wealth", { omitDecadal: true });
-		const reportLines = (report.match(/^→ .+$/gm) ?? []).map(l =>
-			l.replace(/（本盘无此主题的直接信号，此为通用收束）$/, "")
-		);
+		const reportLines = report.match(/^→ .+$/gm) ?? [];
 		const ctx = makeContext(chart, "wealth", {});
 		assert.ok(ctx);
-		const viewLines = renderSuggestions(ctx)
-			.filter(l => l.startsWith("→ "))
-			.map(l => l.replace(/（本盘无此主题的直接信号，此为通用收束）$/, ""));
+		const viewLines = renderSuggestions(ctx).filter(l => l.startsWith("→ "));
+		// 成文规则已收进属主 suggestionLine（评审候选 6）——两端行含括注逐字一致，
+		// 旧版比对比前还需 strip 正则剥括注（第三份手抄拷贝，已随收口湮灭）。
 		assert.deepEqual(reportLines, viewLines, "两端建议行应一致（仅版式差异）");
 	});
 
 	it("反向注入：三方内唯一的本命四化由辅星承载时，按「本命四化」出句而不降级", () => {
 		// 1949-06-15（己干，文曲化忌落财帛宫）：财帛主题的三方四正内**只有**这一条四化，
 		// 且它由辅星承载 —— 口径若收紧到只主星，这里会静默降级成「无命中信号」。
-		const ctx = chartCtx(["--date", "1949-06-15", "--time", "10:00", "--gender", "male"], "wealth");
+		const ctx = chartCtx(
+			["--date", "1949-06-15", "--time", "10:00", "--gender", "male"],
+			"wealth"
+		);
 		assert.ok(ctx, "上下文应可建立");
 		const softOnly = ctx.mutagenInSanFang.every(
 			m =>
@@ -108,10 +109,7 @@ describe("综合建议按盘推算", () => {
 			hua.some(l => l.text.includes("文曲")),
 			`建议句应提及该辅星，实得：${hua.map(l => l.text).join(" / ")}`
 		);
-		assert.ok(
-			!lines.some(l => l.basis === "无命中信号"),
-			"有信号时不得降级为通用收束句"
-		);
+		assert.ok(!lines.some(l => l.basis === "无命中信号"), "有信号时不得降级为通用收束句");
 	});
 
 	it("槽位无残留：渲染输出不含未填充的模板槽", () => {

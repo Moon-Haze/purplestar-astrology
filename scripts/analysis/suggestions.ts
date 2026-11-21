@@ -26,6 +26,16 @@ export interface SuggestionLine {
 	basis: "主星亮度" | "本命四化" | "当前大限" | "无命中信号";
 }
 
+/**
+ * 建议行成文单点：`basis` → 括注的投影规则（评审候选 6——此前逐字双写在 `--report` 与
+ * `views/suggestions.ts` 两个编排器，改措辞漏一处即两侧漂移）。两个编排器只拼各自的版式头。
+ */
+export function suggestionLine(s: SuggestionLine): string {
+	return s.basis === "无命中信号"
+		? `→ ${s.text}（本盘无此主题的直接信号，此为通用收束）`
+		: `→ ${s.text}`;
+}
+
 /** 槽位填充：`{star}` `{palace}` `{dxPalace}` `{huaStar}` `{huaPalace}`；未知槽位保持原样（可断言兜底）。 */
 function fill(text: string, slots: Record<string, string>): string {
 	return text.replace(/\{(\w+)\}/g, (_, k: string) => slots[k] ?? `{${k}}`);
@@ -72,9 +82,7 @@ export function buildTopicSuggestions(ctx: AnalysisContext): SuggestionLine[] {
 			// ⚠️ `m.mutagen` 是中文四化字（禄 / 权 / 科 / 忌），模板 `kind` 是 lu / ji ——
 			//    两侧不同形，必须过 `SIHUA_CHAR_TO_KEY`；早年直接 `m.mutagen === t.kind` 恒假，
 			//    「本命四化」槽**从未命中过**（主星、辅星都一样），本行即该缺陷的修复点。
-			const hit = ctx.mutagenInSanFang.find(
-				m => SIHUA_CHAR_TO_KEY[m.mutagen] === t.kind
-			);
+			const hit = ctx.mutagenInSanFang.find(m => SIHUA_CHAR_TO_KEY[m.mutagen] === t.kind);
 			if (hit) {
 				out.push({
 					text: fill(t.text, {
