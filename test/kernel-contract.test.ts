@@ -79,21 +79,14 @@ describe("内核对外契约（冻结 @ 2026-10-12）", () => {
 			isFn(wenmo.wenmoStarBrightness),
 			"wenmo-brightness.wenmoStarBrightness 必须在契约面"
 		);
-		assert.ok(
-			isFn(wenmo.getBrightnessSchool),
-			"wenmo-brightness.getBrightnessSchool 必须在契约面"
-		);
-		assert.ok(
-			isFn(wenmo.setBrightnessSchool),
-			"wenmo-brightness.setBrightnessSchool 必须在契约面"
-		);
 		assert.equal(
 			wenmo.wenmoStarBrightness.length,
 			2,
 			"wenmoStarBrightness 签名应为 (starName, branchIdx)"
 		);
-		assert.equal(wenmo.setBrightnessSchool.length, 1, "setBrightnessSchool 签名应为 (school)");
-		assert.equal(wenmo.getBrightnessSchool.length, 0, "getBrightnessSchool 签名应为 ()");
+		// 2026-11-21（change 2026-11-21-brightness-knob-retire）：setBrightnessSchool /
+		// getBrightnessSchool 已退役 —— 零消费旋钮是假想 seam 的机制半边，契约面随
+		// 显式变更收窄（spec extensibility「内核无运行时流派旋钮」）。
 	});
 
 	it("绊线字段运行时恒为空 —— 体系立场（倪师三合派）不可回填", () => {

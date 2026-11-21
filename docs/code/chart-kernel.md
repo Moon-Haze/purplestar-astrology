@@ -38,7 +38,9 @@
 > - 宫位关系查询：`oppositeBranch` / `surroundBranches` / `palaceAtBranch` / `mustPalaceAtBranch`（palace-relations.ts）
 > - 四化查询：`getYearStemIndex` / `getMutagenByStem` / `getYearlyMutagen` / `getMonthlyMutagen` /
 >   `getDaXianMutagen` / `getDailyMutagen` / `getHourlyMutagen`（mutagen.ts）
-> - 亮度查询：`wenmoStarBrightness(starName, branchIdx)` / `getBrightnessSchool` / `setBrightnessSchool`（wenmo-brightness.ts）
+> - 亮度查询：`wenmoStarBrightness(starName, branchIdx, school?)`（wenmo-brightness.ts；
+>   2026-11-21 旋钮三件套 `currentSchool` / set / get 已退役 —— change
+>   `2026-11-21-brightness-knob-retire`，缺省流派 XD2 为内核常量）
 >
 > ⚠️ 体系立场（绊线，禁止回填）：本契约的类型仍保留飞星派遗留字段
 > （`Palace.selfMutagen`、`Decadal.mutagen` 等），但运行时**必须恒为 undefined**——
@@ -526,14 +528,12 @@ astro.config({ yearDivide: "normal" });
 > **XD2（现代修订二）** —— 文墨 APP 默认亮度流派即它（用户实证 + 真盘全 12 宫 27/27）。
 > 上游注释里的「default = 全书派」是被 XD2 结论推翻的滞后说法，不要采信。
 
-### 5.6 ⚠️ 状态位置与自检调用点
+### 5.6 ⚠️ 自检调用点
 
-`currentSchool`（模块级单例，默认 XD2）：
-
-> 与上游一致是**模块级单例**：排盘是同步的，进程内不存在并发覆写窗口。
-> CLI 不暴露切换参数 —— 本变量只服务测试（切流派对拍）与未来可选的流派开关。
->
-> ⚠️ 本状态**留在本模块而非下沉数据层**：它是可变运行时状态，不是数据。
+> 2026-11-21：上游同款的 `currentSchool` 模块级单例与 set/get 旋钮已退役
+> （change `2026-11-21-brightness-knob-retire`）——零消费旋钮是假想 seam 的机制半边，
+> 默认流派 XD2 为内核常量、流派经 `wenmoStarBrightness` 的可选 `school` 入参表达
+> （spec extensibility「内核无运行时流派旋钮」）。
 
 `validateWenmoBrightness()`：
 

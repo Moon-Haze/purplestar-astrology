@@ -16,43 +16,25 @@ import {
 
 export type { BrightnessSchool };
 
-/**
- * 当前生效的亮度流派（模块级状态，默认 XD2）。
- *
- * @remarks
- * 与上游一致是**模块级单例**：排盘同步，进程内不存在并发覆写窗口；CLI 不暴露切换参数。
- *
- * ⚠️ 本状态**留在本模块而非下沉数据层**：它是可变运行时状态，不是数据
- *    （分层理由见 docs/code/chart-kernel.md）。
- */
-let currentSchool: BrightnessSchool = "XD2";
-
-/**
- * 切换亮度流派。
- *
- * @param school - 流派名；`"default"` 归一为 `"XD2"`（与上游 setBrightnessSchool 同语义）
- */
-export function setBrightnessSchool(school: BrightnessSchool | "default"): void {
-	currentSchool = school === "default" ? "XD2" : school;
-}
-
-/** 当前生效的亮度流派（测试断言用）。 */
-export function getBrightnessSchool(): BrightnessSchool {
-	return currentSchool;
-}
+// ⚠️ 2026-11-21（评审 N3 / change 2026-11-21-brightness-knob-retire）：上游同款的
+//    setBrightnessSchool / getBrightnessSchool / currentSchool 三件套已退役 —— 唯一合法
+//    调用者类（插件层）被 extensibility spec 禁止修改内核模块状态（wenmo-nishi 注释
+//    自证不调用），生产消费恒走默认值：零消费旋钮是假想 seam 的机制半边。
+//    默认流派 XD2 现在是内核侧**常量事实**，经 wenmoStarBrightness 的可选 school 入参
+//    表达；四流派数据表与维度自检原样保留（多流派对拍传显式实参）。
 
 /**
  * 查文墨星曜亮度（中文细档，如「庙」「闲」）。
  *
  * @param starName - 星名（本仓口径星名，与文墨解码名一致）
  * @param branchIdx - 星所在宫的地支索引 0–11（0=子 … 11=亥）
- * @param school - 流派，缺省用 {@link currentSchool}
+ * @param school - 流派，缺省 XD2（内核常量事实；多流派对拍传显式实参）
  * @returns 中文亮度字；星未收录或文墨留白（0）时为 `undefined`
  */
 export function wenmoStarBrightness(
 	starName: string,
 	branchIdx: number,
-	school: BrightnessSchool = currentSchool
+	school: BrightnessSchool = "XD2"
 ): string | undefined {
 	const id = WENMO_NAME_TO_ID[starName];
 	if (id == null) {

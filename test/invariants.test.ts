@@ -49,7 +49,9 @@ const {
 	getDaXianMutagen,
 } = await loadSihua();
 // 文墨亮度表（混合口径的亮度数据源）—— 锚点断言见「文墨亮度表」组。
-const { wenmoStarBrightness, setBrightnessSchool, getBrightnessSchool } =
+// 旋钮三件套已退役（change 2026-11-21-brightness-knob-retire）：流派经 wenmoStarBrightness
+// 的可选 school 入参表达，缺省 XD2 为内核常量事实。
+const { wenmoStarBrightness } =
 	await load<typeof import("@/wenmo-brightness")>("@/wenmo-brightness");
 const { locateSihua } = await loadRender();
 // 查宫单点（按项目口径宫名取宫、取不到即抛）已上移内核 —— 守卫盯的就是生产入口。
@@ -898,6 +900,12 @@ describe("排盘结构不变量", () => {
 				"闲",
 				"紫微@子 应闲（文墨 XD2 实证锚）"
 			);
+			// 缺省流派 ≡ XD2（内核常量事实；旋钮退役后默认语义经此断言延续，评审 N3）
+			assert.equal(
+				wenmoStarBrightness("紫微", 0),
+				wenmoStarBrightness("紫微", 0, "XD2"),
+				"缺省流派应即 XD2"
+			);
 		});
 
 		it("QS 7 档制锚点：太阳@子=陷（数值 7 方向）、@卯=庙", () => {
@@ -905,16 +913,6 @@ describe("排盘结构不变量", () => {
 			//（上游曾整表读反为 0=陷，2026-06-20 纠正，此锚防回退）。
 			assert.equal(wenmoStarBrightness("太阳", 0, "QS"), "陷", "太阳@子（QS）应陷");
 			assert.equal(wenmoStarBrightness("太阳", 3, "QS"), "庙", "太阳@卯（QS）应庙");
-		});
-
-		it("默认流派 = XD2；setBrightnessSchool('default') 归一为 XD2", () => {
-			setBrightnessSchool("default");
-			assert.equal(getBrightnessSchool(), "XD2", "default 应归一为 XD2");
-			setBrightnessSchool("QS");
-			assert.equal(getBrightnessSchool(), "QS", "显式 QS 应生效");
-			// 还原默认，避免泄漏到同文件后续用例
-			setBrightnessSchool("default");
-			assert.equal(getBrightnessSchool(), "XD2");
 		});
 
 		it("排盘装配层覆写生效：主星 brightness 与 brightnessRaw 塌缩一致", () => {

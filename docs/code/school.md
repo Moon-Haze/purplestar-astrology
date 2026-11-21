@@ -77,8 +77,9 @@ D 类口径锁留在源码。分类判据见 [README.md](README.md)。
 >
 > ⚠️ **引用而非迁移**（守住 0C 冻结红线）：
 >
-> - 冻结内核的默认亮度流派（wenmo-brightness.ts 默认即 XD2）是内核侧事实，
->   适配器不镜像记录、也不调用 `setBrightnessSchool`（不改内核运行时状态）；
+> - 冻结内核的默认亮度流派（wenmo-brightness.ts 常量 XD2）是内核侧事实，
+>   适配器不镜像记录；内核无运行时旋钮可调（2026-11-21 退役，spec extensibility
+>   「内核无运行时流派旋钮」）；
 > - `citationRoots[].checklist` 直接 import 内核的 `ANNOTATIONS`（全局唯一核对表），
 >   **不**复制一份——避免核对表副本漂移；
 > - `scanRoot` 解析到本 skill 的 `scripts/`，与 `citations.test.ts` 原扫根完全一致，覆盖零退化。
