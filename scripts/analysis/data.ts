@@ -2563,9 +2563,12 @@ export const PALACE_BRANCH_ORGAN: Record<
 };
 
 /**
- * 辅助：14 主星五行属性（仅作加重 / 减轻参考，非判病主轴）
- *   Deprecated 为主轴：主轴应使用 PALACE_BRANCH_ORGAN
- *   保留此表供老代码引用，不再作为疾厄核心结论
+ * 辅助：14 主星五行属性（子午流注按星曜映射脏腑）
+ *
+ * ⚠️ 2026-11-21 退役待重建（评审拍板）：核对表判本表方法论 `fabricated`——倪师疾厄
+ *    论断以『宫位（地支）→ 脏腑』为主轴（见 `PALACE_BRANCH_ORGAN`），不按星曜五行；
+ *    现役输出（analysis/views/health.ts）已不再消费本表。表与导出**刻意保留**作重建
+ *    素材，重建前不回接任何 view。口径史见 corpus/data/annotations.ts 同条目。
  */
 export const ZIWU_LIUZHU: Record<
 	string,

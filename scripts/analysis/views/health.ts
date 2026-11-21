@@ -1,29 +1,31 @@
 /**
- * 五点五、疾厄宫 —— 地支主轴 + 星曜辅助 + 煞忌警示（仅 health 主题出）。
+ * 五点五、疾厄宫 —— 地支主轴 + 煞忌警示（仅 health 主题出）。
  *
- * ⚠️ 三层结构，权重递减：① **宫位主轴**（`PALACE_BRANCH_ORGAN`，疾厄宫落在哪个地支，
- *    倪师原法）→ ② **星曜辅助**（`ZIWU_LIUZHU`，只作附加）→ ③ **警示**（四煞入疾厄 /
- *    三方四正见化忌 / 女命妇科保养）。
+ * ⚠️ 结构（权重递减）：① **宫位主轴**（`PALACE_BRANCH_ORGAN`，疾厄宫落在哪个地支，
+ *    倪师原法）→ ② **警示**（四煞入疾厄 / 三方四正见化忌 / 女命妇科保养）。
+ *
+ * ⚠️ 曾有的「星曜辅助」（`ZIWU_LIUZHU` 按星曜五行映射脏腑）已于 2026-11-21 从现役
+ *    输出退役（评审拍板：核对表判该方法论 fabricated——倪师疾厄以宫位地支为主轴，
+ *    不按星曜五行；表与导出保留待重建）。口径史见 docs/code/analysis.md §8.9 与
+ *    corpus/data/annotations.ts 同条目。
  *
  * 完整口径见 docs/code/analysis.md。
  *
  * 产出**结构化条目流**（一源双投影，见 `../items`）：三个逻辑组各成 slot
- * （`extra:倪师疾厄论 · 宫位主轴` / `extra:星曜辅助 · 五行加重` / `extra:煞忌警示`
- * / `extra:女命妇科保养`），警示行无节头但归属煞忌警示组。
+ * （`extra:倪师疾厄论 · 宫位主轴` / `extra:煞忌警示` / `extra:女命妇科保养`），
+ * 警示行无节头但归属煞忌警示组。
  *
  * @packageDocumentation
  */
 
-import { PALACE_BRANCH_ORGAN, ZIWU_LIUZHU } from "../../analysis/data";
+import { PALACE_BRANCH_ORGAN } from "../../analysis/data";
 import { SHA_HARD } from "../../corpus/data/patterns";
 import { BRANCHES } from "@/data/ganzhi";
 import type { AnalysisContext } from "../../analysis/context";
-import { selectGender } from "../../analysis/lookups";
 import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
 const SLOT_MAIN = "extra:倪师疾厄论 · 宫位主轴";
-const SLOT_AUX = "extra:星曜辅助 · 五行加重";
 const SLOT_WARN = "extra:煞忌警示";
 const SLOT_FEMALE = "extra:女命妇科保养";
 
@@ -38,7 +40,7 @@ const SLOT_FEMALE = "extra:女命妇科保养";
  * 见 docs/code/analysis.md。
  */
 function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
-	const { chart, topic, mainPalace, primaryStar, sanFang } = ctx;
+	const { chart, topic, mainPalace, sanFang } = ctx;
 
 	const items: AnalysisItem[] = [];
 
@@ -61,32 +63,6 @@ function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 			items.push(contentItem(`▸ 子午流注映射：${branchOrgan.peakTime}`, SLOT_MAIN));
 			items.push(contentItem(`▸ 养生要点：${branchOrgan.advice}`, SLOT_MAIN));
 			items.push(blankItem(SLOT_MAIN));
-		}
-
-		// 辅助：星曜五行作为加重 / 减轻的附加参考
-		if (primaryStar) {
-			const ziwu = ZIWU_LIUZHU[primaryStar.name];
-			if (ziwu) {
-				items.push(headItem(`**【星曜辅助 · 五行加重】**`, SLOT_AUX));
-				items.push(blankItem(SLOT_AUX));
-				items.push(
-					contentItem(
-						`疾厄宫主星 **${primaryStar.name}**（${ziwu.element}）辅助指向 **${ziwu.organ}**——星曜五行是"附加提示"，与宫位地支脏腑叠加判断：`,
-						SLOT_AUX,
-						{ star: primaryStar.name }
-					)
-				);
-				items.push(
-					contentItem(
-						`▸ ${selectGender(ziwu.advice, chart.birthInfo.gender)}`,
-						SLOT_AUX,
-						{
-							star: primaryStar.name,
-						}
-					)
-				);
-				items.push(blankItem(SLOT_AUX));
-			}
 		}
 
 		// 煞星警示（四煞口径取单点 SHA_HARD，与格局判定同源）
