@@ -61,8 +61,9 @@ import { KNOWLEDGE_GRADE_ORDER } from "../../analysis/grades";
  */
 
 /**
- * 抬头行（命盘总览式）：`【标题】[名字 ]日期 说明 · 性别` —— --info / --topic /
- * 默认概览三处专题分发共用；名字槽缺省时直接省略，不残留双空格。
+ * 抬头行（命盘总览式）：`标题[名字 ]日期 说明 · 性别` —— --palaces（十二宫详表）与
+ * --topic（主题论断）两处共用；名字槽缺省时直接省略，不残留双空格。
+ * （2026-11-21 评审 N1：--palaces 曾在本分支手拼抬头，缺名时残留三空格，收编到此单点。）
  */
 function chartHeader(title: string, info: BirthInfo, note: string): string {
 	const namePart = info.name ? `${info.name} ` : "";
@@ -402,7 +403,7 @@ export function cmdAstrology(args: CliArgs) {
 			return JSON.stringify(chart, null, 2);
 		}
 		const out = [
-			`命盘  ${info.name ?? ""} ${fmtDate(info)} ${basis.note} · ${genderCN(info.gender)}`,
+			chartHeader("命盘  ", info, basis.note),
 			`农历：${chart.lunarInfo.lunarYear}年${chart.lunarInfo.isLeapMonth ? "闰" : ""}${chart.lunarInfo.lunarMonth}月${chart.lunarInfo.lunarDay}日 · 年柱${STEMS[chart.lunarInfo.yearStem]}${BRANCHES[chart.lunarInfo.yearBranch]}`,
 			`命宫：${BRANCHES[chart.soulBranch]} · 身宫：${BRANCHES[chart.bodyBranch]} · 五行局：${chart.fiveElementsClassName} · 紫微：${BRANCHES[chart.ziweiPos]}`,
 			"",

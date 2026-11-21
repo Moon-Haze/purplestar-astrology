@@ -270,8 +270,8 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			throw new Error("desc 仍提 cities —— 该命令已删（spec §3.1），文案要跟上");
 		}
 	});
-	ok("命令面：合盘抬头不因缺省 --name 残留双空格（astrology 抬头无此问题）", () => {
-		// 用真 CLI JSON 产物喂合盘（astrology --json 的输出是合法输入，进程内直调更轻）
+	ok("命令面：缺省 --name 时合盘与 --palaces 抬头不残留多余空格（同一抬头单点）", () => {
+		// 合盘：用真 CLI JSON 产物喂合盘（astrology --json 的输出是合法输入，进程内直调更轻）
 		const tmp = mkdtempSync(join(tmpdir(), "ziwei-synastry-hdr-"));
 		try {
 			const json = (d: string, g: string) =>
@@ -285,7 +285,19 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 			const s = cmdSynastry(parseArgs(["--charts", `${a},${b}`], "synastry"));
 			const bad = s.split("\n").filter(l => /^(甲方|乙方) {2}/.test(l));
 			if (bad.length) {
-				throw new Error(`抬头双空格：${bad[0]}`);
+				throw new Error(`合盘抬头双空格：${bad[0]}`);
+			}
+			// --palaces：独占分支曾绕开抬头单点手拼，缺名时残留三空格（评审 N1）；
+			// 断言「命盘 后无三空格」钉住该缺陷类不再复发。
+			const p = cmdAstrology(
+				parseArgs(
+					["--date", "1990-05-15", "--branch", "5", "--gender", "male", "--palaces"],
+					"astrology"
+				)
+			);
+			const pBad = p.split("\n").filter(l => /^命盘 {3}/.test(l));
+			if (pBad.length) {
+				throw new Error(`--palaces 抬头三空格：${pBad[0]}`);
 			}
 		} finally {
 			rmSync(tmp, { recursive: true, force: true });

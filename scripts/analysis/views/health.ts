@@ -49,12 +49,16 @@ function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 			items.push(headItem(`**【倪师疾厄论 · 宫位主轴】**`, SLOT_MAIN));
 			items.push(blankItem(SLOT_MAIN));
 			items.push(
-				contentItem(`疾厄宫落于 **${BRANCHES[mainPalace.branch]}宫**——倪师《天纪 05》原法：`, SLOT_MAIN)
+				contentItem(
+					`疾厄宫落于 **${BRANCHES[mainPalace.branch]}宫**——倪师《天纪 05》原法：`,
+					SLOT_MAIN
+				)
 			);
 			items.push(contentItem(`▸ 主管脏腑：**${branchOrgan.organ}**`, SLOT_MAIN));
 			items.push(contentItem(`▸ 对应经络：${branchOrgan.meridian}`, SLOT_MAIN));
+			// 子午流注与经络旺时是同一概念（同取 peakTime）—— 曾渲染成两行标签不同、
+			// 内容逐字相同的重复行（评审 N5），收为一行；《天纪》术语口径留「子午流注」。
 			items.push(contentItem(`▸ 子午流注映射：${branchOrgan.peakTime}`, SLOT_MAIN));
-			items.push(contentItem(`▸ 经络旺时：${branchOrgan.peakTime}`, SLOT_MAIN));
 			items.push(contentItem(`▸ 养生要点：${branchOrgan.advice}`, SLOT_MAIN));
 			items.push(blankItem(SLOT_MAIN));
 		}
@@ -73,9 +77,13 @@ function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 					)
 				);
 				items.push(
-					contentItem(`▸ ${selectGender(ziwu.advice, chart.birthInfo.gender)}`, SLOT_AUX, {
-						star: primaryStar.name,
-					})
+					contentItem(
+						`▸ ${selectGender(ziwu.advice, chart.birthInfo.gender)}`,
+						SLOT_AUX,
+						{
+							star: primaryStar.name,
+						}
+					)
 				);
 				items.push(blankItem(SLOT_AUX));
 			}
