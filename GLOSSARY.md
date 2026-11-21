@@ -97,14 +97,14 @@
 - **三件套**：`typecheck`（只看类型自洽，不用 `any` 绕错）/ `selftest`（代码逻辑自洽）/ `npm test`（外部基准比对）——互不替代；另有 `lint` / `format` 两条风格闸门（只扫 `scripts/ tools/ test/`）。
 - **selftest 三段合一**：排盘 / 古籍 / 合盘三段在同一条 selftest，报告分段、首行合计；古籍与合盘断言组住各自 `*/selftest-asserts.ts`。
 - **七层回归**：`npm test` 的分层（层 1 排盘对标 → 层 7 引文守卫），层表登记在 `test/lib/run.ts` 的 `LAYERS` 与 `test/README.md`，双向对账。
-- **基准回归**：518,400 条样本（iztro 2.5.8 快照，与现用 2.6.1 仅有两处已知亮度差异，白名单在 `test/lib/compare.ts`）；日常抽 300 条，全量 `test:corpus`（需 `reference/` 检出）。
+- **基准回归**：db/dataset 全量样本（674,976 条 / 1950–2026，字节指纹登记在 `db/dataset/MANIFEST.json`，日常回归按其对账）；日常抽 385 条，全量 `test:corpus`（条数自报）。
 - **冻结内核契约**：`test/kernel-contract.test.ts` 钉住内核对外形状——改内核导出即破坏契约，须显式说明并同步该测试，不得顺手改断言迁就实现。
 - **引文守卫**：扫描 `.ts` 与 `.md`，凡「倪师 / 倪海厦 + 引号句」形态必须在 `grades.ts` 有档位登记，比对基准是 annotations。引文比对核心住 `corpus/citation-core.ts`（各扫描面同引一份）。
 - **键域漂移**：数据表键与运行时键不一致导致的静默 miss，由 `test/invariants.test.ts` 拦截；消费点不得用 `?? ""` 掩盖 miss。
 - **反恒真守卫**：跳过类断言必须证明自己真的跑过——与「跑过了」不可区分的恒真守卫比没有更坏。
 - **`skipUnlessRepo` / ⏭ 可见跳过**：依赖仓库级文档（不入分发件）的断言在包形态下显式跳过，报告上必须标 `⏭`。
 - **注释指针有效性（MD_POINTER）**：`scripts/ test/ tools/` 注释里引用的 `.md` 路径必须真实存在（带理由白名单）——改名不断锚。
-- **缓存纪律**：改内核输出结构或升级 iztro 必须递增 `CACHE_VERSION`；回归链路恒设 `ZIWEI_NO_CACHE=1`（直排豁免常量单点在 `cli/chart/direct-env.ts`，各 spawn 点 spread 它，不再手抄）。缓存只求快不参与正确性——故障表现是「慢」，不是「错」。
+- **缓存纪律**：改内核输出结构或升级 iztro 必须递增 `CACHE_VERSION`；回归链路**显式禁缓存**——selftest / 测试进程经缓存模块的旁路 API（`setCacheBypassAll`）直排，子进程排盘探针 argv 携带 `--no-cache`，外壳残留的退役变量在回归入口当场报错（环境变量注入通道已删除）。缓存只求快不参与正确性——故障表现是「慢」，不是「错」。
 - **生成文件与重导**：`data/wenmo-tables.ts`、`corpus/data/tianji.ts`、cli-samples 产物不手改，改生成器再重导；「重构不改行为」验收 = 与基线逐字节 diff=0。
 
 ### 内容扩展
@@ -119,7 +119,7 @@
 
 - **六仓 / 产品仓**：宿主「紫微斗数」工作区共六仓，本仓是唯一产品仓，其余五仓供给数据与知识。
 - **知识链**：`purplestar-voice`（课程视频转写）→ `nihai-tianji-corpus`（外部语料仓，判语结构化）→ 本仓 `corpus/`（导入快照 + 检索）。
-- **基准数据链**：`ziwei-doushu`（上游参照引擎）→ `ziwei-samples-toolkit`（518,400 条样本导出，`npm test` 基准源头）→ `purplestar-db-slim`（DuckDB 工具仓）。
+- **基准数据链**：`ziwei-doushu`（上游参照引擎）→ `ziwei-samples-toolkit`（样本导出，现为 674,976 条 / 1950–2026，`npm test` 基准源头）→ `purplestar-db-slim`（DuckDB 工具仓）。
 - **许可双轨**：引入的数据集走 CC BY 4.0，语料走 CC BY-NC-SA 4.0——本仓代码许可与语料许可分开声明的根源；新引内容先对号入座。
 - **记忆分库**：三个记忆后端以 `-purplestar` 前缀隔离（`qdrant-purplestar` / `memory-purplestar` / longmemory 的 `user_id: "purplestar"`）；本仓会话禁用用户级全局 qdrant / memory。
 - **OpenSpec**：规范驱动工作流，`openspec/specs/` 是各能力域当前规范、`changes/` 是进行中变更；触及规范面的改动先提案（propose）再实现（apply），归档（archive）折回 specs。项目约束的指针指向 AGENTS.md，不复制。

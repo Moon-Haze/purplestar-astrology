@@ -25,7 +25,7 @@ Parquet 的红利几乎全在星曜那 6 个嵌套列上：DuckDB 的 `LIST<VARC
 
 ```bash
 npm test                                  # 日常回归：385 条抽样基准 + 预言机对账，约 10 秒
-npm test -- --year 1953                   # 同上，但层 1 只跑 1953 年的基准条目（其余各层照常全跑）
+npm test -- --year 1953                   # 同上，但层 1 只跑 1953 年的基准条目（其余各层照常全跑；两阶段 spawn）
 npm run test:midcorpus -- --n 3000        # 中档快测：linspace 等距抽样读 db/dataset（实测 3,000 条约 2 分钟）
 npm run test:corpus -- --year 1960        # 全量核验：只跑 1960 年（条数自报）
 npm run test:corpus                       # 全量核验：全部样本（条数自报，现为 674,976 条）
@@ -479,7 +479,17 @@ test/
    忘了写它不会报错，只会让哨兵对那个 skill 空转；`repo.test.ts` 有一条断言盯着它非空、
    且每项都在 `ALL_SKILLS` 里，但**盯不住「漏了一个本该在里面的 skill」**。
 
-6. **加旗标不再需要动多处**（2026-09-27 起）。每个 skill 自带一份旗标声明表 + 解析循环
+6. **回归链路零环境变量注入**（2026-11-21 起）。缓存旁路与年份过滤不再走环境变量：
+   selftest / 测试进程经缓存模块的 `setCacheBypassAll(true)` 整链直排，子进程排盘探针
+   在 argv 显式携带 `--no-cache`（仅排盘命令——synastry / knowledge 不排盘、不识别）；
+   `npm test -- --year <N>` 经两阶段 spawn 过滤（非层 1 文件全量跑 + 层 1 文件走
+   `--test-name-pattern` 按用例名首段年份——「其余各层照常全跑」的鉴别语义不变，
+   层 1 内非年份用例如「漂移 / 五行局」也会随名称匹配跳过，属预期缩窄）。外壳残留的
+   退役变量（`ZIWEI_NO_CACHE` / `ZIWEI_TEST_YEAR`）在回归入口（purple-star / run.ts）
+   **当场报错**（清单与探测单点在 `boot-hooks.ts`）；新增 spawn / 直调点漏带旗标时，
+   由「直调 ≡ 子进程输出」对拍断言兜底（spec：回归链路显式禁缓存）。
+
+7. **加旗标不再需要动多处**（2026-09-27 起）。每个 skill 自带一份旗标声明表 + 解析循环
    （`scripts/purple-star.ts`），没有共享的 `FLAG_GROUPS`，也没有「作用域收窄」那层适配器 ——
    声明表本身就是该 skill 的作用域。从前那组「各作用域 ⊆ 全集 / 全集 ⊆ 三作用域之并 /
    `birth-info.ts` 的 `g()` 键 ⊆ 源 / 两份派生 `args.ts` 逐字节相同」的层 6 断言，
