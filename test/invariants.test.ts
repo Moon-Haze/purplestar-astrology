@@ -1654,7 +1654,7 @@ const { selectGender } = await load<typeof import("@/analysis/lookups")>("@/anal
 const KERNEL_STAR_TABLE = await load<typeof import("@/data/stars")>("@/data/stars");
 // 键域互证同网（评审 N4 / 第五轮候选 9）：煞星名单（partition 自洽 + 基准盘派生）、
 // 命宫摘要两表与合盘两表（主星键集并入 bySrc / 杂曜基准盘派生）。
-const { SHA_NAMES, SHA_HARD, SHA_KONG } =
+const { SHA_NAMES, SHA_HARD, SHA_KONG, PATTERN_ASIDES, PATTERN_VERDICTS } =
 	await load<typeof import("@/corpus/data/patterns")>("@/corpus/data/patterns");
 const { SOUL_KEYWORD_MAP, SOUL_NATURE_MAP } =
 	await load<typeof import("@/analysis/soul-summary")>("@/analysis/soul-summary");
@@ -1664,7 +1664,7 @@ const { STAR_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } = await load<
 describe("analysis 数据键域互证", () => {
 	const domain = new Set(PALACE_NAMES_ORDER);
 
-	it("宫名键域：四张分析表的每个宫名键都在 PALACE_NAMES_ORDER 域内", () => {
+	it("宫名键域：分析表宫名键全在 PALACE_NAMES_ORDER 域内（次星宫位 / 内容键映射 / 主题主宫 / 关键宫位 / 魁钺）", () => {
 		const bad: string[] = [];
 		for (const [star, byPalace] of Object.entries(ANALYSIS_DATA.MINOR_STAR_PALACE_CONTENT)) {
 			for (const k of Object.keys(byPalace)) {
@@ -1676,6 +1676,11 @@ describe("analysis 数据键域互证", () => {
 		for (const k of Object.keys(ANALYSIS_DATA.PALACE_TO_CONTENT_KEY)) {
 			if (!domain.has(k)) {
 				bad.push(`PALACE_TO_CONTENT_KEY.${k}`);
+			}
+		}
+		for (const [topic, palace] of Object.entries(ANALYSIS_DATA.TOPIC_PALACE_NAME)) {
+			if (!domain.has(palace)) {
+				bad.push(`TOPIC_DEFS[${topic}].palace（主宫）`);
 			}
 		}
 		for (const [topic, rules] of Object.entries(ANALYSIS_DATA.TOPIC_KEY_PALACES)) {
@@ -1694,6 +1699,30 @@ describe("analysis 数据键域互证", () => {
 			bad,
 			[],
 			`以下宫名键不在运行时宫名域内（紧凑形/旧口径会静默 miss，应改为 PALACE_NAMES_ORDER 展开形）：\n${bad.join("\n")}`
+		);
+	});
+
+	it("格局补注键域：PATTERN_ASIDES 外层条目 ⊆ 判词表条目、内层星名 ⊆ 内核主星域", () => {
+		// 消费点 patterns/enhancing.ts：fillVerdict 直接索引判词表（无 ?.），补注按星 ?? "" 落空 ——
+		// 外层条目改名、内层星名抄错都会静默产出缺补注的判词，与键域漂移同型拦截。
+		// 按星稀疏（其余主星无补注）是 corpus/data/patterns.ts jsdoc 的文档化设计，不在此列。
+		const verdictKeys = new Set(Object.keys(PATTERN_VERDICTS));
+		const majorStars = new Set(Object.keys(KERNEL_STAR_TABLE.STAR_DESCRIPTIONS));
+		const bad: string[] = [];
+		for (const [entry, byStar] of Object.entries(PATTERN_ASIDES)) {
+			if (!verdictKeys.has(entry)) {
+				bad.push(`PATTERN_ASIDES[${entry}]（判词表无此条目）`);
+			}
+			for (const star of Object.keys(byStar)) {
+				if (!majorStars.has(star)) {
+					bad.push(`PATTERN_ASIDES[${entry}].${star}`);
+				}
+			}
+		}
+		assert.deepEqual(
+			bad,
+			[],
+			`格局补注键漂移（外层条目不在判词表 / 内层星名不在内核主星域）：\n${bad.join("\n")}`
 		);
 	});
 

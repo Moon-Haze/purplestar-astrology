@@ -324,8 +324,14 @@ describe("全盘报告装配：大限节唯一与全文首现", () => {
 				continue; // study 复用 career 内容但不在 --report 13 板块（REPORT_TOPICS）
 			}
 			const ctx = makeContext(chart, topic, {});
-			const m = ctx ? buildOverviewMaterial(ctx) : null;
-			const texts = m ? [m.content, m.secondStarContent].filter((t): t is string => !!t) : [];
+			// 主宫解析失败在此显式红（TOPIC_PALACE_NAME 域漂移会走到这里），不得以空数组
+			// 退化借板块头断言静默通过（change harden-key-domain-net）。
+			assert.ok(
+				ctx !== null,
+				`${topic}：主宫应能在真实盘上解析出上下文（主宫键域漂移在此显式红，不得静默空退化）`
+			);
+			const m = buildOverviewMaterial(ctx);
+			const texts = [m.content, m.secondStarContent].filter((t): t is string => !!t);
 			const home = report.split("\n## ").find(s => s.startsWith(`${TOPIC_LABEL[topic]}（`));
 			assert.ok(home !== undefined, `应存在「${TOPIC_LABEL[topic]}」板块`);
 			for (const text of texts) {

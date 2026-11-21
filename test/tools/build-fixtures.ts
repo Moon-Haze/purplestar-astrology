@@ -162,7 +162,7 @@ async function main(): Promise<void> {
 		JSON.stringify(
 			{
 				description: "紫微斗数排盘基准（golden）—— 从 db/ 样本数据集抽样而来",
-				source: "db/dataset/{samples,palaces}.parquet（原始语料 reference/ziwei-samples-toolkit/samples-out，与本数据集等价）",
+				source: "db/dataset/{samples,palaces}.parquet（血统：db/tar-shards → ziwei.duckdb → build-duckdb 导出，2026-11-21 起 v4 管线由本仓内核直生成；字节指纹对账见 db/dataset/MANIFEST.json 与 repo 层数据集指纹对账）",
 				baselineEngine: "iztro 2.5.8",
 				note:
 					"基准为 iztro 2.5.8 的行为快照；本项目用 2.6.1，已知差异见 test/lib/compare.ts 的 KNOWN_DIVERGENCES。" +

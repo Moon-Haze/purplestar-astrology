@@ -12,9 +12,9 @@
  *    依据落在地支歌诀而非星曜）。口径史见 docs/code/analysis.md §8.9 与
  *    corpus/data/annotations.ts 同条目。
  *
- * 产出**结构化条目流**（一源双投影，见 `../items`）：三个逻辑组各成 slot
- * （`extra:倪师疾厄论 · 通盘最差宫` / `extra:疾厄宫参考` / `extra:煞忌警示`
- * / `extra:女命妇科保养`）。
+ * 产出**结构化条目流**（见 `../items`；条目流已不再作为公开 interface 导出——
+ * 2026-11-05 第二投影降级）：四个 slot（`extra:倪师疾厄论 · 通盘最差宫` /
+ * `extra:疾厄宫参考` / `extra:煞忌警示` / `extra:女命妇科保养`）。
  *
  * @packageDocumentation
  */
@@ -37,6 +37,10 @@ const SLOT_FEMALE = "extra:女命妇科保养";
  * 聚合者为最凶（语料示例：「这个在子时是不是化忌，最凶的在什么胆，七杀在这边七杀
  * 是个杀星」）。化忌权重高于单颗煞星；同分并列取前二（倪师「两个宫都差」的双宫
  * 形态）。通盘无化忌无煞时返回空数组，主轴降级为「未见显著凶宫」。
+ *
+ * ⚠️ 取舍留档：语料例句的「杀星」语境含七杀（主星），实现只数六煞（SHA_NAMES）——
+ *    **主星杀星不计**入分。六煞（主轴判定）与四煞（煞星入疾厄警示，SHA_HARD）两套
+ *    口径在本视图并存，各按其消费处语义取用。
  */
 function worstPalaces(chart: ZiweiChart): number[] {
 	const scored = chart.palaces.map(p => {
@@ -114,12 +118,15 @@ function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 			items.push(blankItem(SLOT_MAIN));
 		}
 
-		// 煞星警示（四煞口径取单点 SHA_HARD，与格局判定同源）
+		// 煞星警示（四煞口径取单点 SHA_HARD，与格局判定同源）。
+		// ⚠️ 引文（天纪 07 逐字 + 出处）与 grades 对拍的盲区留档：grades 对拍只扫
+		//    analysis/data.ts 单文件（selftest/guard.ts），views 渲染面引语不在对拍
+		//    面——本行引语的准确性靠本注释与语料锚点人工维持。
 		const shaInPalace = mainPalace.stars.filter(s => SHA_HARD.includes(s.name));
 		if (shaInPalace.length > 0) {
 			items.push(
 				contentItem(
-					`⚠️ **煞星入疾厄**：${shaInPalace.map(s => s.name).join("、")}——倪师《天纪 11-12》：「陀罗、擎羊入疾厄宫，开刀见血光」。需提前体检，流年化忌入此宫时尤防手术意外。`,
+					`⚠️ **煞星入疾厄**：${shaInPalace.map(s => s.name).join("、")}——倪师《天纪 07》擎羊陀罗病灾论：「流年逢到这两颗星，身体病灾就来了」。需提前体检，流年化忌入此宫时尤防手术意外。`,
 					SLOT_WARN,
 					{ aux: shaInPalace.map(s => s.name).join("、") }
 				)

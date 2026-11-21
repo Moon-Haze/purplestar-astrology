@@ -36,8 +36,6 @@ import {
 	type BaselineSample,
 } from "./lib/compare.ts";
 
-// 年份筛选（npm test -- --year 1953），与 chart.test.ts 同口径：层 1 族一起收窄。
-
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")

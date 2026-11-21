@@ -191,7 +191,9 @@ export const NI_GRADES: readonly NiGradeEntry[] = [
 		quote: "命运不是人生的全部，加上",
 		grade: "methodology",
 	},
-	// L1710 倪师明言「开刀见血光」（煞星入疾厄的断语转述）。
+	// L1710 倪师明言「开刀见血光」（煞星入疾厄的断语转述；语料逐字出处是天纪 07
+	// @00:11:38 擎羊陀罗病灾论——views/health.ts 渲染面另有同源引语，注意 grades
+	// 对拍只扫 analysis/data.ts 单文件，views 层引语不在对拍面（盲区留档））。
 	{ star: "—", field: "TOPIC_SUGGESTIONS.health[2]", quote: "开刀见血光", grade: "traditional" },
 	// L1724「倪师《天纪 06》原话」——带集数出处 → verified。
 	{ star: "—", field: "TOPIC_SUGGESTIONS.move[1]", quote: "半空折翅", grade: "verified" },

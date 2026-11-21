@@ -95,10 +95,10 @@ export function missingDbHint(dbDir: string = DB_DIR, missing: readonly string[]
 		`找不到样本数据集：${dbDir}\n` +
 		which +
 		`  期望该目录下有 samples.parquet 与 palaces.parquet 两张表。\n` +
-		`  这份数据集**随仓库分发**（0.8 MiB + 12.0 MiB），缺失多半是克隆不完整或目录被清理。\n` +
+		`  这份数据集**随仓库分发**（1.0 MiB + 16 MiB），缺失多半是克隆不完整或目录被清理。\n` +
 		`  它不是唯一副本，所以这**不是**数据丢失：\n` +
-		`    reference/ziwei-samples-toolkit/samples-out  是同一份语料的原始形态\n` +
-		`    （5.5 GB / 720 个 jsonl.gz / 60 个年份目录 1924-1983），可由其重建。\n` +
+		`    db/tar-shards/  是同一份语料的原始形态（78 个年份目录 1950-2026），\n` +
+		`    可经 tools/db/build-duckdb.ts 重建（v4 管线：分片 → 本仓内核直生成）。\n` +
 		`  日常回归不需要它 —— 跑 npm test 即可，fixtures 已入库。`
 	);
 }

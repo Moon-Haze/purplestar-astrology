@@ -109,8 +109,8 @@ export interface Star {
 	/**
 	 * 星曜类型，四选一：
 	 * - `major` 主星 —— **只能**由 iztro 的 `type` 字段给出（吉煞两张名单里没有主星）
-	 * - `sha`   煞星 —— 名字命中 `algorithm.ts` 的 `TOUGH_STARS` 时优先判定
-	 * - `lucky` 吉星 —— 名字命中 `SOFT_STARS` 时优先判定
+	 * - `tough` 煞星 —— 名字命中 `algorithm.ts` 的 `TOUGH_STARS` 时优先判定
+	 * - `soft`  吉星 —— 名字命中 `SOFT_STARS` 时优先判定
 	 * - `minor` 其余（杂曜）—— 兜底值
 	 */
 	type: "major" | "minor" | "soft" | "tough";

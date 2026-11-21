@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// ── 亮度分歧普查：本项目输出（文墨 SB 表）vs db 基准亮度（iztro 2.5.8 三档归并）──
+// ── 亮度分歧普查：本项目输出（文墨 SB 表）vs fixtures 基准亮度 ──
 //
 // **信息级审计工具：不设 pass/fail、不进任何闸门面**（npm test / selftest / CI 必经面）。
-// 分歧是 2026-10 文墨口径切换的**预期结果**——db 基准的亮度是 iztro 引擎按它自己的
-// 亮度表打的三档（bright/normal/dim），本项目亮度已整体改由文墨 SB 表覆写
-// （XD2 默认，见 scripts/wenmo-brightness.ts）；两个学派的打分表本来就不同，闸门化只会
-// 产出无信号的红灯。层 1 对拍因此**跳过 brightness 字段**（compare.ts），亮度的学理
-// 锚点由 invariants 的「文墨亮度表」组保障。
+// 2026-11-21 数据集 v4 化后（build-duckdb 直调本仓内核生成），fixtures 的 chart 即
+// 本仓内核输出，对拍基线实测 diff=0——分歧为零本身就是「基准与本仓口径同源」的
+// 证据。本工具的价值因此转为**监测文墨表未来漂移**：文墨表改一格，分布表新增
+// 组合行、总分歧严格对应（注错演练见 harden-baseline-data-chain tasks 3.2 留档）。
+// 层 1 对拍仍**跳过 brightness 字段**（compare.ts），亮度的学理锚点由 invariants
+// 的「文墨亮度表」组保障。
 //
 // 本工具补的是锚点管不到的空档：**个别单元格抄错**。产出分歧分布表
 // （星 × 基准档 → 本项目档 × 命中盘数），抄写笔误会在表中呈**可识别的异常组合行**
@@ -165,7 +166,7 @@ function checkBaseline(s: CensusStats): void {
 async function main(): Promise<void> {
 	const s = await compute();
 	console.log(
-		"亮度分歧普查 —— 信息级审计（分歧是 2026-10 文墨口径切换的预期结果，不作对错判据）"
+		"亮度分歧普查 —— 信息级审计（基准 fixtures 与本仓内核同源，本工具监测文墨表未来漂移，不作对错判据）"
 	);
 	console.log(
 		`基准：fixtures ${s.chartCount} 条（db/dataset 抽样）；双侧亮度均为三档词汇，逐值比对\n`

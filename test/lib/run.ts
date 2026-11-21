@@ -83,6 +83,7 @@ function gitInfo(): { head: string; dirty: number } {
 const manifest = JSON.parse(readFileSync(resolve(HERE, "../fixtures/manifest.json"), "utf8")) as {
 	count: number;
 	yearRange: [number, number];
+	baselineEngine: string;
 	coverage: { months: number[]; hours: number[]; leapYears: string[] };
 };
 
@@ -111,7 +112,7 @@ console.log(line("内核根", `${ROOT}（${ROOT_LABEL}）`));
 console.log(
 	line(
 		"基准",
-		`${manifest.count} 条（iztro 2.5.8 快照，${manifest.yearRange[0]}-${manifest.yearRange[1]} 抽样）` +
+		`${manifest.count} 条（${manifest.baselineEngine} 快照，${manifest.yearRange[0]}-${manifest.yearRange[1]} 抽样）` +
 			`· 覆盖 ${manifest.coverage.months.length}/12 月 · ${manifest.coverage.hours.length}/12 时辰 · ${manifest.coverage.leapYears.length} 闰月年`
 	)
 );
@@ -124,7 +125,7 @@ const LAYERS = [
 	{
 		label: "层 1 排盘对标",
 		file: "chart.test.ts",
-		suites: ["排盘对标（基准：iztro 2.5.8 样本）"],
+		suites: [`排盘对标（基准：${manifest.baselineEngine} 样本）`],
 	},
 	{
 		label: "层 1 排盘对标",

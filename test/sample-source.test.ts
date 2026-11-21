@@ -38,14 +38,18 @@ describe("基准数据源（纯函数与错误指引）", () => {
 		assert.match(DB_DIR, /\/db\/dataset$/);
 	});
 
-	it("数据集缺失时抛 SourceError，指引写明缺失的表与语料仍在 reference/", async () => {
+	it("数据集缺失时抛 SourceError，指引写明缺失的表与重建出路（tar-shards 谱系）", async () => {
 		// 文本细节直接断言纯函数 missingDbHint：不触依赖，有/无依赖环境下行为一致。
+		// 2026-11-22 随第七轮评审 S1 改指 db/tar-shards 谱系（samples-out 已不在盘上且
+		// 年份范围不覆盖现行基准，见 openspec 2026-11-22-round7-review-fixes）。
 		const hint = missingDbHint("/nonexistent/ziwei-does-not-exist");
 		for (const must of [
 			"/nonexistent/ziwei-does-not-exist",
 			"samples.parquet",
 			"palaces.parquet",
-			"reference/ziwei-samples-toolkit/samples-out",
+			"db/tar-shards/",
+			"1950-2026",
+			"build-duckdb",
 			"不是",
 			"npm test",
 		]) {
