@@ -89,6 +89,7 @@
 - **归属投影（`ownedOptions(cmd)`）**：每个参数标 `cmds` / `global`，help 据此裁剪展示——**只过滤视图，不做硬校验**，参数作用域仍是 skill 级。
 - **差量化（`excluded`）**：作用域清单写法——空表即默认全集，显式声明才排除；`OPTION_NAMES` 由解析器按排除项派生。
 - **贪婪取值**：`--limit -3` 的 `-3` 是值不是旗标（`util.parseArgs` tokens 底座 + 薄适配层；Node 版本敏感，selftest 钉死）。
+- **专题菜单（`DEEP_DIVE_MENU`）**：指路行与 help DESCRIPTION 旗标列举段的展示元数据（短标签 / 取值提示 / 长段），两处消费由它拼装——`deep: true` 声明「判定链跟上」，菜单声明「用户看到什么」；selftest 双向对拍钉「deep 旗标 ⊆ 菜单 ⊆ 声明表」。
 - **无默认值原则**：未给出的参数键根本不出现，调用方靠 `undefined` 判空取默认；判定链输入（性别、日期等）缺了就报错，绝不静默取默认。
 
 ### 质量闸门
@@ -103,7 +104,7 @@
 - **反恒真守卫**：跳过类断言必须证明自己真的跑过——与「跑过了」不可区分的恒真守卫比没有更坏。
 - **`skipUnlessRepo` / ⏭ 可见跳过**：依赖仓库级文档（不入分发件）的断言在包形态下显式跳过，报告上必须标 `⏭`。
 - **注释指针有效性（MD_POINTER）**：`scripts/ test/ tools/` 注释里引用的 `.md` 路径必须真实存在（带理由白名单）——改名不断锚。
-- **缓存纪律**：改内核输出结构或升级 iztro 必须递增 `CACHE_VERSION`；回归链路恒设 `ZIWEI_NO_CACHE=1`。缓存只求快不参与正确性——故障表现是「慢」，不是「错」。
+- **缓存纪律**：改内核输出结构或升级 iztro 必须递增 `CACHE_VERSION`；回归链路恒设 `ZIWEI_NO_CACHE=1`（直排豁免常量单点在 `cli/chart/direct-env.ts`，各 spawn 点 spread 它，不再手抄）。缓存只求快不参与正确性——故障表现是「慢」，不是「错」。
 - **生成文件与重导**：`data/wenmo-tables.ts`、`corpus/data/tianji.ts`、cli-samples 产物不手改，改生成器再重导；「重构不改行为」验收 = 与基线逐字节 diff=0。
 
 ### 内容扩展

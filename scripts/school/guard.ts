@@ -56,9 +56,9 @@ export function checkForbiddenFeatures(
 	}
 
 	if (forbidden.has("lai-yin")) {
-		// 来因宫：当前内核不产出该字段（飞星派追溯法未实现），guard 无从做运行时检查——
-		// 该特征的守护由 test/school.test.ts 的绊线断言承担；若未来某版本误加了来因宫
-		// 字段，在此补判即可，无需改调用方。
+		// 来因宫：内核从无该字段（飞星派追溯法未实现），「字段被填」式检查无从谈起。
+		// 守护是绊线形态：test/school.test.ts 逐宫断言 laiYin 字段缺席（评审 N6(b)），
+		// 语料文本另有 selftest/chart.ts 的飞星词白名单兜底；若未来真加了字段，在此补判。
 	}
 
 	return out;

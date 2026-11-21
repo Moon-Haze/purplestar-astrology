@@ -526,6 +526,71 @@ export const DEEP_DIVE_KEYS: readonly string[] = OPTION_GROUPS.flatMap(g =>
 );
 
 /**
+ * 专题深入菜单 —— 指路行与 help DESCRIPTION 旗标列举段的**展示元数据**（评审 N7）：
+ * `deep: true` 声明「判定链跟上」，本表声明「用户看到什么」。两处消费
+ * （fortune/overview 的【专题深入】指路行、command-meta 的 astrology DESCRIPTION）
+ * 都从这里拼装 —— 新增专题不再有「改一处漏两处文案」的第二个手抄面。
+ *
+ * 对拍纪律：selftest 钉「菜单 ⊆ 声明表」与「deep 旗标 ⊆ 菜单」双向；指路行的策展
+ * 排列住本表数组序，DESCRIPTION 的段落取舍在各消费方显式点名（各留各的策展）。
+ */
+export interface DeepDiveMenuEntry {
+	/** 旗标名（kebab，须是 OPTION_GROUPS 已声明的参数名 —— selftest 双向对拍钉住） */
+	name: string;
+	/** 取值提示；空串 = 无值旗标。渲染形态 `--name [hint] 标签` */
+	arg: string;
+	/** 短标签（指路行用） */
+	label: string;
+	/**
+	 * 长段（help DESCRIPTION 列举段用；缺省回落短形态）。含换行时再现手抄基线的
+	 * 折行点 —— help 文案的行宽排版由此保持。
+	 */
+	long?: string;
+}
+
+export const DEEP_DIVE_MENU: readonly DeepDiveMenuEntry[] = [
+	{ name: "pattern", arg: "", label: "格局" },
+	{
+		name: "mutagen",
+		arg: "",
+		label: "四化",
+		long: "--mutagen 四化（生年/大限宫干/流年，配 --monthly 流月、--daily 流日、--hourly 流时）",
+	},
+	{ name: "decadal", arg: "[虚岁]", label: "大限" },
+	{ name: "ages", arg: "[虚岁]", label: "小限" },
+	{ name: "yearly", arg: "[年]", label: "流年" },
+	{
+		name: "focus",
+		arg: "<宫>",
+		label: "宫盘深化",
+		long: "--focus <宫>（四项深化：三方四正逐宫全星曜、\n对宫完整详表、涉及格局全列、运限引动年份）",
+	},
+	{ name: "palaces", arg: "", label: "十二宫详表" },
+	{ name: "topic", arg: "<key>", label: "主题论断" },
+	{ name: "report", arg: "", label: "全盘报告(Markdown)" },
+];
+
+/** 按旗标名取菜单条目；未登记即抛（对拍断言也会红，这里 fail-fast 不静默）。 */
+export function deepDiveEntry(name: string): DeepDiveMenuEntry {
+	const entry = DEEP_DIVE_MENU.find(m => m.name === name);
+	if (!entry) {
+		throw new Error(`DEEP_DIVE_MENU 未登记：--${name}（新增专题请同步本表）`);
+	}
+	return entry;
+}
+
+/** 菜单段渲染：缺省短形态（指路行）；`"long"` 取长段（help DESCRIPTION）。 */
+export function deepDiveSegment(
+	entry: DeepDiveMenuEntry,
+	mode: "short" | "long" = "short"
+): string {
+	if (mode === "long" && entry.long) {
+		return entry.long;
+	}
+	return `--${entry.name}${entry.arg ? ` ${entry.arg}` : ""} ${entry.label}`;
+}
+
+/**
  * 独占分支条目 —— 判定链「谁被吞 / 谁被消费 / 谁优先 / 谁 bespoke 拒收」的分支级
  * 关系表态（2026-11-17-exclusive-branch-allow-chain-declaration）：参数本身的存在性
  * 仍以 {@link OPTION_GROUPS} 为准，本表只声明分支级关系。

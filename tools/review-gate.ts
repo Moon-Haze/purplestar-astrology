@@ -31,6 +31,7 @@ import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:f
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEMO_POSITIONAL } from "../scripts/cli/selftest/sample.ts";
+import { DIRECT_CHART_ENV } from "../scripts/cli/chart/direct-env.ts";
 import { checkLongComments } from "./code-style/long-comment-check.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // tools/
@@ -456,6 +457,9 @@ function snapshot(tag: string, scenarios: readonly Scenario[]): Map<string, stri
 		const r = spawnSync(process.execPath, ["scripts/purple-star.ts", ...s.args], {
 			cwd: SKILL_ROOT,
 			encoding: "utf8",
+			// 直排豁免（评审 N2）：byte-diff 是「重构不改行为」的验收证据，快照与当次两侧
+			// 都必须绕过缓存 —— 否则忘递增 CACHE_VERSION 的漂移在这里假绿。
+			env: { ...process.env, ...DIRECT_CHART_ENV },
 			maxBuffer: 1 << 26,
 		});
 		if (r.status !== 0) {

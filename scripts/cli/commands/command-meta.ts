@@ -9,9 +9,10 @@
  *    轻模块的收益与优先级链真相源见 docs/code/cli-commands.md。
  */
 
-// 优先级链的真相源在声明表（纯数据零依赖，不破本文件的轻模块底线）——
+// 优先级链与专题菜单的真相源在声明表（纯数据零依赖，不破本文件的轻模块底线）——
 // 旧手抄文案漏了 `--report`，与 astrology 实际报错和 `references/options.md` 均不符，收拢即修正。
-import { EXCLUSIVE_PRIORITY_LABEL } from "../args/table";
+// 专题列举段同理：旗标与短标签由 DEEP_DIVE_MENU 拼装（评审 N7），策展顺序留在插值槽位。
+import { deepDiveEntry, deepDiveSegment, EXCLUSIVE_PRIORITY_LABEL } from "../args/table";
 
 /** 合法命令名（顺序即 help COMMANDS 节的展示序）。 */
 export const COMMAND_NAMES = ["astrology", "knowledge", "synastry", "selftest"] as const;
@@ -30,9 +31,8 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
 	astrology: [
 		"排盘分析一条命令。",
 		"不带功能参数 = 概览：基本信息面板（含公历生日 / 命宫 / 身宫 / 紫微落 / 三方四正）+ 口径提示 + 运限速览 + 专题指路。",
-		"专题参数可叠加：--pattern 格局 / --mutagen 四化（生年/大限宫干/流年，配 --monthly 流月、--daily 流日、--hourly 流时）/",
-		"--yearly [年] 流年 / --decadal [虚岁] 大限 / --ages [虚岁] 小限 / --focus <宫>（四项深化：三方四正逐宫全星曜、",
-		"对宫完整详表、涉及格局全列、运限引动年份）。给了专题参数则只出口径提示 + 专题详版",
+		`专题参数可叠加：${deepDiveSegment(deepDiveEntry("pattern"))} / ${deepDiveSegment(deepDiveEntry("mutagen"), "long")}/`,
+		`${deepDiveSegment(deepDiveEntry("yearly"))} / ${deepDiveSegment(deepDiveEntry("decadal"))} / ${deepDiveSegment(deepDiveEntry("ages"))} / ${deepDiveSegment(deepDiveEntry("focus"), "long")}。给了专题参数则只出口径提示 + 专题详版`,
 		"（基本信息面板 / 运限速览 / 专题指路均不带 —— 已在深入）。",
 		"--info（面板 + 运限速览 + 专题指路，与概览同尾）/ --palaces（十二宫逐宫详表）/ --topic（主题论断）是独占分支：",
 		`给出即接管输出，与其余功能参数同给会报错指路；优先级 ${EXCLUSIVE_PRIORITY_LABEL}。`,
@@ -77,8 +77,7 @@ export const COMMAND_HELP: Record<CommandName, readonly string[]> = {
  */
 export const COMMAND_DESC: Record<CommandName, string> = {
 	astrology: "排盘分析一条命令（概览默认 + 功能参数：专题/--palaces/--topic）★ 最常用",
-	knowledge:
-		"统一知识检索（--source 三域：books 古籍默认 / stars 星曜释义 / tianji 天纪判语）",
+	knowledge: "统一知识检索（--source 三域：books 古籍默认 / stars 星曜释义 / tianji 天纪判语）",
 	synastry: "合盘（双宫联参 + 夫妻宫断语 + 四化入夫妻宫）",
 	selftest:
 		"回归自检（排盘 / 古籍 / 合盘三段：农历换算 / 真太阳时 / 晚子时 / 排盘不变量 / 三合派约束）",

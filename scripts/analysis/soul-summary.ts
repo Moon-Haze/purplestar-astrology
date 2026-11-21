@@ -13,6 +13,47 @@
 
 import type { ZiweiChart } from "../types";
 
+// ────────────────── 两张主星词条表（模块级导出，键域由 invariants 互证）──────────────────
+/**
+ * 十四主星 → 关键词词条（最多 5 个）。键域 = 内核星表（`data/stars.ts`），
+ * 由 `test/invariants.test.ts` 的主星键集互证盯住 —— 抄错星名在此当场红，
+ * 运行时的 `?? []` 只是空宫等合法缺省的兜底，不再是静默 miss 的遮罩。
+ */
+export const SOUL_KEYWORD_MAP: Record<string, string[]> = {
+	紫微: ["尊贵", "独立", "领导"],
+	天机: ["智慧", "机变", "善谋"],
+	太阳: ["阳刚", "官贵", "慷慨"],
+	武曲: ["财富", "刚毅", "果断"],
+	天同: ["温和", "享福", "随缘"],
+	廉贞: ["才艺", "桃花", "多变"],
+	天府: ["财库", "稳重", "保守"],
+	太阴: ["柔美", "财富", "细腻"],
+	贪狼: ["欲望", "桃花", "多才"],
+	巨门: ["善辩", "多思", "口才"],
+	天相: ["辅佐", "行政", "稳健"],
+	天梁: ["荫护", "医药", "长辈"],
+	七杀: ["将星", "果决", "孤克"],
+	破军: ["开创", "变动", "破旧"],
+};
+
+/** 十四主星 → 星性一词。键域同 {@link SOUL_KEYWORD_MAP}，互证同上。 */
+export const SOUL_NATURE_MAP: Record<string, string> = {
+	紫微: "帝王星",
+	天机: "智慧星",
+	太阳: "贵人星",
+	武曲: "财帛星",
+	天同: "福德星",
+	廉贞: "桃花星",
+	天府: "财库星",
+	太阴: "财富星",
+	贪狼: "桃花星",
+	巨门: "是非星",
+	天相: "印绶星",
+	天梁: "荫庇星",
+	七杀: "将帅星",
+	破军: "变动星",
+};
+
 // ────────────────── 命宫摘要（保持向后兼容）──────────────────
 /**
  * 取命宫主星的简要概括：星名、关键词、星性。
@@ -22,13 +63,13 @@ import type { ZiweiChart } from "../types";
  *   `nature` 为星性；命宫缺失时三项皆空
  *
  * @remarks
- * 轻量摘要：两张大表（`keywordMap` / `natureMap`）是按 14 主星硬编码的中文词条 ——
- * 这里**不判条件，只做映射**，属纯文案层。`cli/commands/astrology.ts` 的
- * `mingGongSummary` 取它，与 `detectPatterns` 的输出拼成完整解读素材。
+ * 轻量摘要：两张大表（{@link SOUL_KEYWORD_MAP} / {@link SOUL_NATURE_MAP}）是按 14 主星
+ * 硬编码的中文词条 —— 这里**不判条件，只做映射**，属纯文案层。`cli/commands/astrology.ts`
+ * 的 `mingGongSummary` 取它，与 `detectPatterns` 的输出拼成完整解读素材。
  *
  * 三处口径需要注意：
  *
- * 1. **只看主星**：`keywordMap` 与 `natureMap` 都只覆盖 14 主星，吉煞杂耀一概不参与
+ * 1. **只看主星**：两张表都只覆盖 14 主星，吉煞杂耀一概不参与
  * 2. **空宫给"空宫"**：`stars` 为空（命宫无主星）时 `nature` 直接是字面量 `"空宫"`，
  *    `keywords` 为空数组 —— 此时调用方需改为从**借入的对宫主星**取释义，
  *    消费方就是这么处理的（见 `Palace.borrowedStars`）
@@ -36,7 +77,9 @@ import type { ZiweiChart } from "../types";
  *    `keywords` 把**所有**主星的词条摊平后 `slice(0, 5)` —— 命宫坐双主星时，
  *    首星决定星性、两星共同贡献关键词
  *
- * 未收录的星名（表外键）不会报错：`keywordMap[n] ?? []` 跳过，`nature` 兜底为空串。
+ * 未收录的星名（表外键）不会报错：`SOUL_KEYWORD_MAP[n] ?? []` 跳过，`nature` 兜底为空串
+ * —— 键域漂移（表键 ≠ 运行时主星名）由 invariants 主星键集互证拦截，此处兜底只为
+ * 空宫等合法缺省服务，不掩盖抄错。
  *
  * @example
  * ```ts
@@ -57,42 +100,8 @@ export function getMingGongSummary(chart: ZiweiChart): {
 	const majorStars = mingPalace.stars.filter(s => s.type === "major");
 	const starNames = majorStars.map(s => s.name);
 
-	const keywordMap: Record<string, string[]> = {
-		紫微: ["尊贵", "独立", "领导"],
-		天机: ["智慧", "机变", "善谋"],
-		太阳: ["阳刚", "官贵", "慷慨"],
-		武曲: ["财富", "刚毅", "果断"],
-		天同: ["温和", "享福", "随缘"],
-		廉贞: ["才艺", "桃花", "多变"],
-		天府: ["财库", "稳重", "保守"],
-		太阴: ["柔美", "财富", "细腻"],
-		贪狼: ["欲望", "桃花", "多才"],
-		巨门: ["善辩", "多思", "口才"],
-		天相: ["辅佐", "行政", "稳健"],
-		天梁: ["荫护", "医药", "长辈"],
-		七杀: ["将星", "果决", "孤克"],
-		破军: ["开创", "变动", "破旧"],
-	};
-
-	const natureMap: Record<string, string> = {
-		紫微: "帝王星",
-		天机: "智慧星",
-		太阳: "贵人星",
-		武曲: "财帛星",
-		天同: "福德星",
-		廉贞: "桃花星",
-		天府: "财库星",
-		太阴: "财富星",
-		贪狼: "桃花星",
-		巨门: "是非星",
-		天相: "印绶星",
-		天梁: "荫庇星",
-		七杀: "将帅星",
-		破军: "变动星",
-	};
-
-	const keywords = starNames.flatMap(n => keywordMap[n] ?? []).slice(0, 5);
-	const nature = starNames.length > 0 ? (natureMap[starNames[0]] ?? "") : "空宫";
+	const keywords = starNames.flatMap(n => SOUL_KEYWORD_MAP[n] ?? []).slice(0, 5);
+	const nature = starNames.length > 0 ? (SOUL_NATURE_MAP[starNames[0]] ?? "") : "空宫";
 
 	return { stars: starNames, keywords, nature };
 }

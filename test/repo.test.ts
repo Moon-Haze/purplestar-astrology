@@ -48,6 +48,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ResolveHookSync } from "node:module";
 
 import { ALL_SKILLS, CHART_LIKE, SOURCE_SKILL, skillDir } from "./lib/skills.ts";
+import { DIRECT_CHART_ENV } from "../scripts/cli/chart/direct-env.ts";
 // ⚠️ 字面相对路径，带 `.ts` 扩展名，理由同 lib/loader.ts 的同一行：boot-hooks.ts 只依赖
 //    `node:` 内置，故可在解析钩子注册之前被 Node 的原生类型擦除加载。
 // ⚠️ 内核在仓库根 scripts/，挪内核时本行会静默失效。
@@ -308,7 +309,7 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 		const r = spawnSync(
 			process.execPath,
 			[resolve(SKILL_ROOT, "scripts", "purple-star.ts"), "selftest"],
-			{ encoding: "utf8", env: { ...process.env, ZIWEI_NO_CACHE: "1" } }
+			{ encoding: "utf8", env: { ...process.env, ...DIRECT_CHART_ENV } }
 		);
 		assert.equal(r.status, 0, `selftest 应全绿退出，stderr：${(r.stderr ?? "").slice(0, 200)}`);
 		const skippedLines = (r.stdout ?? "").split("\n").filter(l => l.includes("⏭"));

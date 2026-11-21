@@ -1627,10 +1627,19 @@ describe("topic 长判词（Pattern.topicDescription）", () => {
 // 索引的数据表若混入紧凑键（「兄弟」/「仆役」）或半改形态（「交友」），运行时直查会
 // 静默 miss、被 ?? "" 与简述兜底吞掉 —— 键域漂移是 typecheck 查不到的缺陷类
 // （架构评审 2026-10-24 S1：修复前内容键表 12 键仅 1 命中、主题关键宫大面积 miss）。
-// 十四主星名以内核星表为单一真相源，四处键集互证防抄错（三方标签错位事故的同型防线）。
+// 十四主星名以内核星表为单一真相源，多处键集互证防抄错（三方标签错位事故的同型防线）。
 const ANALYSIS_DATA = await load<typeof import("@/analysis/data")>("@/analysis/data");
 const { selectGender } = await load<typeof import("@/analysis/lookups")>("@/analysis/lookups");
 const KERNEL_STAR_TABLE = await load<typeof import("@/data/stars")>("@/data/stars");
+// 键域互证同网（评审 N4 / 第五轮候选 9）：煞星名单（partition 自洽 + 基准盘派生）、
+// 命宫摘要两表与合盘两表（主星键集并入 bySrc / 杂曜基准盘派生）。
+const { SHA_NAMES, SHA_HARD, SHA_KONG } =
+	await load<typeof import("@/corpus/data/patterns")>("@/corpus/data/patterns");
+const { SOUL_KEYWORD_MAP, SOUL_NATURE_MAP } =
+	await load<typeof import("@/analysis/soul-summary")>("@/analysis/soul-summary");
+const { STAR_IN_FUQI_GU, MARRIAGE_STARS_BRIEF } = await load<
+	typeof import("@/synastry/synastry-knowledge")
+>("@/synastry/synastry-knowledge");
 describe("analysis 数据键域互证", () => {
 	const domain = new Set(PALACE_NAMES_ORDER);
 
@@ -1684,12 +1693,15 @@ describe("analysis 数据键域互证", () => {
 		assert.deepEqual(sparse, [], `次星宫位表每星应 12 宫齐，缺失的星：${sparse.join("、")}`);
 	});
 
-	it("十四主星键集：星曜内容 / 简述 / 内核星表 三处同键集", async () => {
+	it("十四主星键集：星曜内容 / 简述 / 命宫摘要两表 / 合盘夫妻宫断语 与内核星表同键集", async () => {
 		const truth = [...Object.keys(KERNEL_STAR_TABLE.STAR_DESCRIPTIONS)].sort();
 		assert.equal(truth.length, 14, "内核星表应是十四主星");
 		const bySrc: Array<[string, string[]]> = [
 			["STAR_CONTENT_MAP", Object.keys(ANALYSIS_DATA.STAR_CONTENT_MAP).sort()],
 			["STAR_BRIEF", Object.keys(ANALYSIS_DATA.STAR_BRIEF).sort()],
+			["soul-summary SOUL_KEYWORD_MAP", Object.keys(SOUL_KEYWORD_MAP).sort()],
+			["soul-summary SOUL_NATURE_MAP", Object.keys(SOUL_NATURE_MAP).sort()],
+			["synastry STAR_IN_FUQI_GU", Object.keys(STAR_IN_FUQI_GU).sort()],
 		];
 		const diff = bySrc.filter(([, keys]) => JSON.stringify(keys) !== JSON.stringify(truth));
 		assert.deepEqual(
@@ -1699,6 +1711,56 @@ describe("analysis 数据键域互证", () => {
 		);
 	});
 
+	it("煞星名单键域：SHA 三表 partition 自洽 + 六煞在基准盘上以 type=tough 实际出现（评审 N4）", () => {
+		// partition 承诺此前只有注释（corpus/data/patterns.ts 头注）——「名单自相矛盾
+		// 不可见」的状态在此终结；「名字漂移 → 计煞恒 0 → 破格判定静默失效」同型拦截。
+		const union = [...new Set([...SHA_HARD, ...SHA_KONG])].sort();
+		assert.deepEqual(union, [...SHA_NAMES].sort(), "SHA_HARD ∪ SHA_KONG 应等于 SHA_NAMES 全集");
+		const overlap = SHA_HARD.filter(n => SHA_KONG.includes(n));
+		assert.deepEqual(
+			overlap,
+			[],
+			`SHA_HARD 与 SHA_KONG 应互不相交（空劫不在四煞内），重叠：${overlap.join("、")}`
+		);
+		// 名单键 ⊆ 运行时星名：300 条固定基准夹具（deterministic）上六煞全部以 tough
+		// 出现过。刻意不导出内核 TOUGH_STARS 做精确互证 —— 为一个测试扩大冻结契约面
+		// 不成比例（评审 N4 拍板走基准盘派生）。
+		const toughSeen = new Set<string>();
+		for (const { chart } of charts) {
+			for (const p of chart.palaces) {
+				for (const s of p.stars) {
+					if (s.type === "tough") {
+						toughSeen.add(s.name);
+					}
+				}
+			}
+		}
+		const missing = SHA_NAMES.filter(n => !toughSeen.has(n));
+		assert.deepEqual(
+			missing,
+			[],
+			`煞星名单有名字在 300 条基准盘上从未以 tough 出现（名字漂移或类型域漂移）：${missing.join("、")}`
+		);
+	});
+
+	it("合盘杂曜键域：MARRIAGE_STARS_BRIEF 键在基准盘上实际出现（评审候选 9 同网邻位）", () => {
+		// 杂曜域没有内核名单真相源（红鸾天喜等不进 TOUGH/SOFT 名单），互证走基准盘派生：
+		// 300 条固定夹具上九曜全部实际出现（type=minor）—— 名字抄错在此当场红。
+		const seen = new Set<string>();
+		for (const { chart } of charts) {
+			for (const p of chart.palaces) {
+				for (const s of p.stars) {
+					seen.add(s.name);
+				}
+			}
+		}
+		const missing = Object.keys(MARRIAGE_STARS_BRIEF).filter(n => !seen.has(n));
+		assert.deepEqual(
+			missing,
+			[],
+			`合盘杂曜名单有名字在基准盘上从未出现：${missing.join("、")}`
+		);
+	});
 });
 
 // ── 条件分支迁移守卫（structure-content-branches）──

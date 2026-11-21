@@ -13,6 +13,7 @@
 
 import type { CliContext } from "../args";
 import { parseArgs } from "../args";
+import { DIRECT_CHART_ENV } from "../chart/direct-env";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { asserts as classicAsserts } from "@/corpus/selftest-asserts";
@@ -62,9 +63,10 @@ import {
  */
 export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	// 自检全程**强制直排、绕过排盘缓存**：回归要验的是「当前内核排出来的盘」，命中改动前
-	// 写下的条目会让回归拿着旧盘全绿 —— 那比没有回归更坏（假绿）。
+	// 写下的条目会让回归拿着旧盘全绿 —— 那比没有回归更坏（假绿）。直排豁免常量单点在
+	// ../chart/direct-env（评审 N2）。
 	// 本行同时覆盖下方 runCli 的子进程（env 随进程继承）；见 docs/code/cli-selftest.md。
-	process.env.ZIWEI_NO_CACHE = "1";
+	process.env.ZIWEI_NO_CACHE = DIRECT_CHART_ENV.ZIWEI_NO_CACHE;
 	// harness（Assertion / eq / ok）抽在 ./selftest-kit —— 原先与 classics / synastry
 	// 两个断言组逐字同形的三份本地定义由此归一。
 	const { results, ok } = createHarness();

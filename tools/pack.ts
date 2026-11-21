@@ -42,6 +42,7 @@
 
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
 import { spawnSync } from "node:child_process";
+import { DIRECT_CHART_ENV } from "../scripts/cli/chart/direct-env.ts";
 import {
 	mkdirSync,
 	mkdtempSync,
@@ -275,7 +276,7 @@ function verify(zip: Buffer, entries: Entry[]): void {
 			{
 				cwd: skillDir,
 				encoding: "utf8",
-				env: { ...process.env, ZIWEI_NO_CACHE: "1" },
+				env: { ...process.env, ...DIRECT_CHART_ENV },
 			}
 		);
 		const stdout = `${r.stdout ?? ""}`;

@@ -1,8 +1,9 @@
 // ── 层 4：三合派体系约束 ──
 //
-// 本项目严格遵循倪海厦《天纪》三合派。飞星派的**宫干自化**、**大限四化取宫干**、
-// **来因宫**均已主动下线 —— algorithm.ts 不再填充这些字段；types.ts 仍保留其类型定义，
+// 本项目严格遵循倪海厦《天纪》三合派。飞星派的**宫干自化**、**大限四化取宫干**
+// 均已主动下线 —— algorithm.ts 不再填充这些字段；types.ts 仍保留其类型定义，
 // 那是**刻意留下的绊线**（断言盯的是「有没有被填回」，字段删了就无从盯起）。
+// **来因宫**从无字段，守护走「字段缺席」绊线（见下方 laiYin 断言）。
 // 会生产它们的那些函数（detectSelfSihua / findIncomingPalaces / getDecadalMutagen 等）
 // 已从 sihua.ts 删除，全仓零调用点。本文件盯住这些字段**不被重新填回**。
 //
@@ -99,6 +100,20 @@ describe("三合派体系约束", () => {
 						`${label(birth)}：${s.name} 带 incomingSihua —— 飞星派字段，不应存在`
 					);
 				}
+			}
+		}
+	});
+
+	it("宫位不含 laiYin 字段（飞星派来因宫）—— lai-yin 禁忌的运行时绊线", () => {
+		// 评审 N6(b)：来因宫在内核从无字段（飞星派追溯法未实现），guard 的「字段被填」
+		// 式检查无从谈起 —— 守护改走绊线形态：盯「字段有没有被加回来」，与
+		// self-mutagen / incomingSihua 绊线同构，guard.ts 的空分支注释由此为真。
+		for (const { birth, chart } of charts) {
+			for (const p of chart.palaces) {
+				assert.ok(
+					!("laiYin" in p),
+					`${label(birth)}：${p.name} 出现 laiYin 字段 —— 飞星派来因宫，本项目禁用`
+				);
 			}
 		}
 	});

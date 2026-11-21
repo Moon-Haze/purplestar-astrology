@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 
 import { ROOT, ROOT_LABEL } from "./loader.ts";
 import type { TestEventRecord } from "./reporter.ts";
+import { DIRECT_CHART_ENV } from "../../scripts/cli/chart/direct-env.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // <skill 根>/test/lib
 const SKILL_ROOT = resolve(HERE, "../..");
@@ -130,10 +131,11 @@ const testRun = spawnSync(
 		cwd: SKILL_ROOT,
 		// ZIWEI_NO_CACHE=1：回归全程绕过排盘缓存。测试里有不少用例会跑 CLI 子进程
 		// （cli.test.ts 等），命中改动前写下的缓存条目就会假绿 —— 回归必须验当前内核。
+		// 豁免常量单点在 scripts/cli/chart/direct-env.ts（评审 N2）。
 		env: {
 			...process.env,
 			ZIWEI_TEST_YEAR: year === null ? "" : String(year),
-			ZIWEI_NO_CACHE: "1",
+			...DIRECT_CHART_ENV,
 		},
 	}
 );
@@ -169,10 +171,7 @@ const LAYERS = [
 	{
 		label: "层 2 CLI 端到端",
 		file: "astrology-sections.test.ts",
-		suites: [
-			"专题旗标→section 接线（候选 3）",
-			"会照口径：三方四正本命四化的星曜口径",
-		],
+		suites: ["专题旗标→section 接线（候选 3）", "会照口径：三方四正本命四化的星曜口径"],
 	},
 	{ label: "层 2 CLI 端到端", file: "report.test.ts", suites: ["astrology --report 全盘报告"] },
 	{

@@ -315,6 +315,27 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 			throw new Error("--monthly 被标成可选值 —— 它必须带值（裸开关会指路）");
 		}
 	});
+	ok("参数面：专题菜单与声明表双向对拍（deep 旗标全在菜单、菜单条目全有声明）", () => {
+		// 评审 N7：指路行与 help DESCRIPTION 的旗标列举段都由 DEEP_DIVE_MENU 拼装，
+		// 本对拍钉住两个方向 —— 新增专题只标 deep: true 却漏登菜单、或菜单引用了
+		// 未声明的旗标，都在这里红（策展排列住菜单数组序，此处只查集合关系）。
+		const declared = new Set(table.OPTION_GROUPS.flatMap(g => g.options.map(o => o.name)));
+		const menuNames = table.DEEP_DIVE_MENU.map(e => e.name);
+		const notDeclared = menuNames.filter(n => !declared.has(n));
+		if (notDeclared.length) {
+			throw new Error(
+				`专题菜单引用了未声明的旗标：${notDeclared.map(n => `--${n}`).join("、")}`
+			);
+		}
+		const notInMenu = table.DEEP_DIVE_KEYS.filter(k => !menuNames.includes(k));
+		if (notInMenu.length) {
+			throw new Error(`deep 旗标未进专题菜单：${notInMenu.map(n => `--${n}`).join("、")}`);
+		}
+		const dup = menuNames.filter((n, i) => menuNames.indexOf(n) !== i);
+		if (dup.length) {
+			throw new Error(`专题菜单重复登记：${dup.map(n => `--${n}`).join("、")}`);
+		}
+	});
 }
 
 /** SKILL.md 行为规范对拍：提到的旗标都在 args-table.ts 的声明表里。 */
