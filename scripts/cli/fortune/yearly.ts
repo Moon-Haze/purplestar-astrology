@@ -11,7 +11,7 @@ import { yearlyBranchOf } from "./primitives";
 import { huiZhaoLine, sameStarPairs, sihuaLines } from "./sihua-helpers";
 
 /**
- * `--liunian [年]`：流年专题 —— 流年命宫（年支宫）→ 流年三方四正会照 →
+ * `--yearly [年]`（拼音别名 `--liunian`）：流年专题 —— 流年命宫（年支宫）→ 流年三方四正会照 →
  * 流年四化落点（标 ★ 于入流年三方者）→ 与当前大限三方的关系 → 生年×流年同星引动。
  *
  * @param chart - 命盘
@@ -58,6 +58,9 @@ export function yearlySection(chart: ZiweiChart, year: number): string[] {
 	}
 	const pairs = sameStarPairs(chart, getNativeMutagen(chart).transforms, liuNian.transforms);
 	if (pairs.length) {
+		// 「生年 × 流年同星引动」在本专题是**行内小节**（无【】头）；--mutagen 专题的同名
+		// 块是节标题【生年 × 流年 同星引动】—— 排版刻意不同（节内行 vs 专题节头，评审
+		// 2026-11-20 #7 确认为刻意），判定同源 sameStarPairs，勿「统一」两处文案。
 		out.push("生年 × 流年同星引动：");
 		for (const p of pairs) {
 			out.push(

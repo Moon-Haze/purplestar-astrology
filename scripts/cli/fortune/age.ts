@@ -10,8 +10,8 @@ import { agePalaceOf, yearlyBranchOf } from "./primitives";
 import { huiZhaoLine } from "./sihua-helpers";
 
 /**
- * `--xiaoxian [虚岁]`：小限专题 —— 指定岁的小限宫与三方四正 → 十二宫小限岁数分布
- * → 小限宫与流年命宫的对照。
+ * `--ages [虚岁]`（拼音别名 `--xiaoxian`）：小限专题 —— 指定岁的小限宫与三方四正 →
+ * 十二宫小限岁数分布 → 小限宫与流年命宫的对照。
  *
  * @param chart - 命盘
  * @param age - 小限虚岁；缺省时传当前虚岁

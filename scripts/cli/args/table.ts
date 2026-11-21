@@ -315,7 +315,7 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 				noShadow: true,
 				noIntent: true,
 				kind: "switch",
-				desc: "跳过排盘缓存，强制现排（默认同一农历年内复用 .cache/charts 里的排盘结果）",
+				desc: "跳过排盘缓存，强制现排（默认同一农历年内复用系统临时目录下的缓存；ZIWEI_CACHE_DIR 可指定持久目录）",
 			},
 			{
 				name: "out",

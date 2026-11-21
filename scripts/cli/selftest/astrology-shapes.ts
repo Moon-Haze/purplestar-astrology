@@ -4,7 +4,7 @@
  *
  * @remarks
  * 断言体原样搬移，只改文件归属（harness 经 {@link SelftestDeps} 注入；直调探针
- * `call` 由主 selftest 构造后经 deps 传入 —— 组文件不静态 import cli/commands.ts）。
+ * `call` 由主 selftest 构造后经 deps 传入 —— 组文件不静态 import 命令注册层）。
  * 在主 selftest 的调用序里与源码顺序一致。去重说明：本组原有「旧命令名已删」
  * （键集层面）与「组合层 --monthly 守卫」两条，分别与 `runCommandSplit` /
  * `runCommandSurface` 的直调版重复，已并入彼处（architecture-review-20261016 候选 2）。

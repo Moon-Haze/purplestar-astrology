@@ -10,7 +10,7 @@
  */
 import type { CliArgs, CliContext } from "../args";
 
-/** 命令表条目：与 `cli/commands.ts` 的 `Cmd` 同形（Cmd 未导出，此处内联声明）。 */
+/** 命令表条目：与命令注册层（`cli/commands/index.ts`）的 `Cmd` 同形（Cmd 未导出，此处内联声明）。 */
 type CmdEntry = (args: CliArgs, ctx: CliContext) => string | Promise<string>;
 
 /**

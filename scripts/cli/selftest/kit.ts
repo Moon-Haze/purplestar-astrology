@@ -77,7 +77,7 @@ export function callDirect(
  * @remarks
  * 主 selftest 构造一次、按源码断言顺序逐组传入组函数。`call` / `runCli` / `commandNames`
  * 只在这里构造：命令表 COMMANDS 由主 selftest 动态 import 取得（打断静态环），组文件因此
- * 一律不静态 import `cli/commands.ts`（见 docs/code/cli-selftest.md）。
+ * 一律不静态 import 命令注册层（`cli/commands`，见 docs/code/cli-selftest.md）。
  */
 export interface SelftestDeps {
 	/** 运行期上下文（内核根与其来源）—— 读 SKILL.md / 数据文件等守护断言用 */

@@ -11,8 +11,8 @@ import { agePalaceOf, yearlyBranchOf } from "./primitives";
 import { huiZhaoLine, sihuaLines } from "./sihua-helpers";
 
 /**
- * `--daxian [虚岁]`：大限（十年大运）专题 —— 十二年运时间轴 → 指定岁所在限深入
- * （限宫 + 限之三方四正 + 生年四化落点）→ 限内十年逐年对照（流年命宫 / 小限宫）。
+ * `--decadal [虚岁]`（拼音别名 `--daxian`）：大限（十年大运）专题 —— 十二年运时间轴 →
+ * 指定岁所在限深入（限宫 + 限之三方四正 + 生年四化落点）→ 限内十年逐年对照（流年命宫 / 小限宫）。
  *
  * @param chart - 命盘
  * @param age - 深查的虚岁；`--daxian` 缺省时传当前虚岁

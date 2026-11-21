@@ -14,8 +14,8 @@
 // 而 tsx 的 esbuild 转换成本与源文件大小成正比 —— 实测把 nihai 的加载成本从 5ms
 // 抬到 14ms、cli/commands 从 13ms 抬到 38ms，大源文件被高估约 2–3 倍（nihai 模块已
 // 随同名命令一并移除，此处数据留作 tsx 高估幅度的例证）。子进程探针
-// 复用 test/lib/loader.ts 的 registerHooks（该文件是 CLI 引导层的既定副本，且有一条
-// 漂移断言盯着），因此**不需要**在这里再写第三份 hook 逻辑。
+// 复用 test/lib/loader.ts 的 registerHooks（loader.ts 与 CLI 共用 boot-hooks.ts 一份
+// 实现——机制单点、无副本关系），因此**不需要**在这里再写第二份 hook 逻辑。
 //
 // 口径纪律（本项目踩过的坑）：
 //   比较「某处占端到端多少」时，必须用**首次调用**耗时，不能用暖机后的均摊值 ——

@@ -96,7 +96,7 @@ export function runSkillCommandAudit({
 	ctx,
 	commandNames,
 }: Pick<SelftestDeps, "ok" | "ctx" | "commandNames">): void {
-	ok("参数面：SKILL.md 命令速查表提到的命令都在 commands.ts 的命令表里", () => {
+	ok("参数面：SKILL.md 命令速查表提到的命令都在命令表里（cli/commands 注册面）", () => {
 		// 与「SKILL.md 旗标 → 声明表」同源：SKILL.md 是给助手读的**行为规范**，它提到的
 		// 命令若不存在，助手会照着敲一条必然失败的命令行。键集取自主 selftest 的动态
 		// import（真模块的键集，不再有「正则漏抽」的失效模式，物理排版随之退出契约）。
@@ -126,7 +126,7 @@ export function runSkillCommandAudit({
 
 		const unknown = mentioned.filter(n => !defined.includes(n));
 		if (unknown.length) {
-			throw new Error(`SKILL.md 提到但 commands.ts 未定义的命令：${unknown.join("、")}`);
+			throw new Error(`SKILL.md 提到但命令表未定义的命令：${unknown.join("、")}`);
 		}
 		return `${mentioned.length} 个命令全部有实现`;
 	});

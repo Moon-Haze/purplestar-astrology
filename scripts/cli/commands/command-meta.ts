@@ -1,11 +1,12 @@
 /**
  * 命令元数据 —— 命令名清单与 HELP 渲染所需的描述文案。
  *
- * `commands.ts` 静态 import 各命令实现（→ 内核 → iztro），HELP 渲染却只需要名字与文案：
- * 本模块拆出后 help / 未知命令路径只加载它即可返回，不再为看一眼用法付出 iztro 冷启动。
+ * 命令注册层（`cli/commands/index.ts`）静态 import 各命令实现（→ 内核 → iztro），HELP 渲染
+ * 却只需要名字与文案：本模块拆出后 help / 未知命令路径只加载它即可返回，不再为看一眼
+ * 用法付出 iztro 冷启动。
  *
  * ⚠️ 本文件是**轻模块**：不得 import 任何命令实现或内核（help 渲染的依赖底线）。
- *    键集与 `commands.ts` 的 COMMAND_TABLE 互相钉住 —— 任一侧加命令漏改另一侧都编译不过。
+ *    键集与命令注册层的 COMMAND_TABLE 互相钉住 —— 任一侧加命令漏改另一侧都编译不过。
  *    轻模块的收益与优先级链真相源见 docs/code/cli-commands.md。
  */
 

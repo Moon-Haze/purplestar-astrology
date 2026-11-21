@@ -105,6 +105,9 @@ export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions
 	}
 	const pairs = sameStarPairs(chart, native.transforms, liuNian.transforms);
 	if (pairs.length) {
+		// 【生年 × 流年 同星引动】是 --mutagen 的**专题节头**；--yearly 专题的同名块是
+		// 行内小节（无【】头）—— 排版刻意不同（评审 2026-11-20 #7 确认），判定同源
+		// sameStarPairs，两处行文细节（双引动 / 未上盘措辞）各自成文，勿「统一」。
 		out.push("");
 		out.push("【生年 × 流年 同星引动】");
 		for (const p of pairs) {

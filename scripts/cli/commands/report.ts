@@ -18,7 +18,7 @@ import {
 	type ReportCitation,
 	type TopicKey,
 } from "@/analysis";
-import { KNOWLEDGE_GRADE_ORDER } from "../../analysis/grades";
+import { KNOWLEDGE_GRADE_ORDER } from "@/analysis/grades";
 import { detectPatterns } from "@/patterns";
 import { getNativeMutagen } from "@/mutagen";
 import { BRANCHES, STEMS } from "@/data/ganzhi";

@@ -53,7 +53,7 @@ import { buildMutagenChain } from "@/mutagen";
 import { STEMS, BRANCHES } from "@/data/ganzhi";
 import { buildReport } from "./report";
 import { getTopicAnalysis, TOPIC_LABEL, TOPIC_PALACE_NAME, type TopicKey } from "@/analysis";
-import { KNOWLEDGE_GRADE_ORDER } from "../../analysis/grades";
+import { KNOWLEDGE_GRADE_ORDER } from "@/analysis/grades";
 
 /**
  * `--view` 取值别名表与值域文案已收进 `../args/table`（VIEW_ALIASES / VIEW_TEXT，
