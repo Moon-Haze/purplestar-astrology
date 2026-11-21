@@ -26,9 +26,13 @@ function renderPersonalityItems(ctx: AnalysisContext): AnalysisItem[] {
 		items.push(headItem(`**【性格深描】**`, "extra:性格深描"));
 		items.push(blankItem("extra:性格深描"));
 		items.push(
-			contentItem(selectBranches(profile.personality, primaryStar, gender), "extra:性格深描", {
-				star: primaryStar.name,
-			})
+			contentItem(
+				selectBranches(profile.personality, primaryStar, gender),
+				"extra:性格深描",
+				{
+					star: primaryStar.name,
+				}
+			)
 		);
 		items.push(blankItem("extra:性格深描"));
 	}

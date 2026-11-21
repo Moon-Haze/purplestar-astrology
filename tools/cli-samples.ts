@@ -62,8 +62,7 @@ const SKILL_ROOT = resolve(HERE, "..");
 const CTX: CliContext = { root: resolve(SKILL_ROOT, "scripts"), rootLabel: "仓库自带内核" };
 
 /** `--no-cache` 的 desc 引用声明表单点（评审候选 10：手抄同句曾指向不存在的 .cache/charts）。 */
-const NO_CACHE_DESC = OPTION_GROUPS.flatMap(g => g.options).find(o => o.name === "no-cache")!
-	.desc;
+const NO_CACHE_DESC = OPTION_GROUPS.flatMap(g => g.options).find(o => o.name === "no-cache")!.desc;
 
 /**
  * dispatch 端口 —— 与 purple-star.ts 宿主同一装配形态：help 走轻路径（commandNames
@@ -134,10 +133,7 @@ export const SAMPLES: Sample[] = [
 		group: "astrology · 概览与出生信息",
 		title: "旗标全形态概览",
 		desc: "--date 公历 + --time 钟表时 + --city 城市经度 + --gender；不带专题参数时只出精简概览",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-		],
+		args: ["astrology", ...DEMO_ARGV],
 	},
 	{
 		group: "astrology · 概览与出生信息",
@@ -343,47 +339,25 @@ export const SAMPLES: Sample[] = [
 		group: "astrology · 专题深入",
 		title: "--pattern / --geju 格局识别",
 		desc: "格局判词 / 成立与破格条件 / 出处",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--pattern",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--pattern"],
 	},
 	{
 		group: "astrology · 专题深入",
 		title: "--mutagen 四化专题",
 		desc: "生年四化落宫与叠宫（默认含当年流年四化）",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--mutagen",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--mutagen"],
 	},
 	{
 		group: "astrology · 专题深入",
 		title: "--mutagen --yearly 2027 指定流年",
 		desc: "流年四化按指定公历年取年干（默认今年）",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--mutagen",
-			"--yearly",
-			"2027",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--mutagen", "--yearly", "2027"],
 	},
 	{
 		group: "astrology · 专题深入",
 		title: "--mutagen --monthly 5 追加流月四化",
 		desc: "流月干由流年干五虎遁推出（流年缺省取当年）",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--mutagen",
-			"--yearly",
-			"2027",
-			"--monthly",
-			"5",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--mutagen", "--yearly", "2027", "--monthly", "5"],
 	},
 	{
 		group: "astrology · 专题深入",
@@ -423,64 +397,37 @@ export const SAMPLES: Sample[] = [
 		group: "astrology · 专题深入",
 		title: "--decadal 大限专题（缺省当前虚岁）",
 		desc: "十年大运时间轴 + 当前虚岁所在限的三方四正深入",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--decadal",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--decadal"],
 	},
 	{
 		group: "astrology · 专题深入",
 		title: "--decadal 30 指定虚岁",
 		desc: "看指定虚岁所在大限的三方四正",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--decadal",
-			"30",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--decadal", "30"],
 	},
 	{
 		group: "astrology · 专题深入",
 		title: "--ages 小限专题（缺省当前虚岁）",
 		desc: "指定岁小限宫 + 十二宫小限岁数表",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--ages",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--ages"],
 	},
 	{
 		group: "astrology · 专题深入",
 		title: "--ages 12 指定虚岁",
 		desc: "12 虚岁的小限落宫",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--ages",
-			"12",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--ages", "12"],
 	},
 	{
 		group: "astrology · 专题深入",
 		title: "--palaces 十二宫逐宫详表",
 		desc: "独占分支：给出即接管输出",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--palaces",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--palaces"],
 	},
 	{
 		group: "astrology · 专题深入",
 		title: "--focus 聚焦指定宫位",
 		desc: "额外展开指定宫（宫名写法支持本项目口径）",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--focus",
-			"财帛",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--focus", "财帛"],
 	},
 	{
 		group: "astrology · 专题深入",
@@ -503,83 +450,44 @@ export const SAMPLES: Sample[] = [
 		group: "astrology · 主题论断",
 		title: "--topic 裸开关列主题清单",
 		desc: "不带值时列出 13 个主题 key",
-		args: [
-			"astrology",
-			...DEMO_FEMALE_ARGV,
-			"--topic",
-		],
+		args: ["astrology", ...DEMO_FEMALE_ARGV, "--topic"],
 	},
 	{
 		group: "astrology · 主题论断",
 		title: "--topic love 感情婚姻",
 		desc: "主题论断（help 示例同款）；--view 缺省 = mingpan 本命口径",
-		args: [
-			"astrology",
-			...DEMO_FEMALE_ARGV,
-			"--topic",
-			"love",
-		],
+		args: ["astrology", ...DEMO_FEMALE_ARGV, "--topic", "love"],
 	},
 	{
 		group: "astrology · 主题论断",
 		title: "--topic love --view daxian",
 		desc: "同一主题换当前大限口径展示",
-		args: [
-			"astrology",
-			...DEMO_FEMALE_ARGV,
-			"--topic",
-			"love",
-			"--view",
-			"daxian",
-		],
+		args: ["astrology", ...DEMO_FEMALE_ARGV, "--topic", "love", "--view", "daxian"],
 	},
 	{
 		group: "astrology · 主题论断",
 		title: "--topic love --view decadal",
 		desc: "英文取值与 daxian 等价（yearly=liunian / monthly=liuyue 同理）",
-		args: [
-			"astrology",
-			...DEMO_FEMALE_ARGV,
-			"--topic",
-			"love",
-			"--view",
-			"decadal",
-		],
+		args: ["astrology", ...DEMO_FEMALE_ARGV, "--topic", "love", "--view", "decadal"],
 	},
 	{
 		group: "astrology · 主题论断",
 		title: "--topic love --view liuyue",
 		desc: "流月口径展示",
-		args: [
-			"astrology",
-			...DEMO_FEMALE_ARGV,
-			"--topic",
-			"love",
-			"--view",
-			"liuyue",
-		],
+		args: ["astrology", ...DEMO_FEMALE_ARGV, "--topic", "love", "--view", "liuyue"],
 	},
 	{
 		group: "astrology · 主题论断",
 		title: "--report 全盘报告（Markdown）",
 		desc: "13 个板块一次出全（独占分支，本命静态口径），文档头含骨架 / 四化 / 格局 / 运限与口径提示",
-		args: [
-			"astrology",
-			...DEMO_FEMALE_ARGV,
-			"--report",
-		],
+		args: ["astrology", ...DEMO_FEMALE_ARGV, "--report"],
 	},
 	{
 		group: "astrology · 主题论断",
 		title: "--report 与功能参数同给被指路",
 		desc: "--report 是独占分支，与 --pattern 同给报错不静默吞",
 		expectFail: true,
-		args: [
-			"astrology",
-			...DEMO_FEMALE_ARGV,
-			"--report",
-			"--pattern",
-		],
+		args: ["astrology", ...DEMO_FEMALE_ARGV, "--report", "--pattern"],
 	},
 
 	// ── astrology：输出形态与配置 ──
@@ -587,33 +495,19 @@ export const SAMPLES: Sample[] = [
 		group: "astrology · 输出与配置",
 		title: "--json 原始 JSON",
 		desc: "供程序消费的完整结构（chart / patterns / 四化 / 流年 / 小限 / 合盘基准）",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--json",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--json"],
 	},
 	{
 		group: "astrology · 输出与配置",
 		title: "--no-cache 跳过排盘缓存",
 		desc: NO_CACHE_DESC,
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--no-cache",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--no-cache"],
 	},
 	{
 		group: "astrology · 输出与配置",
 		title: "--out 落盘通道",
 		desc: "把输出写入文件（覆盖写，末尾恰一个换行；进度提示走 stderr，stdout 不再打印正文）",
-		args: [
-			"astrology",
-			...DEMO_ARGV,
-			"--json",
-			"--out",
-			"/tmp/purplestar-chart.json",
-		],
+		args: ["astrology", ...DEMO_ARGV, "--json", "--out", "/tmp/purplestar-chart.json"],
 	},
 	{
 		group: "astrology · 输出与配置",

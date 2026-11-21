@@ -9,3 +9,7 @@ scripts/corpus/data/manual/
 
 # 生成数据：import-tianji.ts 产出（文件头自带「不要手改」）
 scripts/corpus/data/tianji.ts
+
+# 生成数据：test/tools/build-fixtures.ts 产出（重导即覆盖，格式化不持久）
+test/fixtures/manifest.json
+test/fixtures/raw-rows.json

@@ -35,11 +35,15 @@ function renderMutagenItems(ctx: AnalysisContext, dedupe?: Map<string, string>):
 	if (mutagenInSanFang.length > 0) {
 		mutagenInSanFang.forEach(({ palaceName: pn, starName, mutagen, note }) => {
 			items.push(
-				contentItem(`${mutagenSymbol(mutagen)} **${starName}化${mutagen}**（落${pn}）`, "sihua", {
-					star: starName,
-					mutagen,
-					palace: pn,
-				})
+				contentItem(
+					`${mutagenSymbol(mutagen)} **${starName}化${mutagen}**（落${pn}）`,
+					"sihua",
+					{
+						star: starName,
+						mutagen,
+						palace: pn,
+					}
+				)
 			);
 			if (note && !dedupe?.get(note)) {
 				items.push(

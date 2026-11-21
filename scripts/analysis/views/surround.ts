@@ -39,10 +39,7 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
  *   缺省（`--topic` 单主题路径）为 `undefined`，输出与不去重时逐字节一致。
  *   主场登记由装配层预扫描完成（见 `analysis/report.ts` 的 `getTopicMainContentText`）。
  */
-function renderSanFangItems(
-	ctx: AnalysisContext,
-	dedupe?: Map<string, string>
-): AnalysisItem[] {
+function renderSanFangItems(ctx: AnalysisContext, dedupe?: Map<string, string>): AnalysisItem[] {
 	const { palaceName, sanFang, sanFangLabels, gender } = ctx;
 
 	const items: AnalysisItem[] = [];
@@ -88,22 +85,30 @@ function renderSanFangItems(
 						// 跨节去重：同段全文已登记（他板块首现，或本板块主场预登记）——
 						// 降级为徽标 + 指引行，全文恒只在其首现 / 主场板块出现一次。
 						items.push(
-							contentItem(`**${starBadge(s)}**（论断详见「${seenAt}」板块）`, "san-fang", {
-								star: s.name,
-								palace: p.name,
-								brightness: s.brightness,
-								mutagen: s.mutagen,
-							})
+							contentItem(
+								`**${starBadge(s)}**（论断详见「${seenAt}」板块）`,
+								"san-fang",
+								{
+									star: s.name,
+									palace: p.name,
+									brightness: s.brightness,
+									mutagen: s.mutagen,
+								}
+							)
 						);
 					} else {
 						// 有完整宫位段落，直接输出全文 + 四化补充
 						items.push(
-							contentItem(`**${s.name}${mutagenStr}${brightStr}** 在${p.name}：`, "san-fang", {
-								star: s.name,
-								palace: p.name,
-								brightness: s.brightness,
-								mutagen: s.mutagen,
-							})
+							contentItem(
+								`**${s.name}${mutagenStr}${brightStr}** 在${p.name}：`,
+								"san-fang",
+								{
+									star: s.name,
+									palace: p.name,
+									brightness: s.brightness,
+									mutagen: s.mutagen,
+								}
+							)
 						);
 						items.push(blankItem("san-fang"));
 						items.push(
@@ -133,7 +138,12 @@ function renderSanFangItems(
 						contentItem(
 							`  ${s.name}${mutagenStr}${brightStr}${brief ? "（" + brief + "）" : ""}${mutagenNote ? " | 化" + s.mutagen + "：" + mutagenNote : ""}`,
 							"san-fang",
-							{ star: s.name, palace: p.name, brightness: s.brightness, mutagen: s.mutagen }
+							{
+								star: s.name,
+								palace: p.name,
+								brightness: s.brightness,
+								mutagen: s.mutagen,
+							}
 						)
 					);
 				}
@@ -145,9 +155,13 @@ function renderSanFangItems(
 			const oppStars = p.borrowedStars ?? [];
 			if (oppStars.length > 0) {
 				items.push(
-					contentItem(`  （空宫，借对宫${oppName}：${oppStars.join("、")}入事）`, "san-fang", {
-						palace: p.name,
-					})
+					contentItem(
+						`  （空宫，借对宫${oppName}：${oppStars.join("、")}入事）`,
+						"san-fang",
+						{
+							palace: p.name,
+						}
+					)
 				);
 			} else {
 				items.push(contentItem(`  （空宫）`, "san-fang", { palace: p.name }));
@@ -166,7 +180,9 @@ function renderSanFangItems(
 			});
 		if (minorStarNotes.length > 0) {
 			minorStarNotes.forEach(({ name, note }) => {
-				items.push(contentItem(`✦ **${name}**：${note}`, "san-fang", { aux: name, palace: p.name }));
+				items.push(
+					contentItem(`✦ **${name}**：${note}`, "san-fang", { aux: name, palace: p.name })
+				);
 			});
 			items.push(blankItem("san-fang"));
 		}

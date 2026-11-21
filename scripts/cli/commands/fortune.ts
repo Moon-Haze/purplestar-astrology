@@ -19,4 +19,3 @@ export { yearlySection } from "../fortune/yearly";
 export { decadalSection } from "../fortune/decadal";
 export { ageSection } from "../fortune/age";
 export { focusSection } from "../fortune/focus";
-

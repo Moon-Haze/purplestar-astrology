@@ -72,7 +72,9 @@ const MANAGED_METHOD_FILES = ["引文真伪分级.md", "已核对论断"];
 		);
 	}
 	if (MANAGED_METHOD_FILES.join("|") !== NOTES_MANAGED_METHOD_FILES.join("|")) {
-		throw new Error("60-方法 托管文件与 tools/db/managed-paths.ts 不对齐，先改清单再改托管面。");
+		throw new Error(
+			"60-方法 托管文件与 tools/db/managed-paths.ts 不对齐，先改清单再改托管面。"
+		);
 	}
 }
 

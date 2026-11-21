@@ -40,7 +40,10 @@ function renderLiuNianItems(ctx: AnalysisContext): AnalysisItem[] {
 		const lnYearStem = getYearStemIndex(liunianYear);
 		const lnPalace = chart.palaces.find(p => p.branch === lnYearBranch);
 		items.push(
-			headItem(`**【${liunianYear}年 流年 · ${STEMS[lnYearStem]}${BRANCHES[lnYearBranch]}年】**`, "liunian")
+			headItem(
+				`**【${liunianYear}年 流年 · ${STEMS[lnYearStem]}${BRANCHES[lnYearBranch]}年】**`,
+				"liunian"
+			)
 		);
 		items.push(blankItem("liunian"));
 		items.push(
@@ -61,9 +64,7 @@ function renderLiuNianItems(ctx: AnalysisContext): AnalysisItem[] {
 			// 不再在此处按 type === "major" 另立一套。
 			const lnHits = mutagenInPalaces(lnSanFangPalaces);
 			if (lnHits.length > 0) {
-				items.push(
-					contentItem(`**流年三方四正会本命四化**：`, "liunian")
-				);
+				items.push(contentItem(`**流年三方四正会本命四化**：`, "liunian"));
 				lnHits.forEach(({ palace, starName, mutagen }) => {
 					items.push(
 						contentItem(
@@ -90,7 +91,10 @@ function renderLiuNianItems(ctx: AnalysisContext): AnalysisItem[] {
 		const lyBranch = (lnYearBranch + (liuyueMonth - 1)) % 12;
 		const lyPalace = chart.palaces.find(p => p.branch === lyBranch);
 		items.push(
-			headItem(`**【${liunianYear}年${liuyueMonth}月 流月 · ${BRANCHES[lyBranch]}月】**`, "liuyue")
+			headItem(
+				`**【${liunianYear}年${liuyueMonth}月 流月 · ${BRANCHES[lyBranch]}月】**`,
+				"liuyue"
+			)
 		);
 		items.push(blankItem("liuyue"));
 		items.push(
