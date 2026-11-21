@@ -14,8 +14,8 @@
 
 import { Lunar } from "lunar-typescript";
 import type { Mutagen, ZiweiChart } from "./types";
-import { SI_HUA_TABLE } from "@/data/sihua";
-import { STEMS } from "@/data/ganzhi";
+import { SI_HUA_TABLE } from "./data/sihua";
+import { STEMS } from "./data/ganzhi";
 
 /**
  * 六层四化函数族的**同形收尾三元组**：`{ stemIndex, stemName, transforms }`。

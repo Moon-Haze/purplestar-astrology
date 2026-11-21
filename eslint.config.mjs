@@ -17,7 +17,15 @@ import eslintConfigPrettier from "eslint-config-prettier";
 
 export default [
 	{
-		ignores: ["node_modules/**", "db/**", "html/**", "dist/**", "**/*.min.*", ".history/**", "office-sleep-poster_assets/**"],
+		ignores: [
+			"node_modules/**",
+			"db/**",
+			"html/**",
+			"dist/**",
+			"**/*.min.*",
+			".history/**",
+			"office-sleep-poster_assets/**",
+		],
 	},
 	js.configs.recommended,
 	eslintConfigPrettier,
@@ -61,6 +69,17 @@ export default [
 			// ESLint 10 新规则：catch 中重抛错误建议携带 cause。存量代码 10 处，
 			// 以警告提示、不阻塞 lint，后续按需补 `cause` 后消除
 			"preserve-caught-error": "warn",
+		},
+	},
+	{
+		// 内核相对路径 import 纪律（quality-gates「内核相对路径 import 纪律」）：`@/` 运行期
+		// 解析到「正在跑的 CLI 的内核根」，交叉根加载（ZIWEI_ROOT / 测试 loader）时内核会拿到
+		// 别的根下的数据表；同根部署下两种写法解析到同一文件，纪律守的是内核根自洽。
+		// 引导层 `load<>("@/…")` 是函数参数字符串、cli/ 与插件层是别名的合法消费者，
+		// 均不在本规则面内。
+		files: ["scripts/*.ts", "scripts/patterns/**/*.ts", "scripts/data/**/*.ts"],
+		rules: {
+			"no-restricted-imports": ["error", { patterns: ["@/*"] }],
 		},
 	},
 ];

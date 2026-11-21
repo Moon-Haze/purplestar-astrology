@@ -7,7 +7,7 @@
  */
 
 import type { ZiweiChart, Palace } from "./types";
-import { BRANCHES } from "@/data/ganzhi";
+import { BRANCHES } from "./data/ganzhi";
 
 /**
  * 取对宫地支。

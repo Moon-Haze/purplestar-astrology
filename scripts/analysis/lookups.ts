@@ -24,6 +24,19 @@ import {
 import { detectPatterns, type Pattern } from "../patterns";
 
 /**
+ * 星曜徽标：`星名` + `化X`（有四化时）+ `（庙旺）/（落陷）`（有亮度时）。
+ * 全仓唯一的徽标拼式；亮度用全角括号与星名、化象视觉分离。
+ * 自 overview-material 挪入——query 与 material 双侧共用的格式化件，原驻地使
+ * query 层反向引 material 层、构成类型级环。
+ */
+export function starBadge(star: { name: string; mutagen?: string; brightness?: string }): string {
+	const hua = star.mutagen ? `化${star.mutagen}` : "";
+	const bright =
+		star.brightness === "bright" ? "（庙旺）" : star.brightness === "dim" ? "（落陷）" : "";
+	return `${star.name}${hua}${bright}`;
+}
+
+/**
  * 性别投影：把 `string | GenderField` 字段投影为当前性别的文本。
  *
  * - 纯 `string`：无性别差异，原样返回；

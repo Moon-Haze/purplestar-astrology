@@ -12,7 +12,7 @@
 import type { Palace, Star, ZiweiChart } from "../types";
 // 对宫与三方四正的偏移：全仓单点在 ../palace-relations
 import { oppositeBranch, palaceAtBranch, surroundBranches } from "../palace-relations";
-import { starBadge } from "./overview-material";
+import { starBadge } from "./lookups";
 
 /** 获取宫位的主星列表（空宫则借对宫） */
 export function getPalaceStars(

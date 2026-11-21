@@ -19,7 +19,7 @@ import {
 	type PalaceContent,
 } from "../../analysis/data";
 import type { AnalysisContext } from "../../analysis/context";
-import { starBadge } from "../../analysis/overview-material";
+import { starBadge } from "../../analysis/lookups";
 import {
 	getMinorStarNote,
 	getMutagenNote,

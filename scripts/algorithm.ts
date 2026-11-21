@@ -17,8 +17,8 @@ import { astro } from "iztro";
 astro.config({ yearDivide: "normal" });
 import { Solar } from "lunar-typescript";
 import type { BirthInfo, LunarInfo, Star, Palace, Decadal, ZiweiChart } from "./types";
-import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "@/data/ganzhi";
-import { ELEMENT_TO_JU } from "@/data/wuxing";
+import { BRANCHES, STEMS, IZTRO_TO_PROJECT_PALACE } from "./data/ganzhi";
+import { ELEMENT_TO_JU } from "./data/wuxing";
 import { oppositeBranch } from "./palace-relations";
 import { wenmoStarBrightness } from "./wenmo-brightness";
 // 飞星派工具仅供导出，不再在排盘时调用（倪师《天纪 03》：四化星永远固定不动）

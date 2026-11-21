@@ -4,8 +4,8 @@
  * @remarks
  * 两个编排器（`views/overview.ts` 的【】版式与 `report.ts` 的 ### 版式）此前各写
  * 一遍取材规则，七个决策点同构重复且已发生文案漂移；本模块把规则收为一份
- * 纯函数，编排器只做版式装配。`starBadge` 同时是星曜徽标（星名 + 化象 + 亮度
- * 全角括号）的全仓单点，`palace-query.ts` 的 `descPalaceStars` 同式引它。
+ * 纯函数，编排器只做版式装配。星曜徽标单点 `starBadge` 住 `lookups.ts`，
+ * 本模块与 `palace-query.ts` 同式引它。
  * 决策点语义与统一基准（原 views/overview.ts 版）逐字对齐，见 docs/code/analysis.md。
  */
 
@@ -21,18 +21,7 @@ import {
 	type StarContent,
 } from "./data";
 import type { AnalysisContext } from "./context";
-import { detectGeJu, selectBranches, selectGender } from "./lookups";
-
-/**
- * 星曜徽标：`星名` + `化X`（有四化时）+ `（庙旺）/（落陷）`（有亮度时）。
- * 全仓唯一的徽标拼式；亮度用全角括号与星名、化象视觉分离。
- */
-export function starBadge(star: { name: string; mutagen?: string; brightness?: string }): string {
-	const hua = star.mutagen ? `化${star.mutagen}` : "";
-	const bright =
-		star.brightness === "bright" ? "（庙旺）" : star.brightness === "dim" ? "（落陷）" : "";
-	return `${star.name}${hua}${bright}`;
-}
+import { detectGeJu, selectBranches, selectGender, starBadge } from "./lookups";
 
 /** 总览取材结果：各字段已是可直接入行成文的文本（头与行距由版式层管）。
  *
