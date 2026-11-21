@@ -2,7 +2,7 @@
 // ── 年份段恒等式扫描：把层 3 的安星法不变量压到 1900–2100 全域 ──
 //
 // 与 full-corpus.ts 的分工：
-//   full-corpus.ts → 1924–1983 有外部基准，逐字段对标（验「行为没变」）
+//   full-corpus.ts → 数据集全量逐字段对标（验「行为没变」；条数年份自报）
 //   本脚本         → 1900–2100 **无基准**（数据集止于 1983，而实际来排盘的用户
 //                    几乎都生于 1984 之后），只能压**与年份无关的恒等式**（验「排得自洽」）。
 //
@@ -68,7 +68,7 @@ const label = (b: BirthInfo): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${b.timeIndex}时 ${b.gender}`;
 
 // ── 恒等式检查：全部返回违例描述（空数组 = 通过）──
-// 口径照 test/invariants.test.ts（层 3）复刻 —— 那里的断言绑在 300 条 fixtures 上，
+// 口径照 test/invariants.test.ts（层 3）复刻 —— 那里的断言绑在 fixtures 全集上，
 // 这里把同一组口径压到无基准的年份段。
 
 const MAJOR_STARS = [
