@@ -299,6 +299,23 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
   proposal / design 的散文正文）成稿 SHALL 经 `humanizer-zh` 技能润色；引语、代码块、术语口径
   原样，**引文纪律优先于润色**（细则与豁免面见 `openspec/specs/code-style/spec.md`）。
 
+### 注释形态
+
+非生成物 `.ts` 的注释按四层写，**标签是最低约定、不是封闭白名单**（`@packageDocumentation` /
+`@throws` / `{@link}` 等既有标签保留，不因不在清单而删）：
+
+- **文件级**：文件头须有 `@file`，一句话说明文件职责。已有文件头只补标签，既有正文原样。
+- **导出符号**：函数 / 类 / 接口 / 类型 / 常量须有紧邻其上的 `/** */`。
+- **函数标签**：参数用 `@param <名> - <说明>`（**单参数也要标**），返回值用 `@returns`；
+  `@throws` 只在函数体确有 `throw` 时写并注明触发条件。
+- **结构体**：interface 与 type 对象字面量须有整体文档 + 字段注释（交通取值范围、单位与口径）；
+  `@param` / `@returns` 不适用于结构体，类型层面用 `@remarks` / `@example` / `@typeParam`。
+
+不得编造行为、边界或性能结论——只写能从实现或既有注释确认的事实。`//` 行内注释、普通
+`/* */`、注释掉的代码与工具指令不因统一而转换。生成物（`wenmo-tables.ts` / `tianji.ts`）
+不手改，走「改生成器重导」。细则见 `openspec/specs/code-style/spec.md` 的文件级 / 导出符号 /
+结构体三条 requirement。
+
 ### 缓存
 
 - 改排盘内核输出结构或升级 `iztro` 时**必须递增 `CACHE_VERSION`**，否则旧缓存被当有效读回。
