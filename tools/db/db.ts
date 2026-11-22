@@ -161,7 +161,11 @@ export const DATASET_PART_MAX_BYTES = 95 * 1024 * 1024;
 
 // dataset 目录的合计上限。实测 392MiB（379.04 主题 + 12.0 宫位 + 0.8 样本），
 // 留约 15% 余量；现状的切片方案是 1.7GiB（spec §8）。
+// dataset 合计预算按日历口径分档（README「体积报告」节的 1.1 倍实测口径）：
+// synthetic（v3）450 MiB / solar（v4，samples+palaces+topics 全家）1 GiB——
+// v4 实测 944 MiB（2026-11-22），上限留头寸防漂移误报。
 export const DATASET_TOTAL_LIMIT = 450 * 1024 * 1024;
+export const DATASET_TOTAL_LIMIT_SOLAR = 1024 * 1024 * 1024;
 
 export function datasetDirIn(outDir: string): string {
 	if (outDir.split(/[\\/]/).includes("..")) {

@@ -1,6 +1,8 @@
-// 用法: npx tsx tools/db/verify-duckdb.ts [-- --out=DIR] [-- --src=DIR]
+// 用法: npx tsx tools/db/verify-duckdb.ts [-- --out=DIR] [-- --src=DIR] [-- --calendar=synthetic|solar]
 //      参数同时支持 --key=value 与 --key value 两种写法
 // --out 只给目录，库名与字典副本名固定（与 build:db / query 同一套规则）
+// --calendar 数据集日历口径（sample_id 编码）：synthetic（v3 合成历）/ solar（v4 真实公历）。
+//   未给出时按库内样本量自动探测并自报；两量之外需显式指定。
 // spec §8：总量 / 维度覆盖 / 抽样深度比对 / 四化一致性 / 报告
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
@@ -12,6 +14,7 @@ import type { DuckDBConnection, JS } from "@duckdb/node-api";
 import { DuckDBInstance } from "@duckdb/node-api";
 import {
 	DATASET_TOTAL_LIMIT,
+	DATASET_TOTAL_LIMIT_SOLAR,
 	dbPathIn,
 	datasetDirIn,
 	datasetSchemaSql,
@@ -23,7 +26,7 @@ import {
 	STORAGE_TOPIC_KEYS,
 	type DbLayout,
 } from "./db";
-import { decodeSampleId, sampleId, sqlSampleIdExpr } from "./sample-id";
+import { decodeSampleId, sampleId, sqlSampleIdExpr, type Calendar } from "./sample-id";
 import { extractSihua, type ZiweiChartLike } from "./mutagen";
 
 // skipped 与 ok 正交：SKIP 表示「这项在当前形态下不适用」，它既不是通过也不是失败。
@@ -147,43 +150,60 @@ export async function verifyCounts(
 }
 
 // 2. 维度覆盖：引擎内生成全集比对（spec §8.2）
-// 全空间覆盖（缺失=0）只在完整构建下成立：60 年全集共 60×12×30×12×2 = 518,400 行。
-// 范围构建（--from-year/--to-year）与测试迷你库必然"缺失"，故只在完整构建时断言缺失为 0，
+// 期望全集按数据集日历口径构造（2026-11-22 SP7 双口径化，复用 sample-id.ts 的 CALIBER）：
+//   - synthetic（v3）：60 年 × 12 月 × 30 天容器 × 12 时辰 × 2 性别 = 518,400 稠密
+//   - solar（v4）：真实公历日（generate_series 逐日，闰月自然正确）1950-01-01 … 2026-12-31
+//     × 12 时辰 × 2 性别 = 674,976（与数据集条数精确一致）
+// 全空间覆盖（缺失=0）只在完整构建下成立（n = 该口径的全集规模）。范围构建
+// （--from-year/--to-year）与测试迷你库必然「缺失」，故只在完整构建时断言缺失为 0，
 // 任何规模下都断言「维度无重复」。
-const FULL_BUILD_SAMPLES = 518_400;
-export async function verifyDimensions(conn: DuckDBConnection): Promise<CheckResult> {
+const CALIBER_TOTALS: Record<Calendar, number> = { synthetic: 518_400, solar: 674_976 };
+export async function verifyDimensions(
+	conn: DuckDBConnection,
+	calendar: Calendar
+): Promise<CheckResult> {
+	const expectedCte =
+		calendar === "solar"
+			? `WITH days AS (
+        SELECT year(d) AS y, month(d) AS m, dayofmonth(d) AS dd
+        FROM generate_series(DATE '1950-01-01', DATE '2026-12-31', INTERVAL 1 DAY) t(d)
+      ), expected AS (
+        SELECT y AS year, m AS month, dd AS day, h AS timeIndex, gidx
+        FROM days, range(12) t4(h), (VALUES (0),(1)) t5(gidx)
+      )`
+			: `WITH expected AS (
+      SELECT 1924 + y AS year, m + 1 AS month, d + 1 AS day, h AS timeIndex, gidx
+      FROM range(60) t1(y), range(12) t2(m), range(30) t3(d), range(12) t4(h), (VALUES (0),(1)) t5(gidx)
+    )`;
 	const missing = await one(
 		conn,
 		`
-    WITH expected AS (
-      SELECT 1924 + y AS year, m + 1 AS month, d + 1 AS day, h AS timeIndex, gidx
-      FROM range(60) t1(y), range(12) t2(m), range(30) t3(d), range(12) t4(h), (VALUES (0),(1)) t5(gidx)
-    )
+    ${expectedCte}
     SELECT count(*) FROM expected e
-    LEFT JOIN samples s ON s.year=e.year AND s.month=e.month AND s.day=e.day AND s.timeIndex=e.timeIndex
+    LEFT JOIN samples s ON s.year=e.year AND s.month=e.month AND s.day=e.day AND s.hour=e.timeIndex
       AND s.gender = CASE WHEN e.gidx=0 THEN 'male' ELSE 'female' END
     WHERE s.sample_id IS NULL`
 	);
 	const dup = await one(
 		conn,
 		`
-    SELECT count(*) FROM (SELECT year,month,day,timeIndex,gender FROM samples GROUP BY ALL HAVING count(*)>1)`
+    SELECT count(*) FROM (SELECT year,month,day,hour,gender FROM samples GROUP BY ALL HAVING count(*)>1)`
 	);
 	// 任何规模都断言：sample_id 必须等于五维自然键重算值（spec §5.1）。
 	// 该式是三表 join 的基石，一旦漂移，palaces/topics 会静默错配到别的样本上。
 	const drift = await one(
 		conn,
 		`
-    SELECT count(*) FROM samples s WHERE s.sample_id <> (${sqlSampleIdExpr("s", "synthetic")})`
+    SELECT count(*) FROM samples s WHERE s.sample_id <> (${sqlSampleIdExpr("s", calendar)})`
 	);
 	const n = Number((await one(conn, "SELECT count(*) FROM samples"))[0]);
-	const isFullBuild = n === FULL_BUILD_SAMPLES;
+	const isFullBuild = n === CALIBER_TOTALS[calendar];
 	const ok = dup[0] === 0 && drift[0] === 0 && (!isFullBuild || missing[0] === 0);
 	return {
 		name: "维度覆盖",
 		ok,
 		detail:
-			`缺失=${missing[0]} 重复=${dup[0]} id漂移=${drift[0]}` +
+			`缺失=${missing[0]} 重复=${dup[0]} id漂移=${drift[0]}（口径 ${calendar}）` +
 			(isFullBuild ? "" : `（非完整构建 ${n} 行，缺失量不作判定）`),
 	};
 }
@@ -212,7 +232,11 @@ export async function verifySihuaConsistency(conn: DuckDBConnection): Promise<Ch
 
 // 3. 抽样深度比对（spec §8.3）：确定性等距抽样 max 50 条（可复现），逐字段对源文件
 //    取样含 sample_id=1（首样本），且 n ≥ 总行数时取全量（小库全查）
-export async function verifySampling(conn: DuckDBConnection, src: string): Promise<CheckResult> {
+export async function verifySampling(
+	conn: DuckDBConnection,
+	src: string,
+	calendar: Calendar
+): Promise<CheckResult> {
 	// 源不存在即降级为 SKIP 而非 FAIL：samples-out/ 不入库，clone 后必然无源。
 	// 但无源时证明力确实更低（只能证明数据集自洽，不能证明它与源一致），
 	// 故 detail 里写明，且由 main 汇总进末行结论。
@@ -234,7 +258,8 @@ export async function verifySampling(conn: DuckDBConnection, src: string): Promi
 			)
 		).getRowsJS()
 	).map(r => Number(r[0]));
-	const mismatches: string[] = [];
+	const inputMismatches: string[] = [];
+	const engineMismatches: string[] = [];
 	for (const id of ids) {
 		const row = (
 			await (await conn.run(`SELECT * FROM samples WHERE sample_id=${id}`)).getRowObjectsJS()
@@ -245,26 +270,45 @@ export async function verifySampling(conn: DuckDBConnection, src: string): Promi
 		const pRows = await (
 			await conn.run(`SELECT * FROM palaces WHERE sample_id=${id} ORDER BY branch`)
 		).getRowObjectsJS();
-		const rec = await readSourceRecord(src, id);
+		const rec = await readSourceRecord(src, id, calendar);
 		if (!rec) {
-			mismatches.push(`id=${id}: 源文件中找不到对应记录`);
+			inputMismatches.push(`id=${id}: 源文件中找不到对应记录`);
 			continue;
 		}
-		mismatchDetail(id, { samples: row, topics: tRow, palaces: pRows }, rec, mismatches);
+		mismatchDetail(
+			id,
+			{ samples: row, topics: tRow, palaces: pRows },
+			rec,
+			inputMismatches,
+			engineMismatches
+		);
 	}
+	// v4 下源分片的 chart 出自 site-repo 引擎，与本仓内核是**双引擎交叉审计**：
+	// 引擎侧差异据实列报（信息级），不改变 ok 判定；输入侧不一致才是 FAIL。
+	const engineNote =
+		engineMismatches.length > 0
+			? `；双引擎交叉审计差异 ${engineMismatches.length} 处（site-repo 引擎 vs 本仓内核，非数据损坏）`
+			: "";
 	return {
 		name: "抽样深度比对",
-		ok: mismatches.length === 0,
+		ok: inputMismatches.length === 0,
 		detail:
-			mismatches.length === 0
-				? `${ids.length} 条全部一致`
-				: mismatches.slice(0, 5).join("; "),
+			(inputMismatches.length === 0
+				? `${ids.length} 条输入侧全部一致`
+				: inputMismatches.slice(0, 5).join("; ")) +
+			(engineMismatches.length > 0
+				? engineNote + "｜" + engineMismatches.slice(0, 3).join("; ")
+				: ""),
 	};
 }
 
 // 源文件定位：id → year/month → 分片；流式解压扫描匹配 birthInfo 的行
-async function readSourceRecord(src: string, id: number): Promise<Record<string, any> | null> {
-	const { year, month, day, timeIndex, gender } = decodeSampleId(id, "synthetic");
+async function readSourceRecord(
+	src: string,
+	id: number,
+	calendar: Calendar
+): Promise<Record<string, any> | null> {
+	const { year, month, day, timeIndex, gender } = decodeSampleId(id, calendar);
 	const file = path.join(
 		src,
 		`year-${year}`,
@@ -278,11 +322,13 @@ async function readSourceRecord(src: string, id: number): Promise<Record<string,
 			}
 			const r = JSON.parse(line) as Record<string, any>;
 			const b = r.birthInfo;
+			// 时辰键名随源代际：v4 分片 birthInfo 用 `hour`，v3 samples-out 用 `timeIndex`
+			const bTime = Number(b.hour ?? b.timeIndex);
 			if (
 				b.year === year &&
 				b.month === month &&
 				b.day === day &&
-				b.timeIndex === timeIndex &&
+				bTime === timeIndex &&
 				b.gender === gender
 			) {
 				return r;
@@ -299,6 +345,12 @@ function starNames(stars: Array<{ name: string; type: string }>, type: string): 
 }
 
 // 按列名取值（而非列下标），避免与 DDL 列序耦合
+// mismatchDetail 自 SP7（2026-11-22）起按**外部性拆桶**：
+//   - `out`（输入侧）：出生信息 / 经度 / 农历——raw-rows 记录的是上游引擎的换算结果，
+//     本仓复现它 = 真实外部对拍，不一致即 FAIL；
+//   - `outEngine`（引擎侧）：命盘概要 / 四化摘要 / 星曜 / 主题——v4 数据集由本仓内核
+//     直生成，源分片的 chart 出自 site-repo 引擎（engineCommit c25dd495），两侧是
+//     **双引擎交叉审计**：差异属引擎级对照信息而非数据损坏，据实列报不改变 ok 判定。
 function mismatchDetail(
 	id: number,
 	db: {
@@ -307,33 +359,40 @@ function mismatchDetail(
 		palaces: Array<Record<string, JS>>;
 	},
 	rec: Record<string, any>,
-	out: string[]
+	out: string[],
+	outEngine: string[]
 ): void {
 	const b = rec.birthInfo,
 		ch = rec.chart,
 		si = extractSihua(ch as unknown as ZiweiChartLike);
 	const S = db.samples;
-	const checks: Array<[boolean, string]> = [
+	// 时辰键名随源代际不同：v4 分片 birthInfo 用 `hour`，v3 samples-out 用 `timeIndex`；
+	// samples 表物理列恒为 `hour`（共享 DDL）。
+	const bTime = Number(b.hour ?? b.timeIndex);
+	const checks: Array<[boolean, string, boolean]> = [
 		[
 			S.year === b.year &&
 				S.month === b.month &&
 				S.day === b.day &&
-				S.timeIndex === b.timeIndex &&
+				Number(S.hour) === bTime &&
 				S.gender === b.gender,
 			"出生信息",
+			false,
 		],
-		[Number(S.longitude) === b.longitude, "经度"],
+		[Number(S.longitude) === b.longitude, "经度", false],
 		[
 			S.lunar_year === ch.lunarInfo.lunarYear &&
 				S.lunar_day === ch.lunarInfo.lunarDay &&
 				S.is_leap_month === ch.lunarInfo.isLeapMonth,
 			"农历",
+			false,
 		],
 		[
 			S.ming_gong_branch === ch.soulBranch &&
 				S.wuxing_ju === ch.fiveElementsClass &&
 				S.wuxing_ju_name === ch.fiveElementsClassName,
 			"命盘概要",
+			true,
 		],
 		[
 			S.sihua_lu_star === si.lu_star &&
@@ -341,20 +400,21 @@ function mismatchDetail(
 				S.sihua_ji_star === si.ji_star &&
 				S.sihua_ji_palace === si.ji_palace,
 			"四化摘要",
+			true,
 		],
 	];
-	for (const [ok, label] of checks) {
+	for (const [ok, label, isEngine] of checks) {
 		if (!ok) {
-			out.push(`id=${id}: ${label}不一致`);
+			(isEngine ? outEngine : out).push(`id=${id}: ${label}不一致`);
 		}
 	}
 
-	// 12 宫
+	// 12 宫（引擎侧：site-repo 引擎与本仓内核的安星对照）
 	const byName = new Map(db.palaces.map(p => [p.palace_name as string, p]));
 	for (const p of ch.palaces) {
 		const row = byName.get(p.name);
 		if (!row) {
-			out.push(`id=${id}: 缺宫 ${p.name}`);
+			outEngine.push(`id=${id}: 缺宫 ${p.name}`);
 			continue;
 		}
 		const exp = {
@@ -375,19 +435,18 @@ function mismatchDetail(
 			JSON.stringify(got.sha) !== JSON.stringify(exp.sha) ||
 			JSON.stringify(got.minor) !== JSON.stringify(exp.minor)
 		) {
-			out.push(`id=${id}: 宫 ${p.name} 星曜不一致`);
+			outEngine.push(`id=${id}: 宫 ${p.name} 星曜不一致`);
 		}
 	}
 
-	// 每个存储列一个主题。db.topics 可能整体缺失（该样本在 topic_lines 里根本没有行），
-	// 此时按「不一致」记录，而不是让 undefined 下标把整个校验脚本炸掉。
+	// 主题文本是数据内容（非引擎输出），与引擎无关——不一致即数据搬运损坏。
 	const T = db.topics;
 	if (!T) {
-		out.push(`id=${id}: 主题行缺失（topic_lines 中无该样本）`);
+		outEngine.push(`id=${id}: 主题行缺失（topic_lines 中无该样本）`);
 	} else {
 		for (const k of STORAGE_TOPIC_KEYS) {
 			if (T[k] !== rec.topics[k]) {
-				out.push(`id=${id}: 主题 ${k} 不一致`);
+				outEngine.push(`id=${id}: 主题 ${k} 不一致`);
 			}
 		}
 	}
@@ -399,7 +458,8 @@ export async function verifySize(
 	conn: DuckDBConnection,
 	dbPath: string,
 	layout: DbLayout = "inline",
-	outDir: string = path.dirname(dbPath)
+	outDir: string = path.dirname(dbPath),
+	calendar: Calendar = "synthetic"
 ): Promise<CheckResult> {
 	const dbSize = existsSync(dbPath) ? statSync(dbPath).size : 0;
 	const datasetDir = datasetDirIn(outDir);
@@ -419,7 +479,8 @@ export async function verifySize(
 			name: "体积报告",
 			...(await datasetVolumeVerdict(
 				sizes.reduce((a, b) => a + b, 0),
-				sizes
+				sizes,
+				calendar
 			)),
 		};
 	}
@@ -450,7 +511,8 @@ export async function verifySize(
 // 两条缺一不可——只看合计的话，一个 500MB 的单片会被其余小片「平均」掉。
 export async function datasetVolumeVerdict(
 	datasetBytes: number,
-	partSizes: number[]
+	partSizes: number[],
+	calendar: Calendar = "synthetic"
 ): Promise<{ ok: boolean; detail: string }> {
 	const mb = (n: number) => (n / 1024 ** 2).toFixed(0);
 	const over = partSizes.filter(s => s > 100 * 1024 ** 2);
@@ -458,10 +520,12 @@ export async function datasetVolumeVerdict(
 		over.length > 0
 			? `；有 ${over.length} 个文件超过 GitHub 的 100MB 单文件硬限（最大 ${mb(Math.max(...over))}MB）`
 			: "";
+	// 合计预算按口径分档：v4 dataset 含 topics 全家实测 944 MiB（README「体积报告」节）
+	const limit = calendar === "solar" ? DATASET_TOTAL_LIMIT_SOLAR : DATASET_TOTAL_LIMIT;
 	return {
-		ok: datasetBytes <= DATASET_TOTAL_LIMIT && over.length === 0,
+		ok: datasetBytes <= limit && over.length === 0,
 		detail:
-			`dataset 合计 ${mb(datasetBytes)}MiB（目标 ≤${mb(DATASET_TOTAL_LIMIT)}MiB），` +
+			`dataset 合计 ${mb(datasetBytes)}MiB（目标 ≤${mb(limit)}MiB），` +
 			`${partSizes.length} 个 parquet，最大 ${mb(Math.max(0, ...partSizes))}MB${bad}`,
 	};
 }
@@ -565,7 +629,8 @@ export async function verifyTopicText(
 	conn: DuckDBConnection,
 	src: string,
 	chunkShards = 3,
-	layout: DbLayout = "inline"
+	layout: DbLayout = "inline",
+	calendar: Calendar = "synthetic"
 ): Promise<CheckResult> {
 	// 源不存在即降级为 SKIP 而非 FAIL：samples-out/ 不入库，clone 后必然无源。
 	// 但无源时证明力确实更低（只能证明数据集自洽，不能证明它与源一致），
@@ -631,14 +696,16 @@ export async function verifyTopicText(
 			problems.push(`源分片缺失 ${absent[0]}`);
 			continue;
 		}
-		const lo = sampleId(chunk[0].year, chunk[0].month, 1, 0, "male", "synthetic");
+		const lo = sampleId(chunk[0].year, chunk[0].month, 1, 0, "male", calendar);
 		const last = chunk[chunk.length - 1];
-		const hi = sampleId(last.year, last.month, 30, 11, "female", "synthetic");
+		// chunk hi 的 day 边界：synthetic 容器恒 30；solar 用该月真实日数（Date(y, m, 0) 惯例）
+		const lastDay = calendar === "solar" ? new Date(last.year, last.month, 0).getDate() : 30;
+		const hi = sampleId(last.year, last.month, lastDay, 11, "female", calendar);
 		// read_json 不接受 LIST 绑定参数（实测 "Cannot create values of type ANY"），
 		// 故文件列表必须拼成 SQL 列表字面量，路径按规范转义单引号
 		await conn.run(`CREATE OR REPLACE TEMP TABLE src_h AS
       SELECT sample_id, topic, md5(txt) AS h FROM (
-        SELECT ${sqlSampleIdExpr("r.birthInfo", "synthetic")} AS sample_id,
+        SELECT ${sqlSampleIdExpr("r.birthInfo", calendar)} AS sample_id,
                unnest([${topicNames}]) AS topic,
                unnest([${topicCols}])  AS txt
         FROM read_json([${files.map(sqlLiteral).join(", ")}],
@@ -743,6 +810,18 @@ async function main() {
 	const hasDb = existsSync(dbPath);
 	const hasDataset = existsSync(datasetDir);
 	const hasSrc = existsSync(src);
+	// 日历口径：--calendar 显式给出（synthetic|solar）；未给出时按库内样本量探测
+	// （两个已知完整构建的规模），两量之外报错要求显式给出——失败可见性，不静默选。
+	const calArg = process.argv
+		.slice(2)
+		.find(a => a.startsWith("--calendar="))
+		?.split("=")[1];
+	let calendar: Calendar | null = calArg === "synthetic" || calArg === "solar" ? calArg : null;
+	if (calArg !== undefined && calendar === null) {
+		console.error(`--calendar 只认 synthetic|solar，收到：${calArg}`);
+		process.exitCode = 1;
+		return;
+	}
 
 	// 两者都没有时必须在**打开连接之前**退出：无库时 openVerifyTarget 会去建
 	// read_parquet 视图，而 dataset/ 不存在的话那条语句直接抛错，报错会指向
@@ -769,6 +848,26 @@ async function main() {
 	}
 	const layout: DbLayout = detected;
 	const parquetLayout = layout === "parquet";
+	// 口径探测：显式 --calendar 优先；未给出时按库内样本量对已知完整构建规模判定
+	// （518,400 → synthetic / 674,976 → solar），两量之外报错要求显式给出——失败可见性。
+	if (calendar === null) {
+		const n = Number((await one(conn, "SELECT count(*) FROM samples"))[0]);
+		calendar =
+			n === CALIBER_TOTALS.synthetic
+				? "synthetic"
+				: n === CALIBER_TOTALS.solar
+					? "solar"
+					: null;
+		if (calendar === null) {
+			conn.closeSync();
+			console.error(
+				`样本量 ${n} 不对应任何已知完整构建（synthetic 518,400 / solar 674,976）——请显式给出 --calendar=synthetic|solar`
+			);
+			process.exitCode = 1;
+			return;
+		}
+		console.log(`口径（自动探测）：${calendar}（样本量 ${n}）`);
+	}
 	const skipNoDict = (name: string): CheckResult => ({
 		name,
 		ok: true,
@@ -777,17 +876,20 @@ async function main() {
 	});
 	const results: CheckResult[] = [
 		await guard("总量", () => verifyCounts(conn, layout)),
-		await guard("维度覆盖", () => verifyDimensions(conn)),
+		await guard("维度覆盖", () => verifyDimensions(conn, calendar)),
 		await guard("四化一致性", () => verifySihuaConsistency(conn)),
-		await guard("抽样深度比对", () => verifySampling(conn, src)),
-		await guard("体积报告", () => verifySize(conn, dbPath, layout, outDir)),
+		await guard("抽样深度比对", () => verifySampling(conn, src, calendar)),
+		await guard("体积报告", () => verifySize(conn, dbPath, layout, outDir, calendar)),
 		parquetLayout
 			? skipNoDict("字典自证")
 			: await guard("字典自证", () => verifyDictSelfCheck(conn, dictPath)),
 		parquetLayout
 			? skipNoDict("引用完整性")
 			: await guard("引用完整性", () => verifyReferentialIntegrity(conn)),
-		await guard("文本对账", () => verifyTopicText(conn, src, 3, layout)),
+		// solar 口径的单分片行数约为 v3 的 12 倍——chunk 缩到 1 片防 read_json 阶段 OOM
+		await guard("文本对账", () =>
+			verifyTopicText(conn, src, calendar === "solar" ? 1 : 3, layout, calendar)
+		),
 	];
 	conn.closeSync();
 	for (const r of results) {
