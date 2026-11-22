@@ -4,6 +4,8 @@
  * ⚠️ `test/` 里两处内联的 `(branch + 6) % 12` 是刻意的独立预言机，**不要**顺手单点化；
  *    「为什么单独成模块 / 刻意不收敛的三处 / 偏移序与 `palaces` 序之争 / 依赖方向」
  *    一并见 docs/code/chart-kernel.md。
+ *
+ * @file 宫位之间的地支关系：对宫与三方四正 —— 全仓偏移算式的**单点**（其余模块一律引用）
  */
 
 import type { ZiweiChart, Palace } from "./types";

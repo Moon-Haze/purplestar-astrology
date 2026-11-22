@@ -16,6 +16,8 @@
  *
  * 下方导出的数组**次序即 `detectPatterns` 的输出次序**，增删或调整组内次序都会改变输出排列。
  *
+ * @file 收敛自 db-analysis 的格局识别器 —— 判定收敛到格局层后归入本组
+ *
  * @packageDocumentation
  */
 
@@ -34,7 +36,12 @@ import {
 } from "../patterns/helpers";
 import { oppositeBranch } from "../palace-relations";
 
-/** 七杀朝斗格：七杀居寅或申，且落命宫或迁移宫（对宫紫微天府相照） */
+/**
+ * 七杀朝斗格：七杀居寅或申，且落命宫或迁移宫（对宫紫微天府相照）
+ *
+ * @param chart - 已排好的命盘
+ * @returns 七杀落寅宫或申宫、且坐命宫或迁移宫时为单元素数组；否则为空数组
+ */
 function detectQiShaChaoDou({ chart }: DetectContext): Pattern[] {
 	const qisha = findStarPalace(chart, "七杀");
 	if (!qisha) {
@@ -61,7 +68,12 @@ function detectQiShaChaoDou({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 日月并明格：太阳与太阴**同时**入庙（不限宫位，也不要求同宫——后者是「日月同宫」） */
+/**
+ * 日月并明格：太阳与太阴**同时**入庙（不限宫位，也不要求同宫——后者是「日月同宫」）
+ *
+ * @param chart - 已排好的命盘（入庙按 `isBright` 判定，不要求太阳太阴同宫）
+ * @returns 太阳与太阴同时入庙时为单元素数组；缺任一颗或任一颗不入庙时为空数组
+ */
 function detectRiYueBingMing({ chart }: DetectContext): Pattern[] {
 	const sun = findStarPalace(chart, "太阳");
 	const moon = findStarPalace(chart, "太阴");
@@ -84,7 +96,13 @@ function detectRiYueBingMing({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 英星入庙格：破军居子或午守命 */
+/**
+ * 英星入庙格：破军居子或午守命
+ *
+ * @param chart - 已排好的命盘（判词按 `birthInfo.gender` 择「男」/「女」两版）
+ * @param ming - 命宫（要求破军坐命且地支为子或午）
+ * @returns 破军居子宫或午宫并坐命宫时为单元素数组；否则为空数组
+ */
 function detectYingXingRuMiao({ chart, ming }: DetectContext): Pattern[] {
 	if (ming.branch !== 0 && ming.branch !== 6) {
 		return [];
@@ -107,7 +125,12 @@ function detectYingXingRuMiao({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 日丽中天格：太阳居午守命，光芒最盛 */
+/**
+ * 日丽中天格：太阳居午守命，光芒最盛
+ *
+ * @param ming - 命宫（要求地支为午且坐太阳）
+ * @returns 太阳居午宫守命时为单元素数组；否则为空数组
+ */
 function detectRiLiZhongTian({ ming }: DetectContext): Pattern[] {
 	if (ming.branch !== 6) {
 		return [];
@@ -128,7 +151,12 @@ function detectRiLiZhongTian({ ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 昌曲守命：文昌或文曲坐命宫（两星俱在时只出「文昌守命」，与 analysis/ 的取值一致） */
+/**
+ * 昌曲守命：文昌或文曲坐命宫（两星俱在时只出「文昌守命」，与 analysis/ 的取值一致）
+ *
+ * @param ming - 命宫（只查此宫有无文昌 / 文曲）
+ * @returns 昌或曲坐命宫时为单元素数组（两星俱在也只听「文昌守命」一条）；皆无时为空数组
+ */
 function detectChangQuShouMing({ ming }: DetectContext): Pattern[] {
 	const hasChang = hasStar(ming, "文昌");
 	const hasQu = hasStar(ming, "文曲");
@@ -149,7 +177,12 @@ function detectChangQuShouMing({ ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 擎羊入命：擎羊坐命宫（刑克之星。擎羊在午守命另有更专门的「马头带箭」，两者可同时命中） */
+/**
+ * 擎羊入命：擎羊坐命宫（刑克之星。擎羊在午守命另有更专门的「马头带箭」，两者可同时命中）
+ *
+ * @param ming - 命宫（只查此宫有无擎羊）
+ * @returns 擎羊坐命宫时为单元素数组；否则为空数组
+ */
 function detectQingYangRuMing({ ming }: DetectContext): Pattern[] {
 	if (!hasStar(ming, "擎羊")) {
 		return [];
@@ -167,7 +200,12 @@ function detectQingYangRuMing({ ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 禄马交驰格：禄存与天马同宫，或同会命宫三方四正 */
+/**
+ * 禄马交驰格：禄存与天马同宫，或同会命宫三方四正
+ *
+ * @param chart - 已排好的命盘
+ * @returns 禄存与天马同宫或同会命宫三方四正时为单元素数组；否则为空数组
+ */
 function detectLuMaJiaoChi({ chart }: DetectContext): Pattern[] {
 	const lu = findStarPalace(chart, "禄存");
 	const ma = findStarPalace(chart, "天马");
@@ -196,7 +234,12 @@ function detectLuMaJiaoChi({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 羊陀夹命：擎羊陀罗分居命宫前后两宫（煞格） */
+/**
+ * 羊陀夹命：擎羊陀罗分居命宫前后两宫（煞格）
+ *
+ * @param chart - 已排好的命盘
+ * @returns 擎羊陀罗分居命宫前后两宫时为单元素数组；夹不成时为空数组
+ */
 function detectYangTuoJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) {
@@ -222,7 +265,13 @@ function detectYangTuoJiaMing({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 紫府朝垣格：紫微、天府分居三方四正朝拱，而命宫本身不坐紫府 */
+/**
+ * 紫府朝垣格：紫微、天府分居三方四正朝拱，而命宫本身不坐紫府
+ *
+ * @param chart - 已排好的命盘
+ * @param ming - 命宫（用来排除「命宫本身坐紫微或天府」的分支）
+ * @returns 紫微天府同会三方四正、且命宫不坐二者时为单元素数组；否则为空数组
+ */
 function detectZiFuChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	const sanFang = sanFangAllStars(chart);
 	if (!sanFang.has("紫微") || !sanFang.has("天府")) {
@@ -246,7 +295,12 @@ function detectZiFuChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 天马落空：天马与地空、地劫、旬空或截路同宫 */
+/**
+ * 天马落空：天马与地空、地劫、旬空或截路同宫
+ *
+ * @param chart - 已排好的命盘
+ * @returns 天马与地空 / 地劫 / 旬空 / 截路中任一星同宫时为单元素数组（条件里写明同宫的是哪几颗）；否则为空数组
+ */
 function detectTianMaLuoKong({ chart }: DetectContext): Pattern[] {
 	const ma = findStarPalace(chart, "天马");
 	if (!ma) {
@@ -269,7 +323,12 @@ function detectTianMaLuoKong({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 昌曲化忌：文昌或文曲带生年化忌（文星受伤，不限宫位） */
+/**
+ * 昌曲化忌：文昌或文曲带生年化忌（文星受伤，不限宫位）
+ *
+ * @param chart - 已排好的命盘
+ * @returns 带生年化忌的文昌 / 文曲各成一条（累积返回，实测至多一条）；都不带忌时为空数组
+ */
 function detectChangQuHuaJi({ chart }: DetectContext): Pattern[] {
 	// 本识别器对文昌、文曲**两颗**分别筛，故用累积数组而非「命中即 return」。
 	// 实测**至多一条**：一年只有一颗生年化忌星，昌曲不可能同时带忌。
@@ -295,6 +354,7 @@ function detectChangQuHuaJi({ chart }: DetectContext): Pattern[] {
 	return hits;
 }
 
+/** 收敛组识别器注册表：判定收敛到格局层后归入本组。 */
 export const SHOU_LIAN_GE: ReadonlyArray<Detector> = [
 	detectQiShaChaoDou,
 	detectRiYueBingMing,

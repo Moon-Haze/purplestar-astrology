@@ -1,3 +1,6 @@
+/**
+ * @file 仓库结构、文档登记、注释指针和分层约束的自洽测试。
+ */
 // ── 层 6：仓库自洽（元测试）──
 //
 // 前五层测的是**排盘行为**：给定出生信息，排出的盘对不对。本层测的是**仓库自身的状态**：
@@ -59,7 +62,11 @@ import { skipUnlessRepo } from "../scripts/cli/selftest/kit.ts";
 /** 仓库根 —— 本文件在 `<仓库根>/test/` 下，故退一级。 */
 const SKILL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** `test/` 下的测试文件名（已排序）。登记一致性的两侧都拿它当基准。 */
+/**
+ * `test/` 下的测试文件名（已排序）。登记一致性的两侧都拿它当基准。
+ *
+ * @returns 已排序的测试文件名清单
+ */
 function testFiles(): string[] {
 	return readdirSync(resolve(SKILL_ROOT, "test"))
 		.filter(f => f.endsWith(".test.ts"))
@@ -91,6 +98,7 @@ function resolveAttempts(specifier: string, files: Record<string, string>): stri
 			importAttributes: {},
 		};
 		const attempts: string[] = [];
+		/** 桩解析钩子，用于钉死候选序分支。 */
 		const nextResolve: Parameters<ResolveHookSync>[2] = (spec, ctx) => {
 			attempts.push(spec);
 			const url = new URL(spec, ctx?.parentURL ?? parentURL);
@@ -106,7 +114,12 @@ function resolveAttempts(specifier: string, files: Record<string, string>): stri
 	}
 }
 
-/** 造一棵假内核根，返回其路径；调用方负责在 finally 里 `rmSync` 掉。 */
+/**
+ * 造一棵假内核根，返回其路径；调用方负责在 finally 里 `rmSync` 掉。
+ *
+ * @param files - 相对路径 → 文件内容的表
+ * @returns 临时内核根的绝对路径（调用方负责清理）
+ */
 function makeTree(files: Record<string, string>): string {
 	const root = mkdtempSync(resolve(tmpdir(), "ziwei-resolve-"));
 	for (const [rel, content] of Object.entries(files)) {
@@ -394,6 +407,7 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 				`豁免白名单锚点失效：${f} 不在盘上（改名 / 删除须同步本守卫）`
 			);
 		}
+		/** 递归列出目录下的 `.ts`（相对路径）。 */
 		const walk = (dir: string): string[] =>
 			readdirSync(dir, { withFileTypes: true }).flatMap(e =>
 				e.isDirectory()
@@ -513,9 +527,15 @@ const MD_POINTER_ALLOWLIST: Readonly<Record<string, string>> = {
 const MD_POINTER =
 	/(?:^|[\s`（「『"'=])((?:[A-Za-z0-9_-]+\.md)|(?:(?:docs|references|notes|test|scripts|tools)\/)[A-Za-z0-9_./-]*\.md)/g;
 
-/** 递归列出目录下的 .ts 文件（相对仓库根）。 */
+/**
+ * 递归列出目录下的 .ts 文件（相对仓库根）。
+ *
+ * @param dir - 相对仓库根的目录
+ * @returns 该目录下 `.ts` 的相对路径，已排序
+ */
 function tsFilesUnder(dir: string): string[] {
 	const out: string[] = [];
+	/** 递归收集 `.ts` 的相对路径。 */
 	const walk = (abs: string): void => {
 		for (const entry of readdirSync(abs, { withFileTypes: true })) {
 			if (entry.name.startsWith(".")) {
@@ -533,7 +553,12 @@ function tsFilesUnder(dir: string): string[] {
 	return out.sort();
 }
 
-/** 逐行取出注释文本；块注释状态跨行保持，指针词元形态已收窄到根级名与几个既有目录。 */
+/**
+ * 逐行取出注释文本；块注释状态跨行保持，指针词元形态已收窄到根级名与几个既有目录。
+ *
+ * @param text - 源文件全文
+ * @returns 每段注释的行号与正文（块注释状态跨行保持）
+ */
 function commentSpans(text: string): { line: number; body: string }[] {
 	const out: { line: number; body: string }[] = [];
 	let inBlock = false;
@@ -561,7 +586,12 @@ function commentSpans(text: string): { line: number; body: string }[] {
 	return out;
 }
 
-/** 逐行取出字符串字面量文本（单引号 / 双引号 / 同行反引号，忽略转义）；字符串侧指针的扫描面。 */
+/**
+ * 逐行取出字符串字面量文本（单引号 / 双引号 / 同行反引号，忽略转义）；字符串侧指针的扫描面。
+ *
+ * @param text - 源文件全文
+ * @returns 每个字符串字面量的行号与内容
+ */
 function stringSpans(text: string): { line: number; body: string }[] {
 	const out: { line: number; body: string }[] = [];
 	text.split("\n").forEach((line, i) => {

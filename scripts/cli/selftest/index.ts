@@ -9,6 +9,8 @@
  *
  * 断言本体按主题住在 `./` 八组（calc / birth / chart / render / args / commands /
  * astrology-shapes / guard），本文件只做编排。完整理由与三条运行期纪律见 docs/code/cli-selftest.md。
+ *
+ * @file 回归自检 —— 内核或 iztro 升级后，用一组不变量快速验证 CLI 仍然正确（拆自 purple-star.ts）
  */
 
 import type { CliContext } from "../args";
@@ -82,6 +84,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	//（见 docs/code/cli-selftest.md）。
 	// 子进程是独立进程，模块旁路过不去：排盘命令在 argv 显式携带 --no-cache
 	//（synastry / knowledge 不排盘、不识别该旗标，故只加在 astrology 上）。
+	/** 进程内跑一次 CLI，返回退出码与输出。 */
 	const runCli = (args: string[]): { code: number; out: string; err: string } => {
 		const argv = [...args, ...(args[0] === "astrology" ? ["--no-cache"] : [])];
 		const r = spawnSync(process.execPath, [resolve(ctx.root, "purple-star.ts"), ...argv], {

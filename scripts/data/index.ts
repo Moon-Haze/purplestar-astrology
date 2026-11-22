@@ -9,6 +9,8 @@
  *
  * 使用约定（优先 import 具体域文件而非本门面）与域名一览，见 docs/code/data-tables.md。
  *
+ * @file 紫微内核数据层门面 —— `scripts/data/` 的统一出口
+ *
  * @packageDocumentation
  */
 export {

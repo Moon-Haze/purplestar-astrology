@@ -1,3 +1,6 @@
+/**
+ * @file 从源分片构建双日历口径 DuckDB 基准库的工具。
+ */
 // 用法: npm run build:db [-- --out=DIR] [-- --force] [-- --mode=inline|dataset]
 //                      [-- --from-year=N] [-- --to-year=N] [-- --src=DIR]
 //      参数同时支持 --key=value 与 --key value 两种写法
@@ -44,17 +47,32 @@ import { materializeTarShards } from "./tar-source";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
 
+/** 建库命令行参数的解析结果（未给出的项落回默认值，见 parseArgs）。 */
 interface Args {
+	/** 源分片根目录（内含 year-<YYYY>/*.jsonl.gz 或分发 tar），默认 <仓库根>/samples-out */
 	src: string;
+	/** 输出目录，默认 <仓库根>/db；库、dataset/、进度与字典副本全部落在其下 */
 	out: string;
+	/** 是否清掉旧库 / 旧进度 / 字典副本 / dataset 后全新重建（对应 `--force`） */
 	force: boolean;
+	/** 构建形态：inline = 单库；dataset = 无库、全部在 dataset/ 下 parquet（默认 inline） */
 	mode: "inline" | "dataset";
+	/** 分片筛选的起始年（含）；省略即不限——只过滤 year-<YYYY> 目录 */
 	fromYear?: number;
+	/** 分片筛选的结束年（含）；省略即不限 */
 	toYear?: number;
+	/** 磁盘剩余空间门槛（GB），默认 40；低于门槛拒绝构建 */
 	minFreeGb: number;
+	/** 每批提交的分片数，默认 24；小于 24 时库文件行组过碎、压缩失效（须 ≥ 1） */
 	batchShards: number;
 }
 
+/**
+ * 解析建库命令行参数，未给出的项落回默认值。
+ *
+ * @param argv - 命令行参数（不含 node 与脚本路径）
+ * @returns 解析后的建库参数；未给出的项落回默认值
+ */
 function parseArgs(argv: string[]): Args {
 	const a: Args = {
 		src: path.join(ROOT, "samples-out"),
@@ -75,6 +93,7 @@ function parseArgs(argv: string[]): Args {
 		const eq = arg.indexOf("=");
 		const key = eq >= 0 ? arg.slice(0, eq) : arg;
 		const inline = eq >= 0 ? arg.slice(eq + 1) : undefined;
+		/** 取出当前命令行项的值：优先 `=` 形式，其次下一个参数。 */
 		const value = (): string => {
 			if (inline !== undefined) {
 				return inline;
@@ -121,6 +140,13 @@ function parseArgs(argv: string[]): Args {
 // spec §3.1（修订）：形态由 --mode 选择，默认 inline（不传 = 与已验收版本逐项一致）。
 // 非法值必须报错而不是回退：用户传了旧形态却拿到 inline 库，是一种
 // 无声的、事后才发现的错误。故只做精确匹配，不接受大小写或空白变体。
+/**
+ * 解析 `--mode`：只接受精确的 `inline` / `dataset`，非法值报错不回退。
+ *
+ * @param raw - `--mode` 的原始取值
+ * @returns 归一后的形态
+ * @throws 取值为已删除的 `parquet` / `sidecar`，或不在 `inline | dataset` 之内
+ */
 export function parseMode(raw: string): "inline" | "dataset" {
 	if (raw === "inline") {
 		return "inline";
@@ -143,6 +169,13 @@ export function parseMode(raw: string): "inline" | "dataset" {
 // 忽略：`ZIWEI_DB_MODE=parquet npm run build:db` 若被忽略，用户拿到的是一个自足的
 // inline 库——形态与体积都与预期不符，却要等到下游找不到 dataset 目录时才暴露。
 // 空值不表达任何形态意图（等同未设），不报错。
+/**
+ * 拒收已退役的 `ZIWEI_DB_MODE` 环境变量，避免与命令行形态静默冲突。
+ *
+ * @param env - 环境变量表（默认 `process.env`，测试可注入）
+ * @returns 无返回值；未设或为空串时静默通过
+ * @throws 环境变量里仍有 `ZIWEI_DB_MODE`
+ */
 export function rejectLegacyModeEnv(env: NodeJS.ProcessEnv = process.env): void {
 	const raw = env.ZIWEI_DB_MODE;
 	if (raw === undefined || raw === "") {
@@ -159,6 +192,7 @@ export function rejectLegacyModeEnv(env: NodeJS.ProcessEnv = process.env): void 
 // 字段名 = toolkit samples-out 的**导出口径**（hour/mingGongBranch/siHua/daXianAge…，
 // 与 db-slim 基准实现逐字对齐）；入库列名是本仓 camelCase 口径，由 INSERT SELECT
 // 按位置映射，两套命名不在此处混用。
+/** `read_json_auto` 的列类型契约，与 db-slim 基准实现逐字对齐。 */
 export const READ_JSON_COLUMNS = `{
   'birthInfo': 'STRUCT(year SMALLINT, month SMALLINT, day SMALLINT, hour SMALLINT, gender VARCHAR, longitude DOUBLE)',
   'chart': 'STRUCT(lunarInfo STRUCT(lunarYear SMALLINT, lunarMonth SMALLINT, lunarDay SMALLINT, yearStem TINYINT, yearBranch TINYINT, isLeapMonth BOOLEAN), mingGongBranch TINYINT, shenGongBranch TINYINT, wuxingJu TINYINT, wuxingJuName VARCHAR, ziweiPos TINYINT, palaces STRUCT(branch TINYINT, stem TINYINT, name VARCHAR, stars STRUCT(name VARCHAR, type VARCHAR, brightness VARCHAR, siHua VARCHAR)[], daXianAge SMALLINT[], isMingGong BOOLEAN, isShenGong BOOLEAN, isCurrentDaXian BOOLEAN)[], daXians STRUCT(startAge SMALLINT, endAge SMALLINT, palaceBranch TINYINT, palaceName VARCHAR)[], currentAge SMALLINT, currentDaXianIndex SMALLINT)',
@@ -166,6 +200,12 @@ export const READ_JSON_COLUMNS = `{
   'system': 'VARCHAR'
 }`;
 
+/**
+ * 分片入库用的临时与清洗 SQL（按日历口径生成）。
+ *
+ * @param calendar - 源数据集的日历口径
+ * @returns 按口径生成的一组分片入库 SQL（含临时表、清洗、三类行写入与收尾）
+ */
 export function shardSql(calendar: Calendar): {
 	temp: string;
 	cleanPalaces: string;
@@ -293,6 +333,13 @@ export function shardSql(calendar: Calendar): {
 // aborted (please ROLLBACK)`，而 finally 抛出的次级异常会挤掉真正的错误——spec §9
 // 要求透给用户的「第几行第几列解析失败」正因此从未到达过用户。三张临时表都带
 // IF EXISTS，唯一会失败的情形就是事务已 aborted；临时表随连接消失，残留无害。
+/**
+ * 尽力删除临时表；失败不抛出，避免掩盖真正的建库错误。
+ *
+ * @param conn - 已连接的库
+ * @param stmts - 待删除的临时表语句
+ * @returns 无返回值；单条失败被吞掉，不掩盖真正的建库错误
+ */
 async function dropTempsQuietly(conn: DuckDBConnection, stmts: string[]): Promise<void> {
 	for (const s of stmts) {
 		try {
@@ -304,6 +351,14 @@ async function dropTempsQuietly(conn: DuckDBConnection, stmts: string[]): Promis
 }
 
 // pass 1 单分片：只扫字典，不写任何样本数据（不含事务）
+/**
+ * pass 1：只扫描该分片的主题字典行，不写样本数据。
+ *
+ * @param conn - 已连接的库
+ * @param gzPath - 该分片的 jsonl.gz 路径
+ * @param calendar - 源数据集的日历口径
+ * @returns 无返回值；字典行已并入 `topic_dict`
+ */
 export async function scanShardDict(
 	conn: DuckDBConnection,
 	gzPath: string,
@@ -321,6 +376,16 @@ export async function scanShardDict(
 
 // pass 2 单分片：palaces / samples（+ inline 的 topic_lines）入库（不含事务边界）。
 // topicsParquetPath 给了就走 parquet：主题文本写库外 Parquet，不碰字典两表。
+/**
+ * pass 2：写入 palaces / samples 与 inline 主题行（不含事务边界）。
+ *
+ * @param conn - 已连接的库
+ * @param gzPath - 该分片的 jsonl.gz 路径
+ * @param topicsParquetPath - 主题文本的库外 parquet 路径；给了就写库外，不给则写库内
+ * @param calendar - 源数据集的日历口径
+ * @returns 无返回值
+ * @throws 本分片有行未命中字典（拒绝写入悬空 id）
+ */
 export async function encodeShard(
 	conn: DuckDBConnection,
 	gzPath: string,
@@ -353,6 +418,12 @@ export async function encodeShard(
 
 // COMMIT 之后事务已经结束，此时再 ROLLBACK 会抛「cannot rollback - no transaction
 // is active」。它是次级异常，绝不能顶掉原始错误（磁盘满/权限/跨设备都在原始错误里）。
+/**
+ * 尽力回滚事务；失败不抛出，收尾阶段不因回滚问题中断。
+ *
+ * @param conn - 已连接的库
+ * @returns 无返回值；失败被吞掉，不顶掉原始错误
+ */
 async function rollbackQuietly(conn: DuckDBConnection): Promise<void> {
 	try {
 		await conn.run("ROLLBACK");
@@ -364,6 +435,16 @@ async function rollbackQuietly(conn: DuckDBConnection): Promise<void> {
 // 单分片写入（自带事务）：供需要独立提交的调用方使用。
 // 单文件化后主题数据也在库内，三类行同受事务保护，不再需要「提交后才让文件对视图可见」
 // 那种跨文件一致性机制。
+/**
+ * 单个分片的完整入库：扫描字典后写样本，含事务边界。
+ *
+ * @param conn - 已连接的库
+ * @param gzPath - 该分片的 jsonl.gz 路径
+ * @param topicsParquetPath - 同 {@link encodeShard}
+ * @param calendar - 源数据集的日历口径
+ * @returns 无返回值；事务已提交
+ * @throws 写入失败时先回滚并把原始错误抛出
+ */
 export async function buildShard(
 	conn: DuckDBConnection,
 	gzPath: string,
@@ -380,6 +461,15 @@ export async function buildShard(
 	}
 }
 
+/**
+ * 列出源分片路径，可按年份区间收窄。
+ *
+ * @param src - 源分片根目录
+ * @param fromYear - 起始年（含）；省略即不限
+ * @param toYear - 结束年（含）；省略即不限
+ * @returns 相对 `src` 的分片路径，按年、按月名排序
+ * @throws `--src` 含 `..` 段
+ */
 async function listShards(src: string, fromYear?: number, toYear?: number): Promise<string[]> {
 	if (src.split(/[\\/]/).includes("..")) {
 		throw new Error("--src 路径不允许包含 .. 段");
@@ -417,6 +507,17 @@ async function listShards(src: string, fromYear?: number, toYear?: number): Prom
 // partSamples 可注入是为了让测试用 7 个样本验证边界，生产调用一律用默认值。
 // totalSamples 语义上是「最大的 sample_id」（区间上界）：sample_id 由自然键按 1..674976
 // 稠密生成，生产下等于样本总数；测试用稀疏 id 时二者才分叉，故调用方须传 max(sample_id)。
+/**
+ * 把暂存分片重打成 dataset，并逐片校验体积上限。
+ *
+ * @param conn - 已连接的库
+ * @param stagingDir - 逐源分片的暂存目录
+ * @param datasetDir - dataset 输出目录
+ * @param totalSamples - 区间上界（传 `max(sample_id)` 而非 `count(*)`）
+ * @param partSamples - 每片样本数上限（测试可注入更小的值）
+ * @returns 写出的片名清单与最大单片字节数
+ * @throws 任一单片的体积超过 {@link DATASET_PART_MAX_BYTES}
+ */
 export async function repackDataset(
 	conn: DuckDBConnection,
 	stagingDir: string,
@@ -470,15 +571,30 @@ export async function repackDataset(
 // 字节可复现性 2026-11-21 实证：同库重导两次与盘上现值三方哈希一致（含并行导出），
 // 故字节哈希成立，无需回落逻辑指纹。血统叙事（note）由调用方按登记语境给出——
 // 工具只知道「何时、从哪个库导出」，历史结论不由它代言。
+/** dataset 清单：文件哈希、样本数与血统说明。 */
 export interface DatasetManifest {
+	/** 清单用途说明（固定文案：本目录指纹由 build-duckdb --mode=dataset 自报） */
 	description: string;
+	/** 登记日期（UTC 的 YYYY-MM-DD，取自导出时刻） */
 	registeredAt: string;
+	/** parquet 文件名 → 字节 sha256 与字节数；日常回归按此对账 */
 	files: Record<string, { sha256: string; bytes: number }>;
+	/** 样本总数（samples 表 count(*)，v4 全量口径为 674,976） */
 	sampleCount: number;
+	/** 样本年份区间 [最小年, 最大年]（含两端；v4 为 1950–2026） */
 	yearRange: [number, number];
+	/** 血统说明：本次导出的口径与语境，由调用方传入（工具不代言历史结论） */
 	note: string;
 }
 
+/**
+ * 写出 dataset 清单文件并返回其内容。
+ *
+ * @param conn - 已连接的库
+ * @param datasetDir - dataset 目录
+ * @param note - 写进清单的说明（记录本次口径/血统）
+ * @returns 已落盘的清单内容
+ */
 export async function writeDatasetManifest(
 	conn: DuckDBConnection,
 	datasetDir: string,
@@ -521,6 +637,17 @@ export async function writeDatasetManifest(
 // 构建失败后残留不可接受（Review：Important）。
 //
 // done 是已入库的源分片 rel 列表，用于「缺暂存」对账。
+/**
+ * 收尾：核对已入库分片、清理暂存并落清单。
+ *
+ * @param conn - 已连接的库
+ * @param stagingDir - 逐源分片的暂存目录
+ * @param datasetDir - dataset 输出目录
+ * @param done - 已入库的源分片相对路径
+ * @param note - 写进清单的说明
+ * @returns 无返回值；dataset/ 已重建、清单已落盘、暂存已清理
+ * @throws 暂存缺失分片（须 `--force` 重建）、`..` 段路径、或收尾行数对账不通过
+ */
 export async function finalizeDataset(
 	conn: DuckDBConnection,
 	stagingDir: string,
@@ -595,6 +722,7 @@ export async function finalizeDataset(
 	}
 }
 
+/** 建库入口：解析参数、按形态建库并报告结果。 */
 async function main() {
 	rejectLegacyModeEnv();
 	const args = parseArgs(process.argv.slice(2));
@@ -930,6 +1058,7 @@ async function main() {
 	// 收尾对账：inline 直接对 topic_lines 断言三条不变量（不能写 `count(*) FROM topics`，
 	// 那会强制重建全部文本，极慢且可能 OOM，spec §7.4）。dataset 的 topics 行数对账在
 	// finalizeDataset 里做（topics 视图无聚合，count(*) 是廉价操作）。
+	/** 取单值聚合结果并转 Number，供末段校验使用。 */
 	const one = async (sql: string) => Number((await (await conn.run(sql)).getRowsJS())[0][0]);
 	const nSamples = await one("SELECT count(*) FROM samples");
 	if (mode === "inline") {

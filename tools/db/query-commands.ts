@@ -1,3 +1,6 @@
+/**
+ * @file 数据库查询子命令的分发与执行。
+ */
 // 封装子命令的查询与输出（tools/db）：每个子命令一条固定 SQL + 具名参数绑定，
 // 输入不进 SQL；行集统一走 getRowObjectsJS（list/struct 已转纯 JS 值）。
 import type { DuckDBConnection } from "@duckdb/node-api";
@@ -6,11 +9,28 @@ import { dispWidth, jsonReplacer, renderTable } from "./render";
 import { GAN, ZHI, SAMPLE_LABELS, dash, formatSampleValue, sihuaCell, starList } from "./format";
 import { SEARCH_MAX_LIMIT, type ParsedArgs } from "./query-args";
 
+/**
+ * 执行一条带命名参数的查询，返回行集。
+ *
+ * @param conn - 已连接的 DuckDB 连接
+ * @param sql - 带命名参数的 SQL
+ * @param params - 命名参数取值
+ * @returns 行集（list/struct 已转纯 JS 值）
+ */
 async function rowsOf(conn: DuckDBConnection, sql: string, params: Record<string, unknown>) {
 	const result = await conn.run(sql, params as Record<string, never>);
 	return (await result.getRowObjectsJS()) as Array<Record<string, unknown>>;
 }
 
+/**
+ * 按样本 ID 输出该样本的 samples 行。
+ *
+ * @param conn - 已连接的 DuckDB 连接
+ * @param id - 样本 ID
+ * @param json - `true` 输出 JSON 而非表格
+ * @returns 无返回值；结果打印到 stdout
+ * @throws 该 ID 在 `samples` 表中不存在
+ */
 async function runSample(conn: DuckDBConnection, id: number, json: boolean): Promise<void> {
 	const rows = await rowsOf(conn, "SELECT * FROM samples WHERE sample_id = $id", { id });
 	if (rows.length === 0) {
@@ -27,6 +47,15 @@ async function runSample(conn: DuckDBConnection, id: number, json: boolean): Pro
 	console.log(renderTable(["字段", "值"], line));
 }
 
+/**
+ * 按样本 ID 输出十二宫行，按地支排序。
+ *
+ * @param conn - 已连接的 DuckDB 连接
+ * @param id - 样本 ID
+ * @param json - `true` 输出 JSON 而非表格
+ * @returns 无返回值；结果打印到 stdout
+ * @throws 该 ID 在 `palaces` 表中不存在
+ */
 async function runPalaces(conn: DuckDBConnection, id: number, json: boolean): Promise<void> {
 	const rows = await rowsOf(conn, "SELECT * FROM palaces WHERE sample_id = $id ORDER BY branch", {
 		id,
@@ -65,6 +94,16 @@ async function runPalaces(conn: DuckDBConnection, id: number, json: boolean): Pr
 	console.log(renderTable(Object.keys(table[0]!), table));
 }
 
+/**
+ * 输出某主题在指定样本上的文本。
+ *
+ * @param conn - 已连接的 DuckDB 连接
+ * @param id - 样本 ID
+ * @param keys - 要展示的主题键；为空即全部主题键
+ * @param json - `true` 输出 JSON 而非逐主题分节
+ * @returns 无返回值；结果打印到 stdout
+ * @throws 该 ID 在 `topics` 表中不存在
+ */
 async function runTopic(
 	conn: DuckDBConnection,
 	id: number,
@@ -96,6 +135,16 @@ async function runTopic(
 	}
 }
 
+/**
+ * 在该主题上做子串检索，输出命中样本。
+ *
+ * @param conn - 已连接的 DuckDB 连接
+ * @param topic - 主题键
+ * @param pattern - 子串匹配模式
+ * @param limit - 最多列出的样本数
+ * @param json - `true` 输出 JSON 而非编号清单
+ * @returns 无返回值；结果打印到 stdout
+ */
 async function runSearch(
 	conn: DuckDBConnection,
 	topic: string,
@@ -138,6 +187,13 @@ async function runSearch(
 	}
 }
 
+/**
+ * 输出样本与宫位表的总行数。
+ *
+ * @param conn - 已连接的 DuckDB 连接
+ * @param json - `true` 输出 JSON 而非表格
+ * @returns 无返回值；samples / palaces / topics 三表行数打印到 stdout
+ */
 async function runCount(conn: DuckDBConnection, json: boolean): Promise<void> {
 	const rows = await rowsOf(
 		conn,
@@ -156,6 +212,13 @@ async function runCount(conn: DuckDBConnection, json: boolean): Promise<void> {
 
 // 按解析结果分发：sql 形态透传（SQL 的作者就是使用者本人，本层不做二次加工），
 // 其余走各自的封装查询。
+/**
+ * 按解析结果分发查询：裸 SQL 透传，其余走各自封装。
+ *
+ * @param conn - 已连接的 DuckDB 连接
+ * @param args - 解析后的命令行（输出形态、目标目录与指令）
+ * @returns 无返回值；查询结果打印到 stdout，或经 `--out` 落盘
+ */
 export async function dispatch(conn: DuckDBConnection, args: ParsedArgs): Promise<void> {
 	const c = args.command;
 	if (c.kind === "sql") {

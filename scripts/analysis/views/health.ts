@@ -20,6 +20,8 @@
  * 2026-11-05 第二投影降级）：四个 slot（`extra:倪师疾厄论 · 通盘最差宫` /
  * `extra:疾厄宫参考` / `extra:煞忌警示` / `extra:女命妇科保养`）。
  *
+ * @file 五点五、疾厄宫 —— 通盘最差宫 + 煞忌警示（仅 health 主题出）
+ *
  * @packageDocumentation
  */
 
@@ -45,6 +47,9 @@ const SLOT_FEMALE = "extra:女命妇科保养";
  * ⚠️ 取舍留档：语料例句的「杀星」语境含七杀（主星），实现只数六煞（SHA_NAMES）——
  *    **主星杀星不计**入分。六煞（主轴判定）与四煞（煞星入疾厄警示，SHA_HARD）两套
  *    口径在本视图并存，各按其消费处语义取用。
+ *
+ * @param chart - 已排好的命盘（逐宫打分：宫内有化忌 +2、每颗六煞星 +1）
+ * @returns 得分最高的宫的地支索引，同分并列最多取前二（盘序在前者优先）；全盘无化忌无煞（最高分为 0）时为空数组
  */
 function worstPalaces(chart: ZiweiChart): number[] {
 	const scored = chart.palaces.map(p => {
@@ -66,6 +71,9 @@ function worstPalaces(chart: ZiweiChart): number[] {
  * 疾厄宫 · 通盘最差宫主轴（倪师真法）+ 疾厄宫参考（降级级）+ 煞忌警示。
  *
  * ⚠️ 本函数是 `../data` 的 `PALACE_BRANCH_ORGAN` / `ZI_WU_ORGAN_VERSE` 的**唯一使用点**。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数只读命盘、主题键、主题主宫与三方四正；主题键不是 `health` 时直接返回空数组
+ * @returns 条目流：通盘最差宫主轴（歌诀查脏腑，无凶宫时换降级文案）→ 疾厄宫参考 → 三方四正的煞忌警示 → 女命专属妇科保养节；非 health 主题时为空数组
  */
 function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, topic, mainPalace, sanFang } = ctx;
@@ -169,7 +177,12 @@ function renderHealthItems(ctx: AnalysisContext): AnalysisItem[] {
 	return items;
 }
 
-/** 渲染「五点五、疾厄宫」整节（文本投影；仅 health 主题出）。 */
+/**
+ * 渲染「五点五、疾厄宫」整节（文本投影；仅 health 主题出）。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）
+ * @returns 与 {@link renderHealthItems} 条目流逐条对应的文本行；主题键不是 `health` 时为空数组
+ */
 export function renderHealth(ctx: AnalysisContext): string[] {
 	return formatItems(renderHealthItems(ctx));
 }

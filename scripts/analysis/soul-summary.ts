@@ -8,6 +8,8 @@
  * ⚠️ 「保持向后兼容」：`cli/commands/astrology.ts` 的 `mingGongSummary`（文本与 `--json`）
  *    至今按原样取用，**签名与返回结构不得改动**（完整说明见 docs/code/analysis.md）。
  *
+ * @file 命宫摘要 —— 命宫主星的简要概括：星名、关键词、星性
+ *
  * @packageDocumentation
  */
 

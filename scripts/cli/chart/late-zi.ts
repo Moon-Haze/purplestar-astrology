@@ -4,6 +4,8 @@
  * `render.ts` 的 `lateZiSection` 只渲染不排盘（渲染层零排盘、零 IO），对照盘由
  * 调用方（cmdAstrology / composeSections / buildReport）经本函数显式取出后作参数递入。
  * 排盘走缓存层，与主盘同键不同 `timeIndex`，各占一个缓存条目、只排一次。
+ *
+ * @file 晚子时对照盘 —— 取数单点：按口径标志排出**另一口径**的对照盘
  */
 
 import type { BirthInfo, ZiweiChart } from "@/types";

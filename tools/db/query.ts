@@ -1,3 +1,6 @@
+/**
+ * @file DuckDB 基准库的交互式查询命令入口。
+ */
 // 样本库只读查询入口（tools/db）。本文件只负责装配：命令行解析见 query-args.ts，
 // 各子命令的查询与输出见 query-commands.ts，两形态目标的判定与打开见 db.ts。
 // 用法: npm run query -- <子命令> [参数...] [--json] [--out=DIR]
@@ -25,6 +28,7 @@ import { dbPathIn, datasetDirIn, openDataset, openReadOnly, resolveQueryTarget }
 import { parseArgs, UsageError } from "./query-args";
 import { dispatch } from "./query-commands";
 
+/** 查询入口：解析参数、打开目标并分发查询。 */
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
 	const target = resolveQueryTarget(args.out);

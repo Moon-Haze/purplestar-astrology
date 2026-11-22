@@ -8,6 +8,8 @@
  * 本文件里的 `{@link}` 一律只指向**本文档内**的符号 —— 跨文件 TSDoc 解析不到，
  * 指向其他模块的符号时直呼其名，不加链接。
  *
+ * @file 格局层的**类型**：结构体、识别器入参、识别器签名
+ *
  * @packageDocumentation
  */
 
@@ -26,9 +28,12 @@ import type { ZiweiChart, Palace } from "../types";
  * {@link Pattern.level} 的取值（有 `breaking` 通常降级）。
  */
 export interface PatternCondition {
-	required: string[]; // 必须满足条件（已通过的）
-	bonus?: string[]; // 加分项（已触发）
-	breaking?: string[]; // 破格警示（已触发）
+	/** 必须满足条件（已通过的） */
+	required: string[];
+	/** 加分项（已触发） */
+	bonus?: string[];
+	/** 破格警示（已触发） */
+	breaking?: string[];
 }
 
 /**
@@ -38,9 +43,12 @@ export interface PatternCondition {
  * 由各 `detect*` 识别器在条件成立时推入 `detectPatterns` 的累积数组。
  */
 export interface Pattern {
-	name: string; // 格局名；部分识别器会拼入星名（如「武曲化禄入命」「太阴化忌冲命」）
-	level: 90 | 75 | 60 | 40; // 等级分数：90 上格 / 75 吉格 / 60 平格 / 40 凶格警示。触发破格条件时**降档**（如 90 → 75、75 → 40）
-	description: string; // 判词文案，由 cli/commands/index.ts 直接输出给用户（短判词 + level，analyze 用）
+	/** 格局名；部分识别器会拼入星名（如「武曲化禄入命」「太阴化忌冲命」） */
+	name: string;
+	/** 等级分数：90 上格 / 75 吉格 / 60 平格 / 40 凶格警示。触发破格条件时**降档**（如 90 → 75、75 → 40） */
+	level: 90 | 75 | 60 | 40;
+	/** 判词文案，由 cli/commands/index.ts 直接输出给用户（短判词 + level，analyze 用） */
+	description: string;
 	/**
 	 * topic 侧（`overview` / `personality` 两个主题）用的**倪师口吻长判词**。
 	 *
@@ -53,9 +61,12 @@ export interface Pattern {
 	 * 剥星名）在各识别器内部都算得出来，填最终串即可。
 	 */
 	topicDescription?: string;
-	palaces: string[]; // 涉及宫位（**宫名**，非地支索引；可能含"身宫"或格局定名宫位）
-	conditions?: PatternCondition; // 成立条件分层
-	source?: string; // 古籍出处
+	/** 涉及宫位（**宫名**，非地支索引；可能含"身宫"或格局定名宫位） */
+	palaces: string[];
+	/** 成立条件分层 */
+	conditions?: PatternCondition;
+	/** 古籍出处 */
+	source?: string;
 }
 /**
  * 识别器上下文：`detectPatterns` 一次组装、传给全部 51 个识别器的公共入参。
@@ -71,7 +82,9 @@ export interface Pattern {
  * ⚠️ 本接口原先在 `patterns.ts` 内是 module-private，拆出后必须 export 才能被识别器引用。
  */
 export interface DetectContext {
+	/** 待判的整张命盘 */
 	chart: ZiweiChart;
+	/** 命宫宫位；由 `detectPatterns` 保证非空，识别器无须判空 */
 	ming: Palace;
 }
 

@@ -76,6 +76,9 @@ export function parseMonthlyArg(args: CliArgs): number | null {
  * @throws 裸开关、非整数或超出 1-30 时
  *
  * @remarks
+ *
+ * @param args - CLI 参数表（读 `args.daily`：`true` = 裸开关，字符串 / 数字按其值折算）
+ *
  * 与 `--monthly` 同一纪律：流日的「当前日」没有明确语义，不设默认 —— 裸开关直接报错
  * 指路（见 docs/code/cli-commands.md）。
  */
@@ -95,6 +98,8 @@ export function parseDailyArg(args: CliArgs): number | null {
  *
  * @returns 时支 0-12（12 = 晚子时）；未给时为 `null`（表示「不算流时」）
  * @throws 裸开关、非整数或超出 0-12 时
+ *
+ * @param args - CLI 参数表（读 `args.hourly`：`true` = 裸开关，字符串 / 数字按其值折算）
  */
 export function parseHourlyArg(args: CliArgs): number | null {
 	if (args.hourly === true) {
@@ -111,12 +116,19 @@ export function parseHourlyArg(args: CliArgs): number | null {
 export interface AstrologyContext {
 	/** 应用 `--config` 与零输入回退**之后**的参数表（cmdAstrology 的后续分支读它） */
 	args: CliArgs;
+	/** 出生信息（真太阳时校正后的公历日期 + 时辰序号 0–12 + 性别 + 出生地）；`timeIndex` 12 = 晚子时 */
 	info: BirthInfo;
+	/** 排盘依据整包：时辰说明、经度、真太阳时校正与晚子时判定（`toBasis` 单点折算） */
 	basis: CaliberBasis;
+	/** 已排好的命盘（走缓存层，`--no-cache` 直排） */
 	chart: ZiweiChart;
+	/** 流年公历年（`--yearly` 的值；裸开关时取当年） */
 	liuNianYear: number;
+	/** 流月农历月 1–12；`null` = 未给 `--monthly`，即不算流月 */
 	liuYueMonth: number | null;
+	/** 流日农历日 1–30；`null` = 未给 `--daily`，即不算流日 */
 	liuRiDay: number | null;
+	/** 流时时支 0–12（12 = 晚子时）；`null` = 未给 `--hourly`，即不算流时 */
 	liuShiHour: number | null;
 	/** 零输入演示是否生效（头部声明与用法指路随它出现） */
 	usingSample: boolean;

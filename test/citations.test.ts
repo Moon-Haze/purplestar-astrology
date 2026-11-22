@@ -1,3 +1,6 @@
+/**
+ * @file 引文守卫元测试与全仓引文合规扫描。
+ */
 // ── 引文守卫（元测试 + 全仓扫描）──
 //
 // 本文件是 `test/lib/citation-guard.ts` 的**唯一消费者**。它做两件事，
@@ -61,7 +64,12 @@ const QUOTE =
 /** 以倪师名义带出某段引文的伪造源码行。 */
 const fakeCitation = (quote: string): string => `// 倪海厦说：「${quote}」\n`;
 
-/** 造一棵假内核根，返回其路径；调用方负责在 finally 里 `rmSync` 掉。 */
+/**
+ * 造一棵假内核根，返回其路径；调用方负责在 finally 里 `rmSync` 掉。
+ *
+ * @param files - 相对路径 → 文件内容的表
+ * @returns 临时内核根的绝对路径（调用方负责清理）
+ */
 function makeTree(files: Record<string, string>): string {
 	const root = mkdtempSync(resolve(tmpdir(), "ziwei-citation-"));
 	for (const [rel, content] of Object.entries(files)) {
@@ -72,7 +80,12 @@ function makeTree(files: Record<string, string>): string {
 	return root;
 }
 
-/** 在临时树上跑守卫，跑完即删。 */
+/**
+ * 在临时树上跑守卫，跑完即删。
+ *
+ * @param files - 同 {@link makeTree}
+ * @returns 守卫在该临时树上的扫描结果
+ */
 function scanTree(files: Record<string, string>) {
 	const root = makeTree(files);
 	try {

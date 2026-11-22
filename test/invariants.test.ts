@@ -1,3 +1,6 @@
+/**
+ * @file 排盘结构、星曜宫位和分析数据表键域的不变量测试。
+ */
 // ── 层 3：排盘结构不变量 ──
 //
 // 这些断言**不依赖基准样本的字段值**，而是排盘本身必须满足的结构约束 ——
@@ -77,6 +80,7 @@ const LUCKY6 = ["文昌", "文曲", "左辅", "右弼", "天魁", "天钺"];
 const SHA6 = ["擎羊", "陀罗", "火星", "铃星", "地空", "地劫"];
 
 type LabeledBirth = Pick<BirthInfo, "year" | "month" | "day" | "timeIndex" | "gender">;
+/** 把带标注的出生信息拼成可读的用例名。 */
 const label = (b: LabeledBirth): string =>
 	`${b.year}-${b.month}-${b.day}/${b.timeIndex}/${b.gender}`;
 
@@ -162,8 +166,10 @@ describe("排盘结构不变量", () => {
 				// 既不看 IZTRO_TO_PROJECT_PALACE，也不看 PALACE_NAMES_ORDER。
 				// 映射表里任何一处置换（如「仆役」↔「夫妻」）都会在这里变红。
 				// 宫名映射与具体盘无关，故抽样即可（每 20 条取 1）。
+				/** 把 d.ts 里未声明的类型名替换成 any，供桩源码注入用。 */
 				const rewrite = (n: string): string =>
 					n === "仆役" ? "交友宫" : n === "命宫" ? "命宫" : `${n}宫`;
+				/** 数字补零到两位。 */
 				const pad2 = (n: number): string => String(n).padStart(2, "0");
 				const seen = new Set<string>();
 
@@ -393,6 +399,7 @@ describe("排盘结构不变量", () => {
 		// 内核若再退回周岁、或换了别的口径，这里立刻变红。
 		it("currentAge 与大限宫位对齐 iztro 的 horoscope()（外部预言机）", () => {
 			const now = new Date();
+			/** 数字补零到两位，用于拼日期串。 */
 			const pad2 = (n: number): string => String(n).padStart(2, "0");
 			let decadal = 0;
 			let childhood = 0;
@@ -966,6 +973,7 @@ describe("排盘结构不变量", () => {
 	describe("格局识别：化禄入财 / 化权入官（按偏移算术核对）", () => {
 		const OFFSET_CAI = 4; // 财帛宫
 		const OFFSET_GUAN = 8; // 官禄宫
+		/** 按相对命宫的偏移取宫；越界返回 undefined。 */
 		const palaceAt = (chart: ZiweiChart, offset: number): Palace | undefined =>
 			chart.palaces.find(p => p.branch === (chart.soulBranch - offset + 12) % 12);
 
@@ -1027,14 +1035,19 @@ describe("排盘结构不变量", () => {
 
 			// 参数 n 放宽为 string | undefined：身宫按地支定位时可能取不到宫名（palaceNameOfBranch），
 			// 此时 find 不命中、?. 兜底空集，与运行时行为一致。
+			/** 按宫名取宫（独立于实现的查找路径）。 */
 			const palaceNamed = (chart: ZiweiChart, n: string | undefined): Palace | undefined =>
 				chart.palaces.find(p => p.name === n);
+			/** 按星名取该星所在的宫。 */
 			const starsNamed = (chart: ZiweiChart, n: string | undefined) =>
 				palaceNamed(chart, n)?.stars ?? [];
+			/** 按星名取盘中所有同名星的宫名列表。 */
 			const namesNamed = (chart: ZiweiChart, n: string | undefined): string[] =>
 				starsNamed(chart, n).map(s => s.name);
+			/** 取某宫的主星名列表。 */
 			const majorOf = (chart: ZiweiChart, n: string | undefined) =>
 				starsNamed(chart, n).filter(s => s.type === "major");
+			/** 取某星带指定四化时所在宫名。 */
 			const mutagenStarsIn = (chart: ZiweiChart, n: string | undefined, hua: string) =>
 				starsNamed(chart, n).filter(s => s.mutagen === hua);
 			const mutagenMajorNames = (
@@ -1045,12 +1058,16 @@ describe("排盘结构不变量", () => {
 				majorOf(chart, n)
 					.filter(s => s.mutagen === hua)
 					.map(s => s.name);
+			/** 取三方四正范围内出现的星名。 */
 			const sanFangNames = (chart: ZiweiChart): string[] =>
 				SANFANG_NAMES.flatMap(n => namesNamed(chart, n));
+			/** 按星名定位其所在宫。 */
 			const palaceOfStar = (chart: ZiweiChart, s: string): Palace | undefined =>
 				chart.palaces.find(p => p.stars.some(x => x.name === s));
+			/** 判断数组是否包含全部给定元素。 */
 			const hasAll = (arr: string[], ...xs: string[]): boolean =>
 				xs.every(x => arr.includes(x));
+			/** 两个地支之间的顺行偏移（0–11）。 */
 			const offsetBetween = (from: number, to: number): number => (to - from + 12) % 12;
 
 			/** 三方四正里是否有星带某四化（不限 major）—— 三奇加会 / 双禄朝垣用。 */
@@ -1107,6 +1124,7 @@ describe("排盘结构不变量", () => {
 			 *  合并后 analyze 侧改为同宫，**代价是格局不再锚定命宫** —— 贪狼在田宅宫逢火铃也会计入。
 			 *
 			 *  同宫时火铃并存只出「火贪格」（沿用 topic 的 `else if`），故铃贪的预言机要排除火贪。 */
+			/** 判断贪狼是否与指定煞星同宫。 */
 			const tanWithSha = (chart: ZiweiChart, shaName: string): boolean => {
 				const tan = palaceOfStar(chart, "贪狼");
 				const sha = palaceOfStar(chart, shaName);
@@ -1835,6 +1853,7 @@ describe("条件分支迁移守卫", () => {
 		"fuMu",
 	] as const;
 	const COND_ANY = /(若有|若|逢)?化[禄权科忌](则|时|，)|(入庙|庙旺|落陷)(者|时)?则/;
+	/** 判别是否为条件分支结构（`common` + 四化/亮度子句）。 */
 	const isBranched = (v: unknown): v is BranchedContent =>
 		typeof v === "object" && v !== null && ("sihua" in v || "brightness" in v);
 

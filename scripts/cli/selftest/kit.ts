@@ -47,6 +47,9 @@ export interface CallResult {
  * @returns 与子进程冒烟同构的结果；throw 被捕获并拼成引导层同形文案
  *
  * @remarks
+ *
+ * @throws 本身不抛：命令抛出的错误被就地捕获，折成 `{ code: 1, out: "", err: "错误：…" }`
+ *
  * 输出形态断言原用 spawnSync 起真 CLI —— 每次约 3.2 秒（iztro 冷启动），全量 30 个调用点
  * ≈ 96 秒。直调复用本进程已加载的 iztro（约 25ms/次），断言语义等价。「stderr 前缀 +
  * exit 1」这条真链路由各断言组保留的子进程冒烟覆盖（见 docs/code/cli-selftest.md）。
@@ -100,6 +103,10 @@ export interface SelftestDeps {
  * @param msg - 错误信息前缀，用来点明是哪一处比对失败
  *
  * @remarks
+ *
+ * @returns 无返回值（返回值是 `void`）；两值相等时静默通过
+ * @throws 严格不相等时抛错，信息为「`msg`期望 X，实得 Y」（两侧用 `JSON.stringify` 展开）
+ *
  * 用 `!==` **严格相等**比较，不做深比较也不做类型转换；失败信息里用 `JSON.stringify` 展开两侧取值。
  */
 export function eq(actual: unknown, expected: unknown, msg = ""): void {
@@ -120,6 +127,8 @@ export type OkFn = (name: string, fn: () => unknown, opts?: { skip?: string }) =
  *
  * ⚠️ `opts.skip` 是**唯一的跳过入口**：跳过记 pass 但 `skipped: true`，报告前置 `⏭`。
  *    **必须看得见「这条没跑」** —— 否则恒真守卫会伪装成通过（见 docs/code/cli-selftest.md）。
+ *
+ * @returns 收集结果用的 `results` 数组与登记断言的 `ok`
  */
 export function createHarness(): {
 	results: Assertion[];

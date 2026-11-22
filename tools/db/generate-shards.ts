@@ -21,6 +21,8 @@
  *   - topics 13 列 = STORAGE_TOPIC_KEYS（study 是 career 别名视图，不另存列）
  * 分片是可整片重算的再生 artifacts：每片在内存整块算好、gzip 后一次落盘
  * （与 export-manual 的写法同款），中断只留旧片或缺片，重跑该年段即补齐。
+ *
+ * @file 518k 分片生成器 —— 用**本仓当前内核**直出样本语料分片（build:db 的 --src 消费格式）
  */
 import { gzipSync } from "node:zlib";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -44,6 +46,7 @@ const { getTopicAnalysis } = await import("../../scripts/analysis");
 
 // ── 参数（仅年段过滤，值域校验，不进路径）───────────────────────────────────
 const argv = process.argv.slice(2);
+/** 取 `--name=value` 参数值；缺省时返回 fallback。 */
 const getArg = (name: string, fallback: string): string =>
 	argv.find(a => a.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 

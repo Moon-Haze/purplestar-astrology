@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file 文墨亮度与 fixtures 基准的分歧分布审计工具。
+ */
 // ── 亮度分歧普查：本项目输出（文墨 SB 表）vs fixtures 基准亮度 ──
 //
 // **信息级审计工具：不设 pass/fail、不进任何闸门面**（npm test / selftest / CI 必经面）。
@@ -34,13 +37,23 @@ const BRIGHTNESS_LABEL: Record<string, string> = { bright: "庙旺", normal: "�
 
 /** 普查统计（控制台报告与基线 JSON 共用一份形状）。 */
 interface CensusStats {
+	/** 参与比对的双侧均有亮度档位的「星 × 宫」次数（任一侧缺档不计入） */
 	total: number;
+	/** 其中亮度口径不一致的次数 */
 	diff: number;
+	/** 含至少一处亮度分歧的盘数 */
 	chartsWithDiff: number;
+	/** 参与普查的盘总数（fixtures 的样本条数） */
 	chartCount: number;
+	/** 分歧组合分布：`星名: 基准档 → 本项目档` 与命中盘数，按命中盘数降序（同数按组合名排） */
 	combos: { key: string; count: number }[];
 }
 
+/**
+ * 遍历数据集，统计「基准档 → 本项目档」的组合分布。
+ *
+ * @returns 总比对次数、分歧次数、有分歧的盘数、盘总数，以及按命中盘数降序的分歧组合
+ */
 async function compute(): Promise<CensusStats> {
 	const { generateChart } = await loadAlgorithm();
 	const samples: BaselineSample[] = readFileSync(
@@ -98,6 +111,12 @@ async function compute(): Promise<CensusStats> {
 	};
 }
 
+/**
+ * 打印分布表与总分歧数。
+ *
+ * @param s - {@link compute} 产出的普查统计
+ * @returns 无返回值；结果已打印到 stdout
+ */
 function printReport(s: CensusStats): void {
 	console.log(
 		`总比对 ${s.total} 次（${s.chartCount} 盘双侧均有档位的星），分歧 ${s.diff} 处（${((s.diff / s.total) * 100).toFixed(1)}%）`
@@ -115,6 +134,12 @@ function printReport(s: CensusStats): void {
 	);
 }
 
+/**
+ * 把当前分布存成入库基线。
+ *
+ * @param s - {@link compute} 产出的普查统计
+ * @returns 无返回值；基线写到 {@link BASELINE_PATH}
+ */
 async function saveBaseline(s: CensusStats): Promise<void> {
 	const payload = {
 		description:
@@ -128,6 +153,12 @@ async function saveBaseline(s: CensusStats): Promise<void> {
 	);
 }
 
+/**
+ * 与入库基线逐行对拍，变化逐条点名。
+ *
+ * @param s - 本次普查统计
+ * @returns 无返回值；基线缺失时 `process.exit(1)`，对拍结果打印到 stdout
+ */
 function checkBaseline(s: CensusStats): void {
 	if (!existsSync(BASELINE_PATH)) {
 		console.error(`基线不存在：${BASELINE_PATH}——先以 --save-baseline 存一份`);
@@ -163,6 +194,13 @@ function checkBaseline(s: CensusStats): void {
 	}
 }
 
+/**
+ * 普查入口：解析参数后统计并输出或存基线。
+ *
+ * @returns 无返回值；两个开关互斥时抛错，其余情形打印报告后退出
+ *
+ * @throws 同时给了 `--save-baseline` 与 `--check-baseline`（同跑会拿刚写的基线恒报零变化）
+ */
 async function main(): Promise<void> {
 	const s = await compute();
 	console.log(

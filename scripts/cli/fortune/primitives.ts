@@ -3,6 +3,8 @@
  *
  * 被各专题节（overview / decadal / age / focus …）与 selftest 共用，
  * 是 `fortune/` 目录里唯一不含渲染的纯函数组。
+ *
+ * @file 运限定位原语 —— 流年地支 / 小限落宫 / 虚岁参数解析的共享底座
  */
 
 import type { Palace, ZiweiChart } from "@/types";

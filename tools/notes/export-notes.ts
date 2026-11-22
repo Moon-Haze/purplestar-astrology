@@ -16,6 +16,8 @@
  *
  * 输出确定性：产物不含任何时间戳/随机数，同输入两次导出逐字节一致（导两次
  * diff=0 是验收标准）。
+ *
+ * @file Obsidian 笔记导出（tools/notes）—— 把多根工作区各仓的紫微斗数知识整理成
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -86,19 +88,34 @@ const GENERATED_BANNER = [
 const LICENSE_LINE =
 	"判语出自倪海厦《天纪》结构化语料库 nihai-tianji-corpus（CC BY-NC-SA 4.0：署名 · 非商业 · 相同方式共享）。";
 
+/** 语料库 `entries.jsonl` 的一条判语（上游字段形态，本工具只读其中九个字段）。 */
 interface Entry {
+	/** 册代号（"01-stars" … "05-illness"），经 BOOK_DIRS 决定落哪个 vault 分区 */
 	book: string;
+	/** 册内大类（主星 / 宫名 / 格局名等）；格局册用作 `parent` 标注层级 */
 	h2: string;
+	/** 册内子类（定性 / 长相 / 应期 …）；格局册一篇一格，直接作笔记标题 */
 	h3: string;
+	/** 倪师原话短引文（正文主体，按句切成引用块） */
 	quote: string;
+	/** 该判语在单元内的小节序号（语料库字段；当前导出未渲染，本工具只声明形态） */
 	section: number;
+	/** 起始时间文本（语料库原样透出，形如 `00:26:02`）；出处行原样展示，回放链接的时间参数另行换算 */
 	t_hms: string;
+	/** 考据标注（字幕错字裁决留痕等）；非空时在条目末尾追加「⚠️ 勘误」 */
 	note: string;
+	/** B 站视频号（BV 号），与 part 一起构成回放直链 */
 	bvid: string;
+	/** 视频分 P 序号（1-based，回放链接的 ?p= 参数） */
 	part: number;
 }
 
-/** 文件名净化：去掉文件系统与 wikilink 的非法/干扰字符。 */
+/**
+ * 文件名净化：去掉文件系统与 wikilink 的非法/干扰字符。
+ *
+ * @param raw - 原始标题
+ * @returns 可做文件名与 wikilink 的名字（非法字符换成 `·`，emoji 与变体选择符去掉）
+ */
 function safeName(raw: string): string {
 	return raw
 		.replace(/[/\\:*?"<>|#^\n\r]/g, "·")
@@ -108,22 +125,43 @@ function safeName(raw: string): string {
 		.trim();
 }
 
-/** t_hms → 秒（B 站回放定位参数）。 */
+/**
+ * t_hms → 秒（B 站回放定位参数）。
+ *
+ * @param hms - `分:秒` 形态的时间文本
+ * @returns 总秒数
+ */
 function hmsToSeconds(hms: string): number {
 	const [m, s] = hms.split(":").map(Number);
 	return m * 60 + s;
 }
 
-/** 判语条目的回放链接（bvid + 分P + 秒定位）。 */
+/**
+ * 判语条目的回放链接（bvid + 分P + 秒定位）。
+ *
+ * @param e - 一条判语
+ * @returns B 站回放直链（bvid + 分P + 秒定位）
+ */
 function replayLink(e: Entry): string {
 	return `https://www.bilibili.com/video/${e.bvid}?p=${e.part}&t=${hmsToSeconds(e.t_hms)}`;
 }
 
+/**
+ * 生成 Obsidian frontmatter 块（`key: value` 逐行）。
+ *
+ * @param fields - `[键, 值]` 序列，顺序即输出顺序
+ * @returns 完整的 frontmatter 块（含首尾 `---`）
+ */
 function frontmatter(fields: Array<[string, string | number]>): string {
 	const lines = fields.map(([k, v]) => `${k}: ${v}`);
 	return `---\n${lines.join("\n")}\n---\n`;
 }
 
+/**
+ * 读取语料库的 `entries.jsonl`；文件缺失时给出克隆指引后退出。
+ *
+ * @returns 语料库 `entries.jsonl` 的全部条目；文件缺失时打印克隆指引并 `process.exit(1)`
+ */
 function readJsonl(): Entry[] {
 	const file = join(CORPUS_ROOT, "data", "entries.jsonl");
 	if (!existsSync(file)) {
@@ -136,15 +174,26 @@ function readJsonl(): Entry[] {
 		.map(l => JSON.parse(l) as Entry);
 }
 
+/** 一篇笔记对应的判语分组：册、vault 分区、标题与所属大类。 */
 interface Group {
+	/** 册代号（Entry.book） */
 	book: string;
+	/** vault 内的分区目录（由 BOOK_DIRS 映射，如「10-星曜」） */
 	dir: string;
+	/** 笔记标题：格局册取 h3，其余册取 h2 */
 	title: string; // 笔记标题（h2，格局册为 h3）
+	/** 所属 h2 大类（格局册用于 frontmatter 的「主题」标注层级） */
 	parent: string; // 所属 h2（格局册用于标注层级）
+	/** 归入本组的判语，顺序同语料库 */
 	entries: Entry[];
 }
 
-/** 紫微五册 → 分组（格局册按 h3 一篇，其余按 h2 一篇）。 */
+/**
+ * 紫微五册 → 分组（格局册按 h3 一篇，其余按 h2 一篇）。
+ *
+ * @param all - 全部条目
+ * @returns 按册拆分出的分组；不属紫微五册的条目被跳过
+ */
 function groupEntries(all: Entry[]): Group[] {
 	const groups: Group[] = [];
 	let lastH2 = "";
@@ -166,6 +215,12 @@ function groupEntries(all: Entry[]): Group[] {
 	return groups;
 }
 
+/**
+ * 渲染一条判语：原文、出处与回放直链。
+ *
+ * @param e - 一条判语
+ * @returns 引用块形态的条目文本（原文 + 出处 + 回放直链，有勘误时附注）
+ */
 function entryBlock(e: Entry): string {
 	const cite = `—— ${e.h2} / ${e.h3} · [回放 ${e.t_hms}](${replayLink(e)})`;
 	const quote = e.quote
@@ -176,6 +231,14 @@ function entryBlock(e: Entry): string {
 	return `${quote}\n>\n${cite}${e.note ? `\n>\n> ⚠️ 勘误：${e.note}` : ""}`;
 }
 
+/**
+ * 渲染一篇笔记的正文：frontmatter + 判语条目 + 相邻篇导航。
+ *
+ * @param g - 一个分组
+ * @param prev - 相邻的上一组（首页为 `undefined`）
+ * @param next - 相邻的下一组（末页为 `undefined`）
+ * @returns 该篇笔记的完整正文（frontmatter + 条目 + 导航）
+ */
 function noteBody(g: Group, prev: Group | undefined, next: Group | undefined): string {
 	const fm = frontmatter([
 		["tags", "紫微斗数/天纪判语"],
@@ -210,6 +273,9 @@ function noteBody(g: Group, prev: Group | undefined, next: Group | undefined): s
 /**
  * 判语按 h3 小节分组排版：同一 h2 主题下常有多个 h3 小节（如四化篇的定性/应期），
  * 连排会让小节边界淹没在引用块里——有多个 h3 时插 `###` 小节标题，单 h3 则不插。
+ *
+ * @param g - 一个分组
+ * @returns 正文行序列；含多个 h3 小节时插入 `###` 小标题
  */
 function groupedEntries(g: Group): string[] {
 	const out: string[] = [];
@@ -226,10 +292,23 @@ function groupedEntries(g: Group): string[] {
 	return out;
 }
 
+/**
+ * 统计一组内不重复的 h3 小节数。
+ *
+ * @param g - 一个分组
+ * @returns 组内不重复的 h3 小节数
+ */
 function countH3(g: Group): number {
 	return new Set(g.entries.map(e => e.h3)).size;
 }
 
+/**
+ * 把一组判语按出现顺序写成编号笔记文件（文件序 = 语料序）。
+ *
+ * @param groups - 该目录下的分组，顺序即文件序
+ * @param dir - 相对输出根的目录名
+ * @returns 无返回值；笔记文件已按序号写出
+ */
 function renderGroups(groups: Group[], dir: string): void {
 	mkdirSync(join(OUT, dir), { recursive: true });
 	// 同目录内按出现顺序编号，文件序 = 语料序
@@ -239,6 +318,14 @@ function renderGroups(groups: Group[], dir: string): void {
 	});
 }
 
+/**
+ * 生成分区索引页：标题清单渲染成 wikilink 列表。
+ *
+ * @param dir - 分区目录名（仅用于对齐既有调用口径）
+ * @param label - 索引页标题
+ * @param titles - 该分区的标题清单，顺序即编号
+ * @returns 索引页全文
+ */
 function sectionIndex(dir: string, label: string, titles: string[]): string {
 	const links = titles.map(
 		(t, i) => `- [[${String(i + 1).padStart(2, "0")} ${safeName(t)}|${t}]]`
@@ -246,7 +333,12 @@ function sectionIndex(dir: string, label: string, titles: string[]): string {
 	return [GENERATED_BANNER, "", `# ${label} · 索引`, "", ...links, ""].join("\n");
 }
 
-/** 本仓三部古籍：一章一篇。 */
+/**
+ * 本仓三部古籍：一章一篇。
+ *
+ * @param books - 三部古籍（含输出目录与标签）
+ * @returns 无返回值；每章一篇笔记与索引页已写出
+ */
 function exportBooks(books: Array<Book & { dir: string; label: string }>): void {
 	const titlesByDir = new Map<string, string[]>();
 	for (const book of books) {
@@ -292,7 +384,11 @@ function exportBooks(books: Array<Book & { dir: string; label: string }>): void 
 	}
 }
 
-/** toolkit 引文五级真伪分级 → 方法论一页。 */
+/**
+ * toolkit 引文五级真伪分级 → 方法论一页。
+ *
+ * @returns 无返回值；核对表缺失时打印克隆指引并 `process.exit(1)`
+ */
 function exportAnnotations(): void {
 	const file = join(TOOLKIT_ROOT, "corpus", "annotations.json");
 	if (!existsSync(file)) {
@@ -338,7 +434,11 @@ function exportAnnotations(): void {
 	writeFileSync(join(OUT, "60-方法", "引文真伪分级.md"), content);
 }
 
-/** toolkit 已核对论断七篇：复制进 vault 并加来源头注。 */
+/**
+ * toolkit 已核对论断七篇：复制进 vault 并加来源头注。
+ *
+ * @returns 无返回值；已核对论断目录缺失时打印指引并 `process.exit(1)`
+ */
 function exportVerified(): void {
 	const srcDir = join(TOOLKIT_ROOT, "corpus", "verified");
 	if (!existsSync(srcDir)) {
@@ -364,7 +464,11 @@ function exportVerified(): void {
 	}
 }
 
-/** voice 课程主题笔记（紫微斗数课程目录）→ 复制并加「AI 总结需甄别」标注。 */
+/**
+ * voice 课程主题笔记（紫微斗数课程目录）→ 复制并加「AI 总结需甄别」标注。
+ *
+ * @returns 无返回值；课程目录缺失时打印指引并 `process.exit(1)`
+ */
 function exportVoiceNotes(): void {
 	// voice 仓 markdown/ 下唯一以「2.」开头的目录即紫微斗数正课
 	const mdRoot = join(VOICE_ROOT, "markdown");
@@ -424,7 +528,12 @@ const MUTAGEN_LABELS: Array<[keyof MutagenModifier, string]> = [
 	["ji", "化忌"],
 ];
 
-/** 性别结构化内容 → 「共享 + 男命/女命」行。 */
+/**
+ * 性别结构化内容 → 「共享 + 男命/女命」行。
+ *
+ * @param g - 性别结构化内容
+ * @returns 行序列：共享行 + 男命/女命行 + 可选后缀
+ */
 function renderGenderField(g: GenderField): string[] {
 	const lines = [g.common];
 	if (g.male) {
@@ -439,7 +548,12 @@ function renderGenderField(g: GenderField): string[] {
 	return lines.filter(Boolean);
 }
 
-/** 宫位语境条目（string / 性别结构化 / 条件分支 三形态）→ 行。 */
+/**
+ * 宫位语境条目（string / 性别结构化 / 条件分支 三形态）→ 行。
+ *
+ * @param c - 宫位语境条目（字符串 / 性别结构化 / 条件分支）
+ * @returns 该条目展开成的行序列
+ */
 function renderPalaceContent(c: PalaceContent): string[] {
 	if (typeof c === "string") {
 		return [c];
@@ -483,6 +597,12 @@ function renderPalaceContent(c: PalaceContent): string[] {
 /** 四化/亮度修饰的宽松视图：MutagenModifier ∪ TopicMod（含 bright/dim 分支）。 */
 type ModRecord = Record<string, string | GenderField | undefined>;
 
+/**
+ * 渲染四化/亮度修饰行：只输出有值的键。
+ *
+ * @param m - 四化或亮度修饰对象
+ * @returns 只含有值键的修饰行
+ */
 function renderMutagenModifier(m: object): string[] {
 	const rec = m as ModRecord;
 	const lines = MUTAGEN_LABELS.filter(([k]) => rec[k] != null).map(([k, label]) => {
@@ -518,7 +638,11 @@ const PALACE_FIELDS: Array<[string, string]> = [
 	["fuMu", "父母宫"],
 ];
 
-/** analysis 的 STAR_CONTENT_MAP（十四主星 × 宫位/四化/亮度/总述）→ 75-主星论断/，一星一篇。 */
+/**
+ * analysis 的 STAR_CONTENT_MAP（十四主星 × 宫位/四化/亮度/总述）→ 75-主星论断/，一星一篇。
+ *
+ * @returns 无返回值；`75-主星论断/` 下一星一篇已写出
+ */
 function exportStarAnalyses(): void {
 	const dir = "75-主星论断";
 	mkdirSync(join(OUT, dir), { recursive: true });
@@ -612,6 +736,11 @@ function exportStarAnalyses(): void {
 	writeFileSync(join(OUT, dir, "_索引.md"), sectionIndex(dir, dir, stars));
 }
 
+/**
+ * 导出格局判词单页（按格局名分节）。
+ *
+ * @returns 无返回值；格局判词单页已写出
+ */
 function exportPatternVerdicts(): void {
 	const rows = Object.entries(PATTERN_VERDICTS).map(([name, v]) => {
 		const lines = [`### ${name}`, "", v.description, ""];
@@ -640,7 +769,11 @@ function exportPatternVerdicts(): void {
 	writeFileSync(join(OUT, "30-格局", "判词表.md"), content.join("\n"));
 }
 
-/** synastry/synastry-knowledge 的合盘断语 → 85-合盘断语/夫妻宫断语.md 单页。 */
+/**
+ * synastry/synastry-knowledge 的合盘断语 → 85-合盘断语/夫妻宫断语.md 单页。
+ *
+ * @returns 无返回值；`85-合盘断语/夫妻宫断语.md` 已写出
+ */
 function exportSynastry(): void {
 	mkdirSync(join(OUT, "85-合盘断语"), { recursive: true });
 	const stars = Object.entries(STAR_IN_FUQI_GU).map(([star, v]) => {
@@ -690,6 +823,11 @@ function exportSynastry(): void {
 	writeFileSync(join(OUT, "85-合盘断语", "夫妻宫断语.md"), content.join("\n"));
 }
 
+/**
+ * 导出入口：清空托管区后重建全部笔记与索引页。
+ *
+ * @returns 无返回值；托管区清空后已重建全部笔记与索引页
+ */
 async function main(): Promise<void> {
 	// 先清托管区（手写页在 00-索引 / 60-方法体系口径 / 90-模板 / README，不受影响）
 	for (const dir of MANAGED_DIRS) {

@@ -1,3 +1,6 @@
+/**
+ * @file astrology 全盘 Markdown 报告的装配契约和端到端测试。
+ */
 // ── 层 2.5：astrology --report 全盘主题报告 ──
 //
 // --report 是独占分支（本命静态口径、Markdown 文档形态），与 --topic（单主题、
@@ -43,7 +46,13 @@ const REPORT_TOPICS = [
 	"父母长辈",
 ] as const;
 
-/** 与 cli.test.ts 的 cliCmdInProcess 同款：进程内直调 COMMANDS（省冷启动税）。 */
+/**
+ * 与 cli.test.ts 的 cliCmdInProcess 同款：进程内直调 COMMANDS（省冷启动税）。
+ *
+ * @param args - `astrology` 子命令的参数
+ * @returns 该命令的 stdout
+ * @throws 命令未注册时抛错
+ */
 async function cliCmdInProcess(args: string[]): Promise<string> {
 	const { COMMANDS } = await load<typeof import("@/cli/commands")>("@/cli/commands");
 	const { parseArgs } = await load<typeof import("@/cli/args")>("@/cli/args");
@@ -54,7 +63,12 @@ async function cliCmdInProcess(args: string[]): Promise<string> {
 	return fn(parseArgs(args, "astrology"), { root: ROOT, rootLabel: ROOT_LABEL });
 }
 
-/** 直调失败包装成带 .message 的普通错误（错误形态断言用）。 */
+/**
+ * 直调失败包装成带 .message 的普通错误（错误形态断言用）。
+ *
+ * @param args - 期望失败的命令参数
+ * @returns 该次失败的 `message`；命令意外成功时经 `assert.fail` 判红
+ */
 async function cmdFails(args: string[]): Promise<string> {
 	try {
 		await cliCmdInProcess(args);
@@ -76,6 +90,9 @@ const argsTable = await load<typeof import("@/cli/args/table")>("@/cli/args/tabl
 /**
  * 提取 `--topic` 单主题输出的「本宫主星：」行（命盘推演节）。
  * 两形态（--topic 与 --report）同一行应逐字同源（overview-material 单点）。
+ *
+ * @param out - `--topic` 的输出全文
+ * @returns 「本宫主星：」整行
  */
 function extractTopicMainStarLine(out: string): string {
 	const m = out.match(/^本宫主星：.*$/m);
@@ -86,6 +103,10 @@ function extractTopicMainStarLine(out: string): string {
 /**
  * 提取 `--report` 某主题板块「命盘推演」节下的「本宫主星：」行。
  * 报告按 `## 主题名（…）` 分块，定位到目标板块后再取其命盘推演小节。
+ *
+ * @param report - `--report` 的输出全文
+ * @param topicLabel - 目标主题的中文标签（板块标题前缀）
+ * @returns 该板块命盘推演节下的「本宫主星：」行
  */
 function extractReportMainStarLine(report: string, topicLabel: string): string {
 	const blocks = report.split(/^## /m);
@@ -259,6 +280,7 @@ describe("astrology --report 全盘报告", () => {
 		};
 		// 缺名守卫（design D3）：派生轴上非 switch 形态的条目缺席探针取值即红并点名，
 		// 「未入矩阵」不静默。
+		/** 拼一份指定时辰的 argv。 */
 		const branchArgv = (name: string): readonly string[] => {
 			const probe = branchProbeArgs[name];
 			if (kindOf.get(name) !== "switch" && probe === undefined) {
@@ -266,6 +288,7 @@ describe("astrology --report 全盘报告", () => {
 			}
 			return [`--${name}`, ...(probe ?? [])];
 		};
+		/** 拼一份带指定旗标的 argv。 */
 		const flagArgv = (flag: string): readonly string[] => {
 			const value = flagProbeValue[flag];
 			if (kindOf.get(flag) !== "switch" && value === undefined) {

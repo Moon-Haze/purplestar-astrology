@@ -6,6 +6,8 @@
  *
  * 只读查询层定位与四处共用的理由，见 docs/code/analysis.md。
  *
+ * @file 宫位查询 —— 按宫名取宫、按宫取三方四正、把宫里的星曜渲染成一行文字
+ *
  * @packageDocumentation
  */
 
@@ -14,7 +16,13 @@ import type { Palace, Star, ZiweiChart } from "../types";
 import { oppositeBranch, palaceAtBranch, surroundBranches } from "../palace-relations";
 import { starBadge } from "./lookups";
 
-/** 获取宫位的主星列表（空宫则借对宫） */
+/**
+ * 获取宫位的主星列表（空宫则借对宫）
+ *
+ * @param chart - 已排好的命盘
+ * @param palaceName - 宫名（`Palace.name` 严格等值匹配，展开形带「宫」字；旧口径名匹配不到）
+ * @returns 本宫主星（`type === "major"`）与借宫标记；本宫无主星时 `mainStars` 换成对宫主星且 `isLoan` 为 `true`，对宫同样无主星时 `mainStars` 为空数组且 `isLoan` 为 `false`；宫名在盘里找不到时整体返回 `null`
+ */
 export function getPalaceStars(
 	chart: ZiweiChart,
 	palaceName: string
@@ -40,7 +48,13 @@ export function getPalaceStars(
 	return { palace, mainStars: oppMainStars, isLoan: true };
 }
 
-/** 获取三方四正（4个宫位）*/
+/**
+ * 获取三方四正（4个宫位）
+ *
+ * @param chart - 已排好的命盘
+ * @param palaceName - 基准宫宫名（`Palace.name` 严格等值匹配）
+ * @returns 本宫、官禄宫、财帛宫、迁移宫四个宫位，序即偏移序；基准宫找不到时为空数组
+ */
 export function getSanFangSiZheng(chart: ZiweiChart, palaceName: string): Palace[] {
 	const main = chart.palaces.find(p => p.name === palaceName);
 	if (!main) {
@@ -52,7 +66,12 @@ export function getSanFangSiZheng(chart: ZiweiChart, palaceName: string): Palace
 		.filter(Boolean) as Palace[];
 }
 
-/** 描述一个宫位的星曜（带四化；徽标拼式取 `overview-material` 的 starBadge 单点） */
+/**
+ * 描述一个宫位的星曜（带四化；徽标拼式取 `overview-material` 的 starBadge 单点）
+ *
+ * @param palace - 目标宫位（直接取其 `stars`，不再按宫名回查命盘）
+ * @returns 主星徽标以「、」连接的一行文本（每枚徽标含星名 / 化象 / 亮度）；本宫无主星时返回 `<宫名>空宫`
+ */
 export function descPalaceStars(palace: Palace): string {
 	const main = palace.stars.filter(s => s.type === "major");
 	if (main.length === 0) {
@@ -61,7 +80,12 @@ export function descPalaceStars(palace: Palace): string {
 	return main.map(s => starBadge(s)).join("、");
 }
 
-/** 获取宫位中的所有四化信息 */
+/**
+ * 获取宫位中的所有四化信息
+ *
+ * @param palace - 目标宫位
+ * @returns 该宫带四化的星与四化字（`name` / `mutagen`），只按 `mutagen` 真值取、不限星曜类型；无四化星时为空数组
+ */
 export function getPalaceMutagen(palace: Palace): { name: string; mutagen: string }[] {
 	return palace.stars.filter(s => s.mutagen).map(s => ({ name: s.name, mutagen: s.mutagen! }));
 }

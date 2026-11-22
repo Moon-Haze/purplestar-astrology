@@ -9,10 +9,13 @@
  * base 数组的唯一来源；`DEMO_*` 是 help 示例 / 零输入演示（cli/commands/astrology-context
  * 的 SAMPLE_BIRTH）/ review-gate / report 测试共用的同款虚构组合 —— 值驻各角色处，
  * argv 形态在此单点。期望值锚定、位置参数形态与变体（如 `--gender abc`）按需就地保留。
+ *
+ * @file 排盘断言的固定样例盘：1990-05-15 巳时（时辰序号 5），男
  */
 
 import type { BirthInfo } from "@/types";
 
+/** 排盘断言的固定样例盘：1990-05-15 巳时（时辰序号 5），男。 */
 export const SAMPLE: BirthInfo = { year: 1990, month: 5, day: 15, timeIndex: 5, gender: "male" };
 
 /** SAMPLE 的 CLI 旗标形态（selftest 各断言组的 base 数组由此派生）。 */

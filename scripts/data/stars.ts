@@ -6,6 +6,8 @@
  *
  * 完整口径见 docs/code/data-tables.md。
  *
+ * @file 星曜数据 —— 主星亮度表与十四主星释义（2026-10-11 从 `constants.ts` 拆出，逐字迁移）
+ *
  * @packageDocumentation
  */
 

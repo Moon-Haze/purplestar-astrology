@@ -40,6 +40,8 @@
  *
  * 「消费方契约自带」的三条论证（为何不 import 源的 types.ts / render.ts）、
  * 窄契约的报错语义，见 docs/code/synastry.md。
+ *
+ * @file 命盘视图层 —— 读排盘命令 `astrology --json` 的输出，并对其做只读访问
  */
 
 import { readFileSync } from "node:fs";
@@ -77,8 +79,11 @@ export type Mutagen = "禄" | "权" | "科" | "忌";
  * 原始日期；本 skill 一个字都不重算，原样转述。
  */
 export interface BirthInfo {
+	/** 公历年（已按真太阳时跨午夜调整） */
 	year: number;
+	/** 公历月 1–12（已按真太阳时跨午夜调整） */
 	month: number;
+	/** 公历日（已按真太阳时跨午夜调整） */
 	day: number;
 	/** 内核口径的性别 */
 	gender: "male" | "female";
@@ -88,6 +93,7 @@ export interface BirthInfo {
 
 /** 一颗星 —— 本 skill 只看名字与类别。 */
 export interface Star {
+	/** 星名（内核星表口径，如「紫微」「左辅」） */
 	name: string;
 	/** `"major"` 即十四主星；其余三类（内核字面量 minor / soft / tough）本 skill 不区分 */
 	type: "major" | "minor" | "soft" | "tough";
@@ -99,6 +105,7 @@ export interface Palace {
 	name: string;
 	/** 地支索引 0–11 */
 	branch: number;
+	/** 本宫星曜（含主星与其余三类；只看主星用 {@link majorsOf}） */
 	stars: Star[];
 	/** 空宫借对宫时，对宫的宫名 */
 	borrowedFromName?: string;
@@ -108,11 +115,13 @@ export interface Palace {
 
 /** 命盘 —— 只列本 skill 用得到的字段。 */
 export interface ZiweiChart {
+	/** 出生信息（已按真太阳时跨午夜调整过的那一份） */
 	birthInfo: BirthInfo;
 	/** 命宫所在地支索引 */
 	soulBranch: number;
 	/** 五行局名，如 `"水二局"` */
 	fiveElementsClassName: string;
+	/** 十二宫：数组序按地支排（首项为寅），比对时请按 `branch` 建索引 */
 	palaces: Palace[];
 }
 

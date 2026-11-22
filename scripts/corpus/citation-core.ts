@@ -11,6 +11,8 @@
  * ⚠️ 本模块的 import 写全 `.ts` 扩展名：消费方（test / tools）在**无解析钩子**的
  * 原生 ESM 环境加载本模块，省扩展名的候选序兜底不可用。
  *
+ * @file 引文比对核心 —— 「倪师 / 倪海厦 + 引号句」形态的判违例逻辑：黑名单构造、
+ *
  * @packageDocumentation
  */
 
@@ -43,6 +45,9 @@ export interface CitationScan {
  * @remarks
  * 所有扫描面（`.ts` / `.md`；断语手册库扫描面已随手册下线退役）共用这一个构造 —— 判据
  * 只有一份，改口径时处处同时变，不会出现「一处放行了、另一处还拦着」的分叉。
+ *
+ * @param checklist - 引文核对表；本函数不给缺省值，调用方通常传全仓唯一的 `ANNOTATIONS`
+ * @returns 被禁引文核心（书名号 / 引号内 4 字以上）的集合，供 {@link findViolations} 判定命中是否违规
  */
 export function buildBannedSet(checklist: readonly AnnotationEntry[]): Set<string> {
 	return new Set(

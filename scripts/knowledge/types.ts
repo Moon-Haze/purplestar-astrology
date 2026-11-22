@@ -16,6 +16,8 @@
  * 核对表字段。
  *
  * 接缝由来（架构文档 §4.1）与「新增一个域」的完整步骤，见 docs/code/knowledge.md。
+ *
+ * @file 知识源插件接口（Phase 1 · KnowledgeSource 接缝）
  */
 
 /**

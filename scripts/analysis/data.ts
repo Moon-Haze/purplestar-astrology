@@ -5,6 +5,8 @@
  *    这是被人依赖的约束，不要为一张映射表破例引类型。
  *
  * 收录内容清单与主题注册表的两个消费者、单一真相源收编史，见 docs/code/analysis.md。
+ *
+ * @file 分析数据库的数据层 —— 类型、映射表与论断文案（「是什么」，不含「怎么算」）
  */
 
 // ─── 主星完整内容库（各宫位语境）───────────────────────────────────────────
@@ -27,16 +29,23 @@ export interface GenderField {
 	suffix?: string;
 }
 
+/** 四化条件子句：禄 / 权 / 科 / 忌 各自的可选说明，值可为散文或性别结构化。 */
 export interface MutagenModifier {
+	/** 化禄子句（四化字「禄」）；缺省表示该条目未写化禄分支 */
 	lu?: string | GenderField;
+	/** 化权子句（四化字「权」）；缺省表示未写化权分支 */
 	quan?: string | GenderField;
+	/** 化科子句（四化字「科」）；缺省表示未写化科分支 */
 	ke?: string | GenderField;
+	/** 化忌子句（四化字「忌」）；缺省表示未写化忌分支 */
 	ji?: string | GenderField;
 }
 
 /** 亮度条件分支：庙旺 / 落陷各收对应子句，判定信号是该星的 `brightness`。 */
 export interface BrightnessModifier {
+	/** 庙旺子句（该星 `brightness === "bright"` 时命中） */
 	bright?: string | GenderField;
+	/** 落陷子句（该星 `brightness === "dim"` 时命中） */
 	dim?: string | GenderField;
 }
 
@@ -47,35 +56,55 @@ export interface BrightnessModifier {
  * 都有 `common` 键，运行时以 `sihua` / `brightness` 键存在性判别（见 `lookups.ts`）。
  */
 export interface BranchedContent {
+	/** 无条件散文（可为 {@link GenderField}）；未命中任何四化 / 亮度分支时只输出它 */
 	common: string | GenderField;
+	/** 四化条件子句（键存在即走分支投影，故恒有 `common` 的 {@link GenderField} 不会误判） */
 	sihua?: MutagenModifier;
+	/** 亮度条件子句（与 `sihua` 并列，判定信号是该星 `brightness`） */
 	brightness?: BrightnessModifier;
 }
 
 /** 宫位语境条目的值域：未迁移散文（string）、性别结构化、条件分支结构三种形态。 */
 export type PalaceContent = string | GenderField | BranchedContent;
 
+/** 星曜深层特质的性别分栏：五类维度各一段文案。 */
 export interface StarSummaryGender {
+	/** 综述：命格全貌与成长方向（`overview` 主题取它） */
 	overview: string;
+	/** 感情婚姻（`love` 主题取它） */
 	love: string;
+	/** 事业职业（`career` 主题取它） */
 	career: string;
+	/** 财富运势（`wealth` 主题取它） */
 	wealth: string;
+	/** 健康状况（`health` 主题取它） */
 	health: string;
 }
+/** 星曜深层特质的男 / 女两栏，运行时按 `chart.birthInfo.gender` 取其中一栏。 */
 interface StarSummary {
+	/** 男命专属的五维文案 */
 	male: StarSummaryGender;
+	/** 女命专属的五维文案 */
 	female: StarSummaryGender;
 }
 
+/** 话题 × 四化/亮度 的专属修饰句：按该星实际四化与亮度投影出对应开场。 */
 export interface TopicMod {
-	lu?: string | GenderField; // 该星化禄在该话题宫位的具体影响（2-4句）
-	quan?: string | GenderField; // 化权
-	ke?: string | GenderField; // 化科
-	ji?: string | GenderField; // 化忌（最重要，必须写）
-	bright?: string | GenderField; // 庙旺时的专属说明
-	dim?: string | GenderField; // 落陷时的专属说明
+	/** 该星化禄在该话题宫位的具体影响（2-4句） */
+	lu?: string | GenderField;
+	/** 化权 */
+	quan?: string | GenderField;
+	/** 化科 */
+	ke?: string | GenderField;
+	/** 化忌（最重要，必须写） */
+	ji?: string | GenderField;
+	/** 庙旺时的专属说明 */
+	bright?: string | GenderField;
+	/** 落陷时的专属说明 */
+	dim?: string | GenderField;
 }
 
+/** 单颗主星的全部论断内容：十二宫散文、四化、亮度与深层特质。 */
 export interface StarContent {
 	/** 命宫主星：命格概述（overview/personality 共用） */
 	mingGong: PalaceContent;
@@ -103,9 +132,13 @@ export interface StarContent {
 	fuDe?: PalaceContent;
 	/** 父母宫主星 */
 	fuMu?: PalaceContent;
+	/** 全星四化子句：按该星实际四化投影出对应补充说明（投影点见 `lookups.ts` 的 `getMutagenNote`） */
 	sihua: MutagenModifier;
+	/** 主星庙旺时的整体亮度补充说明（`brightness === "bright"` 时取它） */
 	brightMod?: string | GenderField;
+	/** 主星落陷时的整体亮度补充说明（`brightness === "dim"` 时取它） */
 	dimMod?: string | GenderField;
+	/** 星曜深层特质：男命 / 女命各一组五维长文，按主题的 `summaryKey` 取其中一段 */
 	summary: StarSummary;
 	/** 话题维度 × 四化/亮度 的专属开场文字 */
 	topic_mods?: {
@@ -117,6 +150,7 @@ export interface StarContent {
 	};
 }
 
+/** 十四主星 → 论断内容表。键域为 `data/stars.ts` 的主星名，是解读层的内容源头。 */
 export const STAR_CONTENT_MAP: Record<string, StarContent> = {
 	紫微: {
 		mingGong: `紫微帝星守命，格局高贵，天生具有领导气质与王者风范，一生以"贵"为主轴。古书云紫微为「帝座」，又称「孤君」——若无左辅右弼相佐，则成「孤君无辅」之局，再贵也是孤掌难鸣，必须有辅弼贵人方能成事。命宫紫微者，自尊心极强，主观固执，好面子，领导欲旺盛，处事有章法，气场压人；倪海厦言：「紫微守命，贵而不富，需禄配合方全美」——若三方四正无化禄辅助，则有地位而财力相对不足，富贵难以兼得。紫微不主动生财，需依赖三方化禄入宫方能财禄双美；若命宫紫微而三方无禄，宜走仕途或大企业高管，以职位带动收入，切忌冒险创业、单打独斗。相貌方面，倪海厦描述：「红光满面、双目圆大、圆脸、皮肤白皙、中等身材偏壮实」，外表雍容，举止自带尊贵感。`,
@@ -1669,10 +1703,15 @@ export type TopicKey = (typeof TOPIC_KEYS)[number];
 
 /** 年干四化·全局关键宫位解读的单条。 */
 export interface KeyPalace {
+	/** 关键宫位的宫名（展开形，带「宫」字，与运行时宫名域同域） */
 	palace: string;
+	/** 该宫化禄时的解读句；缺省表示该宫不写化禄分支 */
 	lu?: string;
+	/** 该宫化权时的解读句；缺省表示该宫不写化权分支 */
 	quan?: string;
+	/** 该宫化科时的解读句；缺省表示该宫不写化科分支 */
 	ke?: string;
+	/** 该宫化忌时的解读句（必填，故每条关键宫位规则都必然给出化忌文案） */
 	ji: string;
 }
 
@@ -1699,6 +1738,7 @@ export interface TopicDef {
 /** 与执行计划 §4.2 的 `TopicProvider` 对应——数据驱动引擎下无 per-topic `getAssertions`。 */
 export type TopicProvider = TopicDef;
 
+/** 主题定义表：**加一个主题只改这里**，下方各具名表全部由它派生。 */
 export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 	overview: {
 		palace: "命宫",
@@ -2103,6 +2143,12 @@ export const TOPIC_DEFS: Record<TopicKey, TopicDef> = {
 };
 
 // ─── 由 TOPIC_DEFS 派生的具名表（消费方 import 路径不变）────────────────────────
+/**
+ * 按同一投影函数从 `TOPIC_DEFS` 派生一张主题 → 字段的表。
+ *
+ * @param pick - 单条主题定义的字段投影函数：入参是该主题的 {@link TopicDef}，返回值即想收集的字段
+ * @returns 以全部 `TOPIC_KEYS` 为键、`pick` 返回值为值的完整表（不漏主题、不保序承诺之外的字段）
+ */
 function projectTopicField<V>(pick: (d: TopicDef) => V): Record<TopicKey, V> {
 	const out = {} as Record<TopicKey, V>;
 	for (const k of TOPIC_KEYS) {
@@ -2111,13 +2157,21 @@ function projectTopicField<V>(pick: (d: TopicDef) => V): Record<TopicKey, V> {
 	return out;
 }
 
+/** 主题 → 主宫名（展开形，带「宫」字）。由 {@link TOPIC_DEFS} 派生。 */
 export const TOPIC_PALACE_NAME = projectTopicField(d => d.palace);
+/** 主题 → 展示名。由 {@link TOPIC_DEFS} 派生。 */
 export const TOPIC_LABEL = projectTopicField(d => d.label);
+/** 主题 → 三方四正标注 `[三合1, 三合2, 对宫]`。由 {@link TOPIC_DEFS} 派生。 */
 export const TOPIC_SANFANG_LABELS = projectTopicField(d => d.sanFangLabels);
+/** 主题 → 该主题主星内容在 {@link StarContent} 的字段键。由 {@link TOPIC_DEFS} 派生。 */
 export const TOPIC_CONTENT_KEY = projectTopicField(d => d.contentKey);
+/** 主题 → 深层特质在 {@link StarSummaryGender} 的字段键。由 {@link TOPIC_DEFS} 派生。 */
 export const TOPIC_SUMMARY_KEY = projectTopicField(d => d.summaryKey);
+/** 主题 → 年干四化·关键宫位解读条目。由 {@link TOPIC_DEFS} 派生。 */
 export const TOPIC_KEY_PALACES = projectTopicField(d => d.keyPalaces);
+/** 主题 → 静态建议三条。已退役，仅为 `grades.ts` 的引语档案保留。 */
 export const TOPIC_SUGGESTIONS = projectTopicField(d => d.suggestions);
+/** 输出【星曜深层特质】段的主题集合（核心 5 主题）。由 {@link TOPIC_DEFS} 派生。 */
 export const SUMMARY_TOPICS: ReadonlySet<TopicKey> = new Set(
 	TOPIC_KEYS.filter(k => TOPIC_DEFS[k].isSummaryTopic)
 );
@@ -2131,6 +2185,7 @@ export const SUMMARY_TOPICS: ReadonlySet<TopicKey> = new Set(
 export interface SuggestionTemplate {
 	/** 信号槽：bright / dim 按主宫主星亮度二选一；lu / ji 按主题三方内的本命四化命中出句 */
 	kind: "bright" | "dim" | "lu" | "ji";
+	/** 模板句原文，含 `{star}` `{palace}` `{dxPalace}` `{huaStar}` `{huaPalace}` 槽位，由推算层填充 */
 	text: string;
 }
 
@@ -2462,6 +2517,7 @@ export const STORAGE_TOPIC_KEYS: readonly TopicKey[] = [
 ];
 
 // ─── 星曜简述（用于三方四正的简短说明）────────────────────────────────────
+/** 十四主星的简要概括：星名、关键词与星性，供命宫摘要使用。 */
 export const STAR_BRIEF: Record<string, string> = {
 	紫微: "帝星，主贵，有领导气场，宜政界大企业，主观固执，需禄配合方富贵双全。",
 	天机: "智慧星，善变化策划，宜顾问咨询，多才艺，财运起伏，辅佐型人才。",
@@ -2499,6 +2555,7 @@ export const STAR_BRIEF: Record<string, string> = {
 export const ZI_WU_ORGAN_VERSE =
 	"倪师引《内经》歌诀：「肺寅大卯胃辰宫，脾巳心午小未中，申膀酉肾心包戌，亥焦子胆丑肝通」";
 
+/** 宫位地支 → 脏腑映射。由子午流注歌诀整理，供 `views/health.ts` 消费。 */
 export const PALACE_BRANCH_ORGAN: Record<
 	number,
 	{
@@ -2728,6 +2785,7 @@ export const MINOR_STAR_PALACE_CONTENT: Record<string, Partial<Record<string, st
 	},
 };
 
+/** 宫名 → 内容键映射（紧凑键中间量），供外部按宫取主题内容。 */
 export const PALACE_TO_CONTENT_KEY: Partial<Record<string, keyof StarContent>> = {
 	命宫: "mingGong",
 	兄弟宫: "xiongDi",
@@ -2743,9 +2801,12 @@ export const PALACE_TO_CONTENT_KEY: Partial<Record<string, keyof StarContent>> =
 	父母宫: "fuMu",
 };
 
+/** 分析视图维度：本命盘 / 大限 / 流年 / 流月。 */
 export type AnalysisView = "mingpan" | "daxian" | "liunian" | "liuyue";
 
+/** 生成主题论断的选项：目标视图与运限参数。 */
 export interface AnalysisOptions {
+	/** 论断视角；默认 `"mingpan"`（本命盘），另可选大限 / 流年 / 流月 */
 	view?: AnalysisView;
 	/** 流年/流月用的年份；默认当年 */
 	liunianYear?: number;

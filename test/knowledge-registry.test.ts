@@ -1,3 +1,6 @@
+/**
+ * @file 知识源注册表完整性、顺序和检索分发测试。
+ */
 // ── KnowledgeSource 注册表守卫（Phase 1 · 插件接缝）──
 //
 // 架构文档 ADR-002 + 执行计划 1A/1B/1C：把 knowledge 三域从 cli/knowledge/index.ts 的

@@ -8,6 +8,8 @@
  *
  * 每条判语带 `[part §section @时:分:秒]` 溯源与 B 站回放直链；语料 CC BY-NC-SA 4.0
  * （见 docs/code/cli-commands.md）。
+ *
+ * @file knowledge 的 **tianji 域**：天纪判语检索（实现即插件：渲染逻辑与注册形态同址，无转发壳）
  */
 
 import type { KnowledgeQuery, KnowledgeSource } from "../types";
@@ -31,6 +33,7 @@ const bookLabel = (code: string): string =>
 export const tianjiSource: KnowledgeSource = {
 	id: "tianji",
 	label: "天纪判语",
+	/** 检索天纪判语；重语料按需懒加载。 */
 	async search(query: KnowledgeQuery): Promise<string> {
 		const q = query.term ?? query.positional.join(" ");
 		const limit = Math.floor(query.limit);

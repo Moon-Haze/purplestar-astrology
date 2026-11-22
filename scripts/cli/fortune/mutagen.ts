@@ -1,6 +1,8 @@
 /**
  * 四化专题（--mutagen / 别名 --sihua）—— 生年 / 大限宫干 / 流年 / 流月 / 流日 / 流时
  * 四化落宫 + 生年×流年同星引动。
+ *
+ * @file 四化专题（--mutagen / 别名 --sihua）—— 生年 / 大限宫干 / 流年 / 流月 / 流日 / 流时
  */
 
 import type { ZiweiChart } from "@/types";

@@ -237,7 +237,9 @@ export function scanMarkdownCitations(
 
 /** {@link scanCitations} 的多根分派入参（结构化子集，避免与 `SchoolAdapter` 成环）。 */
 export interface CitationRootLike {
+	/** 该流派的扫描根（通常是 `<内核根>/scripts`，递归收其全部 `.ts`） */
 	scanRoot: string;
+	/** 该流派自己的引文核对表；跨流派不得复用（ADR-004） */
 	checklist: readonly AnnotationEntry[];
 }
 
@@ -248,6 +250,9 @@ export interface CitationRootLike {
  * 每个流派只审自己声明的核对表（ADR-004）：新增流派不得复用倪师核对表，
  * 反之倪师内容也不该被别的流派的核对表放过。合并而非首个命中，是为了
  * 「覆盖面非空 / 零违例」这类断言能一次看到全流派结果。
+ *
+ * @param roots - 若干 (扫描根, 核对表) 对，每个流派一份
+ * @returns 合并后的扫描结果（违例 / 已核对 / 跳过三份清单）
  */
 export function scanCitationsForRoots(roots: readonly CitationRootLike[]): CitationScan {
 	const violations: string[] = [];

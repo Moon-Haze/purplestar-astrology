@@ -7,6 +7,8 @@
  *
  * ⚠️ {@link ALL_BOOKS} 的数组顺序即检索命中顺序，调整会改变输出排列。
  *
+ * @file 古籍原典查询库 — 入口
+ *
  * @packageDocumentation
  */
 // 入口 API、段落口径与数据文件分工见 docs/code/corpus.md。

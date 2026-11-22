@@ -7,6 +7,8 @@
  *
  * 拆分前的闭包共享史与 ctx 形状纪律，见 docs/code/analysis.md。
  *
+ * @file 主题分析的共享上下文 —— 十一个小节共读的状态，在此**一次算好**
+ *
  * @packageDocumentation
  */
 
@@ -45,10 +47,15 @@ export interface MutagenInSanFang {
  * 故 ctx 内不含 `lines`。
  */
 export interface AnalysisContext {
+	/** 已排好的本命盘，全程只读 */
 	chart: ZiweiChart;
+	/** 本次分析的主题键，决定主宫、展示名与三方四正标注 */
 	topic: TopicKey;
+	/** 论断视角：本命 / 大限 / 流年 / 流月（缺省 `"mingpan"`） */
 	view: AnalysisView;
+	/** 流年公历年；缺省取系统当年，供流年 / 流月小节推干支 */
 	liunianYear: number;
+	/** 流月月份（农历 1–12）；缺省取系统当前月，1 即正月 */
 	liuyueMonth: number;
 	/** 出生性别（`chart.birthInfo.gender`），性别投影的单一入口 */
 	gender: "male" | "female";

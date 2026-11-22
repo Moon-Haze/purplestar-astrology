@@ -1,3 +1,6 @@
+/**
+ * @file CLI 参数、子进程、排盘输出和 JSON 的端到端回归测试。
+ */
 // ── 层 2：CLI 端到端 ──
 //
 // 这一层测的是**基准样本覆盖不到的 CLI 层逻辑**：样本的 longitude 恒为 120（真太阳时
@@ -52,45 +55,70 @@ const CLI_PATH = resolve(SKILL_ROOT, "scripts/purple-star.ts");
 // 以 as 断言收窄（JSON.parse 只能给出 unknown，取值合法性由后续断言把守）。
 /** analyze --json 的输出。 */
 interface AnalyzeJson {
+	/** 命盘本体（JSON 往返形态；宫名已是本项目口径，如「交友宫」） */
 	chart: ZiweiChart;
+	/** 排盘依据：`note` 是时辰那一条说明（如钟表时刻→时辰），`notes` 是日期 / 出生地 / 时辰三类说明的合集（已滤空串）；测试侧只经可选链读它 */
 	basis?: { note: string; notes: string[] };
 }
 /** synastry --json 里一方（a / b）的输出。 */
 interface synastrySide {
+	/** 该方的命盘（`astrology --json` 产物的 `.chart`，原样透传） */
 	chart: ZiweiChart;
+	/** 该方夫妻宫的主星名列表（本项目口径的「夫妻宫」，空宫时为空数组） */
 	fuQiGong: string[];
+	/** 该方福德宫的主星名列表（本项目口径的「福德宫」，空宫时为空数组） */
 	fuDeGong: string[];
 }
 /** locateSihua 的一项（analyze --json 的 located 数组元素）。 */
 interface LocatedSihuaItem {
+	/** 四化类型：禄 / 权 / 科 / 忌（每层四化恰四项，顺序即此四值） */
 	hua: string;
+	/** 被化的星名（该层四化表里此 `hua` 对应的那颗星） */
 	star: string;
+	/** 该星所在宫名（本项目口径，带「宫」字）；`locateSihua` 在任何宫都查不到该星时为 `null` */
 	palace?: string | null;
+	/** 该星所在宫的地支名（如「巳」）；与 `palace` 同生同灭，无宫时为 `null` */
 	branch?: string | null;
+	/** 被化的是否为主星（`type === "major"`）；四化落到辅星时为 `false` */
 	isMajor: boolean;
 }
 /** analyze --json 的动态四化层（liuNianSiHua / liuYueSiHua 共用形态）。 */
 interface DynamicSihua {
+	/** 流年年号（仅流年层有；取自 `--yearly` 的值或默认当年） */
 	year?: number;
+	/** 农历月 1–12（仅流月层有；取自 `--monthly` 的值） */
 	month?: number;
+	/** 该层的宫干名（流年取该年**年干**、流月取由年干五虎遁顺推的**月干**），如「丙」 */
 	stem: string;
+	/** 该宫干的四化表：键为禄 / 权 / 科 / 忌，值为该化的星名 */
 	transforms: Record<string, string>;
+	/** 该层四化的落宫明细（四项，与 `transforms` 一一对应） */
 	located: LocatedSihuaItem[];
 }
 /** synastry --json 的输出。 */
 interface synastryJson {
+	/** 甲方（`--charts` 逗号前那份盘） */
 	a: synastrySide;
+	/** 乙方（`--charts` 逗号后那份盘） */
 	b: synastrySide;
 }
 
 /** 合盘样本里一方的出生信息 —— 用来在**源 skill** 排一张盘，再把盘文件喂给 synastry。 */
 interface synastryCase {
+	/** 公历出生日 `YYYY-MM-DD`（作为 `--date` 传给排盘 CLI） */
 	date: string;
+	/** 钟表出生时刻 `HH:mm`（作为 `--time` 传给排盘 CLI，再由真太阳时校正成时辰） */
 	time: string;
+	/** 性别（决定大限顺逆，必填） */
 	gender: "male" | "female";
 }
 
-/** 把命令抛错包装成与 execFile 失败同形（带 .stderr），兼容 cliFails / cmdFails。 */
+/**
+ * 把命令抛错包装成与 execFile 失败同形（带 .stderr），兼容 cliFails / cmdFails。
+ *
+ * @param msg - 错误文案（会加上「错误：」前缀）
+ * @returns 与 execFile 失败同形的 Error（带 `.stderr`）
+ */
 function asCliFailure(msg: string): Error & { stderr: string } {
 	const e = new Error(`错误：${msg}`) as Error & { stderr: string };
 	e.stderr = `错误：${msg}`;
@@ -109,6 +137,10 @@ let parseArgsFn: typeof import("@/cli/args").parseArgs | null = null;
  *
  * ⚠️ `sub` 要传给 parseArgs —— 旗标面是按命令校验的（如 a- / b- 前缀只有 synastry 认）。
  * 漏传就等于绕开校验，本文件里那些「未知旗标必须报错」的用例会静默变成空跑。
+ *
+ * @param sub - 子命令名（要传给 parseArgs，旗标面按命令校验）
+ * @param args - 该子命令的参数
+ * @returns 该子命令的 stdout
  */
 async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 	if (!commandsMod) {
@@ -130,7 +162,12 @@ async function cliCmdInProcess(sub: string, args: string[]): Promise<string> {
 	}
 }
 
-/** 永远走真子进程（防漂移冒烟用）：进程内路径替代不了它对子进程入口的覆盖。 */
+/**
+ * 永远走真子进程（防漂移冒烟用）：进程内路径替代不了它对子进程入口的覆盖。
+ *
+ * @param args - `astrology` 子命令的参数（自动补 `--no-cache`）
+ * @returns 真子进程的 stdout
+ */
 async function cliReal(args: string[]): Promise<string> {
 	const { stdout } = await execFileAsync("node", [CLI_PATH, "astrology", ...args, "--no-cache"], {
 		cwd: SKILL_ROOT,
@@ -145,6 +182,10 @@ async function cliReal(args: string[]): Promise<string> {
  * 从 ~150s 降到 ~5s）。语义等价已用「进程内输出 ≡ 真子进程 stdout（仅差 console.log 尾部换行）」
  * 逐字节验证。真子进程入口由「内核加载防漂移」断言（cliReal）持续冒烟。
  * 需要全量真子进程时设 CLI_SUBPROCESS=1。
+ *
+ * @param sub - 子命令名
+ * @param args - 该子命令的参数
+ * @returns stdout（默认走进程内路径，设 `CLI_SUBPROCESS=1` 则走真子进程）
  */
 async function cliCmd(sub: string, args: string[]): Promise<string> {
 	if (!process.env.CLI_SUBPROCESS) {
@@ -157,17 +198,32 @@ async function cliCmd(sub: string, args: string[]): Promise<string> {
 	return stdout;
 }
 
-/** 跑一次 CLI（analyze 子命令），返回 stdout。 */
+/**
+ * 跑一次 CLI（analyze 子命令），返回 stdout。
+ *
+ * @param args - `astrology` 子命令的参数
+ * @returns stdout
+ */
 async function cli(args: string[]): Promise<string> {
 	return cliCmd("astrology", args);
 }
 
-/** 跑一次 CLI 并解析 --json 输出。 */
+/**
+ * 跑一次 CLI 并解析 --json 输出。
+ *
+ * @param args - `astrology` 子命令的参数（自动补 `--json`）
+ * @returns 解析后的 JSON 输出
+ */
 async function cliJson<T = AnalyzeJson>(args: string[]): Promise<T> {
 	return JSON.parse(await cli([...args, "--json"])) as T;
 }
 
-/** 跑一次 CLI，断言它失败（非零退出），返回 stderr。 */
+/**
+ * 跑一次 CLI，断言它失败（非零退出），返回 stderr。
+ *
+ * @param args - 期望失败的命令参数
+ * @returns 该次失败的 stderr；命令意外成功时经 `assert.fail` 判红
+ */
 async function cliFails(args: string[]): Promise<string> {
 	try {
 		await cli(args);
@@ -195,14 +251,25 @@ const SYN_TMP = mkdtempSync(join(tmpdir(), "synastry-cli-"));
 after(() => rmSync(SYN_TMP, { recursive: true, force: true }));
 
 let chartSeq = 0;
-/** 在源 skill 里排一张盘，写成临时 JSON 文件，返回其路径。 */
+/**
+ * 在源 skill 里排一张盘，写成临时 JSON 文件，返回其路径。
+ *
+ * @param args - 排盘参数
+ * @returns 临时命盘 JSON 文件的路径（`SYN_TMP` 下，`after` 统一清理）
+ */
 async function analyzeFile(args: string[]): Promise<string> {
 	const f = join(SYN_TMP, `chart-${chartSeq++}.json`);
 	writeFileSync(f, await cli([...args, "--json"]));
 	return f;
 }
 
-/** 两方的排盘参数 → `synastry` 的两份命盘参数（各排一张盘、落成文件）。 */
+/**
+ * 两方的排盘参数 → `synastry` 的两份命盘参数（各排一张盘、落成文件）。
+ *
+ * @param a - 第一方的排盘参数
+ * @param b - 第二方的排盘参数
+ * @returns 交给 `synastry` 的 `--charts` 参数
+ */
 async function pairArgs(a: string[], b: string[]): Promise<string[]> {
 	const [fa, fb] = await Promise.all([analyzeFile(a), analyzeFile(b)]);
 	return ["--charts", `${fa},${fb}`];
@@ -905,6 +972,7 @@ describe("CLI 端到端", () => {
 		 */
 		const asJson = <T>(o: T): T => JSON.parse(JSON.stringify(o)) as T;
 
+		/** 取指定宫的主星名列表。 */
 		const majorsOf = (chart: ZiweiChart, name: string): string[] =>
 			chart.palaces
 				.find(p => p.name === name)!
@@ -1351,6 +1419,7 @@ describe("CLI 端到端", () => {
 
 		/** 复核一整层四化：每颗「化X 星Y → 宫(支)」行都须与独立复算逐字一致。
 		 *  各调用用例的 --date 均为 1990-05-15，故独立排盘也钉这份出生信息。 */
+		/** 断言表格行与独立复算的天干一致。 */
 		const assertRows = async (args: string[], header: string, stemIndex: number) => {
 			const t = await cli(args);
 			const block = t.split(header)[1]?.split("【")[0] ?? "";
@@ -2000,6 +2069,7 @@ describe("CLI 端到端", () => {
 	// `cli/birth/cities.ts` 只是数据表，没有分支；会「静默取错经度」的是 `cli/birth/birth-info.ts`
 	// 的 findLongitude —— 经度差 1° 就是真太阳时差 4 分钟，足以把时辰推过边界、整张盘换掉。
 	describe("cities 容错解析（findLongitude 分支）", () => {
+		/** 加载检索相关的内核模块。 */
 		const loadFind = () =>
 			load<typeof import("@/cli/birth/birth-info")>("@/cli/birth/birth-info");
 
@@ -2104,6 +2174,7 @@ describe("CLI 端到端", () => {
 		// ⚠️ 古籍内核在根 `scripts/corpus/`，`@/corpus` 别名可达 ——
 		//    与其他内核模块同一加载口径。本组测的是**古籍文本本身**（分词、limit 截断、
 		//    snippet 窗口）。
+		/** 加载古籍语料层。 */
 		const loadClassics = () => load<typeof import("@/corpus")>("@/corpus");
 
 		it("空查询返回空数组（不把空白当关键词）", async () => {

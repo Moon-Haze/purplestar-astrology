@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file parquet 数据集的等距抽样中档排盘回归工具。
+ */
 // ── 中档回归：流式读 db/dataset，跑与层 1 同源的基准比对（手动 / CI 可选入口）──
 //
 // 定位：`npm test`（fixtures 385 条，秒级）与 `npm run test:corpus`（全量，条数自报）之间的
@@ -40,7 +43,11 @@ const HERE = fileURLToPath(new URL(".", import.meta.url)); // <仓库根>/test/t
 
 const N_DEFAULT = 3000;
 
-/** 解析 `--n <N>`（支持 `--n=3000` 与 `--n 3000` 两种形态）；非法值中文报错退出。 */
+/**
+ * 解析 `--n <N>`（支持 `--n=3000` 与 `--n 3000` 两种形态）；非法值中文报错退出。
+ *
+ * @returns 抽样条数；`--n` 不是正整数时打印用法后 `process.exit(1)`
+ */
 function parseN(): number {
 	const argv = process.argv.slice(2);
 	const i = argv.indexOf("--n");
@@ -58,10 +65,16 @@ function parseN(): number {
 	return n;
 }
 
+/** 把出生信息渲染成用例标签。 */
 const describeBirth = (b: BaselineSample["birthInfo"]): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ` +
 	`时${b.timeIndex} ${b.gender}`;
 
+/**
+ * 中档回归入口：等距抽样后按层 1 同源口径比对。
+ *
+ * @returns 无返回值；数据源缺失或交叉核对失败时以非零码退出
+ */
 async function main(): Promise<void> {
 	const n = parseN();
 
@@ -127,6 +140,7 @@ async function main(): Promise<void> {
 	const countReader = await conn.runAndReadAll("SELECT COUNT(*) AS total FROM samples");
 	const total = Number((countReader.getRowObjectsJS()[0] as Record<string, unknown>).total);
 	const goal = Math.min(n, total);
+	/** 按等距抽样把序位映射到目标样例行号。 */
 	const target = (k: number): number => Math.round(((k + 0.5) * total) / goal);
 
 	// ── 流式取样 + 比对（与层 1 同一比对器）──

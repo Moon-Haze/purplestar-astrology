@@ -1,3 +1,6 @@
+/**
+ * @file 专题旗标与排盘分析板块的接线、顺序和守卫回归测试。
+ */
 // ── 专题旗标 → section 接线（候选 3 · 可测 interface）──
 //
 // 架构评审候选 3：把「给定 args + 排盘上下文 → 产出 section 序列」从 cmdAstrology 的
@@ -25,7 +28,12 @@ const { prepareAstrologyContext } = await load<typeof import("@/cli/commands/ast
 );
 const { parseArgs } = await load<typeof import("@/cli/args")>("@/cli/args");
 
-/** 用与 CLI 完全相同的管线（prepareAstrologyContext）造一份装配上下文。 */
+/**
+ * 用与 CLI 完全相同的管线（prepareAstrologyContext）造一份装配上下文。
+ *
+ * @param extra - 追加在公共出生串之后的专题旗标
+ * @returns 与 CLI 同管线装配出的上下文
+ */
 function ctx(extra: string[]) {
 	const args = parseArgs(
 		["--date", "1990-05-15", "--time", "09:30", "--no-dst", "--gender", "male", ...extra],
@@ -161,7 +169,13 @@ const { buildReport, topicCitations } = reportCmd;
 const lookups = await load<typeof import("@/analysis/lookups")>("@/analysis/lookups");
 const dataModule = await load<typeof import("@/analysis/data")>("@/analysis/data");
 
-/** 造一份指定日期时辰的盘 + buildReport 所需口径（与 ctx() 同管线：prepareAstrologyContext）。 */
+/**
+ * 造一份指定日期时辰的盘 + buildReport 所需口径（与 ctx() 同管线：prepareAstrologyContext）。
+ *
+ * @param date - 公历日期（`YYYY-MM-DD`）
+ * @param time - 出生时刻（默认 09:30）
+ * @returns 与 {@link ctx} 同管线的装配上下文
+ */
 function chartFor(date: string, time = "09:30") {
 	return prepareAstrologyContext(
 		parseArgs(["--date", date, "--time", time, "--no-dst", "--gender", "male"], "astrology")
@@ -440,6 +454,12 @@ const NEVER_MUTAGEN = [
 	"地劫",
 ];
 
+/**
+ * 按给定公历日期排一张盘，供同日不同口径的对照。
+ *
+ * @param date - 公历日期（`YYYY-MM-DD`）
+ * @returns 该日期的盘（固定 10:00、男命）
+ */
 function caliberChart(date: string) {
 	return prepareAstrologyContext(
 		parseArgs(["--date", date, "--time", "10:00", "--no-dst", "--gender", "male"], "astrology")
@@ -535,6 +555,7 @@ describe("六层四化取数链对拍（评审候选 3）", () => {
 			liuRiDay: c.liuRiDay,
 			liuShiHour: c.liuShiHour,
 		}).join("\n");
+		/** 从文本行里按正则抽出天干名。 */
 		const stemOf = (re: RegExp): string => {
 			const m = text.match(re);
 			assert.ok(m, `文本专题应含 ${re.source} 段`);

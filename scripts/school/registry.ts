@@ -9,6 +9,8 @@
  *    自检断言复用它，**不手抄字符串**。
  *
  * 清单注册的取舍（ADR-002）与新增流派的步骤，见 docs/code/school.md。
+ *
+ * @file 流派注册表（Phase 3 · SchoolAdapter 接缝 · ADR-002：清单注册而非文件系统自动发现）
  */
 
 import type { SchoolAdapter, SchoolId } from "./types";

@@ -1,3 +1,6 @@
+/**
+ * @file 单 skill 形态的磁盘清单与排盘能力判定。
+ */
 // ── skill 清单（仓库级，唯一源）──
 //
 // 三 skill 合一后的单 skill 形态：**仓库根 = skill 根**（根 `SKILL.md` + 根 `scripts/` +
@@ -61,6 +64,8 @@ export const CHART_LIKE: readonly string[] = [SOURCE_SKILL];
  *
  * @param name - skill 名（单 skill 形态下即 {@link SOURCE_SKILL}）
  * @returns skill 根的绝对路径 = 仓库根
+ *
+ * @throws 传入的 name 不是 {@link SOURCE_SKILL} 时抛错（单 skill 形态没有第二个 skill）
  */
 export function skillDir(name: string): string {
 	if (name !== SOURCE_SKILL) {

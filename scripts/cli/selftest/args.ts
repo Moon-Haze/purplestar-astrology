@@ -22,7 +22,13 @@ import * as helpNs from "../commands/help";
 import { eq, type SelftestDeps } from "./kit";
 import { SAMPLE_ARGV } from "./sample";
 
-/** 解析引擎：util.parseArgs tokens 底座、重复参数报错、拼音别名归一、三连删除。 */
+/**
+ * 解析引擎：util.parseArgs tokens 底座、重复参数报错、拼音别名归一、三连删除。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）：逐条收集结果，失败不影响其余条目
+ * @returns 无返回值；四条断言直接进主报告
+ * @throws 断言体里的 `throw` 都由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是贪婪取值 / 等号式 / `--` 分隔的行为漂移、重复参数或主别名同现未报错、拼音别名未归一、三连参数仍被接受
+ */
 export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("解析引擎：util.parseArgs tokens 底座——贪婪取值 / 等号式 / -- 分隔", () => {
 		// 解析引擎（spec §2.8）：底座为 Node 内置 util.parseArgs（tokens 模式）。
@@ -69,7 +75,13 @@ export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 参数面：拼错旗标指路、作用域收窄、专题参数族。 */
+/**
+ * 参数面：拼错旗标指路、作用域收窄、专题参数族。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；两条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是拼错旗标被静默接受、提示没有指向最接近的合法名、或专题参数族（info/pattern/mutagen/decadal/ages）解析不出
+ */
 export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("参数面：拼错的旗标必须报错，并指向最接近的合法名", () => {
 		// 拼错旗标以前是**静默**的：parseArgs 任何 `--xxx` 都照单全收，buildBirthInfo
@@ -144,7 +156,13 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 声明表：作用域差量排除表、可选值参数 help 语法。 */
+/**
+ * 声明表：作用域差量排除表、可选值参数 help 语法。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；七条断言直接进主报告（其中一条把「全集 / 排除 / 作用域」的基数作为该项说明）
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 `OPTION_SCOPE.excluded` 里出现声明表没有的名字、作用域基数与「全集 − excluded」脱节、语义角色反推不等价、独占分支清单违背后置不变量、`OPTION_OWNERSHIP` 手抄表回潮、可选值 help 语法混用、专题菜单与声明表对不上
+ */
 export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("声明表：作用域差量排除表里的名字都真实存在（拼错不许静默失效）", () => {
 		// 差量化后 OPTION_NAMES = 全集 − excluded：排除项拼错不再「静默让参数失效」，
@@ -338,7 +356,14 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** SKILL.md 行为规范对拍：提到的旗标都在 args-table.ts 的声明表里。 */
+/**
+ * SKILL.md 行为规范对拍：提到的旗标都在 args-table.ts 的声明表里。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param ctx - 运行期上下文；`ctx.root` 是内核根（即 `scripts/`），SKILL.md 从它的上级读
+ * @returns 无返回值；通过时把「N 种参数写法全部有声明」作为该项说明
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 SKILL.md 一个旗标都扫不到（正则或路径失效，那样的「零违规」是假绿），或扫到的旗标剥前缀、归别名后仍不在声明表里
+ */
 export function runSkillArgsAudit({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {
 	ok("参数面：SKILL.md 提到的旗标都在 args-table.ts 的声明表里", () => {
 		// SKILL.md 是给助手读的**行为规范**（见仓库根 AGENTS.md：改它就等于改 skill

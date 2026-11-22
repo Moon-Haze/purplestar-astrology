@@ -5,6 +5,8 @@
  * 非法值与命令行同规则报错；`_` 前缀键是注释性说明，跳过。
  * ⚠️ `--template` 打印的模板本身必须是合法可跑的配置 —— selftest 有吃回闭环断言盯着。
  *    四条规则的完整表述见 docs/code/cli-args.md。
+ *
+ * @file `--config` / `--template` —— JSON 配置文件输入（spec §3.3）
  */
 
 import { readFileSync } from "node:fs";

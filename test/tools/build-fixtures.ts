@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file 从基准数据集确定性抽取轻量 fixtures 的生成工具。
+ */
 // ── 从样本数据集（db/ 下的 parquet 分片）抽样，生成 test/fixtures/ 轻量基准 ──
 //
 // 仅在需要**重建**基准时手动执行（数据集已入库，但日常跑测试读的是 fixtures，用不着它）：
@@ -36,6 +39,11 @@ const YEAR_END = 2026;
 // 固定槽位（每月固定某日某时）只能盖到 4 个时辰、10 个月份，实测过，不够。
 const DAYS = [1, 8, 15, 22]; // 日：1 号用于覆盖「公历年初落在农历上一年」的跨年边界
 
+/**
+ * 生成入口：按出生五元组取样并写出 fixtures。
+ *
+ * @returns 无返回值；数据源不可用时打印指引后 `process.exit(1)`
+ */
 async function main(): Promise<void> {
 	try {
 		await openSource();

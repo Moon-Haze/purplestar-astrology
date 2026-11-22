@@ -12,6 +12,8 @@
  * ⚠️ 来源与许可：语料出自 nihai-tianji-corpus（倪海厦《天纪》结构化语料库），
  * CC BY-NC-SA 4.0——引用须署名、非商业、相同方式共享；生成的数据文件头部带
  * 来源声明，勿删。
+ *
+ * @file 天纪语料导入（tools/corpus）—— 把 nihai-tianji-corpus 的紫微五册判语转印成本仓
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -36,15 +38,25 @@ if (!existsSync(jsonl)) {
 	process.exit(2);
 }
 
+/** nihai-tianji-corpus `data/entries.jsonl` 的一行（上游字段形态，未做本仓裁剪）。 */
 interface RawEntry {
+	/** 册代号（上游原生编号，如 "01-stars"）；只有紫微五册会入选 */
 	book: string;
+	/** 册内大类（主星名 / 宫名 / 格局名等） */
 	h2: string;
+	/** 册内子类（定性 / 性情 / 亮度 …；十二宫册多为空串） */
 	h3: string;
+	/** 倪师原话短引文 */
 	quote: string;
+	/** B 站视频号（BV 号），与 part 一起构成回放定位 */
 	bvid: string;
+	/** 视频分 P 序号（1-based，回放 URL 的 ?p= 参数） */
 	part: number;
+	/** 该判语在单元内的小节序号（展示作 §section） */
 	section: number;
+	/** 该判语在本单元内的起始时间，格式 hh:mm:ss */
 	t_hms: string;
+	/** 考据标注（字幕错字裁决留痕等）；空串为无 */
 	note: string;
 }
 

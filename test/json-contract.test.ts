@@ -1,3 +1,6 @@
+/**
+ * @file astrology JSON 产物契约的语料级回归测试。
+ */
 // ── 层 1（主力）：`astrology --json` 产物契约的语料级回归 ──
 //
 // 层 1 的排盘对标（chart.test.ts）比的是**内核直调**产物；本文件把对拍推进一层——
@@ -72,7 +75,13 @@ const FROZEN_TOP_LEVEL_KEYS = [
 /** 四化四键（Mutagen 的值域；测试面按字符串消费，逐字面量写死即契约钉点）。 */
 const HUAS = ["禄", "权", "科", "忌"] as const;
 
-/** 装配入参：流年注入出生公历年（确定性），运限参数一概不传（null 语义的受测形态）。 */
+/**
+ * 装配入参：流年注入出生公历年（确定性），运限参数一概不传（null 语义的受测形态）。
+ *
+ * @param chart - 排好的盘
+ * @param liuNianYear - 注入的流年年号（取出生公历年以保证确定性）
+ * @returns 与 CLI `--json` 同一装配函数产出的 JSON 文本
+ */
 function assembleJson(chart: ZiweiChart, liuNianYear: number): string {
 	return buildAnalyzeJson({
 		chart,
@@ -89,6 +98,7 @@ function assembleJson(chart: ZiweiChart, liuNianYear: number): string {
 
 /** 产物顶层形状（测试侧消费视图，只声明真读到的键——与 synastry/chart-view 同型）。 */
 interface AnalyzeJsonView {
+	/** 生年四化层（恒非 null）：`stem` 为农历年干名，`transforms` 为禄/权/科/忌 → 星名，`located` 四项落宫明细 */
 	nativeSiHua: {
 		stem: string;
 		transforms: Record<string, string>;
@@ -100,14 +110,21 @@ interface AnalyzeJsonView {
 			isMajor: boolean;
 		}[];
 	};
+	/** 流年四化层（恒非 null；年号取注入值，本文件恒注入出生公历年以保证确定性） */
 	liuNianSiHua: { year: number; transforms: Record<string, string> };
+	/** 流月四化层；本文件不配 `--monthly`，断言它**显式 `null`**（非缺键） */
 	liuYueSiHua: unknown;
+	/** 大限四化层：按盘派生 —— 童限未起运为 `null`，起运后 `stem` 等于基准大限宫干 */
 	daXianSiHua: { stem: string; transforms: Record<string, string> } | null;
+	/** 流日四化层；本文件不配置，断言恒 `null` */
 	liuRiSiHua: unknown;
+	/** 流时四化层；本文件不配置，断言恒 `null` */
 	liuShiSiHua: unknown;
+	/** 流年命宫（`year` 取注入值；本文件只断言年号，宫位面归层 2/3 预言机） */
 	liuNianPalace: { year: number };
 }
 
+/** 把出生信息渲染成可读的用例名。 */
 const describeBirth = (s: BaselineSample): string =>
 	`${s.birthInfo.year}-${String(s.birthInfo.month).padStart(2, "0")}-${String(s.birthInfo.day).padStart(2, "0")} ` +
 	`${BRANCHES[s.birthInfo.timeIndex] ?? `timeIndex${s.birthInfo.timeIndex}`}时 ${s.birthInfo.gender}`;
@@ -116,14 +133,17 @@ const describeBirth = (s: BaselineSample): string =>
 // BaselineChart 的 palaces / decadals / lunarInfo 在接口上是可选的（外部数据不做预设），
 // 但本文件的断言以它们为必经之路。缺失即基准损坏——大声失败，不用可选链静默缩水、
 // 也不用 `!` 硬断（消费点不掩盖 miss 的同型纪律）。
+/** 取产物里的宫列表。 */
 const palacesOf = (s: BaselineSample): NonNullable<BaselineSample["chart"]["palaces"]> => {
 	assert.ok(s.chart.palaces, `基准形状损坏：${describeBirth(s)} 缺 palaces`);
 	return s.chart.palaces;
 };
+/** 取产物里的大限列表。 */
 const decadalsOf = (s: BaselineSample): NonNullable<BaselineSample["chart"]["decadals"]> => {
 	assert.ok(s.chart.decadals, `基准形状损坏：${describeBirth(s)} 缺 decadals`);
 	return s.chart.decadals;
 };
+/** 取产物里的农历年干。 */
 const yearStemOf = (s: BaselineSample): number => {
 	assert.ok(
 		s.chart.lunarInfo?.yearStem !== undefined,

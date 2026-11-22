@@ -13,6 +13,8 @@
  * - `scanRoot` 解析到本 skill 的 `scripts/`，与 `citations.test.ts` 原扫根完全一致，覆盖零退化。
  *
  * 三条「引用而非迁移」的完整论证（守住 0C 冻结红线），见 docs/code/school.md。
+ *
+ * @file 默认流派适配器：文墨排盘 + 倪海厦《天纪》三合派（Phase 3 · SchoolAdapter 接缝）
  */
 
 import { dirname, resolve } from "node:path";

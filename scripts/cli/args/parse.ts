@@ -65,6 +65,10 @@ export const SIDE_PREFIXES: readonly string[] = OPTION_SCOPE.sidePrefixes;
 /**
  * 编辑距离：把 `a` 改成 `b` 至少几步。只用于「拼错了？最接近的是……」这句提示，
  * 故实现取最朴素的滚动数组版本，不追求性能。
+ *
+ * @param a - 用户敲入的名字（当作源串）
+ * @param b - 声明表里的候选名（当作目标串）
+ * @returns 把 `a` 变成 `b` 的最少编辑步数（插入 / 删除 / 替换各计 1）
  */
 function editDistance(a: string, b: string): number {
 	let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
@@ -119,6 +123,11 @@ export function suggestOption(name: string): string | null {
  *
  * ⚠️ 刻意**不**校验「这个参数属于这个命令」—— 把归属做成硬约束会让每条命令的合法集合
  *    成为第二个需要维护的真相，拼错才是要挡的。三条的展开见 docs/code/cli-args.md。
+ *
+ * @returns 归一后的英文主名（别名已换成主名，出生方前缀原样保留在头部）
+ * @throws 参数名带出生方前缀、但当前命令不在 `prefixedCommands` 里（或没给命令名）时抛错，
+ *   并在文案里指路改用去掉前缀的写法；参数名（去前缀后）不在 {@link OPTION_NAMES} 里、
+ *   也不是已声明的别名时抛错，附带最接近的合法名提示
  */
 function checkOptionName(key: string, command: string | undefined): string {
 	const prefix = SIDE_PREFIXES.find(p => key.startsWith(p));
@@ -146,7 +155,9 @@ function checkOptionName(key: string, command: string | undefined): string {
 
 /** `util.parseArgs` 的 token（`strict: false` 形态，官方类型的宽松收窄）。 */
 interface Token {
+	/** token 类别：选项 / 位置参数 / `--` 终结符 */
 	kind: "option" | "positional" | "option-terminator";
+	/** 该 token 在原始 argv 中的下标（0 起） */
 	index: number;
 	/** option：不含 `--` 的名字（可能来自 `-3` 这类短假名，见 parseArgs 的扫描注释） */
 	name?: string;

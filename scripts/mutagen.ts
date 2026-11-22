@@ -9,6 +9,8 @@
  *    **不往 `Decadal` 上加字段**。六层清单、混合口径与红线的完整论证见
  *    docs/code/chart-kernel.md，体系立场另见仓库根 `AGENTS.md` 与 `SKILL.md`。
  *
+ * @file 四化工具模块 —— 生年 / 流年 / 流月 / 大限宫干 / 流日 / 流时**六层四化**的映射查询
+ *
  * @packageDocumentation
  */
 
@@ -24,6 +26,9 @@ import { STEMS } from "./data/ganzhi";
  * 六层（生年 / 流年 / 流月 / 大限宫干 / 流日 / 流时）拿到各自的 stemIndex 后，收尾都是
  * 同一形态——评审 S3 把这份样板收成单点；各层函数保留自己的取干逻辑与返回类型标注，
  * 契约形状（kernel-contract 的签名钉面）不变。
+ *
+ * @param stemIndex - 天干索引 0–9（0=甲 … 9=癸）
+ * @returns `{ stemIndex, stemName, transforms }`；`transforms` 即该干的禄权科忌四星
  */
 function mutagenOf(stemIndex: number): {
 	stemIndex: number;
@@ -250,6 +255,11 @@ export function getDailyStemIndex(
  * @remarks
  * 六层四化里的「一日动态」层。调用方（`cli/fortune/mutagen.ts`）从 `--yearly` / `--monthly` /
  * `--daily` 组出农历年月日，闰月沿用 `--leap` 旗标。
+ *
+ * @param lunarYear - 农历年（正月初一口径）
+ * @param lunarMonth - 农历月 1–12
+ * @param lunarDay - 农历日 1–30
+ * @param isLeapMonth - 是否闰月（内部转负月号交给 {@link getDailyStemIndex}）
  */
 export function getDailyMutagen(
 	lunarYear: number,
@@ -310,6 +320,9 @@ export function getHourlyStemIndex(dayStemIndex: number, hourBranch: number): nu
  * @remarks
  * 六层四化里的「一时辰动态」层，粒度到时辰即止 —— 本模块不提供流分。
  * 调用方须自备**当日日干**（传 {@link getDailyMutagen} 的 `stemIndex`）。
+ *
+ * @param dayStemIndex - 当日日干索引 0–9（通常来自 {@link getDailyMutagen} 的 `stemIndex`）
+ * @param hourBranch - 时支索引 0–11；12（晚子时）在 {@link getHourlyStemIndex} 内归一为 0
  */
 export function getHourlyMutagen(
 	dayStemIndex: number,
@@ -378,8 +391,11 @@ export interface MutagenChainInput {
 export interface MutagenChain {
 	/** 农历年干索引（与 {@link getNativeMutagen} 的 chart 适配同源） */
 	yearStem: number;
+	/** 生年四化：取农历年干（`chart.lunarInfo.yearStem`），不与流年层混用公历取模 */
 	native: ReturnType<typeof getNativeMutagen>;
+	/** 流年四化：由公历年份经 {@link getYearStemIndex} 取干 */
 	liuNian: ReturnType<typeof getYearlyMutagen>;
+	/** 流月四化；`null` = 未给 `--monthly`（其下的流日流时一并不算） */
 	liuYue: ReturnType<typeof getMonthlyMutagen> | null;
 	/**
 	 * `null` = 未给月 / 日，**或该农历日在流年该月内不存在** —— 后者在文本路径
@@ -387,6 +403,7 @@ export interface MutagenChain {
 	 * 独立、程序消费方自担取值链），差异是刻意契约，处置归消费方。
 	 */
 	liuRi: ReturnType<typeof getDailyMutagen> | null;
+	/** 流时四化：由当日日干起遁（12 = 晚子时按当日日干算）；`null` = 未给日 / 时 */
 	liuShi: ReturnType<typeof getHourlyMutagen> | null;
 	/** 大限宫干四化（文墨排盘口径）；童限未起运或定位异常时为 `null` */
 	daXian: ReturnType<typeof getDaXianMutagen>;
@@ -405,6 +422,8 @@ export interface MutagenChain {
  * （cli/fortune/mutagen）各实现一遍 —— 输出形状不同、取数规则须逐字同步且无对拍
  * 断言，生年层入口曾出现三种形态。收编后口径改动只动本函数（对拍断言钉在
  * test/astrology-sections.test.ts 的「六层四化取数链对拍」）。
+ *
+ * @returns 六层各层的取数结果，外加 `yearStem` / `decadalNotStarted`；未给到的层级为 `null`
  */
 export function buildMutagenChain(chart: ZiweiChart, input: MutagenChainInput): MutagenChain {
 	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour } = input;

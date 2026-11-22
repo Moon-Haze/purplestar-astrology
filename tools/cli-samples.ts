@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file 实跑 CLI 参数样例并生成 Markdown 输出的工具。
+ */
 // ── CLI 参数输出样例生成器：把 purple-star 各命令/参数逐条实跑，输出成 markdown ──
 //
 // 给谁用：测试人员核对 `node scripts/purple-star.ts` 各参数的**输出形态**。
@@ -95,6 +98,7 @@ interface Sample {
 
 // ── 样例表：覆盖 help 的 OPTIONS 段全部参数 + 五个命令域 + 常见报错 ──
 // 出生信息统一用 help 示例同款（2011-06-24 07:45 男 杭州；女盘用 1999-11-3 15:20 成都）。
+/** 样例表：覆盖 help 的 OPTIONS 段全部参数、五个命令域与常见报错。 */
 export const SAMPLES: Sample[] = [
 	// ── 帮助 ──
 	{
@@ -672,6 +676,11 @@ export const SAMPLES: Sample[] = [
 ];
 
 // ── 主流程：样例执行就地内联，渲染行经 emit 输出（见文件头「结构说明」）──
+/**
+ * 样例生成入口：逐条实跑命令并按通道输出 Markdown。
+ *
+ * @returns 无返回值；markdown 打到 stdout 或经 `--out` 落盘，退出码反映样例是否符合预期
+ */
 async function main(): Promise<void> {
 	if (process.argv.includes("-h") || process.argv.includes("--help")) {
 		console.log("用法：npm run cli-samples [-- --out docs/cli-samples.md]");
@@ -760,6 +769,7 @@ async function main(): Promise<void> {
 
 	// ── 文档头部（生成环境戳）──
 	const now = new Date();
+	/** 数字补零到两位（用于生成时间戳）。 */
 	const pad = (x: number) => String(x).padStart(2, "0");
 	const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 	const git = spawnSync("git", ["rev-parse", "--short", "HEAD"], {

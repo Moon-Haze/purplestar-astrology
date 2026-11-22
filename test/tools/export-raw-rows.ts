@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file 导出真实数据库行作为 rowsToSample 回归基准的工具。
+ */
 // ── 从样本数据集导出**真实行**，作为 rowsToSample 的 CI 基准 ──
 //
 // 手动执行（重建 fixtures 或首次启用时）：
@@ -40,7 +43,9 @@ const FIX_DIR = resolve(HERE, "../fixtures");
 
 /** charts.jsonl 的一行（只声明挑选用得上的字段，其余不解析）。 */
 interface FixtureLine {
+	/** 出生信息（只取 `pickSamples` 用作唯一键与挑选判据的五个字段） */
 	birthInfo: { year: number; month: number; day: number; timeIndex: number; gender: string };
+	/** 基准盘（只取「闰月」与「天钺 / 真四化」两组特征要用到的字段） */
 	chart: {
 		lunarInfo: { isLeapMonth: boolean };
 		palaces: Array<{ stars: Array<{ name: string; mutagen?: string }> }>;
@@ -51,6 +56,7 @@ interface FixtureLine {
 interface RawEntry {
 	/** 为什么挑它 —— 写进产物，让人看得出这一片的覆盖意图 */
 	why: string;
+	/** 该样本的 12 行真实 JOIN 行（列集由 `COLUMNS` 决定，`sample_id` 已 `Number()` 归一） */
 	rows: Array<Record<string, unknown>>;
 }
 
@@ -60,13 +66,19 @@ interface RawEntry {
  * ⚠️ **每条特征各占一个样本**（已挑走的不再参与后续挑选）。少了这层去重，前几个特征
  *    会全部落在同一条样本上 —— 实测「首条 / 天钺 / 真四化」都指向 1924-1-1，
  *    四条产物缩水成两条，覆盖面白丢一半。
+ *
+ * @param parsed - charts.jsonl 的全部行
+ * @returns 按特征挑出的样本，每条各占一条（不重复挑同一条）
+ * @throws {Error} 某条特征在剩余的 fixture 行里找不到匹配
  */
 function pickSamples(parsed: FixtureLine[]): Array<{ why: string; line: FixtureLine }> {
 	const taken = new Set<string>();
+	/** 取 fixture 行的出生五元组作为唯一键。 */
 	const keyOf = (f: FixtureLine): string => {
 		const b = f.birthInfo;
 		return `${b.year}-${b.month}-${b.day}-${b.timeIndex}-${b.gender}`;
 	};
+	/** 取第一条满足条件的 fixture 行；取不到即报错说明原因。 */
 	const firstWhere = (pred: (f: FixtureLine) => boolean, why: string): FixtureLine => {
 		const found = parsed.find(f => !taken.has(keyOf(f)) && pred(f));
 		if (!found) {
@@ -77,6 +89,7 @@ function pickSamples(parsed: FixtureLine[]): Array<{ why: string; line: FixtureL
 		taken.add(keyOf(found));
 		return found;
 	};
+	/** 构造函数：判断该行是否含指定星名。 */
 	const hasStar = (name: string) => (f: FixtureLine) =>
 		f.chart.palaces.some(p => p.stars.some(s => s.name === name));
 
@@ -98,6 +111,11 @@ function pickSamples(parsed: FixtureLine[]): Array<{ why: string; line: FixtureL
 	];
 }
 
+/**
+ * 导出入口：挑选代表性真实行并写入 fixtures。
+ *
+ * @returns 无返回值；写出 `test/fixtures/raw-rows.json` 后关闭连接
+ */
 async function main(): Promise<void> {
 	const lines = readFileSync(resolve(FIX_DIR, "charts.jsonl"), "utf8").trim().split("\n");
 	const parsed = lines.map(l => JSON.parse(l) as FixtureLine);

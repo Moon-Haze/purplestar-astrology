@@ -1,3 +1,6 @@
+/**
+ * @file DuckDB 基准库覆盖、采样、文本和四化一致性核验工具。
+ */
 // 用法: npx tsx tools/db/verify-duckdb.ts [-- --out=DIR] [-- --src=DIR] [-- --calendar=synthetic|solar]
 //      参数同时支持 --key=value 与 --key value 两种写法
 // --out 只给目录，库名与字典副本名固定（与 build:db / query 同一套规则）
@@ -31,10 +34,15 @@ import { extractSihua, type ZiweiChartLike } from "./mutagen";
 
 // skipped 与 ok 正交：SKIP 表示「这项在当前形态下不适用」，它既不是通过也不是失败。
 // 必须单独成一态——把「其实没跑」渲染成 PASS，读的人会当成「这项验过了」。
+/** 单项核验结果：名称、通过与否、说明；跳过是独立状态，不算通过。 */
 export interface CheckResult {
+	/** 核验项名（报告里逐行打印，如「总量」「维度覆盖」「四化一致性」） */
 	name: string;
+	/** 是否通过；跳过项同样置 true（故单看它分不清「验过了」与「没跑」，必须并看 skipped） */
 	ok: boolean;
+	/** 人读说明：通过时给实测数字，失败时给差异明细（含首个差异） */
 	detail: string;
+	/** 是否跳过（当前形态下不适用）：独立第三态，既非通过也非失败 */
 	skipped?: boolean;
 }
 
@@ -42,6 +50,13 @@ export interface CheckResult {
 // 与 build-duckdb.ts 同一处约定，改一个必须改另一个。
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
+/**
+ * 取 `--name=value` 形式的参数值；缺省时返回 fallback。
+ *
+ * @param name - 参数名（不含 `--`）
+ * @param fallback - 缺省时返回的值
+ * @returns 解析并 resolve 后的参数值，缺省时为 `fallback`
+ */
 function parseArg(name: string, fallback: string): string {
 	const argv = process.argv.slice(2);
 	const eqHit = argv.find(a => a.startsWith(`--${name}=`));
@@ -60,6 +75,13 @@ function parseArg(name: string, fallback: string): string {
 // 用户以为验的是自己那份，要等到报告里出现意外的行数才可能察觉；
 // `--dict=...` 更糟，字典自证会拿默认位置那份去比，结论直接失真。
 // 故废弃名字在入口处显式报错（与 rejectLegacyModeEnv 同一模式）。
+/**
+ * 在入口处拒收已删除的参数名，避免静默落回默认位置导致结论失真。
+ *
+ * @param argv - 命令行参数（默认 `process.argv.slice(2)`）
+ * @returns 无返回值；未出现废弃参数时静默通过
+ * @throws 出现 `--db` / `--dict` / `--topics-dir` 之一（附改用什么）
+ */
 export function rejectDeletedArgs(argv: string[] = process.argv.slice(2)): void {
 	for (const a of argv) {
 		const eq = a.indexOf("=");
@@ -71,9 +93,22 @@ export function rejectDeletedArgs(argv: string[] = process.argv.slice(2)): void 
 }
 
 // BIGINT 聚合归一化为 Number；list/struct 由 getRowsJS 转为纯 JS 值
+/**
+ * 把 BIGINT 归一化为 Number；其余 JS 值原样返回。
+ *
+ * @param v - 驱动返回的 JS 值
+ * @returns BIGINT 已转 Number，其余原样
+ */
 function normalize(v: JS): JS {
 	return typeof v === "bigint" ? Number(v) : v;
 }
+/**
+ * 跑一条 SQL 并取首行，各列经 {@link normalize} 归一化。
+ *
+ * @param conn - 已连接的库
+ * @param sql - 待执行的 SQL
+ * @returns 首行各列（已归一大整数）
+ */
 async function one(conn: DuckDBConnection, sql: string): Promise<JS[]> {
 	const rows = await (await conn.run(sql)).getRowsJS();
 	return (rows[0] ?? []).map(normalize);
@@ -81,6 +116,12 @@ async function one(conn: DuckDBConnection, sql: string): Promise<JS[]> {
 
 // 库侧数据的唯一权威来源：topics 视图的定义 SQL。
 // 视图不存在时返回 null，由调用方决定是报错还是走别的分支。
+/**
+ * 取 `topics` 视图的定义 SQL；视图不存在时返回 null，由调用方决定处置。
+ *
+ * @param conn - 已连接的库
+ * @returns 视图定义 SQL；视图不存在时为 `null`
+ */
 async function topicsViewSqlOf(conn: DuckDBConnection): Promise<string | null> {
 	const rows = await (
 		await conn.run("SELECT sql FROM duckdb_views() WHERE view_name = 'topics'")
@@ -92,6 +133,12 @@ async function topicsViewSqlOf(conn: DuckDBConnection): Promise<string | null> {
 // dataset 形态是 <dataset>/topics-*.parquet。
 // 必须保留 glob 本身——dataset 目录里还有 samples.parquet / palaces.parquet，
 // 若把目录拼上 *.parquet 会把它们也卷进来（union by name 后列对不上）。
+/**
+ * 从视图 SQL 反解出 read_parquet 的 glob；不带 glob 的目录拼接会卷进无关表。
+ *
+ * @param viewSql - `topics` 视图的定义 SQL
+ * @returns `read_parquet` 的完整 glob；反解不出时为 `null`
+ */
 function parquetPathFromViewSql(viewSql: string): string | null {
 	const m = /read_parquet\(\s*'((?:[^']|'')*)'\s*\)/.exec(viewSql);
 	return m ? m[1].replace(/''/g, "'") : null;
@@ -100,6 +147,13 @@ function parquetPathFromViewSql(viewSql: string): string | null {
 // 1. 总量与三表结构不变量（spec §8.1）
 //    palaces 每样本恰 12 行、topic_lines 每样本恰 13 行、三表 id 集合一致。
 //    配合 verifyDimensions 的全空间覆盖，等价锁定 spec 的 518400 / 6220800 / 6739200。
+/**
+ * 核验三表行数与固定比例（每样本 12 宫、13 主题行）。
+ *
+ * @param conn - 已连接的库
+ * @param layout - 库的布局形态
+ * @returns 核验结果：行数比例与三表 id 集合是否自洽
+ */
 export async function verifyCounts(
 	conn: DuckDBConnection,
 	layout: DbLayout = "inline"
@@ -158,6 +212,13 @@ export async function verifyCounts(
 // （--from-year/--to-year）与测试迷你库必然「缺失」，故只在完整构建时断言缺失为 0，
 // 任何规模下都断言「维度无重复」。
 const CALIBER_TOTALS: Record<Calendar, number> = { synthetic: 518_400, solar: 674_976 };
+/**
+ * 核验维度覆盖：按日历口径的全集断言缺失量与重复量均为 0。
+ *
+ * @param conn - 已连接的库
+ * @param calendar - 数据集日历口径（决定期望全集）
+ * @returns 核验结果：全空间缺失量与重复量是否均为 0
+ */
 export async function verifyDimensions(
 	conn: DuckDBConnection,
 	calendar: Calendar
@@ -209,6 +270,12 @@ export async function verifyDimensions(
 }
 
 // 4. 四化一致性：palaces.sihua_stars 重算 vs samples 摘要，全量（spec §8.4）
+/**
+ * 核验四化一致性：由 palaces 重算与 samples 摘要全量比对。
+ *
+ * @param conn - 已连接的库
+ * @returns 核验结果：四化摘要与 palaces 重算是否全量一致
+ */
 export async function verifySihuaConsistency(conn: DuckDBConnection): Promise<CheckResult> {
 	const bad = await one(
 		conn,
@@ -232,6 +299,14 @@ export async function verifySihuaConsistency(conn: DuckDBConnection): Promise<Ch
 
 // 3. 抽样深度比对（spec §8.3）：确定性等距抽样 max 50 条（可复现），逐字段对源文件
 //    取样含 sample_id=1（首样本），且 n ≥ 总行数时取全量（小库全查）
+/**
+ * 抽样深度比对：确定性等距取样，逐字段对源分片。
+ *
+ * @param conn - 已连接的库
+ * @param src - 源分片目录（不存在则 SKIP）
+ * @param calendar - 数据集日历口径
+ * @returns 核验结果：抽样条目的输入侧与引擎侧差异分列；无源时 ok 但标 skipped
+ */
 export async function verifySampling(
 	conn: DuckDBConnection,
 	src: string,
@@ -303,6 +378,14 @@ export async function verifySampling(
 }
 
 // 源文件定位：id → year/month → 分片；流式解压扫描匹配 birthInfo 的行
+/**
+ * 按 id 定位源分片并解出匹配的那条记录，供逐字段对拍。
+ *
+ * @param src - 源分片目录
+ * @param id - 样本 ID（解码出年月以定位分片）
+ * @param calendar - 数据集日历口径
+ * @returns 该样本的源记录；分片里找不到时为 `null`
+ */
 async function readSourceRecord(
 	src: string,
 	id: number,
@@ -340,6 +423,13 @@ async function readSourceRecord(
 	return null;
 }
 
+/**
+ * 取某类型（major / lucky / sha / minor）下的星名列表。
+ *
+ * @param stars - 星曜数组
+ * @param type - 星曜类型（major / lucky / sha / minor）
+ * @returns 该类型下的星名列表
+ */
 function starNames(stars: Array<{ name: string; type: string }>, type: string): string[] {
 	return stars.filter(s => s.type === type).map(s => s.name);
 }
@@ -351,6 +441,11 @@ function starNames(stars: Array<{ name: string; type: string }>, type: string): 
 //   - `outEngine`（引擎侧）：命盘概要 / 四化摘要 / 星曜 / 主题——v4 数据集由本仓内核
 //     直生成，源分片的 chart 出自 site-repo 引擎（engineCommit c25dd495），两侧是
 //     **双引擎交叉审计**：差异属引擎级对照信息而非数据损坏，据实列报不改变 ok 判定。
+/**
+ * 组装抽样差异的说明文本，按输入侧与引擎侧分开列报。
+ *
+ * @returns 无返回值；说明文本就地追加进 `out`（输入侧）与 `outEngine`（引擎侧）
+ */
 function mismatchDetail(
 	id: number,
 	db: {
@@ -454,6 +549,16 @@ function mismatchDetail(
 
 // 5. 体积报告（spec §9 第 3 项）：单文件后只统计库文件本身，
 //    并断言视图内没有外部文件依赖——库被单独复制到别处后仍可查询，是本次的核心收益。
+/**
+ * 体积报告：统计库文件自身并断言视图无外部文件依赖。
+ *
+ * @param conn - 已连接的库
+ * @param dbPath - 库文件路径
+ * @param layout - 库的布局形态
+ * @param outDir - 输出目录（dataset 目录由此推出）
+ * @param calendar - 数据集日历口径（决定体积预算档）
+ * @returns 核验结果：体积是否在预算内且视图无外部文件依赖
+ */
 export async function verifySize(
 	conn: DuckDBConnection,
 	dbPath: string,
@@ -499,6 +604,7 @@ export async function verifySize(
 		"SELECT count(*) FROM duckdb_views() WHERE sql ILIKE '%read_parquet%'" +
 			" OR sql ILIKE '%read_json%' OR sql ILIKE '%read_csv%'"
 	);
+	/** 字节数转 GiB 文本。 */
 	const gb = (n: number) => (n / 1024 ** 3).toFixed(3);
 	return {
 		name: "体积报告",
@@ -509,11 +615,20 @@ export async function verifySize(
 
 // dataset 形态的体积判据：合计上限 + 每个 parquet 的 GitHub 单文件硬限。
 // 两条缺一不可——只看合计的话，一个 500MB 的单片会被其余小片「平均」掉。
+/**
+ * dataset 形态的体积判据：合计上限与单片硬限同时满足才算通过。
+ *
+ * @param datasetBytes - dataset 合计字节数
+ * @param partSizes - 每个 parquet 的字节数
+ * @param calendar - 数据集日历口径（决定合计预算档）
+ * @returns 是否通过，以及人读的体积说明
+ */
 export async function datasetVolumeVerdict(
 	datasetBytes: number,
 	partSizes: number[],
 	calendar: Calendar = "synthetic"
 ): Promise<{ ok: boolean; detail: string }> {
+	/** 字节数转 MiB 文本。 */
 	const mb = (n: number) => (n / 1024 ** 2).toFixed(0);
 	const over = partSizes.filter(s => s > 100 * 1024 ** 2);
 	const bad =
@@ -533,6 +648,13 @@ export async function datasetVolumeVerdict(
 // 第 1 层 · 字典自证（spec §9.1）：库内 topic_dict 与构建期权威副本逐条比对。
 // 后两条断言是第 2 层「由上下界推出无悬空 id」的前提——
 // line_id 必须密集覆盖 [1, count] 且 line 无重复，否则区间内的 id 未必存在。
+/**
+ * 字典自证：核对字典文件与库内字典表一致，并检查行 id 密集覆盖。
+ *
+ * @param conn - 已连接的库
+ * @param dictPath - 字典副本文件路径
+ * @returns 核验结果：字典一致性与行 id 密集覆盖
+ */
 export async function verifyDictSelfCheck(
 	conn: DuckDBConnection,
 	dictPath: string
@@ -588,6 +710,12 @@ export async function verifyDictSelfCheck(
 // 第 2 层 · 引用完整性（spec §9.1）：不展开数组。
 // 逐元素检查要 unnest 约 5.7 亿个 id（6,739,200 行 × 平均约 85 行），代价远超它要证明的结论；
 // 而「第 1 层已证 id 密集 + 本层的上下界」即可推出无悬空 id。
+/**
+ * 引用完整性：用上下界推出无悬空 id，规避逐元素 unnest 的高代价。
+ *
+ * @param conn - 已连接的库
+ * @returns 核验结果：topic_lines 与 topic_dict 的上下界是否构成无悬空 id
+ */
 export async function verifyReferentialIntegrity(conn: DuckDBConnection): Promise<CheckResult> {
 	const [nSamples] = await one(conn, "SELECT count(*) FROM samples");
 	const [nDistinct, nRows] = await one(
@@ -625,6 +753,16 @@ export async function verifyReferentialIntegrity(conn: DuckDBConnection): Promis
 // 故行序错乱同样会抓到。
 // ⚠️ 三条实测纪律（FULL OUTER JOIN 代 EXCEPT 防 OOM / 源侧单次扫描 + 对齐 unnest /
 // 分块按库内实际月份推导）：详见 docs/code/db-tools.md
+/**
+ * 主题文本对账：按分块把库内文本与源侧逐字比对。
+ *
+ * @param conn - 已连接的库
+ * @param src - 源分片目录（不存在则 SKIP）
+ * @param chunkShards - 分块时每组的分片数
+ * @param layout - 库的布局形态
+ * @param calendar - 数据集日历口径
+ * @returns 核验结果：库内文本与源侧是否逐字一致；无源时 ok 但标 skipped
+ */
 export async function verifyTopicText(
 	conn: DuckDBConnection,
 	src: string,
@@ -765,6 +903,13 @@ export async function verifyTopicText(
 // 逐项求值：任一检查抛异常只作废该项，不能让整份报告消失。
 // 校验脚本最需要说话的时刻（数据损坏）恰恰是最容易抛异常的时刻——
 // 此前主题行缺失会在此处抛 TypeError，用户看到的是「脚本坏了」而非「数据集坏了」。
+/**
+ * 包一层核验：数据损坏导致的异常转成失败结果，而不是让脚本崩掉。
+ *
+ * @param name - 检查项名（异常时用作结果名）
+ * @param fn - 实际的核验函数
+ * @returns 核验结果；抛出的异常被转成失败结果而非让脚本崩掉
+ */
 async function guard(name: string, fn: () => Promise<CheckResult>): Promise<CheckResult> {
 	try {
 		return await fn();
@@ -782,6 +927,12 @@ async function guard(name: string, fn: () => Promise<CheckResult>): Promise<Chec
 // 走库会让「产物被搬到别处」的校验去读**旧目录**（旧目录还在时报 PASS，校验的根本不是这份
 // 产物；旧目录没了则报路径错误）。dataset 路径下视图按当次 --out 现建，路径永远指向本次目录。
 // viaDb 表示**实际走了哪条路**（不是「文件是否存在」），形态判定与末行措辞都用它。
+/**
+ * 打开待核验目标：库文件优先，dataset 则现建视图；`viaDb` 表示实际走了哪条路。
+ *
+ * @param outDir - 待核验的输出目录
+ * @returns 连接、实际走的路径（`viaDb`）与 dataset 目录
+ */
 export async function openVerifyTarget(
 	outDir: string
 ): Promise<{ conn: DuckDBConnection; viaDb: boolean; datasetDir: string }> {
@@ -800,6 +951,7 @@ export async function openVerifyTarget(
 	return { conn: await openReadOnly(dbPath), viaDb: true, datasetDir };
 }
 
+/** 核验入口：解析参数、打开目标，依次跑各项检查并汇总退出码。 */
 async function main() {
 	rejectDeletedArgs();
 	const src = parseArg("src", path.join(ROOT, "samples-out"));
@@ -868,6 +1020,7 @@ async function main() {
 		}
 		console.log(`口径（自动探测）：${calendar}（样本量 ${n}）`);
 	}
+	/** 没有字典文件和库内字典表时，该核验项标记为跳过而非通过。 */
 	const skipNoDict = (name: string): CheckResult => ({
 		name,
 		ok: true,

@@ -1,3 +1,6 @@
+/**
+ * @file 主题注册表、宫位键域和主题建议数据的一致性测试。
+ */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { load } from "./lib/loader.ts";

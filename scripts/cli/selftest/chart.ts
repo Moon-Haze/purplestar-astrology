@@ -29,7 +29,13 @@ import { TOPIC_KEYS } from "@/analysis/data";
 import { renderDecadal } from "@/analysis/views/decadal";
 import { renderLiuNian } from "@/analysis/views/yearly";
 
-/** 排盘不变量：十二宫齐全 / 地支不重复 / 命宫唯一 / 五行局合法 / 空宫借宫字段。 */
+/**
+ * 排盘不变量：十二宫齐全 / 地支不重复 / 命宫唯一 / 五行局合法 / 空宫借宫字段。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；四条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是换年口径不再是 `yearDivide=normal`、十二宫 / 地支 / 命宫 / 五行局有任何一条不成立、空宫缺借宫字段、宫位查询的两份实现（helpers 与 palace-relations）不同源
+ */
 export function runChartInvariants({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("排盘不变量：换年口径显式锁在正月初一（yearDivide=normal）", () => {
 		// generateChart 所在模块加载时已 astro.config({ yearDivide: "normal" })；
@@ -76,7 +82,13 @@ export function runChartInvariants({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 运限数据面：伪随机样本自洽、术语对齐、小限岁数表、命主身主、斗君。 */
+/**
+ * 运限数据面：伪随机样本自洽、术语对齐、小限岁数表、命主身主、斗君。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；五条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是伪随机 20 盘出现十二宫 / ages 覆盖 / 斗君 / 星曜分类自洽性问题、iztro 字段名未生效、小限岁数表不满足「1–120 连续、每宫恰 10 个」、命主 / 身主缺失、斗君推算口径漂移
+ */
 export function runFortuneData({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("排盘不变量：随机样本自洽（伪随机 20 盘：十二宫 / ages 覆盖 / 斗君 / 星曜分类）", () => {
 		// 随机性进测试覆盖、不进期望值（spec §3.4）：线性同余取**确定性伪随机**——
@@ -182,7 +194,14 @@ export function runFortuneData({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 三合派硬约束守护（防止飞星派逻辑回流）与两库引句口径合规。 */
+/**
+ * 三合派硬约束守护（防止飞星派逻辑回流）与两库引句口径合规。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param ctx - 运行期上下文；`ctx.root` 是内核根，合盘断语库从它下面读
+ * @returns 无返回值；三条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 `forbiddenFeatures` 声明的禁用特征被填充（宫干自化回流）、大限对象携带宫干四化字段、合盘断语出现「自化」、两库引句口径打架（如七杀段丢失「坊间流传」的未核实标注、太阳「三不见」被强化为「必有」）、武曲晚婚门槛未统一
+ */
 export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {
 	// 绊线改为**声明式**：读 SchoolAdapter.forbiddenFeatures，不再硬编码「查 selfMutagen 字段」。
 	// 换流派只需换适配器；不含该禁忌的空壳流派天然不报此错（见 test/school.test.ts）。
@@ -265,7 +284,13 @@ export function runSchoolGuard({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): v
 	});
 }
 
-/** 格局识别与四化口径（生年取农历年干、流年取公历年取模、流月五虎遁）。 */
+/**
+ * 格局识别与四化口径（生年取农历年干、流年取公历年取模、流月五虎遁）。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；五条断言直接进主报告（格局那条通过时返「样本盘识别到 N 个格局」）
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 `detectPatterns` 不再返回数组或条目缺 `name` / `level`、甲干四化对不上、流年干索引不是 `(year-4)%10`、生年四化没用农历年干（与盘面 `mutagen` 逐颗不一致）、五虎遁起月错误
+ */
 export function runPatternMutagen({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("格局识别：返回数组且每条含 name / level", () => {
 		const ps = detectPatterns(generateChart(SAMPLE));
@@ -311,7 +336,13 @@ export function runPatternMutagen({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 运限定位：年支 / 小限宫 / 虚岁参数解析（在主报告序里位于契约对拍之后）。 */
+/**
+ * 运限定位：年支 / 小限宫 / 虚岁参数解析（在主报告序里位于契约对拍之后）。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；三条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 `yearlyBranchOf` 不再按公历年取年支、`agePalaceOf` 定位不到该虚岁的小限宫或越界时不抛错、`parseAgesArg` 对字符串 / 裸开关 / 缺省 / 非法的处理与约定不符
+ */
 export function runFortuneLocator({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("运限定位：yearlyBranchOf 按公历年取年支（1990→午 / 2026→午 / 2000→辰）", () => {
 		eq(BRANCHES[yearlyBranchOf(1990)], "午");
@@ -368,6 +399,11 @@ const CITE_RE = /本命([\u4e00-\u9fa5]{1,3})化(禄|权|科|忌)/g;
  * 「三方四正会照本命四化」的星曜口径断言组（候选 3）。
  *
  * @remarks
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；四条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是样例盘失去「辅星带四化」这个前提（空转防护：断言会恒真）、某主题建不出上下文、大限 / 流年节与会照单点口径分叉（会照行缺失或行数与条目数不等）、12 个流年无一含辅星四化
+ *
  * 口径本身见 `analysis/palace-query` 的 {@link mutagenInPalaces}：**只按 `mutagen`
  * 真值取，不按 `Star.type` 过滤**。本组的任务是让「谁又加回 `type === "major"`」
  * 这件事有红灯 —— 改前四节零断言，口径漂移只能靠肉眼读整篇 diff 发现。

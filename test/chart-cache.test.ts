@@ -1,3 +1,6 @@
+/**
+ * @file 排盘缓存命中、失效和隔离行为的行为回归测试。
+ */
 // ── 层 3：排盘缓存层（scripts/cli/chart/chart-cache.ts）──
 //
 // 缓存的正确性靠**行为断言**而不是「跑两次输出相同」来验：后者在缓存根本没生效时
@@ -47,7 +50,14 @@ const SENTINEL = "__CACHE_SENTINEL__";
 
 let dir: string;
 
-/** 把一份合法缓存文件写到 `file`；`patch` 可覆盖任一 meta 字段（造失效场景用）。 */
+/**
+ * 把一份合法缓存文件写到 `file`；`patch` 可覆盖任一 meta 字段（造失效场景用）。
+ *
+ * @param file - 目标缓存文件路径
+ * @param chart - 命盘本体
+ * @param patch - 覆盖任一 meta 字段（造失效场景用）
+ * @returns 无返回值；文件已按合法外壳写出
+ */
 function writeCacheFile(
 	file: string,
 	chart: ZiweiChart,
@@ -66,7 +76,11 @@ function writeCacheFile(
 	);
 }
 
-/** 真盘的 JSON 往返副本 + 哨兵标记（只在 mingZhu 上动，故其余字段仍合法）。 */
+/**
+ * 真盘的 JSON 往返副本 + 哨兵标记（只在 mingZhu 上动，故其余字段仍合法）。
+ *
+ * @returns 真盘的 JSON 往返副本，`mingZhu` 换成哨兵串
+ */
 function sentinelChart(): ZiweiChart {
 	const c = JSON.parse(JSON.stringify(generateChart(SAMPLE))) as ZiweiChart;
 	c.mingZhu = SENTINEL;

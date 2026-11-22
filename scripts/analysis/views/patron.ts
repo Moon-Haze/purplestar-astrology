@@ -11,6 +11,8 @@
  * 产出**结构化条目流**（一源双投影，见 `../items`）：slot = `kui-yue`，条目带 aux
  * （魁/钺星名）与 palace（所在宫）。
  *
+ * @file 五点六、魁钺贵人倾向细分 —— 仅 overview / personality / career / wealth 出
+ *
  * @packageDocumentation
  */
 
@@ -19,7 +21,12 @@ import type { AnalysisContext } from "../../analysis/context";
 import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
-/** 渲染「五点六、魁钺贵人倾向细分」的结构化条目流（主题不符或无命中时返回空数组）。 */
+/**
+ * 渲染「五点六、魁钺贵人倾向细分」的结构化条目流（主题不符或无命中时返回空数组）。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数只读命盘与主题键（`overview` / `personality` / `career` / `wealth` 才出），按天魁 / 天钺**实际所落宫**查 `KUI_YUE_GUIREN_MAP`，与本主题主宫无关
+ * @returns 条目流：节头 + 每条「◇ ★星在X宫：断语」行（带 aux / palace 语义字段）；主题不符、两星都未落盘、或所在宫无断语时为空数组
+ */
 function renderKuiYueItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, topic } = ctx;
 
@@ -67,7 +74,12 @@ function renderKuiYueItems(ctx: AnalysisContext): AnalysisItem[] {
 	return items;
 }
 
-/** 渲染「五点六、魁钺贵人倾向细分」整节（文本投影；主题不符或无命中时返回空数组）。 */
+/**
+ * 渲染「五点六、魁钺贵人倾向细分」整节（文本投影；主题不符或无命中时返回空数组）。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）
+ * @returns 与 {@link renderKuiYueItems} 条目流逐条对应的文本行；主题不符或无命中时为空数组（整节不出）
+ */
 export function renderKuiYue(ctx: AnalysisContext): string[] {
 	return formatItems(renderKuiYueItems(ctx));
 }

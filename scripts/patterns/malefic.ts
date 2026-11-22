@@ -7,6 +7,8 @@
  *
  * ⚠️ 下方导出的数组**次序即 `detectPatterns` 的输出次序**（见 docs/code/patterns.md）。
  *
+ * @file 恶格识别器 —— 煞忌交侵、主刑伤波折的一组，成格条件与上格同严
+ *
  * @packageDocumentation
  */
 
@@ -15,7 +17,12 @@ import { PATTERN_VERDICTS } from "../corpus/data/patterns";
 import { hasStar, getJiaPalaces, sanFangAllStars, fillVerdict } from "../patterns/helpers";
 import { oppositeBranch } from "../palace-relations";
 
-/** 化忌入命（坐命宫）/ 化忌冲命（坐迁移宫，对冲命宫） */
+/**
+ * 化忌入命（坐命宫）/ 化忌冲命（坐迁移宫，对冲命宫）
+ *
+ * @param chart - 已排好的命盘
+ * @returns 化忌主星坐命宫或迁移宫的各一条（累积返回，实测至多一条）：坐命宫取名「…化忌入命」、坐迁移宫取名「…化忌冲命」；两宫皆无时为空数组
+ */
 function detectHuaJiRuMingQian({ chart }: DetectContext): Pattern[] {
 	const qianBranch = oppositeBranch(chart.soulBranch);
 	// 本识别器筛的是「命宫与迁移宫**两个**宫位」，故用局部数组累积、而不是像多数识别器
@@ -46,7 +53,12 @@ function detectHuaJiRuMingQian({ chart }: DetectContext): Pattern[] {
 	return hits;
 }
 
-/** 羊陀夹忌：化忌坐宫，左右被擎羊陀罗夹 */
+/**
+ * 羊陀夹忌：化忌坐宫，左右被擎羊陀罗夹
+ *
+ * @param chart - 已排好的命盘
+ * @returns 化忌坐命宫、且擎羊陀罗分居命宫前后两宫时为单元素数组；否则为空数组
+ */
 function detectYangTuoJiaJi({ chart }: DetectContext): Pattern[] {
 	for (const palace of chart.palaces) {
 		const jiStar = palace.stars.find(s => s.mutagen === "忌");
@@ -81,7 +93,12 @@ function detectYangTuoJiaJi({ chart }: DetectContext): Pattern[] {
 	return [];
 }
 
-/** 火铃夹命：火星铃星分居命宫前后 */
+/**
+ * 火铃夹命：火星铃星分居命宫前后
+ *
+ * @param chart - 已排好的命盘
+ * @returns 火星铃星分居命宫前后两宫时为单元素数组；否则为空数组
+ */
 function detectHuoLingJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) {
@@ -105,7 +122,12 @@ function detectHuoLingJiaMing({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 空劫夹命：地空地劫分居命宫前后 */
+/**
+ * 空劫夹命：地空地劫分居命宫前后
+ *
+ * @param chart - 已排好的命盘
+ * @returns 地空地劫分居命宫前后两宫时为单元素数组；否则为空数组
+ */
 function detectKongJieJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) {
@@ -129,7 +151,12 @@ function detectKongJieJiaMing({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 廉杀羊：廉贞、七杀、擎羊三星会照（流年大限最凶） */
+/**
+ * 廉杀羊：廉贞、七杀、擎羊三星会照（流年大限最凶）
+ *
+ * @param chart - 已排好的命盘
+ * @returns 廉贞、七杀、擎羊三星同会三方四正时为单元素数组；否则为空数组
+ */
 function detectLianShaYang({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!(sanFangSet.has("廉贞") && sanFangSet.has("七杀") && sanFangSet.has("擎羊"))) {
@@ -148,7 +175,12 @@ function detectLianShaYang({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 巨火羊：巨门、火星、擎羊会照 */
+/**
+ * 巨火羊：巨门、火星、擎羊会照
+ *
+ * @param chart - 已排好的命盘
+ * @returns 巨门、火星、擎羊三星同会三方四正时为单元素数组；否则为空数组
+ */
 function detectJuHuoYang({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!(sanFangSet.has("巨门") && sanFangSet.has("火星") && sanFangSet.has("擎羊"))) {
@@ -167,7 +199,12 @@ function detectJuHuoYang({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 铃昌陀武：铃星、文昌、陀罗、武曲会照（限至投河） */
+/**
+ * 铃昌陀武：铃星、文昌、陀罗、武曲会照（限至投河）
+ *
+ * @param chart - 已排好的命盘
+ * @returns 铃星、文昌、陀罗、武曲四星同会三方四正时为单元素数组；否则为空数组
+ */
 function detectLingChangTuoWu({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!(
@@ -191,7 +228,13 @@ function detectLingChangTuoWu({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 马头带箭：擎羊在午宫坐命 */
+/**
+ * 马头带箭：擎羊在午宫坐命
+ *
+ * @param chart - 已排好的命盘（三方四正有七杀 / 破军或魁钺时记入 `bonus`）
+ * @param ming - 命宫（要求地支为午且坐擎羊）
+ * @returns 擎羊居午宫坐命时为单元素数组；否则为空数组
+ */
 function detectMaTouDaiJian({ chart, ming }: DetectContext): Pattern[] {
 	if (ming.branch !== 6) {
 		return [];
@@ -222,6 +265,7 @@ function detectMaTouDaiJian({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
+/** 恶格识别器注册表：煞忌交侵、主刑伤波折的一组。 */
 export const E_GE: ReadonlyArray<Detector> = [
 	detectHuaJiRuMingQian,
 	detectYangTuoJiaJi,

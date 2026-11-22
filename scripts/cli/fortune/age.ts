@@ -16,6 +16,8 @@ import { huiZhaoLine } from "./sihua-helpers";
  * @param chart - 命盘
  * @param age - 小限虚岁；缺省时传当前虚岁
  * @param liuNianYear - 流年公历年（对照行用；缺省当前年由调用方给）
+ *
+ * @returns 小限专题的输出行（标题 + 小限宫详表 + 三方四正 + 会照主星，再接限年对照行）；只拼行，未 `join`
  */
 export function ageSection(chart: ZiweiChart, age: number, liuNianYear: number): string[] {
 	const xp = agePalaceOf(chart, age);

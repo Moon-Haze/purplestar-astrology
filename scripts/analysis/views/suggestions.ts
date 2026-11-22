@@ -9,6 +9,8 @@
  *
  * 产出**内部条目流**（views 的实现形态，见 `../items`）：slot = `suggestions`。
  *
+ * @file 六、综合建议 —— 报告的收尾节，**无条件出**
+ *
  * @packageDocumentation
  */
 
@@ -18,7 +20,12 @@ import { buildTopicSuggestions, suggestionLine } from "../../analysis/suggestion
 import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
-/** 渲染「六、综合建议」整节的结构化条目流。 */
+/**
+ * 渲染「六、综合建议」整节的结构化条目流。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：建议条目由 {@link buildTopicSuggestions} 按盘推算，本函数只做【】版式装配与主题名代入，不自行判定信号
+ * @returns 条目流：`【综合建议】` 节头 + 逐条建议行（含降级收束句）+ `【继续深度追问】` 节头与一句引导语；本函数无「有内容才出」的分支，始终非空
+ */
 function renderSuggestionsItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { topic } = ctx;
 
@@ -42,7 +49,12 @@ function renderSuggestionsItems(ctx: AnalysisContext): AnalysisItem[] {
 	return items;
 }
 
-/** 渲染「六、综合建议」整节（文本投影）。 */
+/**
+ * 渲染「六、综合建议」整节（文本投影）。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）
+ * @returns 与 {@link renderSuggestionsItems} 条目流逐条对应的文本行；节无条件出，故结果不为空数组
+ */
 export function renderSuggestions(ctx: AnalysisContext): string[] {
 	return formatItems(renderSuggestionsItems(ctx));
 }

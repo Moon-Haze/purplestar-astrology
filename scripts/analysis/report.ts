@@ -8,6 +8,8 @@
  *
  * 剥头口径、报告小节流与 html 版两节省略的理由，见 docs/code/analysis.md。
  *
+ * @file 全盘报告编排层 —— 与 {@link ./index|getTopicAnalysis} 平级的第二编排器（Markdown 形态）
+ *
  * @packageDocumentation
  */
 
@@ -36,12 +38,15 @@ import { renderMutagen } from "../analysis/views/mutagen";
 
 /** 一条经典出处引文：`loc` 是「书名·章节名」，`text` 是段落原文。 */
 export interface ReportCitation {
+	/** 出处定位串：`书名·章节名` */
 	loc: string;
+	/** 该出处的段落原文 */
 	text: string;
 }
 
 /** {@link getTopicReport} 的可选参数：在 {@link AnalysisOptions} 上叠加引文与装配状态。 */
 export type ReportOptions = AnalysisOptions & {
+	/** 经典出处引文列表：由 CLI 层查古籍后递入，本模块只按序拼进「经典出处」节；缺省为空 */
 	citations?: ReportCitation[];
 	/**
 	 * 报告装配层的跨节去重状态：键 = 论断全文文本，值 = 该文的首现 / 主场板块名。
@@ -67,6 +72,9 @@ export type ReportOptions = AnalysisOptions & {
  *
  * ⚠️ 无头输出按原行装配：报告标题会与它自带的头并存 —— 那是应当被看见的漂移。
  * 完整口径见 docs/code/analysis.md。
+ *
+ * @param lines - 叶子 view 输出的文本行（可含首部空行与一个 `**【…】**` 节头）
+ * @returns 新的行数组：首部空行与首个节头已剥除，其余 `**【…】**` 行改写为 `#### …` 三级升标题并前后各留一空行；不修改入参
  */
 function asMarkdownBlock(lines: string[]): string[] {
 	let i = 0;
@@ -91,7 +99,12 @@ function asMarkdownBlock(lines: string[]): string[] {
 	return out;
 }
 
-/** 去掉行数组首尾的空行（拼接小节时统一由编排层控制间距）。 */
+/**
+ * 去掉行数组首尾的空行（拼接小节时统一由编排层控制间距）。
+ *
+ * @param lines - 待裁剪的文本行
+ * @returns 新的行数组：只裁掉首尾 `""`，中间的空行原样保留；入参不被修改
+ */
 function trimBlanks(lines: string[]): string[] {
 	let start = 0;
 	let end = lines.length;
@@ -110,6 +123,10 @@ function trimBlanks(lines: string[]): string[] {
  * @remarks
  * 单独成函数而非让 CLI 读 ctx：`AnalysisContext` 不在公开面上，而主宫主星这组
  * 派生值（含空宫借对宫）必须与报告本体同源，不能让调用方自己再找一遍宫。
+ *
+ * @param chart - 已排好的命盘
+ * @param topic - 主题键（14 个之一）
+ * @returns 该主题的主宫名（展开形）、主星名（空宫借对宫时取借来的那颗，无主星为 `null`）、是否借宫；主宫在盘里找不到时返回 `null`（调用方据此跳过引文查询）
  */
 export function getTopicReportMeta(
 	chart: ZiweiChart,
@@ -141,6 +158,10 @@ export function getTopicReportMeta(
  * 在本板块展开（双主星主场展开），故一并登记——改前它只能靠别的板块三方联动
  * 抢走首现，指引指错主场（天相→财富运势、巨门→健康状况）。空宫等无内容的
  * 主题返回空数组，调用方跳过登记。
+ *
+ * @param chart - 已排好的命盘
+ * @param topic - 主题键（14 个之一）
+ * @returns 该主题核心论断需登记主场的全文数组：第一主星全文在前、双主星第二主星全文在后，空的自动剔除；主宫找不到或该主题无全文内容时为空数组
  */
 export function getTopicMainContentTexts(chart: ZiweiChart, topic: TopicKey): string[] {
 	const ctx = makeContext(chart, topic, {});
@@ -159,6 +180,9 @@ export function getTopicMainContentTexts(chart: ZiweiChart, topic: TopicKey): st
  *
  * 未起运（renderDecadal 返回空）时返回童限提示句，文案与 {@link getTopicReport}
  * 的未起运分支逐字一致。
+ *
+ * @param chart - 已排好的命盘
+ * @returns 大限节的 Markdown 正文（已剥 view 自带节头、首尾空行已 trim）；未起运时返回童限提示句，主宫找不到时返回空串
  */
 export function getDecadalSection(chart: ZiweiChart): string {
 	const ctx = makeContext(chart, "overview", {});

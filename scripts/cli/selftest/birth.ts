@@ -14,7 +14,13 @@ import { chartSignature } from "../chart/render";
 import { generateChart } from "@/algorithm";
 import { eq, type SelftestDeps } from "./kit";
 
-/** 城市容错：别名解析 / 未收录 / exact 标志 / 未给地点提示。 */
+/**
+ * 城市容错：别名解析 / 未收录 / exact 标志 / 未给地点提示。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；九条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是同一城市的几种写法解析出不同经度、未收录城市被误匹配、直辖市分区或同名双轨（朝阳）串台、省市连写被短名截胡、容错命中不提示（或精确命中乱提示）、未给地点时不提醒按 120° 处理
+ */
 export function runCityTolerance({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("城市容错：石家庄 / 石家庄市 / 河北省石家庄市 解析一致", () => {
 		const a = findLongitude("石家庄"),
@@ -194,7 +200,13 @@ export function runCityTolerance({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 性别护栏：缺失 / 非法一律报错，别名等价。 */
+/**
+ * 性别护栏：缺失 / 非法一律报错，别名等价。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；三条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是缺 `--gender` 或取值非法时没报错（静默默认 male 会排出一张无信号的错盘）、或别名（女 ≡ female，男 ≡ male）不等价
+ */
 export function runGenderGuard({ ok }: Pick<SelftestDeps, "ok">): void {
 	// 性别决定大限顺逆：同一张盘男女的大限可差 80 年（26-35岁 ↔ 106-115岁）。
 	// 缺失或非法若被静默兜底成 male，用户拿到的是一张没有任何异常信号的错盘，
@@ -240,7 +252,13 @@ export function runGenderGuard({ ok }: Pick<SelftestDeps, "ok">): void {
 	//    在排盘侧没有可复现的入口。
 }
 
-/** 出生信息形态：位置参数归类、城市 token 边界、日期 round-trip 校验。 */
+/**
+ * 出生信息形态：位置参数归类、城市 token 边界、日期 round-trip 校验。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；三条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是位置参数与旗标形态排出的盘不一致、城市 token 的三条边界（省市连写 / 裸省名按省会 / 带空格）行为漂移、不存在的公历日期被静默归一化成另一张盘
+ */
 export function runBirthInfoShape({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("出生信息：位置参数形态归类（日期/时刻/性别/城市），与旗标形态同盘", () => {
 		// 零参数快捷形态：astrology 1990-5-15 9:30 男 北京 —— 按形态归类、顺序无关。

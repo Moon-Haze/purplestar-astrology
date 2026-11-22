@@ -14,6 +14,8 @@
  * 三方四正、夹宫）、判定实现口径、主要古籍出处与「回归与效力边界」，一并见
  * docs/code/patterns.md。
  *
+ * @file 紫微斗数格局识别 —— 解读层的主体：由一张已排好的 `ZiweiChart` 判出命中的格局清单
+ *
  * @packageDocumentation
  */
 

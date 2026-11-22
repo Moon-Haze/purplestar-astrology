@@ -14,6 +14,8 @@
  *    是键集合的单一真相源，CLI 报错提示与自检断言复用它，**不手抄字符串**。
  *
  * 「清单注册而非文件系统自动发现」的取舍与新增一个域的步骤，见 docs/code/knowledge.md。
+ *
+ * @file 知识源注册表（Phase 1 · KnowledgeSource 接缝）
  */
 
 import type { KnowledgeSource } from "./types";

@@ -1,3 +1,6 @@
+/**
+ * @file parquet 基准样本的读取、查询和结构化映射层。
+ */
 // ── 基准样本数据源：db/dataset/*.parquet ──
 //
 // 测试**读侧**的 DuckDB 入口：采样、取行、读回表结构都在这里。写侧（构建分片、
@@ -51,7 +54,9 @@ const TABLES = ["samples", "palaces"] as const;
 
 /** 过滤条件。对应 CLI 的 `--year` / `--month`；`limit` 对应 `--limit`。 */
 export interface SampleFilter {
+	/** 只读该公历年的样本（`s.year = ?`）；省略即不限 */
 	year?: number;
+	/** 只读该公历月的样本（`s.month = ?`，1–12）；省略即不限 */
 	month?: number;
 	/** 已读取的样本数上限；达到即停止。省略或 `Infinity` 表示不限。 */
 	limit?: number;
@@ -59,6 +64,7 @@ export interface SampleFilter {
 
 /** 数据源不可用（缺依赖 / 缺文件 / 被其他进程锁住）。`message` 已是可直接打印给用户的完整指引。 */
 export class SourceError extends Error {
+	/** 数据源不可用：消息已是可直接打印给用户的完整指引。 */
 	constructor(message: string) {
 		super(message);
 		this.name = "SourceError";
@@ -70,6 +76,9 @@ export class SourceError extends Error {
  *
  * 它是 devDependency，只有三个**手工执行**的构建/验收工具用到它 —— 运行 skill 本身
  * （`node scripts/purple-star.ts ...`）完全不需要。所以「没装」是正常状态，不是故障。
+ *
+ * @param err - 捕获到的 `import` 失败原因（非 Error 时取 String）
+ * @returns 可直接打印的多行指引：缺什么依赖、为什么不必装、怎么装
  */
 export function missingDepHint(err: unknown): string {
 	return (
@@ -88,6 +97,10 @@ export function missingDepHint(err: unknown): string {
  *    `reference/` 下的 jsonl 语料是同一份数据的原始形态。
  *    曾因 `ls` 是带 `--git-ignore` 的 eza 别名而误判语料已失，
  *    见 docs/plans/ 下的设计文档。
+ *
+ * @param dbDir - 数据集目录（默认 {@link DB_DIR}）
+ * @param missing - 缺失的表名清单；为空时不列「缺少的表」行
+ * @returns 可直接打印的多行指引：缺哪张表、为什么不是数据丢失、怎么重建
  */
 export function missingDbHint(dbDir: string = DB_DIR, missing: readonly string[] = []): string {
 	const which = missing.length > 0 ? `  缺少的表：${missing.join("、")}\n` : "";
@@ -109,6 +122,9 @@ const connections = new Map<string, Promise<DuckDBConnection>>();
 /**
  * 数据集里某张表的 parquet 文件路径。命名规则与产出方一致：`<表>.parquet` ——
  * 唯一定义处是 tools/db/db.ts，构建器按 `path.join(datasetDir, 表名 + ".parquet")` 导出。
+ *
+ * @param dbDir - 数据集目录
+ * @returns 该表 parquet 文件的绝对路径
  */
 function tablePath(dbDir: string, table: string): string {
 	return resolve(dbDir, `${table}.parquet`);
@@ -119,6 +135,9 @@ function tablePath(dbDir: string, table: string): string {
  *
  * ⚠️ 必须是**字面量**而非占位符：`read_parquet()` 的路径参数在绑定阶段就要求常量，
  *    传 `?` 会被 DuckDB 拒绝。所以路径只能自己拼进 SQL，引号也必须自己转义。
+ *
+ * @param value - 待转义的字符串（通常是文件路径）
+ * @returns 单引号包裹的 SQL 字面量，内部单引号已翻倍
  */
 function sqlLiteral(value: string): string {
 	return `'${value.replace(/'/g, "''")}'`;
@@ -131,8 +150,9 @@ function sqlLiteral(value: string): string {
  * parquet 文件。调用方因此完全不必知道数据来自 parquet —— `FROM samples JOIN palaces`
  * 照写，本文件下半部分的查询代码一个字都不用改。
  *
- * @param dbDir 数据集目录。**仅供测试注入一个不存在的路径**；生产调用一律走默认值，
+ * @param dbDir - 数据集目录。**仅供测试注入一个不存在的路径**；生产调用一律走默认值，
  *              三个工具都不传这个参数。
+ * @returns 连接单例：同一 `dbDir` 复用同一个 Promise
  * @throws {SourceError} 缺依赖、缺任一张表、或 parquet 读不出来时，
  *         `message` 已是可直接打印的完整指引。
  */
@@ -142,6 +162,7 @@ export async function openSource(dbDir: string = DB_DIR): Promise<DuckDBConnecti
 		return cached;
 	}
 
+	/** 惰性建立的连接单例（进程退出时自然释放）。 */
 	const pending = (async (): Promise<DuckDBConnection> => {
 		// ⚠️ 动态 import 而非顶层静态 import：它是 devDependency，可能没装。
 		//    静态 import 会让整个模块加载失败，连错误指引都打不出来。
@@ -192,7 +213,11 @@ export async function openSource(dbDir: string = DB_DIR): Promise<DuckDBConnecti
 	return pending;
 }
 
-/** 关闭全部已建立的连接（手工工具收尾用）。 */
+/**
+ * 关闭全部已建立的连接（手工工具收尾用）。
+ *
+ * @returns 无返回值；清空连接缓存，失败静默
+ */
 export function closeSource(): void {
 	for (const pending of connections.values()) {
 		pending.then(conn => conn.closeSync()).catch(() => {});
@@ -208,46 +233,75 @@ export function closeSource(): void {
 
 /** `samples` 表的一行（只列本模块用到的列）。 */
 export interface SampleRow {
+	/** 出生公历年（四位） */
 	year: number;
+	/** 出生公历月 1–12 */
 	month: number;
+	/** 出生公历日 1–31 */
 	day: number;
 	/** **时辰序号** 0–11（不是 24 小时制的小时；库中正是此时辰序号）。db 列名就叫 `hour`。 */
 	hour: number;
+	/** 性别字面量（库中为 `male` / `female`；映射时非 `female` 一律按 `male` 收，见 rowsToSample） */
 	gender: string;
+	/** 出生地经度（真太阳时经度校正用）；v4 数据链生成时恒为 120，故校正量为 0 */
 	longitude: number;
+	/** 出生日所属农历年（以正月初一为界，故可能比公历年小 1） */
 	lunar_year: number;
+	/** 农历月 1–12；闰月由 {@link is_leap_month} 另标，月序不额外偏移 */
 	lunar_month: number;
+	/** 农历日 1–30 */
 	lunar_day: number;
+	/** 农历年天干索引 0–9 */
 	year_stem: number;
+	/** 农历年地支索引 0–11 */
 	year_branch: number;
+	/** 是否闰月 */
 	is_leap_month: boolean;
+	/** 命宫地支索引 0–11 */
 	ming_gong_branch: number;
+	/** 身宫地支索引 0–11 */
 	shen_gong_branch: number;
+	/** 五行局局数 2–6（2 水二局 … 6 火六局） */
 	wuxing_ju: number;
+	/** 五行局名 iztro 原文（如「金四局」） */
 	wuxing_ju_name: string;
+	/** 紫微星所在宫的地支索引 0–11 */
 	ziwei_pos: number;
+	/** 样本生成当年的虚岁（2026 快照，比对时由比对器按注入时间重算，不采信此快照值） */
 	current_age: number;
+	/** 样本生成当年所走大限的下标（同上：时变字段，比对时重算；`-1` 为童限未起运） */
 	current_daxian_index: number;
 }
 
 /** `palaces` 表的一行（只列本模块用到的列）。 */
 export interface PalaceRow {
+	/** 地支索引 0–11（库中行的物理顺序是丑起，读出后须按 `(branch + 10) % 12` 重排成寅起） */
 	branch: number;
+	/** 宫干（天干索引 0–9） */
 	stem: number;
 	/** **iztro 原生口径**宫名（有「仆役」无「交友」）；翻译交给 `compare.ts` 的 normalizePalaceName。 */
 	palace_name: string;
+	/** 主星名列表（iztro `major` 段；映射时 type 记为 `major`） */
 	major_stars: string[];
+	/** 吉星名列表（iztro `lucky` 段，含左辅/右弼/文昌/文曲/天魁/天钺/禄存/天马；映射时 type 记为 `soft`） */
 	lucky_stars: string[];
+	/** 煞星名列表（iztro `sha` 段：擎羊/陀罗/火星/铃星/地空/地劫；映射时 type 记为 `tough`） */
 	sha_stars: string[];
+	/** 杂曜名列表（iztro `minor` 段，兜底；映射时 type 记为 `minor`） */
 	minor_stars: string[];
 	/** 与 `major_stars` **按下标配对**。 */
 	major_brightness: string[];
 	/** 形如 `["巨门:权"]`；某星无四化则**不在数组内**。 */
 	sihua_stars: string[];
+	/** 是否命宫 */
 	is_ming_gong: boolean;
+	/** 是否身宫 */
 	is_shen_gong: boolean;
+	/** 该行是否为样本生成当年的当前大限宫（时变字段，比对时重算，不采信此快照值） */
 	is_current_daxian: boolean;
+	/** 该宫所属大限的起始虚岁（闭区间左端） */
 	daxian_start: number;
+	/** 该宫所属大限的结束虚岁（闭区间右端，恒为 daxian_start + 9） */
 	daxian_end: number;
 }
 
@@ -266,12 +320,22 @@ const SIHUA_STARS: ReadonlySet<string> = new Set(Object.values(SI_HUA_TABLE).fla
  * 18 ≠ 四化表自身的覆盖数 15：表里 40 个格子去重是 15 颗（11 主星 + 4 辅星），差额来自
  * **终生不参与四化的三颗主星** 天府/天相/七杀 —— 它们有键（因为 type 是 major）、值恒为 ""。
  * 所以规则拆成两半：major 一侧出 14 颗，SIHUA_STARS 一侧只额外补进 4 颗辅星。
+ *
+ * @param type - 星曜类型（major / soft / tough / minor）
+ * @param name - 星曜名
+ * @returns 该星重建后是否该带 `mutagen` 键
  */
 function hasMutagenKey(type: Star["type"], name: string): boolean {
 	return type === "major" || SIHUA_STARS.has(name);
 }
 
-/** 从 `palaces.sihua_stars`（形如 `["巨门:权"]`）取该星的四化值；该星无四化则 `""`。 */
+/**
+ * 从 `palaces.sihua_stars`（形如 `["巨门:权"]`）取该星的四化值；该星无四化则 `""`。
+ *
+ * @param p - `palaces` 表的一行（`sihua_stars` 形如 `星名:四化`）
+ * @param name - 星曜名
+ * @returns 该星的四化取值；无对应条目时为 `""`
+ */
 function mutagenOf(p: PalaceRow, name: string): string {
 	for (const entry of p.sihua_stars ?? []) {
 		const i = entry.indexOf(":");
@@ -288,6 +352,9 @@ function mutagenOf(p: PalaceRow, name: string): string {
  * ⚠️ **键序即 JSON 输出顺序**，必须与 jsonl 逐字一致：`branch, stem, name, stars,
  *    decadalRange, isSoulPalace, isBodyPalace, isCurrentDecadal`。调换字面量里的书写顺序
  *    会让 charts.jsonl 产生 diff（比对器察觉不到，只有字节级互验能抓住）。
+ *
+ * @param p - `palaces` 表的一行
+ * @returns 键序与 jsonl 一致的宫位对象
  */
 function palaceOf(p: PalaceRow): BaselinePalace {
 	const stars: BaselineStar[] = [];
@@ -335,6 +402,9 @@ function palaceOf(p: PalaceRow): BaselinePalace {
  *
  * ⚠️ 比对器对 `decadals` 是**按下标**逐项比的（`aD[i]` vs `bD[i]`），顺序错了直接报红 ——
  *    这与 `palaces` 按 `branch` 建索引不同。库中行序是丑起，不能直接用。
+ *
+ * @param palaces - 该样本的 12 行宫位
+ * @returns 按 `startAge` 升序的 12 个大限
  */
 function decadalsOf(palaces: PalaceRow[]): BaselineDecadal[] {
 	return [...palaces] // 复制：不就地改动调用方的数组
@@ -354,8 +424,10 @@ function decadalsOf(palaces: PalaceRow[]): BaselineDecadal[] {
  * ⚠️ 各层的**键插入顺序**必须与 jsonl 完全一致 —— `JSON.stringify` 按插入顺序输出，
  *    而 `verify-source.ts` 是逐字节比对。顺序见本文件顶部与 spec 的「事实基线」。
  *
- * @param sample  `samples` 表的一行
- * @param palaces 该样本的 12 行 `palaces`，**已按 `(branch + 10) % 12` 排好**（寅起）
+ * @param sample - `samples` 表的一行
+ * @param palaces - 该样本的 12 行 `palaces`，**已按 `(branch + 10) % 12` 排好**（寅起）
+ *
+ * @returns `{ birthInfo, chart }`，键序与 charts.jsonl 的一行逐字一致
  */
 export function rowsToSample(sample: SampleRow, palaces: PalaceRow[]): BaselineSample {
 	const birthInfo: BirthInfo = {
@@ -449,17 +521,28 @@ const KEY_COLUMNS = "s.year = ? AND s.month = ? AND s.day = ? AND s.hour = ? AND
  *    `gender: string`（见原注释），`BirthInfo` 的联合类型与之兼容。
  */
 type SampleKey = {
+	/** 出生公历年（四位） */
 	year: number;
+	/** 出生公历月 1–12 */
 	month: number;
+	/** 出生公历日 1–31 */
 	day: number;
+	/** **时辰序号** 0–11（db 列名口径；与 {@link timeIndex} 同域，两者给其一即可） */
 	hour?: number;
+	/** **时辰序号** 0–11（`BirthInfo` 键口径；与 {@link hour} 同域，两者给其一即可） */
 	timeIndex?: number;
+	/** 性别字面量（`male` / `female`） */
 	gender: string;
 };
 
 /**
  * 完备性护栏：正常样本恒 12 行宫位。既不是 12，只可能是库被截断或半写入 ——
  * 必须大声失败，而不是静默产出一个宫数不足的畸形盘（rowsToSample 不会自检）。
+ *
+ * @param rows - 该样本的宫位行
+ * @param key - 样本键，仅用于报错文案
+ * @returns 无返回值；行数不是 12 时抛错
+ * @throws {SourceError} 宫位行数不是 12（库被截断或半写入）
  */
 export function assertTwelveRows(rows: PalaceRow[], key: SampleKey): void {
 	if (rows.length !== 12) {
@@ -479,6 +562,9 @@ export function assertTwelveRows(rows: PalaceRow[], key: SampleKey): void {
  *
  * ⚠️ 返回 `null` 而非抛错是有意的：`build-fixtures.ts` 在闰月边界上真会遇到取不到的槽位，
  *    它的既有行为是打印「样本缺失」后 `continue`。抛错会让整个重建中断。
+ *
+ * @param birthInfo - 出生信息（`timeIndex` 是 0–11 的时辰序号）
+ * @returns 该样本；库里没有对应行时为 `null`
  */
 export async function fetchSample(birthInfo: BirthInfo): Promise<BaselineSample | null> {
 	const conn = await openSource();
@@ -508,6 +594,8 @@ export async function fetchSample(birthInfo: BirthInfo): Promise<BaselineSample 
 /**
  * 流式遍历样本。回调返回 `false` 即停止读取。
  *
+ * @param filter - 年份 / 月份过滤与读取条数上限（`limit` 不传即读尽）
+ * @param fn - 逐样本回调；返回 `false` 即停止读取
  * @returns `true` = 读尽；`false` = 被回调中止，或达到了 `filter.limit`。
  *          **这个返回值是刻意保留的** —— `full-corpus.ts` 的 `--limit` 逻辑靠它区分
  *          「扫完了」与「够了，停」。不要图省事改成 `void`。

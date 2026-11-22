@@ -59,6 +59,11 @@ import { KNOWLEDGE_GRADE_ORDER } from "@/analysis/grades";
  * 抬头行（命盘总览式）：`标题[名字 ]日期 说明 · 性别` —— --palaces（十二宫详表）与
  * --topic（主题论断）两处共用；名字槽缺省时直接省略，不残留双空格。
  * （2026-11-21 评审 N1：--palaces 曾在本分支手拼抬头，缺名时残留三空格，收编到此单点。）
+ *
+ * @param title - 抬头标题（本模块内是「命盘  」与「【主题论断 · X】」两种）
+ * @param info - 出生信息（取 `name` 与 `gender` 两处；`name` 缺省时名字槽整体省略）
+ * @param note - 排盘口径说明（`CaliberBasis.note`，如钟表时刻 → 时辰的换算说明）
+ * @returns 单行抬头 `标题[名字 ]日期 说明 · 性别`
  */
 function chartHeader(title: string, info: BirthInfo, note: string): string {
 	const namePart = info.name ? `${info.name} ` : "";
@@ -70,6 +75,10 @@ function chartHeader(title: string, info: BirthInfo, note: string): string {
  * `synastry/chart-view 的 readAnalyzeJson` 所消费的形状。
  *
  * @remarks
+ *
+ * @param input - 语义入参：`chart` 命盘本体、`liuNianYear` 流年年号、`liuYueMonth` 农历月（`null` = 不算流月）、`liuRiDay` 农历日（`null`/`undefined` = 不算流日）、`liuShiHour` 时支 0-12（`null`/`undefined` = 不算流时，12 = 晚子时）、`basis` 排盘依据整包
+ * @returns 顶层键恒定的 JSON 字符串（未配置的运限层为 `null`；键集以本函数序列化对象为准）
+ *
  * 提为具名纯函数是为了让契约**一处生产、一处消费、一处对拍** —— selftest 可进程内直调
  * 本函数、把产物喂给消费方校验。顶层键以**本函数序列化对象为准**（十三个键恒定，未配置
  * 的运限层为 null）——键集冻结面与逐键语义见 docs/code/cli-commands.md，此处不复述清单
@@ -206,6 +215,11 @@ const SAMPLE_TRAILER = [
  * 统一检测入口——前置段按条目的 bespoke 拒收表态抛专用文案（`--report × --view`），
  * 后置段做通用被吞检测（放行集合 = 条目 `consumes`）。清单序即优先级，文案由其派生。
  * 链的完整表述见 docs/code/cli-commands.md。
+ *
+ * @param args - CLI 参数表（按 `camelKey` 查旗标是否在场；`undefined` 即未给）
+ * @param exclusive - 本次命中的独占分支旗标名（带 `--`，须在 `EXCLUSIVE_BRANCHES` 已登记）
+ * @returns 无返回值；只在有参数会被静默吞掉时才抛错
+ * @throws 该分支声明了 bespoke 拒收（如 `--report × --view`）且对应旗标在场时，抛该条目的专用文案；分支放行集合之外还有功能参数在场时，抛出被吞参数清单与独占优先级指路
  */
 function assertNoShadowedFeatures(
 	args: CliArgs,
@@ -240,23 +254,6 @@ function assertNoShadowedFeatures(
 	}
 }
 
-/**
- * `astrology` 命令：解读用的完整输入包（本 CLI 最常用的一条）。
- *
- * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--pattern` / `--mutagen` /
- *   `--decadal [虚岁]` / `--ages [虚岁]` / `--yearly [年]` / `--monthly` / `--focus` /
- *   `--report`
- * @returns 已渲染好的文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 字符串
- *
- * @remarks
- * **精简概览 + 专题分发**：不带任何专题旗标时输出口径提示、基本信息面板与运限速览 +
- * 专题指路；给了哪个专题旗标就只追加该专题的详版（可叠加，按 `--pattern` → `--mutagen`
- * → `--yearly` → `--decadal` → `--ages` → `--focus` 的固定顺序），且不再带面板与指路
- * —— 已在深入，基底与指路都是噪声。十二宫逐宫详表归 `--palaces` 与 `--json`。
- *
- * **零输入演示**：出生信息一项没给且未表达其他输出意图时，以内置虚构样例演示并附用法
- * 指路；部分输入不适用，继续按「缺一问一」报错。完整契约见 docs/code/cli-commands.md。
- */
 /**
  * 「给定 args + 排盘上下文 → 产出专题 section 序列」—— 候选 3 把旗标 → section 的接线
  * 升为可直测 interface（原 `cmdAstrology` 默认路径的内联块）：接线本身成为被测物，
@@ -341,6 +338,23 @@ export function composeSections(ctx: AstrologyContext): string[] {
 	return out;
 }
 
+/**
+ * `astrology` 命令：解读用的完整输入包（本 CLI 最常用的一条）。
+ *
+ * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--pattern` / `--mutagen` /
+ *   `--decadal [虚岁]` / `--ages [虚岁]` / `--yearly [年]` / `--monthly` / `--focus` /
+ *   `--report`
+ * @returns 已渲染好的文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 字符串
+ *
+ * @remarks
+ * **精简概览 + 专题分发**：不带任何专题旗标时输出口径提示、基本信息面板与运限速览 +
+ * 专题指路；给了哪个专题旗标就只追加该专题的详版（可叠加，按 `--pattern` → `--mutagen`
+ * → `--yearly` → `--decadal` → `--ages` → `--focus` 的固定顺序），且不再带面板与指路
+ * —— 已在深入，基底与指路都是噪声。十二宫逐宫详表归 `--palaces` 与 `--json`。
+ *
+ * **零输入演示**：出生信息一项没给且未表达其他输出意图时，以内置虚构样例演示并附用法
+ * 指路；部分输入不适用，继续按「缺一问一」报错。完整契约见 docs/code/cli-commands.md。
+ */
 export function cmdAstrology(args: CliArgs) {
 	// --template：打印配置模板即止（不排盘）
 	if (args.template) {

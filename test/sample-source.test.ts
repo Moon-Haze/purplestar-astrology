@@ -1,3 +1,6 @@
+/**
+ * @file 基准数据源纯函数与真实行映射的回归测试。
+ */
 // ── 层 5：基准数据源的纯函数 ──
 //
 // ⚠️ 本文件**不得触碰任何数据文件**。`npm test` 必须在「无 db/ 数据集、
@@ -86,7 +89,12 @@ describe("基准数据源（纯函数与错误指引）", () => {
 	});
 });
 
-/** 造一行 `samples`（只写测试关心的列，其余给 0 —— 映射是逐列的，不会串）。 */
+/**
+ * 造一行 `samples`（只写测试关心的列，其余给 0 —— 映射是逐列的，不会串）。
+ *
+ * @param over - 要覆盖的列（只影响给出的键）
+ * @returns 一行合成的 `samples` 记录
+ */
 function sampleRow(over: Partial<SampleRow> = {}): SampleRow {
 	return {
 		year: 1924,
@@ -112,7 +120,12 @@ function sampleRow(over: Partial<SampleRow> = {}): SampleRow {
 	};
 }
 
-/** 造一行 `palaces`。 */
+/**
+ * 造一行 `palaces`。
+ *
+ * @param over - 要覆盖的列（只影响给出的键）
+ * @returns 一行合成的 `palaces` 记录
+ */
 function palaceRow(over: Partial<PalaceRow> = {}): PalaceRow {
 	return {
 		branch: 2,
@@ -133,7 +146,11 @@ function palaceRow(over: Partial<PalaceRow> = {}): PalaceRow {
 	};
 }
 
-/** 造齐 12 个宫（大限区间连续：2 岁起，每宫十年）。 */
+/**
+ * 造齐 12 个宫（大限区间连续：2 岁起，每宫十年）。
+ *
+ * @returns 12 个宫位行（地支寅起、大限区间连续）
+ */
 function twelvePalaces(): PalaceRow[] {
 	return Array.from({ length: 12 }, (_, i) =>
 		palaceRow({
@@ -160,8 +177,11 @@ function twelvePalaces(): PalaceRow[] {
 
 /** `rowsToSample` 产出 `chart` 的真实形状：`BaselineChart` 之外，jsonl 还带三个多余字段。 */
 type ReconstructedChart = BaselineChart & {
+	/** `chart.birthInfo` —— jsonl 每行都带、但 `BaselineChart` 未声明的多余字段（应与顶层 `birthInfo` 同内容） */
 	birthInfo: unknown;
+	/** 样本生成当年的虚岁（jsonl 多余字段；时变值，只断言它被 `rowsToSample` 原样带出） */
 	currentAge: number;
+	/** 样本生成当年所走大限的下标（jsonl 多余字段；`-1` 为童限未起运） */
 	currentDecadalIndex: number;
 };
 
@@ -321,7 +341,9 @@ describe("重建映射 rowsToSample（合成行，不碰数据文件）", () => 
 
 /** 产物 `raw-rows.json` 的一个条目：挑选理由 + 12 行真实 JOIN 行。 */
 interface RawEntry {
+	/** 为什么挑这条样本 —— 失败信息里原样打印，让人看得出这一片的覆盖意图 */
 	why: string;
+	/** 该样本的 12 行真实 JOIN 行（`samples + palaces` 列，`sample_id` 已归一成 number） */
 	rows: Array<Record<string, unknown>>;
 }
 

@@ -10,6 +10,8 @@
  *    疑似北派钦天、北派飞星与三合派立场冲突），新增引文前先读它。
  *
  * 从「核对记录」转为「防回流禁语清单」的过程见 docs/code/corpus.md。
+ *
+ * @file 「倪师引用」文献核对记录 —— 本仓内核中所有「倪师/倪海厦」引用的文献核对表
  */
 
 export type AnnotationStatus =
@@ -19,6 +21,7 @@ export type AnnotationStatus =
 export interface AnnotationEntry {
 	/** 引文原文 */
 	text: string;
+	/** 核对档位：verified 已核实 / traditional 传统口诀 / suspect 来源存疑 / fabricated 伪造或自撰 / methodology 方法论偏离判据 */
 	status: AnnotationStatus;
 	/** 核对结论与处置建议（2 条早期记录未填） */
 	note?: string;
@@ -26,6 +29,7 @@ export interface AnnotationEntry {
 	source?: string;
 }
 
+/** 倪师引用的文献核对记录表：逐条标注档位与核验说明。 */
 export const ANNOTATIONS: AnnotationEntry[] = [
 	{
 		text: "紫微斗数分析数据库 — 倪海厦三合派体系",

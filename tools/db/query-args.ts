@@ -1,3 +1,6 @@
+/**
+ * @file 数据库查询命令行参数的解析与校验。
+ */
 // query 工具的命令行解析（tools/db）：旗标 + 位置参数 → 结构化 QueryCommand。
 // 纯逻辑模块，不碰 DuckDB，错误路径可独立测试。
 import path from "node:path";
@@ -10,6 +13,7 @@ import { deletedArgHint } from "./db";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // 数据住在 <skill 根>/db 子目录里（dataset/ 与库皆然，test/lib/sample-source.ts 的
 // DB_DIR 同源），默认即指向它；--out 可覆盖为任意构建产物目录。
+/** 查询默认指向的目录：skill 根下的 `db/`，可用 `--out` 覆盖。 */
 export const DEFAULT_OUT = path.join(ROOT, "db");
 
 const USAGE = [
@@ -20,8 +24,10 @@ const USAGE = [
 
 // 用法错误（拼错子命令、缺参、id 非法）与运行错误分开：前者 exit 2 且只打消息不打栈，
 // 与「没给 SQL」的旧约定一致。
+/** 用法错误：退出码 2，只打消息不打栈。 */
 export class UsageError extends Error {}
 
+/** 查询指令：裸 SQL、按样本 ID 取、或计数。 */
 export type QueryCommand =
 	| { kind: "sql"; sql: string }
 	| { kind: "sample"; id: number }
@@ -30,18 +36,30 @@ export type QueryCommand =
 	| { kind: "search"; topic: string; pattern: string; limit: number }
 	| { kind: "count" };
 
+/** 解析后的查询参数：输出形态、目标目录与指令。 */
 export interface ParsedArgs {
+	/** 是否以 JSON 形态输出（对应 `--json`；默认 false 走人读渲染） */
 	json: boolean;
+	/** 库与 dataset 所在目录（默认 {@link DEFAULT_OUT}，可经 `--out` 覆盖为任意构建产物目录） */
 	out: string;
+	/** 要执行的查询指令：裸 SQL / 按样本 ID 取 / 检索 / 计数 */
 	command: QueryCommand;
 }
 
 const SUBCOMMANDS = new Set(["sample", "palaces", "topic", "search", "count"]);
 // search 输出量的默认上限与可调上限；runSearch 的提示文案也要引用它
+/** 检索类子命令的输出条数上限。 */
 export const SEARCH_MAX_LIMIT = 10_000;
 
 // 旗标解析与位置参数收集分离：--out 取值须先于「位置参数」判定消费掉，
 // 否则路径会被误当成 SQL / 子命令参数。
+/**
+ * 解析命令行：旗标与位置参数分离收集，`--out` 先于位置参数消费。
+ *
+ * @param argv - 命令行参数（不含 node 与脚本路径）
+ * @returns 旗标取值与解析出的子命令
+ * @throws {UsageError} 未知参数、`--out` 含 `..` 段、或已删除的 `--db`
+ */
 export function parseArgs(argv: string[]): ParsedArgs {
 	const a: ParsedArgs = { json: false, out: DEFAULT_OUT, command: { kind: "count" } };
 	const positionals: string[] = [];
@@ -83,6 +101,13 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
 // 第一个位置参数决定形态：命中子命令名走封装查询，否则整串当原样 SQL。
 // 只有**完整等于**子命令名才触发（一个以 "count" 开头的 SQL 字符串不会误入）。
+/**
+ * 把位置参数解析成查询指令（子命令 / 裸 SQL）。
+ *
+ * @param p - 位置参数（首项为子命令名或裸 SQL）
+ * @returns 解析出的子命令对象
+ * @throws {UsageError} 缺子命令、SQL 模式带多余参数、或子命令参数不合法
+ */
 function parsePositionals(p: string[]): QueryCommand {
 	const head = p[0];
 	if (head === undefined) {
@@ -140,6 +165,14 @@ function parsePositionals(p: string[]): QueryCommand {
 	}
 }
 
+/**
+ * 解析样本 ID；非数字时报错并指向用法。
+ *
+ * @param v - 位置参数里的 id 文本
+ * @param cmd - 子命令名，仅用于报错文案
+ * @returns 解析出的正整数 id
+ * @throws {UsageError} 缺省、非纯数字、或超出安全整数范围
+ */
 function parseId(v: string | undefined, cmd: string): number {
 	const n = v === undefined ? NaN : Number(v);
 	if (v === undefined || !/^\d+$/.test(v) || n < 1 || n > Number.MAX_SAFE_INTEGER) {
@@ -150,6 +183,12 @@ function parseId(v: string | undefined, cmd: string): number {
 	return n;
 }
 
+/**
+ * 列出可用的主题键，供拼错主题时提示。
+ *
+ * @param got - 用户输入的主题键
+ * @returns 带可选主题清单的报错文案
+ */
 function topicKeysHint(got: string): string {
 	const valid = STORAGE_TOPIC_KEYS.map(k => `${k}（${TOPIC_LABEL[k]}）`).join(" ");
 	return `未知主题 "${got}"。可选: ${valid}`;

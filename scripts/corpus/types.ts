@@ -5,6 +5,8 @@
  * 收录的都是公版古籍，无版权风险）。线上站点（Next.js）启动时一次性加载到内存，
  * 零 DB 依赖。检索与展示的最小单位是**段落**（不是词出现次数）。
  *
+ * @file 古籍原典查询库 — 类型定义
+ *
  * @packageDocumentation
  */
 // 形状契约与「为什么用 TS 模块而非外部 JSON」的论证见 docs/code/corpus.md。
@@ -44,6 +46,7 @@ export interface Chapter {
  * @remarks
  * 本类型是 `data/*.ts` 三个数据文件的顶层形状，也是 {@link ALL_BOOKS} 的元素类型。
  */
+/** 一部古籍：书名、章节与段落。 */
 export interface Book {
 	/** 书名 */
 	title: string;

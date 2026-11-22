@@ -23,9 +23,13 @@ import type { AnalysisView } from "../../analysis/data";
  * `--report` / 尾注只列三态（本命静态口径不含 mingpan），这是文案语义不是派生遗漏。
  */
 export interface ViewDomainEntry {
+	/** `--view` 的取值主键（同时是 `AnalysisView` 的成员，也是拼音主键） */
 	key: AnalysisView;
+	/** 中文口径名，如「当前大限」「流年」——各处展示文案的唯一来源 */
 	zh: string;
+	/** 英文别名（`--view decadal` 等），缺省即无英文写法 */
 	en?: string;
+	/** 标记「运限视角」：`--report` / 尾注只列这三态，本命静态口径属于缺省不列 */
 	runtime?: true;
 }
 
@@ -92,11 +96,15 @@ export interface OptionSpec {
 	// ── 语义标志（候选 2）：四套派生的真相源，均可选、缺省即「不属于」 ──
 	/** 可被独占分支吞掉（输出与选题组的 yearly / monthly / daily / hourly / focus / topic / report / view） */
 	shadow?: true;
-	/** 显式声明不在被吞检测域（两个 role 均可作表态：topic-deep 组默认入域、output-select
-	 *  组默认域外——标它把「有意不在域内」从沉默写成声明，供穷尽性断言核对） */
+	/**
+	 * 显式声明不在被吞检测域（两个 role 均可作表态：topic-deep 组默认入域、output-select
+	 * 组默认域外——标它把「有意不在域内」从沉默写成声明，供穷尽性断言核对）
+	 */
 	noShadow?: true;
-	/** 专题深入旗标（pattern / mutagen / yearly / decadal / ages / focus）——
-	 *  深入态基底显隐的判据（旧 astrology 里硬编码的 deepDive 六旗标） */
+	/**
+	 * 专题深入旗标（pattern / mutagen / yearly / decadal / ages / focus）——
+	 * 深入态基底显隐的判据（旧 astrology 里硬编码的 deepDive 六旗标）
+	 */
 	deep?: true;
 	/** 排除出「输出意图」判据（info 是零输入演示目标本身；config 是参数来源而非输出形态） */
 	noIntent?: true;
@@ -115,9 +123,11 @@ export type GroupRole = "birth" | "topic-deep" | "output-select" | "other";
 
 /** 一组参数（`title` 是给读声明表的人看的分类，不进 help 参数段；`role` 是派生用的语义角色）。 */
 export interface OptionGroup {
+	/** 分组标题：给读声明表的人看的分类，不进 help 参数段 */
 	title: string;
 	/** 语义角色：出生信息三组 → `birth`；专题深入 → `topic-deep`；输出与选题 → `output-select`；其余 → `other` */
 	role: GroupRole;
+	/** 本组包含的参数声明，按 help 展示序 */
 	options: readonly OptionSpec[];
 }
 
@@ -570,7 +580,13 @@ export const DEEP_DIVE_MENU: readonly DeepDiveMenuEntry[] = [
 	{ name: "report", arg: "", label: "全盘报告(Markdown)" },
 ];
 
-/** 按旗标名取菜单条目；未登记即抛（对拍断言也会红，这里 fail-fast 不静默）。 */
+/**
+ * 按旗标名取菜单条目；未登记即抛（对拍断言也会红，这里 fail-fast 不静默）。
+ *
+ * @param name - 旗标主名（不含 `--`，如 `pattern` / `focus`）
+ * @returns {@link DEEP_DIVE_MENU} 里 `name` 命中的那一条
+ * @throws `name` 未在 {@link DEEP_DIVE_MENU} 登记时抛错（新增专题须同步本表）
+ */
 export function deepDiveEntry(name: string): DeepDiveMenuEntry {
 	const entry = DEEP_DIVE_MENU.find(m => m.name === name);
 	if (!entry) {
@@ -579,7 +595,13 @@ export function deepDiveEntry(name: string): DeepDiveMenuEntry {
 	return entry;
 }
 
-/** 菜单段渲染：缺省短形态（指路行）；`"long"` 取长段（help DESCRIPTION）。 */
+/**
+ * 菜单段渲染：缺省短形态（指路行）；`"long"` 取长段（help DESCRIPTION）。
+ *
+ * @param entry - 菜单条目（通常来自 {@link deepDiveEntry}）
+ * @param mode - `"short"` 出指路行（默认）；`"long"` 在该条目登记了 `long` 时改出长段
+ * @returns 单行指路串 `--name [arg] label`，或条目登记的长段文案
+ */
 export function deepDiveSegment(
 	entry: DeepDiveMenuEntry,
 	mode: "short" | "long" = "short"
@@ -600,8 +622,10 @@ export interface ExclusiveBranchSpec {
 	name: string;
 	/** 该分支合法消费（放行）的功能参数（kebab，与 SHADOWABLE_KEYS 同域；放行 ⊆ 被吞域） */
 	consumes: readonly string[];
-	/** bespoke 拒收：keys 中任一参数在场即抛 note（`{flag}` 占位符由检测入口替换为
-	 *  `--<key>`），统一检测入口保证它先于通用文案（2026-11-11 移序前提的结构化） */
+	/**
+	 * bespoke 拒收：keys 中任一参数在场即抛 note（`{flag}` 占位符由检测入口替换为
+	 * `--<key>`），统一检测入口保证它先于通用文案（2026-11-11 移序前提的结构化）
+	 */
 	rejectsWithNote?: { keys: readonly string[]; note: string };
 	/** 优先级链显示段（缺省 `--<name>`；链上「其他功能参数」段用它） */
 	chainLabel?: string;

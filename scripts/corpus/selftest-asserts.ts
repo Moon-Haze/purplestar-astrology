@@ -17,6 +17,8 @@
  *
  * 合并引擎（cac 底座）与 classics 原自研解析器的差异、断言组接口，见
  * docs/code/corpus.md。
+ *
+ * @file 古籍检索自检断言组 —— 从 classics 自带的 selftest.ts 抽出
  */
 
 import { readFileSync } from "node:fs";

@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file 代码改动的机械审查、生成物漂移与基线对拍闸门。
+ */
 // ── 代码评审闸门：按变更类型分档 + 机检硬项 + 产出评审工作单 ──
 //
 // 给谁用：`docs/reviews/code-review-20261012.md` 那套标准里**能被机器判**的部分。判断类
@@ -95,6 +98,7 @@ const GENERATED: readonly ((path: string) => boolean)[] = [
 				path === p
 	),
 ];
+/** 判断路径是否属于登记在册的生成物（由生成器产出，不手改）。 */
 const isGenerated = (path: string): boolean => GENERATED.some(fn => fn(path));
 
 /** 真相源：动它们等于动全仓的一致性，评审必看。 */
@@ -105,11 +109,21 @@ const SOURCES_OF_TRUTH = [
 ];
 
 // ── git 薄封装 ────────────────────────────────────────────────────────────────
+/** 一次 git 调用的结果（薄封装统一形态，失败也不抛错）。 */
 interface GitOut {
+	/** 退出码是否为 0（`spawnSync` 起不来时为 false） */
 	ok: boolean;
+	/** stdout 与 stderr 的合并文本（两者都往后接，便于一次看全） */
 	out: string;
+	/** 退出码；进程起不来时为 -1 */
 	code: number;
 }
+/**
+ * 薄封装 git：统一工作目录与缓冲上限，返回是否成功、输出与退出码。
+ *
+ * @param args - git 子命令与参数（不含 `git` 本身）
+ * @returns 是否成功、合并后的 stdout+stderr、以及退出码（起不来时为 -1）
+ */
 function git(args: string[]): GitOut {
 	const r = spawnSync("git", args, { encoding: "utf8", cwd: SKILL_ROOT, maxBuffer: 1 << 28 });
 	if (r.error) {
@@ -118,8 +132,11 @@ function git(args: string[]): GitOut {
 	return { ok: r.status === 0, out: (r.stdout ?? "") + (r.stderr ?? ""), code: r.status ?? -1 };
 }
 
+/** 变更文件清单的一项（含按「看工作区」并上的未跟踪文件）。 */
 interface ChangedFile {
+	/** 单字母状态：A 新增 / M 修改 / D 删除 / R 重命名（未跟踪文件记作 A） */
 	status: string; // A / M / D / R
+	/** 相对仓库根的路径（重命名取新路径） */
 	path: string;
 }
 /**
@@ -128,6 +145,9 @@ interface ChangedFile {
  * ⚠️ **必须并上未跟踪文件**（`git diff` 看不见它们）。新建文件是风险最高的一类 ——
  * 没有既有行为可比对、也没有既有测试覆盖；若评审对象里漏了它们，这次评审就是假的。
  * 这条是实测踩出来的：加了未跟踪文件后「变更 1 个文件」而实际有 2 个。
+ *
+ * @param base - 比对基线；`null` 表示看工作区（并上未跟踪文件）
+ * @returns 变更文件清单：状态字符与路径
  */
 function changedFiles(base: string | null): ChangedFile[] {
 	const r = git(["diff", "--name-status", "-M", base ?? "HEAD"]);
@@ -157,9 +177,13 @@ function changedFiles(base: string | null): ChangedFile[] {
 	return [...tracked, ...fresh];
 }
 
+/** 新增行：所在文件、新文件行号与行文本。 */
 interface AddedLine {
+	/** 该行所在文件（相对仓库根） */
 	path: string;
+	/** 新文件的 1-based 行号（由 hunk 头 `@@ … +c,d @@` 推进） */
 	line: number;
+	/** 该行的正文（已去掉前导 `+`） */
 	text: string;
 }
 /**
@@ -169,6 +193,10 @@ interface AddedLine {
  * ⚠️ `base` 必须原样传给 git —— 漏传会让本函数去比工作区与 index，在 `--base` 模式下
  * 恒返回空，于是「新增了倪师引句」这类检查**静默全绿**。这是工具自己最典型的假绿来源，
  * 故调用方只能经 `collect(base)` 一条路拿数据，不单独调用本函数。
+ *
+ * @param base - 比对基线（必须原样传给 git），`null` 表示对 HEAD
+ * @param files - {@link changedFiles} 的清单，未跟踪文件在此按新增处理
+ * @returns 逐行的新增内容，带新文件行号
  */
 function addedLines(base: string | null, files: ChangedFile[]): AddedLine[] {
 	const paths = files.filter(f => f.status !== "D").map(f => f.path);
@@ -215,15 +243,28 @@ function addedLines(base: string | null, files: ChangedFile[]): AddedLine[] {
 
 // ── 变更类型分档 ──────────────────────────────────────────────────────────────
 type Tier = "严" | "中" | "轻";
+/** 变更分档结果：等级、命中的改动类型与判定理由。 */
 interface Classify {
+	/** 分档：严（冻结面 / 生成文件 / 依赖 / 重构）、中（碰代码 / 真相源 / 内容）、轻（纯文档） */
 	tier: Tier;
+	/** 命中的改动类型标签（如「冻结面」「依赖」「代码」）；都没命中时为「局部」 */
 	kinds: string[];
+	/** 人读理由，逐条对应 kinds 的命中依据 */
 	reasons: string[];
 }
+/**
+ * 按改动面给本次变更分档（严 / 中 / 轻）并记录理由。
+ *
+ * @param base - 比对基线，`null` 表示看工作区
+ * @param files - 变更文件清单
+ * @param adds - 新增行（用于识别依赖版本行等）
+ * @returns 分档结果：等级、命中类型与理由
+ */
 function classify(base: string | null, files: ChangedFile[], adds: AddedLine[]): Classify {
 	const kinds = new Set<string>();
 	const reasons: string[] = [];
 	const paths = files.map(f => f.path);
+	/** 判断改动路径里是否有片段命中指定子串。 */
 	const touches = (frag: string): boolean => paths.some(p => p.includes(frag));
 
 	// 冻结面 / 真相源 / 生成文件 —— 任一命中即升到「严」
@@ -306,6 +347,9 @@ function classify(base: string | null, files: ChangedFile[], adds: AddedLine[]):
  * 本工具会对每一条讲解引文纪律的注释和文档刷出一条无意义的告警 —— 告警一旦失准，
  * 真正该看的就会被淹没（与 `grades.ts` 头注释「guard 的两条纪律」同一动机）。
  * 判据归 selftest，本函数只负责**把位置圈对**。
+ *
+ * @param a - 新增的一行（路径 + 文本）
+ * @returns 该行是否可能进入文案数据（注释、文档、核对表一律不算）
  */
 function isContentLine(a: AddedLine): boolean {
 	if (/\.(md|markdown)$/.test(a.path)) {
@@ -324,12 +368,24 @@ function isContentLine(a: AddedLine): boolean {
 	return true;
 }
 
+/** 一条机检发现：等级、标题、位置与理由（只报事实，不下判断）。 */
 interface Finding {
+	/** 等级：🔴 阻断（必须处理）、🟡 提示（要确认）、💭 建议（可留档） */
 	level: "🔴" | "🟡" | "💭";
+	/** 一句话结论（如「触及冻结面」「新增/改动文件含 >10 行连续注释」） */
 	title: string;
+	/** 位置：文件路径，或「文件:行（行数）」形式的若干处 */
 	where: string;
+	/** 为什么该看它：判据出处与处置方向 */
 	why: string;
 }
+/**
+ * 机械检查：对冻结面、真相源、生成物与文档登记做可直接判定的核对。
+ *
+ * @param files - 变更文件清单
+ * @param adds - 新增行
+ * @returns 机检发现清单（等级 / 标题 / 位置 / 理由）
+ */
 function mechanical(files: ChangedFile[], adds: AddedLine[]): Finding[] {
 	const out: Finding[] = [];
 	const paths = files.map(f => f.path);
@@ -446,6 +502,13 @@ function mechanical(files: ChangedFile[], adds: AddedLine[]): Finding[] {
 	}
 	return out;
 }
+/**
+ * 判断路径列表里是否有条目落在指定目录前缀下。
+ *
+ * @param paths - 改动路径清单
+ * @param frag - 目录前缀（如 `scripts/cli/`）
+ * @returns 是否有路径落在该前缀下
+ */
 function touchesDir(paths: string[], frag: string): boolean {
 	return paths.some(p => p.startsWith(frag));
 }
@@ -461,8 +524,11 @@ const SNAP_DIR = resolve(SKILL_ROOT, ".review-tmp");
 /** 样例盘（虚构数据，与 help 的示例同款）—— argv 单点在 cli/selftest/sample.ts。 */
 const SAMPLE_BIRTH: readonly string[] = DEMO_POSITIONAL;
 
+/** 逐字节对拍的一个场景：名字（作快照文件名）与 CLI argv。 */
 interface Scenario {
+	/** 场景名（如「chart --json」「topic career」），同时作快照文件名 */
 	name: string;
+	/** 传给 scripts/purple-star.ts 的参数（排盘场景另由 snapshot 追加 --no-cache） */
 	args: readonly string[];
 }
 
@@ -470,11 +536,14 @@ interface Scenario {
  * 对拍场景。主题清单**由注册表派生**（`analysis/data.ts` 零 import，取它无开销），
  * 故加主题时本表自动跟上 —— 与 tools/cli-samples.ts 那种手维护清单相反，
  * 因为这里漏一个主题 = 少覆盖，而手维护的清单必然腐烂。
+ *
+ * @returns 对拍场景清单：固定三项 + 按主题注册表派生的 topic 场景
  */
 async function buildScenarios(): Promise<Scenario[]> {
 	const { TOPIC_KEYS } = (await import("../scripts/analysis/data")) as {
 		TOPIC_KEYS: readonly string[];
 	};
+	/** 组一份 astrology 场景的 argv，公共出生串在最前。 */
 	const A = (extra: readonly string[]): string[] => ["astrology", ...SAMPLE_BIRTH, ...extra];
 	return [
 		{ name: "chart --json", args: A(["--json"]) },
@@ -484,7 +553,14 @@ async function buildScenarios(): Promise<Scenario[]> {
 	];
 }
 
-/** 跑一批场景并把 stdout 落盘。返回「快照是否可信」——不可信时绝不进入比对。 */
+/**
+ * 跑一批场景并把 stdout 落盘。返回「快照是否可信」——不可信时绝不进入比对。
+ *
+ * @param tag - 快照子目录名（`before` / `after`）
+ * @param scenarios - 要跑的场景清单
+ * @returns 场景名 → 快照文件路径
+ * @throws 任一场景退出码非零（快照不可信，直接中止）
+ */
 function snapshot(tag: string, scenarios: readonly Scenario[]): Map<string, string> {
 	const dir = resolve(SNAP_DIR, tag);
 	mkdirSync(dir, { recursive: true });
@@ -521,6 +597,9 @@ function snapshot(tag: string, scenarios: readonly Scenario[]): Map<string, stri
  *
  * ⚠️ 这一段是为堵「验证手段失准」而存在的：快照缺失/为空时，`cmp` 只会返回「不同」，
  * 于是**工具失灵**会被读成**代码变了**。宁可直接失败，也不能给出方向相反的结论。
+ *
+ * @param p - 快照文件路径
+ * @returns 读取成功时带 `text`，失败时带 `why`（缺失 / 为空 / 读失败）
  */
 function readShot(p: string): { ok: true; text: string } | { ok: false; why: string } {
 	try {
@@ -537,12 +616,21 @@ function readShot(p: string): { ok: true; text: string } | { ok: false; why: str
 	}
 }
 
+/** 逐字节对拍结果：一致 / 不同 / 工具自身故障（故障时整份结果作废）。 */
 interface ByteDiffResult {
+	/** 改动前后 stdout 逐字节一致的场景名 */
 	same: string[];
+	/** 改动前后 stdout 有差异的场景名（重构类变更应当为空） */
 	diff: string[];
+	/** 工具自身故障说明（快照失败、stash 失败、还原不一致等）；非空时结果一律作废 */
 	toolFault: string[];
 }
 
+/**
+ * 按内置场景跑改动前后的逐字节对拍，并核对 stash 还原是否干净。
+ *
+ * @returns 逐字节对拍结果：一致 / 不同场景清单，以及工具自身故障说明
+ */
 async function runByteDiff(): Promise<ByteDiffResult> {
 	const scenarios = await buildScenarios();
 	// 对拍前的**工作区指纹**（不是快照）—— 用来核对 stash pop 是否真的还原回去了
@@ -609,10 +697,15 @@ async function runByteDiff(): Promise<ByteDiffResult> {
 }
 
 // ── 闸门执行 ──────────────────────────────────────────────────────────────────
+/** 一条闸门命令的执行结果。 */
 interface Gate {
+	/** 闸门名（报告里逐行展示，如 typecheck / selftest / npm test / manual:check） */
 	name: string;
+	/** 实际执行的命令字符串（经 shell 跑） */
 	cmd: string;
+	/** 是否通过：主体看退出码，`npm test` 另需从中解析内核层计数（解析不出即判不通过） */
 	pass: boolean;
+	/** 输出摘要：滤掉 npm 自身 notice 行后取末两行、截到 200 字；静默通过时自报一句防误读 */
 	tail: string;
 }
 
@@ -626,6 +719,12 @@ interface Gate {
 const GATE_QUIET_PASS: Record<string, string> = {
 	typecheck: "0 错误（静默通过）",
 };
+/**
+ * 按分档组装要执行的闸门命令清单。
+ *
+ * @param tier - 分档（「轻」档不跑全量回归与生成物漂移探针）
+ * @returns 按分档组装好的闸门命令清单（跑完就地回填 pass 与末两行输出）
+ */
 function runGates(tier: Tier): Gate[] {
 	const gates: Gate[] = [
 		{ name: "typecheck", cmd: "npm run typecheck", pass: true, tail: "" },
@@ -701,6 +800,11 @@ const JUDGE_ITEMS: Array<[string, string]> = [
 	],
 ];
 
+/**
+ * 打印命令行用法与退出码约定。
+ *
+ * @returns 无返回值；用法与退出码约定已打印到 stdout
+ */
 function printUsage(): void {
 	console.log(`
 用法：
@@ -714,6 +818,11 @@ function printUsage(): void {
 `);
 }
 
+/**
+ * 评审闸门入口：解析参数、收集改动、分档并执行闸门。
+ *
+ * @returns 无返回值；有阻断或闸门未过时以退出码 1 结束，参数/环境问题为 2
+ */
 async function main(): Promise<void> {
 	const argv = process.argv.slice(2);
 	if (argv.includes("-h") || argv.includes("--help")) {

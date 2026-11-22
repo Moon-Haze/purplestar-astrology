@@ -9,6 +9,8 @@
  * 来源与三处口径适配、架构与文件分工、公开面 re-export 理由，见
  * docs/code/analysis.md。
  *
+ * @file 紫微斗数分析数据库 — 倪海厦《天纪》正统口径：主题论断库装配点
+ *
  * @packageDocumentation
  */
 

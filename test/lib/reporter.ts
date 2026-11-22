@@ -1,3 +1,6 @@
+/**
+ * @file node:test 事件流的结构化聚合 reporter。
+ */
 // ── npm test 的聚合 reporter ──
 //
 // 由 test/lib/run.ts 以 `--test-reporter <本文件绝对路径>` 挂载（相对路径会
@@ -12,7 +15,9 @@ import { Transform } from "node:stream";
 
 /** 一条测试事件的精简形态 —— run.ts 聚合的唯一输入。 */
 export interface TestEventRecord {
+	/** 归一后的四类事件；除这四类外的事件（enqueue / dequeue / start / plan 等）整类丢弃 */
 	type: "pass" | "fail" | "diagnostic" | "summary";
+	/** 用例名（`test:fail` / `test:pass` / `test:diagnostic` 取 `data.name`，缺失时回落 `message`） */
 	name: string;
 	/** 事件来源文件（分层依据：test/chart.test.ts → 层 1，以此类推） */
 	file: string | null;
@@ -28,7 +33,9 @@ export interface TestEventRecord {
 
 /** node:test 事件流里我们关心的那部分（其余事件整类丢弃）。 */
 interface RawTestEvent {
+	/** node:test 的事件类型原文（`test:pass` / `test:fail` / `test:diagnostic` / `test:summary` 等） */
 	type?: string;
+	/** 事件负载；各键按事件类型出现或缺失，故各字段都可选 */
 	data?: {
 		name?: string;
 		file?: string;
@@ -40,9 +47,11 @@ interface RawTestEvent {
 	};
 }
 
+/** 自定义 reporter：把 node:test 事件流聚合成逐行 JSON 供 run.ts 汇总。 */
 export default function aggregateReporter(): Transform {
 	return new Transform({
 		objectMode: true,
+		/** Transform 流实现：把 node:test 事件压成一行一条 JSON。 */
 		transform(event: RawTestEvent, _enc, cb) {
 			const t = event.type;
 			const type =

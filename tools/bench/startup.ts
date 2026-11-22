@@ -1,3 +1,6 @@
+/**
+ * @file CLI 冷启动与模块加载耗时的基准测量工具。
+ */
 // ── 启动耗时基准：把「这个 CLI 为什么慢 / 该优化哪里」量成一张表 ──
 //
 // 用法：npm run bench:startup [-- --runs=9]
@@ -46,13 +49,25 @@ const LOADER = resolve(SKILL_ROOT, "test/lib/loader.ts");
 
 const RULE = "─".repeat(78);
 
-/** 中位数：奇数取中，偶数取中间两者均值。对冷启动抖动比均值稳健。 */
+/**
+ * 中位数：奇数取中，偶数取中间两者均值。对冷启动抖动比均值稳健。
+ *
+ * @param xs - 耗时样本（毫秒）
+ * @returns 中位数；样本为空时得到 NaN
+ */
 function median(xs: number[]): number {
 	const s = [...xs].sort((a, b) => a - b);
 	const m = s.length >> 1;
 	return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
+/**
+ * 毫秒数右对齐成定宽文本；小于 1ms 时保留 4 位小数。
+ *
+ * @param v - 毫秒数
+ * @param w - 右对齐的目标宽度（默认 10）
+ * @returns 定宽文本；小于 1ms 时保留 4 位小数，否则 2 位
+ */
 function ms(v: number, w = 10): string {
 	return `${v.toFixed(v < 1 ? 4 : 2).padStart(w)} ms`;
 }
@@ -96,13 +111,25 @@ const E2E_CASES: Array<{ label: string; args: string[] }> = [
 	},
 ];
 
+/** 一条端到端用例的耗时统计（① 口径：spawn 真实 CLI 子进程的墙钟耗时）。 */
 interface E2ERow {
+	/** 用例标签，取自 E2E_CASES 的 label（命令 + 参数的可读描述） */
 	label: string;
+	/** 重复 runs 次的中位数（毫秒）——对外引用用这个，比均值抗冷启动抖动 */
 	med: number;
+	/** runs 次样本的最小值（毫秒） */
 	min: number;
+	/** runs 次样本的最大值（毫秒） */
 	max: number;
 }
 
+/**
+ * 对每条端到端用例重复跑 `runs` 次，收集耗时样本。
+ *
+ * @param runs - 每条用例重复次数
+ * @returns 每条用例的中位数、最快与最慢耗时
+ * @throws 某次子进程退出码非零（附命令）
+ */
 function benchE2E(runs: number): E2ERow[] {
 	return E2E_CASES.map(({ label, args }) => {
 		const times: number[] = [];
@@ -160,22 +187,35 @@ const HOT_INFO: BirthInfo = { year: 1990, month: 5, day: 15, timeIndex: 5, gende
 
 // ── ②③ 子进程探针 ──
 
+/** ② 模块加载拆解的一行：一条加载组合的边际与累计耗时。 */
 interface LoadRow {
+	/** 加载组合的标签（对应 LOAD_GROUPS 的 label，如「核心」「+ analysis」） */
 	label: string;
+	/** 该组合的用途说明，取自 LOAD_GROUPS 的 note（缺省为空串） */
 	note: string;
+	/** 边际耗时（毫秒）：只导入本组 specs 的墙钟时间，已扣除前面各组 */
 	marginal: number;
+	/** 累计耗时（毫秒）：从第一组到本组（含）的边际之和 */
 	cumulative: number;
 }
 
+/** ③ 热路径的一行：单次调用耗时，首次值与暖机均摊值分开记。 */
 interface HotRow {
+	/** 被调函数标签（如 generateChart / detectPatterns / findLongitude） */
 	label: string;
+	/** 首次调用耗时（毫秒）——与端到端占比对齐，用小值不用均摊值 */
 	first: number;
+	/** 暖机后重复调用的均摊耗时（毫秒），循环场景才具意义 */
 	avg: number;
 }
 
+/** 子进程探针的完整输出：由 probeSource 生成的脚本以 JSON 打印回来。 */
 interface ProbeResult {
+	/** registerHooks 的一次性注册开销（毫秒），不归属任何加载分组 */
 	hookMs: number;
+	/** 各加载组合的耗时，顺序与 LOAD_GROUPS 一致 */
 	rows: LoadRow[];
+	/** 三条热路径的首次与均摊耗时 */
 	hot: HotRow[];
 }
 
@@ -185,6 +225,8 @@ interface ProbeResult {
  *
  * ⚠️ 探针内不得出现静态 `@/` import —— 那会在 hook 注册前求值而崩溃，
  * 与 CLI 引导层是同一条约束。
+ *
+ * @returns 探针脚本源码（在目标进程里现写现跑，故为字符串）
  */
 function probeSource(): string {
 	return `
@@ -219,6 +261,12 @@ console.log(JSON.stringify({ hookMs, rows, hot }));
 `;
 }
 
+/**
+ * 在临时目录生成探针脚本并子进程执行，测冷启动的真实耗时。
+ *
+ * @returns 探针输出的解析结果：各档冷启动耗时
+ * @throws 探针退出码非零（附 stderr）
+ */
 function runProbe(): ProbeResult {
 	const dir = mkdtempSync(join(tmpdir(), "ziwei-bench-"));
 	const file = join(dir, "probe.mjs");
@@ -236,6 +284,12 @@ function runProbe(): ProbeResult {
 
 // ── 汇总 ──
 
+/**
+ * 基准入口：解析 `--runs` 并依次输出各档测量结果。
+ *
+ * @returns 无返回值；各档测量结果打印到 stdout
+ * @throws `--runs` 不是正整数
+ */
 async function main(): Promise<void> {
 	const runsArg = process.argv.find(a => a.startsWith("--runs="));
 	const runs = runsArg ? Number(runsArg.slice(7)) : 9;

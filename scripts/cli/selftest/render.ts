@@ -27,7 +27,14 @@ import {
 import { SAMPLE } from "./sample";
 import { eq, type SelftestDeps } from "./kit";
 
-/** 知识源可用性：星曜释义、主题论断库、多视角产出、引导层依赖豁免。 */
+/**
+ * 知识源可用性：星曜释义、主题论断库、多视角产出、引导层依赖豁免。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param ctx - 运行期上下文；`ctx.root` 是内核根，引导层源码从它下面读
+ * @returns 无返回值；三条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是星曜释义缺十四主星之一、四种 view（mingpan/daxian/liunian/liuyue）有产不出的、或 `boot-hooks.ts` 引入了 `node:` 内置以外的静态依赖（引导层铁律）
+ */
 export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {
 	ok("知识源：星曜释义覆盖十四主星", () => {
 		const majorStars = [
@@ -99,7 +106,13 @@ export function runKnowledgeSource({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">
 	});
 }
 
-/** 专题渲染：概览 / 基本信息 / 流年 / 大限 / 小限 / 格局 / 四化 / 聚焦各节形态。 */
+/**
+ * 专题渲染：概览 / 基本信息 / 流年 / 大限 / 小限 / 格局 / 四化 / 聚焦各节形态。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；十一条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是概览节缺运限速览行或虚岁 / 大限 / 流年命宫 / 小限、专题指路缺项、基本信息节缺行、节气与非节气两口径该分叉时未并列、各专题（流年 / 大限 / 小限 / 格局 / 四化 / 聚焦）缺节或缺关键标注、性别投影有女命残留（male 路径）或 `selectGender` 的 common/male/female/suffix 投影错
+ */
 export function runTopicRender({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok(
 		"专题渲染：概览节 = 运限速览一行（虚岁/大限/流年命宫/小限）+ 专题指路（零输入演示态用）",

@@ -11,6 +11,8 @@
  * 因此被 selftest 在启动期调用时几乎零成本。
  *
  * 同一份逻辑的两处消费者与「空壳流派不报此错」的数据驱动论证，见 docs/code/school.md。
+ *
+ * @file 流派禁用特征守卫（Phase 3 · SchoolAdapter 接缝 · ADR-004）
  */
 
 import type { ZiweiChart } from "../types";

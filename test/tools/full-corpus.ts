@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file 全量基准数据集的逐字段排盘核验工具。
+ */
 // ── 全量核验：把 db/dataset/ 里的全部样本跑一遍（条数与年份范围运行时自报，不写死）──
 //
 // 与 npm test 的分工：
@@ -41,6 +44,7 @@ const MAX_DETAIL = 20; // 明细最多列这么多条
 // ── 参数 ──
 const argv = process.argv.slice(2);
 const hasFlag = (name: string): boolean => argv.includes(`--${name}`);
+/** 取 `--name=value` 形式的参数值；缺省返回 null。 */
 const optOf = (name: string): string | null => {
 	const i = argv.indexOf(`--${name}`);
 	if (i < 0) {
@@ -55,30 +59,46 @@ const YEAR = optOf("year") ? Number(optOf("year")) : null;
 const MONTH = optOf("month") ? Number(optOf("month")) : null;
 const LIMIT = optOf("limit") ? Number(optOf("limit")) : Infinity;
 
+/** 把出生信息渲染成进度与报告里的用例标签。 */
 const label = (b: BirthInfo): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${BRANCHES[b.timeIndex] ?? b.timeIndex}时 ${b.gender}`;
 
+/** 一类差异路径的聚合：出现次数 + 首个样本的期望值 / 实际值 / 出生信息。 */
 interface DiffBucket {
+	/** 该差异路径累计出现的次数（一处 = 一条盘上的一个字段） */
 	count: number;
+	/** 首次命中该路径时的基准值（仅作报表示例，后续命中不一定同值） */
 	expected: unknown;
+	/** 首次命中该路径时的本项目值 */
 	actual: unknown;
+	/** 首次命中该路径的样本出生信息（报表里给一条可复现的例子） */
 	sample: BirthInfo;
 }
 
+/** 全量核验的累计统计与产物容器。 */
 interface CorpusStats {
+	/** 已核验的样本条数 */
 	checked: number;
+	/** 白名单之外零差异的样本条数 */
 	clean: number;
+	/** 有白名单之外差异的样本条数 */
 	dirty: number;
 	/** 白名单放行的差异**处**数（一处 = 一条盘上的一个字段） */
 	whitelistedCells: number;
 	/** 差异路径 → { count, expected, actual, sample } */
 	buckets: Map<string, DiffBucket>;
+	/** 差异明细（只留前 `MAX_DETAIL` 条，避免两小时的核验把内存撑爆） */
 	detail: Array<{ birth: BirthInfo; diffs: ChartDiff[] }>;
 }
 
 /** 进度输出的间隔（条）。旧实现按分片报（每 10 个分片 ≈ 7,200 条），此处等价换算成条数。 */
 const PROGRESS_EVERY = 7200;
 
+/**
+ * 全量核验入口：流式读数据集并逐条对拍。
+ *
+ * @returns 无返回值；有白名单之外的差异时以退出码 1 结束
+ */
 async function main(): Promise<void> {
 	try {
 		await openSource();
@@ -158,7 +178,11 @@ async function main(): Promise<void> {
 	process.exit(stats.dirty > 0 ? 1 : 0);
 }
 
-/** 本次过滤条件覆盖的样本总数（运行时从数据集查询自报——闰月样本使「每月恒 720」不成立）。 */
+/**
+ * 本次过滤条件覆盖的样本总数（运行时从数据集查询自报——闰月样本使「每月恒 720」不成立）。
+ *
+ * @returns 该范围内 `samples` 表的行数
+ */
 async function expectedTotal(): Promise<number> {
 	const conn = await openSource();
 	const where: string[] = [];
@@ -173,6 +197,16 @@ async function expectedTotal(): Promise<number> {
 	return Number(rows[0]);
 }
 
+/**
+ * 汇总并打印核验报告。
+ *
+ * @param s - 累计的核验统计
+ * @param expected - 该范围应有的样本总数
+ * @param completed - 是否读尽（`--limit` 会让它提前变 false）
+ * @param ms - 本次核验耗时（毫秒）
+ * @param scope - 范围标签（年月区间，自报用）
+ * @returns 无返回值；结果打印到 stdout
+ */
 function report(
 	s: CorpusStats,
 	expected: number,

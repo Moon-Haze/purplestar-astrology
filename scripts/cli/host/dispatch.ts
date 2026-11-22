@@ -7,6 +7,8 @@
  * ⚠️ 本模块**不写盘、不 print、不 exit**：副作用全部归宿主，进程内测试与子进程真链路
  *    因此消费同一 seam（`--out` 只把路径带出来，不碰文件系统）。
  *    六份实现的历史与 `--help` 拦截位置的接口承诺见 docs/code/cli-chart.md。
+ *
+ * @file dispatch.ts —— argv → { code, out, err, outFile } 的分发协议（候选 1）
  */
 import type { CliArgs, CliContext } from "../args";
 
@@ -38,6 +40,7 @@ export interface DispatchPorts {
 
 /** 分发结果：三元组 + 可选落盘路径。code=0 成功；code=1 未知命令或命令内部抛错。 */
 export interface DispatchResult {
+	/** 退出码：0 成功；1 未知命令或命令内部抛错 */
 	code: number;
 	/** 成功路径的渲染文本（含 help 文本）；失败路径为空串 */
 	out: string;
@@ -54,6 +57,9 @@ export interface DispatchResult {
  * 旧命令并入提示：stars 已并入 --source 选域，classics 随四域合并改名 knowledge ——
  * 敲旧名给一条可直接照抄的迁移写法，而不是让用户自己从 help 里找。
  * oracle（断语手册）已随 remove-manual-oracle 整体下线，提示指向运行时推算替代。
+ *
+ * @param cmd - 用户敲下的旧命令名
+ * @returns 可直接照抄的迁移提示；不是已知旧命令时返回空串
  */
 export function unknownCommandMerged(cmd: string): string {
 	if (cmd === "stars") {
@@ -71,8 +77,9 @@ export function unknownCommandMerged(cmd: string): string {
 /**
  * 未知命令完整文案 —— 全仓唯一真相源：可用命令列表 + 旧命令迁移提示 + help 指路。
  *
- * @param cmd 未命中的命令名
- * @param available 可用命令列表（调用方决定取 COMMANDS 键集还是自定义桩列表）
+ * @param cmd - 未命中的命令名
+ * @param available - 可用命令列表（调用方决定取 COMMANDS 键集还是自定义桩列表）
+ * @returns 含迁移提示与 help 指路的完整文案
  */
 export function unknownCommandMessage(cmd: string, available: readonly string[]): string {
 	const merged = unknownCommandMerged(cmd);
@@ -85,6 +92,9 @@ export function unknownCommandMessage(cmd: string, available: readonly string[])
  * @remarks
  * dispatch 的执行 catch 与宿主的副作用 catch（--out 落盘）共用 —— 前缀真相源一处，
  * 否则「错误：」会在宿主里再抄一份（见 docs/code/cli-chart.md）。
+ *
+ * @param err - 捕获到的任意错误值
+ * @returns 带「错误：」前缀的单行文案
  */
 export function formatError(err: unknown): string {
 	return `错误：${err instanceof Error ? err.message : String(err)}`;
@@ -99,6 +109,10 @@ export function formatError(err: unknown): string {
  * 永远见不到它 —— **判定顺序是本模块的接口承诺**，由 selftest 的 runDispatchProbe 钉住。
  *
  * 未知命令与命令内部抛出的错误都返回 code=1（只带 err.message，不带栈）。
+ *
+ * @param argv - 命令行参数（不含 node 与脚本名）
+ * @param ports - 宿主装配的三个端口：轻量 help、内核与 ctx
+ * @returns 退出码、标准输出与错误文案；成功且指定 --out 时另带落盘路径
  */
 export async function dispatch(argv: string[], ports: DispatchPorts): Promise<DispatchResult> {
 	const cmd = argv[0];

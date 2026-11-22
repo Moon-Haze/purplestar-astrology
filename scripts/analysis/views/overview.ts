@@ -9,6 +9,8 @@
  * 产出**内部条目流**（views 的实现形态，见 `../items`）：条目流与行流一一对应，
  * `renderOverview` 是公开的文本投影；条目形态不构成公开 interface。
  *
+ * @file 一、总论（总-分结构）—— topic 报告的开篇
+ *
  * @packageDocumentation
  */
 
@@ -22,6 +24,9 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
  *
  * slot 域：`topic-head` / `mods` / `geju` / `summary` / `main-palace`。语义字段全部
  * 来自 material 与 ctx 透出的中间量，不从成文反解。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数只读其中的主题名、主宫星曜等中间量，取材规则统一委托 {@link buildOverviewMaterial}，不自行重算决策点
+ * @returns 条目流：主题节头 → 命盘关键定制 / 格局 / 星曜深层特质（有才出）→ 本宫主星行与主星全文 → 亮度补充与同宫第二主星（有才出）；主宫无主星时整节退化为一条 `emptyFallback` 兜底句
  */
 function renderOverviewItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { topicLabel, mainStars, primaryStar } = ctx;
@@ -101,7 +106,12 @@ function renderOverviewItems(ctx: AnalysisContext): AnalysisItem[] {
 	return items;
 }
 
-/** 渲染「一、总论」整节（文本投影）。 */
+/**
+ * 渲染「一、总论」整节（文本投影）。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）
+ * @returns 与 {@link renderOverviewItems} 条目流逐条对应的文本行
+ */
 export function renderOverview(ctx: AnalysisContext): string[] {
 	return formatItems(renderOverviewItems(ctx));
 }

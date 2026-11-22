@@ -10,6 +10,8 @@
  *
  * 产出**内部条目流**（views 的实现形态，见 `../items`）：slot = `decadal`。
  *
+ * @file 四、当前大限分析 —— 倪师《天纪》正统口径
+ *
  * @packageDocumentation
  */
 
@@ -20,7 +22,12 @@ import { descPalaceStars, mutagenInPalaces } from "../../analysis/palace-query";
 import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
-/** 渲染「四、当前大限分析」整节的结构化条目流（无当前大限时返回空数组）。 */
+/**
+ * 渲染「四、当前大限分析」整节的结构化条目流（无当前大限时返回空数组）。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数只读其中的命盘与当前大限（`currentDx`，未起运为 `null`），不重算盘面也不按宫干起化
+ * @returns 条目流：大限节头 / 走向说明 / 大限宫星曜 / 借宫注（大限宫为空宫时）/ 三方四正会照的本命四化 / 无会照时的提示行；未起运时为空数组
+ */
 function renderDecadalItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, currentDx } = ctx;
 
@@ -112,7 +119,12 @@ function renderDecadalItems(ctx: AnalysisContext): AnalysisItem[] {
 	return items;
 }
 
-/** 渲染「四、当前大限分析」整节（文本投影；无当前大限时返回空数组）。 */
+/**
+ * 渲染「四、当前大限分析」整节（文本投影；无当前大限时返回空数组）。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）
+ * @returns 与 {@link renderDecadalItems} 条目流逐条对应的文本行；未起运时为空数组（调用方据此走童限提示）
+ */
 export function renderDecadal(ctx: AnalysisContext): string[] {
 	return formatItems(renderDecadalItems(ctx));
 }

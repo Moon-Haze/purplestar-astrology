@@ -1,3 +1,6 @@
+/**
+ * @file 内核排盘结果与抽样基准盘的逐字段对标测试。
+ */
 // ── 层 1（主力）：排盘对标 ──
 //
 // 拿本项目 generateChart() 的输出去比 toolkit 样本里的 chart，逐字段全等比对。
@@ -41,6 +44,7 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 
 const { generateChart, parseWuxingJu } = await loadAlgorithm();
 
+/** 把出生信息渲染成可读的用例名。 */
 const describeBirth = (b: BirthInfo): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ` +
 	`${BRANCHES[b.timeIndex] ?? `timeIndex${b.timeIndex}`}时 ${b.gender}`;

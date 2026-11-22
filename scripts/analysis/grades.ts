@@ -7,6 +7,8 @@
  *    或登记的 quote 与文案失配，都会变红。
  *
  * 档位判定规则与 52 条引句的实测口径，见 docs/code/analysis.md。
+ *
+ * @file 主题论断库（data.ts）倪师引句的知识分级登记表
  */
 /**
  * 档位的运行期展示序（= 尾注文案序）：verified / traditional / methodology / suspect。
@@ -18,8 +20,10 @@
  */
 export const KNOWLEDGE_GRADE_ORDER = ["verified", "traditional", "methodology", "suspect"] as const;
 
+/** 知识来源档位：verified / traditional / methodology / suspect 四级。 */
 export type KnowledgeGrade = (typeof KNOWLEDGE_GRADE_ORDER)[number];
 
+/** 一条引句登记：出处字段、定位串与所属档位。 */
 export interface NiGradeEntry {
 	/** 引句所属主星（STAR_CONTENT_MAP 的键）；不隶属单一主星的表外条目记「—」 */
 	star: string;
@@ -27,9 +31,11 @@ export interface NiGradeEntry {
 	field: string;
 	/** 引句「」内前 12 字定位串 */
 	quote: string;
+	/** 知识来源档位：verified 带《天纪》集数出处 / traditional 古诀或倪师转述 / methodology 讲推算方法 / suspect 来源存疑 */
 	grade: KnowledgeGrade;
 }
 
+/** 全部倪师引句的档位登记表，与 `data.ts` 的文案引句双向对拍。 */
 export const NI_GRADES: readonly NiGradeEntry[] = [
 	// ── 紫微 ──
 	// L85 倪海厦言，无出处转述；L85 倪海厦描述相貌，无出处 —— 均 traditional。

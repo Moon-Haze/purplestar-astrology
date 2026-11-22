@@ -1,3 +1,6 @@
+/**
+ * @file 测试环境的内核根定位、解析钩子和动态加载入口。
+ */
 // ── 测试用的排盘内核加载器 ──
 //
 // 引导机制（内核根定位 / TS 解析钩子 / 动态加载）与 CLI **共用** boot-hooks.ts 一份实现，
@@ -54,7 +57,9 @@ if (!picked.root) {
 	);
 }
 
+/** 测试进程使用的内核根（定位失败时按测试策略抛错）。 */
 export const ROOT: string = picked.root;
+/** 内核根的来源描述，用于断言输出里交代用的是哪份内核。 */
 export const ROOT_LABEL: string = picked.label;
 
 installHooks(ROOT);
@@ -79,11 +84,17 @@ export const load = makeLoader(ROOT, ROOT_LABEL, f => {
 // 运行时该类型整体擦除，实际加载仍走上面的动态 import + 解析钩子。
 // ⚠️ `load<T>()` 是字符串动态导入，tsc 本不检查 —— 类型锚定全靠这里的 typeof import，
 //    这正是 CLI 引导层同款模式（详见 AGENTS.md「CLI 如何既自举又拿到内核类型」）。
+/** 加载排盘内核（`scripts/algorithm.ts`），类型由 `typeof import` 锚定。 */
 export const loadAlgorithm = () => load<typeof import("@/algorithm")>("@/algorithm");
+/** 加载内核数据层（`scripts/data/index.ts`）。 */
 export const loadData = () => load<typeof import("@/data")>("@/data");
+/** 加载格局识别层（`scripts/patterns`）。 */
 export const loadPatterns = () => load<typeof import("@/patterns")>("@/patterns");
+/** 加载四化模块（`scripts/mutagen.ts`）。 */
 export const loadSihua = () => load<typeof import("@/mutagen")>("@/mutagen");
+/** 加载古籍语料层（`scripts/corpus`）。 */
 export const loadClassics = () => load<typeof import("@/corpus")>("@/corpus");
+/** 加载命盘渲染层（`scripts/cli/chart/render.ts`）。 */
 export const loadRender = () => load<typeof import("@/cli/chart/render")>("@/cli/chart/render");
 
 /** 一次性取回测试最常用的符号。 */

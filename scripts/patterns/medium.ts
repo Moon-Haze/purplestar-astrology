@@ -7,6 +7,8 @@
  *
  * ⚠️ 下方导出的数组**次序即 `detectPatterns` 的输出次序**（共同契约见 docs/code/patterns.md）。
  *
+ * @file 中格识别器 —— 成格条件稍宽，仍是古书明列的格局
+ *
  * @packageDocumentation
  */
 
@@ -28,7 +30,12 @@ import {
 	fillVerdict,
 } from "../patterns/helpers";
 
-/** 廉贞天相：同宫 */
+/**
+ * 廉贞天相：同宫
+ *
+ * @param chart - 已排好的命盘
+ * @returns 廉贞天相同宫时为单元素数组（坐命与否、有无破格条件决定 `level`）；不同宫或缺星时为空数组
+ */
 function detectLianXiang({ chart }: DetectContext): Pattern[] {
 	const lian = findStarPalace(chart, "廉贞");
 	const xiang = findStarPalace(chart, "天相");
@@ -67,7 +74,12 @@ function detectLianXiang({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 武曲七杀：同宫，将星配财星 */
+/**
+ * 武曲七杀：同宫，将星配财星
+ *
+ * @param chart - 已排好的命盘
+ * @returns 武曲七杀同宫时为单元素数组；不同宫或缺星时为空数组
+ */
 function detectWuQiSha({ chart }: DetectContext): Pattern[] {
 	const wu = findStarPalace(chart, "武曲");
 	const qi = findStarPalace(chart, "七杀");
@@ -104,7 +116,12 @@ function detectWuQiSha({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 天同天梁：同宫 */
+/**
+ * 天同天梁：同宫
+ *
+ * @param chart - 已排好的命盘
+ * @returns 天同天梁同宫时为单元素数组；不同宫或缺星时为空数组
+ */
 function detectTongLiang({ chart }: DetectContext): Pattern[] {
 	const tong = findStarPalace(chart, "天同");
 	const liang = findStarPalace(chart, "天梁");
@@ -137,7 +154,12 @@ function detectTongLiang({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 日月同宫：太阳太阴丑或未宫同宫 */
+/**
+ * 日月同宫：太阳太阴丑或未宫同宫
+ *
+ * @param chart - 已排好的命盘
+ * @returns 太阳太阴同宫且落丑宫或未宫时为单元素数组（未宫取「日月同宫·未」判词，丑宫取「日月同宫·丑」）；否则为空数组
+ */
 function detectRiYueTongGong({ chart }: DetectContext): Pattern[] {
 	const sun = findStarPalace(chart, "太阳");
 	const moon = findStarPalace(chart, "太阴");
@@ -174,7 +196,12 @@ function detectRiYueTongGong({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 日月夹命：太阳太阴在命宫前后两宫 */
+/**
+ * 日月夹命：太阳太阴在命宫前后两宫
+ *
+ * @param chart - 已排好的命盘
+ * @returns 太阳太阴分居命宫前后两宫时为单元素数组；否则为空数组
+ */
 function detectRiYueJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) {
@@ -216,7 +243,12 @@ function detectRiYueJiaMing({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 巨日同宫：巨门太阳同入寅或申 */
+/**
+ * 巨日同宫：巨门太阳同入寅或申
+ *
+ * @param chart - 已排好的命盘
+ * @returns 巨门太阳同宫且落寅宫或申宫时为单元素数组；同宫但不在寅申、或不同宫时为空数组
+ */
 function detectJuRiTongGong({ chart }: DetectContext): Pattern[] {
 	const ju = findStarPalace(chart, "巨门");
 	const sun = findStarPalace(chart, "太阳");
@@ -256,7 +288,13 @@ function detectJuRiTongGong({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 石中隐玉：巨门入命于子午宫 */
+/**
+ * 石中隐玉：巨门入命于子午宫
+ *
+ * @param chart - 已排好的命盘（三方四正星曜用于 `bonus` / `breaking`）
+ * @param ming - 命宫（要求坐巨门且地支为子或午）
+ * @returns 巨门入命于子宫或午宫时为单元素数组；否则为空数组
+ */
 function detectShiZhongYinYu({ chart, ming }: DetectContext): Pattern[] {
 	if (!hasStar(ming, "巨门")) {
 		return [];
@@ -293,7 +331,13 @@ function detectShiZhongYinYu({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 明珠出海：命宫在未空宫，对宫丑宫为太阳太阴 */
+/**
+ * 明珠出海：命宫在未空宫，对宫丑宫为太阳太阴
+ *
+ * @param chart - 已排好的命盘（对宫由 `getDuiGong` 定位）
+ * @param ming - 命宫（要求地支为未、且为空宫即无主星）
+ * @returns 命宫在未为空宫、对宫丑宫太阳太阴同度时为单元素数组；否则为空数组
+ */
 function detectMingZhuChuHai({ chart, ming }: DetectContext): Pattern[] {
 	if (ming.branch !== 7) {
 		return [];
@@ -334,7 +378,13 @@ function detectMingZhuChuHai({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 紫微独坐入命 */
+/**
+ * 紫微独坐入命
+ *
+ * @param chart - 已排好的命盘（三方四正星曜决定 `bonus` / `breaking`）
+ * @param ming - 命宫（要求坐紫微且无天府同坐）
+ * @returns 紫微独坐命宫时为单元素数组；无紫微或紫府同坐时为空数组
+ */
 function detectZiWeiInMing({ chart, ming }: DetectContext): Pattern[] {
 	if (!hasStar(ming, "紫微") || hasStar(ming, "天府")) {
 		return [];
@@ -369,6 +419,7 @@ function detectZiWeiInMing({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
+/** 中格识别器注册表：成格条件稍宽的一组。 */
 export const ZHONG_GE: ReadonlyArray<Detector> = [
 	detectLianXiang,
 	detectWuQiSha,

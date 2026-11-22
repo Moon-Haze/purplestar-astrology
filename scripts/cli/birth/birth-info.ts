@@ -10,6 +10,8 @@
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
  *    真太阳时口径、晚子时两盘、夏令时来源、城市容错与各项护栏的论证见
  *    docs/code/cli-birth.md。
+ *
+ * @file 出生信息解析层 —— CLI 参数 → 排盘内核要的 BirthInfo（拆自 purple-star.ts）
  */
 
 import type { CliArgs } from "../args";
@@ -321,6 +323,7 @@ export function findLongitude(cityName: string): LongitudeHit | null {
 export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 	// `CliArgs` 的键是 camelCase，而这里的 `k` 按声明表的 kebab 写（如 `"late-zi"`），
 	// 故**在拼键时**过一道 camelKey —— 15 个键的读取都从 `g` 走，换算只需一处。
+	/** 按 kebab 键读参数（换算成 camelCase 后再取）。 */
 	const g = (k: string) => args[camelKey(k)];
 
 	// ── 出生日期 ──

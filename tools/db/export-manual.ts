@@ -21,6 +21,8 @@
  *
  * 输出目录：docs/manual/（两个独立 md）。不落 SQL 用户输入（全部固定字面量，
  * 与 query.ts 同纪律）。
+ *
+ * @file 手册导出工具（tools/db）—— 从样本库（db/ziwei.duckdb 或 dataset/ parquet）
  */
 import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -58,7 +60,13 @@ for (const name of ["combo-frequency.md", "geju-audit.md"]) {
 	}
 }
 
-/** 落一个生成物：写盘，或（--check）收进内存待对拍。 */
+/**
+ * 落一个生成物：写盘，或（--check）收进内存待对拍。
+ *
+ * @param absPath - 生成物的绝对路径
+ * @param content - 要写出的完整内容
+ * @returns 无返回值；`--check` 模式下只收进内存待对拍，不碰磁盘
+ */
 function emit(absPath: string, content: string): void {
 	if (CHECK_MODE) {
 		collected.set(absPath, content);
@@ -67,7 +75,12 @@ function emit(absPath: string, content: string): void {
 	writeFileSync(absPath, content);
 }
 
-/** 建目录：写盘模式创建，check 模式跳过（不触碰磁盘）。 */
+/**
+ * 建目录：写盘模式创建，check 模式跳过（不触碰磁盘）。
+ *
+ * @param absPath - 待创建的目录
+ * @returns 无返回值；`--check` 模式下跳过（不触碰磁盘）
+ */
 function ensureDir(absPath: string): void {
 	if (!CHECK_MODE) {
 		mkdirSync(absPath, { recursive: true });
@@ -81,7 +94,12 @@ const patterns = await import("../../scripts/patterns/index");
 // 宫名归一（项目口径 → 库内紧凑键）的表与函数住内核 scripts/data/ganzhi.ts
 // （COMPACT_PALACE_KEY / compactPalaceKey），此处只引用 —— 见其注释的口径论证。
 
-/** 196 组合频率行（md 与 ts 两种渲染共用的收集层）。 */
+/**
+ * 196 组合频率行（md 与 ts 两种渲染共用的收集层）。
+ *
+ * @param conn - 已连接的 DuckDB
+ * @returns 196 个（主星, 辅煞）组合及其同宫样本数，按星名与命中数排序
+ */
 async function collectCombo(
 	conn: DuckDBConnection
 ): Promise<Array<{ star: string; aux: string; cnt: number }>> {
@@ -97,6 +115,12 @@ GROUP BY 1, 2 ORDER BY 1, 2, 3 DESC`;
 	}>;
 }
 
+/**
+ * 导出 196 组合频率表（md 与 ts 两种渲染共用收集层）。
+ *
+ * @param conn - 已连接的 DuckDB
+ * @returns 无返回值；md 与 ts 两份频率产物经 {@link emit} 写出
+ */
 async function exportCombo(conn: DuckDBConnection): Promise<void> {
 	ensureDir(OUT_DIR);
 	const rows = await collectCombo(conn);
@@ -126,7 +150,12 @@ async function exportCombo(conn: DuckDBConnection): Promise<void> {
 	console.error(`combo-frequency.md：${rows.length} 组合`);
 }
 
-/** 格局名目对拍：db 渲染集（⭐ 行）vs patterns 现库（多样本实测产出全集）。 */
+/**
+ * 格局名目对拍：db 渲染集（⭐ 行）vs patterns 现库（多样本实测产出全集）。
+ *
+ * @param conn - 已连接的 DuckDB
+ * @returns 无返回值；对拍结论打印到 stdout
+ */
 async function auditGeju(conn: DuckDBConnection): Promise<void> {
 	// db 侧：⭐ 行 → 名目
 	const sql = `WITH l AS (${STORAGE_TOPIC_KEYS.map(k => `SELECT unnest(string_split(${k}, chr(10))) AS line FROM topics`).join(" UNION ALL ")})
@@ -173,6 +202,7 @@ SELECT DISTINCT line FROM l WHERE line LIKE '⭐%'`;
 	}
 
 	// 归一比对：去「格」字与括号注记；「守命→入命」按别名表裁决口径
+	/** 归一化文本：压空白并去首尾，供对拍前比较。 */
 	const norm = (s: string) =>
 		s
 			.replace(/格$/, "")
@@ -229,7 +259,14 @@ SELECT DISTINCT line FROM l WHERE line LIKE '⭐%'`;
 
 // ── 漂移探针（--check）：内存重导 ↔ 磁盘已提交产物逐字对拍 ──────────────────────
 
-/** 两文本的前 n 处差异行样例（定位用，不做完整 diff）。 */
+/**
+ * 两文本的前 n 处差异行样例（定位用，不做完整 diff）。
+ *
+ * @param onDisk - 盘上已提交的产物全文
+ * @param regen - 内存重导的产物全文
+ * @param n - 最多列出的差异行数（默认 5）
+ * @returns 差异行样例；无差异时为空数组
+ */
 function firstDiffs(onDisk: string, regen: string, n = 5): string[] {
 	const a = onDisk.split("\n");
 	const b = regen.split("\n");
@@ -244,7 +281,11 @@ function firstDiffs(onDisk: string, regen: string, n = 5): string[] {
 	return out;
 }
 
-/** 对拍内存产物与磁盘产物：内容差异与盘上孤儿（不可再生成的残留）都算漂移。 */
+/**
+ * 对拍内存产物与磁盘产物：内容差异与盘上孤儿（不可再生成的残留）都算漂移。
+ *
+ * @returns 漂移条数：内容差异与盘上孤儿都计入
+ */
 function compareArtifacts(): number {
 	const drift: string[] = [];
 	for (const [absPath, regen] of [...collected.entries()].sort()) {
@@ -279,6 +320,7 @@ function compareArtifacts(): number {
 	return 0;
 }
 
+/** 导出入口：按 `--check` 模式对拍或直接写盘。 */
 async function main() {
 	// --check：漂移探针 —— 固定跑全量、固定用仓库默认库位（--out 与子命令均忽略）；
 	// 产物走内存（emit/ensureDir 的 check 形态），生成完与盘上已提交产物对拍。

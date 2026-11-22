@@ -14,6 +14,8 @@
  *
  * 设计原则（不重复实现任何命理逻辑）、cli/ 各层分工与用法，见 docs/code/boot-layer.md。
  *
+ * @file purple-star.ts — 紫微斗数排盘与命盘解读 CLI（入口 / 引导层）
+ *
  * @packageDocumentation
  */
 

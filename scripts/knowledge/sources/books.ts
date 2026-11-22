@@ -4,6 +4,8 @@
  * 从 `cli/knowledge/index.ts` 的 `renderBooks` 迁来（Phase 1 · KnowledgeSource 接缝），
  * 逻辑逐字不变，仅改为 `KnowledgeSource` 形态。books 域静态引 `@/corpus`（古籍数据
  * 已静态打包进代码，零 DB 依赖），启动无懒加载顾虑。
+ *
+ * @file knowledge 的 **books 域**：古籍原文检索（默认域）
  */
 
 import type { KnowledgeQuery, KnowledgeSource } from "../types";
@@ -13,6 +15,7 @@ import { searchClassics, ALL_BOOKS, TOTAL_PARAGRAPHS } from "@/corpus";
 export const booksSource: KnowledgeSource = {
 	id: "books",
 	label: "古籍",
+	/** 检索古籍：按关键词命中的段落渲染成文本。 */
 	search(query: KnowledgeQuery): string {
 		if (!query.term && !query.positional.length) {
 			return [

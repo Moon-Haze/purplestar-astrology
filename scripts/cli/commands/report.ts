@@ -84,6 +84,10 @@ const PALACE_CONTEXT_WORDS: Record<string, readonly string[]> = {
  * 语境词共现（含 {@link PALACE_CONTEXT_WORDS} 的该宫语境词）。
  *
  * @remarks
+ *
+ * @param meta - 主题的两项标识：`palaceName` 主题主宫的**展开形**宫名（带「宫」字，与运行时宫名域同域）、`primaryStarName` 该主题主星名（`null` = 该主题无主星 → 不给引文）
+ * @returns 命中的引文数组（每条 `loc` 是「书名·章名」，`text` 是原文段落）；按出现序去重，最多 {@link CITATION_LIMIT} 条，查不到即空数组
+ *
  * 引文只出自本仓古籍库（公版古籍、已入库的定本），不做任何改写拼接 —— 查不到就少给，
  * 不凑数。纯子串召回会把「罗列多星的名句恰好含本盘主星」的段落（如机月同梁格句含
  * 「天同」）挂到无关宫位下；这类罗列段星名恰出现 1 次，两通道都拦住。星曜论段落
@@ -142,6 +146,8 @@ export function topicCitations(meta: {
  * @param basis - 口径载体（候选 6：整包 CaliberBasis；内部只读 lngNote /
  *   lngAmbiguous / isLateZi / lateZiCandidate 四字段），有内容时以引用块附在文档头 ——
  *   口径提示必须随报告走，不能只在终端概览里出现
+ *
+ * @returns 整份 Markdown 报告（13 个板块按固定序拼好，末尾无额外空行处理交给调用方）
  */
 export function buildReport(chart: ZiweiChart, info: BirthInfo, basis: CaliberBasis): string {
 	const native = getNativeMutagen(chart);

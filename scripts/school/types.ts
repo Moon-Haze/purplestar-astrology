@@ -14,6 +14,8 @@
  * 适配器是**声明式口径**：声明自己是谁、禁什么、扫哪、对哪份核对表负责。
  *
  * 接缝由来（架构文档 §4.3）与多流派隔离设计，见 docs/code/school.md。
+ *
+ * @file 流派适配器接口（Phase 3 · SchoolAdapter 接缝 · ADR-004）
  */
 
 import type { AnnotationEntry } from "../corpus/data/annotations";

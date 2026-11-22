@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file npm test 的环境报告、分层执行与结果汇总入口。
+ */
 // ── npm test 的入口：包一层 node --test，头尾各加一块汇总 ──
 //
 // 为什么需要它：node:test 原生输出只有逐项 ✔ 与末尾 8 行计数 —— 日志「长」而「薄」，
@@ -58,6 +61,12 @@ if (retiredVars.length > 0) {
 }
 
 // ── 环境块的取数（各处失败都兜底成 "?" / "n/a"，环境块永远不该把测试跑挂） ──
+/**
+ * 读某个依赖的安装版本号。
+ *
+ * @param name - 包名（如 `iztro`）
+ * @returns 该包的 `version`；包未装或读不出时为 `?`
+ */
 function pkgVersion(name: string): string {
 	try {
 		const p = JSON.parse(
@@ -71,6 +80,11 @@ function pkgVersion(name: string): string {
 	}
 }
 
+/**
+ * 取当前 git 提交与脏文件数。
+ *
+ * @returns `head` 为短提交号（git 不可用则 `n/a`），`dirty` 为改动文件数（不可用则 -1）
+ */
 function gitInfo(): { head: string; dirty: number } {
 	const head = spawnSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" });
 	const status = spawnSync("git", ["status", "--porcelain"], { encoding: "utf8" });
@@ -88,6 +102,7 @@ const manifest = JSON.parse(readFileSync(resolve(HERE, "../fixtures/manifest.jso
 };
 
 // ── 头部环境块 ──
+/** 数字补零到两位。 */
 const pad2 = (n: number): string => String(n).padStart(2, "0");
 const now = new Date();
 const git = gitInfo();
@@ -219,6 +234,7 @@ const reporterArgs = [
 ] as const;
 // 单次 spawn 即一个聚合事件流文件；--year 两阶段各落一份，聚合时合并 records。
 const statuses: Array<number | null> = [];
+/** 以子进程跑 node --test，并挂上聚合 reporter。 */
 const runNodeTest = (files: string[], namePattern: string | null, aggPath: string) => {
 	const r = spawnSync(
 		"node",
@@ -276,14 +292,21 @@ const records: TestEventRecord[] = aggFiles.flatMap(f =>
 // 里排除掉（一个套件的 duration 是它所有子项之和，不排除就会霸榜）。写漏一个不会报错 ——
 // 症状只是最慢榜里混进一行套件名，而 describe 名只存在于运行时输出里，**没有断言盯得住
 // 这处脱钩**。故改 describe 标题时，顺手改这里；`repo.test.ts` 有一条断言只盯得住 file 字段。
+/** 取路径的文件名部分。 */
 const basename = (p: string | null): string => p?.split("/").pop() ?? "";
+/** 按文件归属到测试层名。 */
 const layerOf = (file: string | null): string =>
 	LAYERS.find(l => l.file === basename(file))?.label ?? "其他";
 
+/** 一个测试层的累计项数与墙钟（按 `records` 里该层各文件的 `test:summary` 汇总）。 */
 interface LayerStat {
+	/** 该层各文件 `counts.total` 之和 */
 	total: number;
+	/** 该层各文件 `counts.passed` 之和 */
 	passed: number;
+	/** 该层各文件 `counts.failed` 之和 */
 	failed: number;
+	/** 该层各文件 summary 耗时之和（毫秒） */
 	ms: number;
 }
 const bucket = new Map<string, LayerStat>();
@@ -325,6 +348,7 @@ for (const r of records) {
 	}
 }
 
+/** 毫秒数格式化成带单位的可读文本。 */
 const fmtMs = (ms: number): string =>
 	ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
 // 失败明细与最慢项来自逐测试事件（name / duration / error 均为单事件字段，可靠）。
@@ -336,6 +360,7 @@ const failed = records.filter(
 // 最慢榜排除与分层汇总重复的聚合值：各层的顶层套件（= 层耗时）与「YYYY 年」年份套件。
 // 中间套件（如「大限」）保留 —— 它指向具体的慢块，名字自说明。
 const SUITE_LAYER_NAMES = new Set<string>(LAYERS.flatMap(l => l.suites));
+/** 判断是否为聚合型 suite（用于最慢榜排除）。 */
 const isAggSuite = (name: string): boolean =>
 	SUITE_LAYER_NAMES.has(name) || /^(19|20)\d{2} 年$/.test(name);
 const slowest = [...records]

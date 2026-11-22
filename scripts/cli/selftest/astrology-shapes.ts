@@ -16,7 +16,14 @@ import { tmpdir } from "node:os";
 import { eq, type SelftestDeps } from "./kit";
 import { SAMPLE_ARGV } from "./sample";
 
-/** astrology 输出形态：未深入/深入/零输入/--palaces/--topic/--focus/--config/--template。 */
+/**
+ * astrology 输出形态：未深入/深入/零输入/--palaces/--topic/--focus/--config/--template。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param call - 进程内直调一条命令（`{ code, out, err }` 同构三元组）
+ * @returns 无返回值；十一条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是概览与专题形态的输出节集合不符预期（面板 / 运限速览 / 专题指路该出不出、该裁不裁）、零输入演示态缺示例或缺指路、公历日期不存在时链路未报错、`--config` / `--template` 闭环断裂、深掘门失效
+ */
 export function runAstrologyShapes({ ok, call }: Pick<SelftestDeps, "ok" | "call">): void {
 	ok("astrology：概览与 --info 带面板 + 运限速览 + 专题指路；给了专题参数则只出专题详版", () => {
 		// 未深入形态（无功能参数概览 / 仅 --info）输出三节；给了具体专题参数的

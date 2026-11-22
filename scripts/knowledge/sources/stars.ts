@@ -4,6 +4,8 @@
  * 数据是内核轻表（`STAR_DESCRIPTIONS`），静态 import 不影响启动。`--search` 三态与
  * `--limit` 校验由命令入口守卫单点承担（`cli/knowledge/index.ts`），本域只做
  * 检索词 → 释义渲染。
+ *
+ * @file knowledge 的 **stars 域**：星曜释义（实现即插件：渲染逻辑与注册形态同址，无转发壳）
  */
 
 import type { KnowledgeQuery, KnowledgeSource } from "../types";
@@ -13,6 +15,7 @@ import { STAR_DESCRIPTIONS } from "@/data/stars";
 export const starsSource: KnowledgeSource = {
 	id: "stars",
 	label: "星曜释义",
+	/** 检索星曜释义。 */
 	search(query: KnowledgeQuery): string {
 		const names = Object.keys(STAR_DESCRIPTIONS);
 		// 位置参数与 --search 等价（与 books 域同款回退）。

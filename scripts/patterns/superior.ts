@@ -7,6 +7,8 @@
  *
  * ⚠️ 下方导出的数组**次序即 `detectPatterns` 的输出次序**（共同契约见 docs/code/patterns.md）。
  *
+ * @file 上格识别器 —— 古书条件最严、成格最难得的一组
+ *
  * @packageDocumentation
  */
 
@@ -31,7 +33,13 @@ import {
 } from "../patterns/helpers";
 import { oppositeBranch } from "../palace-relations";
 
-/** 君臣庆会：紫微入命，左辅右弼同会（同宫或三方） */
+/**
+ * 君臣庆会：紫微入命，左辅右弼同会（同宫或三方）
+ *
+ * @param chart - 已排好的命盘（辅弼、昌曲、魁钺与煞星同会由三方四正星曜集合判定）
+ * @param ming - 命宫（要求坐紫微）
+ * @returns 紫微入命且左辅右弼同会三方四正时为单元素数组；否则为空数组
+ */
 function detectJunChenQingHui({ chart, ming }: DetectContext): Pattern[] {
 	if (!hasStar(ming, "紫微")) {
 		return [];
@@ -71,7 +79,12 @@ function detectJunChenQingHui({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 紫府同宫：紫微+天府同宫，且该宫为命宫或迁移宫 */
+/**
+ * 紫府同宫：紫微+天府同宫，且该宫为命宫或迁移宫
+ *
+ * @param chart - 已排好的命盘（同宫那一宫须为命宫或迁移宫）
+ * @returns 紫微天府同宫且该宫为命宫或迁移宫时为单元素数组（坐命与照命取不同判词）；否则为空数组
+ */
 function detectZiFu({ chart }: DetectContext): Pattern[] {
 	const ziwei = findStarPalace(chart, "紫微");
 	const tianfu = findStarPalace(chart, "天府");
@@ -121,7 +134,13 @@ function detectZiFu({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 府相朝垣：天府、天相分别坐守命宫的三方四正 */
+/**
+ * 府相朝垣：天府、天相分别坐守命宫的三方四正
+ *
+ * @param chart - 已排好的命盘
+ * @param ming - 命宫（判「命宫见禄」「命宫坐煞」两条修饰条件）
+ * @returns 天府、天相分别坐守命宫三方四正且两星不同宫时为单元素数组；否则为空数组
+ */
 function detectFuXiangChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	const tianfu = findStarPalace(chart, "天府");
 	const tianxiang = findStarPalace(chart, "天相");
@@ -166,7 +185,12 @@ function detectFuXiangChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 阳梁昌禄：太阳+天梁+文昌+禄存四星会命宫，大贵格 */
+/**
+ * 阳梁昌禄：太阳+天梁+文昌+禄存四星会命宫，大贵格
+ *
+ * @param chart - 已排好的命盘
+ * @returns 太阳、天梁、文昌、禄存四星同会命宫三方四正时为单元素数组；缺任一星时为空数组
+ */
 function detectYangLiangChangLu({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	if (
@@ -211,7 +235,12 @@ function detectYangLiangChangLu({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 火贪格 / 铃贪格：贪狼与火星或铃星**同宫**（不含会照） */
+/**
+ * 火贪格 / 铃贪格：贪狼与火星或铃星**同宫**（不含会照）
+ *
+ * @param chart - 已排好的命盘
+ * @returns 贪狼与火星（或铃星）同宫时为单元素数组，按所遇煞星取名「火贪格」或「铃贪格」；两者皆不同宫时为空数组
+ */
 function detectHuoTanLingTan({ chart }: DetectContext): Pattern[] {
 	const tan = findStarPalace(chart, "贪狼");
 	if (!tan) {
@@ -257,7 +286,12 @@ function detectHuoTanLingTan({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 武贪格：武曲+贪狼 同宫（丑、未） 或 对照 */
+/**
+ * 武贪格：武曲+贪狼 同宫（丑、未） 或 对照
+ *
+ * @param chart - 已排好的命盘
+ * @returns 武曲贪狼同宫或对宫拱照、且会照命宫三方时为单元素数组；否则为空数组
+ */
 function detectWuTan({ chart }: DetectContext): Pattern[] {
 	const wu = findStarPalace(chart, "武曲");
 	const tan = findStarPalace(chart, "贪狼");
@@ -303,7 +337,13 @@ function detectWuTan({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 杀破狼：七杀、破军、贪狼三方齐聚 */
+/**
+ * 杀破狼：七杀、破军、贪狼三方齐聚
+ *
+ * @param chart - 已排好的命盘
+ * @param ming - 命宫（只用于判「命坐空劫」这条破格）
+ * @returns 七杀、破军、贪狼三星齐入命宫三方四正时为单元素数组；不足三星时为空数组
+ */
 function detectShaPoLang({ chart, ming }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	const has = ["七杀", "破军", "贪狼"].filter(s => sanFangSet.has(s));
@@ -341,7 +381,13 @@ function detectShaPoLang({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 机月同梁：天机、太阴、天同、天梁会入命宫三方四正（四星齐为上格，只齐三星为不全格） */
+/**
+ * 机月同梁：天机、太阴、天同、天梁会入命宫三方四正（四星齐为上格，只齐三星为不全格）
+ *
+ * @param chart - 已排好的命盘
+ * @param ming - 命宫（只用于判「命宫坐煞」这条破格）
+ * @returns 天机、太阴、天同、天梁中至少三星齐入命宫三方四正时为单元素数组（四星齐全与只齐三星取不同判词与 `level`）；不足三星时为空数组
+ */
 function detectJiYueTongLiang({ chart, ming }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	const has = ["天机", "太阴", "天同", "天梁"].filter(s => sanFangSet.has(s));
@@ -395,6 +441,7 @@ function detectJiYueTongLiang({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
+/** 上格识别器注册表：古书条件最严、成格最难得的一组。 */
 export const SHANG_GE: ReadonlyArray<Detector> = [
 	detectJunChenQingHui,
 	detectZiFu,

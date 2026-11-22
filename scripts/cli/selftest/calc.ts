@@ -20,7 +20,13 @@ import { chartSignature, fmtDate } from "../chart/render";
 import { generateChart } from "@/algorithm";
 import { eq, type SelftestDeps } from "./kit";
 
-/** 农历 → 公历换算（含 --lunar 输入路径与闰月边界）。 */
+/**
+ * 农历 → 公历换算（含 --lunar 输入路径与闰月边界）。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；六条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是农历 ↔ 公历换算结果漂移、闰月负数月份约定失效、`--lunar` 与 `--date` 两条路径排出的盘不同、不存在的闰月被静默接受
+ */
 export function runLunar({ ok }: Pick<SelftestDeps, "ok">): void {
 	const sol = (y: number, m: number, d: number) => `${y}-${m}-${d}`;
 	ok("农历换算：1990年四月廿一 = 公历 1990-05-15", () => {
@@ -80,7 +86,13 @@ export function runLunar({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 真太阳时：经度项 / 均时差 / 跨天边界与自洽性。 */
+/**
+ * 真太阳时：经度项 / 均时差 / 跨天边界与自洽性。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；十六条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是经度项不再按 `(经度−120)×4` 计、默认口径混进均时差、开了 `--eot` 却缺 month / day 时不报错、夏令时区间表与 tzdata 口径不符、跨天时 `dayOffset` 与 `shiftDate` 不自洽
+ */
 export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("真太阳时：东经 120° 不校正，09:30 → 巳时(5)", () => {
 		const t = calcTrueSolar(9, 30, 120);
@@ -262,7 +274,13 @@ export function runTrueSolar({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 晚子时等价性（本技能最易错处）：两口径分野与 --branch 12 / --late-zi 路径。 */
+/**
+ * 晚子时等价性（本技能最易错处）：两口径分野与 --branch 12 / --late-zi 路径。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；五条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 `timeIndex 12` 不再等价于次日 `timeIndex 0`、晚子时与当日早子时排出同一张盘、两条切换路径不再等价、23:40 没打候选标记、`--branch 13` 被接受
+ */
 export function runLateZi({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("晚子时：timeIndex 12 ≡ 次日 timeIndex 0（命盘完全一致）", () => {
 		const late = generateChart({

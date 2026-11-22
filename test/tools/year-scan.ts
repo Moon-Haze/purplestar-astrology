@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file 年份全域的排盘恒等式与农历往返扫描工具。
+ */
 // ── 年份段恒等式扫描：把层 3 的安星法不变量压到 1900–2100 全域 ──
 //
 // 与 full-corpus.ts 的分工：
@@ -41,6 +44,7 @@ const MAX_DETAIL = 20;
 // ── 参数 ──
 const argv = process.argv.slice(2);
 const hasFlag = (name: string): boolean => argv.includes(`--${name}`);
+/** 取 `--name=value` 形式的参数值；缺省返回 null。 */
 const optOf = (name: string): string | null => {
 	const i = argv.indexOf(`--${name}`);
 	if (i < 0) {
@@ -56,6 +60,13 @@ const START = YEAR ?? (optOf("start") ? Number(optOf("start")) : YEAR_ALL.start)
 const END = YEAR ?? (optOf("end") ? Number(optOf("end")) : YEAR_ALL.end);
 const LIMIT = optOf("limit") ? Number(optOf("limit")) : Infinity;
 
+/**
+ * 生成闭区间整数序列。
+ *
+ * @param a - 起点（含）
+ * @param b - 终点（含）
+ * @returns 从 a 到 b 的整数数组
+ */
 function range(a: number, b: number): number[] {
 	const out: number[] = [];
 	for (let i = a; i <= b; i++) {
@@ -64,6 +75,7 @@ function range(a: number, b: number): number[] {
 	return out;
 }
 
+/** 把出生信息渲染成用例标签。 */
 const label = (b: BirthInfo): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ${b.timeIndex}时 ${b.gender}`;
 
@@ -88,13 +100,25 @@ const MAJOR_STARS = [
 	"破军",
 ];
 
+/** 恒等式检查所需的内核常量与年干四化查表（全部取自内核，扫描器自己不另抄一份）。 */
 interface Ctx {
+	/** 十二宫名的本项目口径顺序（带「宫」字，第 8 宫是「交友宫」） */
 	PALACE_NAMES_ORDER: string[];
+	/** 十天干名，索引即天干序 0–9 */
 	STEMS: string[];
+	/** 十二地支名，索引即地支序 0–11（0=子） */
 	BRANCHES: string[];
+	/** 年干 → 四化表（禄/权/科/忌 → 星名），用于核验生年四化与农历年干一致 */
 	getMutagenByStem(stemIndex: number): Record<string, string>;
 }
 
+/**
+ * 检查一张盘是否满足全部与年份无关的恒等式，返回违例清单。
+ *
+ * @param chart - 待核验的盘
+ * @param ctx - 校验所需的内核常量与年干四化查表
+ * @returns 违例说明清单；为空即全部通过
+ */
 function checkChart(chart: ZiweiChart, ctx: Ctx): string[] {
 	const errs: string[] = [];
 	const { PALACE_NAMES_ORDER, BRANCHES } = ctx;
@@ -193,7 +217,15 @@ function checkChart(chart: ZiweiChart, ctx: Ctx): string[] {
 	return errs;
 }
 
-/** 公历 → 本项目农历信息 → lunar-typescript 回到公历，须回到同一日（闰月用负月序）。 */
+/**
+ * 公历 → 本项目农历信息 → lunar-typescript 回到公历，须回到同一日（闰月用负月序）。
+ *
+ * @param birth - 出生信息
+ * @param chart - 该出生信息排出的盘
+ * @param stems - 十天干（索引即 lunarInfo 里的编码）
+ * @param branches - 十二地支（同上）
+ * @returns 违例说明清单；为空即往返一致
+ */
 function checkLunarRoundTrip(
 	birth: BirthInfo,
 	chart: ZiweiChart,
@@ -225,12 +257,21 @@ function checkLunarRoundTrip(
 	return [];
 }
 
+/** 一条违例记录（汇总表按 `check` 分组计数，明细按此逐条打印）。 */
 interface Violation {
+	/** 触发违例的出生信息（年月日 + 时辰序号 + 性别 + 经度） */
 	birth: BirthInfo;
+	/** 检查项名：`排盘抛错` / `安星法恒等式` / `农历往返`（同时是 `byCheck` 的分组键） */
 	check: string;
+	/** 违例说明（具体哪条恒等式、期望与实际各是什么） */
 	message: string;
 }
 
+/**
+ * 年份扫描入口：解析参数后逐年逐条核验。
+ *
+ * @returns 无返回值；有违例时以非零码退出
+ */
 async function main(): Promise<void> {
 	if (!existsSync(resolve(SKILL_ROOT, "node_modules/iztro"))) {
 		console.error("缺少依赖：请先在 skill 根 npm install");
@@ -322,6 +363,17 @@ async function main(): Promise<void> {
 	process.exit(violations.length ? 1 : 0);
 }
 
+/**
+ * 追加一条违例记录。
+ *
+ * @param violations - 违例总表
+ * @param byCheck - 检查项 → 违例条数
+ * @param birth - 触发违例的出生信息
+ * @param check - 检查项名
+ * @param message - 违例说明
+ *
+ * @returns 无返回值；违例已追加进 `violations` 并计入 `byCheck`
+ */
 function push(
 	violations: Violation[],
 	byCheck: Map<string, number>,

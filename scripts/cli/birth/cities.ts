@@ -7,6 +7,8 @@
  * ⚠️ 本表住在这里而非单开 `data/`（只有一个消费者）、规模、后缀容错与
  *    `cities[0]` 省会不变量，一并见 docs/code/cli-birth.md。
  *
+ * @file 中国城市经纬度表 —— **真太阳时经度校正**的查表数据源（**纯数据文件**：只有
+ *
  * @packageDocumentation
  */
 

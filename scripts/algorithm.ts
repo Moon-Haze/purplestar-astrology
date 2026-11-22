@@ -5,6 +5,8 @@
  * 逐段组装纪律（换年口径锁、宫名口径、亮度塌缩、星曜名单、虚岁、斗君）见
  * docs/code/chart-kernel.md。
  *
+ * @file 紫微斗数排盘算法 —— iztro 与本项目领域模型之间的**唯一翻译层**：安星、五行局、大限区间
+ *
  * @packageDocumentation
  */
 

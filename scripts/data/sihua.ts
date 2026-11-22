@@ -6,6 +6,8 @@
  *
  * 完整口径见 docs/code/data-tables.md。
  *
+ * @file 四化与安星表 —— 生年四化、天魁天钺、禄存、天马（2026-10-11 从 `constants.ts` 拆出，逐字迁移）
+ *
  * @packageDocumentation
  */
 

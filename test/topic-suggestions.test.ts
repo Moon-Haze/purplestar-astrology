@@ -1,3 +1,6 @@
+/**
+ * @file 综合建议的确定性推算、降级与双输出一致性测试。
+ */
 // ── 层 3：综合建议按盘推算（dynamic-topic-suggestions）──
 //
 // buildTopicSuggestions 是确定性纯函数：同盘同参数逐字节一致、异盘不同、
@@ -21,7 +24,13 @@ const argsMod = await load<typeof import("@/cli/args")>("@/cli/args");
 
 type TopicKey = (typeof TOPIC_KEYS)[number];
 
-/** 造盘 + 建主题上下文（args 与 buildBirthInfo 同管线）。 */
+/**
+ * 造盘 + 建主题上下文（args 与 buildBirthInfo 同管线）。
+ *
+ * @param args - 排盘参数（走 {@link buildBirthInfo} 同管线）
+ * @param topic - 目标主题键
+ * @returns 该盘该主题的综合建议上下文
+ */
 function chartCtx(args: string[], topic: TopicKey) {
 	const built = bi.buildBirthInfo(argsMod.parseArgs(args, "astrology"));
 	const chart = generateChart(built.info);

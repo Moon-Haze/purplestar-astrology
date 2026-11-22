@@ -1,3 +1,6 @@
+/**
+ * @file 排盘内核公开函数、类型和禁用字段的冻结契约测试。
+ */
 // ── 内核对外契约冻结守卫（Phase 0 · 0C）──
 //
 // 本文件把「内核对外纯函数面」钉成可断言事实（架构文档 ADR-003 + 执行计划 0C）。
@@ -15,6 +18,7 @@ const palaceRelations = await load<typeof import("@/palace-relations")>("@/palac
 const sihua = await load<typeof import("@/mutagen")>("@/mutagen");
 const wenmo = await load<typeof import("@/wenmo-brightness")>("@/wenmo-brightness");
 
+/** 判别一个值是否为函数。 */
 const isFn = (v: unknown): v is (...a: never[]) => unknown => typeof v === "function";
 
 describe("内核对外契约（冻结 @ 2026-10-12）", () => {

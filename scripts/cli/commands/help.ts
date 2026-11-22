@@ -93,7 +93,12 @@ const COMMAND_EXAMPLES: Record<CommandName, readonly string[]> = {
 	selftest: ["  node scripts/purple-star.ts selftest"],
 };
 
-/** 字符串在等宽终端里占的列数：CJK / 全角算 2 列。 */
+/**
+ * 字符串在等宽终端里占的列数：CJK / 全角算 2 列。
+ *
+ * @param s - 待测宽的字符串（按码点遍历，代理对不会被拆成两列）
+ * @returns 该串在等宽终端里占的列数（CJK / 全角 / 韩文 / 兼容区算 2，其余算 1）
+ */
 function displayWidth(s: string): number {
 	let width = 0;
 	for (const ch of s) {
@@ -127,6 +132,8 @@ const ALIAS_OF = new Map<string, string>(
  * 渲染 OPTIONS 节正文：按声明表分组、只列 `owned` 里的参数，别名做行尾注。
  *
  * @param owned - 该命令归属的参数名集合（总览 = 全量）
+ *   不在集合里的参数整行不出现，整组都为空时连组标题也一并省略
+ * @returns 已按显示宽度对齐的行数组（首行是 `-h, --help`，随后按组序是组标题 + 参数行）
  */
 function renderOptions(owned: ReadonlySet<string>): string[] {
 	// 逐组收集（相邻同名组合并），最后按组序同步输出标题与参数 —— 旧写法把组标题
@@ -164,7 +171,11 @@ function renderOptions(owned: ReadonlySet<string>): string[] {
 	return lines;
 }
 
-/** 总览 help（man 八节：多一节 COMMANDS）。 */
+/**
+ * 总览 help（man 八节：多一节 COMMANDS）。
+ *
+ * @returns 总览帮助全文（八节按固定序：NAME / SYNOPSIS / DESCRIPTION / COMMANDS / OPTIONS / EXAMPLES / NOTES / SEE ALSO）
+ */
 export function renderOverviewHelp(): string {
 	const lines: string[] = [];
 	lines.push("NAME", "  purple-star —— 紫微斗数 CLI（排盘解读 / 古籍检索 / 合盘，三域合一）", "");
@@ -207,7 +218,12 @@ export function renderOverviewHelp(): string {
 	return lines.join("\n");
 }
 
-/** 每命令 help（man 七节：无 COMMANDS 节）。 */
+/**
+ * 每命令 help（man 七节：无 COMMANDS 节）。
+ *
+ * @param cmd - 命令名（取 `COMMAND_DESC` / 示例表；只显示该命令归属的参数）
+ * @returns 该命令的帮助全文（OWNED 参数经 `ownedOptions` 投影，NOTES 只带本命令相关的铁律）
+ */
 export function renderCommandHelp(cmd: CommandName): string {
 	// 归属 = 声明表投影（候选 4）：cmds 标志单点声明，help 不再持有第二张表
 	const owned = new Set(ownedOptions(cmd));

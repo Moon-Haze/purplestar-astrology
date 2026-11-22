@@ -1,3 +1,6 @@
+/**
+ * @file 基准盘与内核排盘结果的归一化逐字段比对器。
+ */
 // ── 排盘比对器 ──
 //
 // 拿本项目的 `generateChart()` 输出，与 toolkit 样本里的 `chart` 逐字段比。
@@ -25,56 +28,87 @@ import { loadData, loadRender } from "./loader.ts";
 // 契约，样本是**外部数据**，字段集不同（宫名是 iztro 词汇、无借宫字段、可选键可能整键
 // 缺失或为空串 —— 见上面的四处归一化）。星曜的 type / brightness / mutagen 在此放宽为
 // string 也是刻意的：比对器对外部数据不做预设，任何取值先收进来、由断言与白名单去判。
+/** 基准侧的一颗星：名称与类型；亮度、四化按外部数据原样收作字符串。 */
 export interface BaselineStar {
+	/** 星曜名（样本原文，用于按名建索引比对两宫的星曜集合） */
 	name: string;
+	/** iztro 口径的星曜类型：`major` 主星 / `soft` 吉星 / `tough` 煞星 / `minor` 杂曜 */
 	type: string;
+	/** 样本（iztro 口径）三档亮度；样本里只有主星恒带此键，吉星、煞星、杂曜整键缺失。⚠️ 2026-10 口径切换后不参与对拍 */
 	brightness?: string;
+	/** 样本（iztro 口径）生年四化；主星与四化辅星带此键（无四化时为 `""`），其余星整键缺失 */
 	mutagen?: string;
 }
 
+/** 基准侧的一个宫：地支、宫干、iztro 口径宫名、星曜与大限区间。 */
 export interface BaselinePalace {
+	/** 地支索引 0–11（0=子 … 11=亥）；比对时按此值建索引，不依赖数组下标 */
 	branch: number;
+	/** 宫干（天干索引 0–9），样本原值 */
 	stem: number;
 	/** iztro 口径宫名（如「仆役」），比对前经 normalizePalaceName 翻译 */
 	name: string;
+	/** 本宫全部星曜，样本原顺序（主星 → 吉星 → 煞星 → 杂曜） */
 	stars: BaselineStar[];
 	/** 该宫所属大限区间 `[起, 讫]`（虚岁，闭区间） */
 	decadalRange?: [number, number];
+	/** 是否命宫（样本侧的真值，与 soulBranch 指向同一宫） */
 	isSoulPalace?: boolean;
+	/** 是否身宫（样本侧的真值，一盘中恰一个 `true`） */
 	isBodyPalace?: boolean;
+	/** 样本生成时该宫是否已走到的当前大限 —— 2026 年快照，比对时**按重算虚岁重新推导**、不直接采信 */
 	isCurrentDecadal?: boolean;
 }
 
+/** 基准侧的一个大限：起讫虚岁、落宫地支与 iztro 口径宫名。 */
 export interface BaselineDecadal {
+	/** 大限起始虚岁（虚岁域，与 decadals 的排序键同域） */
 	startAge: number;
+	/** 大限结束虚岁（闭区间，恒为 startAge + 9） */
 	endAge: number;
+	/** 该大限所落宫的地支索引 0–11 */
 	palaceBranch: number;
 	/** iztro 口径宫名 */
 	palaceName: string;
 }
 
+/** 基准样本里的一整张盘（`fixtures/charts.jsonl` 的一行）。 */
 export interface BaselineChart {
+	/** 命宫地支索引 0–11（样本生成时的真值） */
 	soulBranch: number;
+	/** 身宫地支索引 0–11（样本生成时的真值） */
 	bodyBranch: number;
+	/** 五行局局数 2–6：2 水二局 / 3 木三局 / 4 金四局 / 5 土五局 / 6 火六局 */
 	fiveElementsClass: number;
+	/** 五行局名 iztro 原文（如「水二局」）；与局数可能不一致，比对两者各自比 */
 	fiveElementsClassName: string;
+	/** 紫微星所在宫的地支索引 0–11 */
 	ziweiPos: number;
+	/** 农历六字段；可整键缺失（外部数据不做预设），缺时比对器按空对象处理 */
 	lunarInfo?: Partial<LunarInfo>;
+	/** 十二宫；缺时比对器按空数组处理，逐宫报「缺失」 */
 	palaces?: BaselinePalace[];
+	/** 全部大限，按起始虚岁升序；比对**按下标**逐项比，顺序错了直接报红 */
 	decadals?: BaselineDecadal[];
 }
 
 /** fixtures/charts.jsonl 的一行：出生信息 + 基准盘（样本其余字段如 topics 已剔除）。 */
 export interface BaselineSample {
+	/** 本仓口径的出生信息（`BirthInfo`：时间为 0–11 时辰序号、经度为真太阳时校正用经度） */
 	birthInfo: BirthInfo;
+	/** 基准盘（样本侧字段集，见 {@link BaselineChart}；jsonl 里另带 currentAge 等多余键，不在此声明） */
 	chart: BaselineChart;
 }
 
 /** 一处字段差异（结构化而非布尔，失败时要能一眼看出是哪个字段）。 */
 export interface ChartDiff {
+	/** 字段路径（如 `palaces[巳宫(branch=5)].stars[紫微].mutagen`），直接当失败信息用 */
 	path: string;
+	/** 期望值：取自基准样本（时变字段则由比对器按注入时间独立重算） */
 	expected: unknown;
+	/** 实际值：取自本项目 `generateChart()` 的产出 */
 	actual: unknown;
+	/** 可选说明（如「基准原文是 iztro 旧口径」「按当前年份重算」） */
 	note?: string;
 	/** 白名单内的已知差异（仅 keepWhitelisted 模式下会保留并打标） */
 	whitelisted?: boolean;
@@ -132,18 +166,32 @@ export { BRANCHES };
 //
 // 白名单**机制**保留（类型 / isWhitelisted / 空清单）：未来若出现新的「样本陈旧、
 // 本项目对」的单字段差异，仍走这里登记 `cause`，不另起炉灶。
+/** 白名单条目：一处已知的单字段差异及其成因。 */
 export interface KnownDivergence {
+	/** 星曜名（差异所涉的那一颗） */
 	star: string;
+	/** 该星所在宫的地支索引 0–11 */
 	branch: number;
 	/** 样本（基准）侧的取值 */
 	baseline: string;
 	/** 本项目侧的取值 */
 	current: string;
+	/** 成因说明：为什么这处差异是已知的、升级 iztro 时该不该清理 */
 	cause: string;
 }
 
+/** 已知差异清单。机制保留，当前为空数组（无已登记差异）。 */
 export const KNOWN_DIVERGENCES: KnownDivergence[] = [];
 
+/**
+ * 判断一处差异是否在白名单内。
+ *
+ * @param starName - 星曜名
+ * @param branch - 宫位地支序（0=子）
+ * @param baseline - 基准侧亮度取值
+ * @param current - 本项目侧亮度取值
+ * @returns 命中已登记差异则为 `true`
+ */
 function isWhitelisted(
 	starName: string,
 	branch: number,
@@ -160,6 +208,7 @@ function isWhitelisted(
 }
 
 // 空值（'' / undefined / null）一律归一为「无」
+/** 归一化单字段取值：`undefined` / `""` 一律视为「无此属性」。 */
 const val = (v: string | undefined | null): string | undefined =>
 	v === "" || v === null ? undefined : v;
 
@@ -190,13 +239,16 @@ export const DAXIAN_FIELDS = ["startAge", "endAge", "palaceBranch", "palaceName"
  *    比对器的期望值必须来自另一条计算路径，否则它就只是内核的复读机。
  *    （更独立的预言机：iztro 自身的 horoscope().age.nominalAge，见 invariants.test.ts。）
  *
- * @param birthInfo 出生公历（只取年月日）
- * @param [now] 注入「当前时间」以便测试漂移逻辑，默认取真实时间
+ * @param birthInfo - 出生公历（只取年月日）
+ * @param [now] - 注入「当前时间」以便测试漂移逻辑，默认取真实时间
+ *
+ * @returns 按注入时间与出生农历年独立算出的虚岁
  */
 export function expectedAge(
 	birthInfo: Pick<BirthInfo, "year" | "month" | "day">,
 	now: Date = new Date()
 ): number {
+	/** 按注入的「当前时间」推算农历年，供虚岁对比。 */
 	const lunarYearAt = (d: Date): number =>
 		Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate())
 			.getLunar()
@@ -205,6 +257,7 @@ export function expectedAge(
 	return lunarYearAt(now) - lunarYearAt(birth) + 1;
 }
 
+/** `compareChart` 的选项：可注入「当前时间」以复现时变字段。 */
 export interface CompareOptions {
 	/** 注入「当前时间」以便测试漂移逻辑，默认取真实时间 */
 	now?: Date;
@@ -239,6 +292,7 @@ export function compareChart(
 ): ChartDiff[] {
 	const now = opts.now ?? new Date();
 	const diffs: ChartDiff[] = [];
+	/** 收集一处差异。 */
 	const push: PushDiff = (path, expected, got, note, whitelisted) => {
 		if (whitelisted && !opts.keepWhitelisted) {
 			return;
@@ -402,7 +456,17 @@ export function compareChart(
 	return diffs;
 }
 
-/** 比对一个宫内的星曜集合：按星名建索引，比对 type / mutagen。 */
+/**
+ * 比对一个宫内的星曜集合：按星名建索引，比对 type / mutagen。
+ *
+ * @param aStars - 本项目该宫的星曜
+ * @param bStars - 基准样本该宫的星曜
+ * @param label - 宫位标签，用于差异路径前缀
+ * @param branch - 宫位地支序（当前无消费者，保留以备按宫放行差异）
+ * @param push - 差异收集回调：路径、期望值、实际值与可选说明
+ *
+ * @returns 无返回值；差异经 `push` 回调逐条上报
+ */
 function compareStars(
 	aStars: Star[],
 	bStars: BaselineStar[],
@@ -447,7 +511,13 @@ function compareStars(
 	}
 }
 
-/** 把 diff 列表渲染成可读的失败信息（node:test 的断言消息里用）。 */
+/**
+ * 把 diff 列表渲染成可读的失败信息（node:test 的断言消息里用）。
+ *
+ * @param diffs - 比对产生的差异列表
+ * @param limit - 最多逐条列出的数量，超出部分折成一行计数（默认 25）
+ * @returns 可直接放进断言消息的多行文本
+ */
 export function formatDiffs(diffs: ChartDiff[], limit = 25): string {
 	if (!diffs.length) {
 		return "无差异";

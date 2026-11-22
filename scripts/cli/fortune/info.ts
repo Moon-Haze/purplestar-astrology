@@ -38,6 +38,9 @@ function lunarMonthCN(m: number): string {
  * @param d - 农历日 1–30
  *
  * @remarks
+ *
+ * @returns 该农历日的中文日名（`一`–`十` 加「初」前缀，`二十` 单列，`廿一`–`廿九`）
+ *
  * 传统口径：十以前「初X」，十一至十九「X十X」省作「十一…十九」，二十一至二十九用「廿」。
  */
 function lunarDayCN(d: number): string {
@@ -78,6 +81,9 @@ export interface InfoClockOpts {
  * @param opts - 出生时刻展示串
  *
  * @remarks
+ *
+ * @returns 基本信息面板的输出行（公历生日与姓名、命宫 / 紫微落 / 三方四正 + 四柱两口径）；只拼行，未 `join`
+ *
  * 面板行集：公历生日与姓名，命宫 / 紫微落 / 三方四正（身宫与命宫同行，避免重复）。
  *
  * 四柱由 `lunar-typescript` 现算（节气口径 = `getEightChar()`，立春分年、节气分月；

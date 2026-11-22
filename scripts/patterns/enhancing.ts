@@ -7,6 +7,8 @@
  *
  * ⚠️ 下方导出的数组**次序即 `detectPatterns` 的输出次序**（共同契约见 docs/code/patterns.md）。
  *
+ * @file 助力格识别器 —— 吉星夹拱、双禄三奇一类「锦上添花」的格局
+ *
  * @packageDocumentation
  */
 
@@ -21,7 +23,12 @@ import {
 	fillVerdict,
 } from "../patterns/helpers";
 
-/** 辅弼夹命 */
+/**
+ * 辅弼夹命
+ *
+ * @param chart - 已排好的命盘
+ * @returns 左辅右弼分居命宫前后两宫时为单元素数组（再会魁钺记入 `bonus`）；否则为空数组
+ */
 function detectFuBiJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) {
@@ -54,7 +61,12 @@ function detectFuBiJiaMing({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 昌曲夹命 */
+/**
+ * 昌曲夹命
+ *
+ * @param chart - 已排好的命盘
+ * @returns 文昌文曲分居命宫前后两宫时为单元素数组；否则为空数组
+ */
 function detectChangQuJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) {
@@ -80,7 +92,12 @@ function detectChangQuJiaMing({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 魁钺夹命 */
+/**
+ * 魁钺夹命
+ *
+ * @param chart - 已排好的命盘
+ * @returns 天魁天钺分居命宫前后两宫时为单元素数组；否则为空数组
+ */
 function detectKuiYueJiaMing({ chart }: DetectContext): Pattern[] {
 	const { prev, next } = getJiaPalaces(chart, chart.soulBranch);
 	if (!prev || !next) {
@@ -104,7 +121,13 @@ function detectKuiYueJiaMing({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 双禄朝垣：化禄 + 禄存 同会三方 */
+/**
+ * 双禄朝垣：化禄 + 禄存 同会三方
+ *
+ * @param chart - 已排好的命盘
+ * @param ming - 命宫（只用于判「命坐空劫」这条破格）
+ * @returns 化禄与禄存同会三方四正时为单元素数组；缺任一项时为空数组
+ */
 function detectShuangLuChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	const sanFang = getSurroundPalaces(chart);
 	let huaLuFound = false;
@@ -138,7 +161,12 @@ function detectShuangLuChaoYuan({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 三奇加会：化禄 化权 化科 同会三方 */
+/**
+ * 三奇加会：化禄 化权 化科 同会三方
+ *
+ * @param chart - 已排好的命盘
+ * @returns 化禄、化权、化科三吉化齐会三方四正时为单元素数组；三化不全时为空数组
+ */
 function detectSanQiJiaHui({ chart }: DetectContext): Pattern[] {
 	const sanFangPalaces = getSurroundPalaces(chart);
 	let lu = false,
@@ -173,7 +201,13 @@ function detectSanQiJiaHui({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 化禄入命/官/财 */
+/**
+ * 化禄入命/官/财
+ *
+ * @param chart - 已排好的命盘
+ * @param ming - 命宫（只查此宫有无带生年化禄的主星）
+ * @returns 命宫主星带化禄时为单元素数组，格局名拼入该星名；否则为空数组
+ */
 function detectHuaLuRuMing({ chart, ming }: DetectContext): Pattern[] {
 	const huaLuStar = ming.stars.find(s => s.mutagen === "禄" && s.type === "major");
 	if (!huaLuStar) {
@@ -195,6 +229,7 @@ function detectHuaLuRuMing({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
+/** 助力格识别器注册表：吉星夹拱、双禄三奇一类。 */
 export const ZHU_LI_GE: ReadonlyArray<Detector> = [
 	detectFuBiJiaMing,
 	detectChangQuJiaMing,

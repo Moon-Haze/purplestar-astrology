@@ -13,12 +13,15 @@
  * ⚠️ 本文件里的 `{@link}` 只指向**本文档内**的符号 —— 跨文件 TSDoc 解析不到，
  * 提到 `helpers.ts` 的函数（`hasShaInPalace` 等）时直呼其名，不加链接。
  *
+ * @file 格局层的**数据**：常量、名字裁决表与判词表（自 `patterns/data.ts` 迁入语料域）
+ *
  * @packageDocumentation
  */
 // 本篇同时收录于 docs/code/corpus.md（格局数据定位与 {@link} 纪律）。
 
 import type { GejuNameAlias, PatternVerdict } from "@/patterns/types";
 
+/** 格局名别名裁决表：把异名归一到判词表的规范名。 */
 export const GEJU_NAME_ALIASES: GejuNameAlias[] = [
 	// ────────── 古籍词频裁决（真异名，两个不同的词）──────────
 	{

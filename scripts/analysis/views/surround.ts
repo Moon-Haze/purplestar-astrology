@@ -9,6 +9,8 @@
  * 产出**结构化条目流**（一源双投影，见 `../items`）：`renderSanFangItems` 是数据面，
  * `renderSanFang` 经 `formatItems` 投影为文本行。
  *
+ * @file 二、三方四正联动分析 —— 本宫之外三宫的星曜详解
+ *
  * @packageDocumentation
  */
 
@@ -38,6 +40,8 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
  *   命中的全文降级为「星曜徽标 + 指引回首现板块」一行；未命中给全文并登记本板块。
  *   缺省（`--topic` 单主题路径）为 `undefined`，输出与不去重时逐字节一致。
  *   主场登记由装配层预扫描完成（见 `analysis/report.ts` 的 `getTopicMainContentText`）。
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数只读主宫名、三方四正宫位与联动标注、性别；本宫只出行星曜概要，空宫借对宫只列星名不参与论断
+ * @returns 条目流：节头 + 逐宫（本宫在前，三宫按联动标注序）的宫头行、主星详解、借宫注（空宫时）、次星深度文案；每条都带 `palace` 语义字段
  */
 function renderSanFangItems(ctx: AnalysisContext, dedupe?: Map<string, string>): AnalysisItem[] {
 	const { palaceName, sanFang, sanFangLabels, gender } = ctx;
@@ -196,7 +200,9 @@ function renderSanFangItems(ctx: AnalysisContext, dedupe?: Map<string, string>):
 /**
  * 渲染「二、三方四正联动」整节（文本投影）。
  *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）
  * @param dedupe - 见 {@link renderSanFangItems}。
+ * @returns 与 {@link renderSanFangItems} 条目流逐条对应的文本行
  */
 export function renderSanFang(ctx: AnalysisContext, dedupe?: Map<string, string>): string[] {
 	return formatItems(renderSanFangItems(ctx, dedupe));

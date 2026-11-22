@@ -11,6 +11,8 @@
  * 产出**结构化条目流**（views 内部实现形态，见 `../items`）：slot = `liunian` /
  * `liuyue`。本节条目依赖运行时时钟（流年/流月取系统当前日期，预计算不可复现）。
  *
+ * @file 四点五、流年分析 + 四点六、流月分析 —— 倪师正统口径
+ *
  * @packageDocumentation
  */
 
@@ -26,7 +28,12 @@ import { descPalaceStars, mutagenInPalaces } from "../../analysis/palace-query";
 import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
-/** 渲染「四点五、流年」与「四点六、流月」两节的结构化条目流（视角不符时返回空数组）。 */
+/**
+ * 渲染「四点五、流年」与「四点六、流月」两节的结构化条目流（视角不符时返回空数组）。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数只读命盘、视角（`view`）、流年公历年（`liunianYear`）与流月月份（`liuyueMonth`）；年支由公历年取模单点推出，不按年柱 / 月柱重新起化
+ * @returns 条目流：`view` 为 `liunian` / `liuyue` 时出流年段（流年宫与三方四正会照的本命四化），`view` 为 `liuyue` 时再出流月段；`view` 为 `mingpan` 等其余值时为两段都不出的空数组
+ */
 function renderLiuNianItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, view, liunianYear, liuyueMonth } = ctx;
 
@@ -110,7 +117,12 @@ function renderLiuNianItems(ctx: AnalysisContext): AnalysisItem[] {
 	return items;
 }
 
-/** 渲染「四点五、流年」与「四点六、流月」两节（文本投影；视角不符时返回空数组）。 */
+/**
+ * 渲染「四点五、流年」与「四点六、流月」两节（文本投影；视角不符时返回空数组）。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）
+ * @returns 与 {@link renderLiuNianItems} 条目流逐条对应的文本行；视角不符时为空数组
+ */
 export function renderLiuNian(ctx: AnalysisContext): string[] {
 	return formatItems(renderLiuNianItems(ctx));
 }

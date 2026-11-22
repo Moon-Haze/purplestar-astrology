@@ -29,6 +29,12 @@ import { KNOWLEDGE_SOURCES, KNOWLEDGE_SOURCE_IDS } from "@/knowledge/registry";
  * - `--limit` 给了就必须是正整数（books/tianji 两份文案合一）；
  * - 取值参数解码为精确 `string`（或 `undefined`），裸开关的 boolean 形态在此被拦截，
  *   各源无需再 `typeof x === "boolean"` 收窄。位置参数回退仍是域知识，原样透传。
+ *
+ * @param args - CLI 参数表（读 `--search` / `--limit` / `--book` / `--topic` 与位置参数 `_`）
+ * @param source - 本次选中的知识域 id（只用于报错文案里的位置参数示例）
+ * @returns 归一后的 {@link KnowledgeQuery}：`term` 未给为 `undefined`、`limit` 缺省 15、
+ *   `book` 未给为 `undefined`、`positional` 原样透传
+ * @throws `--search` / `--book` 是裸开关、`--limit` 非正整数、或出现已退役的 `--topic` 时抛错
  */
 function decodeKnowledgeQuery(args: CliArgs, source: string): KnowledgeQuery {
 	if (typeof args.search === "boolean") {
@@ -75,6 +81,8 @@ function decodeKnowledgeQuery(args: CliArgs, source: string): KnowledgeQuery {
  * `--source books`（缺省）为古籍检索，行为与「classics 只搜古籍」的旧用法逐字兼容。
  * tianji 域的重语料在 `search` 内动态 import 懒加载（见 `knowledge/sources/`）。
  * oracle 域已下线——断语手册由 astrology 按盘现场推算取代（a234a96）。
+ *
+ * @throws `--source` 不在注册表的域 id 列表里时抛错并列出可用域（不做静默回退到 books）
  */
 export async function cmdKnowledge(args: CliArgs): Promise<string> {
 	const source = String(args.source ?? "books");

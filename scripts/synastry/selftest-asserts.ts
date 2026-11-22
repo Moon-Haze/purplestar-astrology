@@ -17,6 +17,8 @@
  *    **仅用于造假盘**，合盘不排盘，不追求排盘学含义。
  *
  * 三类适配点（合并根 CLI / 暂缓守卫 / SKILL.md 一致性换接线）见 docs/code/synastry.md。
+ *
+ * @file 合盘自检断言组 —— 从 synastry 自带的 selftest.ts 抽出
  */
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -67,6 +69,9 @@ const aux = (name: string) => ({ name, type: "minor" });
  * 不追求与真盘等形。「synastry 读的字段与 `analyze --json` 的真实形状对不对得上」由仓库的
  * `test/cli.test.ts` 用**真排出来的盘**端到端守住 —— 分工：自包含冒烟管「链通不通」，
  * 仓库端到端管「契约对不对」。
+ *
+ * @param o - 假盘的骨架参数：`name` / `gender` 直接进 `birthInfo`，`mingBranch` 决定命宫地支（其余宫位依次顺推），`mingStar` 放命宫与福德宫，`fuqiStar` 放夫妻宫（`extraFuqiStar` 非空时另加一颗非主星），`lateZiCandidate` 进 `lateZi.candidate`
+ * @returns `analyze --json` 形态的 JSON 字符串（命盘 + 生年四化 + 晚子时标记 + 排盘依据），可直接喂给 `synastry`
  */
 function makeFixture(o: {
 	name: string;

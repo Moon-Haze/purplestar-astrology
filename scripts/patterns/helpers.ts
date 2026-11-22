@@ -9,6 +9,8 @@
  * 定位宫位走地支算术（三方四正 / 夹宫 / 对宫），偏移算式**全仓单点**在 `../palace-relations`
  * —— 详见 docs/code/patterns.md。
  *
+ * @file 格局层的**辅助底座**：宫位 / 星曜查询与判词填充
+ *
  * @packageDocumentation
  */
 
@@ -326,6 +328,7 @@ export function sanFangHasMutagen(chart: ZiweiChart, hua: Mutagen): boolean {
  * 分离的立场住在实现侧 —— 它是纯函数，且只被同目录的识别器调用点使用。
  */
 export function fillVerdict(verdict: PatternVerdict, vars: Record<string, string>): PatternVerdict {
+	/** 用变量表替换判词模板里的 `{占位符}`，未给出的原样保留。 */
 	const sub = (s: string): string => s.replace(/\{([^{}]+)\}/g, (m, k: string) => vars[k] ?? m);
 	const out: PatternVerdict = { description: sub(verdict.description) };
 	if (verdict.topicDescription !== undefined) {

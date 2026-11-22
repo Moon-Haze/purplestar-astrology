@@ -10,6 +10,8 @@
  *
  * ⚠️ 下方导出的数组**次序即 `detectPatterns` 的输出次序**（见 docs/code/patterns.md）。
  *
+ * @file 基础格局识别器 —— 让普通命盘也能识别出常见格局的一组轻量判定
+ *
  * @packageDocumentation
  */
 
@@ -25,7 +27,12 @@ import {
 } from "../patterns/helpers";
 import { oppositeBranch } from "../palace-relations";
 
-/** 禄存守身：禄存入身宫（或命宫与身宫同宫） */
+/**
+ * 禄存守身：禄存入身宫（或命宫与身宫同宫）
+ *
+ * @param chart - 已排好的命盘（判定只读盘面字段，不改任何状态）
+ * @returns 命中时为单元素数组（禄存坐命宫取「禄存守命」、坐身宫取「禄存守身」）；禄存不在命宫也不在身宫时为空数组
+ */
 function detectLuCunShouShen({ chart }: DetectContext): Pattern[] {
 	const luCunPalace = findStarPalace(chart, "禄存");
 	if (!luCunPalace) {
@@ -48,7 +55,12 @@ function detectLuCunShouShen({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 天马入命/迁：驿马星动 */
+/**
+ * 天马入命/迁：驿马星动
+ *
+ * @param chart - 已排好的命盘
+ * @returns 天马坐命宫取「天马入命」、坐迁移宫（命宫对宫）取「天马在迁」；两处皆无天马时为空数组
+ */
 function detectTianMaRuMing({ chart }: DetectContext): Pattern[] {
 	const tianMaPalace = findStarPalace(chart, "天马");
 	if (!tianMaPalace) {
@@ -71,7 +83,12 @@ function detectTianMaRuMing({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 化禄入财：财帛宫主星化禄 */
+/**
+ * 化禄入财：财帛宫主星化禄
+ *
+ * @param chart - 已排好的命盘
+ * @returns 财帛宫有主星带生年化禄时为单元素数组（格局名固定「化禄入财」）；否则为空数组
+ */
 function detectHuaLuRuCai({ chart }: DetectContext): Pattern[] {
 	const cai = chart.palaces.find(p => p.name === "财帛宫");
 	if (!cai) {
@@ -93,7 +110,12 @@ function detectHuaLuRuCai({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 化权入官：官禄宫主星化权 */
+/**
+ * 化权入官：官禄宫主星化权
+ *
+ * @param chart - 已排好的命盘
+ * @returns 官禄宫有主星带生年化权时为单元素数组（格局名固定「化权入官」）；否则为空数组
+ */
 function detectHuaQuanRuGuan({ chart }: DetectContext): Pattern[] {
 	const guan = chart.palaces.find(p => p.name === "官禄宫");
 	if (!guan) {
@@ -115,7 +137,13 @@ function detectHuaQuanRuGuan({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 化科入命/身：科名加身 */
+/**
+ * 化科入命/身：科名加身
+ *
+ * @param chart - 已排好的命盘（身宫由 `chart.bodyBranch` 定位）
+ * @param ming - 命宫（由 `detectPatterns` 保证非空）
+ * @returns 命宫有主星化科取「化科入命」、身宫有则取「化科入身」；命中即返回单元素数组，两处皆无时为空数组
+ */
 function detectHuaKeRuMingShen({ chart, ming }: DetectContext): Pattern[] {
 	const shen = chart.palaces.find(p => p.branch === chart.bodyBranch);
 	const target = [ming, shen].filter((p): p is Palace => Boolean(p));
@@ -140,7 +168,13 @@ function detectHuaKeRuMingShen({ chart, ming }: DetectContext): Pattern[] {
 	return [];
 }
 
-/** 昌曲同会：文昌+文曲都在命三方四正 */
+/**
+ * 昌曲同会：文昌+文曲都在命三方四正
+ *
+ * @param chart - 已排好的命盘（昌曲是否同会由三方四正星曜集合判定）
+ * @param ming - 命宫（用来区分「昌曲坐命」与「昌曲同会」）
+ * @returns 昌曲俱在三方四正时返回单元素数组；缺任一星时为空数组
+ */
 function detectChangQuTongHui({ chart, ming }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!sanFangSet.has("文昌") || !sanFangSet.has("文曲")) {
@@ -159,7 +193,12 @@ function detectChangQuTongHui({ chart, ming }: DetectContext): Pattern[] {
 	];
 }
 
-/** 辅弼同会：左辅+右弼都在命三方四正 */
+/**
+ * 辅弼同会：左辅+右弼都在命三方四正
+ *
+ * @param chart - 已排好的命盘
+ * @returns 左辅与右弼俱在三方四正时为单元素数组；否则为空数组
+ */
 function detectFuBiTongHui({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!sanFangSet.has("左辅") || !sanFangSet.has("右弼")) {
@@ -177,7 +216,12 @@ function detectFuBiTongHui({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 魁钺同会：天魁+天钺都在命三方四正 */
+/**
+ * 魁钺同会：天魁+天钺都在命三方四正
+ *
+ * @param chart - 已排好的命盘
+ * @returns 天魁与天钺俱在三方四正时为单元素数组；否则为空数组
+ */
 function detectKuiYueTongHui({ chart }: DetectContext): Pattern[] {
 	const sanFangSet = sanFangAllStars(chart);
 	if (!sanFangSet.has("天魁") || !sanFangSet.has("天钺")) {
@@ -195,7 +239,12 @@ function detectKuiYueTongHui({ chart }: DetectContext): Pattern[] {
 	];
 }
 
-/** 科权双会：化科 + 化权 同会三方四正 */
+/**
+ * 科权双会：化科 + 化权 同会三方四正
+ *
+ * @param chart - 已排好的命盘（本例扫的是三方四正诸宫的星曜四化字）
+ * @returns 化科与化权同现于三方四正时为单元素数组；缺任一项时为空数组
+ */
 function detectKeQuanShuangHui({ chart }: DetectContext): Pattern[] {
 	const sfPalaces = getSurroundPalaces(chart);
 	let hasKe = false,
@@ -225,6 +274,7 @@ function detectKeQuanShuangHui({ chart }: DetectContext): Pattern[] {
 	];
 }
 
+/** 基础格局识别器注册表：让普通命盘也能识别的常见格局。 */
 export const JI_CHU_GE: ReadonlyArray<Detector> = [
 	detectLuCunShouShen,
 	detectTianMaRuMing,

@@ -12,6 +12,8 @@ import { locateSihua } from "../chart/render";
  *
  * @param chart - 命盘
  * @param branches - 地支索引集合（通常是三方四正四支）
+ *
+ * @returns 命中的主星名数组（跨宫并集，按盘面出现顺序去重；空则为空数组）
  */
 export function huiZhaoMajors(chart: ZiweiChart, branches: number[]): string[] {
 	const seen: string[] = [];
@@ -36,6 +38,11 @@ export function huiZhaoMajors(chart: ZiweiChart, branches: number[]): string[] {
  * @param mark - 三方命中的标记文案（流年节是「★ 入流年三方四正」，大限节是短「★」）
  *
  * @remarks
+ *
+ * @param chart - 命盘
+ * @param transforms - 这一层四化的映射（如生年 / 流年），键是化禄 / 化权 / 化科 / 化忌
+ * @returns 每个四化落点一行的数组（`化{化} {星} → {宫}(支)`，未上盘记「（未上盘）」）
+ *
  * 收拢原先散在 5 个专题节里的同构循环（生年 / 流年 / 流月 / 流年深入 / 大限深入）——
  * 各节差异只有「要不要三方标记、标记文案」，一个参数表达；「（未上盘）」兜底与支号
  * 括号的拼接规则也只活在一处。
@@ -59,6 +66,10 @@ export function sihuaLines(
 
 /**
  * 「会照主星：…」行（{@link huiZhaoMajors} 的并集；空时给兜底文案）—— 三个专题节同款。
+ *
+ * @param chart - 命盘
+ * @param sanFang - 三方四正的地支索引集合（通常来自 `surroundBranches`）
+ * @returns 单行「会照主星：A、B」；无主星时正文换成「（无主星会照）」
  */
 export function huiZhaoLine(chart: ZiweiChart, sanFang: number[]): string {
 	return `  会照主星：${huiZhaoMajors(chart, sanFang).join("、") || "（无主星会照）"}`;
@@ -70,6 +81,11 @@ export function huiZhaoLine(chart: ZiweiChart, sanFang: number[]): string {
  * @returns 每条含星名、生年化、流年化与落宫地支
  *
  * @remarks
+ *
+ * @param chart - 命盘（用来查该星落在哪一宫）
+ * @param native - 生年四化映射（键是化禄 / 化权 / 化科 / 化忌，值是星名）
+ * @param liuNian - 流年四化映射（同上；与 `native` 同星不同化的组合都算引动）
+ *
  * 三合派传统论「叠」的可靠形态之一（双忌 / 忌逢禄引动等）的**事实陈述**，
  * 具体吉凶交给解读层 —— 这里只报「谁被双引动、落哪」。
  */

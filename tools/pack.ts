@@ -38,6 +38,8 @@
  * npm run pack              # 打 zip + 解压自检
  * npm run pack -- --no-verify
  * ```
+ *
+ * @file 打包分发件：把要分发的文件收成一个 zip。**不拍平、不改任何内容。**
  */
 
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
@@ -72,6 +74,9 @@ const EXCLUDE_DIRS = new Set(["node_modules", ".git", ".cache"]);
  * 点目录一律不进包：分发面（`scripts/` 等）内只应有产物与契约文件，工具状态目录
  * （如 `.mimosa` 安全扫描状态）出现在内核目录旁时不该被夹带——分发件里多一个
  * 隐匿目录既增大包体又是噪声。文件不受此规则影响（如 `.gitignore` 语义不同）。
+ *
+ * @param name - 目录项名（不含路径）
+ * @returns 该目录是否应排除在分发件之外
  */
 function isExcludedDir(name: string): boolean {
 	return EXCLUDE_DIRS.has(name) || name.startsWith(".");
@@ -79,13 +84,24 @@ function isExcludedDir(name: string): boolean {
 
 // ── 枚举（排序固定，否则产物字节随文件系统返回序漂移） ──────────────
 
+/** 一个待打包文件：zip 内路径、源文件绝对路径与字节数。 */
 interface Entry {
 	/** zip 内的完整路径，posix 分隔符，形如 `purplestar-astrology/SKILL.md` */
 	path: string;
+	/** 源文件的绝对路径（读取内容用） */
 	abs: string;
+	/** 文件字节数（写 zip 中央目录用） */
 	size: number;
 }
 
+/**
+ * 递归收集目录条目并换算成 zip 内路径。
+ *
+ * @param absDir - 待遍历的绝对目录路径
+ * @param zipPrefix - 该目录在 zip 内的路径前缀
+ * @param acc - 收集结果的累积数组（就地追加）
+ * @returns 无返回值；条目追加进 `acc`
+ */
 function walk(absDir: string, zipPrefix: string, acc: Entry[]): void {
 	const names = readdirSync(absDir).sort(); // 排序是「字节可复现」的一半
 	for (const name of names) {
@@ -104,6 +120,11 @@ function walk(absDir: string, zipPrefix: string, acc: Entry[]): void {
 	}
 }
 
+/**
+ * 按分发清单收集要打入包的文件条目。
+ *
+ * @returns zip 内路径与源文件路径配对的条目表
+ */
 function collect(): Entry[] {
 	const acc: Entry[] = [];
 	for (const item of INCLUDE) {
@@ -135,6 +156,9 @@ const DOS_TIME = 0;
  * 分发件全部条目 < 4 GB、单文件 < 65535 字节名，那些都用不上 ——
  * 写它们只会增加出错面。本仓最大条目是语料快照 `scripts/corpus/data/tianji.ts`
  * （体量以文件为准），离两个上限都很远。
+ *
+ * @param entries - 要写入的条目表（`path` 为 zip 内路径）
+ * @returns 完整 zip 文件的缓冲区
  */
 function buildZip(entries: Entry[]): Buffer {
 	const locals: Buffer[] = [];
@@ -209,6 +233,11 @@ function buildZip(entries: Entry[]): Buffer {
  * @remarks 用 Node 自写解压（同样只依赖 zlib），不调外部 `unzip`。
  * 顺带验证两件容易漏的事：① 条目数与中央目录一致（截断会在这里暴露）；
  * ② 解压出来的字节与源文件逐字节相同（压缩/写入环节没掉数据）。
+ *
+ * @param zip - {@link buildZip} 的产物
+ * @param entries - 打包前的条目表，用于核验条目数与内容
+ * @returns 无返回值；结构损坏、条目数不符或解压结果不一致时抛错
+ * @throws 中央目录结构损坏、条目数对不上、解压后与源文件不一致、或解压后 `selftest` 失败
  */
 function verify(zip: Buffer, entries: Entry[]): void {
 	// 逐条解析中央目录（EOCD → 中央目录 → 各条目的本地头）
@@ -300,7 +329,13 @@ function verify(zip: Buffer, entries: Entry[]): void {
 	}
 }
 
-/** 解压全条目到目标目录（仅 store/deflate，够本脚本自己写的产物用） */
+/**
+ * 解压全条目到目标目录（仅 store/deflate，够本脚本自己写的产物用）
+ *
+ * @param zip - zip 文件缓冲区
+ * @param dest - 解压目标目录（不存在则创建）
+ * @returns 无返回值；文件按 zip 内路径落盘
+ */
 function extractAll(zip: Buffer, dest: string): void {
 	let p = zip.readUInt32LE(zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06])) + 16);
 	const total = zip.readUInt16LE(zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06])) + 10);

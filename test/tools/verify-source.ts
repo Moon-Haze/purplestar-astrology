@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/**
+ * @file jsonl 语料与 DuckDB 重建样本的逐条互验工具。
+ */
 // ── 互验：jsonl 语料 ↔ DuckDB 逐条比对 ──
 //
 // 本次改造的主要验收手段。它回答一个别人替不了的问题：**从关系表重建出的样本，
@@ -50,6 +53,7 @@ const RULE = "─".repeat(46);
 
 // ── 参数 ──
 const argv = process.argv.slice(2);
+/** 取 `--name=value` 形式的参数值；缺省返回 null。 */
 const optOf = (name: string): string | null => {
 	const i = argv.indexOf(`--${name}`);
 	if (i < 0) {
@@ -65,6 +69,13 @@ const MONTH = optOf("month") ? Number(optOf("month")) : null;
 const LIMIT = optOf("limit") ? Number(optOf("limit")) : Infinity;
 const QUIET = argv.includes("--quiet");
 
+/**
+ * 由年月推出分片文件路径。
+ *
+ * @param year - 公历年
+ * @param month - 公历月（1–12）
+ * @returns 该分片的绝对路径
+ */
 function shardPath(year: number, month: number): string {
 	return resolve(SAMPLES, `year-${year}`, `${year}-${String(month).padStart(2, "0")}.jsonl.gz`);
 }
@@ -75,12 +86,20 @@ function shardPath(year: number, month: number): string {
  * 与 `build-fixtures.ts` 写盘时的裁剪规则**必须一致**：顶层只留 `birthInfo` 与 `chart`。
  * 样本的 `topics`（各主题解读文本）占单条体积 90%，且由 toolkit 私有的 db-analysis.ts
  * 生成，本项目刻意不含该文件 —— 基准与互验两侧都剔除它才比得起来。
+ *
+ * @param raw - 语料里的一行
+ * @returns 只含 `birthInfo` 与 `chart` 的基准样本
  */
 function trim(raw: { birthInfo: BirthInfo; chart: unknown }): BaselineSample {
 	return { birthInfo: raw.birthInfo, chart: raw.chart } as BaselineSample;
 }
 
-/** 递归按 key 排序的规范 JSON —— 用来判定「差异是否**只是键序**」。 */
+/**
+ * 递归按 key 排序的规范 JSON —— 用来判定「差异是否**只是键序**」。
+ *
+ * @param v - 任意 JSON 值
+ * @returns 对象键已排序、`undefined` 已剔除的等价副本
+ */
 function canonical(v: unknown): unknown {
 	if (Array.isArray(v)) {
 		return v.map(canonical);
@@ -97,7 +116,14 @@ function canonical(v: unknown): unknown {
 	return v;
 }
 
-/** 逐字段找第一处不同，返回 `路径 = 基准 / 实际`（找不到返回 null）。 */
+/**
+ * 逐字段找第一处不同，返回 `路径 = 基准 / 实际`（找不到返回 null）。
+ *
+ * @param a - 一侧的值
+ * @param b - 另一侧的值
+ * @param path - 递归累积的定位前缀（首次调用省略）
+ * @returns 第一处差异的可读描述；两侧结构一致时为 `null`
+ */
 function firstStructuralDiff(a: unknown, b: unknown, path = ""): string | null {
 	if (Array.isArray(a) || Array.isArray(b)) {
 		if (!Array.isArray(a) || !Array.isArray(b)) {
@@ -140,7 +166,13 @@ function firstStructuralDiff(a: unknown, b: unknown, path = ""): string | null {
 
 type DiffKind = "五元组不符" | "键序不同" | "结构不同";
 
-/** 判定两侧差异属于哪一类。 */
+/**
+ * 判定两侧差异属于哪一类。
+ *
+ * @param want - 期望侧的值
+ * @param got - 实际侧的值
+ * @returns 差异档位与可读详情
+ */
 function classify(want: unknown, got: unknown): { kind: DiffKind; detail: string } {
 	if (JSON.stringify(canonical(want)) === JSON.stringify(canonical(got))) {
 		return {
@@ -151,6 +183,11 @@ function classify(want: unknown, got: unknown): { kind: DiffKind; detail: string
 	return { kind: "结构不同", detail: firstStructuralDiff(want, got) ?? "（未定位到具体字段）" };
 }
 
+/**
+ * 互验入口：逐条比对 jsonl 与重建样本。
+ *
+ * @returns 无返回值；语料或数据源不可用、或发现差异时以非零码退出
+ */
 async function main(): Promise<void> {
 	if (!existsSync(SAMPLES)) {
 		console.error(

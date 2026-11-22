@@ -7,6 +7,8 @@
  * 纯函数，编排器只做版式装配。星曜徽标单点 `starBadge` 住 `lookups.ts`，
  * 本模块与 `palace-query.ts` 同式引它。
  * 决策点语义与统一基准（原 views/overview.ts 版）逐字对齐，见 docs/code/analysis.md。
+ *
+ * @file 总览取材单点 —— 「总览段取什么材」的唯一实现
  */
 
 import {
@@ -69,6 +71,9 @@ export interface OverviewMaterial {
 /**
  * 取「总览段」的素材：核心主题判定、topic_mods 双键注入、格局主题清单、
  * summary 段条件、contentKey 全文选择、亮度补充、第二主星——一次取齐。
+ *
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数读其中的命盘、主题键、主宫名、本宫主星与借宫标记、主星 profile、性别，以及命宫主星与同宫第二主星等已算好的中间量；不自行重算盘面
+ * @returns 总览段素材（{@link OverviewMaterial}）：各字段已是可直接入行的成文文本。主宫（含借来的对宫）无主星时走兜底分支——`mainBadge` 为「空宫」、`emptyFallback` 给出借宫说明，其余语义字段为 `undefined` / 空数组
  */
 export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	const { chart, topic, palaceName, mainStars, primaryStar, profile, isLoan, gender } = ctx;

@@ -11,6 +11,8 @@
  *
  * 转换幂等且产物确定：outDir 已有 MANIFEST.json（上次转换的完成标记）时直接复用，
  * 不重复付出转换成本（v4 全量含 67 万次排盘，约 40–60 分钟）。
+ *
+ * @file tar 源物化 —— 把 ziwei-interp 分发 tar（v4 同款格式：MANIFEST.json + SHA256SUMS.txt +
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createGunzip, gzipSync } from "node:zlib";
@@ -36,12 +38,20 @@ const SKILL_ROOT = resolve(HERE, "../..");
 // 内核排盘 —— 相对导入（tools/ 不走 @/ 别名），与 export-manual.ts 同款
 const { generateChart } = await import("../../scripts/algorithm");
 
+/** tar 物化结果：识别出的日历口径与解出的分片目录。 */
 export interface TarMaterializeResult {
+	/** 源的日历口径（取自 MANIFEST.calendar：synthetic 合成历 / solar 真实公历），决定样本 ID 编码口径 */
 	calendar: Calendar;
+	/** 物化出的月分片目录（year-YYYY/YYYY-MM.jsonl.gz），直接交给 build:db 消费 */
 	shardDir: string;
 }
 
-/** MANIFEST.calendar 字段 → 编码口径（synthetic 合成历 / solar 真实公历）。 */
+/**
+ * MANIFEST.calendar 字段 → 编码口径（synthetic 合成历 / solar 真实公历）。
+ *
+ * @param manifestCalendar - MANIFEST.json 里的 calendar 字段
+ * @returns 本仓的两口径之一
+ */
 function calendarOf(manifestCalendar: string): Calendar {
 	return manifestCalendar.startsWith("synthetic") ? "synthetic" : "solar";
 }
@@ -52,6 +62,14 @@ let msChecked = 0;
 /** v4 空宫盘的 ms=null 计数（合法值域，不作不一致处理）。 */
 let msNull = 0;
 
+/**
+ * 把 tar 分发包解出并整理成可直接入库的分片目录。
+ *
+ * @param tarPath - 源 tar 包路径
+ * @param outDir - 分片输出目录
+ * @returns 日历口径与分片目录
+ * @throws 解包失败、tar 内没有年份成员、或 zstd 重试后仍失败
+ */
 export async function materializeTarShards(
 	tarPath: string,
 	outDir: string
@@ -114,6 +132,7 @@ export async function materializeTarShards(
 		let monthLines: string[] = [];
 		let shardCount = 0;
 		let skippedYears = 0;
+		/** 冲刷月缓冲，把积累的行交给下游处理。 */
 		const flush = (): void => {
 			if (monthKey === "") {
 				return;
@@ -131,6 +150,7 @@ export async function materializeTarShards(
 			monthLines = [];
 		};
 		// 行处理：转 v3 行 → 按 (y,m) 聚合月缓冲（月切换即 flush 落盘）
+		/** 逐行回调：按出生五元组归属到对应月份缓冲。 */
 		const onRow = (row: Record<string, unknown>): void => {
 			const v3 = toV3Row(row);
 			const y = v3.birthInfo.year as number;
@@ -193,6 +213,13 @@ export async function materializeTarShards(
  * 鲁棒性三件套（2026-10-31 实测 year-2002 源文件在 /tmp 被外力删除后加）：
  * ① work 里该年 zst 缺失时从 tar **单成员重提**（tar 本身是权威源）；② zstd 失败重试
  * 一次；③ 重试前由调用方重置月缓冲（该年已落月分片被幂等覆盖，不产生重复行）。
+ *
+ * @param work - 解包出 zst 的 work 目录
+ * @param f - 该年的 zst 文件名
+ * @param tarPath - 源 tar 包（work 缺文件时单成员重提）
+ * @param onRow - 逐行回调，由调用方喂月缓冲
+ * @param resetMonth - 重试前重置月缓冲的回调
+ * @returns 无返回值；解压失败重试一次后仍失败则抛错
  */
 async function materializeOneYear(
 	work: string,
@@ -248,13 +275,25 @@ async function materializeOneYear(
 
 // ── 行转换 ─────────────────────────────────────────────────────────────────────
 
+/** v3 月分片的一行（build:db 消费的导出口径；v4 行经 toV3Row 转换后也收敛到此形态）。 */
 type V3Row = {
+	/** 出生信息（导出口径：hour 是时辰索引 0–11、longitude 为经度；v4 行固定经度 120） */
 	birthInfo: Record<string, unknown>;
+	/** 排盘结果（`toShardChart` 的导出口径：命宫 / 身宫 / 五行局 / 十二宫 / 大限…） */
 	chart: ReturnType<typeof toShardChart>;
+	/** 十三个主题的解读文本：主题键 → 正文；v4 行取自其 `c` 字段 */
 	topics: Record<string, string>;
+	/** 体系标识（v4 行固定为「倪海厦紫微斗数」；v3 行沿用源内取值） */
 	system: string;
 };
 
+/**
+ * 把 v4 行映射回 v3 行格式（字段口径转换）。
+ *
+ * @param row - 来自分片的一行
+ * @returns v3 口径的行（含 `birthInfo` 与排好的 `chart`）
+ * @throws 行 schema 既非 v3 也非 v4（附键名与行头以便排查）
+ */
 function toV3Row(row: Record<string, unknown>): V3Row {
 	if ("birthInfo" in row) {
 		return row as unknown as V3Row;

@@ -5,6 +5,8 @@
  *    两套显示档位（7 档 QS/XD1 · 5 档 ZZ/XD2）、默认流派 XD2 的来历，
  *    一并见 docs/code/chart-kernel.md。
  *
+ * @file 文墨天机星曜亮度查询 —— 装配层逐星覆写的唯一入口（计算层；数据在 `data/wenmo-tables.ts`）
+ *
  * @packageDocumentation
  */
 import {
@@ -53,6 +55,11 @@ export function wenmoStarBrightness(
  * ⚠️ 本函数**必须留在本文件、且必须在此处以语句形式立即调用**：它是排盘启动期的数据
  *    完整性防线。拆进 `data/` 的惰性 export 或被 tree-shaking 掉，损坏的表就会静默
  *    产出错亮度 —— 防线失效且不可见。完整理由见 docs/code/chart-kernel.md。
+ *
+ * @returns 无返回值；校验通过即静默返回
+ *
+ * @throws 四表任一行的行数 ≠ 83、列数 ≠ 13，或含超出该流派档位域的亮度值时抛错，
+ *   错误消息写明是哪张表（`SB_<流派>`）的第几行 / 第几列
  */
 export function validateWenmoBrightness(): void {
 	const domains: Record<BrightnessSchool, number[]> = {

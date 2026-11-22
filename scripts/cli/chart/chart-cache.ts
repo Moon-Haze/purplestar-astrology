@@ -35,6 +35,9 @@ export const CACHE_VERSION = 2;
  * 用户隔离标签：`u<uid>`（POSIX）或 `n<用户名>`（拿不到 uid 时，如 Windows）。
  *
  * @remarks
+ *
+ * @returns `u<uid>`（POSIX）、`n<用户名>`（Windows 上 uid 为 -1 等未知情形），连用户信息都取不到时退回 `shared`
+ *
  * 拿不到就退回共享标签 —— 此时 `/tmp` 里的目录可能被别人抢先创建（见
  * {@link cacheRootDir} 的隔离理由），但写盘失败会被静默降级为现排，不会排错盘。
  */
@@ -52,6 +55,9 @@ function userTag(): string {
  * 缓存根目录 = 系统临时目录（`os.tmpdir()`）下的应用专属子目录。
  *
  * @remarks
+ *
+ * @returns 缓存根目录的绝对路径（`os.tmpdir()` 下 `purplestar-astrology-v<版本>-<用户标签>`）
+ *
  * 系统临时目录下的应用专属子目录，**不写 skill 包目录**（包内零写入，且同机多份拷贝共享
  * 一份缓存）。目录名带 uid（`/tmp` 多用户共享，缓存里是生辰命盘数据）与 `CACHE_VERSION`
  * （换版本即换目录）。代价：系统清理后冷排一次、空间写满时静默降级为现排 —— 缓存只为
@@ -75,6 +81,7 @@ export interface CacheEntry {
 	lunarYear: number;
 	/** 写入时刻（ISO 8601）。仅供排查，不参与失效判定 */
 	savedAt: string;
+	/** 命盘本体（`generateChart` 的产物），读回时原样交还调用方 */
 	chart: ZiweiChart;
 }
 
@@ -94,7 +101,12 @@ export interface ChartCacheOptions {
 // `--no-cache`（见 selftest 的 runCli 与 cli.test 的 cliReal / CLI_SUBPROCESS 分支）。
 let bypassAll = false;
 
-/** 整链旁路开关：`true` 时本进程内所有缓存读写在单点判定处直排。仅回归链路调用。 */
+/**
+ * 整链旁路开关：`true` 时本进程内所有缓存读写在单点判定处直排。仅回归链路调用。
+ *
+ * @param v - `true` 开启旁路（本进程此后一律现排、不读不写），`false` 恢复按缓存走
+ * @returns 无返回值；改的是模块级状态 `bypassAll`，进程内后续调用即生效
+ */
 export function setCacheBypassAll(v: boolean): void {
 	bypassAll = v;
 }
@@ -103,6 +115,10 @@ export function setCacheBypassAll(v: boolean): void {
  * 出生信息的规范化序列化 —— **固定键序的短键**，与字段书写顺序无关。
  *
  * @remarks
+ *
+ * @param birth - 出生信息（只用 `year` / `month` / `day` / `timeIndex` / `gender` / `name` 六项；`name` 缺省记 `null`）
+ * @returns 键序固定的 JSON 串（短键 `d` / `g` / `m` / `n` / `t` / `y`）
+ *
  * 为什么不用 `JSON.stringify(birth)`：对象键序取决于键的插入顺序，同一份出生信息
  * 经不同路径构造出来可能序列化成不同字符串，缓存键就会飘。定序短键消除这一类，
  * 且顺手把键名压短。
@@ -122,6 +138,10 @@ function canonicalBirth(birth: BirthInfo): string {
  * 缓存键：出生信息的 sha256 十六进制串（即缓存文件名，不含扩展名）。
  *
  * @remarks
+ *
+ * @param birth - 出生信息（经 {@link canonicalBirth} 规范化后参与哈希）
+ * @returns 64 位十六进制串，即缓存文件名（不含 `.json` 扩展名）
+ *
  * sha256 而非短哈希：生日空间的键必须**绝不碰撞** —— 碰撞的后果不是丢性能，是可能把
  * 一张盘发给另一个人（`readEntry` 的出生信息回验只是最后一道防线，不该指望它）。
  */
@@ -133,6 +153,10 @@ export function cacheKeyOf(birth: BirthInfo): string {
  * 某份出生信息当前对应的缓存文件路径（测试与运维排查用）。
  *
  * @remarks
+ *
+ * @param birth - 出生信息（决定缓存键即文件名）
+ * @returns 该份出生信息对应的缓存文件绝对路径
+ *
  * 目录解析顺序：`ZIWEI_CACHE_DIR` 环境变量（测试隔离 / 想要持久缓存时用）→ 默认
  * {@link cacheRootDir}（系统临时目录）。两者都与 cwd 无关，也不与 skill 安装位置绑定。
  */
@@ -145,6 +169,9 @@ export function cacheFileFor(birth: BirthInfo): string {
 /**
  * 给定时刻的农历年 —— 与 `generateChart` 内部同一算法（`algorithm.ts` 的 `getLunarInfo`），
  * 故缓存的有效期与虚岁口径天然对齐。
+ *
+ * @param now - 取哪个时刻的农历年（缓存模块通常传注入的时钟或 `new Date()`）
+ * @returns 该时刻所属农历年（以农历正月初一为界，故 1–2 月可能早于公历年号）
  */
 export function todayLunarYear(now: Date): number {
 	return getLunarInfo(now.getFullYear(), now.getMonth() + 1, now.getDate()).lunarYear;
@@ -157,6 +184,11 @@ export function todayLunarYear(now: Date): number {
  *   对不上时一律 `null`
  *
  * @remarks
+ *
+ * @param file - 缓存文件路径（通常来自 {@link cacheFileFor}）
+ * @param birth - 期望的出生信息 —— 与文件里 `chart.birthInfo` 的规范化形态必须一致，不一致按未命中处理（哈希碰撞守卫）
+ * @param lunarYear - 写入当天应处的农历年（来自 {@link todayLunarYear}）；与文件里的 `lunarYear` 不符即视为过期，按未命中处理
+ *
  * 本函数**绝不抛错**：无文件不是错误（首次排盘就是它），文件损坏也不是 —— 都只是
  * 「缓存不可用」，由调用方重排覆写。故 `readFileSync` 与 `JSON.parse` 两处失败都吞成 `null`。
  *
@@ -208,6 +240,11 @@ function readEntry(file: string, birth: BirthInfo, lunarYear: number): ZiweiChar
  * 原子写盘：先写同目录临时文件再 `rename`。
  *
  * @remarks
+ *
+ * @param file - 目标缓存文件路径
+ * @param entry - 完整缓存外壳（版本 / 农历年 / 写入时刻 / 命盘本体）
+ * @returns 无返回值；任何失败（建目录 / 写临时文件 / 改名）都被吞掉并尽量清理临时文件，写盘失败在调用方表现为「下次仍然现排」
+ *
  * `rename` 在同目录内是原子的 —— 并发排同一张盘时，读者永远不会看到截断的半截 JSON。
  *
  * ⚠️ 失败一律**静默降级**：写盘只为提速，命盘此刻已在调用方手上，此时再抛错就成了

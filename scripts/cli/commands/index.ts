@@ -13,6 +13,8 @@
  * 解析与省名回退仍在用），删的只是查询命令。
  *
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 各命令文件。
+ *
+ * @file 命令注册薄层 —— 只留 COMMAND_TABLE 与 COMMAND_DESC
  */
 
 import type { CliArgs, CliContext } from "../args";

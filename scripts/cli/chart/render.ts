@@ -9,6 +9,8 @@
  * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心用静态 import 引内核与
  *    `@/` 别名；但**不要**反过来让 purple-star.ts 静态引本文件。
  *    依赖方向、宫名别名表、指纹唯一实现与晚子时对照盘的论证见 docs/code/cli-chart.md。
+ *
+ * @file 命盘渲染层 —— 把排盘内核输出的结构化数据，渲染成给模型读的文本片段
  */
 
 import type { Palace, Star, ZiweiChart, Mutagen } from "@/types";

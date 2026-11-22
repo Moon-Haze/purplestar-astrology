@@ -26,7 +26,13 @@ import { renderCommandHelp, renderOverviewHelp } from "../commands/help";
 import { SAMPLE, SAMPLE_ARGV } from "./sample";
 import type { SelftestDeps } from "./kit";
 
-/** 命令面：knowledge 三域（books/stars/tianji）的形态与指路、astrology 参数纪律、合盘交付。 */
+/**
+ * 命令面：knowledge 三域（books/stars/tianji）的形态与指路、astrology 参数纪律、合盘交付。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；十五条断言直接进主报告（部分条目是 await 过的异步探针）
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 knowledge 位置参数与 `--search` 不等价、缺值时被当成检索词、下线域报错未对齐注册表键集、tianji 概览缺项、流月四化未随 `--mutagen` 指路、独占分支静默吞参、优先级链方向反转、知识分级尾注与档位常量漂移、`--report` 板块数 / 大限独立节 / 尾注不符、文案仍提已删的 cities、抬头残留多余空格、合盘缺双盘四化互参节、help 的组标题与参数行错位
+ */
 export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok(
 		"命令面：knowledge stars 域位置参数与 --search 等价（SYNOPSIS 承诺的检索形态）",
@@ -348,7 +354,13 @@ export function runCommandSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** help 裁剪：命令级 NOTES 只带本命令相关的铁律，全量保留在总览。 */
+/**
+ * help 裁剪：命令级 NOTES 只带本命令相关的铁律，全量保留在总览。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；一条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 `synastry --help` 仍在教排盘铁律、`knowledge --help` 带着排盘 NOTES（应裁剪）、或总览 help 的全量铁律被误裁
+ */
 export function runHelpPrune({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("help 裁剪：命令级 NOTES 只带本命令相关的铁律，全量保留在总览", () => {
 		const syn = renderCommandHelp("synastry");
@@ -367,7 +379,13 @@ export function runHelpPrune({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 契约对拍：buildAnalyzeJson 的生产端产物过 readAnalyzeJson 消费方校验。 */
+/**
+ * 契约对拍：buildAnalyzeJson 的生产端产物过 readAnalyzeJson 消费方校验。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；一条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是生产端产物过不了消费方契约（顶层键 / 类型缺失或改名），或消费方读不了临时写出的那份 JSON
+ */
 export function runContractProbe({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("契约对拍：buildAnalyzeJson 的生产端产物过 readAnalyzeJson 消费方校验", () => {
 		// 生产端纯函数化后可在进程内直测：真盘一次，产物写临时文件喂消费方契约 ——
@@ -399,7 +417,15 @@ export function runContractProbe({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 }
 
-/** 命令拆分收敛：cities 已删、analyze 改名、chart/topic/insight 融合为参数。 */
+/**
+ * 命令拆分收敛：cities 已删、analyze 改名、chart/topic/insight 融合为参数。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param ctx - 运行期上下文（内核根与其来源；本条目在收尾处清理临时目录时用）
+ * @param commandNames - 命令表键集（取自真模块，不信正则抽出的清单）
+ * @returns 无返回值；一条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是旧命令（cities / analyze / stars / oracle / classics）仍出现在命令表里、或融合后的参数（chart/topic/insight）没落到 astrology 的参数面
+ */
 export function runCommandSplit({
 	ok,
 	ctx,
@@ -466,7 +492,13 @@ export function runCommandSplit({
 	);
 }
 
-/** help 强化：总览节序、每命令归属参数子集、虚构示例注记。 */
+/**
+ * help 强化：总览节序、每命令归属参数子集、虚构示例注记。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @returns 无返回值；五条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是总览的 man 七节标题缺项或节序变动、每命令 `--help` 的归属参数子集串台（astrology 出现 `--search` / knowledge 反之）、oracle 退役说明回潮、`--topic` 未收归 astrology、示例未注明虚构
+ */
 export function runHelpEnrich({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("help 强化：总览含 man 七节标题且节序固定（总览另含 COMMANDS 节）", () => {
 		// help 不走命令表分发（main 特判），直调渲染函数即可 —— 断言对象是渲染产物本身。

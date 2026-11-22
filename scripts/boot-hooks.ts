@@ -15,6 +15,8 @@
  * 调用方必须用**带 `.ts` 扩展名**的说明符 import 它（Node 原生类型擦除即可加载）；
  * `cli/selftest/index.ts` 有一条断言盯着这条约束不被破坏。
  *
+ * @file 引导机制 —— 内核根定位 / TS 解析钩子 / 带排查指引的模块加载
+ *
  * @packageDocumentation
  */
 
@@ -40,15 +42,23 @@ import { resolve } from "node:path";
 // --test-name-pattern 旗标）。外壳残留的退役变量会被 {...process.env} 静默携带进整条
 // 进程树——按「不静默忽略无效输入」的纪律，两个回归入口（purple-star / run.ts）用
 // retiredEnvVars() 探测后当场报错，而不是放行。
+/** 已退役的环境变量名单：外壳残留会被回归入口当场拒收，不做静默携带。 */
 export const RETIRED_ENV_VARS = ["ZIWEI_NO_CACHE", "ZIWEI_TEST_YEAR"] as const;
 
-/** 返回当前环境中实际存在（值非 undefined）的已退役变量名。 */
+/**
+ * 返回当前环境中实际存在（值非 undefined）的已退役变量名。
+ *
+ * @returns 命中的退役变量名清单；一个都没设时为空数组
+ */
 export function retiredEnvVars(): string[] {
 	return RETIRED_ENV_VARS.filter(k => process.env[k] !== undefined);
 }
 
+/** 成功命中内核根：根路径、来源描述与已尝试的候选清单。 */
 export interface RootFound {
+	/** 命中的内核根目录（即 `scripts/`） */
 	root: string;
+	/** 该候选的来源描述（如「技能自带内核」「ZIWEI_ROOT 环境变量」），供调用方报错时点名 */
 	label: string;
 	/** 已尝试过的候选清单，供失败时逐条列给用户 */
 	tried: string[];
@@ -56,11 +66,15 @@ export interface RootFound {
 
 /** 全部候选都不成立。`tried` 是已尝试过的候选清单。 */
 export interface RootMissing {
+	/** 恒为 `null`：判别联合的另一半，调用点据此收窄到失败分支 */
 	root: null;
+	/** 恒为 `null`：未命中故无来源描述 */
 	label: null;
+	/** 已尝试过的候选清单（`来源描述：目录`），供错误信息逐条列出 */
 	tried: string[];
 }
 
+/** 内核根定位结果：命中（{@link RootFound}）或全部候选不成立（{@link RootMissing}）。 */
 export type RootPick = RootFound | RootMissing;
 
 /**
@@ -178,6 +192,8 @@ export function makeResolveHook(root: string): ResolveHookSync {
  * @remarks
  * 包装成一步是为了让调用点不必各自记住「传进去的键叫 resolve」——
  * 两个调用方都只需 `installHooks(ROOT)`。
+ *
+ * @returns 无返回值；钩子挂进当前进程的 ESM 解析链，此后本进程的解析都走 {@link makeResolveHook}
  */
 export function installHooks(root: string): void {
 	registerHooks({ resolve: makeResolveHook(root) });

@@ -18,6 +18,10 @@ import { huiZhaoLine, sameStarPairs, sihuaLines } from "./sihua-helpers";
  * @param year - 流年公历年
  *
  * @remarks
+ *
+ * @returns 流年专题的输出行（流年命宫 + 三方四正会照 + 流年四化落点 + 与大限三方关系 + 生年×流年同星引动）；只拼行，未 `join`
+ * @throws 年支对应的流年命宫不在 `chart.palaces` 里时抛错 —— 那说明内核输出已损坏，不允许静默给出一份缺了流年命宫的解读
+ *
  * 三合派口径：流年命宫就是**年支所在宫**，不重排十二宫；四化取流年干（年干）与生年干，
  * **不取宫干**（飞星派工具已下线）。
  */

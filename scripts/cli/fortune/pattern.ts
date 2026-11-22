@@ -9,6 +9,8 @@ import { detectPatterns } from "@/patterns";
  * `--geju`：格局识别专题 —— detectPatterns 全量输出。
  *
  * @param chart - 命盘
+ *
+ * @returns 格局专题的输出行（条数抬头 + 逐条名称 / 分数 / 涉及宫位 / 描述，再按需附成立条件与加分条件）；无命中时给一行兜底提示；只拼行，未 `join`
  */
 export function patternSection(chart: ZiweiChart): string[] {
 	const patterns = detectPatterns(chart);

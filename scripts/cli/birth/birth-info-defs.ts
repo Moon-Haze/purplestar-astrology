@@ -184,6 +184,10 @@ export function toBasis(r: BirthInfoResult, time: unknown): CaliberBasis {
  * {@link CaliberBasis} → `infoSection` 的 {@link InfoClockOpts}（形状对齐，调用点不再手拼）。
  *
  * @remarks
+ *
+ * @param b - 已装配好的排盘依据载体（`clockTime` / `note` / `longitude` 三键被取用）
+ * @returns 与 `InfoClockOpts` 同形的对象：`clockTime` 原样透传（可为 `null`），`solarNote` 取 `b.note`，`longitude` 为本次实际采用的经度
+ *
  * `InfoClockOpts` 本身留在 fortune.ts 不动（render 测试面稳定）；转换只有本函数一处。
  */
 export function clockOptsFromBasis(b: CaliberBasis): {

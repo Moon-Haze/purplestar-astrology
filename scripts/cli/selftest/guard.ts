@@ -13,7 +13,14 @@ import { resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { eq, skipUnlessRepo, type SelftestDeps } from "./kit";
 
-/** 子进程冒烟（仅这五条用 runCli）：成功链路、错误出口、未知命令、--out 落盘与穿越防护。 */
+/**
+ * 子进程冒烟（仅这五条用 runCli）：成功链路、错误出口、未知命令、--out 落盘与穿越防护。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param runCli - 子进程探针（起真 CLI 跑一次，返回 `{ code, out, err }`）
+ * @returns 无返回值；五条断言直接进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是成功链路退出码非 0 或缺基本信息面板、错误链路没走 stderr「错误：」前缀 + exit 1 且 stdout 空、未知命令未指路、`--out` 落盘内容 / 末尾换行 / stdout 静默 / stderr 提示不符、含 `..` 的路径被接受
+ */
 export function runSmoke({ ok, runCli }: Pick<SelftestDeps, "ok" | "runCli">): void {
 	ok("冒烟（子进程）：成功链路 入口→解析→命令表→渲染 一次走通", () => {
 		const r = runCli(["astrology", "1990-5-15", "9:30", "男", "北京"]);
@@ -90,7 +97,15 @@ export function runSmoke({ ok, runCli }: Pick<SelftestDeps, "ok" | "runCli">): v
 	});
 }
 
-/** SKILL.md 行为规范对拍：命令速查表提到的命令都在命令表里。 */
+/**
+ * SKILL.md 行为规范对拍：命令速查表提到的命令都在命令表里。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param ctx - 运行期上下文；`ctx.root` 是内核根，SKILL.md 从它的上级读
+ * @param commandNames - 命令表键集（真模块的键，不用正则抽文本）
+ * @returns 无返回值；通过时把「N 个命令全部有实现」作为该项说明
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 SKILL.md 里找不到「## 命令速查」段或一段命令都扫不到（那样的「零违规」是假绿）、或扫到的命令在命令表里没有
+ */
 export function runSkillCommandAudit({
 	ok,
 	ctx,
@@ -132,7 +147,14 @@ export function runSkillCommandAudit({
 	});
 }
 
-/** 文档一致性：references 深层文件、Node 下限、独占分支、升级警告与实现同步。 */
+/**
+ * 文档一致性：references 深层文件、Node 下限、独占分支、升级警告与实现同步。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param ctx - 运行期上下文；`ctx.root` 是内核根，references 从它的上级读
+ * @returns 无返回值；两条断言直接进主报告（仓库级文档那半条在分发包形态下显式跳过）
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 references 深层文件回潮旧 skill 名 / 不存在的模块 / 旧自述句、Node 下限、独占分支清单、升级警告三处承诺与实现脱节
+ */
 export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {
 	ok("文档一致性：references 深层文件与单 skill 形态同步（合并遗留漂移盯防）", () => {
 		// 三 skill 合一是「骨架先行」的改造：SKILL.md / options / troubleshooting 同步了，
@@ -195,7 +217,14 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 	);
 }
 
-/** 知识分级登记表：data.ts 引句与 grades.ts 登记双向对拍（grades 动态 import）。 */
+/**
+ * 知识分级登记表：data.ts 引句与 grades.ts 登记双向对拍（grades 动态 import）。
+ *
+ * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param ctx - 运行期上下文（内核根与其来源）
+ * @returns `Promise<void>`；一条断言直接进主报告，通过时返「N 条引句全部有分级登记」
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 `data.ts` 的倪师引句在 `grades.ts` 没有登记、档位越出 `KNOWLEDGE_GRADE_ORDER` 的值域、或 `grades.ts` 存在 `data.ts` 抽不到对应引句的幽灵条目（quote 失配或引句已删）
+ */
 export async function runGradeRegistry({
 	ok,
 	ctx,
@@ -257,6 +286,11 @@ export async function runGradeRegistry({
  * 分发 module 的进程内探针（候选 1）：未知命令文案与 help 拦截经同一 seam 可达。
  *
  * @remarks
+ *
+ * @param deps - 主 selftest 的注入面（本条目只用到 `ctx` 与桩出来的端口）
+ * @returns `Promise<void>`；两条断言直接进主报告（dispatch 与文案函数都先 await 再断言）
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是未知命令未返回 code=1 或文案不是出自共享函数、`--help` 没在查表之前拦截（否则会掉进未知分支拿不到 CMDHELP）
+ *
  * dispatch 与文案函数都**先 await 再断言**：ok 的断言体是同步回调，rejected
  * Promise 不会被它捕获。两根桩的 loadCore 刻意返回空 COMMANDS —— 若 --help
  * 拦截不先于查表执行，这里就会掉进未知分支而拿不到 CMDHELP。

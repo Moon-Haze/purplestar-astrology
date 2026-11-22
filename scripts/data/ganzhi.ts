@@ -3,6 +3,8 @@
  *
  * 2026-10-11 从 `constants.ts` 拆出，内容逐字迁移，仅改变物理位置。
  *
+ * @file 干支与宫名数据 —— 十天干、十二地支、十二时辰、宫名序列与 iztro 宫名映射
+ *
  * @packageDocumentation
  */
 
