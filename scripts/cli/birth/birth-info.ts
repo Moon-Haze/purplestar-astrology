@@ -359,7 +359,8 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 				? `${ly} 年可能没有闰${lm}月（闰月并非每年都有）`
 				: "请核对年月日是否存在";
 			throw new Error(
-				`农历 ${ly}年${isLeap ? "闰" : ""}${lm}月${ld}日 换算失败：${hint}。原始错误：${(err as Error).message}`
+				`农历 ${ly}年${isLeap ? "闰" : ""}${lm}月${ld}日 换算失败：${hint}。原始错误：${(err as Error).message}`,
+				{ cause: err }
 			);
 		}
 		year = solar.getYear();

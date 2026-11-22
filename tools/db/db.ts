@@ -337,7 +337,8 @@ export async function openDataset(datasetDir: string): Promise<DuckDBConnection>
 		conn.closeSync();
 		throw new Error(
 			`dataset 目录不完整或损坏（${datasetDir}）：${e instanceof Error ? e.message : String(e)}。` +
-				"请重新构建 dataset，或检查下载/克隆是否完整"
+				"请重新构建 dataset，或检查下载/克隆是否完整",
+			{ cause: e }
 		);
 	}
 	return conn;

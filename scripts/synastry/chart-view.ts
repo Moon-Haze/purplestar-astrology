@@ -214,7 +214,8 @@ export function readAnalyzeJson(file: string, side: string): AnalyzeJson {
 				`  ${(err as Error).message}\n` +
 				`  请先用本 CLI 的 astrology 排出命盘，再把它交给本命令：\n` +
 				`    node scripts/purple-star.ts astrology \\\n` +
-				`      --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json > ${file}（示例数据为虚构）`
+				`      --date 2011-06-24 --time 07:45 --city 杭州 --gender male --json > ${file}（示例数据为虚构）`,
+			{ cause: err }
 		);
 	}
 
@@ -225,7 +226,8 @@ export function readAnalyzeJson(file: string, side: string): AnalyzeJson {
 		throw new Error(
 			`${side}方命盘文件不是合法 JSON：${file}\n` +
 				`  ${(err as Error).message}\n` +
-				`  ⚠️ 生成时请确认重定向拿到的是 JSON 本身 —— 排盘失败时写进文件的是错误信息。`
+				`  ⚠️ 生成时请确认重定向拿到的是 JSON 本身 —— 排盘失败时写进文件的是错误信息。`,
+			{ cause: err }
 		);
 	}
 

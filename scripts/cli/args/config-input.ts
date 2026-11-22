@@ -35,7 +35,8 @@ export function applyConfig(argv: CliArgs): CliArgs {
 	} catch (err) {
 		throw new Error(
 			`--config ${file} 读取或解析失败：${(err as Error).message}。` +
-				`可先运行 astrology --template 查看合法配置的形状。`
+				`可先运行 astrology --template 查看合法配置的形状。`,
+			{ cause: err }
 		);
 	}
 	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {

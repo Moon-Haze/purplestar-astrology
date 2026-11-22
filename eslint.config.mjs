@@ -66,8 +66,8 @@ export default [
 			"no-unused-vars": "off",
 			// 存量代码中全角空格等不可见空白为刻意排版，不按错误处理
 			"no-irregular-whitespace": "off",
-			// ESLint 10 新规则：catch 中重抛错误建议携带 cause。存量代码 10 处，
-			// 以警告提示、不阻塞 lint，后续按需补 `cause` 后消除
+			// catch 中重抛错误建议携带 cause——存量 8 处已于 2026-11-22 全部补齐清零；
+			// 保持 warn 级别，新出现仍以警告提示（不阻塞 lint）
 			"preserve-caught-error": "warn",
 		},
 	},

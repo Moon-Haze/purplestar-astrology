@@ -756,7 +756,7 @@ async function main() {
 				failures.push({ shard: rel, error: String(e) });
 				console.error(`字典扫描失败，跳过分片 ${rel}:\n${e}`);
 				if (failures.length >= 10) {
-					throw new Error("失败分片达 10 个，中止构建（上游数据异常）");
+					throw new Error("失败分片达 10 个，中止构建（上游数据异常）", { cause: e });
 				}
 			}
 		}
@@ -864,7 +864,7 @@ async function main() {
 			failures.push({ shard: bad ?? "(COMMIT)", error: String(e) }); // read_json 错误消息内含行/列位置（spec §9）
 			console.error(bad ? `分片失败: ${bad}\n${e}` : `整批提交失败:\n${e}`);
 			if (failures.length >= 10) {
-				throw new Error("失败分片达 10 个，中止构建（上游数据异常）");
+				throw new Error("失败分片达 10 个，中止构建（上游数据异常）", { cause: e });
 			}
 			// 事务已回滚：失败者跳过，同批其余分片（失败之前 + 失败之后）全部放回队首重做。
 			// 只放回「失败之后」会静默丢掉失败之前那批的数据（它们已从 done 里撤销，却无人重做）。
@@ -888,7 +888,7 @@ async function main() {
 				}
 				pending.push(s.rel);
 				if (failures.length >= 10) {
-					throw new Error("失败分片达 10 个，中止构建（上游数据异常）");
+					throw new Error("失败分片达 10 个，中止构建（上游数据异常）", { cause: e });
 				}
 			}
 		}
