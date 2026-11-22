@@ -142,11 +142,40 @@ describe("仓库自洽（登记一致性 / skill 自包含 / 骨架接线）", (
 	});
 
 	it("lib/run.ts 的 LAYERS 登记了每个测试文件 —— 否则汇总只报警、不报错", () => {
-		// run.ts 自己有一条对账（分层合计 ≠ node:test 官方总计 → 打印一行告警），
-		// 但**告警不影响退出码**：漏登记时 npm test 照旧绿，只有翻日志才看得见。
+		// run.ts 的对账（分层合计 ≠ node:test 官方总计）2026-11-22 起在全量回归下
+		// **硬失败**（退出码非零）——本断言把它守的「文件级登记」前移到源码层。
 		const src = readFileSync(resolve(SKILL_ROOT, "test/lib/run.ts"), "utf8");
 		const missing = testFiles().filter(f => !src.includes(`"${f}"`));
 		assert.deepEqual(missing, [], `lib/run.ts 的 LAYERS 漏登记：${missing.join("、")}`);
+	});
+
+	it("LAYERS 的 suites 与各文件顶层 describe/test 标题逐字对应（spec「suites 名字不符」兑现）", () => {
+		// quality-gates「基准回归的分层与登记」：LAYERS 的 suites SHALL 与测试内的
+		// describe 名逐字对应，「suites 名字不符」SHALL 断言失败不静默跳过。脱钩的
+		// 现实后果是最慢榜混入聚合套件（SUITE_LAYER_NAMES 按名排除）。单向断言：
+		// 登记的 suites 必须在对应文件里真实存在（describe 自由分组不要求全登记）。
+		// chart.test 的顶层名是动态模板（manifest.baselineEngine）—— 源码级逐字对拍
+		// 两侧同为模板字面量，天然一致。
+		const runSrc = readFileSync(resolve(SKILL_ROOT, "test", "lib", "run.ts"), "utf8");
+		const layerBlock = runSrc.slice(runSrc.indexOf("const LAYERS = ["));
+		// 闭合只用 \]（不带 ,）——单元素数组 `["X"] }` 的 ] 后是 }，闭合含 , 会让
+		// lazy 扩张吞掉后续条目（首版实测 16 条漏 4）。
+		const entries = [...layerBlock.matchAll(/file: "([^"]+)",\s*suites: \[([\s\S]*?)\]/g)];
+		assert.equal(entries.length, 16, `LAYERS 段抽取异常：仅 ${entries.length} 条`);
+		for (const [, file, suitesSrc] of entries) {
+			const suites = [...suitesSrc.matchAll(/[`"]([^`"]+)[`"]/g)].map(m => m[1]);
+			assert.ok(suites.length > 0, `${file} 的 suites 抽取为空（解析形态失配）`);
+			const testSrc = readFileSync(resolve(SKILL_ROOT, "test", file), "utf8");
+			const titles = [...testSrc.matchAll(/^(?:describe|test)\(\s*[`"]([^`"]+)[`"]/gm)].map(
+				m => m[1]
+			);
+			for (const s of suites) {
+				assert.ok(
+					titles.includes(s),
+					`${file}：LAYERS.suites「${s}」在顶层 describe/test 中无对应——套件名脱钩（spec「suites 名字不符」）`
+				);
+			}
+		}
 	});
 
 	// ── 二、skill 自包含 ──

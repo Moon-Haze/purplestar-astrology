@@ -352,7 +352,7 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
 
 `iztro` 是排盘引擎，**升级它会改变排盘结果**。`package-lock.json` 已提交以锁定精确版本（iztro 2.6.1 / lunar-typescript 1.8.6）。动过依赖后先跑 `selftest` **与 `npm test`** 再交付解读。
 
-基准样本是 iztro **2.5.8** 拍的快照，与本项目的 2.6.1 有且仅有两处已知差异（太阳/太阴在酉宫的亮度，见 `test/lib/compare.ts` 的白名单）。
+基准数据集（1950–2026 / 674,976 条）由 v4 管线**本仓内核直生成**——基准与现行内核同源（亮度普查 diff=0 实证），`KNOWN_DIVERGENCES` 白名单为空清单机制保留（未来单字段差异仍走该登记面）。引擎升级后的既定流程：`build-duckdb` 重建数据集 → 指纹重登记 → `build-fixtures` 重抽 fixtures（写盘前分歧自检兜底）。
 
 ## SKILL.md 与 CLI 的耦合
 

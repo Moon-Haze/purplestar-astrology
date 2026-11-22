@@ -166,7 +166,7 @@ const LAYERS = [
 		suites: [
 			"主题注册表：覆盖与 TOPIC_KEYS 完全一致",
 			"主题注册表：每个主题字段齐备且类型合理",
-			"主题注册表：派生具名表与 TOPIC_DEFS 同步",
+			"主题注册表：派生具名表与 TOPIC_DEFS 同步（防止重加发散字面量表）",
 		],
 	},
 	{
@@ -362,12 +362,23 @@ for (const { label } of LAYERS) {
 console.log(
 	`  总计 ${total} 项：${total - totalFailed} 通过${totalFailed ? ` / ${totalFailed} 失败` : ""} · 墙钟 ${fmtMs(wallMs)}`
 );
-// 对账：分层合计应等于 node:test 全局 summary。不等说明聚合漏了事件（比如新增了测试文件
-// 而没登记进 LAYERS）—— 显式报出来，而不是静默少计。
+// 对账：分层合计应等于 node:test 全局 summary。不等说明聚合漏了事件（新增测试文件
+// 未登记 LAYERS、describe 标题与 LAYERS suites 名脱钩等）——第五轮 Speculative #3
+// 拍板解除（2026-11-22）：全量回归下**硬失败**，脱钩从人眼告警升级为闸门；手动透传
+// --test-name-pattern 过滤跑时未映射属合法形态，保持 ⚠ 告警。
+const manualFilter = passthrough.some(
+	a => a === "--test-name-pattern" || a.startsWith("--test-name-pattern=")
+);
 if (globalSummary && globalSummary.total !== total) {
-	console.log(
-		`  ⚠ 分层合计 ${total} ≠ node:test 官方总计 ${globalSummary.total}（test/ 下有未映射到层的文件？）`
-	);
+	const msg =
+		`分层合计 ${total} ≠ node:test 官方总计 ${globalSummary.total}` +
+		`（test/ 下有未映射到层的文件？describe 标题与 LAYERS suites 名脱钩？）`;
+	if (manualFilter) {
+		console.log(`  ⚠ ${msg}（过滤跑：合法差异，仅告警）`);
+	} else {
+		console.error(`\n✖ 对账失败：${msg}`);
+		process.exitCode = 1;
+	}
 }
 
 if (slowest.length) {
@@ -377,7 +388,7 @@ if (slowest.length) {
 	}
 }
 if (whitelisted > 0) {
-	console.log(`  白名单命中 ${whitelisted} 处（太阳/太阴@酉的已知亮度差异，比对器在工作）`);
+	console.log(`  白名单命中 ${whitelisted} 处（KNOWN_DIVERGENCES 登记，比对器在工作）`);
 }
 
 if (failed.length) {
