@@ -345,12 +345,20 @@ const keyOf = (r: {
 
 describe("真实行 → fixtures：逐字节复现（输入取自 fixtures/raw-rows.json）", () => {
 	it("每条真实行都逐字节重现 charts.jsonl 里那一条的原文", () => {
-		// ## 这条断言为什么不是「自己验自己」
+		// ## 这条断言的外部性（2026-11-22 随数据集 v4 化重新评估）
 		//
-		// charts.jsonl 是 **toolkit 用 iztro 2.5.8 + toolkit 自己的行→样本映射**写出来的；
-		// `rowsToSample` 是本项目**重新实现**的同一映射。两者**不同源**，所以这是外部预言机
-		// —— 验的是「我们的映射 ≡ 上游的映射」，不是「我们等于我们」。
-		// （而同源的比对器在 compare.ts，那里同源同错的风险另由层 3 的外部预言机堵。）
+		// v3 时代 charts.jsonl 由 toolkit（iztro 2.5.8）写出，rowsToSample 是本仓重实现
+		// ——两者不同源，整条断言是外部预言机。v4 化（2026-11-21）后**分两种字段**：
+		// ① **输入侧（birthInfo / 农历六字段 / year_stem）仍是外部预言机**——raw-rows 的
+		//    这些值记录的是上游 site-repo 引擎（tar-shards v4.0，engineCommit c25dd495）
+		//    的农历换算结果，rowsToSample 复现它 = 本仓 lunar-typescript 换算与上游引擎
+		//    的一致性对拍，外部性保留；
+		// ② **chart 侧（palaces/stars）已同源化**——v4 dataset 由本仓内核直生成
+		//    （build-duckdb 读分片 birthInfo 现排），rowsToSample 拼出的 chart 与
+		//    charts.jsonl 的 chart 来自同一内核输出，断言降为「行→样本映射转换的
+		//    一致性自检」（防映射实现 drift，不再是引擎级对拍）。
+		// chart 侧的引擎级对拍职责由层 1 的全量样本对拍承担（charts.jsonl 的 chart
+		// 就是内核输出对拍内核输出，引擎级差异由数据集指纹与血统链管理）。
 		//
 		// 真实行由 test/tools/export-raw-rows.ts 一次性导出并提交；`npm test` 不碰 db/。
 		const raw = JSON.parse(

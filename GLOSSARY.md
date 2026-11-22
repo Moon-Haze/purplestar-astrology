@@ -65,6 +65,7 @@
 - **天纪判语**：`corpus/data/tianji.ts`，由 `nihai-tianji-corpus` 导入的生成快照，**勿手改**（重导 `npx tsx tools/corpus/import-tianji.ts`；条数以快照自报 `importedCount` 为准）。检索入口 `knowledge --source tianji`，懒加载。
 - **引文核对表（annotations）**：`corpus/data/annotations.ts`，引文防回流禁语清单，引文守卫的比对基准。
 - **知识分级（grades）**：`analysis/grades.ts` 登记每条倪师引句的档位；新引文不登记，`npm test` 引文守卫变红。**占位或自撰内容绝不可挂倪师引语**（属伪造引文）。
+- **通盘最差宫**：疾厄主题的主轴判定（倪师真法，《天纪 05》疾厄篇）——通盘找化忌落宫与煞星聚合的最凶宫（并列取前二），脏腑按《内经》歌诀（`ZI_WU_ORGAN_VERSE` / `PALACE_BRANCH_ORGAN`）按宫位**地支**查；疾厄宫**星曜**断病只作参考。主星五行映射（旧 `ZIWU_LIUZHU`）已删除。
 
 ---
 
