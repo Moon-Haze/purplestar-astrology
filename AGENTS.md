@@ -414,8 +414,7 @@ CLI 里有几个**刻意的非常规设计**，改动时别当成 bug：
 ## 规范工作流（OpenSpec）
 
 仓内用 OpenSpec 做规范驱动开发。`openspec/specs/` 是各能力域的**当前规范**
-（chart-casting / distribution / extensibility / interpretation-contract /
-knowledge-retrieval / quality-gates / synastry），`openspec/config.yaml` 的 `context` 只做**指针**
+（清单以 `openspec list --specs` 自报为准），`openspec/config.yaml` 的 `context` 只做**指针**
 指向本文「项目约束（不可动）」节、不复制约束（单一真相源在本文，避免两份漂移）。
 
 - **什么时候走**：触及规范面的改动（新能力、改输出契约、动扩展点、变验证纪律）先提案再动手；

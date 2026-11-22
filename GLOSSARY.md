@@ -106,6 +106,7 @@
 - **注释指针有效性（MD_POINTER）**：`scripts/ test/ tools/` 注释里引用的 `.md` 路径必须真实存在（带理由白名单）——改名不断锚。
 - **缓存纪律**：改内核输出结构或升级 iztro 必须递增 `CACHE_VERSION`；回归链路**显式禁缓存**——selftest / 测试进程经缓存模块的旁路 API（`setCacheBypassAll`）直排，子进程排盘探针 argv 携带 `--no-cache`，外壳残留的退役变量在回归入口当场报错（环境变量注入通道已删除）。缓存只求快不参与正确性——故障表现是「慢」，不是「错」。
 - **生成文件与重导**：`data/wenmo-tables.ts`、`corpus/data/tianji.ts`、cli-samples 产物不手改，改生成器再重导；「重构不改行为」验收 = 与基线逐字节 diff=0。
+- **行文润色**：成段中文注释与仓库级中文分析文档成稿经 `humanizer-zh` 技能润色，去模板化表达；引语、代码块、术语口径原样，引文纪律优先。细则与豁免面住 `openspec/specs/code-style/spec.md`。
 
 ### 内容扩展
 
