@@ -173,6 +173,11 @@ async function main(): Promise<void> {
 	);
 	printReport(s);
 	const flags = process.argv.slice(2);
+	if (flags.includes("--save-baseline") && flags.includes("--check-baseline")) {
+		throw new Error(
+			"--save-baseline 与 --check-baseline 互斥：先存基线再对拍需要两次独立运行（同跑会拿刚写的基线恒报零变化）。"
+		);
+	}
 	if (flags.includes("--save-baseline")) {
 		await saveBaseline(s);
 	}

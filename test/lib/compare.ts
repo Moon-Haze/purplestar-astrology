@@ -19,7 +19,7 @@ import { Solar } from "lunar-typescript";
 import type { BirthInfo, LunarInfo, Star, ZiweiChart } from "@/types";
 import { loadData, loadRender } from "./loader.ts";
 
-// ── 基准样本的类型（iztro 2.5.8 的 JSON 快照） ──
+// ── 基准样本的类型（JSON 快照） ──
 //
 // 刻意**不**复用 @/types 的 Palace / ZiweiChart 来描述样本：那些是「本项目产出」的
 // 契约，样本是**外部数据**，字段集不同（宫名是 iztro 词汇、无借宫字段、可选键可能整键
@@ -135,7 +135,7 @@ export { BRANCHES };
 export interface KnownDivergence {
 	star: string;
 	branch: number;
-	/** 样本（iztro 2.5.8）侧的取值 */
+	/** 样本（基准）侧的取值 */
 	baseline: string;
 	/** 本项目侧的取值 */
 	current: string;

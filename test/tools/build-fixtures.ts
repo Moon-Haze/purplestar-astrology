@@ -6,8 +6,8 @@
 //
 // 抽样是**确定性的**（不用随机数），同样的输入必然产出同样的 fixtures —— 基准可复现、可审阅 diff。
 //
-// ⚠️ 产出的基准是 **iztro 2.5.8** 的行为快照，本项目用 2.6.1，两者有且仅有两处已知差异
-//    （太阳/太阴在酉宫的亮度），已在 test/lib/compare.ts 的 KNOWN_DIVERGENCES 里显式登记。
+// ⚠️ 产出的基准是**本仓内核（v4 管线直生成）**的行为快照——对拍即「当前固化行为」自比对。
+//    KNOWN_DIVERGENCES 白名单机制保留（现清单为空），未来单字段差异仍走该登记面。
 //
 // ⚠️ 取样本改为**按出生五元组主键查询**（旧实现按行下标算址：idx = (day-1)*24 + timeIndex*2 + genderIdx）。
 //    下标算址隐含「每月每天都齐 24 条样本」的假设，改成主键查询后这个假设不再需要，语义更正确。
@@ -110,7 +110,7 @@ async function main(): Promise<void> {
 	// 重建 fixtures 是「把当前行为固化成新基准」的动作。若此刻基准与当前内核已有分歧，
 	// 直接固化等于把分歧悄悄转正 —— 下次跑测试就是绿的，谁也不知道行为变过。
 	// 故先比对一遍：白名单之外的差异一律拦下，逼出显式审阅。
-	// ⚠️ 这条路会把「样板是 iztro 2.5.8 快照」这一前提也一起检查 —— 若 toolkit 换了样本集，
+	// ⚠️ 这条路会把「样板与当前内核同源」这一前提也一起检查 —— 若数据集换了样本集，
 	//    差异会大面积出现，此时该做的是重新评估整份基准，而不是往白名单里加条目。
 	const { loadAlgorithm } = await import("../lib/loader.ts");
 	const { compareChart, formatDiffs } = await import("../lib/compare.ts");
@@ -129,7 +129,7 @@ async function main(): Promise<void> {
 	if (diverged.length) {
 		console.error(
 			`\n✖ 抽样中已有 ${diverged.length}/${samples.length} 条与当前内核不一致，拒绝写盘。\n` +
-				`  基准是 iztro 2.5.8 的行为快照；本项目内核可能已随 iztro 升级而变化。\n\n` +
+				`  基准是上一次固化的本仓内核行为；本仓内核可能已变。\n\n` +
 				`  处理：\n` +
 				`    · 若确为预期的版本行为变化 → 先在 test/lib/compare.ts 的 KNOWN_DIVERGENCES\n` +
 				`      登记根因（写清是哪一版改了什么），再重建\n` +
@@ -163,9 +163,9 @@ async function main(): Promise<void> {
 			{
 				description: "紫微斗数排盘基准（golden）—— 从 db/ 样本数据集抽样而来",
 				source: "db/dataset/{samples,palaces}.parquet（血统：db/tar-shards → ziwei.duckdb → build-duckdb 导出，2026-11-21 起 v4 管线由本仓内核直生成；字节指纹对账见 db/dataset/MANIFEST.json 与 repo 层数据集指纹对账）",
-				baselineEngine: "iztro 2.5.8",
+				baselineEngine: "本仓内核（iztro 2.6.1 + 文墨 XD2）",
 				note:
-					"基准为 iztro 2.5.8 的行为快照；本项目用 2.6.1，已知差异见 test/lib/compare.ts 的 KNOWN_DIVERGENCES。" +
+					"基准为本仓内核（v4 管线直生成）的行为快照；引擎升级后经 build-duckdb 重建数据集、build-fixtures 重抽 fixtures（写盘前分歧自检兜底），指纹重登记。" +
 					"另：样本的 palaces[].name / decadals[].palaceName 存的是 iztro 宫名（第 8 宫为「仆役」、十二宫不带「宫」字），" +
 					"本项目输出的是倪师《天纪》口径（「交友宫」、统一带「宫」字）——" +
 					"比对时由 compare.ts 的 normalizePalaceName 施加在 baseline 一侧翻译，样本本身不做改动",

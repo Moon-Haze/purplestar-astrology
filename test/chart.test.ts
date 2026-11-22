@@ -1,7 +1,7 @@
 // ── 层 1（主力）：排盘对标 ──
 //
 // 拿本项目 generateChart() 的输出去比 toolkit 样本里的 chart，逐字段全等比对。
-// 基准是 iztro 2.5.8 的行为快照，本项目用 2.6.1。
+// 基准由 db/dataset 经本仓内核直生成（v4 管线，2026-11-21 起同源）——对拍锁的是当前固化的内核行为。
 //
 // ⚠️ **亮度不参与对拍**（2026-10 口径切换）：本项目的亮度已整体改由文墨 SB 表覆写
 //    （XD2 默认，见 scripts/wenmo-brightness.ts），与 iztro 快照的亮度不可比；
@@ -32,6 +32,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const manifest = JSON.parse(readFileSync(resolve(HERE, "fixtures/manifest.json"), "utf8")) as {
 	count: number;
 	yearRange: [number, number];
+	baselineEngine: string;
 };
 const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 	.split("\n")
@@ -71,7 +72,7 @@ test("排盘内核可加载", () => {
 });
 
 // ── 主体：逐条比对，按年份分组，用例名带完整出生信息便于定位 ──
-describe("排盘对标（基准：iztro 2.5.8 样本）", () => {
+describe(`排盘对标（基准：${manifest.baselineEngine} 样本）`, () => {
 	const byYear = new Map<number, BaselineSample[]>();
 	for (const s of samples) {
 		if (!byYear.has(s.birthInfo.year)) {
