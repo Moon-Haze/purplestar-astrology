@@ -293,6 +293,12 @@ CLI 必须在**求值之前**注册解析钩子，而 ESM 的静态 `import` 会
   **占位或自撰内容绝不可挂倪师引语**（属伪造引文）。
 - 守卫扫描面同时覆盖 `.ts` 与 `.md`（`docs/` / `SKILL.md` / `references/` 等，见 `test/lib/citation-guard.ts` 的 `scanMarkdownCitations`）；`docs/manual/` 是生成导出（格局基线与频率表），按路径排除。引文比对核心住 `corpus/citation-core.ts`（test 与各扫描面同引一份）。
 
+### 行文润色
+
+- 成段中文注释与仓库级中文分析文档（外置 `docs/code/`、`docs/reviews/`、`docs/plans/`、openspec
+  proposal / design 的散文正文）成稿 SHALL 经 `humanizer-zh` 技能润色；引语、代码块、术语口径
+  原样，**引文纪律优先于润色**（细则与豁免面见 `openspec/specs/code-style/spec.md`）。
+
 ### 缓存
 
 - 改排盘内核输出结构或升级 `iztro` 时**必须递增 `CACHE_VERSION`**，否则旧缓存被当有效读回。

@@ -51,6 +51,9 @@ operations:
             - 回归链路显式禁缓存：selftest / 测试进程走缓存旁路 API，子进程排盘探针 argv 携带 --no-cache；回归链路零环境变量注入
             - 不夹带无关改动：format 只对本次真正新增 / 改动的行跑，不整跑
             - 不用 `any` / `@ts-ignore` 绕过 typecheck 报错，去改类型标注本身
+            - 成段中文注释与仓库级分析文档（外置 docs/code / reviews / plans /
+              proposal / design 散文）成稿先经 `humanizer-zh` 技能润色；引语、代码块、
+              术语口径原样，细则与豁免面见 code-style spec「注释与文档散文经 humanizer-zh 润色」
     archive:
         guidance:
             - 归档前确认文档中的计数类陈述与实跑末行一致
