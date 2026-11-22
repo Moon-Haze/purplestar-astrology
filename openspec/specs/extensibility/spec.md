@@ -36,18 +36,14 @@
 ### Requirement: 内核与内容严格分层（ADR-003）
 
 排盘内核（`algorithm.ts` / `mutagen.ts` / `patterns/` / `data/` / `wenmo-brightness.ts` /
-`types.ts`）与知识内容（`analysis/` / `corpus/` / `synastry/`）SHALL 严格分层。
+`types.ts`）与知识内容（`analysis/` / `corpus/` / `synastry/`）SHALL 严格分层：插件层
+SHALL **禁止反向依赖 `cli/`**，SHALL **禁止修改内核模块状态**；跨流派共享的底座数据
+（干支 / 四化 / 亮度）留在 `data/`，**流派特有**内容归插件。
 
-插件层 SHALL **禁止反向依赖 `cli/`**，SHALL **禁止修改内核模块状态**。
-内核只暴露纯函数供插件消费。跨流派共享的底座数据（干支 / 四化 / 亮度）留在 `data/`，
-**流派特有**内容归插件。
-
-**唯一豁免边界**：corpus 与 synastry 的 selftest 断言组（`*/selftest-asserts.ts`）是
-selftest 宿主的测试件，SHALL 允许引用 `cli/` 下的 kit（静态）与命令表 / 参数面模块
-（动态 import 打断静态环）——静态仅 `cli/selftest/kit`，动态仅 `cli/commands` /
-`cli/args` / `cli/args/scope`。豁免按文件具名，SHALL NOT 扩散到其他插件文件或其他
-cli 模块。豁免边界 SHALL 由扫描守卫钉住：插件树的 cli 引用边集合与白名单逐边比对，
-多边、少边或白名单文件消失 SHALL 当场红。
+**唯一豁免边界**：corpus 与 synastry 的 selftest 断言组（`*/selftest-asserts.ts`）SHALL
+按具名白名单引用 `cli/` 模块——静态仅 `cli/selftest/kit`；动态仅 `cli/commands`、
+`cli/args`、`cli/args/scope`（动态 import 打断静态环）。豁免 SHALL NOT 扩散出白名单，
+边界由扫描守卫对插件树 cli 引用边与白名单逐边比对钉住。
 
 #### Scenario: 加内容不重跑内核回归
 
