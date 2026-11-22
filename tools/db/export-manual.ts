@@ -7,8 +7,8 @@
  *   npx tsx tools/db/export-manual.ts all      # 以上两项
  *   npx tsx tools/db/export-manual.ts --check  # 漂移探针：内存重导对拍已提交产物，脏则非零退出
  *
- * 数据血缘（重要）：样本库是**本仓 analysis 内核在 518,400 个设计样本上的
- * 预计算产物**（`npm run build:db`），不是独立内容源 —— 本工具只做**导出与对拍**。
+ * 数据血缘（重要）：样本库是**本仓 analysis 内核在 674,976 个设计样本上的
+ * 预计算产物**（`npm run build:db`，1950–2026），不是独立内容源 —— 本工具只做**导出与对拍**。
  *
  * 漂移探针（--check，npm run manual:check）：生成物与「当前内核表 + 当前导出工具」
  * 的一致性守卫 —— 内核或工具改了而生成物未重导时非零退出报警（差异文件清单 + 每文件
@@ -108,7 +108,7 @@ async function exportCombo(conn: DuckDBConnection): Promise<void> {
 	const md = [
 		"# 主星 × 辅煞 同宫频率全表",
 		"",
-		"> 518,400 设计样本 × 12 宫 = 6,220,800 宫次；辅煞口径 = 六吉 + 禄存天马（lucky_stars）",
+		"> 674,976 设计样本 × 12 宫 = 8,099,712 宫次；辅煞口径 = 六吉 + 禄存天马（lucky_stars）",
 		"> + 六煞（擎羊陀罗火星铃星地空地劫，sha_stars）。单元格 = 同宫样本盘数。",
 		"> 用途：主辅煞组合断语矩阵的**口径与完备性基线** —— 表中每个组合在库内都有",
 		"> 万级样本文本兜底，矩阵条目无冷门。生成：`npx tsx tools/db/export-manual.ts combo`。",

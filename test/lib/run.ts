@@ -363,9 +363,15 @@ console.log(
 	`  总计 ${total} 项：${total - totalFailed} 通过${totalFailed ? ` / ${totalFailed} 失败` : ""} · 墙钟 ${fmtMs(wallMs)}`
 );
 // 对账：分层合计应等于 node:test 全局 summary。不等说明聚合漏了事件（新增测试文件
-// 未登记 LAYERS、describe 标题与 LAYERS suites 名脱钩等）——第五轮 Speculative #3
-// 拍板解除（2026-11-22）：全量回归下**硬失败**，脱钩从人眼告警升级为闸门；手动透传
-// --test-name-pattern 过滤跑时未映射属合法形态，保持 ⚠ 告警。
+// 未登记 LAYERS 等）——第五轮 Speculative #3 拍板解除（2026-11-22）：全量回归下
+// **硬失败**，脱钩从人眼告警升级为闸门；手动透传 --test-name-pattern 过滤跑时未映射
+// 属合法形态，保持 ⚠ 告警。
+// suites 名与 describe 标题脱钩的检测已由 repo 层断言覆盖（「LAYERS 的 suites 与
+// 各文件顶层 describe/test 标题逐字对应」）；describe 自由分组不要求全登记为设计
+// 边界。suites 名脱钩维持守卫的三方案曾评估并否决（留档）：静态扫描 describe 脆
+// （chart.test 顶层名随 manifest 动态模板化）、事件流 nesting 实测不可靠
+// （reporter.ts 头注：并行下部分丢失错乱）、删 LAYERS.suites 字段丢最慢榜的聚合
+// 套件排除——后果仅展示层失真，不为 cosmetic 加脆性守卫。
 const manualFilter = passthrough.some(
 	a => a === "--test-name-pattern" || a.startsWith("--test-name-pattern=")
 );

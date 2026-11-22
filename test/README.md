@@ -119,12 +119,13 @@ node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三
 
 ### 2. 亮度已退出对拍（2026-10 口径切换），白名单机制保留、清单为空
 
-基准是 **iztro 2.5.8** 的产物，本项目用 **2.6.1**。两版之间 iztro 改过星曜亮度表
+基准数据集（1950–2026）由 v4 管线**本仓内核直生成**——基准与本仓内核同源。
+历史上基准是 iztro 2.5.8 的产物，两版之间 iztro 改过星曜亮度表
 （太阳/太阴@酉两处差异），曾以 `KNOWN_DIVERGENCES` 白名单放行。
 
 **2026-10 混合口径落地后**，本项目的亮度整体改由**文墨 SB 表覆写**
 （`scripts/wenmo-brightness.ts` + 同名 JSON，XD2 默认，主辅杂曜同表）——
-与 iztro 快照的亮度几乎处处不同，逐值白名单不再有意义。当前安排：
+逐值白名单不再有意义。当前安排：
 
 - **对拍跳过 `brightness` 字段**（[lib/compare.ts](lib/compare.ts) 的 `compareStars`）；
   星名 / type / mutagen / 宫位 / 大限仍全量严格比对；
@@ -134,10 +135,12 @@ node scripts/purple-star.ts selftest   # 古籍断言已并入主 selftest（三
 - 白名单**机制**保留、**清单为空**：未来「样本陈旧、本项目对」的单字段差异
   仍在此登记 `cause`，不另起炉灶。
 
-### 4. fixtures 锁死 iztro 2.5.8 的行为，这是设计意图
+### 4. fixtures 锁死当前内核的行为，这是设计意图
 
-将来升级 iztro 时若安星 / 结构出现新差异（白名单现为空，任何差异都会红），
-**这是要你显式审阅行为变化**，而不是默默接受 —— 见下方「升级 iztro 的流程」。
+fixtures 的 chart 来自本仓内核（v4 管线直生成），锁的是**当前固化的内核行为**。
+将来升级 iztro 时的既定流程：`build-duckdb` 重建数据集 → 指纹重登记 →
+`build-fixtures` 重抽 fixtures（写盘前分歧自检会把行为变化逼出来显式审阅）——
+见下方「升级 iztro 的流程」。
 
 ### 5. 随运行年份漂移的字段，测试自己重算
 

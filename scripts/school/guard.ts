@@ -3,7 +3,7 @@
  *
  * 把"飞星派逻辑不得回流"的绊线语义从**硬编码字段检查**升级为**读 `SchoolAdapter.forbiddenFeatures`
  * 的声明式检查**（计划里程碑 3C）。同一份逻辑同时被两处消费：
- * - `test/school.test.ts`（用 300 条真实基准盘，覆盖面大）
+ * - `test/school.test.ts`（用 385 条真实基准盘，覆盖面大）
  * - `scripts/cli/selftest/chart.ts`（CLI 启动期自检）
  *
  * ⚠️ 本模块**零运行时依赖**（只 import 类型）：`checkForbiddenFeatures` 是纯函数，

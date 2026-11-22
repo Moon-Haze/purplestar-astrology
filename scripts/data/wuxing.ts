@@ -59,9 +59,10 @@ export const NAYIN_ELEMENTS = [
  *
  * 消费者：`algorithm.ts` 的 `parseWuxingJu` —— 取局名首字五行查本表得出局数。
  *
- * ⚠️ 改本表会改变 `ZiweiChart.fiveElementsClass`，从而改变 300 条基准的对标结果。两处独立预言机
+ * ⚠️ 改本表会改变 `ZiweiChart.fiveElementsClass`，从而改变 385 条基准的对标结果。两处独立预言机
  * 盯着这条映射：`test/invariants.test.ts` 的「五行局取值 2-6 且名称与数字对应」用的是
- * 表外自带的字面量表，`test/lib/compare.ts` 比对的 `fiveElementsClass` 则来自 toolkit 的样本快照。
+ * 表外自带的字面量表，`test/lib/compare.ts` 比对的 `fiveElementsClass` 来自 fixtures
+ * （2026-11-21 数据集 v4 化后与本仓内核同源，其独立性由数据集血统链与指纹对账保证）。
  */
 export const ELEMENT_TO_JU: Record<string, number> = {
 	水: 2,

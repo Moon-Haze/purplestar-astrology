@@ -58,7 +58,7 @@ export const DDL_INLINE_STATEMENTS: string[] = [
     line    VARCHAR NOT NULL
   )`,
 	// 每个「样本 × 主题」一行，值为该段文本按 chr(10) 拆行后的行号数组（顺序即原文顺序）。
-	// 全量 518,400 × 13 = 6,739,200 行；映射落在 DuckDB 确实会压缩的整数列上。
+	// 全量 674,976 × 13 = 8,774,688 行；映射落在 DuckDB 确实会压缩的整数列上。
 	`CREATE TABLE topic_lines (
     sample_id BIGINT   NOT NULL,
     topic     VARCHAR  NOT NULL,
