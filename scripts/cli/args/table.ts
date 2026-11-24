@@ -87,7 +87,7 @@ export interface OptionSpec {
 	shadow?: true;
 	/**
 	 * 显式声明不在被吞检测域（topic-deep 默认入域、output-select 默认域外；
-	 * 标它把「有意不在域内」写成声明，供穷尽性断言核对）
+	 * 标它即写明「有意不在域内」，供穷尽性断言核对）
 	 */
 	noShadow?: true;
 	/**
@@ -510,10 +510,10 @@ export const DEEP_DIVE_KEYS: readonly string[] = OPTION_GROUPS.flatMap(g =>
 );
 
 /**
- * 专题深入菜单 —— 指路行/help DESCRIPTION 展示元数据（评审 N7）：`deep: true`
- * 声明「判定链跟上」，本表「用户看到什么」。两处消费（fortune/overview、
- * command-meta）由此拼装，新增专题无「改一处漏两处文案」手抄面。selftest 钉
- * 「菜单 ⊆ 声明表」「deep 旗标 ⊆ 菜单」双向。
+ * 专题深入菜单 —— 指路行与 help DESCRIPTION 的展示元数据（评审 N7）：`deep: true`
+ * 声明「判定链跟上」，本表管「用户看到什么」。两处消费（fortune/overview、command-meta）
+ * 由此拼装，新增专题不再有「改一处漏两处文案」的手抄面。selftest 双向钉住
+ * 「菜单 ⊆ 声明表」「deep 旗标 ⊆ 菜单」。
  */
 export interface DeepDiveMenuEntry {
 	/** 旗标名（kebab，须是 OPTION_GROUPS 已声明的参数名 —— selftest 双向对拍钉住） */

@@ -18,7 +18,8 @@ export function agePalaceOf(chart: ZiweiChart, age: number): Palace {
 	return p;
 }
 
-/** --daxian/--xiaoxian @param raw - 值 @param currentAge - 岁 @param flagName - 名 @returns 虚岁 @throws 非法 @remarks cli/commands/astrology-context.ts；裸开关=「看当前」。 */
+/** --daxian/--xiaoxian @param raw - 值 @param currentAge - 岁 @param flagName - 名
+ * @returns 虚岁 @throws 非法 @remarks cli/commands/astrology-context.ts；裸开关=「看当前」。 */
 export function parseAgesArg(
 	raw: string | boolean | string[] | undefined,
 	currentAge: number,

@@ -105,7 +105,7 @@ function scanFile(file: string, content: string): LongCommentHit[] {
  * 不打印、不退出——处置由调用方决定（review 转 finding，CLI 打印并定退出码）。
  *
  * @param files - 待扫描文件清单
- * @returns 违规项清单；不打印、不退出，处置交调用方
+ * @returns 违规项清单
  */
 export function checkLongComments(files: string[]): LongCommentHit[] {
 	const hits: LongCommentHit[] = [];
@@ -124,7 +124,7 @@ export function checkLongComments(files: string[]): LongCommentHit[] {
  *
  * @param dir - 递归起点
  * @param out - 累积数组（就地追加绝对路径）
- * @returns 无返回值；`.ts` 绝对路径追加进 `out`
+ * @returns 无返回值
  */
 function walkTs(dir: string, out: string[]): void {
 	for (const ent of readdirSync(dir, { withFileTypes: true })) {

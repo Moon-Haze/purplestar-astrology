@@ -1,5 +1,6 @@
 /**
- * ⚠️ 知识四级（verified / traditional / methodology / suspect）；「倪师…说」引句多转述，CLI 末尾披露见 `./grades`。
+ * ⚠️ 知识四级（verified / traditional / methodology / suspect）；「倪师…说」引句多转述，
+ * CLI 末尾披露见 `./grades`。
  * ⚠️ 各 view 只读 ctx 只出自己行，不互调不写回；跨节状态 `mutagenInSanFang` 已进 `./context`。
  * 理由见 docs/code/analysis.md。
  * @file 主题论断库装配点（倪海厦《天纪》正统口径）
@@ -45,7 +46,8 @@ import {
  * @returns 报告全文
  * @remarks
  * 编排层：建一次 ctx 按小节序拼接各 `renderXxx`。
- * ⚠️ ① 顺序即小节序勿改；② 性别已在各 view 经 `selectGender` 投影，仅拼接不过滤；理由见 docs/code/analysis.md。
+ * ⚠️ ① 顺序即小节序勿改；② 性别已在各 view 经 `selectGender` 投影，仅拼接不过滤；
+ * 理由见 docs/code/analysis.md。
  */
 export function getTopicAnalysis(
 	chart: ZiweiChart,
@@ -77,7 +79,8 @@ export function getTopicAnalysis(
 
 // 导出 8 个值见下方 export。
 
-// ⚠️ TOPIC_KEYS / TOPIC_DEFS 是主题注册表单一真相源（Phase 2 的 8 张平行表已派生），新增主题只加此表。
+// ⚠️ TOPIC_KEYS / TOPIC_DEFS 是主题注册表单一真相源（Phase 2 的 8 张平行表已派生），
+// 新增主题只加此表。
 
 export {
 	TOPIC_KEYS,

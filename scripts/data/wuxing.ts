@@ -1,5 +1,5 @@
 /**
- * 五行数据 —— 纳音五行、五行局局数与局名（从 `constants.ts` 拆出，逐字迁移）。
+ * 五行数据：纳音五行、五行局局数与局名（从 `constants.ts` 拆出，逐字迁移）。
  * ⚠️ `ELEMENT_TO_JU` 已消费、`JU_NAMES` 仅数据留存，状态不对等是刻意的，不必补齐。
  * 口径见 docs/code/data-tables.md。
  * @file 五行数据

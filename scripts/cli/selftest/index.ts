@@ -81,7 +81,7 @@ export async function cmdSelftest(ctx: CliContext): Promise<string> {
 	// 子进程探针留给文末冒烟（守「入口 → 解析 → 命令表 → 渲染 + 错误出口」真链路）；
 	// 输出形态断言用进程内直调：子进程约 3.2 秒 vs 直调约 25ms，判据同构
 	//（见 docs/code/cli-selftest.md）。
-	// 子进程模块旁路过不去：排盘命令 argv 显式携带 --no-cache
+	// 旁路状态传不到子进程：排盘命令 argv 显式携带 --no-cache
 	//（synastry / knowledge 不排盘、不识别该旗标，只加 astrology）。
 	/** 进程内跑一次 CLI，返回退出码与输出。 */
 	const runCli = (args: string[]): { code: number; out: string; err: string } => {

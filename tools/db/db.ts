@@ -101,7 +101,7 @@ export function dictPathFor(dbPath: string): string {
 }
 
 // 库内 topics 视图：13 列文本由行号数组拼回，列序同原 Parquet 版，SQL 无需改。
-// ⚠️ unnest 展开与两处 LEFT JOIN 缺一不可（实测：数组字面量化/NULL 行消失），详见 docs/code/db-tools.md
+// ⚠️ unnest 展开与两处 LEFT JOIN 缺一不可（实测：数组变字面量、NULL 行消失），详见 docs/code/db-tools.md
 /**
  * inline `topics` 视图 SQL：行字典→原文行。
  * @returns VIEW 语句
@@ -179,7 +179,7 @@ export const DATASET_PART_SAMPLES = 50_000;
 export const DATASET_PART_MAX_BYTES = 95 * 1024 * 1024;
 
 // dataset 合计上限：实测 392MiB（主题 379.04+宫位 12.0+样本 0.8），留约 15% 余量；现切片 1.7GiB（spec §8）。
-// 按日历口径分档（README「体积报告」节 1.1 倍实测口径）：synthetic（v3）450MiB / solar（v4）1GiB（实测 944MiB，留头寸防漂移误报）。
+// 按日历口径分档（README「体积报告」节 1.1 倍实测口径）：synthetic（v3）450MiB / solar（v4）1GiB（实测 944MiB，留余量防漂移误报）。
 /** dataset 合计体积预算（synthetic 口径）。 */
 export const DATASET_TOTAL_LIMIT = 450 * 1024 * 1024;
 /** dataset 合计体积预算（solar 日历口径）。 */

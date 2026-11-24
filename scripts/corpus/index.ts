@@ -21,9 +21,10 @@ export const TOTAL_PARAGRAPHS = ALL_BOOKS.reduce(
 /**
  * 检索。
  * @param query - 词；裁空白则 []
- * @param limit - 30；`NaN`/<1→[]，`Infinity` 无上限
+ * @param limit - 上限，默认 30；`NaN`/<1→[]，`Infinity` 无上限
  * @returns 命中，按 {@link ALL_BOOKS} 书→章→段序
- * @remarks 逐段子串（`indexOf`、中文OK）、大小写敏感；仅 `text` 不搜 `translation`/`niNote`；按段非次数；无相关度、先命中先收、满即返；繁简不转。`snippet` 裹 `<mark>`、余经 {@link escapeHtml} 转义、截断补…
+ * @remarks 逐段子串（`indexOf`、中文OK）、大小写敏感；仅 `text` 不搜 `translation`/`niNote`；按段非次数；
+ * 无相关度、先命中先收、满即返；繁简不转。`snippet` 裹 `<mark>`、余经 {@link escapeHtml} 转义、截断补…
  */
 export function searchClassics(query: string, limit = 30): SearchHit[] {
 	const keywords = query.trim().split(/\s+/).filter(Boolean);

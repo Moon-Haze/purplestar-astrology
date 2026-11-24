@@ -34,7 +34,7 @@ export interface TrueSolarResult {
 	 */
 	isLateZi: boolean;
 	/**
-	 * @remarks 跨日界：0 未跨 / +1 次日 / -1 前日。调用方须据此调日期；只取时辰留日期于钟表轴，「日 + 时」即错（喀什 00:30 实测，docs/code/cli-birth.md）
+	 * @remarks 跨日界：0 未跨 / +1 次日 / -1 前日。调用方须据此调日期；只取时辰、留日期于钟表轴，「日 + 时」即错（喀什 00:30 实测，docs/code/cli-birth.md）
 	 */
 	dayOffset: number;
 	/**

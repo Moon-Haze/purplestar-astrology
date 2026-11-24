@@ -83,7 +83,7 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("参数面：拼错的旗标必须报错，并指向最接近的合法名", () => {
 		// 拼错旗标以前**静默**：parseArgs 照收，buildBirthInfo 读不到即落回默认值 ——
 		// `--ctiy 喀什` 排出按默认 120°E 算的盘（错约 176 分钟 ≈ 3 个时辰），零提示。
-		// 这类静默错盘正是 REQUIRED_EXPORTS 与 projectPalaceName 所防
+		// 这类静默错盘正是 REQUIRED_EXPORTS 与 projectPalaceName 所防的。
 		// 本断言锁**行为**（未知旗标须抛错）非文案：文案可改，但摘掉校验则静默错盘
 		// 原样回来、别的断言全绿。
 		const probes: Array<[string, string]> = [
@@ -132,7 +132,7 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 	ok("参数面：专题参数族（info/pattern/mutagen/decadal/ages）均可解析", () => {
 		// 专题参数族：每参数对应一输出专题，加了只出该专题详版（英文主名，别名见
-		// OPTION_ALIASES）。switch 裸开关给 true；decadal/ages 可选值，带值给字符串、
+		// OPTION_ALIASES）。裸开关给 true；decadal/ages 可选值，带值给字符串、
 		// 裸开关（= 默认当前虚岁）给 true。
 		const base = [...SAMPLE_ARGV];
 		const a = parseArgs([...base, "--info", "--pattern", "--mutagen"], "astrology");
@@ -229,7 +229,7 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 			// 失败可见性增长守卫：output-select 默认域外，漏标 shadow = 静默。
 			// daily/hourly（2026-11-09）与 view（2026-11-11）两次静默吞同根因，现快照
 			// 与行为测试都只守收缩方向。本断言要求该组每个 astrology 参数显式二选一表态，
-			// 「隐式默认域外」的开放枚举收敛为封闭声明义务，决策单点回 table.ts；未表态即红。
+			// 把「隐式默认域外」的开放枚举收敛为封闭的声明义务，决策单点在 table.ts；未表态即红。
 			const group = (table.OPTION_GROUPS ?? []).find(g => g.role === "output-select");
 			if (!group) {
 				throw new Error("声明表缺 output-select 组 —— role 派生守卫失效");

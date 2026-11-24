@@ -1,8 +1,9 @@
 /**
  * ⚠️ 收尾节，无条件出：按盘推算（{@link buildTopicSuggestions}），未命中给收束句并标注；
- *    固定「继续深度追问」引导语保落点，勿加「有内容才出」条件。口径 docs/code/analysis.md。
+ *    固定「继续深度追问」引导语保落点，勿加「有内容才出」条件。
+ *    口径 docs/code/analysis.md。
  *    产出条目流见 `../items`。
- * @file 六、综合建议 —— 报告收尾节
+ * @file 六、综合建议：报告收尾节
  * @packageDocumentation
  */
 
@@ -14,7 +15,8 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
 
 /**
  * 渲染「六、综合建议」条目流。
- * @param ctx - 上下文（{@link AnalysisContext}）：由 {@link buildTopicSuggestions} 按盘推算，只装配版式
+ * @param ctx - 上下文（{@link AnalysisContext}）：由 {@link buildTopicSuggestions} 按盘推算，
+ * 只装配版式
  * @returns `【综合建议】` 节头 + 建议行 + `【继续深度追问】` 引导语；恒非空
  */
 function renderSuggestionsItems(ctx: AnalysisContext): AnalysisItem[] {

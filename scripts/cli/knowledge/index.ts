@@ -1,5 +1,6 @@
 /**
- * @file `knowledge` 三域检索。「前置守卫 → 查表 → 调 `search`」经 {@link decodeKnowledgeQuery} 分发，详见 docs/code/cli-commands.md。
+ * @file `knowledge` 三域检索。「前置守卫 → 查表 → 调 `search`」经 {@link decodeKnowledgeQuery}
+ * 分发，详见 docs/code/cli-commands.md。
  */
 
 import type { CliArgs } from "../args";

@@ -4,7 +4,7 @@
 // 用法: npm run build:db [-- --out=DIR] [-- --force] [-- --mode=inline|dataset]
 //                      [-- --from-year=N] [-- --to-year=N] [-- --src=DIR]
 //      参数支持 --key=value 与 --key value 两种写法
-// 默认 src=./samples-out out=./db（与 query 的 DEFAULT_OUT 同址，读写同位）；--mode 默认 inline。
+// 默认 src=./samples-out out=./db（与 query 的 DEFAULT_OUT 同址）；--mode 默认 inline。
 // --out 只给目录，目录内名字全固定（唯一定义处：tools/db/db.ts 的 dbPathIn / datasetDirIn）：
 //   <out>/ziwei.duckdb             库文件
 //   <out>/dataset/                 分发 parquet 目录（仅 --mode=dataset）
@@ -218,8 +218,8 @@ export function shardSql(calendar: Calendar): {
 	dropTemps: string[];
 } {
 	const readJson = `read_json(?, format='newline_delimited', columns=${READ_JSON_COLUMNS})`;
-	// 幂等插入：先按本分片 sample_id 删旧行再插。这使「已提交但尚未记账」即崩溃的分片
-	// 可安全重做，不必撞主键冲突后被永久跳过。正常路径删 0 行，走索引。
+	// 幂等插入：先按本分片 sample_id 删旧行再插。「已提交但尚未记账」即崩溃的分片
+	// 因此可安全重做，不会因主键冲突被永久跳过。正常路径删 0 行，走索引。
 	const idExpr = sqlSampleIdExpr("birthInfo", calendar);
 	const idInShard = `SELECT ${idExpr} FROM shard`;
 	const topicNames = STORAGE_TOPIC_KEYS.map(k => `'${k}'`).join(", ");
@@ -560,7 +560,7 @@ export async function repackDataset(
 //
 // dataset 的两个 parquet 是**入库基准真值**，回归按 `MANIFEST.json` 的字节 sha256
 // 对账（repo 层「数据集指纹对账」）——数据集被替换而未重新登记时当场红。
-// 指纹由本工具导出收尾时自动写入，人工零协同：「改了数据忘了登记」的 miss 类
+// 指纹由本工具导出收尾时自动写入，无需人工登记，「改了数据忘了登记」这类 miss
 // 从结构上消失。对账只读文件字节（不查内容），回归不引入 DuckDB 依赖。
 //
 // 字节可复现性 2026-11-21 实证：同库重导两次与盘上现值三方哈希一致（含并行导出），

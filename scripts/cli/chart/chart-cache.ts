@@ -59,7 +59,7 @@ export interface ChartCacheOptions {
 
 // 整链旁路
 // 回归链路调一次即整链直排——「哪些调用点被豁免」读设定点即知。
-// 子进程状态过不去：探针 argv 显式带 --no-cache。
+// 旁路状态传不到子进程：探针 argv 显式带 --no-cache。
 let bypassAll = false;
 
 /**

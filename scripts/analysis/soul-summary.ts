@@ -47,7 +47,9 @@ export const SOUL_NATURE_MAP: Record<string, string> = {
 /**
  * @param chart - 盘
  * @returns stars/keywords/nature；空宫空
- * @remarks {@link SOUL_KEYWORD_MAP}/{@link SOUL_NATURE_MAP} 仅14主星，杂耀不算。空宫 nature`"空宫"`取`borrowedStars`。nature首星、keywords摊平前5。表外键`?? []`、nature空串，不掩抄错。
+ * @remarks {@link SOUL_KEYWORD_MAP}/{@link SOUL_NATURE_MAP} 仅14主星，杂耀不算。
+ * 空宫 nature`"空宫"`取`borrowedStars`。nature首星、keywords摊平前5。
+ * 表外键`?? []`、nature空串，不掩抄错。
  * @example 空宫→借宫。
  */
 export function getMingGongSummary(chart: ZiweiChart): {

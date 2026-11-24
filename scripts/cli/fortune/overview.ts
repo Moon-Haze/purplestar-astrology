@@ -18,7 +18,8 @@ import { agePalaceOf, yearlyBranchOf } from "./primitives";
  * @returns 两行文本
  *
  * @remarks
- * 契约：上述三形态输出；给了专题参数（`--pattern`/`--mutagen`/`--yearly` 等）则不带（已深入）。速览行给四坐标（虚岁 / 大限 / 流年命宫 / 小限宫），未深入形态即可「一眼定位」与「该往哪个专题旗标深入」。
+ * 契约：上述三形态输出；给了专题参数（`--pattern`/`--mutagen`/`--yearly` 等）则不带（已深入）。
+ * 速览行给四坐标（虚岁 / 大限 / 流年命宫 / 小限宫），未深入形态即可「一眼定位」与「该往哪个专题旗标深入」。
  */
 export function overviewSection(chart: ZiweiChart, liuNianYear: number): string[] {
 	const dx = chart.decadals[chart.currentDecadalIndex];

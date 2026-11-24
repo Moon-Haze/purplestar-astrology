@@ -1,5 +1,5 @@
 /**
- * @file 星曜数据 —— 主星亮度表与十四主星释义（2026-10-11 从 `constants.ts` 拆出，逐字迁移）。
+ * @file 星曜数据：主星亮度表与十四主星释义（2026-10-11 从 `constants.ts` 拆出，逐字迁移）。
  * ⚠️ 两表均无消费者（详见各表）。口径见 docs/code/data-tables.md。
  * @packageDocumentation
  */

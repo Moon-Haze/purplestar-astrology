@@ -1,6 +1,6 @@
 /**
  * 格局查询底座
- * @remarks ../palace-relations；docs/code/patterns.md。
+ * @remarks 细节见 ../palace-relations；docs/code/patterns.md。
  * @file 辅助底座
  * @packageDocumentation
  */
@@ -95,7 +95,7 @@ export function getSurroundPalaces(chart: ZiweiChart): Palace[] {
  * @param chart
  * @param branch
  * @returns
- * @remarks {@link getSurroundPalaces}{@link getPalaceByBranch}
+ * @remarks {@link getSurroundPalaces}、{@link getPalaceByBranch}
  */
 export function isInSanFang(chart: ZiweiChart, branch: number): boolean {
 	return surroundBranches(chart.soulBranch).includes(branch);
@@ -127,7 +127,7 @@ export function getJiaPalaces(chart: ZiweiChart, branch: number): { prev?: Palac
  * 全部星名
  * @param chart
  * @returns
- * @remarks {@link getSurroundPalaces}{@link sanFangShaCount}
+ * @remarks {@link getSurroundPalaces}、{@link sanFangShaCount}
  */
 export function sanFangAllStars(chart: ZiweiChart): Set<string> {
 	return new Set(getSurroundPalaces(chart).flatMap(p => p.stars.map(s => s.name)));
@@ -137,7 +137,7 @@ export function sanFangAllStars(chart: ZiweiChart): Set<string> {
  * @param chart
  * @param list
  * @returns
- * @remarks {@link shaCountInPalace}{@link sanFangAllStars}
+ * @remarks {@link shaCountInPalace}、{@link sanFangAllStars}
  */
 export function sanFangShaCount(chart: ZiweiChart, list: string[] = SHA_HARD): number {
 	return getSurroundPalaces(chart).reduce((sum, p) => sum + shaCountInPalace(p, list), 0);
@@ -179,7 +179,8 @@ export function getStarMutagen(palace: Palace, starName: string): Star["mutagen"
  * @param palace
  * @param hua
  * @returns
- * @remarks {@link getStarMutagen}「**某颗指定星**化没化」「**这一宫**里 有没有星化」「命宫见禄」「禄」「权」「科」「忌」「化禄」
+ * @remarks {@link getStarMutagen}「**某颗指定星**化没化」「**这一宫**里 有没有星化」
+ * 「命宫见禄」「禄」「权」「科」「忌」「化禄」
  */
 export function palaceHasMutagen(palace: Palace, hua: Mutagen): boolean {
 	return palace.stars.some(s => s.mutagen === hua);
@@ -189,7 +190,8 @@ export function palaceHasMutagen(palace: Palace, hua: Mutagen): boolean {
  * @param chart
  * @param hua
  * @returns
- * @remarks {@link palaceHasMutagen}{@link palaceHasMutagen}：「再会化科」「三方有化禄或化权」「四宫里有没有」⚠️ `has` 恒假。
+ * @remarks {@link palaceHasMutagen}、{@link palaceHasMutagen}：「再会化科」「三方有化禄或化权」
+ * 「四宫里有没有」⚠️ `has` 恒假。
  */
 export function sanFangHasMutagen(chart: ZiweiChart, hua: Mutagen): boolean {
 	return getSurroundPalaces(chart).some(p => palaceHasMutagen(p, hua));
@@ -197,10 +199,10 @@ export function sanFangHasMutagen(chart: ZiweiChart, hua: Mutagen): boolean {
 
 /**
  * 替换占位符
- * @param verdict - ../corpus/data/patterns.ts
+ * @param verdict - 判词对象（../corpus/data/patterns.ts）
  * @param vars
  * @returns
- * @remarks ../corpus/data/patterns.ts。
+ * @remarks 细节见 ../corpus/data/patterns.ts。
  */
 export function fillVerdict(verdict: PatternVerdict, vars: Record<string, string>): PatternVerdict {
 	/** 替换占位符。 */

@@ -45,7 +45,7 @@ const signed = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
  * @param day - 公历日
  * @returns 当日均时差（分钟），可正可负
  * @remarks 工程近似式 `9.87·sin2B − 7.53·cosB − 1.5·sinB`，幅度 −14.6 ~ +16.5 分。
- * ⚠️ **与经度无关**：`--lng 120` 时也不为 0 —— 开了 `--eot` 后照样推动（见 docs/code/cli-birth.md）。
+ * ⚠️ **与经度无关**：`--lng 120` 时也不为 0 —— 开了 `--eot` 后照样参与校正（见 docs/code/cli-birth.md）。
  */
 export function equationOfTime(year: number, month: number, day: number): number {
 	const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
@@ -158,7 +158,7 @@ export function isChinaDstClock(
 		return false;
 	}
 	const md = mdKey(month, day);
-	// 闭区间放行首尾两日（按 02:00 细分），其余年份外日期排除
+	// 闭区间放行首尾两日（按 02:00 细分），区间外日期排除
 	if (md < mdKey(rec.start[0], rec.start[1]) || md > mdKey(rec.end[0], rec.end[1])) {
 		return false;
 	}
@@ -473,8 +473,8 @@ export function buildBirthInfo(args: CliArgs): BirthInfoResult {
 			day = shifted.day;
 		}
 
-		// 校正量：默认仅经度项；开 --eot 加均时差，夏令时回拨减一项。DST 生效即使未开 --eot
-		// 也展开构成 —— 总数混 −60 分不显来源是静默切换口径。
+		// 校正量：默认仅经度项；开 --eot 加均时差，夏令时回拨减一项。DST 生效时即使未开 --eot
+		// 也展开明细 —— 总数混入 −60 分而不显来源，等于静默切换口径。
 		const dstText = t.dstMinutes ? ` − 夏令时 ${t.dstMinutes} 分` : "";
 		const corrText = useEot
 			? `经度 ${signed(t.longitudeMinutes)} 分 + 均时差 ${signed(t.eotMinutes)} 分${dstText} = ${signed(t.offsetMinutes)} 分`

@@ -1,5 +1,7 @@
 /**
- * @file 文墨+倪师三合派适配器。@remarks 「引用而非迁移」守 0C：wenmo-brightness.ts 不镜像（禁「内核无运行时流派旋钮」）；ANNOTATIONS 直引；scanRoot 同 citations.test.ts；见 docs/code/school.md。
+ * @file 文墨+倪师三合派适配器。
+ * @remarks 「引用而非迁移」守 0C：wenmo-brightness.ts 不镜像（禁「内核无运行时流派旋钮」）；
+ * ANNOTATIONS 直引；scanRoot 同 citations.test.ts；见 docs/code/school.md。
  */
 
 import { dirname, resolve } from "node:path";

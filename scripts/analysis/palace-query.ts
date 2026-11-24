@@ -1,5 +1,6 @@
 /**
- * ⚠️ 宫名按 `Palace.name` 严格等值（带「宫」字、「仆役」→「交友宫」）；旧名静默落兜底。见 docs/code/analysis.md。
+ * ⚠️ 宫名按 `Palace.name` 严格等值（带「宫」字、「仆役」→「交友宫」）；旧名静默落兜底。
+ * 见 docs/code/analysis.md。
  * @file 宫位查询：取宫 / 三方四正 / 星曜成文
  * @packageDocumentation
  */
@@ -12,7 +13,7 @@ import { starBadge } from "./lookups";
 /**
  * @param chart - 命盘
  * @param palaceName - 宫名（严格等值，带「宫」字）
- * @returns 主星 + 借宫标记；空宫借对宫 `isLoan` 为 `true`，两宫皆空则空、`false`；找不到 `null`
+ * @returns 主星 + 借宫标记；空宫借对宫 `isLoan` 为 `true`，两宫皆空则空数组、`false`；找不到 `null`
  */
 export function getPalaceStars(
 	chart: ZiweiChart,
@@ -56,7 +57,7 @@ export function getSanFangSiZheng(chart: ZiweiChart, palaceName: string): Palace
 }
 
 /**
- * 徽标取 `overview-material` starBadge。
+ * 宫内主星徽标行，徽标取 `overview-material` starBadge。
  * @param palace - 目标宫（直接取 `stars`）
  * @returns 主星徽标以「、」连成一行（星名 / 化象 / 亮度）；无主星 `<宫名>空宫`
  */
@@ -77,9 +78,10 @@ export function getPalaceMutagen(palace: Palace): { name: string; mutagen: strin
 }
 
 /**
- * 会照条目：宫里一颗带四化的星（连落宫）。
+ * 会照条目：宫内一颗带四化的星，连同落宫。
  * @remarks
- * 只按 `mutagen` 真值、不按 `Star.type` 过滤（含辅星四化）；三处消费方（主题主宫 / 大限宫 / 流年宫）范围各异，共用此步。
+ * 只按 `mutagen` 真值、不按 `Star.type` 过滤（含辅星四化）；
+ * 三处消费方（主题主宫 / 大限宫 / 流年宫）范围各异，共用此步。
  */
 export interface MutagenHit {
 	/** 该四化落在哪个宫 */

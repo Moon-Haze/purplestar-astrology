@@ -1,7 +1,7 @@
 /**
- * @file「五、性格专属补充」仅 personality
- * ⚠️「一、总论」profile.summary 跳过（雷同）本节替代。
- * docs/code/analysis.md；一源双投影见 `../items`。
+ * @file「五、性格专属补充」节，仅 personality 主题渲染。
+ * ⚠️「一、总论」的 profile.summary 与本节雷同，故跳过、由本节替代。
+ * 详见 docs/code/analysis.md；一源双投影见 `../items`。
  * @packageDocumentation
  */
 

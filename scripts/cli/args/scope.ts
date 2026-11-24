@@ -1,7 +1,7 @@
 /**
  * 参数作用域：认哪些参数（差量形态：默认全集，只声明排除项）。
  * @remarks 与 `./parse.ts` 分工：那份管「怎么解析」，本文件管「认哪些」（{@link OptionScope}
- * 契约与 {@link OPTION_SCOPE} 值同居；不 import 模块（依赖图叶子）。
+ * 契约与 {@link OPTION_SCOPE} 值同居）；不 import 模块（依赖图叶子）。
  * ⚠️ 粒度仍 skill 级：「本 skill 有、但当前命令不读」参数收下不用（归属仅过滤 help，不硬校验）；
  * 取舍见 docs/code/cli-args.md。
  * @file 参数作用域

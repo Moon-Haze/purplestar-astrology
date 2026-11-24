@@ -4,7 +4,7 @@
 // ── 层 1（主力）：排盘对标 ──
 //
 // 本项目 generateChart() 输出比 toolkit 样本，逐字段全等。
-// 基准由 db/dataset 经本仓内核直生成（v4 同源）——锁固化内核行为。
+// 基准由 db/dataset 经本仓内核直生成（v4 同源）——以此固化内核行为。
 //
 // ⚠️ **亮度不对拍**（2026-10 切换）：亮度已由文墨 SB 表覆写
 //    （XD2 默认，见 scripts/wenmo-brightness.ts），与 iztro 快照不可比；

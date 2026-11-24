@@ -151,7 +151,7 @@ async function loadCore() {
 
 // ══════════════════════ 入口 ══════════════════════
 
-/** @remarks 组装端口；CliContext 仅 selftest。 @link */
+/** @remarks 组装端口；CliContext 仅 selftest。 */
 async function main() {
 	// 已退役环境变量守卫（失败可见性）：读取点已删除，外壳残留只会被静默携带——
 	// 当场报错而非放行。清单与探测函数单点在 boot-hooks（本文件与 run.ts 共用）。

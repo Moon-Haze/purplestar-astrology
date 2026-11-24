@@ -73,7 +73,8 @@ function chartHeader(title: string, info: BirthInfo, note: string): string {
  * @param input - 语义入参：`chart` 命盘、`liuNianYear` 流年号、`liuYueMonth` 农历月（null 不算流月）、`liuRiDay` 农历日（null/undefined 不算流日）、`liuShiHour` 时支 0-12（null/undefined 不算流时，12 晚子时）、`basis` 排盘依据
  * @returns 顶层键恒定的 JSON 串（未配置运限层 `null`；键集以本函数序列化对象为准）
  *
- * 提为具名纯函数使契约一处生产、一处消费、一处对拍 —— selftest 可直调校验。顶层键以本函数序列化对象为准（十三键恒定，未配置运限层 null），冻结面见 docs/code/cli-commands.md，不复述（评审 S1：手抄清单曾漏三键致漂移无红灯）。
+ * 提为具名纯函数，契约一处生产、一处消费、一处对拍，selftest 可直调校验。
+ * 顶层键十三键恒定、未配置运限层 null，冻结面见 docs/code/cli-commands.md，不复述（评审 S1：手抄清单曾漏三键致漂移无红灯）。
  */
 export function buildAnalyzeJson(input: {
 	chart: ZiweiChart;
@@ -205,9 +206,9 @@ function assertNoShadowedFeatures(
 	exclusive: "--palaces" | "--topic" | "--report" | "--info"
 ): void {
 	const entry = EXCLUSIVE_BRANCHES.find(b => `--${b.name}` === exclusive);
-	// 前置段（bespoke 拒收）先于通用检测，使「不接受 --view」这类
-	// 信息量高的指路不被抢跑——次序由唯一入口调用结构固定，无
-	// 可对调调用点（2026-11-11 移序前提至此成结构）。
+	// 前置段（bespoke 拒收）先于通用检测，「不接受 --view」这类信息量高的
+	// 指路不被抢跑——次序由唯一入口的调用结构固定，没有可对调的调用点
+	// （2026-11-11 移序后前提固化为结构）。
 	const bespoke = entry?.rejectsWithNote;
 	if (bespoke) {
 		for (const key of bespoke.keys) {

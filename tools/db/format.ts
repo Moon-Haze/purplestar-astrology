@@ -14,7 +14,7 @@ export const ZHI = "子丑寅卯辰巳午未申酉戌亥".split("");
 // 庙/旺→bright、利/平→normal、不利/陷→dim），非 iztro 七级原值。
 const BRIGHTNESS_LABEL: Record<string, string> = { bright: "庙旺", normal: "利平", dim: "陷" };
 
-// samples 字段中文展示名。键序即展示序（SELECT * 列序同源，见 db.ts DDL）。
+// 键序即展示序（SELECT * 列序同源，见 db.ts DDL）。
 /** samples 字段中文展示名，键序即展示序。 */
 export const SAMPLE_LABELS: Record<string, string> = {
 	sample_id: "样本 ID",

@@ -7,8 +7,9 @@
  */
 /**
  * 档位运行期展示序（尾注序）：verified / traditional / methodology / suspect。
- * @remarks `KnowledgeGrade` 运行期擦除，尾注两份（--topic / --report）与 guard legal
- * Set 原靠手抄对齐；改名调序只改本常量：类型派生、尾注拼装，selftest 对拍钉住「尾注 ↔ 常量」。
+ * @remarks `KnowledgeGrade` 运行期擦除；尾注两份（--topic / --report）与 guard legal
+ * Set 原靠手抄对齐，现类型派生、尾注拼装均出自本常量，改名调序只改这里；
+ * selftest 对拍钉住「尾注 ↔ 常量」。
  */
 export const KNOWLEDGE_GRADE_ORDER = ["verified", "traditional", "methodology", "suspect"] as const;
 

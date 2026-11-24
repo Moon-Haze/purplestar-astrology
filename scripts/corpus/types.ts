@@ -3,7 +3,7 @@
  * @packageDocumentation
  * 公版古籍静态打包 Next.js，零 DB。
  */
-/** @remarks 形状契约与缘由见 docs/code/corpus.md。 「为什么用 TS 模块而非外部 JSON」 */
+/** @remarks 形状契约与缘由（含「为什么用 TS 模块而非外部 JSON」）见 docs/code/corpus.md。 */
 
 /**
  * 段落：检索/展示单位。

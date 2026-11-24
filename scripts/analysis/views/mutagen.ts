@@ -1,5 +1,6 @@
 /**
- * ⚠️ 只展示：`mutagenInSanFang` 由 `context.ts` `makeContext()` 算好，勿节内另算（「三点五」去重同一份）。
+ * ⚠️ 只展示：`mutagenInSanFang` 由 `context.ts` `makeContext()` 算好，勿节内另算
+ * （「三点五」去重同一份）。
  *    无命中中性判语；口径 docs/code/analysis.md；条目流见 `../items`（一源双投影）。
  * @file 三、本命四化会照：三方四正内落的本命四化
  * @packageDocumentation
@@ -13,7 +14,8 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
 /**
  * 渲染「三、本命四化会照」条目流。
  * @param ctx - 上下文（{@link AnalysisContext}），只读不算
- * @param dedupe - 跨节去重表：`note` 首现注并登记，复现仅落点；注全报告一次（四化注首现），落点恒出；缺省（--topic）照常出注
+ * @param dedupe - 跨节去重表：`note` 首现注并登记，复现仅落点；注全报告一次
+ * （四化注首现），落点恒出；缺省（--topic）照常出注
  * @returns 节头+落点行（star/mutagen/palace）+首现注句；无命中中性判语
  */
 function renderMutagenItems(ctx: AnalysisContext, dedupe?: Map<string, string>): AnalysisItem[] {

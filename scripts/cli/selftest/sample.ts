@@ -1,7 +1,8 @@
 /**
  * 1990-05-15 巳时（时辰5）男；虚构，换样本组改这里，期望值按本盘校准。
  * @remarks 由 `cli/selftest.ts` 与 `selftest/` 下组文件共用。
- * **argv 单点**（评审6/W4）：`SAMPLE_ARGV` 为各断言组 base 唯一来源；`DEMO_*` 供 help 示例/零输入/review-gate/report 共用（值驻角色，argv 在此）。位置参数与变体（如 `--gender abc`）就地保留。
+ * **argv 单点**（评审6/W4）：`SAMPLE_ARGV` 为各断言组 base 唯一来源；
+ * `DEMO_*` 供 help 示例/零输入/review-gate/report 共用（值驻角色，argv 在此）。位置参数与变体（如 `--gender abc`）就地保留。
  * @file 排盘断言固定样例盘
  */
 

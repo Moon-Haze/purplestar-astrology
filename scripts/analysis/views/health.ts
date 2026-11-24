@@ -53,7 +53,7 @@ function worstPalaces(chart: ZiweiChart): number[] {
 }
 
 /**
- * 疾厄宫主轴（真法）+ 参考（降级级）+ 煞忌警示。
+ * 疾厄宫主轴（真法）+ 参考（降级）+ 煞忌警示。
  * ⚠️ 本函数是 `../data` 的 `PALACE_BRANCH_ORGAN` / `ZI_WU_ORGAN_VERSE` **唯一使用点**。
  * @param ctx - 主题上下文（{@link AnalysisContext}）：读命盘、主题键、主宫与三方四正；非 `health` 返回空数组
  * @returns 条目流：最差宫主轴（无凶宫降级）→ 疾厄参考 → 煞忌警示 → 女命妇科保养；非 health 为空数组

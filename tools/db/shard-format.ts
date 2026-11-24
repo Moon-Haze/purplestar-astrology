@@ -1,6 +1,6 @@
 /**
- * v3 行格式序列化单点：generate-shards 与 tar-source 共用；各抄必漂移，历史上分叉过。
- * @file v3 行格式序列化单点 —— 「本仓 chart → 导出口径」字段映射仅此一份
+ * generate-shards 与 tar-source 共用；各抄必漂移，历史上分叉过。
+ * @file v3 行格式序列化单点：「本仓 chart → 导出口径」字段映射仅此一份
  */
 import { compactPalaceKey } from "../../scripts/data/ganzhi";
 

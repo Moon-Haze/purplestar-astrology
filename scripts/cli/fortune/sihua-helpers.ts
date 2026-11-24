@@ -1,5 +1,5 @@
 /**
- * 四化会照专题共用 helper；收拢同构循环，5 节共用。
+ * 四化会照专题 helper：收拢同构循环，5 节共用。
  */
 
 import type { ZiweiChart, Mutagen } from "@/types";
@@ -28,13 +28,13 @@ export function huiZhaoMajors(chart: ZiweiChart, branches: number[]): string[] {
 
 /**
  * 四化落宫行 `化{化} {星} → {宫}(支)`。
- * @param sanFang - 命中行加 {@link mark} 后缀
+ * @param sanFang - 三方四正支集；给出时命中行加 {@link mark} 后缀
  * @param mark - 标记文案（流年「★ 入流年三方四正」，大限「★」）
  * @remarks
  * @param chart - 命盘
  * @param transforms - 本层四化映射（键化禄 / 化权 / 化科 / 化忌）
  * @returns 每落点一行，未上盘记「（未上盘）」
- * 各节差异只「要不要三方标记、标记文案」，一参数表达；兜底与支号拼接只此一处。
+ * 各节差异只在「要不要三方标记、标记文案」，由参数表达；兜底与支号拼接只此一处。
  */
 export function sihuaLines(
 	chart: ZiweiChart,
@@ -70,7 +70,7 @@ export function huiZhaoLine(chart: ZiweiChart, sanFang: number[]): string {
  * @param chart - 命盘（查落宫）
  * @param native - 生年四化映射（键化禄 / 化权 / 化科 / 化忌，值星名）
  * @param liuNian - 流年四化映射（与 `native` 同星不同化也算引动）
- * 三合派「叠」形态（双忌 / 忌逢禄）的事实陈述，吉凶交解读层 —— 只报「谁被双引动、落哪」。
+ * 三合派「叠」形态（双忌 / 忌逢禄）的事实陈述；吉凶交由解读层 —— 只报「谁被双引动、落哪」。
  */
 export function sameStarPairs(
 	chart: ZiweiChart,

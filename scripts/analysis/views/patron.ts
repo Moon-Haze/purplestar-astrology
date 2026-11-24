@@ -16,7 +16,8 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
 /**
  * 渲染「五点六、魁钺贵人倾向细分」条目流（主题不符或无命中返回空数组）。
  *
- * @param ctx - 主题上下文（{@link AnalysisContext}）；按天魁/天钺**实际所落宫**查 `KUI_YUE_GUIREN_MAP`，与主题主宫无关
+ * @param ctx - 主题上下文（{@link AnalysisContext}）；按天魁/天钺**实际所落宫**查
+ * `KUI_YUE_GUIREN_MAP`，与主题主宫无关
  * @returns 条目流：节头 + 「◇ ★星在X宫：断语」行（带 aux/palace）；无命中为空数组
  */
 function renderKuiYueItems(ctx: AnalysisContext): AnalysisItem[] {

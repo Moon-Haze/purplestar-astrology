@@ -14,7 +14,9 @@ export interface CitationScan {
 	checked: string[];
 	/**
 	 * 因核对表自身被跳过的文件。
-	 * @remarks 单 skill 常恰 1 个（`corpus/data/annotations.ts`），余 0 个属正常；断言见 `test/citations.test.ts`「所有根合计至少有 1 个」。checked 空=根写歪，skipped 全仓空=核对表识别失配，故单列一栏。
+	 * @remarks 单 skill 常恰 1 个（`corpus/data/annotations.ts`），余 0 个属正常；
+	 * 断言见 `test/citations.test.ts`「所有根合计至少有 1 个」。
+	 * checked 空=根写歪，skipped 全仓空=核对表识别失配，故单列一栏。
 	 */
 	skipped: string[];
 }
@@ -38,7 +40,8 @@ export function buildBannedSet(checklist: readonly AnnotationEntry[]): Set<strin
  * @param chunks - 文本块（源码/文档/逐行断语），调用方收集
  * @param banned - 黑名单（{@link buildBannedSet}），缺省用 `ANNOTATIONS`
  * @returns 违例引文核心（截断到 40 字），按出现顺序
- * @remarks 形态：倪(海厦|师)+≤10 非句号字符+说/言/称/警示/警告/明言/强调/描述/提醒+可选冒号+引号内≥4 字。不放宽任何一项。
+ * @remarks 形态：倪(海厦|师)+≤10 非句号字符+说/言/称/警示/警告/明言/强调/描述/提醒
+ * +可选冒号+引号内≥4 字。不放宽任何一项。
  */
 export function findViolations(
 	chunks: readonly string[],

@@ -1,7 +1,7 @@
 /**
  * ⚠️「故意多算一样东西」：`mutagenInSanFang` 唯一跨节依赖，「三点五」拿它去重；
  *    views 现算会重报。见 docs/code/analysis.md。
- * @file 主题分析共享上下文 —— 十一节共读状态，一次算好
+ * @file 主题分析共享上下文：十一节共读状态，一次算好
  * @packageDocumentation
  */
 

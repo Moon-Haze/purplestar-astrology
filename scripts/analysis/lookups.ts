@@ -17,7 +17,7 @@ import { detectPatterns, type Pattern } from "../patterns";
 
 /** 星徽，全仓唯一
  * @param star - 星
- * @returns 文本 */
+ * @returns 星名缀化象与亮度，如 `紫微化权（庙旺）` */
 export function starBadge(star: { name: string; mutagen?: string; brightness?: string }): string {
 	const hua = star.mutagen ? `化${star.mutagen}` : "";
 	const bright =
@@ -25,8 +25,8 @@ export function starBadge(star: { name: string; mutagen?: string; brightness?: s
 	return `${star.name}${hua}${bright}`;
 }
 
-/** 投影，取代`filterGenderContent`正则
- * @param field - string原样；{@link GenderField}拼common+性别段+suffix
+/** 按性别投影，取代 `filterGenderContent` 正则
+ * @param field - string 原样；{@link GenderField} 拼 common + 性别段 + suffix
  * @param gender - 性别
  * @returns 文本 */
 export function selectGender(
@@ -46,22 +46,23 @@ export function selectGender(
 	);
 }
 
-/** {@link BranchedContent}判别：与 {@link GenderField} 同有common，按四化/亮度键分
- * @param raw - 字符串/{@link GenderField}/{@link BranchedContent}
+/** {@link BranchedContent} 判别：与 {@link GenderField} 同有 common，按四化/亮度键分支
+ * @param raw - 字符串 / {@link GenderField} / {@link BranchedContent}
  * @returns 布尔 */
 function isBranched(raw: PalaceContent): raw is BranchedContent {
 	return typeof raw === "object" && ("sihua" in raw || "brightness" in raw);
 }
 
-/** 补句读，子句逐字留
+/** 补句读，正文逐字保留
  * @param text - 子句
- * @returns 尾非`。；！？`补「。」 */
+ * @returns 尾非 `。；！？` 补「。」 */
 function branchPiece(text: string): string {
 	return /[。；！？]$/.test(text) ? text : text + "。";
 }
 
-/** 「未迁移条目逐字节不变」，亮度先四化后、子句逐字留；中段穿插/性别内嵌不迁移
- * @param raw - 空/string/{@link GenderField}原/{@link BranchedContent}分支
+/** 亮度与四化分支投影：亮度先四化后，子句逐字留；「未迁移条目逐字节不变」，
+ * 中段穿插/性别内嵌不迁移
+ * @param raw - 空 / string / {@link GenderField} 原 / {@link BranchedContent} 分支
  * @param star - 星
  * @param gender - 性别
  * @returns 文本 */
@@ -95,13 +96,13 @@ export function selectBranches(
 	return out;
 }
 
-/** @remarks 废弃，由 {@link selectGender} 取代；详 docs/code/analysis.md。 */
+/** @remarks 废弃，由 {@link selectGender} 取代；详见 docs/code/analysis.md。 */
 
 /** 四化文案
  * @param starName - 星名
  * @param mutagen - 四化
  * @param gender - 性别
- * @returns 文本 */
+ * @returns 文本；无表或未命中为空串 */
 export function getMutagenNote(
 	starName: string,
 	mutagen: string,
@@ -121,14 +122,14 @@ export function getMutagenNote(
 /** 次星文案
  * @param starName - 星名
  * @param palaceName - 宫名
- * @returns 文本 */
+ * @returns 文本；未命中为空串 */
 export function getMinorStarNote(starName: string, palaceName: string): string {
 	return MINOR_STAR_PALACE_CONTENT[starName]?.[palaceName] ?? "";
 }
 
-/** 格局（判定归patterns/）
+/** 格局列表（判定归 patterns/）
  * @param chart - 盘
- * @returns 列表 */
+ * @returns 命中格局与判词 */
 export function detectGeJu(chart: ZiweiChart): { name: string; description: string }[] {
 	// ⚠️ 本函数只是**投影**：判定与判词全归 `patterns/`（82 个格局各有独立预言机盯着），
 	//    这里把填了长判词的命中挑出来展示；**新增格局只要在识别器里填 `topicDescription`，

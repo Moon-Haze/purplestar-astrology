@@ -1,4 +1,4 @@
-/** selftest harness。@remarks 接口原三处同形，抽此；见 docs/code/cli-selftest.md。 */
+/** selftest harness。@remarks 接口原三处同形，收拢于此；见 docs/code/cli-selftest.md。 */
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -27,8 +27,15 @@ export interface CallResult {
 }
 
 /**
- * 直调命令。@param cmd - 命令名 @param argv - 参数 @param dispatch - 实现 @param parse - 解析器
- * @param ctx - 上下文 @returns 同构结果 @throws 不抛 @remarks 复用 iztro 省冷启动。
+ * 直调命令。
+ * @param cmd - 命令名
+ * @param argv - 参数
+ * @param dispatch - 实现
+ * @param parse - 解析器
+ * @param ctx - 上下文
+ * @returns 同构结果
+ * @throws 不抛
+ * @remarks 复用 iztro 省冷启动。
  */
 export function callDirect(
 	cmd: string,
@@ -50,7 +57,8 @@ export function callDirect(
 	}
 }
 
-/** 共享运行时。@remarks COMMANDS 由主 selftest 动态取断环；组文件不静态 import cli/commands。 */
+/** 共享运行时。@remarks COMMANDS 由主 selftest 动态注入以断环；
+ * 组文件不静态 import cli/commands。 */
 export interface SelftestDeps {
 	/** 上下文（读 SKILL.md/数据） */
 	ctx: CliContext;
@@ -65,8 +73,13 @@ export interface SelftestDeps {
 }
 
 /**
- * 相等断言。@param actual - 实得 @param expected - 期望 @param msg - 错误前缀 @returns 无
- * @throws 不等抛「`msg`期望 X，实得 Y」@remarks `!==` 严格。
+ * 相等断言。
+ * @param actual - 实得
+ * @param expected - 期望
+ * @param msg - 错误前缀
+ * @returns 无
+ * @throws 不等抛「`msg`期望 X，实得 Y」
+ * @remarks `!==` 严格。
  */
 export function eq(actual: unknown, expected: unknown, msg = ""): void {
 	if (actual !== expected) {
@@ -79,7 +92,7 @@ export type OkFn = (name: string, fn: () => unknown, opts?: { skip?: string }) =
 
 /**
  * 各组独立收集（工厂）。@remarks `ok` 抛错记失败不阻断；`opts.skip` 唯一跳过，⏭ 可见防恒真。
- * @returns results。
+ * @returns `results` 与 `ok`。
  */
 export function createHarness(): {
 	results: Assertion[];
@@ -103,8 +116,11 @@ export function createHarness(): {
 }
 
 /**
- * 仅仓库形态跑仓库文档断言。@param ctx - `ctx.root` 内核根 @param why - 跳过原因
- * @returns 不该跑返原因 @remarks 判据「包根有没有 `AGENTS.md`」：探针指现存文件防降级；
+ * 仅仓库形态跑仓库文档断言。
+ * @param ctx - `ctx.root` 内核根
+ * @param why - 跳过原因
+ * @returns 不该跑时返跳过原因
+ * @remarks 判据「包根有没有 `AGENTS.md`」：探针指现存文件防降级；
  * `test/repo.test.ts` 盯。⚠️ 别加多余 skip。
  */
 export function skipUnlessRepo(ctx: { root: string }, why: string): string | undefined {

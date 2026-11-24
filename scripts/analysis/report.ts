@@ -122,9 +122,11 @@ export function getTopicReportMeta(
 }
 
 /**
- * 「本板块哪些全文登记主场」唯一实现（spec report-assembly「主场登记单一
- * 权威」）：登记 = 第一主星 `m.content` + 双主星 `m.secondStarContent`，与 {@link getTopicReport} 同源，同走 {@link buildOverviewMaterial}；供 `--report` 预登记，渲染（{@link getTopicReport}）不另登记。
- * @remarks 须预扫描：否则早板块三方联动先遇「渲染在后的板块核心论断」同文抢首现，致主场降级、同文两次；预登记后命中主场即降级。
+ * 「本板块哪些全文登记主场」唯一实现（spec report-assembly「主场登记单一权威」）：
+ * 登记 = 第一主星 `m.content` + 双主星 `m.secondStarContent`，与 {@link getTopicReport}
+ * 同源、同走 {@link buildOverviewMaterial}；供 `--report` 预登记，渲染（{@link getTopicReport}）不另登记。
+ * @remarks 须预扫描：否则早板块三方联动先遇「渲染在后的板块核心论断」同文抢首现，
+ * 致主场降级、同文两次；预登记后命中主场即降级。
  * @param chart - 已排好的命盘
  * @param topic - 主题键
  * @returns 主场全文数组（第一主星在前、第二主星在后，空剔除）；无内容为空
@@ -139,7 +141,8 @@ export function getTopicMainContentTexts(chart: ZiweiChart, topic: TopicKey): st
 }
 
 /**
- * 「当前大限」独立节正文（剥 `**【…】**` 头）—— 大限与主题无关（{@link renderDecadal} 只读 currentDx），13 板块重复，`--report` 改一处，`omitDecadal` 省略。
+ * 「当前大限」独立节正文（剥 `**【…】**` 头）—— 大限与主题无关（{@link renderDecadal}
+ * 只读 currentDx），13 板块重复，`--report` 改一处，`omitDecadal` 省略。
  * 未起运给童限提示，与 {@link getTopicReport} 分支逐字一致。
  * @param chart - 已排好的命盘
  * @returns 大限节正文（已剥头、trim）；主宫找不到返空串
@@ -198,7 +201,8 @@ export function getTopicReport(
 	// 取材 ../overview-material（同 views/overview.ts 单点），不加【】头
 	// 即「总览」三层次；辅助宫（兄弟/子女/迁移/交友/田宅/福德/父母）三样都没有则整段省略
 
-	// ⚠️ personality 跳过 mods/geju：与命格总览同主宫（命宫），注入行逐字相同——报告连续读纯冗余（板块总览唯一，spec report-assembly）；仅 --report
+	// ⚠️ personality 跳过 mods/geju：与命格总览同主宫（命宫），注入行逐字相同，连读即纯冗余
+	// （板块总览唯一，spec report-assembly）；仅 --report
 
 	const overviewLines: string[] = [];
 	if (!m.emptyFallback) {

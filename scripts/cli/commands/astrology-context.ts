@@ -88,7 +88,8 @@ export interface AstrologyContext {
 	usingSample: boolean;
 }
 
-/** @param args @returns 上下文（{@link AstrologyContext}）@remarks 顺序即interface，详 docs/code/cli-commands.md */
+/** @param args @returns 上下文（{@link AstrologyContext}）
+ * @remarks 顺序即 interface 字段序，详 docs/code/cli-commands.md */
 export function prepareAstrologyContext(args: CliArgs): AstrologyContext {
 	// --config：配置是基底，命令行同名键覆盖（spec §3.3）
 	args = applyConfig(args);

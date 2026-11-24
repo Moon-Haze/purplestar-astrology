@@ -192,7 +192,7 @@ export interface MonthlyMonthOptions {
 	nextYearStem?: number;
 }
 
-/** @param month @param options @returns @remarks 前半月本月后半月下月。 */
+/** @param month @param options @returns @remarks 前半月本月，后半月下月。 */
 export function getEffectiveMonthlyMonth(month: number, options: MonthlyMonthOptions = {}): number {
 	const normalized = Math.max(1, Math.min(12, Math.trunc(month)));
 	if (!options.isLeapMonth || (options.day ?? 1) <= 15) {
@@ -217,25 +217,25 @@ export interface MutagenChainInput {
 
 /** @remarks */
 export interface MutagenChain {
-	/** {@link getNativeMutagen} */
+	/** 农历年干索引 */
 	yearStem: number;
-	/** 未起运 */
+	/** 生年四化：取农历年干，不与流年层混用公历取模 */
 	native: ReturnType<typeof getNativeMutagen>;
-	/** {@link getYearStemIndex} */
+	/** 流年四化：由公历年份经 {@link getYearStemIndex} 取干 */
 	liuNian: ReturnType<typeof getYearlyMutagen>;
-	/** 年干 */
+	/** 流月四化；`null` = 未给 `--monthly` */
 	liuYue: ReturnType<typeof getMonthlyMutagen> | null;
-	/** 生年四化 */
+	/** 流日四化；`null` = 未给月日或该日不存在（文本抛错 / JSON 静默） */
 	liuRi: ReturnType<typeof getDailyMutagen> | null;
-	/** 流月 */
+	/** 流时四化：当日日干起遁；`null` = 未给日时 */
 	liuShi: ReturnType<typeof getHourlyMutagen> | null;
-	/** 「--daily X … 不存在」 */
+	/** 大限宫干四化（文墨口径）；童限未起运或定位异常为 `null` */
 	daXian: ReturnType<typeof getDaXianMutagen>;
-	/** 流时 */
+	/** 童限未起运；daXian 为 null 的原因之一 */
 	decadalNotStarted: boolean;
 }
 
-/** @param chart @param input @remarks 原两处各实现形状不一；对拍钉「六层四化取数链对拍」。 @returns 六层结果 */
+/** @param chart @param input @remarks 对拍钉「六层四化取数链对拍」。 @returns 六层结果 */
 export function buildMutagenChain(chart: ZiweiChart, input: MutagenChainInput): MutagenChain {
 	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour } = input;
 	const native = getNativeMutagen(chart);

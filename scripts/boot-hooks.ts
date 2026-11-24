@@ -16,7 +16,7 @@ import { resolve } from "node:path";
 /** 已退役变量名单：残留即拒收。 */
 export const RETIRED_ENV_VARS = ["ZIWEI_NO_CACHE", "ZIWEI_TEST_YEAR"] as const;
 
-/** 返回现存退役变量。@returns 命中清单，无为 [] */
+/** 返回现存退役变量。@returns 命中清单，无则 [] */
 export function retiredEnvVars(): string[] {
 	return RETIRED_ENV_VARS.filter(k => process.env[k] !== undefined);
 }
@@ -46,7 +46,7 @@ export type RootPick = RootFound | RootMissing;
 
 /**
  * 定位内核根。@param candidates - 候选 @param probe - 入口 @returns 首个命中
- * @remarks 判据「该目录下存在 `probe`」；probe 由调用方给免误判「找不到排盘内核」；「入口在即命中」仅此一份。
+ * @remarks 判据「该目录下存在 `probe`」；probe 由调用方给，免误判「找不到排盘内核」；「入口在即命中」仅此一份。
  */
 export function pickRoot(candidates: Array<[string | undefined, string]>, probe: string): RootPick {
 	const tried: string[] = [];

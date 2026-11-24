@@ -3,7 +3,8 @@
  */
 // 五维键公式按口径选（MANIFEST.calendar → {@link sqlSampleIdExpr}）：
 // synthetic 基1924 容器30 → 518,400 稠密；solar 基1950 容器31 → 686,880 ≥ 674,976。
-// ⚠️ SQL 三陷阱：hour 非钟点 / day 配口径 / year 显式 BIGINT 防 SMALLINT 溢出，详见 docs/code/db-tools.md
+// ⚠️ SQL 三陷阱：hour 非钟点 / day 配口径 / year 显式 BIGINT 防 SMALLINT 溢出，
+// 详见 docs/code/db-tools.md
 
 /** 性别：male=0 / female=1。 */
 export type Gender = "male" | "female";

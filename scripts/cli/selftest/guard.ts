@@ -17,7 +17,9 @@ import { eq, skipUnlessRepo, type SelftestDeps } from "./kit";
  * @param ok - harness 断言注册
  * @param runCli - 子进程探针（起真 CLI 跑一次，返回 `{ code, out, err }`）
  * @returns 无返回值；五条断言进主报告
- * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为成功链路退出码非 0 或缺基本信息面板、错误链路没走 stderr「错误：」前缀 + exit 1 且 stdout 空、未知命令未指路、`--out` 落盘 / 换行 / stdout / stderr 不符、含 `..` 路径被接受
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为成功链路退出码非 0
+ *   或缺基本信息面板、错误链路没走 stderr「错误：」前缀 + exit 1 且 stdout 空、
+ *   未知命令未指路、`--out` 落盘 / 换行 / stdout / stderr 不符、含 `..` 路径被接受
  */
 export function runSmoke({ ok, runCli }: Pick<SelftestDeps, "ok" | "runCli">): void {
 	ok("冒烟（子进程）：成功链路 入口→解析→命令表→渲染 一次走通", () => {
@@ -151,7 +153,8 @@ export function runSkillCommandAudit({
  * @param ok - harness 断言注册
  * @param ctx - 运行期上下文；`ctx.root` 是内核根，references 从上级读
  * @returns 无返回值；两条断言进主报告（仓库级文档半条在分发包下跳过）
- * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为 references 回潮旧 skill 名 / 不存在模块 / 旧自述句，Node 下限、独占分支、升级警告三处与实现脱节
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为 references 回潮旧
+ *   skill 名 / 不存在模块 / 旧自述句，Node 下限、独占分支、升级警告三处与实现脱节
  */
 export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {
 	ok("文档一致性：references 深层文件与单 skill 形态同步（合并遗留漂移盯防）", () => {
@@ -221,7 +224,9 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
  * @param ok - harness 断言注册
  * @param ctx - 运行期上下文（内核根与其来源）
  * @returns `Promise<void>`；一条断言进主报告，通过时返「N 条引句全部有分级登记」
- * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为 `data.ts` 倪师引句在 `grades.ts` 未登记、档位越出 `KNOWLEDGE_GRADE_ORDER` 值域、或 `grades.ts` 有抽不到引句的幽灵条目
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为 `data.ts` 倪师引句在
+ *   `grades.ts` 未登记、档位越出 `KNOWLEDGE_GRADE_ORDER` 值域、或 `grades.ts`
+ *   有抽不到引句的幽灵条目
  */
 export async function runGradeRegistry({
 	ok,

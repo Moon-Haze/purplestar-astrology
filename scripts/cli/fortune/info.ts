@@ -61,7 +61,8 @@ function lunarDayCN(d: number): string {
 }
 
 /**
- * `--info` 输入：出生时刻**展示串**（调用方从 `buildBirthInfo` 结果拼；本模块不解析钟表时，归 `birth-info.ts`）。
+ * `--info` 输入：出生时刻**展示串**（调用方从 `buildBirthInfo` 结果拼；
+ * 钟表解析不在本模块，归 `birth-info.ts`）。
  */
 export interface InfoClockOpts {
 	/** 钟表原文（如 `"2000-4-6 0:15"`）；`--branch` 直按时辰排盘时为 null */
@@ -73,7 +74,8 @@ export interface InfoClockOpts {
 }
 
 /**
- * `--info` 基本信息专题：姓名 / 性别 / 生日 / 经度 / 钟表与真太阳时 / 农历 / 四柱两口径 / 五行局 / 命盘类型 / 命宫身宫紫微 / 三方四正 / 命主身主斗君。
+ * `--info` 基本信息专题：姓名 / 性别 / 生日 / 经度 / 钟表与真太阳时 / 农历 /
+ * 四柱两口径 / 五行局 / 命盘类型 / 命宫身宫紫微 / 三方四正 / 命主身主斗君。
  *
  * @param chart - 命盘
  * @param opts - 出生时刻展示串
@@ -84,7 +86,9 @@ export interface InfoClockOpts {
  *
  * 行集：命宫 / 紫微落 / 三方四正（身宫与命宫同行去重）。
  *
- * 四柱由 `lunar-typescript` 现算：节气口径 = `getEightChar()`（立春分年、节气分月）；非节气口径 = 正月初一分年 + 农历月柱。⚠️ 四柱仅为出生时刻记录，本技能不做八字论命 —— SKILL.md 红线拦八字解读，不拦出生数据展示。
+ * 四柱由 `lunar-typescript` 现算：节气口径 = `getEightChar()`（立春分年、节气分月）；
+ * 非节气口径 = 正月初一分年 + 农历月柱。
+ * ⚠️ 四柱仅为出生时刻记录，本技能不做八字论命 —— SKILL.md 红线拦八字解读，不拦出生数据展示。
  */
 export function infoSection(chart: ZiweiChart, opts: InfoClockOpts): string[] {
 	const li = chart.lunarInfo;

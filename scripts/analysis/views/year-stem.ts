@@ -1,5 +1,5 @@
 /**
- * 年干四化·全局关键宫位解读 —— 补三方四正之外的漏网四化
+ * 补三方四正之外的漏网四化。
  *
  * ⚠️ 去重集来自 `ctx.mutagenInSanFang`（跨小节依赖，见 `context.ts` 文件头）——
  *    本模块唯一跨节状态，勿在节内另算。
@@ -9,7 +9,7 @@
  *
  * 产出结构化条目流（一源双投影，见 `../items`）：携带 star / mutagen / palace 字段。
  *
- * @file 年干四化·全局关键宫位解读 —— 补三方四正之外的漏网四化
+ * @file 年干四化·全局关键宫位解读，补三方四正之外的漏网四化
  *
  * @packageDocumentation
  */
@@ -22,8 +22,10 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
 /**
  * 渲染「三点五」整节的结构化条目流（slot = `year-stem`；无命中时返回空数组）。
  *
- * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：只读命盘全部四化、主题键（决定查哪组 `TOPIC_KEY_PALACES` 关键宫位）与 `mutagenInSanFang` 去重集；去重集不重算
- * @returns 条目流：节头 + 每条「落在关键宫位、且三方四正未展示过」的四化行（带 star / mutagen / palace 字段）；无命中时为空数组（整节连标题都不出）
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：只读命盘全部四化、主题键
+ * （决定查哪组 `TOPIC_KEY_PALACES` 关键宫位）与 `mutagenInSanFang` 去重集；去重集不重算
+ * @returns 条目流：节头 + 每条「落在关键宫位、且三方四正未展示过」的四化行
+ * （带 star / mutagen / palace 字段）；无命中时为空数组（整节连标题都不出）
  */
 function renderYearStemItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, topic, mutagenInSanFang } = ctx;
