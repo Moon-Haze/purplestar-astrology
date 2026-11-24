@@ -1,16 +1,7 @@
 /**
- * 三、本命四化会照 —— 三方四正范围内落的本命四化。
- *
- * ⚠️ 本节只负责**展示**：`mutagenInSanFang` 由 `context.ts` 的 `makeContext()` 算好，
- *    不要在节内另算（「三点五」要拿同一份做去重集合）。
- *
- * 一条都没有时给一段中性判语，而不是留空。完整口径见 docs/code/analysis.md。
- *
- * 产出**结构化条目流**（一源双投影，见 `../items`）：条目携带 star / mutagen / palace
- * 语义字段（来自 ctx 的结构化数据）。
- *
- * @file 三、本命四化会照 —— 三方四正范围内落的本命四化
- *
+ * ⚠️ 只展示：`mutagenInSanFang` 由 `context.ts` `makeContext()` 算好，勿节内另算（「三点五」去重同一份）。
+ *    无命中中性判语；口径 docs/code/analysis.md；条目流见 `../items`（一源双投影）。
+ * @file 三、本命四化会照：三方四正内落的本命四化
  * @packageDocumentation
  */
 
@@ -20,14 +11,10 @@ import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
 /**
- * 渲染「三、本命四化会照」整节的结构化条目流（slot = `sihua`）。
- *
- * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：四化命中列表 `mutagenInSanFang` 由 `makeContext()` 算好，本函数只读不算
- * @param dedupe - 报告装配层的跨节去重表（键 = 文本）。语义注句（`note`）查表：
- *   首现给注并登记，复现只保留落点行（🔵 星化X（落宫））——注句全报告一次
- *   （四化注首现原则），落点行恒出不隐藏四化事实。缺省（`--topic` 单主题路径）
- *   为 `undefined`，注句照常输出，行为与不去重时一致。
- * @returns 条目流：节头 + 每条命中的落点行（带 star / mutagen / palace 语义字段）与首现注句；一条命中都没有时给中性判语行
+ * 渲染「三、本命四化会照」条目流。
+ * @param ctx - 上下文（{@link AnalysisContext}），只读不算
+ * @param dedupe - 跨节去重表：`note` 首现注并登记，复现仅落点；注全报告一次（四化注首现），落点恒出；缺省（--topic）照常出注
+ * @returns 节头+落点行（star/mutagen/palace）+首现注句；无命中中性判语
  */
 function renderMutagenItems(ctx: AnalysisContext, dedupe?: Map<string, string>): AnalysisItem[] {
 	const { mutagenInSanFang } = ctx;
@@ -71,11 +58,10 @@ function renderMutagenItems(ctx: AnalysisContext, dedupe?: Map<string, string>):
 }
 
 /**
- * 渲染「三、本命四化会照」整节（文本投影）。
- *
- * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）
+ * 文本投影，对应 {@link renderMutagenItems}。
+ * @param ctx - 上下文（{@link AnalysisContext}）
  * @param dedupe - 见 {@link renderMutagenItems}。
- * @returns 与 {@link renderMutagenItems} 条目流逐条对应的文本行
+ * @returns 文本行
  */
 export function renderMutagen(ctx: AnalysisContext, dedupe?: Map<string, string>): string[] {
 	return formatItems(renderMutagenItems(ctx, dedupe));

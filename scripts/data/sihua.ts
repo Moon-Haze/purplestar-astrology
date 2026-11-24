@@ -1,25 +1,12 @@
 /**
- * 四化与安星表 —— 生年四化、天魁天钺、禄存、天马（2026-10-11 从 `constants.ts` 拆出，逐字迁移）。
- *
- * ⚠️ 只有 {@link SI_HUA_TABLE} 真正参与链路（改它会改变**所有**四化落宫与格局命中）；
- *    天魁天钺 / 禄存 / 天马三张表**均无消费者**（由 iztro 安星），仅为数据留存。
- *
- * 完整口径见 docs/code/data-tables.md。
- *
- * @file 四化与安星表 —— 生年四化、天魁天钺、禄存、天马（2026-10-11 从 `constants.ts` 拆出，逐字迁移）
- *
+ * {@link SI_HUA_TABLE}
+ * @remarks docs/code/data-tables.md
+ * @file 四化表
  * @packageDocumentation
  */
 
 /**
- * 生年四化表：年干索引（0–9）→ `[化禄, 化权, 化科, 化忌]` 四颗星名。
- *
- * ⚠️ 键是**年干**索引（0=甲 … 9=癸）。本表**不含**宫干四化、流年干四化、自化那种
- * 飞星派口径 —— 那些已主动下线（见仓库根 `AGENTS.md` 的「体系口径」一节）。
- * ⚠️ 改本表会改变**所有**四化落宫、进而改变格局命中，`npm test` 的语料回归盯着这条链路。
- *
- * 消费者（`getMutagenByStem` 三层公共出口 / 生年四化落宫 / 合盘四化分析）见
- * docs/code/data-tables.md。
+ * 生年四化 年干
  */
 export const SI_HUA_TABLE: Record<number, [string, string, string, string]> = {
 	0: ["廉贞", "破军", "武曲", "太阳"], // 甲
@@ -35,13 +22,7 @@ export const SI_HUA_TABLE: Record<number, [string, string, string, string]> = {
 };
 
 /**
- * 天魁天钺安星表：年干索引（0–9）→ `[天魁地支, 天钺地支]`。
- *
- * 键是**年干**索引，值是地支索引 0–11（行尾注释给出中文对照，如「甲: 魁丑 钺未」）。
- *
- * ⚠️ 当前 `scripts/` 与 `test/` 中**无消费者** —— 天魁天钺由 iztro 安星，
- * `algorithm.ts` 的 `SOFT_STARS` 名单只按星名判类型，不查本表。仅为数据留存，
- * **改它不会影响现有输出**。
+ * 天魁天钺「甲: 魁丑 钺未」年干
  */
 export const TIANKUI_TABLE: Record<number, [number, number]> = {
 	0: [1, 7], // 甲: 魁丑 钺未
@@ -57,9 +38,7 @@ export const TIANKUI_TABLE: Record<number, [number, number]> = {
 };
 
 /**
- * 禄存安星表：年干索引（0–9）→ 禄存所在的**地支**索引 0–11。
- *
- * ⚠️ 当前 `scripts/` 与 `test/` 中**无消费者**（禄存由 iztro 安星），仅为数据留存。
+ * 禄存 年干
  */
 export const LUCUN_TABLE: Record<number, number> = {
 	0: 2, // 甲: 寅
@@ -75,13 +54,7 @@ export const LUCUN_TABLE: Record<number, number> = {
 };
 
 /**
- * 天马安星表：**年支**索引（0–11）→ 天马所在的地支索引 0–11。
- *
- * ⚠️ 键与 {@link LUCUN_TABLE} **不同**：禄存看年干，天马看年支三合
- * （寅午戌→申、申子辰→寅、巳酉丑→亥、亥卯未→巳，即每三个年支共用一个马位，
- * 故 12 个键只映射到 4 个值）。
- *
- * ⚠️ 当前 `scripts/` 与 `test/` 中**无消费者**（天马由 iztro 安星），仅为数据留存。
+ * 天马 年支{@link LUCUN_TABLE}
  */
 export const TIANMA_TABLE: Record<number, number> = {
 	2: 8, // 寅年 → 申

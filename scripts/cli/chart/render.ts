@@ -1,16 +1,9 @@
 /**
- * 命盘渲染层 —— 把排盘内核输出的结构化数据，渲染成给模型读的文本片段。
- *
- * 拆自 purple-star.ts。只依赖 `@/` 内核，不依赖本目录其他模块 —— 唯一例外是
- * `import type { CaliberBasis }`（类型 import 运行时擦除，不形成运行时边）。
- * 晚子时对照盘的**取数**住同目录 `./late-zi`：调用方排好对照盘后作参数递入
- * `lateZiSection`，本文件零排盘、零 IO。故本文件仍处依赖图底层。
- *
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心用静态 import 引内核与
- *    `@/` 别名；但**不要**反过来让 purple-star.ts 静态引本文件。
- *    依赖方向、宫名别名表、指纹唯一实现与晚子时对照盘的论证见 docs/code/cli-chart.md。
- *
- * @file 命盘渲染层 —— 把排盘内核输出的结构化数据，渲染成给模型读的文本片段
+ * 拆自 purple-star.ts，只依赖 `@/` 内核（例外 `import type { CaliberBasis }` 运行时擦除）。
+ * 晚子时对照盘取数在 `./late-zi`，作参数递入 `lateZiSection`；零排盘、零 IO。
+ * ⚠️ 引导层在 `registerHooks` 后动态加载，可静态 import；勿让 purple-star.ts 反向静态引。
+ * 详见 docs/code/cli-chart.md。
+ * @file 命盘渲染层
  */
 
 import type { Palace, Star, ZiweiChart, Mutagen } from "@/types";
@@ -18,13 +11,10 @@ import type { CaliberBasis } from "../birth/birth-info-defs";
 import { STEMS, BRANCHES, IZTRO_TO_PROJECT_PALACE } from "@/data/ganzhi";
 import { surroundBranches } from "@/palace-relations";
 
-// ══════════════════════ 共用格式化 ══════════════════════
-
 /**
  * 公历日期 → `"YYYY-MM-DD"`（月日补零）。
- *
- * @param i - 任何带 `year` / `month` / `day` 的对象，故不必是完整 `BirthInfo`
- * @returns 补零后的日期字符串
+ * @param i - 带 `year` / `month` / `day` 的对象
+ * @returns 补零日期串
  */
 export const fmtDate = (i: { year: number; month: number; day: number }) =>
 	`${i.year}-${String(i.month).padStart(2, "0")}-${String(i.day).padStart(2, "0")}`;
@@ -37,18 +27,10 @@ export const fmtDate = (i: { year: number; month: number; day: number }) =>
  */
 export const genderCN = (g: "male" | "female") => (g === "male" ? "男" : "女");
 
-// ══════════════════════ 宫名口径 ══════════════════════
-
-// ── `--focus` 的宫名别名表 ──
 /**
- * `--focus` 的宫名别名表：四种写法 → 项目口径宫名。
- *
- * @remarks
- * 宫名口径已改为项目本位，但用户嘴里说的、别的排盘软件里写的仍是老叫法，故这里把四种
- * 写法都收进来（项目全名 / 口语简称 / iztro 旧口径 / 旧口径加宫），免得模型照用户原话
- * 传参却聚焦失败。地支名不在此表，由匹配处单独比对。
- *
- * 整张表从 `IZTRO_TO_PROJECT_PALACE` 派生，故不会与内核映射表漂移（见 docs/code/cli-chart.md）。
+ * `--focus` 别名表：四种写法（全名 / 简称 / iztro 旧口径 / 旧口径加宫）→ 项目宫名。
+ * 收老叫法免照原话聚焦失败；地支名不在此表，匹配处比对。
+ * @remarks 从 `IZTRO_TO_PROJECT_PALACE` 派生，不漂移（见 docs/code/cli-chart.md）。
  */
 export const FOCUS_ALIASES = new Map<string, string>();
 for (const [iztroName, projectName] of Object.entries(IZTRO_TO_PROJECT_PALACE)) {
@@ -58,14 +40,10 @@ for (const [iztroName, projectName] of Object.entries(IZTRO_TO_PROJECT_PALACE)) 
 	FOCUS_ALIASES.set(iztroName + "宫", projectName); // 仆役宫
 }
 
-// ══════════════════════ 片段渲染 ══════════════════════
-
 /**
- * 出生地解析提示（容错命中 / 省份近似 / 未给地点，三种都需让用户知道）。
- *
- * @param basis - 口径载体（只读 `lngNote` / `lngAmbiguous` 两字段）—— 整包传入，
- *   调用点不再逐字段手拆（候选 6）
- * @returns 待追加进输出数组的若干行，有内容时末尾多一个空行作分隔
+ * 出生地解析提示（容错命中 / 省份近似 / 未给地点，均需告知）。
+ * @param basis - 口径载体（只读 `lngNote` / `lngAmbiguous`），整包传入
+ * @returns 待追加行，有内容时末尾空行分隔
  */
 export function birthplaceSection(basis: Pick<CaliberBasis, "lngNote" | "lngAmbiguous">): string[] {
 	const out: string[] = [];
@@ -85,15 +63,10 @@ export function birthplaceSection(basis: Pick<CaliberBasis, "lngNote" | "lngAmbi
 
 /**
  * 四化星 → 落宫。
- *
  * @param chart - 命盘
- * @param transforms - 「四化 → 星名」表；生年 / 流年 / 流月三处是同一形状
- * @returns 按「禄 → 权 → 科 → 忌」固定顺序排好的四条记录，每条含四化名、星名、所在宫名与地支；
- *   该星未上盘时 `palace` 与 `branch` 为 `null`
- *
- * @remarks
- * 找宫分两级：先找**主星**席位命中该星的宫，找不到再放宽到任意席位；`isMajor` 记录是否
- * 走了前一级（即该星在此宫被作主星收录）。
+ * @param transforms - 「四化 → 星名」表，生年 / 流年 / 流月同形
+ * @returns 按「禄 → 权 → 科 → 忌」四条（四化名、星名、宫、地支）；未上盘 `palace` / `branch` 为 `null`
+ * @remarks 找宫两级：先**主星**席位再放宽；`isMajor` 记是否走前一级。
  */
 export function locateSihua(chart: ZiweiChart, transforms: Record<Mutagen, string>) {
 	const out: {
@@ -124,10 +97,9 @@ export function locateSihua(chart: ZiweiChart, transforms: Record<Mutagen, strin
 
 /**
  * 三方四正：本宫 + 三合两宫 + 对宫。
- *
  * @param chart - 命盘
- * @param branch - 本宫的地支索引 0–11
- * @returns 四个宫名，顺序为 `[本宫, 三合(+4), 三合(+8), 对宫(+6)]`；查不到的宫位退化为 `"?"`
+ * @param branch - 本宫地支索引 0–11
+ * @returns 四宫名 `[本宫, 三合(+4), 三合(+8), 对宫(+6)]`，查不到为 `"?"`
  */
 export function surroundNames(chart: ZiweiChart, branch: number): string[] {
 	return surroundBranches(branch).map(b => chart.palaces.find(p => p.branch === b)?.name ?? "?");
@@ -135,9 +107,7 @@ export function surroundNames(chart: ZiweiChart, branch: number): string[] {
 
 /**
  * 亮度枚举 → 中文。
- *
- * @remarks
- * 键类型取自内核 `Star`，内核若增删亮度档位这里会立刻报错。
+ * @remarks 键取内核 `Star`，增删亮度档位立刻报错。
  */
 const BRIGHTNESS_CN: Record<NonNullable<Star["brightness"]>, string> = {
 	bright: "庙旺",
@@ -147,9 +117,8 @@ const BRIGHTNESS_CN: Record<NonNullable<Star["brightness"]>, string> = {
 
 /**
  * 单星一行：「紫微化权庙旺」。
- *
  * @param s - 单颗星曜
- * @returns 星名 + 四化 + 亮度拼接成的描述；后两项缺哪项就省哪项
+ * @returns 星名 + 四化 + 亮度，缺项省略
  */
 export const starLine = (s: Star): string => {
 	const parts = [s.name];
@@ -164,15 +133,11 @@ export const starLine = (s: Star): string => {
 
 /**
  * 单宫渲染（多行）。
- *
- * @param p - 待渲染的宫位
- * @param chart - 所属命盘（三方四正要跨全盘取）
- * @returns 多行文本：首行为「宫名【地支天干】+ 标记」，其后依次是主星、吉星、煞星、杂曜、三方四正
- *
- * @remarks
- * 标记栏合并三种身份：命宫 / 身宫 / 当前大限（带年龄区间，非当前大限时只写区间）。
- * 主星为空时改写「借对宫 X 的 Y」—— `borrowedFromName` / `borrowedStars` 由内核算好，
- * 这里不现算。
+ * @param p - 待渲染宫位
+ * @param chart - 所属命盘（三方四正跨全盘）
+ * @returns 多行：首行「宫名【地支天干】+ 标记」，后接主星、吉星、煞星、杂曜、三方四正
+ * @remarks 标记 = 命宫 / 身宫 / 当前大限（带年龄区间，非当前只写区间）。主星空改写
+ *   「借对宫 X 的 Y」—— `borrowedFromName` / `borrowedStars` 内核算好，不现算。
  */
 export function renderPalace(p: Palace, chart: ZiweiChart): string {
 	const major = p.stars.filter(s => s.type === "major");
@@ -215,18 +180,12 @@ export function renderPalace(p: Palace, chart: ZiweiChart): string {
 }
 
 /**
- * 命盘指纹：宫名 + 地支 + 全星曜集合，用于比对两盘是否完全一致。
- *
+ * 命盘指纹：宫名 + 地支 + 全星曜，比对两盘。
  * @param c - 命盘
- * @returns 指纹字符串（各宫以 `|` 连接，宫内星曜名排序后以 `,` 连接）
- *
- * @remarks
- * 本函数是**唯一实现** —— `test/lib/compare.ts` 经 `loadRender()` 转出它，CLI 与测试共用
- * 同一份代码（此前 test/ 侧另有一份逐行副本，靠注释互相提醒「必须同步」却无断言盯着，
- * 只在一侧加排序就会静默分叉）。
- *
- * 先按 `branch` 排序再拼接，使指纹与 `palaces` 的数组顺序无关（该顺序是寅起的
- * `2,3,…,11,0,1`）。完整理由见 docs/code/cli-chart.md。
+ * @returns 指纹串（各宫 `|` 连接，宫内星名排序后 `,` 连接）
+ * @remarks **唯一实现** —— `test/lib/compare.ts` 经 `loadRender()` 转出，CLI 与测试共用；
+ *   旧 test/ 副本靠「必须同步」提醒却无断言，单侧加排序即分叉。
+ *   先按 `branch` 排序再拼，与 `palaces` 顺序（寅起 `2,3,…,11,0,1`）无关。见 docs/code/cli-chart.md。
  */
 export const chartSignature = (c: ZiweiChart): string =>
 	[...c.palaces]
@@ -242,15 +201,13 @@ export const chartSignature = (c: ZiweiChart): string =>
 
 /**
  * 紫微星所在宫的地支名。
- *
  * @param c - 命盘
  * @returns 地支名，如 `"午"`
  */
 const ziweiBranchOf = (c: ZiweiChart): string => BRANCHES[c.ziweiPos];
 
 /**
- * 命宫主星简述（空宫则写借宫）。
- *
+ * 命宫主星简述。
  * @param c - 命盘
  * @returns 主星名以「、」连接；空宫写 `空宫(借X：…)`；命宫地支取不到宫位时返回 `"—"`
  */
@@ -267,21 +224,16 @@ function mingMajorBrief(c: ZiweiChart): string {
 
 /**
  * 晚子时口径提醒。
- *
- * @param chart - 本次实际排出的盘
- * @param basis - 口径载体（只读 `isLateZi` 与 `lateZiCandidate` 两字段）—— 整包传入（候选 6）
- * @param alt - 对照盘（调用方经 `./late-zi` 的 `lateZiCounterChart` 排好）：`isLateZi` 时
- *   为**当日早子时**口径，`lateZiCandidate` 时为**晚子时·算次日**口径；两种口径都
- *   不涉及时为 `null`（与 `lateZiCounterChart` 同一判据派生，配对不变量见其注释）
- * @returns 待追加进输出数组的若干行；命中任一口径时末尾带一个空行作分隔
- *
- * @remarks
- * 23:00–23:59 出生时子时横跨两日，两种口径排出的是**两张不同的盘** —— 本函数把两盘的
- * 紫微位与命宫主星并列出来；对照盘是**参数不是本函数排的**（取数在调用方，经 `./late-zi`
- * 走缓存层），本函数零排盘、零 IO。
- *
- * ⚠️ 措辞锚在「校正后」而非「你给的钟表时间」：开 `--eot` 或西部城市时，落在 23:00–23:59
- *    的往往是校正后的真太阳时（如喀什 02:30 校正后是前一日 23:37）。见 docs/code/cli-chart.md。
+ * @param chart - 本次排盘
+ * @param basis - 口径载体（只读 `isLateZi` / `lateZiCandidate`），整包传入（候选 6）
+ * @param alt - 对照盘（调用方经 `./late-zi` 排好）：`isLateZi` 为
+ *   **当日早子时**，`lateZiCandidate` 为**晚子时·算次日**；都不涉及时 `null`（同判据，
+ *   配对不变量见其注释）
+ * @returns 命中时追加行，末尾空行分隔
+ * @remarks 23:00–23:59 出生子时跨两日，两口径**两张不同的盘**，本函数并列两盘紫微位与命宫
+ *   主星；对照盘**参数非本函数排的**（经 `./late-zi` 取数），零排盘、零 IO。
+ *   ⚠️ 锚「校正后」非「你给的钟表时间」：开 `--eot` 或西部城市，落 23:00–23:59 的常是
+ *   校正后真太阳时（喀什 02:30 → 前一日 23:37）。见 docs/code/cli-chart.md。
  */
 export function lateZiSection(
 	chart: ZiweiChart,

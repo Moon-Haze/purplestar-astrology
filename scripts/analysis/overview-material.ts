@@ -2,13 +2,10 @@
  * 总览取材单点 —— 「总览段取什么材」的唯一实现。
  *
  * @remarks
- * 两个编排器（`views/overview.ts` 的【】版式与 `report.ts` 的 ### 版式）此前各写
- * 一遍取材规则，七个决策点同构重复且已发生文案漂移；本模块把规则收为一份
- * 纯函数，编排器只做版式装配。星曜徽标单点 `starBadge` 住 `lookups.ts`，
- * 本模块与 `palace-query.ts` 同式引它。
- * 决策点语义与统一基准（原 views/overview.ts 版）逐字对齐，见 docs/code/analysis.md。
- *
- * @file 总览取材单点 —— 「总览段取什么材」的唯一实现
+ * 两编排器（`views/overview.ts` / `report.ts`）原各写取材规则，七个决策点重复
+ * 且已文案漂移；本模块收为纯函数，编排器只做版式装配。决策点语义与基准逐字
+ * 对齐，见 docs/code/analysis.md。
+ * @file 总览取材单点
  */
 
 import {
@@ -25,14 +22,12 @@ import {
 import type { AnalysisContext } from "./context";
 import { detectGeJu, selectBranches, selectGender, starBadge } from "./lookups";
 
-/** 总览取材结果：各字段已是可直接入行成文的文本（头与行距由版式层管）。
- *
- * @remarks
- * `mainStarLine` 是「本宫主星」行的唯一成文形态；`mainBadge` / `loanTag` 仅供标题
- * 徽标与借宫标记，SHALL NOT 用部件重建拼式。
+/** 总览取材结果：各字段已是可直接入行的文本（版式层管头与行距）。
+ * @remarks `mainStarLine` 是「本宫主星」行唯一成文形态；`mainBadge` / `loanTag`
+ * 仅供标题徽标与借宫标记，SHALL NOT 用部件重建拼式。
  */
 export interface OverviewMaterial {
-	/** 命盘关键定制（topic_mods 的亮度 / 四化双键注入），仅核心主题（含 personality）非空 */
+	/** 命盘关键定制（topic_mods 亮度/四化双键注入），仅核心主题（含 personality）非空 */
 	mods: string[];
 	/** 格局行（`⭐ **名**：描述`），仅 overview / personality 主题非空 */
 	geju: string[];
@@ -41,48 +36,43 @@ export interface OverviewMaterial {
 	/** 本宫主星徽标串（多星顿号相连），空宫为「空宫」 */
 	mainBadge: string;
 	/**
-	 * 「本宫主星」整行（`本宫主星：` + 借宫注 + 主星徽标 + overview 主题的五行局尾）。
-	 *
-	 * @remarks
-	 * 两形态共用单点：`views/overview.ts` 的【】版式与 `report.ts` 的 ### 版式都取
-	 * 此字段——此前它们各拼一遍，同一行已实测逐字分叉（借宫时报告侧丢了星名）。
-	 * 编排器只做版式装配，不得重建这行的拼式。
+	 * 「本宫主星」整行（本宫主星： + 借宫注 + 徽标 + overview 五行局尾）。
+	 * @remarks `views/overview.ts` / `report.ts` 共用此字段，原各拼一遍已实测
+	 * 分叉（借宫时报告侧丢星名）；编排器不得重建拼式。
 	 */
 	mainStarLine: string;
 	/** 借宫徽标（借宫为「借对宫」，否则空串）—— 供 `--report` 板块标题用 */
 	loanTag: string;
-	/** 技术性星曜详解全文（overview 用 mingGong，其余按 contentKey） */
+	/** 星曜详解全文（overview 用 mingGong，其余按 contentKey） */
 	content: string | undefined;
 	/** 亮度补充行（`▶ …` 前缀已带） */
 	brightNote: string | undefined;
 	/** 同宫第二主星行（`同宫第二主星：**徽标**——简述`） */
 	secondStar: string | undefined;
 	/**
-	 * 同宫第二主星的同宫语境全文（按本主题 contentKey 取该星自己的 profile，经
-	 * 分支投影）。核心论断节的「第二主星」从一句简述升级为简述 + 全文——双主星
-	 * 的全文由此在本板块（语义主场）首现，装配层预扫描同登记，三方联动的指引
-	 * 指回正确板块。该星无对应语境数据时 `undefined`，维持一句简述不硬凑。
+	 * 第二主星语境全文（按 contentKey 取该星 profile 分支投影）。核心论断节
+	 * 「第二主星」由简述升级为简述 + 全文，全文在本板块首现，装配层预扫描登记
+	 * 三方联动指引；无语境数据时 `undefined`，维持简述。
 	 */
 	secondStarContent: string | undefined;
-	/** 空宫兜底句；主宫无主星时非空，编排器整节退化为这一句 */
+	/** 空宫兜底句；主宫无主星时非空，编排器整节退化为此句 */
 	emptyFallback: string;
 }
 
 /**
- * 取「总览段」的素材：核心主题判定、topic_mods 双键注入、格局主题清单、
- * summary 段条件、contentKey 全文选择、亮度补充、第二主星——一次取齐。
+ * 取「总览段」素材：核心主题判定、topic_mods 双键注入、格局清单、summary 条件、
+ * contentKey 全文选择、亮度补充、第二主星——一次取齐。
  *
- * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数读其中的命盘、主题键、主宫名、本宫主星与借宫标记、主星 profile、性别，以及命宫主星与同宫第二主星等已算好的中间量；不自行重算盘面
- * @returns 总览段素材（{@link OverviewMaterial}）：各字段已是可直接入行的成文文本。主宫（含借来的对宫）无主星时走兜底分支——`mainBadge` 为「空宫」、`emptyFallback` 给出借宫说明，其余语义字段为 `undefined` / 空数组
+ * @param ctx - 主题上下文（{@link AnalysisContext}）：读命盘、主题键、主宫名、主星/借宫标记、profile、性别等中间量；不重算盘面
+ * @returns 总览段素材（{@link OverviewMaterial}）：各字段可直接入行。主宫（含借宫）无主星走兜底——`mainBadge` 为「空宫」、`emptyFallback` 给借宫说明，余为 `undefined` / 空数组
  */
 export function buildOverviewMaterial(ctx: AnalysisContext): OverviewMaterial {
 	const { chart, topic, palaceName, mainStars, primaryStar, profile, isLoan, gender } = ctx;
-	// 五行局尾：仅 overview 主题追加，两个编排器此前各写一遍（同 derivation 的第二处复写）
+	// 五行局尾：仅 overview 追加，两编排器原各写一遍（同 derivation 第二处复写）
 	const fiveTail = topic === "overview" ? `，${chart.fiveElementsClassName}` : "";
 
 	if (!(primaryStar && profile)) {
-		// 兜底分支（主宫与对宫俱无主星）：借宫注按 isLoan 单独算（无星名可写），
-		// 逐字保持该分支现有形态。
+		// 兜底分支（主宫与对宫俱无主星）：借宫注按 isLoan 单独算（无星名），逐字保持形态。
 		const loanText = isLoan ? `（${palaceName}空宫，借对宫论事）` : "";
 		const mainBadge = "空宫";
 		return {

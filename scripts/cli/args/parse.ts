@@ -1,14 +1,4 @@
-/**
- * CLI 参数解析引擎 —— `util.parseArgs` tokens 底座 + 薄适配层（cac 已退役）。
- * 不依赖任何内核模块，也不使用 `@/` 别名；三层分工里本文件只管**怎么解析**。
- *
- * 薄适配层做四件事：声明表校验（未知参数中文报错）、别名归一、判重（重复报错，
- * 旧「取末值」废止）、贪婪取值（`--limit -3` 的 `-3` 是值，**版本敏感**，selftest 钉死）。
- *
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载 —— 不要在 purple-star.ts 顶部用
- *    静态 `import` 引它（钩子未注册时解析会失败）。底座与适配层的分工论证、
- *    `--ctiy 喀什` 那类静默失败史，见 docs/code/cli-args.md。
- */
+/** 解析。@remarks registerHooks 加载，purple-star.ts 静态 import 即崩；`--ctiy 喀什` 见 docs/code/cli-args.md。 */
 
 import { parseArgs as nodeParseArgs } from "node:util";
 
@@ -21,55 +11,27 @@ import {
 	type OptionSpec,
 } from "./table";
 
-/**
- * CLI 参数表：`_` 收位置参数，其余键对应 `--key`（camelCase）。
- *
- * @remarks
- * 带值的参数存 `string`，纯开关存 `boolean` 的 `true`（见 {@link parseArgs}），
- * 因此取值前通常要先收窄类型。
- *
- * 索引签名里保留 `string[]` 是为了与 `_` 的写入同域 —— TS 要求索引签名涵盖所有具名属性。
- */
+/** 表。@remarks 带值 string/开关 true（{@link parseArgs}）收窄；string[] 与 _ 同域（TS）。 */
 export interface CliArgs {
-	/** 位置参数：非 `--` 开头的 argv 项，按出现顺序收集（`astrology` 命令另有形态归类） */
+	/** 位置参数 */
 	_: string[];
 	[key: string]: string | boolean | string[];
 }
 
-/**
- * **本 skill** 认的参数名（英文主名）—— {@link parseArgs} 的校验基准，
- * 同时是 {@link suggestOption} 的候选集。
- *
- * @remarks
- * 从 `./table` 的全集按 `OPTION_SCOPE.excluded` **差量**派生：单 skill 形态下排除表为空，
- * 作用域即全集 —— 「有哪些参数」因此真正只有 OPTION_GROUPS 一处声明。
- */
+/** 名。@remarks {@link parseArgs}/{@link suggestOption}：excluded 派生，空表全集；「有哪些参数」仅 OPTION_GROUPS 声明。 */
 export const OPTION_NAMES: ReadonlySet<string> = new Set(
 	[...ALL_OPTION_NAMES].filter(n => !OPTION_SCOPE.excluded.includes(n))
 );
 
-/** 主名 → 声明（扫描循环里反复查，建一次索引）。 */
+/** 主名→声明索引 */
 const ALL_SPECS: ReadonlyMap<string, OptionSpec> = new Map(
 	OPTION_GROUPS.flatMap(g => g.options).map(o => [o.name, o])
 );
 
-/**
- * 本 skill 认的出生方前缀（合盘是 `a-` / `b-`，它要分别读两方的命盘）。
- *
- * @remarks
- * 取自 `./scope` 的 `OPTION_SCOPE.sidePrefixes`。导出是给 selftest 用的：它扫 `SKILL.md`
- * 里提到的参数，要先剥掉这层前缀再与 {@link OPTION_NAMES} 比对 —— 前缀表不该有第二份。
- */
+/** 前缀。@remarks selftest 扫 `SKILL.md` 剥前缀比 {@link OPTION_NAMES}，勿存第二份。 */
 export const SIDE_PREFIXES: readonly string[] = OPTION_SCOPE.sidePrefixes;
 
-/**
- * 编辑距离：把 `a` 改成 `b` 至少几步。只用于「拼错了？最接近的是……」这句提示，
- * 故实现取最朴素的滚动数组版本，不追求性能。
- *
- * @param a - 用户敲入的名字（当作源串）
- * @param b - 声明表里的候选名（当作目标串）
- * @returns 把 `a` 变成 `b` 的最少编辑步数（插入 / 删除 / 替换各计 1）
- */
+/** 步数（「拼错了？最接近的是……」）。@param a - 名 @param b - 候选 @returns 步数 */
 function editDistance(a: string, b: string): number {
 	let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
 	for (let i = 1; i <= a.length; i++) {
@@ -83,16 +45,7 @@ function editDistance(a: string, b: string): number {
 	return prev[b.length];
 }
 
-/**
- * 在合法参数名里找与 `name` 最接近的一个。
- *
- * @param name - 用户实际敲的参数名（不含 `--`）
- * @returns 编辑距离 ≤ 2 的最近者；都不够近则 `null`
- *
- * @remarks
- * 阈值取 2 是权衡：`ctiy` → `city`（换位算 2 步）、`year` → `yearly` 都要抓；
- * 再放宽就会开始乱建议，反而把提示变成噪声。
- */
+/** 最近名。@param name - 名 @returns ≤2 近者或 `null` @remarks 阈值 2，放宽即噪声。 */
 export function suggestOption(name: string): string | null {
 	let best: string | null = null;
 	let bestD = 3;
@@ -110,25 +63,7 @@ export function suggestOption(name: string): string | null {
 	return best;
 }
 
-/**
- * 校验参数名（先别名归一，再查主名表），不合法即抛错。
- *
- * @param key - 已剥掉 `--` 的参数名（可带出生方前缀）
- * @param command - 当前命令名；接受前缀的那几条由 `option-scope.ts` 的 `prefixedCommands` 声明
- *
- * @remarks
- * 三条规则各挡一种**静默失败**：① 归一后不在 {@link OPTION_NAMES} → 拼错，报最近的名字；
- * ② 前缀出现在不收它的命令上（写法被整个忽略，排的是默认经度的盘）；
- * ③ 前缀后仍须是声明过的名字。
- *
- * ⚠️ 刻意**不**校验「这个参数属于这个命令」—— 把归属做成硬约束会让每条命令的合法集合
- *    成为第二个需要维护的真相，拼错才是要挡的。三条的展开见 docs/code/cli-args.md。
- *
- * @returns 归一后的英文主名（别名已换成主名，出生方前缀原样保留在头部）
- * @throws 参数名带出生方前缀、但当前命令不在 `prefixedCommands` 里（或没给命令名）时抛错，
- *   并在文案里指路改用去掉前缀的写法；参数名（去前缀后）不在 {@link OPTION_NAMES} 里、
- *   也不是已声明的别名时抛错，附带最接近的合法名提示
- */
+/** 查名。@param key - 名 @param command - 命令 @remarks 防静默：非 {@link OPTION_NAMES}→最近名；前缀落不收命令→默认经度盘；前缀后须声明。⚠️ 不查「这个参数属于这个命令」（第二真相）。 @returns 主名 @throws 非 `prefixedCommands` 前缀→指路；非 {@link OPTION_NAMES} 非别名→最近提示 */
 function checkOptionName(key: string, command: string | undefined): string {
 	const prefix = SIDE_PREFIXES.find(p => key.startsWith(p));
 	if (prefix) {
@@ -153,38 +88,23 @@ function checkOptionName(key: string, command: string | undefined): string {
 	);
 }
 
-/** `util.parseArgs` 的 token（`strict: false` 形态，官方类型的宽松收窄）。 */
+/** token（`strict: false`） */
 interface Token {
-	/** token 类别：选项 / 位置参数 / `--` 终结符 */
+	/** 类别 */
 	kind: "option" | "positional" | "option-terminator";
-	/** 该 token 在原始 argv 中的下标（0 起） */
+	/** argv 下标 */
 	index: number;
-	/** option：不含 `--` 的名字（可能来自 `-3` 这类短假名，见 parseArgs 的扫描注释） */
+	/** 名（或 `-3` 假名） */
 	name?: string;
-	/** option：用户敲的原文（如 `--limit` / `-3`） */
+	/** 原文 */
 	rawName?: string;
-	/** option：`--key=value` 的内联值；空格式或 positional 无此字段 */
+	/** 内联值 */
 	value?: string;
-	/** option：值是否内联（`--key=value` 为 true） */
+	/** 内联? */
 	inlineValue?: boolean;
 }
 
-/**
- * 参数解析：`--key value` / `--key=value` / `--flag` / `--` 分隔 / 重复报错 / 别名归一。
- *
- * @param argv - 待解析的参数数组（**不含**命令名）
- * @param command - 当前命令名。给了就**校验参数名**（见 {@link checkOptionName}），
- *   未知或错位的前缀参数一律抛错而非静默忽略
- * @returns 参数表；键已归一为 camelCase 的英文主名；`--flag` 裸开关存布尔 `true`
- *
- * @remarks
- * **两步：底座切分 → 单趟适配**（底座 `nodeParseArgs({ strict: false, tokens: true })`
- * 只交 token 流，取值判据 / 判重 / 归一 / 中文报错全在这趟扫描里）：
- * 贪婪取值（`--limit -3` 的 `-3` 是值，⚠️ **版本敏感**，selftest 钉死）·
- * 重复报错（旧 cac「取末值」废止）· `--` 之后全进 `_` · `-x` 短参数一律报错。
- *
- * `command` 省略即退回「照单全收」的宽松解析。四条规则的展开见 docs/code/cli-args.md。
- */
+/** 解析（`--key`/`--flag`）。@param argv - 参 @param command - 命令 @returns 表 @remarks `--limit -3` 取值（版本敏感，selftest 钉死）、「取末值」废止、`--` 进 `_`、`-x` 报错、省略 command 即「照单全收」；见 {@link checkOptionName}、docs/code/cli-args.md。 */
 export function parseArgs(argv: string[], command?: string): CliArgs {
 	const { tokens } = nodeParseArgs({
 		args: argv,
@@ -193,9 +113,9 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 	}) as { tokens: Token[] };
 
 	const args: CliArgs = { _: [] };
-	/** 已出现的归一后主名（camelCase）—— 判重基准 */
+	/** 判重 */
 	const seen = new Set<string>();
-	/** `--` 之后的内容只进 `_`，不参与 astrology 的形态归类 */
+	/** `--` 后进 `_` */
 	let afterTerminator = false;
 
 	for (let i = 0; i < tokens.length; i++) {
@@ -286,24 +206,10 @@ export function parseArgs(argv: string[], command?: string): CliArgs {
 	return args;
 }
 
-/**
- * 出生信息位置参数的形态归类（spec §1.2）。
- *
- * @param tokens - 位置参数（已剔除 `--` 之后的内容）
- * @returns `date` / `time` / `gender` / `city` 四键（camelCase，与旗标同名）
- * @throws 同类 token 出现两个（两个日期 / 两个城市 …）—— 省与市带空格同属此类，
- *   报错并提示连写
- *
- * @remarks
- * 形态正则：日期 `^\d{4}-\d{1,2}-\d{1,2}$`、时刻 `^\d{1,2}:\d{2}$`、性别 `男|女|male|female|m|f`，
- * 其余中文 token 为城市名（含省市连写与裸省名）。农历生日只能走 `--lunar`（与公历同形）。
- *
- * ⚠️ 住本文件而非 `birth-info.ts`（计划原案）：归类在 {@link parseArgs} 内完成，而
- *    birth-info 静态 import 本文件的 {@link CliArgs} —— 挪过去会成环（见 docs/code/cli-args.md）。
- */
+/** 归类。@param tokens - 参 @returns date/time/gender/city @throws 同类重复→连写 @remarks 农历仅 `--lunar`；⚠️ 免与 `birth-info.ts` 成环（{@link parseArgs}/{@link CliArgs}）。 */
 export function classifyPositionals(tokens: readonly string[]): Partial<CliArgs> {
 	const out: Partial<CliArgs> = {};
-	/** 同类槽位：已有值即同类重复。城市槽的报错文案额外提示连写。 */
+	/** 重复→连写 */
 	const put = (slot: "date" | "time" | "gender" | "city", value: string) => {
 		if (out[slot] !== undefined) {
 			throw new Error(
@@ -333,15 +239,10 @@ export function classifyPositionals(tokens: readonly string[]): Partial<CliArgs>
 	return out;
 }
 
-/**
- * 运行期上下文：只有引导层才知道的东西。
- *
- * 目前仅 selftest 用得上（它要在输出里交代「排这张盘用的是哪一份内核」），
- * 但类型在此统一，免得将来再多一个命令时又改一遍所有签名。
- */
+/** 上下文（「排这张盘用的是哪一份内核」）；统一类型免改签名。 */
 export interface CliContext {
-	/** 实际生效的内核根目录（已解析为绝对路径） */
+	/** 内核根（绝对） */
 	root: string;
-	/** 该根目录的来源描述，如「技能自带内核」「ZIWEI_ROOT 环境变量」 */
+	/** 来源：「技能自带内核」「ZIWEI_ROOT 环境变量」 */
 	rootLabel: string;
 }

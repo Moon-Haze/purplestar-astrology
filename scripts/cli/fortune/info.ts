@@ -1,5 +1,5 @@
 /**
- * 基本信息专题（--info）—— 出生时刻 / 农历 / 四柱 / 命盘骨架面板，含农历中文数字 helper。
+ * 基本信息专题（--info）：出生时刻 / 农历 / 四柱 / 命盘骨架面板 + 农历数字 helper。
  */
 
 import type { ZiweiChart } from "@/types";
@@ -11,7 +11,7 @@ import { Solar } from "lunar-typescript";
  * 农历月 → 中文月名。
  *
  * @param m - 农历月 1–12
- * @returns 正月 / 二月 / … / 十月 / **冬月** / **腊月**（十一月、十二月的传统叫法）
+ * @returns 正月 / 二月 / … / 十月 / **冬月** / **腊月**（即十一 / 十二月）
  */
 function lunarMonthCN(m: number): string {
 	return (
@@ -39,9 +39,9 @@ function lunarMonthCN(m: number): string {
  *
  * @remarks
  *
- * @returns 该农历日的中文日名（`一`–`十` 加「初」前缀，`二十` 单列，`廿一`–`廿九`）
+ * @returns 中文日名（`一`–`十` 加「初」，`二十` 单列，`廿一`–`廿九`）
  *
- * 传统口径：十以前「初X」，十一至十九「X十X」省作「十一…十九」，二十一至二十九用「廿」。
+ * 口径：≤10「初X」，11–19「X十X」即「十一…十九」，21–29「廿」。
  */
 function lunarDayCN(d: number): string {
 	const ones = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
@@ -61,34 +61,30 @@ function lunarDayCN(d: number): string {
 }
 
 /**
- * `--info` 基本信息专题的输入：出生时刻的**展示串**（由调用方从 `buildBirthInfo` 结果拼，
- * 本模块不重新解析钟表时 —— 那是 `birth-info.ts` 的职责）。
+ * `--info` 输入：出生时刻**展示串**（调用方从 `buildBirthInfo` 结果拼；本模块不解析钟表时，归 `birth-info.ts`）。
  */
 export interface InfoClockOpts {
-	/** 钟表时间原文（如 `"2000-4-6 0:15"`）；`--branch` 直按时辰排盘时为 null */
+	/** 钟表原文（如 `"2000-4-6 0:15"`）；`--branch` 直按时辰排盘时为 null */
 	clockTime: string | null;
-	/** 真太阳时说明（`buildBirthInfo` 的 note：钟表 → 校正量 → 时辰链条） */
+	/** 真太阳时说明（`buildBirthInfo` note：钟表 → 校正量 → 时辰链） */
 	solarNote: string;
-	/** 本次实际采用的经度（东经为正；未给出生地时为 120） */
+	/** 采用经度（东经为正；未给出生地时 120） */
 	longitude: number;
 }
 
 /**
- * `--info`：基本信息专题 —— 姓名 / 性别 / 公历生日 / 经度 / 钟表与真太阳时 / 农历 /
- * 节气与非节气四柱 / 五行局 / 命盘类型 / 命宫身宫紫微 / 三方四正 / 命主身主斗君。
+ * `--info` 基本信息专题：姓名 / 性别 / 生日 / 经度 / 钟表与真太阳时 / 农历 / 四柱两口径 / 五行局 / 命盘类型 / 命宫身宫紫微 / 三方四正 / 命主身主斗君。
  *
  * @param chart - 命盘
  * @param opts - 出生时刻展示串
  *
  * @remarks
  *
- * @returns 基本信息面板的输出行（公历生日与姓名、命宫 / 紫微落 / 三方四正 + 四柱两口径）；只拼行，未 `join`
+ * @returns 面板输出行（+ 四柱两口径）；只拼行，未 `join`
  *
- * 面板行集：公历生日与姓名，命宫 / 紫微落 / 三方四正（身宫与命宫同行，避免重复）。
+ * 行集：命宫 / 紫微落 / 三方四正（身宫与命宫同行去重）。
  *
- * 四柱由 `lunar-typescript` 现算（节气口径 = `getEightChar()`，立春分年、节气分月；
- * 非节气口径 = 正月初一分年 + 农历月柱）。⚠️ 四柱**仅为出生时刻记录**，本技能
- * 不做八字论命 —— SKILL.md 的红线拦的是八字解读，不拦出生数据展示。
+ * 四柱由 `lunar-typescript` 现算：节气口径 = `getEightChar()`（立春分年、节气分月）；非节气口径 = 正月初一分年 + 农历月柱。⚠️ 四柱仅为出生时刻记录，本技能不做八字论命 —— SKILL.md 红线拦八字解读，不拦出生数据展示。
  */
 export function infoSection(chart: ZiweiChart, opts: InfoClockOpts): string[] {
 	const li = chart.lunarInfo;
@@ -98,8 +94,8 @@ export function infoSection(chart: ZiweiChart, opts: InfoClockOpts): string[] {
 	const jieQi = `${bazi.getYear()} ${bazi.getMonth()} ${bazi.getDay()} ${bazi.getTime()}`;
 	const feiJieQi = `${lunar.getYearInGanZhi()} ${lunar.getMonthInGanZhi()} ${bazi.getDay()} ${bazi.getTime()}`;
 	const nongLi = `${STEMS[li.yearStem]}${BRANCHES[li.yearBranch]}年${lunarMonthCN(li.lunarMonth)}${lunarDayCN(li.lunarDay)}日${BRANCHES[bi.timeIndex % 12]}时`;
-	// 两口径相同时并列两行是噪音（并列相同值会被读者当成 bug 疑点）；只有分叉
-	// （立春与正月初一之间出生，年/月柱走不同分界）才值得并列对照。
+	// 两口径相同并列是噪音（相同值并列会被当成 bug）；只有分叉
+	// （立春与正月初一之间出生，年/月柱分界不同）才值得并列对照。
 	const pillars =
 		jieQi === feiJieQi
 			? [`四柱(节气与非节气同) : ${jieQi}`]

@@ -3,17 +3,17 @@
  */
 // ── 层 1（主力）：排盘对标 ──
 //
-// 拿本项目 generateChart() 的输出去比 toolkit 样本里的 chart，逐字段全等比对。
-// 基准由 db/dataset 经本仓内核直生成（v4 管线，2026-11-21 起同源）——对拍锁的是当前固化的内核行为。
+// 本项目 generateChart() 输出比 toolkit 样本，逐字段全等。
+// 基准由 db/dataset 经本仓内核直生成（v4 同源）——锁固化内核行为。
 //
-// ⚠️ **亮度不参与对拍**（2026-10 口径切换）：本项目的亮度已整体改由文墨 SB 表覆写
-//    （XD2 默认，见 scripts/wenmo-brightness.ts），与 iztro 快照的亮度不可比；
-//    其正确性由 test/invariants.test.ts 的「文墨亮度表」组保障。其余字段
-//    （星名 / type / mutagen / 宫位 / 大限 / 借宫）仍全量严格比对，白名单之外的任何
-//    差异都会失败（白名单机制保留、清单现为空，见 test/lib/compare.ts）。
+// ⚠️ **亮度不对拍**（2026-10 切换）：亮度已由文墨 SB 表覆写
+//    （XD2 默认，见 scripts/wenmo-brightness.ts），与 iztro 快照不可比；
+//    正确性由 test/invariants.test.ts「文墨亮度表」组保障。其余字段
+//    （星名/type/mutagen/宫位/大限/借宫）全量比对，白名单外任何
+//    差异即失败（白名单保留、清单现空，见 test/lib/compare.ts）。
 //
-// ⚠️ 这套测试是**回归锁定 / 跨版本差分**，不是独立正确性证明：样本与本项目内核同源
-//    （都调 iztro 的 bySolar），两边一起错的地方测不出来。详见 test/README.md。
+// ⚠️ 本测试是**回归锁定/跨版本差分**，非独立正确性证明：样本同源
+//    （都调 iztro bySolar），同错处测不出。详见 test/README.md。
 import { describe, it, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -44,15 +44,15 @@ const samples = readFileSync(resolve(HERE, "fixtures/charts.jsonl"), "utf8")
 
 const { generateChart, parseWuxingJu } = await loadAlgorithm();
 
-/** 把出生信息渲染成可读的用例名。 */
+/** 出生信息渲染成可读用例名。 */
 const describeBirth = (b: BirthInfo): string =>
 	`${b.year}-${String(b.month).padStart(2, "0")}-${String(b.day).padStart(2, "0")} ` +
 	`${BRANCHES[b.timeIndex] ?? `timeIndex${b.timeIndex}`}时 ${b.gender}`;
 
-// ── 先确认基准数据真的加载进来了 ──
-// 没有这条，fixtures 读空会让下面 0 个用例、「全绿」通过 —— 那是最危险的假阳性。
-// 条数与年份范围全部从 manifest 自报派生（计数纪律：不写死字面量——旧断言曾钉死
-// 「300 条（60 年 × 5 条）」，基准范围 1950–2026 化后按 manifest 语义互证）。
+// ── 确认基准数据已加载 ──
+// 没有这条，fixtures 读空会让 0 用例「全绿」通过——最危险假阳性。
+// 条数与年份范围从 manifest 派生（不写死字面量——旧断言曾钉死
+// 「300 条（60 年 × 5 条）」，范围 1950–2026 按 manifest 互证）。
 test("基准数据可用", () => {
 	assert.equal(samples.length, manifest.count, "fixtures 行数应与 manifest 记录一致");
 	assert.ok(samples.length > 0, "fixtures 不应为空（空基准 = 全套件假绿）");
@@ -75,7 +75,7 @@ test("排盘内核可加载", () => {
 	assert.ok(ROOT.endsWith("scripts"), `内核根应指向 scripts/，实际为 ${ROOT}`);
 });
 
-// ── 主体：逐条比对，按年份分组，用例名带完整出生信息便于定位 ──
+// ── 主体：逐条比对，按年份分组 ──
 describe(`排盘对标（基准：${manifest.baselineEngine} 样本）`, () => {
 	const byYear = new Map<number, BaselineSample[]>();
 	for (const s of samples) {
@@ -86,20 +86,20 @@ describe(`排盘对标（基准：${manifest.baselineEngine} 样本）`, () => {
 	}
 
 	for (const [year, list] of [...byYear].sort((a, b) => a[0] - b[0])) {
-		// 年份过滤由 npm test -- --year 经 node --test 的 --test-name-pattern 在 runner 层完成
-		//（两阶段 spawn：非层 1 文件全量跑，本文件的用例名首段即出生年）——文件内不再读环境变量。
+		// 年份过滤由 npm test -- --year 经 --test-name-pattern 在 runner 完成
+		//（两阶段 spawn：非层 1 全量跑，用例名首段即出生年）——文件内不读环境变量。
 		describe(`${year} 年`, () => {
 			for (const s of list) {
 				it(describeBirth(s.birthInfo), t => {
 					const actual = generateChart({ ...s.birthInfo });
-					// keepWhitelisted 保留白名单差异并打 whitelisted 标（供下面的诊断行报告），
-					// 断言只看非白名单部分 —— 与原先「compareChart 默认丢弃白名单差异后
-					// length === 0」**严格等价**（判的仍是「白名单之外零差异」，没有放宽；
-					// 注入实验验证过：白名单外的新差异照样红）。
+					// keepWhitelisted 保留白名单差异打标（供诊断行），
+					// 断言只看非白名单部分——与原先「compareChart 默认丢弃白名单差异后
+					// length === 0」**严格等价**（判的仍是「白名单之外零差异」，未放宽；
+					// 注入实验验证：白名单外新差异照样红）。
 					const all = compareChart(actual, s.chart, { keepWhitelisted: true });
 					const diffs = all.filter(d => !d.whitelisted);
 					assert.equal(diffs.length, 0, `\n${formatDiffs(diffs)}`);
-					// 每条基准的执行情况（只报动态量：随年份漂移的虚岁、白名单命中、其余字段结果）
+					// 每条基准执行情况（只报动态量：虚岁、白名单命中、其余字段结果）
 					const wl = all.filter(d => d.whitelisted);
 					const hits = wl
 						.map(d => {
@@ -117,24 +117,24 @@ describe(`排盘对标（基准：${manifest.baselineEngine} 样本）`, () => {
 	}
 });
 
-// ── 随运行年份漂移的字段 ──
-// algorithm.ts 的 currentAge 是**虚岁**（农历年差 +1，以正月初一为界），连带
-// currentDecadalIndex / palace.isCurrentDecadal。样本是 2026 年拍的快照，
-// **若测试照抄样本的 currentAge，跨过下一个正月初一本套测试就会全线变红**。
-// 故比对器按「注入的当前时间」独立重算期望值。下面这条断言证明重算确实在生效。
+// ── 随年份漂移的字段 ──
+// currentAge 是**虚岁**（农历年差+1，正月初一为界），连带
+// currentDecadalIndex / palace.isCurrentDecadal。样本是 2026 年快照，
+// **若照抄样本 currentAge，过下一正月初一本套测试即全线变红**。
+// 比对器按「注入的当前时间」独立重算期望值。下条断言证明生效。
 describe("随年份漂移的字段", () => {
 	it("currentAge 期望值按注入时间重算，而非照抄样本快照", () => {
 		const s = samples[0];
 		const actual = generateChart({ ...s.birthInfo });
 
-		// 真实当前时间下不应有差异（actual 与样本同源，用同一个年份算）
+		// 真实当前时间下应无差异（actual 与样本同源，同一年份算）
 		const sameYear = compareChart(actual, s.chart).filter(d => d.path === "currentAge");
 		assert.equal(sameYear.length, 0, "真实时间下 currentAge 不应有差异");
 
-		// 把「当前时间」推到明年 6 月 1 日（必已过正月初一）：期望值随之 +1，
-		// 而 actual 是用真实时间排的，故必然报出差异。
-		// 这证明比对器没有照抄样本 —— 否则这套测试活不过一个跨年。
-		// 用 (年, 月, 日) 构造而非日期字符串：后者按 UTC 解析，与比对器的本地时区口径不一致。
+		// 把「当前时间」推到明年 6 月 1 日（已过正月初一）：期望值 +1，
+		// actual 用真实时间排，故必然报差异。
+		// 这证明比对器没照抄样本——否则活不过一个跨年。
+		// 用 (年,月,日) 构造而非日期串：后者按 UTC 解析，与本地时区口径不一。
 		const nextYear = new Date().getFullYear() + 1;
 		const drift = compareChart(actual, s.chart, { now: new Date(nextYear, 5, 1) });
 		assert.ok(
@@ -145,9 +145,9 @@ describe("随年份漂移的字段", () => {
 });
 
 // ── 五行局名 → 局数 的解析 ──
-// `chart.fiveElementsClass` 的唯一来源，而它是**从局名这一字符串反推数字**得出的，故口径需单独锁住。
-// 上面的「排盘对标」只能覆盖 iztro 实际产出的中文数字写法（385 条样本全是「水二局」这类），
-// 覆盖不到口径变更后的形态 —— 那正是这里要盯的。
+// `chart.fiveElementsClass` 唯一来源，且**从局名字符串反推数字**，口径需单独锁。
+// 「排盘对标」只覆盖 iztro 中文数字写法（385 条样本都是「水二局」类），
+// 覆盖不到口径变更后形态——那正是这里要盯的。
 describe("五行局名解析", () => {
 	it("五个标准局名各解析出对应局数", () => {
 		assert.equal(parseWuxingJu("水二局"), 2);
@@ -158,16 +158,16 @@ describe("五行局名解析", () => {
 	});
 
 	it("阿拉伯数字变体同样解析成功", () => {
-		// iztro 若把 fiveElementsClass 改写成「水2局」，按纯中文数字匹配会整片落到兜底 3。
-		// 局数虽不参与安星，但会让 fiveElementsClass 与 fiveElementsClassName 互相矛盾 —— 局名说「水二局」、
-		// 局数说 3，而 invariants 里的「名称与数字对应」不变量正盯着这一致性。
+		// iztro 若把 fiveElementsClass 改成「水2局」，纯中文数字匹配会整片落兜底 3。
+		// 局数不参与安星，却让两字段矛盾——局名说「水二局」、
+		// 局数说 3，而 invariants「名称与数字对应」不变量正盯此一致性。
 		assert.equal(parseWuxingJu("水2局"), 2);
 		assert.equal(parseWuxingJu("火6局"), 6);
 	});
 
 	it("无法识别的局名兜底为 3 且不抛错", () => {
-		// 与 projectPalaceName 的严格口径相反：局数不参与安星，猜错的代价低于中断排盘。
-		// 这条锁的是**取舍本身**（types.ts 的 fiveElementsClass 注释也这么写），不是锁 3 这个值更好。
+		// 与 projectPalaceName 相反：局数不参与安星，猜错代价低于中断排盘。
+		// 本条锁**取舍本身**（types.ts 注释同理），非锁 3 这个值。
 		assert.equal(parseWuxingJu("未知局"), 3);
 		assert.equal(parseWuxingJu(""), 3);
 	});

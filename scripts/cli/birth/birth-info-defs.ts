@@ -1,171 +1,132 @@
 /**
- * 出生信息解析层的**声明**部分 —— 接口与常量（那边 `./birth-info` 是「怎么算」）。
- *
- * 依赖：@/types（BirthInfo）、./cities（CityInfo / PROVINCES）
- *
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核。
- *    各接口的口径警告（均时差缺项、跨天日界、晚子时、取整自洽、快照陈旧）
- *    见 docs/code/cli-birth.md。
+ * 出生信息声明层：接口与常量；「怎么算」见 ./birth-info。
+ * @remarks 口径警告见 docs/code/cli-birth.md。
  */
 
 import type { BirthInfo } from "@/types";
 import { PROVINCES, type CityInfo } from "./cities";
 
 /**
- * {@link calcTrueSolar} 的可选项。
- *
- * @remarks
- * `eot` 决定是否计入均时差，其余三项是均时差所需的日期。
- *
- * ⚠️ 开了 `eot` 时 `year` / `month` / `day` **三项都必须给**，缺任何一项都会当场抛错 ——
- * 缺项会在 {@link equationOfTime} 里静默算出 `NaN`，污染整条结果链
- * （宁可在入口失败，也不产出错时辰；见 docs/code/cli-birth.md）。
+ * {@link calcTrueSolar} 选项。
+ * @remarks eot 计均时差；开时 year/month/day 必填，缺项于 {@link equationOfTime} 算 NaN 污染链，入口即抛（docs/code/cli-birth.md）。
  */
 export interface TrueSolarOptions {
-	/** 是否额外计入均时差。默认 `false`，即传统口径（只做经度校正） */
+	/** 计均时差？默认关（仅经度校正） */
 	eot?: boolean;
-	/** 公历年，`eot` 为真时必填 */
+	/** 公历年；eot 时必填 */
 	year?: number;
-	/** 公历月 1–12，`eot` 为真时应提供 */
+	/** 公历月 1–12；eot 时必填 */
 	month?: number;
-	/** 公历日，`eot` 为真时应提供 */
+	/** 公历日；eot 时必填 */
 	day?: number;
 	/**
-	 * 夏令时回拨分钟数（中国 1986–91 为 60）。默认 `0` 即不做回拨。
-	 * 由调用点按出生日期用 {@link isChinaDstClock} 判定后传入，
-	 * 本函数自身不做日期 → DST 判定（保持纯换算）。
+	 * 夏令时回拨分钟（1986–91 为 60），默认 0；调用点按日期用 {@link isChinaDstClock} 判定传入
 	 */
 	dstMinutes?: number;
 }
 
-/** {@link calcTrueSolar} 的返回值。 */
+/** {@link calcTrueSolar} 返回值。 */
 export interface TrueSolarResult {
-	/** 时辰支 0–11（0=子 … 11=亥）。注意：此值不会是 12，晚子时由 {@link isLateZi} 单独标记 */
+	/** 时辰支 0–11；无 12，晚子时由 {@link isLateZi} 标 */
 	branch: number;
 	/**
-	 * 校正后是否落在 23:00–23:59（晚子时）。
-	 *
-	 * ⚠️ 子时横跨两日，23:00 后出生按传统三合派应「算次日」，排出的盘与当日早子时
-	 *    **完全不同**（两盘之别见 docs/code/cli-birth.md）。
+	 * @remarks 校正落 23:00–23:59？子时跨两日，23:00 后应「算次日」，与早子时盘全异（docs/code/cli-birth.md）
 	 */
 	isLateZi: boolean;
 	/**
-	 * 校正后跨了几天的**日界**：0 = 未跨天，+1 = 落到次日，-1 = 落到前一日。
-	 *
-	 * ⚠️ **调用方必须据此调整日期**：真太阳时是一条连续的时间轴，日期与时辰都得取自它。
-	 *    只取时辰而把日期留在钟表轴上，「日 + 时」这个组合指向的就不是出生时刻
-	 *    （喀什 00:30 的实测后果见 docs/code/cli-birth.md）。
+	 * @remarks 跨日界：0 未跨 / +1 次日 / -1 前日。调用方须据此调日期；只取时辰留日期于钟表轴，「日 + 时」即错（喀什 00:30 实测，docs/code/cli-birth.md）
 	 */
 	dayOffset: number;
 	/**
-	 * 总校正（经度 + 均时差 − 夏令时回拨），分钟。
-	 *
-	 * 算法是**分项各自取整后相加**，好让提示里的「经度 A + 均时差 B − 夏令时 C = D」自洽
-	 * （若先相加再取整，-14.4 与 +3.8 会显示成 -14 + 4 = -11，看着像算错了）。
+	 * 总校正分钟（经度+均时差−夏令时）。分项各自取整后相加，使「经度 A + 均时差 B − 夏令时 C = D」自洽
 	 */
 	offsetMinutes: number;
-	/** 经度项的贡献 `(经度 − 120) × 4`，取整后的分钟数 */
+	/** 经度项 `(经度−120)×4`，取整分钟 */
 	longitudeMinutes: number;
-	/** 均时差项的贡献，取整后的分钟数；未开 `eot` 时恒为 0 */
+	/** 均时差项，取整分钟；未开 eot 恒 0 */
 	eotMinutes: number;
-	/** 夏令时回拨项的贡献，分钟数；出生不在夏令时区间（或被 `--no-dst` 关闭）时恒为 0 */
+	/** 夏令时回拨项，分钟；非夏令时或 --no-dst 时恒 0 */
 	dstMinutes: number;
-	/** 校正后的**当日分钟数** 0–1439（已按 1440 取模归一，故不含跨天信息），取整后 */
+	/** 当日分钟 0–1439（按 1440 归一，无跨天），取整 */
 	solarMinutes: number;
 }
 
 /**
- * 行政区划后缀：用户常写「石家庄市」「石家庄地区」「XX自治州」，而城市表里存的是简称。
- *
- * 只匹配**结尾**的后缀；匹配到的整段会被 {@link stripSuffix} 去掉。
+ * 区划后缀（「石家庄市」「石家庄地区」「XX自治州」），只匹配结尾，由 {@link stripSuffix} 去掉
  */
 export const ADMIN_SUFFIX = /(特别行政区|自治州|自治县|自治区|地区|盟|市|县|区|旗)$/;
 
 /**
- * {@link findLongitude} 的命中结果。
+ * {@link findLongitude} 命中结果。
  */
 export interface LongitudeHit {
-	/** 命中城市的经度，东经为正 */
+	/** 经度，东经正 */
 	longitude: number;
-	/** 实际命中的**表内**城市名（可能与用户所写不同，即发生了容错解析） */
+	/** 表内命中名（可与所写不同＝容错） */
 	matched: string;
-	/** 是否精确命中：`true` = 用户写的就是表里那个名字；`false` = 做了容错解析 */
+	/** 精确命中？true 原名 / false 容错 */
 	exact: boolean;
-	/** 同长度的同名候选（最多 5 个，形如「吉林(126.57)」）；无歧义时为 `null` */
+	/** 同名候选（≤5，如「吉林(126.57)」）；无歧义 null */
 	ambiguous: string[] | null;
 }
 
 /**
- * {@link PROVINCES} 平铺后的全部城市（335 条），模块加载时算一次。
- *
- * @remarks
- * 提到模块作用域是为了**可读性**，不是性能优化（`flatMap` 实测约 4μs/次，省下的是噪声）。
- *
- * ⚠️ 这是对 `PROVINCES` 的一次性快照：将来若有测试去改 `PROVINCES` 的内容，
- *    `findLongitude` 会读到陈旧数据（见 docs/code/cli-birth.md）。
+ * {@link PROVINCES} 平铺全部城市（335 条），加载时算一次。
+ * @remarks 为可读性非性能；系 PROVINCES 快照，改动后 findLongitude 读陈旧数据（docs/code/cli-birth.md）。
  */
 export const ALL_CITIES: CityInfo[] = PROVINCES.flatMap(p => p.cities);
 
 /**
- * {@link buildBirthInfo} 的结果。
- *
- * @remarks
- * `info` 可直接喂给 `generateChart`；其余字段供上层渲染提示，**不参与排盘**。
+ * {@link buildBirthInfo} 结果。
+ * @remarks info 喂 generateChart；余者供渲染，不参与排盘。
  */
 export interface BirthInfoResult {
-	/** 可直接用于排盘的出生信息（钟表时已换算为时辰序号，日期已按跨天调整） */
+	/** 可排盘出生信息（时辰序号、日期已调） */
 	info: BirthInfo;
-	/** 时辰那一条说明（`notes` 的其中一项） */
+	/** 时辰说明（notes 之一） */
 	note: string;
-	/** 日期 / 出生地 / 时辰三类说明的合集，已滤掉空串 */
+	/** 日期/出生地/时辰说明合集，滤空串 */
 	notes: string[];
-	/** 本次实际采用的经度（东经为正）；`info.longitude` 与它同值 */
+	/** 实际经度（东经正）；同 info.longitude */
 	longitude: number;
-	/** 出生地解析提示，精确命中时为空串 */
+	/** 出生地解析提示；精确命中空串 */
 	lngNote: string;
-	/** 同名候选城市列表，无歧义时为 null */
+	/** 同名候选；无歧义 null */
 	lngAmbiguous: string[] | null;
-	/** 校正后的真太阳时落在 23:00–23:59（需提醒用户复核晚子时口径） */
+	/** 真太阳时落 23:00–23:59（提示复核晚子时） */
 	lateZiCandidate: boolean;
-	/** 本次排盘是否真的按晚子时口径（timeIndex === 12） */
+	/** 是否按晚子时排盘（timeIndex===12） */
 	isLateZi: boolean;
 }
 
 /**
- * 口径提示的**单一搬运载体**（候选 6）—— birthplaceSection / lateZiSection /
- * infoSection / buildReport / buildAnalyzeJson 消费的字段打成一包。
- *
- * @remarks
- * 此前这些字段在 astrology.ts 被解构成 8 个局部变量逐个传递，同样的折算逐字重复 ——
- * 改一处漏一处没有任何断言会红。现收成 {@link toBasis} 单点折算 + 整包传递。
- *
- * `notes` 用 `readonly`：这是只读快照，消费方（JSON 序列化 / 渲染）都不改它。
+ * 口径提示单一搬运载体。
+ * @remarks 原在 astrology.ts 解成 8 局部变量逐字传，改一处漏一处无断言红；现 {@link toBasis} 单点折算 + 整包传递，notes 只读。
  */
 export interface CaliberBasis {
-	/** 时辰那一条说明（`notes` 的其中一项；infoSection 的 solarNote 来源） */
+	/** 时辰说明（notes 之一，solarNote 源） */
 	note: string;
-	/** 日期 / 出生地 / 时辰三类说明的合集，已滤掉空串 */
+	/** 日期/出生地/时辰说明合集，滤空串 */
 	notes: readonly string[];
-	/** 本次实际采用的经度（东经为正） */
+	/** 实际经度（东经正） */
 	longitude: number;
-	/** 出生地解析提示，精确命中时为空串 */
+	/** 出生地解析提示；精确命中空串 */
 	lngNote: string;
-	/** 同名候选城市列表，无歧义时为 null */
+	/** 同名候选；无歧义 null */
 	lngAmbiguous: string[] | null;
-	/** 校正后的真太阳时落在 23:00–23:59 */
+	/** 真太阳时落 23:00–23:59 */
 	isLateZi: boolean;
-	/** 本次排盘是否真的按晚子时口径（timeIndex === 12） */
+	/** 是否按晚子时排盘（timeIndex===12） */
 	lateZiCandidate: boolean;
-	/** args.time 折算的钟表时刻展示串（非字符串给 null）——消灭两处逐字重复 */
+	/** args.time 钟表时刻展示串（非串 null） */
 	clockTime: string | null;
 }
 
 /**
- * {@link buildBirthInfo} 的结果 + 原始 `args.time` → {@link CaliberBasis}。
- *
- * @param r - 出生信息解析结果
- * @param time - 原始 `args.time`（`--time` 的值；未给 / 非字符串 → `clockTime: null`）
- * @returns 整包口径载体，`clockTime` 在此单点折算
+ * {@link buildBirthInfo} 结果 + args.time → {@link CaliberBasis}。
+ * @param r - 解析结果
+ * @param time - --time 值（未给/非串→null）
+ * @returns 整包载体，clockTime 单点折算
  */
 export function toBasis(r: BirthInfoResult, time: unknown): CaliberBasis {
 	return {
@@ -181,14 +142,10 @@ export function toBasis(r: BirthInfoResult, time: unknown): CaliberBasis {
 }
 
 /**
- * {@link CaliberBasis} → `infoSection` 的 {@link InfoClockOpts}（形状对齐，调用点不再手拼）。
- *
- * @remarks
- *
- * @param b - 已装配好的排盘依据载体（`clockTime` / `note` / `longitude` 三键被取用）
- * @returns 与 `InfoClockOpts` 同形的对象：`clockTime` 原样透传（可为 `null`），`solarNote` 取 `b.note`，`longitude` 为本次实际采用的经度
- *
- * `InfoClockOpts` 本身留在 fortune.ts 不动（render 测试面稳定）；转换只有本函数一处。
+ * {@link CaliberBasis} → infoSection 的 {@link InfoClockOpts}。
+ * @param b - 已装配载体
+ * @returns 同形对象：clockTime 透传 / solarNote=b.note / longitude 实采经度
+ * @remarks InfoClockOpts 留 fortune.ts 不动；转换只此一处。
  */
 export function clockOptsFromBasis(b: CaliberBasis): {
 	clockTime: string | null;

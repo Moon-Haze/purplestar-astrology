@@ -1,27 +1,16 @@
 /**
- * 星曜数据 —— 主星亮度表与十四主星释义（2026-10-11 从 `constants.ts` 拆出，逐字迁移）。
- *
- * ⚠️ 两张表**都无消费者**：`STAR_BRIGHTNESS` 未被运行期读取（亮度走 iztro 原文），
- *    `STAR_DESCRIPTIONS` 只影响文案、不参与安星与格局判定。
- *
- * 完整口径见 docs/code/data-tables.md。
- *
- * @file 星曜数据 —— 主星亮度表与十四主星释义（2026-10-11 从 `constants.ts` 拆出，逐字迁移）
- *
+ * @file 星曜数据 —— 主星亮度表与十四主星释义（2026-10-11 从 `constants.ts` 拆出，逐字迁移）。
+ * ⚠️ 两表均无消费者（详见各表）。口径见 docs/code/data-tables.md。
  * @packageDocumentation
  */
 
 /**
  * 主星亮度表：星名 → `{ 地支索引 0–11 → 亮度档 }`。
- *
- * 值域是 `algorithm.ts` 的 `mapBrightness` 的**输出域**（`"bright"` / `"normal"` / `"dim"`），
- * 不是 iztro 的中文原文。中英对照：庙/旺 = `bright`、利/平 = `normal`、不利/陷 = `dim`。
- *
- * 只覆盖 **6 颗**主星（紫微、天机、太阳、武曲、天同、廉贞）—— 十四主星里的另外 8 颗不在表内。
- *
- * ⚠️ 当前 `scripts/` 与 `test/` 中**无消费者** —— 运行时的 `Star.brightness` 对**全部**
- * 主星都是直接取 iztro 的亮度字、经 `mapBrightness` 归并得来，**未走本表**。
- * 仅为数据留存，改它不会影响现有输出。
+ * 值域为 `algorithm.ts` 的 `mapBrightness` 输出域（`"bright"`/`"normal"`/`"dim"`），非 iztro 原字；
+ * 庙/旺=`bright`、利/平=`normal`、不利/陷=`dim`。
+ * 仅覆盖 6 颗（紫微、天机、太阳、武曲、天同、廉贞），另 8 颗不在表内。
+ * ⚠️ 无消费者：运行时 `Star.brightness` 全取 iztro 亮度字经 `mapBrightness` 归并，**未走本表**；
+ * 仅数据留存，改它不影响输出。
  */
 export const STAR_BRIGHTNESS: Record<string, Record<number, string>> = {
 	紫微: {
@@ -112,13 +101,10 @@ export const STAR_BRIGHTNESS: Record<string, Record<number, string>> = {
 
 /**
  * 十四主星释义（倪海厦体系）：星名 → `{ keywords, nature, element }`。
- *
- * 消费者：`cli/commands/index.ts` 的「主星释义」查询与关键词展示；`cli/selftest/index.ts` 的完整性
- * 断言（要求恰 14 条，且键集合与 iztro 的十四主星一致）。
- *
- * ⚠️ 本表**不参与安星，也不参与格局判定**，只影响文案。增删条目会让 `selftest` 的
- * 「星曜释义条数」断言变红。注意：线上站点的 14 主星 × 主题论断库（`STAR_DB`）
- * **不在本 skill 内**，别把它和本表混为一谈。
+ * 消费者：`cli/commands/index.ts` 的「主星释义」查询与关键词展示；`cli/selftest/index.ts` 断言
+ * （恰 14 条，键集合与 iztro 十四主星一致）。
+ * ⚠️ 不参与安星与格局判定，只影响文案。增删会让 `selftest` 的「星曜释义条数」断言变红。
+ * 线上 14 主星 × 主题论断库（`STAR_DB`）不在本 skill 内，勿混。
  */
 export const STAR_DESCRIPTIONS: Record<
 	string,

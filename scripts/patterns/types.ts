@@ -1,14 +1,9 @@
 /**
- * 格局层的**类型**：结构体、识别器入参、识别器签名。
- *
- * @remarks
- * 本模块只放「是什么形状」；数据在 `../corpus/data/patterns.ts`、判定在各分组文件、
- * 装配在 `./index` —— 分工是**形状 / 数据 / 判定**，改哪一层就只需读哪个文件（见 docs/code/patterns.md）。
- *
- * 本文件里的 `{@link}` 一律只指向**本文档内**的符号 —— 跨文件 TSDoc 解析不到，
- * 指向其他模块的符号时直呼其名，不加链接。
- *
- * @file 格局层的**类型**：结构体、识别器入参、识别器签名
+ * 格局层的类型：结构体、识别器入参、签名。
+ * @remarks 本模块只放形状；数据在 `../corpus/data/patterns.ts`、判定在各分组、装配在
+ * `./index`，改哪层读哪个文件（见 docs/code/patterns.md）。本文件 `{@link}` 只指向
+ * 本文档内符号（跨文件 TSDoc 解析不到），指外部模块直呼其名不加链接。
+ * @file 格局层的类型
  *
  * @packageDocumentation
  */
@@ -17,15 +12,10 @@ import type { ZiweiChart, Palace } from "../types";
 
 // ────────────────── 类型 ──────────────────
 /**
- * 格局的成立条件分层
- *
- * @remarks
- * ⚠️ 这三个数组是**回填已判定项**的结果记录，**不是判定依据**：识别器先判完条件再把命中项
- * 写进来给文案层展示。故「某条件不在 `required` 里」不等于「该条件不成立」（见
- * docs/code/patterns.md）。
- *
- * 三层语义：`required` 全部成立格局才被推入；`bonus` 与 `breaking` 只影响
- * {@link Pattern.level} 的取值（有 `breaking` 通常降级）。
+ * 成立条件分层。
+ * @remarks ⚠️ 三数组是回填已判定项的结果记录，非判定依据：识别器先判完再把命中项写给
+ * 文案层，故「某条件不在 `required` 里」不等于「该条件不成立」（见 docs/code/patterns.md）。
+ * `required` 全成立才推入格局；`bonus`/`breaking` 只影响 {@link Pattern.level}（有 breaking 降级）。
  */
 export interface PatternCondition {
 	/** 必须满足条件（已通过的） */

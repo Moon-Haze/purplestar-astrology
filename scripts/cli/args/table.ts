@@ -1,35 +1,28 @@
 /**
- * CLI 参数声明面 —— 「有哪些参数」的唯一定义处（纯数据，零依赖）。
- *
- * 三层分工：本文件管**声明了什么**、`./scope` 管**本 skill 认哪些**、`./parse` 管**怎么解析**。
- *
- * ⚠️ **键名是 camelCase**（`late-zi` → `lateZi`），换算只有 {@link camelKey} 一处，
- *    而 `name` 仍写 kebab（它同时是用户敲的名字、help 的显示名）。
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**经 `./parse` 间接加载 —— 不要在
- *    purple-star.ts 顶部用静态 `import` 引它（钩子未注册时解析会失败）。
- *    声明表的来历与各套派生的论证见 docs/code/cli-args.md。
+ * CLI 参数声明面 —— 「有哪些参数」唯一定义处（纯数据零依赖）。
+ * 分层：本文件声明、`./scope` 认领、`./parse` 解析。
+ * ⚠️ 键名 camelCase（`late-zi`→`lateZi`），换算仅 {@link camelKey}；`name` 仍 kebab。
+ * 引导层在 `registerHooks` 后经 `./parse` 间接加载，勿在 purple-star.ts 顶部静态引；
+ * 见 docs/code/cli-args.md。
  */
 
-// 类型引入在 TS 擦除后不留任何运行期依赖——本文件「零依赖纯数据」（help 轻路径直载）
-// 的纪律不被破坏；AnalysisView 只是 --view 域的类型锚（值域数据在下方 VIEW_DOMAIN）。
+// 类型引入 TS 擦除后不留运行期依赖，「零依赖纯数据」（help 轻路径直载）不破；
+// AnalysisView 仅 --view 域类型锚，值域数据在 VIEW_DOMAIN。
 import type { AnalysisView } from "../../analysis/data";
 
 /**
- * `--view` 展示口径域（2026-11-18 扫描发现 3：值域文案五处手抄的单点）。
- *
- * @remarks
- * 键序即展示序（首项为缺省）。`zh` 是中文口径名（各处文案的唯一来源），`en` 是
- * 英文别名（收进 {@link VIEW_ALIASES}），`runtime` 标记「运限视角」投影子集——
- * `--report` / 尾注只列三态（本命静态口径不含 mingpan），这是文案语义不是派生遗漏。
+ * `--view` 展示口径域（值域文案单点）。
+ * @remarks 键序即展示序（首项缺省）。`zh` 中文口径名（唯一来源），`en` 英文别名
+ *   （{@link VIEW_ALIASES}），`runtime` 标运限视角子集。
  */
 export interface ViewDomainEntry {
-	/** `--view` 的取值主键（同时是 `AnalysisView` 的成员，也是拼音主键） */
+	/** `--view` 取值主键（`AnalysisView` 成员，拼音主键） */
 	key: AnalysisView;
-	/** 中文口径名，如「当前大限」「流年」——各处展示文案的唯一来源 */
+	/** 中文口径名，如「当前大限」「流年」，文案唯一来源 */
 	zh: string;
-	/** 英文别名（`--view decadal` 等），缺省即无英文写法 */
+	/** 英文别名（`--view decadal` 等），缺省无英文写法 */
 	en?: string;
-	/** 标记「运限视角」：`--report` / 尾注只列这三态，本命静态口径属于缺省不列 */
+	/** 标「运限视角」：`--report` / 尾注只列三态，本命静态口径缺省不列 */
 	runtime?: true;
 }
 
@@ -40,7 +33,7 @@ export const VIEW_DOMAIN: readonly ViewDomainEntry[] = [
 	{ key: "liuyue", zh: "流月", en: "monthly", runtime: true },
 ];
 
-/** `--view` 别名表（别名 → AnalysisView）：英文别名归一到**拼音主键**（yearly → liunian），键与别名一并收录。 */
+/** `--view` 别名表：英文别名归一到拼音主键（yearly → liunian）。 */
 export const VIEW_ALIASES: Record<string, AnalysisView> = Object.fromEntries(
 	VIEW_DOMAIN.flatMap(v => {
 		const entries: [string, AnalysisView][] = [[v.key, v.key]];
@@ -51,7 +44,7 @@ export const VIEW_ALIASES: Record<string, AnalysisView> = Object.fromEntries(
 	})
 );
 
-/** 值域文案的派生单点：五种形态全部由 {@link VIEW_DOMAIN} 拼装，任何引用处不再手抄。 */
+/** 值域文案派生单点：五种形态均由 {@link VIEW_DOMAIN} 拼装。 */
 export const VIEW_TEXT = {
 	/** 「可选清单」形态——`--topic` 裸开关指路第一行（全角括号后接「/ 」，无前置空格） */
 	choices: VIEW_DOMAIN.map((v, i) => `${v.key}（${v.zh}${i === 0 ? "，默认" : ""}）`).join("/ "),
@@ -72,74 +65,63 @@ export const VIEW_TEXT = {
 } as const;
 
 /**
- * 一个参数的完整声明。
- *
- * @remarks
- * 界面刻意只留四格 `name / kind / value / desc` —— 声明表要能被一眼扫完（见
- * docs/code/cli-args.md）。其余语义标志见下方字段。
+ * 参数完整声明。
+ * @remarks 界面只留四格 `name/kind/value/desc`（见 docs/code/cli-args.md）；其余标志见字段。
  */
 export interface OptionSpec {
-	/** 参数名，不含 `--`。`synastry` 可用 `a-` / `b-` 前缀叠在它前面（如 `--a-chart`） */
+	/** 参数名不含 `--`。`synastry` 可叠 `a-` / `b-` 前缀（如 `--a-chart`） */
 	name: string;
-	/** `"value"` 取值、`"switch"` 纯开关（help 据此决定写不写值域占位） */
+	/** `"value"` 取值、`"switch"` 开关（help 据此定值域占位） */
 	kind: "value" | "switch";
 	/** 值域占位，如 `"YYYY-MM-DD"`；`kind: "switch"` 时不给 */
 	value?: string;
 	/**
-	 * 可选值形态：裸开关（不带值）**合法**，由命令侧取缺省（`--yearly` = 当年）或
-	 * 列清单（`--topic`）。help 据此把值域显示成 `<[x]>`；不标注即必值，末尾缺值
-	 * 会以「需要一个值」被命令侧指路。
+	 * 可选值形态：裸开关（不带值）**合法**，命令侧取缺省（`--yearly`=当年）或列清单；
+	 * help 显示值域 `<[x]>`；不标注即必值，缺值以「需要一个值」指路。
 	 */
 	optionalValue?: boolean;
 	/** 一行说明，即 help 里那一行的描述列 */
 	desc: string;
-	// ── 语义标志（候选 2）：四套派生的真相源，均可选、缺省即「不属于」 ──
-	/** 可被独占分支吞掉（输出与选题组的 yearly / monthly / daily / hourly / focus / topic / report / view） */
+	// ── 语义标志（候选 2）：四套派生真相源，均可选、缺省「不属于」 ──
+	/** 可被独占分支吞掉（八项功能参数） */
 	shadow?: true;
 	/**
-	 * 显式声明不在被吞检测域（两个 role 均可作表态：topic-deep 组默认入域、output-select
-	 * 组默认域外——标它把「有意不在域内」从沉默写成声明，供穷尽性断言核对）
+	 * 显式声明不在被吞检测域（topic-deep 默认入域、output-select 默认域外；
+	 * 标它把「有意不在域内」写成声明，供穷尽性断言核对）
 	 */
 	noShadow?: true;
 	/**
-	 * 专题深入旗标（pattern / mutagen / yearly / decadal / ages / focus）——
-	 * 深入态基底显隐的判据（旧 astrology 里硬编码的 deepDive 六旗标）
+	 * 专题深入旗标（六项）—— 深入态基底显隐判据（旧 astrology 硬编码的 deepDive 六旗标）
 	 */
 	deep?: true;
-	/** 排除出「输出意图」判据（info 是零输入演示目标本身；config 是参数来源而非输出形态） */
+	/** 排除出「输出意图」（info 是演示目标本身；config 是参数来源） */
 	noIntent?: true;
-	// ── 归属标志（候选 4）：help 归属投影的真相源，取代 help.ts 手抄 OPTION_OWNERSHIP ──
-	/** 读取本参数的命令（kebab 主名）；help 的每命令 OPTIONS 节据此过滤 */
+	// ── 归属标志（候选 4）：help 归属投影真相源，取代 help.ts 手抄 OPTION_OWNERSHIP ──
+	/** 读取本参数的命令（kebab 主名）；help OPTIONS 节据此过滤 */
 	cmds?: readonly string[];
-	/** 全局参数（任意命令可用）—— 不进任何命令的专属列表，help 在节尾单列一行 */
+	/** 全局参数（任意命令可用）—— 不进专属列表，help 节尾单列 */
 	global?: true;
 }
 
 /**
- * 选项组的语义角色（候选 2）—— 四套派生（shadow / birth / intent / deep）与优先级链
- * 全部从 role + 参数标志投影，不再按中文 title 的 `startsWith` 反推。
+ * 选项组语义角色（候选 2）—— 四套派生与优先级链全从 role + 标志投影，不按 title 反推。
  */
 export type GroupRole = "birth" | "topic-deep" | "output-select" | "other";
 
-/** 一组参数（`title` 是给读声明表的人看的分类，不进 help 参数段；`role` 是派生用的语义角色）。 */
+/** 一组参数（`title` 给读表人看，不进 help 参数段；`role` 派生用语义角色）。 */
 export interface OptionGroup {
-	/** 分组标题：给读声明表的人看的分类，不进 help 参数段 */
+	/** 分组标题：给读表人看，不进 help 参数段 */
 	title: string;
-	/** 语义角色：出生信息三组 → `birth`；专题深入 → `topic-deep`；输出与选题 → `output-select`；其余 → `other` */
+	/** 语义角色：出生信息三组 → `birth`；专题深入 → `topic-deep`；输出选题 → `output-select`；其余 → `other` */
 	role: GroupRole;
 	/** 本组包含的参数声明，按 help 展示序 */
 	options: readonly OptionSpec[];
 }
 
 /**
- * 全部参数（英文主名），按 help 的展示顺序分组。
- *
- * @remarks
- * 专题参数族主名英文化，拼音原名成为 {@link OPTION_ALIASES} 别名；`--year` / `--month` /
- * `--day` 三连**已删**（`--date` 完全覆盖，误敲 `--year` 由拼错建议引向 `--yearly`）。
- *
- * ⚠️ 分组标题里的「三选一」「二选一」是**口径**而非装饰：`buildBirthInfo` 对
- *    `--date` / `--lunar` 与 `--time` / `--branch` 各取其一（见 docs/code/cli-args.md）。
+ * 全部参数（英文主名），按 help 展示序分组。
+ * @remarks 专题族主名英文化，拼音原名成 {@link OPTION_ALIASES}；`--year`/`--month`/`--day`
+ *   三连已删（`--date` 覆盖）。「三选一/二选一」是口径：`buildBirthInfo` 日期/时辰各取其一。
  */
 export const OPTION_GROUPS: readonly OptionGroup[] = [
 	{
@@ -451,10 +433,8 @@ export const OPTION_GROUPS: readonly OptionGroup[] = [
 
 /**
  * 拼音别名 → 英文主名（spec §1.1）。
- *
- * @remarks
- * 别名是**显式声明**的映射，不是拼错容错 —— `--patern` 仍然报错（由 `suggestOption`
- * 建议主名）。help / SKILL.md 一律用主名，别名在 help 的参数描述尾注。
+ * @remarks 别名是显式声明映射，非拼错容错——`--patern` 仍报错；help/SKILL.md 一律用主名，
+ *   别名在参数描述尾注。
  */
 export const OPTION_ALIASES: Record<string, string> = {
 	geju: "pattern",
@@ -468,34 +448,30 @@ export const OPTION_ALIASES: Record<string, string> = {
 };
 
 /**
- * 声明表里的**全部**参数名（英文主名，不含别名）。
- *
- * @remarks
- * 单 skill 形态下作用域即全集。校验时先查 {@link OPTION_ALIASES} 归一，再查这张表。
+ * 声明表全部参数名。
+ * @remarks 校验先查 {@link OPTION_ALIASES} 归一。
  */
 export const ALL_OPTION_NAMES: ReadonlySet<string> = new Set(
 	OPTION_GROUPS.flatMap(g => g.options.map(o => o.name))
 );
 
 /**
- * kebab-case → camelCase：**键名换算的唯一一处**。
- *
- * @param name - 参数名，可带 `synastry` 的 `a-` / `b-` 前缀（如 `"a-late-zi"`）
- * @returns camelCase 形式（`"aLateZi"`）
+ * kebab-case → camelCase：键名换算唯一一处。
+ * @param name - 参数名，可带 `a-`/`b-` 前缀
+ * @returns camelCase 形式
  */
 export function camelKey(name: string): string {
 	return name.replace(/-([a-z0-9])/g, (_m: string, c: string) => c.toUpperCase());
 }
 
-// ══════════════════ 语义派生（候选 2）══════════════════
-// 四套派生 + 优先级链同源于 role 与参数标志：新增专题旗标只需标 `deep: true`。
-// 域注意：SHADOWABLE 用 kebab 原名，其余三个用 camelCase（消费 args 键）
-// —— 论证见 docs/code/cli-args.md。
+// ── 语义派生（候选 2）──
+// 四套派生 + 优先级链同源于 role 与参数标志；新增专题标 `deep: true` 即可。
+// SHADOWABLE 用 kebab 原名，其余三个 camelCase（消费 args 键）；见 docs/code/cli-args.md。
 
 /**
- * 可被独占分支吞掉的功能参数（kebab 原名）：专题深入组除 `palaces`（noShadow）外全部，
- * 加上输出与选题组标了 `shadow` 的五项。独占参数自身也在集合里（让「两个独占分支同给」
- * 被指路而非静默吞掉）—— 自指由调用处的 `n !== exclusive` 兜住，见 docs/code/cli-args.md。
+ * 可被独占分支吞掉的功能参数（kebab）：专题深入组除 `palaces` 外全部 + 输出/选题组标
+ * `shadow` 五项。独占参数自身也在集合（让「两个独占分支同给」被指路而非静默吞），
+ * 自指由调用处 `n !== exclusive` 兜住。
  */
 export const SHADOWABLE_KEYS: ReadonlySet<string> = new Set(
 	OPTION_GROUPS.flatMap(g => {
@@ -510,39 +486,34 @@ export const SHADOWABLE_KEYS: ReadonlySet<string> = new Set(
 );
 
 /**
- * 出生相关参数名（camelCase）—— `role: "birth"` 三个组的全部参数。零输入演示的判据之一：
- * 这些键**全部**缺席（只给 `--gender` 是部分输入，按「缺一问一」报错，不走演示盘）。
- * 位置参数归类与 `--config` 注入也算「已输入」—— 见 docs/code/cli-args.md。
+ * 出生相关参数名（camelCase）—— `role: "birth"` 三组全部。零输入演示判据：这些键全部
+ * 缺席（只给 `--gender` 是部分输入，按「缺一问一」报错）；位置参数与 `--config` 注入也算输入。
  */
 export const BIRTH_KEYS: readonly string[] = OPTION_GROUPS.filter(g => g.role === "birth").flatMap(
 	g => g.options.map(o => camelKey(o.name))
 );
 
 /**
- * 表达了输出意图的功能参数（camelCase）—— 专题深入与输出选题两组，刨去标了 `noIntent`
- * 的 `info` 与 `config`。零输入 + 这些参数在场 = 用户要特定输出，**不替他排虚构盘**
- * （`--json` / `--report` 尤其如此）—— 见 docs/code/cli-args.md。
+ * 表达输出意图的功能参数（camelCase）—— 专题深入+输出选题两组，刨去 `noIntent` 的
+ * `info`/`config`。零输入+这些参数在场 = 用户要特定输出，不替他排虚构盘（`--json`/`--report` 尤甚）。
  */
 export const INTENT_KEYS: readonly string[] = OPTION_GROUPS.filter(
 	g => g.role === "topic-deep" || g.role === "output-select"
 ).flatMap(g => g.options.filter(o => o.noIntent !== true).map(o => camelKey(o.name)));
 
 /**
- * 专题深入旗标（camelCase）—— 深入态基底的显隐判据：任一在场即「已在深入，基底与指路是
- * 噪声」。旧 astrology 的硬编码六旗标由此收编；新增专题参数只需标 `deep: true`。
+ * 专题深入旗标（camelCase）—— 深入态基底显隐判据：任一在场即「已在深入，基底与指路是
+ * 噪声」。旧硬编码六旗标由此收编；新增专题标 `deep: true`。
  */
 export const DEEP_DIVE_KEYS: readonly string[] = OPTION_GROUPS.flatMap(g =>
 	g.options.filter(o => o.deep === true).map(o => camelKey(o.name))
 );
 
 /**
- * 专题深入菜单 —— 指路行与 help DESCRIPTION 旗标列举段的**展示元数据**（评审 N7）：
- * `deep: true` 声明「判定链跟上」，本表声明「用户看到什么」。两处消费
- * （fortune/overview 的【专题深入】指路行、command-meta 的 astrology DESCRIPTION）
- * 都从这里拼装 —— 新增专题不再有「改一处漏两处文案」的第二个手抄面。
- *
- * 对拍纪律：selftest 钉「菜单 ⊆ 声明表」与「deep 旗标 ⊆ 菜单」双向；指路行的策展
- * 排列住本表数组序，DESCRIPTION 的段落取舍在各消费方显式点名（各留各的策展）。
+ * 专题深入菜单 —— 指路行/help DESCRIPTION 展示元数据（评审 N7）：`deep: true`
+ * 声明「判定链跟上」，本表「用户看到什么」。两处消费（fortune/overview、
+ * command-meta）由此拼装，新增专题无「改一处漏两处文案」手抄面。selftest 钉
+ * 「菜单 ⊆ 声明表」「deep 旗标 ⊆ 菜单」双向。
  */
 export interface DeepDiveMenuEntry {
 	/** 旗标名（kebab，须是 OPTION_GROUPS 已声明的参数名 —— selftest 双向对拍钉住） */
@@ -552,8 +523,7 @@ export interface DeepDiveMenuEntry {
 	/** 短标签（指路行用） */
 	label: string;
 	/**
-	 * 长段（help DESCRIPTION 列举段用；缺省回落短形态）。含换行时再现手抄基线的
-	 * 折行点 —— help 文案的行宽排版由此保持。
+	 * 长段（help DESCRIPTION 列举段用；缺省回落短形态）。
 	 */
 	long?: string;
 }
@@ -581,11 +551,10 @@ export const DEEP_DIVE_MENU: readonly DeepDiveMenuEntry[] = [
 ];
 
 /**
- * 按旗标名取菜单条目；未登记即抛（对拍断言也会红，这里 fail-fast 不静默）。
- *
- * @param name - 旗标主名（不含 `--`，如 `pattern` / `focus`）
- * @returns {@link DEEP_DIVE_MENU} 里 `name` 命中的那一条
- * @throws `name` 未在 {@link DEEP_DIVE_MENU} 登记时抛错（新增专题须同步本表）
+ * 按旗标名取菜单条目；未登记即抛。
+ * @param name - 旗标主名
+ * @returns {@link DEEP_DIVE_MENU} 中命中条目
+ * @throws 未登记时抛错
  */
 export function deepDiveEntry(name: string): DeepDiveMenuEntry {
 	const entry = DEEP_DIVE_MENU.find(m => m.name === name);
@@ -596,11 +565,10 @@ export function deepDiveEntry(name: string): DeepDiveMenuEntry {
 }
 
 /**
- * 菜单段渲染：缺省短形态（指路行）；`"long"` 取长段（help DESCRIPTION）。
- *
+ * 菜单段渲染：缺省短形态（指路行）；`"long"` 取长段。
  * @param entry - 菜单条目（通常来自 {@link deepDiveEntry}）
- * @param mode - `"short"` 出指路行（默认）；`"long"` 在该条目登记了 `long` 时改出长段
- * @returns 单行指路串 `--name [arg] label`，或条目登记的长段文案
+ * @param mode - `"short"` 指路行（默认）/`"long"` 长段
+ * @returns 指路串 `--name [arg] label` 或长段文案
  */
 export function deepDiveSegment(
 	entry: DeepDiveMenuEntry,
@@ -614,27 +582,27 @@ export function deepDiveSegment(
 
 /**
  * 独占分支条目 —— 判定链「谁被吞 / 谁被消费 / 谁优先 / 谁 bespoke 拒收」的分支级
- * 关系表态（2026-11-17-exclusive-branch-allow-chain-declaration）：参数本身的存在性
- * 仍以 {@link OPTION_GROUPS} 为准，本表只声明分支级关系。
+ * 表态（2026-11-17-exclusive-branch-allow-chain-declaration）：存在性仍以
+ * {@link OPTION_GROUPS} 为准，本表只声明分支级关系。
  */
 export interface ExclusiveBranchSpec {
-	/** 独占分支名（kebab，须是 OPTION_GROUPS 已声明的参数名 —— 由 selftest 不变量钉住） */
+	/** 独占分支名（kebab，须是 OPTION_GROUPS 已声明的参数名，selftest 钉住） */
 	name: string;
-	/** 该分支合法消费（放行）的功能参数（kebab，与 SHADOWABLE_KEYS 同域；放行 ⊆ 被吞域） */
+	/** 该分支合法消费（放行）的功能参数（kebab；放行 ⊆ 被吞域） */
 	consumes: readonly string[];
 	/**
-	 * bespoke 拒收：keys 中任一参数在场即抛 note（`{flag}` 占位符由检测入口替换为
-	 * `--<key>`），统一检测入口保证它先于通用文案（2026-11-11 移序前提的结构化）
+	 * bespoke 拒收：keys 任一在场即抛 note（`{flag}` 由检测入口替换为 `--<key>`），
+	 * 统一检测保证先于通用文案
 	 */
 	rejectsWithNote?: { keys: readonly string[]; note: string };
-	/** 优先级链显示段（缺省 `--<name>`；链上「其他功能参数」段用它） */
+	/** 优先级链显示段（缺省 `--<name>`；「其他功能参数」段用它） */
 	chainLabel?: string;
 }
 
 /**
- * 独占分支判定链的唯一表态处，按优先序排列（palaces > topic > report > info）：
- * 命令侧的被吞检测、消费放行、--info 上级梯、优先级文案与 report.test 组合矩阵
- * 全部从本清单派生——新增/退役独占分支或放行参数回到「此处一项/一行」。
+ * 独占分支判定链唯一表态处，优先序 palaces > topic > report > info：被吞检测、
+ * 消费放行、--info 上级梯、优先级文案与 report.test 矩阵全由此派生；
+ * 增/退分支或放行参数回到「此处一项/一行」。
  */
 export const EXCLUSIVE_BRANCHES: readonly ExclusiveBranchSpec[] = [
 	{ name: "palaces", consumes: [] },
@@ -654,35 +622,29 @@ export const EXCLUSIVE_BRANCHES: readonly ExclusiveBranchSpec[] = [
 ];
 
 /**
- * 独占分支优先级链文案 —— 由 {@link EXCLUSIVE_BRANCHES} 清单序派生（info 的显示段
- * 为「其他功能参数」）：astrology 报错与 help 说明共用；selftest 的冻结镜像对拍
- * 因派生而升格为清单顺序守卫（改序即红）。
+ * 优先级链文案 —— 由 {@link EXCLUSIVE_BRANCHES} 清单序派生（info 显示段为「其他功能参数」）；
+ * astrology 报错与 help 共用，改序即红。
  */
 export const EXCLUSIVE_PRIORITY_LABEL = EXCLUSIVE_BRANCHES.map(
 	b => b.chainLabel ?? `--${b.name}`
 ).join(" > ");
 
-// ══════════════════ 归属投影（候选 4）══════════════════
-// 「哪个参数归哪条命令」此前是 help.ts 手抄的第二真相源（零正向测试、早已漂移），
-// 现收进声明表：每个参数标 `cmds`、全局参数标 `global`，help 只做投影。
+// ── 归属投影（候选 4）──
+// 「哪个参数归哪条命令」原是 help.ts 手抄的第二真相源（零正向测试、早漂移），
+// 现收进声明表：参数标 `cmds`、全局标 `global`，help 只做投影。
 
 /**
- * 全局参数（kebab 名）—— 标了 `global: true` 的参数，任意命令可用。
- * 现仅 `--out`（落盘通道在引导层 main，对每条命令都生效）。
+ * 全局参数（kebab 名）—— 标 `global: true` 任意命令可用。现仅 `--out`。
  */
 export const GLOBAL_OPTIONS: readonly string[] = OPTION_GROUPS.flatMap(g => g.options)
 	.filter(o => o.global === true)
 	.map(o => o.name);
 
 /**
- * 命令 → 该命令实际读取的专属参数（kebab 名，投影非转录）。
- *
- * @param cmd - 命令名（kebab 主名）
- * @returns 标了 `cmds` 含该命令、且非全局的参数名，按声明表顺序
- *
- * @remarks
- * help 视图：未列出的参数对该命令无害（skill 级作用域收下不用），但 help 不展示。
- * ⚠️ 作用域仍是 skill 级，本投影**不做硬校验**（见 docs/code/cli-args.md）。
+ * 命令 → 实际读取的专属参数（投影非转录）。
+ * @param cmd - 命令名
+ * @returns 标 `cmds` 且非全局的参数名
+ * @remarks 未列参数 help 不展示；投影不做硬校验。
  */
 export function ownedOptions(cmd: string): readonly string[] {
 	return OPTION_GROUPS.flatMap(g => g.options)

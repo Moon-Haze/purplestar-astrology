@@ -1,33 +1,24 @@
 /**
- * @file DuckDB 数据库结构、布局和共享查询定义。
+ * @file DuckDB 库结构、布局与共享查询定义。
  */
 import { existsSync } from "node:fs";
 import path from "node:path";
 import type { DuckDBConnection } from "@duckdb/node-api";
 import { DuckDBInstance } from "@duckdb/node-api";
 
-// spec §5.4：全库 zstd。
-// 注意：实测 DuckDB 1.5.5 对 VARCHAR 列一律按 Uncompressed 存储，本开关对它无效
-// （经 DOUBLE 列阳性对照确认开关本身生效）。主题文本因此不按原文入库，
-// 改为「全局行字典 + 整数数组映射」，见 spec §5/§6。
-/** 建库开始时设置的 PRAGMA（全局 zstd 压缩）。 */
+// spec §5.4：全库 zstd；实测 1.5.5 VARCHAR 恒 Uncompressed（DOUBLE 对照生效），主题文本改「全局行字典 + 整数数组映射」（spec §5/§6）。
+/** 建库时的 PRAGMA（全局 zstd）。 */
 export const CREATE_DB_PRAGMAS = ["PRAGMA force_compression='zstd'"];
 
-// 主题名的**唯一定义**在内核：scripts/analysis/data.ts 的 TOPIC_KEYS（运行时注册表）。
-// 此处只转出 —— 内核的 TopicKey 与这里的列序从此不可能漂移（此前是两份，靠注释提醒）。
-// 视图、构建、校验三处共用同一常量。
+// 主题名唯一源：scripts/analysis/data.ts 的 TOPIC_KEYS，供视图/构建/校验共用，列序不漂移。
 //
-// ⚠️ **注意两个角色不同**：TOPIC_KEYS 是运行时注册表（可含无独立列的别名视图主题），
-// 而拼 SQL 取列必须用 STORAGE_TOPIC_KEYS（数据集物理列集合）。Phase 4 之前两者被混用，
-// 加一个别名主题会让所有这些地方报 `column not found`。
-// ⚠️ 用相对路径而非 `@/` 别名：tools/ 由 tsx 直接执行，不走 CLI 的解析钩子 ——
-//    故本行必须随内核位置手改（内核在仓库根 scripts/），**且 tools/ 不在 npm test 覆盖内**，
-//    漏改不会让任何测试变红，只会在实跑时报模块找不到。
+// ⚠️ TOPIC_KEYS 别名视图主题，拼 SQL 取列须用 STORAGE_TOPIC_KEYS，混用报 `column not found`（Phase 4）。
+// ⚠️ 相对路径而非 `@/`：tools/ 由 tsx 直执行不走解析钩子；随内核位置（scripts/）改，漏改测试不红、实跑报找不到模块。
 import { STORAGE_TOPIC_KEYS, TOPIC_KEYS, type TopicKey } from "../../scripts/analysis/data";
 export { STORAGE_TOPIC_KEYS, TOPIC_KEYS, type TopicKey };
 
-// spec §4.1：结构表两形态共用；主题文本的两张表只有 inline 才建。
-/** 结构表 DDL：samples 与 palaces 两张表，inline 与 dataset 形态共用。 */
+// spec §4.1：结构表两形态共用，主题文本仅 inline 建。
+/** 结构表 DDL：samples / palaces。 */
 export const DDL_STRUCTURE_STATEMENTS: string[] = [
 	`CREATE TABLE samples (
     sample_id BIGINT PRIMARY KEY,
@@ -54,17 +45,15 @@ export const DDL_STRUCTURE_STATEMENTS: string[] = [
   )`,
 ];
 
-// 主题文本的行级全局字典。同一行在 518,400 个样本里大量重复（实测 25,920 样本
-// 的 336,960 段文本只含 12,626 条唯一行），故整库只需存一份。
-// parquet 形态不建这两张表——文本改由库外 Parquet 承载。
-/** 主题文本的行级字典表 DDL（topic_dict / topic_lines），仅 inline 形态创建。 */
+// 主题文本全局字典：同一行大量重复（实测 25,920 样本 336,960 段仅 12,626 唯一行），库一份；
+// parquet 形态不建此二表，文本由库外 Parquet 承载。
+/** 行级字典表 DDL（topic_dict / topic_lines），inline 建。 */
 export const DDL_INLINE_STATEMENTS: string[] = [
 	`CREATE TABLE topic_dict (
     line_id INTEGER PRIMARY KEY,
     line    VARCHAR NOT NULL
   )`,
-	// 每个「样本 × 主题」一行，值为该段文本按 chr(10) 拆行后的行号数组（顺序即原文顺序）。
-	// 全量 674,976 × 13 = 8,774,688 行；映射落在 DuckDB 确实会压缩的整数列上。
+	// 每「样本 × 主题」一行，值为按 chr(10) 拆行的行号数组（顺序=原文），全量 8,774,688 行。
 	`CREATE TABLE topic_lines (
     sample_id BIGINT   NOT NULL,
     topic     VARCHAR  NOT NULL,
@@ -72,22 +61,20 @@ export const DDL_INLINE_STATEMENTS: string[] = [
   )`,
 ];
 
-// spec §5.1/5.2/5.3：inline 形态一次建全（结构 + 字典），与验收版逐字节一致。
-/** inline 形态一次建全的 DDL：结构表 + 主题字典表。 */
+// spec §5.1/5.2/5.3：inline 一次建全，逐字节同验收版。
+/** inline DDL：结构表+字典表。 */
 export const DDL_STATEMENTS: string[] = [...DDL_STRUCTURE_STATEMENTS, ...DDL_INLINE_STATEMENTS];
 
-// 索引在建库收尾时才创建，故不放进 DDL_STATEMENTS：
-// 批量插入期间维护 ART 索引会拖慢构建，而构建期的查询模式（按分片删旧行）用不到它。
-/** `topic_lines` 的索引；建库收尾时才创建，构建期插入不维护。 */
+// 索引收尾才建，不进 DDL_STATEMENTS（批量插入拖慢构建，构建期不用）。
+/** `topic_lines` 索引，收尾才建。 */
 export const TOPIC_LINES_INDEX_SQL =
 	"CREATE INDEX IF NOT EXISTS idx_topic_lines_sample ON topic_lines(sample_id)";
 
 /**
- * 打开（必要时创建）库文件并应用 PRAGMA，返回可写连接。
- *
- * @param dbPath - 库文件路径（不存在则创建）
- * @param layout - 库的布局形态；parquet 只建结构表
- * @returns 已应用 PRAGMA 与 DDL 的可写连接
+ * 打开/创建库并应用 PRAGMA。
+ * @param dbPath - 库路径
+ * @param layout - 布局形态，parquet 只建结构表
+ * @returns 可写连接
  */
 export async function createDb(
 	dbPath: string,
@@ -99,30 +86,25 @@ export async function createDb(
 	for (const stmt of [...CREATE_DB_PRAGMAS, ...ddl]) {
 		await conn.run(stmt);
 	}
-	return conn; // 注：instance 由连接持有者负责最终 close（脚本退出时进程回收亦可）
+	return conn; // instance 由持有者 close
 }
 
-// 构建期字典权威副本：与库同目录、同前缀（ziwei.duckdb → ziwei.duckdb.dict.jsonl）。
-// 它是「变号检测」的基准——库内 topic_dict 与它不一致，说明已建分片的 line_ids
-// 可能整片指向了错误的行，必须立刻停下（spec §7.2/§9.1 第 1 层）。
+// 字典权威副本：与库同前缀（ziwei.duckdb → ziwei.duckdb.dict.jsonl）。
+// 「变号检测」基准：库内 topic_dict 不一致即分片 line_ids 指错行，须停下（spec §7.2/§9.1）。
 /**
- * 库文件旁的字典附属文件路径（`<db>.dict.jsonl`），用于变号检测。
- *
+ * 库旁字典路径（`<db>.dict.jsonl`），用于变号检测。
  * @param dbPath - 库文件路径
- * @returns 同前缀的 `.dict.jsonl` 路径
+ * @returns 同前缀 `.dict.jsonl`
  */
 export function dictPathFor(dbPath: string): string {
 	return dbPath + ".dict.jsonl";
 }
 
-// 库内 topics 视图：13 列文本由行号数组拼回。列序与原先的外置 Parquet 版本一致，
-// 故所有既有查询 SQL 无需改动。
-// ⚠️ unnest 展开与两处 LEFT JOIN 缺一不可（实测：数组字面量化 / NULL 行整对消失）：
-// 详见 docs/code/db-tools.md
+// 库内 topics 视图：13 列文本由行号数组拼回，列序同原 Parquet 版，SQL 无需改。
+// ⚠️ unnest 展开与两处 LEFT JOIN 缺一不可（实测：数组字面量化/NULL 行消失），详见 docs/code/db-tools.md
 /**
- * inline 形态的 `topics` 视图 SQL：把行字典还原成原文行流。
- *
- * @returns inline 形态 `topics` 视图的 `CREATE OR REPLACE VIEW` 语句
+ * inline `topics` 视图 SQL：行字典→原文行。
+ * @returns VIEW 语句
  */
 export function topicsViewSql(): string {
 	const cols = STORAGE_TOPIC_KEYS.map(
@@ -139,15 +121,11 @@ ${cols}
     GROUP BY sample_id`;
 }
 
-// 全量文本检索：按行匹配，比走视图的 contains() 快一个数量级（spec §8，实测 27×）。
-//
-// 守卫必须放在 FROM 的恒一行子查询里，不能写在 WHERE 的 CASE 里（实测）：
-// 后者只在有行流经时求值，topic_lines 为空（或该主题一行都没有）时静默返回 0 行，
-// 正是守卫要防的静默漏匹配。g.guard = 1 这个恒真条件用于强制求值。
+// 全量文本检索按行匹配，比 contains() 快一数量级（spec §8，实测 27×）。
+// 守卫须放 FROM 恒一行子查询，不能放 WHERE 的 CASE：后者仅在有行流经时求值，topic_lines 空时静默返回 0 行；g.guard=1 强制求值。
 /**
- * inline 形态的 `search_topic(t, p)` 宏：按主题列做子串检索。
- *
- * @returns inline 形态 `search_topic(t, p)` 宏的 `CREATE OR REPLACE MACRO` 语句
+ * inline `search_topic(t, p)` 宏：按主题列子串检索。
+ * @returns MACRO 语句
  */
 export function searchTopicMacroSql(): string {
 	return `CREATE OR REPLACE MACRO search_topic(t, p) AS TABLE
@@ -161,32 +139,27 @@ export function searchTopicMacroSql(): string {
 }
 
 /**
- * 以只读方式打开库文件，用于查询与核验。
- *
- * @param p - 库文件路径
+ * 只读打开库文件。
+ * @param p - 库路径
  * @returns 只读连接
  */
 export async function openReadOnly(p: string): Promise<DuckDBConnection> {
-	// DuckDB 原生配置键名为 access_mode（非 accessMode）；选项表为 Record<string, string>
+	// 原生键名 access_mode（非 accessMode）；选项表 Record<string, string>
 	const instance = await DuckDBInstance.create(p, { access_mode: "READ_ONLY" });
 	return await instance.connect();
 }
 
-// 形态：inline = 单库自足（文本在库内的行字典里）；
-// parquet = dataset 载体库的内部布局：三类数据全在库外的 dataset/ 目录，库只承载结构表（spec §6.1）。
-// 注意：--mode 只有 inline | dataset 两种，'parquet' 不再是独立形态，仅作为 --mode=dataset 产出库的
-// 内部布局名（结构表 + read_parquet topics 视图），供 detectLayout 区分，不对外暴露。
-/** 库的布局形态：inline（库内建表）或 parquet（库外 parquet + 视图）。 */
+// 形态：inline=单库自足（文本在库内）；parquet=dataset 内部布局，三类数据在库外 dataset/，库只承载结构表（spec §6.1）。
+// --mode 仅 inline|dataset；'parquet' 非独立形态，仅作内部布局名供 detectLayout 区分。
+/** 库布局形态：inline（库内建表）或 parquet（库外 parquet+视图）。 */
 export type DbLayout = "inline" | "parquet";
 
-// ── 输出位置的唯一定义处 ──
-// build / verify / query 三脚本共用；四个固定文件名与 `..` 段拒收契约（⚠️ 校验必须内联在
-// 各自函数体内，抽公共函数断不了污点流）：详见 docs/code/db-tools.md
+// ── 输出位置唯一定义处 ──
+// build/verify/query 共用；固定文件名与 `..` 段拒收（⚠️ 校验须内联各函数体，抽公共函数断不了污点流），详见 docs/code/db-tools.md
 /**
- * 目录内的库文件路径；`--out` 含 `..` 段即报错。
- *
+ * 目录内库文件路径；`--out` 含 `..` 段即报错。
  * @param outDir - 输出目录
- * @returns 目录内的库文件路径
+ * @returns 库文件路径
  * @throws `--out` 含 `..` 段
  */
 export function dbPathIn(outDir: string): string {
@@ -196,31 +169,26 @@ export function dbPathIn(outDir: string): string {
 	return path.join(path.resolve(outDir), "ziwei.duckdb");
 }
 
-// ── dataset 形态：分发产物是库外的一整套 parquet（spec §4）──
-// 三类数据全部导出到 dataset/ 目录，接收方不需要库文件即可查询（spec §6.1）。
+// ── dataset 形态：分发产物是库外一整套 parquet（spec §4）──
+// 三类数据全导出到 dataset/，接收方无需库文件（spec §6.1）。
 /** dataset 形态每片 samples 的行数上限。 */
 export const DATASET_PART_SAMPLES = 50_000;
 
-// 构建期逐片断言的上限，比 GitHub 的 100MB 硬限更严：在超限之前就失败，
-// 而不是等到 push 被拒（spec §5.2 第 3 阶段）。
-/** 单分片体积上限，比托管平台的硬限更严，超限前失败。 */
+// 构建期逐片断言上限，比平台硬限严：超限前失败，不等 push 拒（spec §5.2）。
+/** 单分片体积上限，超限前失败。 */
 export const DATASET_PART_MAX_BYTES = 95 * 1024 * 1024;
 
-// dataset 目录的合计上限。实测 392MiB（379.04 主题 + 12.0 宫位 + 0.8 样本），
-// 留约 15% 余量；现状的切片方案是 1.7GiB（spec §8）。
-// dataset 合计预算按日历口径分档（README「体积报告」节的 1.1 倍实测口径）：
-// synthetic（v3）450 MiB / solar（v4，samples+palaces+topics 全家）1 GiB——
-// v4 实测 944 MiB（2026-11-22），上限留头寸防漂移误报。
+// dataset 合计上限：实测 392MiB（主题 379.04+宫位 12.0+样本 0.8），留约 15% 余量；现切片 1.7GiB（spec §8）。
+// 按日历口径分档（README「体积报告」节 1.1 倍实测口径）：synthetic（v3）450MiB / solar（v4）1GiB（实测 944MiB，留头寸防漂移误报）。
 /** dataset 合计体积预算（synthetic 口径）。 */
 export const DATASET_TOTAL_LIMIT = 450 * 1024 * 1024;
-/** dataset 合计体积预算（solar 真实日历口径）。 */
+/** dataset 合计体积预算（solar 日历口径）。 */
 export const DATASET_TOTAL_LIMIT_SOLAR = 1024 * 1024 * 1024;
 
 /**
- * 目录内的 dataset 根路径；`--out` 含 `..` 段即报错。
- *
+ * 目录内 dataset 根路径；`--out` 含 `..` 段即报错。
  * @param outDir - 输出目录
- * @returns 目录内的 dataset 根路径
+ * @returns dataset 根路径
  * @throws `--out` 含 `..` 段
  */
 export function datasetDirIn(outDir: string): string {
@@ -230,14 +198,12 @@ export function datasetDirIn(outDir: string): string {
 	return path.join(path.resolve(outDir), "dataset");
 }
 
-// 逐源分片写出的原文 parquet 先落这里，收尾统一重打包成 11 片。
-// 必须与 dataset/ 平级而非其子目录：收尾要整体清空 dataset/ 再写（spec §5.3），
-// 暂存放在里面会被那次清空一并删掉，断点续建也就无从谈起。
+// 逐源分片原文 parquet 先落这里，收尾统一重打包成 11 片。须与 dataset/ 平级：收尾整体清空 dataset/ 再写（spec §5.3），
+// 暂存在里面会被一并删掉，断点续建无从谈起。
 /**
- * dataset 的暂存目录，与 dataset/ 平级以免被收尾清空一并删除。
- *
+ * dataset 暂存目录，与 dataset/ 平级防收尾清空。
  * @param outDir - 输出目录
- * @returns 与 dataset/ 平级的暂存目录路径
+ * @returns 暂存目录路径
  * @throws `--out` 含 `..` 段
  */
 export function datasetStagingDirIn(outDir: string): string {
@@ -247,40 +213,32 @@ export function datasetStagingDirIn(outDir: string): string {
 	return path.join(path.resolve(outDir), "dataset.staging");
 }
 
-// 片名：topics-<本片起始 sample_id，补零 6 位>.parquet。
-// 补零到 6 位是为了字典序与数值序一致——变长名会按字典序排错，
-// 而 read_parquet 的 glob 读出来顺序虽不影响结果，人眼与 git 却会被误导。
+// 片名 topics-<起始 sample_id，补零 6 位>.parquet，补零保证字典序=数值序；变长名排序错，误导人眼与 git。
 /**
- * 主题分片文件名；样本号补零到 6 位，保证字典序与数值序一致。
- *
- * @param startSampleId - 本片起始样本号
- * @returns 补零到 6 位的主题分片文件名
+ * 主题分片文件名；样本号补零 6 位，保证字典序与数值序一致。
+ * @param startSampleId - 起始样本号
+ * @returns 主题分片文件名
  */
 export function topicsPartName(startSampleId: number): string {
 	return `topics-${String(startSampleId).padStart(6, "0")}.parquet`;
 }
 
-// 只匹配 topics-*.parquet：同目录下的 samples.parquet / palaces.parquet 不能被卷进来，
-// 它们的列与 topics 完全不同。
+// 只匹配 topics-*.parquet：同目录 samples.parquet/palaces.parquet 不能卷入（列异）。
 /**
- * dataset 内主题分片的 glob（只匹配 `topics-*.parquet`）。
- *
+ * dataset 主题分片 glob（`topics-*.parquet`）。
  * @param outDir - 输出目录
- * @returns 只匹配 `topics-*.parquet` 的 glob 路径（`--out` 含 `..` 段时经 {@link datasetDirIn} 报错）
+ * @returns glob（`--out` 含 `..` 段时经 {@link datasetDirIn} 报错）
  */
 export function topicsPartGlobIn(outDir: string): string {
 	return path.join(datasetDirIn(outDir), "topics-*.parquet");
 }
 
-// dataset 形态的 topics 视图。与 parquet 版同为**无聚合**的 read_parquet——
-// 这正是原文形态在检索（232ms）、正则（257ms）、全量 count（44ms）上可用的原因，
-// 而行字典形态的 GROUP BY 会把这三项分别拖慢一个数量级或直接 OOM（spec §3.2）。
+// dataset topics 视图同为无聚合 read_parquet：原文形态检索 232ms/正则 257ms/count 44ms 可用；行字典 GROUP BY 把这三项拖慢一数量级或 OOM（spec §3.2）。
 /**
- * dataset 形态的 `topics` 视图 SQL：直接 read_parquet 已导出的分片。
- *
+ * dataset `topics` 视图 SQL：read_parquet 分片。
  * @param datasetDir - dataset 目录
- * @returns dataset 形态 `topics` 视图的 `CREATE OR REPLACE VIEW` 语句
- * @throws dataset 路径含 `..` 段
+ * @returns VIEW 语句
+ * @throws 路径含 `..` 段
  */
 export function topicsViewSqlDataset(datasetDir: string): string {
 	if (datasetDir.split(/[\\/]/).includes("..")) {
@@ -290,17 +248,12 @@ export function topicsViewSqlDataset(datasetDir: string): string {
     SELECT * FROM read_parquet(${sqlLiteral(path.join(datasetDir, "topics-*.parquet"))})`;
 }
 
-// dataset 形态的检索宏：每个主题列就是完整文本，直接 contains。
-// 比 inline 版短得多，因为不需要「行号数组 → 行」的还原过程；也因此
-// **不能**照搬 inline 版（它 JOIN topic_dict/topic_lines，那两张表此处不存在）。
-//
-// 含换行的守卫在 inline 版里是必需的（行字典把多行拼成一列，跨行匹配会命中
-// 原本不存在的行边界），原文形态下则相反：列里就是源文本，含换行模式有明确定义，
-// 报错才是错的。
+// dataset 检索宏：每主题列完整，直接 contains，比 inline 短——不需「行号数组 → 行」还原，也不能照搬 inline 版
+// （它 JOIN topic_dict/topic_lines，此处无此二表）。含换行守卫在 inline 版必需（行字典把多行拼一列，跨行匹配命中假边界），
+// 原文相反：列即源文本，换行模式有明确定义。
 /**
- * dataset 形态的 `search_topic(t, p)` 宏：对原文列直接 contains。
- *
- * @returns dataset 形态 `search_topic(t, p)` 宏的 `CREATE OR REPLACE MACRO` 语句
+ * dataset `search_topic(t, p)` 宏：原文列 contains。
+ * @returns MACRO 语句
  */
 export function searchTopicMacroSqlDataset(): string {
 	const arms = STORAGE_TOPIC_KEYS.map(k => `    WHEN '${k}' THEN contains(${k}, p)`).join("\n");
@@ -310,21 +263,20 @@ ${arms}
   END`;
 }
 
-// 无库文件时（clone 后的真实状态）用 :memory: 实例现建的全部对象。
-// 路径由调用方按当次 --out 现推，故不存在 parquet 那种「视图里写死构建时绝对路径、
-// 换个位置就查不了」的问题（spec §6.1）。
+// 无库文件时（clone）用 :memory: 现建全部对象。路径按当次 --out 现推，故无 parquet 那种
+// 「视图里写死构建时绝对路径、
+// 换个位置就查不了」问题（spec §6.1）。
 /**
- * dataset 形态的建视图与建宏语句（路径按当次 `--out` 现推）。
- *
+ * dataset 建视图与宏语句（路径按当次 `--out` 现推）。
  * @param datasetDir - dataset 目录
- * @returns 建两张视图与检索宏的语句序列
- * @throws dataset 路径含 `..` 段
+ * @returns 语句序列
+ * @throws 路径含 `..` 段
  */
 export function datasetSchemaSql(datasetDir: string): string[] {
 	if (datasetDir.split(/[\\/]/).includes("..")) {
 		throw new Error("--out 路径不允许包含 .. 段");
 	}
-	/** 拼一条 `CREATE VIEW <name> AS SELECT * FROM read_parquet(<file>)`。 */
+	/** 拼 `CREATE VIEW <name> AS SELECT * FROM read_parquet(<file>)`。 */
 	const view = (name: string, file: string) =>
 		`CREATE VIEW ${name} AS SELECT * FROM read_parquet(${sqlLiteral(path.join(datasetDir, file))})`;
 	return [
@@ -335,17 +287,13 @@ export function datasetSchemaSql(datasetDir: string): string[] {
 	];
 }
 
-// 已删除入口的报错文案。放在这里与 dbPathIn / datasetDirIn 同处，是因为它讲的正是
-// 这些名字的由来：--db / --topics-dir / --dict 表达的是「库放哪、边车放哪」，
-// 已被单一的 --out=DIR 取代，用户敲它们多半是照着旧用法。
-// 与 rejectLegacyModeEnv 同一模式——废弃入口必须显式失败，不得静默忽略：
-// 尤其 verify 的参数解析是宽松的（只找它要的名字），不显式拦就会「以为指定了库、
-// 实际读的是默认位置」，是一种事后才暴露的错。
+// 已删除入口报错文案：--db/--topics-dir/--dict 表达「库放哪、边车放哪」，现 --out=DIR。
+// 废弃入口须显式失败（verify 只找它要的名字），不拦就会「以为指定了库、
+// 实际读的是默认位置」。
 /**
- * 显式拦下已删除的参数名，避免静默落回默认位置。
- *
- * @param key - 已删除的参数名（如 `--db`）
- * @returns 说明「改成什么」的报错文案
+ * 拦下已删参数名，避免静默落回默认。
+ * @param key - 已删除参数名（如 `--db`）
+ * @returns 报错文案（说明「改成什么」）
  */
 export function deletedArgHint(key: string): string {
 	return (
@@ -354,12 +302,11 @@ export function deletedArgHint(key: string): string {
 	);
 }
 
-// SQL 字面量转义：路径来自本进程拼装（非用户输入），仍按规范处理单引号
+// 路径由本进程拼装（非用户输入），需转义单引号
 /**
- * 转义为 SQL 字符串字面量（单引号翻倍）。
- *
+ * 转义 SQL 字面量（单引号翻倍）。
  * @param s - 待转义的字符串
- * @returns 单引号包裹的 SQL 字面量
+ * @returns SQL 字面量
  */
 export function sqlLiteral(s: string): string {
 	return `'${s.replace(/'/g, "''")}'`;

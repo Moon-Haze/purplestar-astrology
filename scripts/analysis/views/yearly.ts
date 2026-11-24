@@ -1,15 +1,15 @@
 /**
  * 四点五、流年分析 + 四点六、流月分析 —— 倪师正统口径。
  *
- * ⚠️ 口径与「四、当前大限」同源：**流年只看年支移到哪个本命宫位、月支再移一格**，
- *    本命四化星固定不动，看流年/流月三方四正会哪几颗 —— 不按年柱、月柱重新起化。
+ * ⚠️ 口径与「四、当前大限」同源：流年只看年支移到哪个本命宫位、月支再移一格，
+ *    本命四化星固定不动，看流年/流月三方四正会哪几颗 —— 不按年柱、月柱起化。
  *
- * 两节合在一个文件里，因为它们共用同一个起点：**流年地支**（此处单点为一个局部常量）。
+ * 两节共用一个起点：流年地支（单点局部常量）。
  * 触发条件：流年段在 `view` 为 `liunian` / `liuyue` 时出，流月段只在 `liuyue` 时出。
  * 完整口径见 docs/code/analysis.md。
  *
- * 产出**结构化条目流**（views 内部实现形态，见 `../items`）：slot = `liunian` /
- * `liuyue`。本节条目依赖运行时时钟（流年/流月取系统当前日期，预计算不可复现）。
+ * 产出结构化条目流（views 内部形态，见 `../items`）：slot = `liunian` /
+ * `liuyue`。条目依赖运行时时钟（取系统当前日期，预计算不可复现）。
  *
  * @file 四点五、流年分析 + 四点六、流月分析 —— 倪师正统口径
  *
@@ -31,8 +31,8 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
 /**
  * 渲染「四点五、流年」与「四点六、流月」两节的结构化条目流（视角不符时返回空数组）。
  *
- * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数只读命盘、视角（`view`）、流年公历年（`liunianYear`）与流月月份（`liuyueMonth`）；年支由公历年取模单点推出，不按年柱 / 月柱重新起化
- * @returns 条目流：`view` 为 `liunian` / `liuyue` 时出流年段（流年宫与三方四正会照的本命四化），`view` 为 `liuyue` 时再出流月段；`view` 为 `mingpan` 等其余值时为两段都不出的空数组
+ * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：只读命盘、视角（`view`）、流年公历年（`liunianYear`）与流月月份（`liuyueMonth`）；年支由公历年取模单点推出，不按年柱 / 月柱起化
+ * @returns 条目流：`view` 为 `liunian` / `liuyue` 时出流年段（流年宫与三方四正会照的本命四化），`liuyue` 时再出流月段；`mingpan` 等其余值返回空数组
  */
 function renderLiuNianItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { chart, view, liunianYear, liuyueMonth } = ctx;

@@ -1,16 +1,8 @@
 /**
- * 综合建议推算单点 —— 从本盘实际信号确定性生成建议（change dynamic-topic-suggestions）。
- *
- * 最小信号集（design D2）：主宫主星及亮度、主题三方内的本命四化、当前大限与主题宫的
- * 关系。纯函数、零渲染逻辑：输入 {@link AnalysisContext}，输出结构化建议条目
- * （句子 + 依据信号标注），渲染层（`views/suggestions.ts` 与 `--report`）只装配。
- *
- * ⚠️ 确定性是硬约束：同盘同参数多次调用输出逐字节一致；信号缺失时降级为
- *    `TOPIC_SUGGESTION_FALLBACK` 的通用收束句并**显式标注**「无命中信号」——
- *    降级可见、可数（spec interpretation-content「综合建议按盘推算」），不虚构信号。
- *
- * @file 综合建议推算单点 —— 从本盘实际信号确定性生成建议（change dynamic-topic-suggestions）
- *
+ * @file 本盘信号确定性生成建议（dynamic-topic-suggestions）
+ * 主星亮度/三方四化/大限关系；{@link AnalysisContext}→句+依据。
+ * `views/suggestions.ts`/`--report` 仅装配。⚠️同盘同参一致；缺信号降 `TOPIC_SUGGESTION_FALLBACK`
+ * 标「无命中信号」(spec「综合建议按盘推算」)，不虚构。
  * @packageDocumentation
  */
 
@@ -22,20 +14,18 @@ import {
 } from "./data";
 import type { AnalysisContext } from "./context";
 
-/** 一条推算建议：`basis` 标注依据信号；「无命中信号」为显式降级（渲染层同句可见）。 */
+/** `basis`=依据。 */
 export interface SuggestionLine {
-	/** 建议正文（模板句已填充槽位后的成句） */
+	/** 成句 */
 	text: string;
-	/** 依据信号标注：取自哪类推算信号；「无命中信号」表示降级为通用收束句 */
+	/** 依据；无命中降级 */
 	basis: "主星亮度" | "本命四化" | "当前大限" | "无命中信号";
 }
 
 /**
- * 建议行成文单点：`basis` → 括注的投影规则（评审候选 6——此前逐字双写在 `--report` 与
- * `views/suggestions.ts` 两个编排器，改措辞漏一处即两侧漂移）。两个编排器只拼各自的版式头。
- *
- * @param s - 一条推算建议：`text` 是建议正文，`basis` 是依据信号标注
- * @returns 成文行：`→ ` 前缀 + 建议正文；`basis` 为「无命中信号」时再追加括注「（本盘无此主题的直接信号，此为通用收束）」，其余依据不加括注
+ * `basis`→括注(评审6)；编排器拼版式头。
+ * @param s - 建议
+ * @returns `→ `+正文；无命中加「（本盘无此主题的直接信号，此为通用收束）」
  */
 export function suggestionLine(s: SuggestionLine): string {
 	return s.basis === "无命中信号"
@@ -44,22 +34,19 @@ export function suggestionLine(s: SuggestionLine): string {
 }
 
 /**
- * 槽位填充：`{star}` `{palace}` `{dxPalace}` `{huaStar}` `{huaPalace}`；未知槽位保持原样（可断言兜底）。
- *
- * @param text - 含 `{槽名}` 占位符的模板句
- * @param slots - 槽名 → 填充值的映射；覆盖 `{star}` / `{palace}` / `{dxPalace}` / `{huaStar}` / `{huaPalace}`
- * @returns 填充后的句子；`slots` 里没有的槽位原样保留为 `{槽名}`，不静默清空
+ * 槽位 {star} {palace} {dxPalace} {huaStar} {huaPalace}；未给原样。
+ * @param text - {槽名}句
+ * @param slots - 槽名→值
+ * @returns 填充句
  */
 function fill(text: string, slots: Record<string, string>): string {
 	return text.replace(/\{(\w+)\}/g, (_, k: string) => slots[k] ?? `{${k}}`);
 }
 
 /**
- * 大限宫与本主题宫的地支关系：本宫 / 三合 / 对冲 / 无直接同气。
- *
- * @param dxBranch - 当前大限宫的地支索引（0–11）
- * @param palaceBranch - 本主题主宫的地支索引（0–11）
- * @returns 地支差为 0 → `self`（本宫）、6 → `oppo`（对冲）、4 或 8 → `same`（三合），其余 → `none`
+ * @param dxBranch - 大限地支(0–11)
+ * @param palaceBranch - 宫地支(0–11)
+ * @returns 差0→self、6→oppo、4/8→same、余→none（本宫/三合/对冲/无同气）
  */
 function decadalKey(dxBranch: number, palaceBranch: number): "self" | "same" | "oppo" | "none" {
 	const delta = (dxBranch - palaceBranch + 12) % 12;
@@ -76,14 +63,9 @@ function decadalKey(dxBranch: number, palaceBranch: number): "self" | "same" | "
 }
 
 /**
- * 生成一个主题的综合建议。
- *
- * 出句规则（确定性）：亮度槽 bright / dim 按主宫主星亮度二选一；四化槽 lu / ji 按
- * 主题三方内命中的本命四化出句（取该四化的第一条命中）；大限句按大限宫与主题宫的
- * 地支关系四选一。全部未命中 → 单条降级收束句，`basis` 标「无命中信号」。
- *
- * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数只读主题键、主宫名与地支、主星及其亮度、主题三方内的本命四化命中、当前大限；不重算盘面
- * @returns 结构化建议条目流（句子 + 依据信号标注）：亮度 / 四化模板按命中顺序出句，当前大限已起运时再追加一条大限句；一条都没命中时返回单条 {@link TOPIC_SUGGESTION_FALLBACK} 收束句，`basis` 为「无命中信号」
+ * 出句：亮度→bright/dim；四化首条→lu/ji；大限四选一；全缺→降级句。
+ * @param ctx - {@link AnalysisContext}：只读主题/宫位/亮度/四化/大限，不重算
+ * @returns 句+依据：按命中序，起运追大限；未命中返 {@link TOPIC_SUGGESTION_FALLBACK}
  */
 export function buildTopicSuggestions(ctx: AnalysisContext): SuggestionLine[] {
 	const slots: Record<string, string> = {
@@ -101,9 +83,8 @@ export function buildTopicSuggestions(ctx: AnalysisContext): SuggestionLine[] {
 			out.push({ text: fill(t.text, slots), basis: "主星亮度" });
 		}
 		if (t.kind === "lu" || t.kind === "ji") {
-			// ⚠️ `m.mutagen` 是中文四化字（禄 / 权 / 科 / 忌），模板 `kind` 是 lu / ji ——
-			//    两侧不同形，必须过 `SIHUA_CHAR_TO_KEY`；早年直接 `m.mutagen === t.kind` 恒假，
-			//    「本命四化」槽**从未命中过**（主星、辅星都一样），本行即该缺陷的修复点。
+			// ⚠️ `m.mutagen`=四化字，`kind`=lu/ji，须经 `SIHUA_CHAR_TO_KEY`；
+			// 直比恒假，「本命四化」不命中，此处修复。
 			const hit = ctx.mutagenInSanFang.find(m => SIHUA_CHAR_TO_KEY[m.mutagen] === t.kind);
 			if (hit) {
 				out.push({

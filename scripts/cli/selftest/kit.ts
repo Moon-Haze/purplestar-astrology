@@ -1,58 +1,34 @@
-/**
- * selftest 的共用 harness（叶子模块：无第三方依赖）—— 断言接口原先在主报告与
- * classics / synastry 两个断言组里**逐字同形**定义三份，抽到这里后新增断言组只 import
- * 本模块。主 selftest 负责声明有哪些组并渲染分段报告。
- *
- * ⚠️ 子进程探针（spawnSync 跑根 CLI）**不**收进本模块 —— 各断言组的内核根来源不同
- *    （主 selftest 用 `ctx.root`，断言组自推导），「机制共用、策略各异」。
- *    harness 各处的完整论证见 docs/code/cli-selftest.md。
- */
+/** selftest harness。@remarks 接口原三处同形，抽此；见 docs/code/cli-selftest.md。 */
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { CliArgs, CliContext } from "../args";
 
-/** 单条断言的结果 */
+/** 断言结果 */
 export interface Assertion {
-	/** 是否通过 */
+	/** 通过? */
 	pass: boolean;
-	/** 断言名（本身即断言内容的描述，直接进报告） */
+	/** 断言名 */
 	name: string;
-	/** 补充说明：通过时是断言体返回的 detail，失败时是抛出的错误信息 */
+	/** 补充：detail/错误 */
 	detail: string;
-	/** 是否因「依赖文件不在分发包内」而跳过。跳过仍记 pass，但报告里前置 ⏭ 以示未跑。 */
+	/** 「依赖文件不在分发包内」则跳过：记 pass、⏭ 示未跑。 */
 	skipped?: boolean;
 }
 
-/** 进程内直调结果：与子进程冒烟的 `{ code, out, err }` 同构，断言换载体不改判据。 */
+/** 直调结果（`{ code, out, err }`） */
 export interface CallResult {
-	/** 退出码语义：0 成功，1 命令抛错 */
+	/** 0 成功/1 抛错 */
 	code: number;
-	/** 命令返回的渲染文本（成功路径） */
+	/** 渲染文本 */
 	out: string;
-	/** 错误文案（引导层同形 `错误：<message>`；失败路径） */
+	/** 错误文案 */
 	err: string;
 }
 
 /**
- * 进程内直调一条命令（等价于走一遍 main 的分发，但不起子进程）。**同步版**：
- * 断言组测的命令（astrology / synastry）都是同步返回文本（knowledge 已改 async 分发
- * 四域，async 命令的直调探针走各自组内的 await），harness 的 `ok` 无需为直调改异步签名。
- *
- * @param cmd - 命令名（须已在命令表内；未知命令由调用方先判键集）
- * @param argv - 命令参数（不含命令名本身）
- * @param dispatch - 命令表里的实现（`COMMANDS[cmd]`）
- * @param parse - `parseArgs`（调用方注入，kit 不静态依赖 args 的运行时）
- * @param ctx - 运行期上下文（内核根与其来源）
- * @returns 与子进程冒烟同构的结果；throw 被捕获并拼成引导层同形文案
- *
- * @remarks
- *
- * @throws 本身不抛：命令抛出的错误被就地捕获，折成 `{ code: 1, out: "", err: "错误：…" }`
- *
- * 输出形态断言原用 spawnSync 起真 CLI —— 每次约 3.2 秒（iztro 冷启动），全量 30 个调用点
- * ≈ 96 秒。直调复用本进程已加载的 iztro（约 25ms/次），断言语义等价。「stderr 前缀 +
- * exit 1」这条真链路由各断言组保留的子进程冒烟覆盖（见 docs/code/cli-selftest.md）。
+ * 直调命令。@param cmd - 命令名 @param argv - 参数 @param dispatch - 实现 @param parse - 解析器
+ * @param ctx - 上下文 @returns 同构结果 @throws 不抛 @remarks 复用 iztro 省冷启动。
  */
 export function callDirect(
 	cmd: string,
@@ -74,40 +50,23 @@ export function callDirect(
 	}
 }
 
-/**
- * 主 selftest 各断言组的共享运行时。
- *
- * @remarks
- * 主 selftest 构造一次、按源码断言顺序逐组传入组函数。`call` / `runCli` / `commandNames`
- * 只在这里构造：命令表 COMMANDS 由主 selftest 动态 import 取得（打断静态环），组文件因此
- * 一律不静态 import 命令注册层（`cli/commands`，见 docs/code/cli-selftest.md）。
- */
+/** 共享运行时。@remarks COMMANDS 由主 selftest 动态取断环；组文件不静态 import cli/commands。 */
 export interface SelftestDeps {
-	/** 运行期上下文（内核根与其来源）—— 读 SKILL.md / 数据文件等守护断言用 */
+	/** 上下文（读 SKILL.md/数据） */
 	ctx: CliContext;
-	/** harness 的断言注册（来自 createHarness，结果直接进主报告） */
+	/** 断言注册（createHarness） */
 	ok: OkFn;
-	/** 进程内直调一条命令（`{ code, out, err }` 同构三元组） */
+	/** 直调命令 */
 	call: (argv: string[]) => CallResult;
-	/** 子进程探针（仅冒烟断言用） */
+	/** 子进程探针 */
 	runCli: (args: string[]) => CallResult;
-	/** 命令表键集（命令拆分 / 旧名退役 / SKILL.md 速查对拍用） */
+	/** 命令表键集 */
 	commandNames: string[];
 }
 
 /**
- * 相等断言，不等即抛错。
- *
- * @param actual - 实得值
- * @param expected - 期望值
- * @param msg - 错误信息前缀，用来点明是哪一处比对失败
- *
- * @remarks
- *
- * @returns 无返回值（返回值是 `void`）；两值相等时静默通过
- * @throws 严格不相等时抛错，信息为「`msg`期望 X，实得 Y」（两侧用 `JSON.stringify` 展开）
- *
- * 用 `!==` **严格相等**比较，不做深比较也不做类型转换；失败信息里用 `JSON.stringify` 展开两侧取值。
+ * 相等断言。@param actual - 实得 @param expected - 期望 @param msg - 错误前缀 @returns 无
+ * @throws 不等抛「`msg`期望 X，实得 Y」@remarks `!==` 严格。
  */
 export function eq(actual: unknown, expected: unknown, msg = ""): void {
 	if (actual !== expected) {
@@ -115,24 +74,16 @@ export function eq(actual: unknown, expected: unknown, msg = ""): void {
 	}
 }
 
-/** harness 的断言登记签名（各组通过 deps 拿到，故声明在此便于共用）。 */
+/** 断言登记签名。 */
 export type OkFn = (name: string, fn: () => unknown, opts?: { skip?: string }) => void;
 
 /**
- * harness：各断言组独立收集自己的结果（工厂函数，不共享状态）。
- *
- * @remarks
- * `ok` 跑一条断言并登记结果 —— 断言体抛错即记为该条失败，一条失败不影响其余断言继续跑；
- * 断言体返回值若非空则作为该项的补充说明。
- *
- * ⚠️ `opts.skip` 是**唯一的跳过入口**：跳过记 pass 但 `skipped: true`，报告前置 `⏭`。
- *    **必须看得见「这条没跑」** —— 否则恒真守卫会伪装成通过（见 docs/code/cli-selftest.md）。
- *
- * @returns 收集结果用的 `results` 数组与登记断言的 `ok`
+ * 各组独立收集（工厂）。@remarks `ok` 抛错记失败不阻断；`opts.skip` 唯一跳过，⏭ 可见防恒真。
+ * @returns results。
  */
 export function createHarness(): {
 	results: Assertion[];
-	/** 跑一条断言并登记结果（断言体抛错即记失败，一条失败不影响其余） */
+	/** 跑断言登记 */
 	ok: OkFn;
 } {
 	const results: Assertion[] = [];
@@ -152,21 +103,9 @@ export function createHarness(): {
 }
 
 /**
- * 守卫：只有**仓库形态**（而非分发包形态）才跑依赖仓库级文档的断言。
- *
- * @param ctx - 运行期上下文，`ctx.root` 为内核根（即 `scripts/`）
- * @param why - 跳过原因，进报告 detail
- * @returns 不该跑时返回跳过原因字符串；该跑时返回 `undefined`
- *
- * @remarks
- * 判据取「包根有没有 `AGENTS.md`」：分发包只含 `SKILL.md` / `package.json` /
- * `references/` / `scripts/` 四项，仓库级文档一律不带 —— 用 `AGENTS.md` 作
- * 「我在不在仓库里」的探针（它是仓库级文档的现行代表，与 README / test/ 同进退）。
- * 探针必须指向**现存**文件：锚点失效会让守卫在仓库态恒真降级，
- * `test/repo.test.ts` 的反恒真断言盯「仓库态 selftest 报告不出现 ⏭」。
- *
- * ⚠️ **不要给不需要的断言加跳过**：文件若都在 `scripts/` 或 `references/` 内会被打包带上，
- *    跳过只会白白丢掉覆盖。全仓仅此一处适用（见 docs/code/cli-selftest.md）。
+ * 仅仓库形态跑仓库文档断言。@param ctx - `ctx.root` 内核根 @param why - 跳过原因
+ * @returns 不该跑返原因 @remarks 判据「包根有没有 `AGENTS.md`」：探针指现存文件防降级；
+ * `test/repo.test.ts` 盯。⚠️ 别加多余 skip。
  */
 export function skipUnlessRepo(ctx: { root: string }, why: string): string | undefined {
 	const repoOnly = resolve(ctx.root, "..", "AGENTS.md");

@@ -1,23 +1,5 @@
 #!/usr/bin/env node
-/**
- * purple-star.ts — 紫微斗数排盘与命盘解读 CLI（入口 / 引导层）
- *
- * 本文件只做四件事：**定位内核根 → 注册 TS 解析钩子 → 启动期内核自检 → 把命令分发出去**
- * （分发协议本体在 `cli/host/dispatch.ts`，此处只组装端口并执行副作用）。
- * 命令实现、渲染、出生信息解析、自检都**不在**这里，见 scripts/cli/。
- *
- * ⚠️ 本文件除 `node:` 内置与 `./boot-hooks.ts` 外**不允许任何普通静态 import** ——
- *    值的获取一律走 `load<T>()`（详见下方铁律三连与 docs/code/boot-layer.md）。
- * ⚠️ 内核根 = `scripts/` 本身，故 `@/` 别名指向 `scripts/` 而**不是** skill 根。
- * ⚠️ 启动自检「派生而非手抄」：在内核里重命名 / 删除导出会让 CLI 立刻报错 ——
- *    这是有意的（宁可启动失败，也不静默产出错盘）。
- *
- * 设计原则（不重复实现任何命理逻辑）、cli/ 各层分工与用法，见 docs/code/boot-layer.md。
- *
- * @file purple-star.ts — 紫微斗数排盘与命盘解读 CLI（入口 / 引导层）
- *
- * @packageDocumentation
- */
+/** @file @packageDocumentation 「派生而非手抄」 */
 
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -43,16 +25,7 @@ import {
 //    —— `scripts/cli/` 下的自家子模块也不行。凡是要用的值，一律走下面的 load<T>()。
 //    这是本文件最容易被改坏的一处，论证全文见 docs/code/boot-layer.md。
 
-/**
- * 动态导入的模块类型：下方 `load<T>()` 用它把 `await import(spec)` 的 `any` 收窄回真实签名。
- *
- * @remarks
- * `typeof import("...")` 是**类型层节点**，运行时被完全擦除，因此可以安全地写在文件顶部 ——
- * 这是本文件能同时「自举注册 TS 钩子」与「拿到内核真实类型」的关键（详见上方注释）。
- *
- * ⚠️ 这里只允许类型层的 `typeof import(...)`：任何**值导入**都会在钩子注册之前触发加载，
- * 直接崩掉。
- */
+/** @remarks 「拿到内核真实类型」 */
 type AlgorithmModule = typeof import("@/algorithm");
 type PatternsModule = typeof import("@/patterns");
 type SihuaModule = typeof import("@/mutagen");
@@ -63,48 +36,28 @@ type ChartViewModule = typeof import("@/synastry/chart-view");
 type ArgsModule = typeof import("@/cli/args");
 type ArgsTableModule = typeof import("@/cli/args/table");
 type CommandsModule = typeof import("@/cli/commands");
-/** 轻量命令元数据（名字与 HELP 文案，无命令实现依赖）——help 路径只需它。 */
+/** 元数据 */
 type MetaModule = typeof import("@/cli/commands/command-meta");
-/** `--out` 落盘通道（writeFileSync 的唯一写点，路径校验在内）。 */
+/** `--out` */
 type OutModule = typeof import("@/cli/host/out");
-/** 分发协议（argv → 三元组的唯一真相源，见该文件头注释）。 */
+/** 分发协议 */
 type DispatchModule = typeof import("@/cli/host/dispatch");
 
 // 历史注记：这里曾有一段 `process.emitWarning` 猴子补丁（过滤
 // `MODULE_TYPELESS_PACKAGE_JSON`），随上游 ziwei-master（Next.js，不能改 package.json 的
 // "type"）拷贝带了过来；本仓库已声明 "type": "module"，告警不触发，补丁是死代码，已删除。
 
-/** 本脚本所在目录，即 `<skill 根>/scripts`（内核根的第一个候选，见 {@link pickRoot}） */
+/** 「架构」{@link pickRoot} */
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ── 排盘内核根目录：两级优先级 ──
-/**
- * 本 CLI 的内核根候选清单（判定规则与失败呈现都在 `./boot-hooks.ts`，此处只给**策略**）。
- *
- * @remarks
- * 优先级：
- * 1. `ZIWEI_ROOT` 环境变量 —— 显式指定（想把内核指到别处时用）
- * 2. 技能自带内核 —— 就是本脚本所在目录 `<skill 根>/scripts/`
- *
- * 内核根 = `scripts/` **本身**：CLI（`purple-star.ts`、`cli/`）与内核文件（`algorithm.ts` 等）
- * 同处一层。因此 `@/` 别名指向的是 `scripts/`，而**不是** skill 根。
- *
- * 这里刻意**没有**「宿主项目」候选：每个 skill 自带内核，不存在「实时内核 vs 分发副本」
- * 的双模式。（本仓已无 skill 间的副本关系 —— 见 `AGENTS.md`「单 skill 形态（2026-09-30 三 skill 合一）」。）
- * 两级优先级的完整论证见 docs/code/boot-layer.md。
- */
+/** @remarks 「宿主项目」「实时内核 vs 分发副本」已无（「单 skill 形态（2026-09-30 三 skill 合一）」）。 */
 const ROOT_CANDIDATES: Array<[string | undefined, string]> = [
 	[process.env.ZIWEI_ROOT && resolve(process.env.ZIWEI_ROOT), "ZIWEI_ROOT 环境变量"],
 	[HERE, "技能自带内核"],
 ];
 
-/**
- * 本 skill 的内核入口 —— `pickRoot` 拿它判定「这份内核在不在」。
- *
- * @remarks
- * 由调用方传入而非写死在 `boot-hooks.ts`：各 skill 各有各的内核，古籍检索 skill 里
- * 根本没有内核入口 `algorithm.ts`（见 `AGENTS.md` 的「架构」）。
- */
+/** @remarks 判「这份内核在不在」。 */
 const KERNEL_ENTRY = "algorithm.ts";
 
 const picked = pickRoot(ROOT_CANDIDATES, KERNEL_ENTRY);
@@ -122,14 +75,7 @@ if (!picked.root) {
 	process.exit(1);
 }
 
-/**
- * 内核根（已确定为非空）。
- *
- * @remarks
- * `picked` 是判别联合，`!picked.root` 的守卫之后整体收窄为 `RootFound`，故 `root` 与 `label`
- * 都直接是 `string`。收窄不会延续到函数体内（`load` 的错误分支就要用 `ROOT`），
- * 故此处显式落成非空 `string`，免得每个闭包里都得再断言一次。
- */
+/** @remarks 收窄 RootFound。 */
 const ROOT: string = picked.root;
 const ROOT_LABEL: string = picked.label;
 
@@ -139,18 +85,7 @@ const ROOT_LABEL: string = picked.label;
 installHooks(ROOT);
 
 // ── 统一加载器：任何上游模块挂了都给出可执行的排查指引，而不是裸栈 ──
-/**
- * 动态加载内核或 `scripts/cli/*` 子模块；任何上游模块挂了都给排查指引而不是裸栈。
- *
- * @remarks
- * **所有内核模块与 `scripts/cli/*` 子模块都必须经由本加载器加载**（见文件顶部注释：钩子注册前
- * 不允许出现会触发 `.ts` 解析的静态 import）。
- *
- * 机制（说明符怎么解析、失败事实长什么样）在 `./boot-hooks.ts` 的 `makeLoader`；
- * 此处只给**策略** —— CLI 的失败呈现是「渲染指引 + `process.exit(1)`」，故调用点拿到的返回值
- * 必然非空，不必再写 try/catch。对照 `test/lib/loader.ts` 的同名加载器：同一份机制配的是
- * 「抛错」策略，让 node:test 把失败归到具体用例；两者共用 `loadFailureHint()` 的排查知识。
- */
+/** @remarks 失败呈现「渲染指引 + `process.exit(1)`」；test/lib/loader.ts 则「抛错」。 */
 const load = makeLoader(ROOT, ROOT_LABEL, f => {
 	console.error(
 		`[ziwei 启动失败] 无法加载 ${f.spec}\n  ${f.error.message}\n${loadFailureHint(f)}`
@@ -162,13 +97,7 @@ const load = makeLoader(ROOT, ROOT_LABEL, f => {
 // help / 未知命令路径只加载 command-meta + help（轻模块）即返回，不为看一眼用法付出
 // iztro 冷启动；真正要排盘 / 检索 / 合盘时才调用本函数。启动自检的语义是
 // 「加载内核时就地自检」，help 不消费内核导出，不受影响。
-/**
- * 加载排盘所需的全部模块并做启动自检，返回分发所需的命令表与参数解析器。
- *
- * @remarks
- * 每个模块 load 一次存 namespace：既供解构，也进 LOADED 表参与启动自检 ——
- * 不再有「解构一份 + REQUIRED_EXPORTS 手抄第二份」的双登记。
- */
+/** @remarks 不再「解构一份 + REQUIRED_EXPORTS 手抄第二份」。 */
 async function loadCore() {
 	const algorithmNs = await load<AlgorithmModule>("@/algorithm");
 	const patternsNs = await load<PatternsModule>("@/patterns");
@@ -186,19 +115,7 @@ async function loadCore() {
 	const helpMod = await load<typeof import("@/cli/commands/help")>("@/cli/commands/help");
 
 	// ── 启动自检：内核若重构导致关键导出消失，立即报错，而不是静默产出错盘 ──
-	/**
-	 * 已加载模块清单，自检据此**派生**而非手抄第二份：对每个 namespace 的**全部**导出做
-	 * 非空扫描 —— 新模块加进这里一行，它的导出自动受检，「加模块忘登记、自检静默变弱」
-	 * 从结构上不可能。
-	 *
-	 * @remarks
-	 * 子模块是静态 import 内核的，少一个导出本来就会让它们加载失败；但那时抛的是裸的
-	 * `SyntaxError: does not provide an export named ...`，指不到该改哪里。这里先 load 一遍
-	 * 并点名缺失项，把「哪个导出没了、当前内核根在哪、接下来怎么办」一次说清。
-	 *
-	 * ⚠️ 也因此：在内核里重命名或删除导出会让 CLI 立刻报错 —— **这是有意的，不是脆弱**
-	 *    （与 `algorithm.ts` 的 `projectPalaceName` 同一理念：宁可启动失败，也不静默产出错盘）。
-	 */
+	/** @remarks 全导出扫描；宁失败不静默出错盘。 */
 	const LOADED: ReadonlyArray<readonly [string, Record<string, unknown>]> = [
 		["@/algorithm", algorithmNs],
 		["@/patterns", patternsNs],
@@ -234,22 +151,7 @@ async function loadCore() {
 
 // ══════════════════════ 入口 ══════════════════════
 
-/**
- * CLI 入口：把 argv 交给分发协议，按结果执行副作用（打印 / 落盘 / 退出）。
- *
- * @remarks
- * 分发协议本体（--help 拦截位置、查表、解析、错误前缀、退出码语义）在
- * `cli/host/dispatch.ts` —— 进程内测试与子进程真链路消费同一 seam，此处只做宿主侧：
- * 组装端口（惰性 loader + 上下文）→ 得到 `{ code, out, err, outFile }` →
- * 失败打 stderr 并按 code 退出；成功时 `--out <文件>` 走 {@link writeOutFile} 落盘
- * （正文不占 stdout，进度提示走 stderr），否则 `console.log`。
- *
- * 各 `cmdXxx` 一律**返回**已渲染好的文本字符串；传给命令的第二个参数是
- * `CliContext`（内核根及其来源），目前只有 `selftest` 用得上。
- *
- * ⚠️ `--help` 任何位置都生效、未知命令 exit 1 不带栈 —— 这些承诺的**定义处**在
- * dispatch.ts，本函数不重复实现它们。
- */
+/** @remarks 组装端口；CliContext 仅 selftest。 @link */
 async function main() {
 	// 已退役环境变量守卫（失败可见性）：读取点已删除，外壳残留只会被静默携带——
 	// 当场报错而非放行。清单与探测函数单点在 boot-hooks（本文件与 run.ts 共用）。

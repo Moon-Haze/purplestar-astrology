@@ -1,8 +1,7 @@
 /**
- * 四化专题（--mutagen / 别名 --sihua）—— 生年 / 大限宫干 / 流年 / 流月 / 流日 / 流时
- * 四化落宫 + 生年×流年同星引动。
+ * 四化专题（--mutagen / --sihua）：六层四化落宫 + 生年×流年同星引动。
  *
- * @file 四化专题（--mutagen / 别名 --sihua）—— 生年 / 大限宫干 / 流年 / 流月 / 流日 / 流时
+ * @file 四化专题（--mutagen / --sihua）：六层四化与同星引动
  */
 
 import type { ZiweiChart } from "@/types";
@@ -11,16 +10,15 @@ import { buildMutagenChain } from "@/mutagen";
 import { sameStarPairs, sihuaLines } from "./sihua-helpers";
 
 /**
- * `--mutagen` 的取数选项。
+ * `--mutagen` 取数选项。
  *
  * @remarks
- * 取值链**逐级依赖**：流日须有流月（日干挂在农历年月日上）、流时须有流日（时干由日干
- * 五鼠遁）。护栏（谁缺谁报错）在 `cli/commands/astrology.ts` 的分发层，本函数只按「给了才算」组装。
+ * 逐级依赖：流日须有流月（日干挂农历年月日）、流时须有流日（日干五鼠遁）。护栏（缺谁报错）在 `cli/commands/astrology.ts` 分发层；本函数只「给了才算」。
  */
 export interface MutagenSectionOptions {
-	/** 流年公历年（`--yearly` 的值；缺省当年由 caller 经 parseYearlyArg 归一后传入） */
+	/** 流年公历年（`--yearly`；缺省当年由 caller 经 parseYearlyArg 归一传入） */
 	liuNianYear: number;
-	/** 农历月 1–12；`null`/`undefined` = 不算流月（其下的流日流时一并不算） */
+	/** 农历月 1–12；`null`/`undefined` = 不算流月（流日流时亦不算） */
 	liuYueMonth?: number | null;
 	/** 农历日 1–30（须配 {@link liuYueMonth}） */
 	liuRiDay?: number | null;
@@ -29,22 +27,18 @@ export interface MutagenSectionOptions {
 }
 
 /**
- * `--mutagen`：四化专题 —— 生年 / 当前大限宫干 / 流年（/ 流月 / 流日 / 流时）四化落宫 +
- * 生年×流年同星引动。
+ * `--mutagen`：生年 / 大限宫干 / 流年～流时四化落宫 + 生年×流年同星引动。
  *
  * @param chart - 命盘
- * @param options - 取数选项（流年必给；月日时逐级可选）
+ * @param options - 取数项（流年必给；月日时可选）
  * @returns 输出行
  *
  * @remarks
- * 大限区块是**文墨排盘展示口径**（大限宫干四化，随大限宫位走）；流年/流月/流日/流时是
- * 时间干四化。生年×流年同星引动保持三合派口径不变。童限期（未起运）大限区块只出
- * 一行标注 —— 没有大限宫就没有宫干四化。
+ * 大限区块文墨展示口径（宫干四化随宫位走）；流年～流时为时间干四化；同星引动保持三合派口径。童限期只出一行标注 —— 无大限宫即无宫干四化。
  */
 export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions): string[] {
 	const { liuNianYear, liuYueMonth, liuRiDay, liuShiHour } = options;
-	// 六层取数链单点（@/mutagen 的 buildMutagenChain）：本函数只渲染不派生，
-	// 与 --json 的 buildAnalyzeJson 同一取数来源（对拍断言钉在 astrology-sections 测试）。
+	// 六层链单点（@/mutagen 的 buildMutagenChain）：本函数只渲染，与 --json 的 buildAnalyzeJson 同源（对拍在 astrology-sections 测试）。
 	const { native, liuNian, liuYue, liuRi, liuShi, daXian, decadalNotStarted } = buildMutagenChain(
 		chart,
 		options
@@ -53,7 +47,7 @@ export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions
 	const out = [`【生年四化】年干 ${native.stemName}`];
 	out.push(...sihuaLines(chart, native.transforms));
 
-	// 大限四化：大限宫的宫干查四化表（文墨排盘口径）。童限未起运时无宫干可取。
+	// 大限四化：大限宫宫干查四化表（文墨口径）；童限未起运无宫干。
 	out.push("");
 	if (decadalNotStarted) {
 		out.push(
@@ -81,10 +75,8 @@ export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions
 		);
 		out.push(...sihuaLines(chart, liuYue.transforms));
 		if (liuRiDay != null) {
-			// 流日取数在链单点（农历年序 = 流年公历年，--daily 的语义是「流年 Y 的农历 M 月 D 日」）。
-			// 闰月内核层支持（getDailyMutagen 的 isLeapMonth），CLI 暂未接旗标 —— 出生 --leap
-			// 是另一个概念，不能混用。该农历日不存在时链返回 null，此处抛错指路
-			// （JSON 路径静默为 null，差异是刻意的顶层键契约）。
+			// 流日取数在链单点（农历年序 = 流年公历年；--daily「流年 Y 的农历 M 月 D 日」）。
+			// 闰月内核支持（getDailyMutagen 的 isLeapMonth），CLI 未接旗标 —— 出生 --leap 另一概念，不可混用。农历日不存在时链返回 null，此处抛错指路（JSON 静默 null，刻意）。
 			if (!liuRi) {
 				throw new Error(
 					`--daily ${liuRiDay} 在 ${liuNianYear} 年农历 ${liuYueMonth} 月中不存在（该月天数不足），请核对农历日`
@@ -107,9 +99,7 @@ export function mutagenSection(chart: ZiweiChart, options: MutagenSectionOptions
 	}
 	const pairs = sameStarPairs(chart, native.transforms, liuNian.transforms);
 	if (pairs.length) {
-		// 【生年 × 流年 同星引动】是 --mutagen 的**专题节头**；--yearly 专题的同名块是
-		// 行内小节（无【】头）—— 排版刻意不同（评审 2026-11-20 #7 确认），判定同源
-		// sameStarPairs，两处行文细节（双引动 / 未上盘措辞）各自成文，勿「统一」。
+		// 【生年 × 流年 同星引动】是 --mutagen 节头；--yearly 同名块是行内小节（无【】头）—— 排版刻意不同（评审 2026-11-20 #7），同源 sameStarPairs，行文（双引动/未上盘）勿「统一」。
 		out.push("");
 		out.push("【生年 × 流年 同星引动】");
 		for (const p of pairs) {

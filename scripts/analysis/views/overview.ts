@@ -25,7 +25,7 @@ import { blankItem, contentItem, formatItems, headItem } from "../items";
  * slot 域：`topic-head` / `mods` / `geju` / `summary` / `main-palace`。语义字段全部
  * 来自 material 与 ctx 透出的中间量，不从成文反解。
  *
- * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：本函数只读其中的主题名、主宫星曜等中间量，取材规则统一委托 {@link buildOverviewMaterial}，不自行重算决策点
+ * @param ctx - 主题上下文（{@link AnalysisContext}）；取材委托 {@link buildOverviewMaterial}，不重算决策点
  * @returns 条目流：主题节头 → 命盘关键定制 / 格局 / 星曜深层特质（有才出）→ 本宫主星行与主星全文 → 亮度补充与同宫第二主星（有才出）；主宫无主星时整节退化为一条 `emptyFallback` 兜底句
  */
 function renderOverviewItems(ctx: AnalysisContext): AnalysisItem[] {

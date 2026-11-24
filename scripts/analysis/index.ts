@@ -1,22 +1,14 @@
 /**
- * 紫微斗数分析数据库 — 倪海厦《天纪》正统口径：主题论断库装配点。
- *
- * ⚠️ 知识来源分四级（verified / traditional / methodology / suspect），「倪师…说」引句
- *    部分为传统口诀的风格化转述，CLI 在输出末尾固定披露 —— 登记表在 `./grades`。
- * ⚠️ 各 view **只读 ctx、只返回自己的行**：不互相调用、不写回 ctx；唯一的跨节状态
- *    `mutagenInSanFang` 已提升进 `./context`。
- *
- * 来源与三处口径适配、架构与文件分工、公开面 re-export 理由，见
- * docs/code/analysis.md。
- *
- * @file 紫微斗数分析数据库 — 倪海厦《天纪》正统口径：主题论断库装配点
- *
+ * ⚠️ 知识四级（verified / traditional / methodology / suspect）；「倪师…说」引句多转述，CLI 末尾披露见 `./grades`。
+ * ⚠️ 各 view 只读 ctx 只出自己行，不互调不写回；跨节状态 `mutagenInSanFang` 已进 `./context`。
+ * 理由见 docs/code/analysis.md。
+ * @file 主题论断库装配点（倪海厦《天纪》正统口径）
  * @packageDocumentation
  */
 
 import type { ZiweiChart } from "../types";
-// 本目录的元数据表与论断文案在
-// ./data（STAR_CONTENT_MAP，含「倪师…说」引文）。公开面由文末 re-export 兜住。
+// 元数据与文案在 ./data（STAR_CONTENT_MAP，含「倪师…说」引文）。
+
 import {
 	TOPIC_KEYS,
 	TOPIC_DEFS,
@@ -46,22 +38,14 @@ import {
 	type ReportOptions,
 } from "../analysis/report";
 
-// ─── 核心分析函数（总分结构 + 三方四正 + 本命四化会照 + 大限）───────────────────
-
 /**
- * 生成某个主题的完整论断报告。
- *
  * @param chart - 已排好的命盘
  * @param topic - 主题键（14 个之一，见 `./data` 的 `TOPIC_KEYS`）
  * @param options - 视角 / 流年年月 / 大限下标
- * @returns 报告全文（性别已在各 view 经 `selectGender` 投影）
- *
+ * @returns 报告全文
  * @remarks
- * 本函数是**编排层**：建一次上下文，按小节序把十一个 `renderXxx` 的行首尾相接。
- *
- * ⚠️ 两点不要动：① 下面的拼接顺序即报告小节序，调整会改变输出；② 性别已在各 view
- *    经 `selectGender` 投影，编排层仅拼接、不再对整篇文本跑正则过滤——
- *    理由见 docs/code/analysis.md。
+ * 编排层：建一次 ctx 按小节序拼接各 `renderXxx`。
+ * ⚠️ ① 顺序即小节序勿改；② 性别已在各 view 经 `selectGender` 投影，仅拼接不过滤；理由见 docs/code/analysis.md。
  */
 export function getTopicAnalysis(
 	chart: ZiweiChart,
@@ -73,8 +57,8 @@ export function getTopicAnalysis(
 		return `无法找到${TOPIC_PALACE_NAME[topic]}相关信息。`;
 	}
 
-	// 各 view 内部先产结构化条目流再投影为文本行——条目化是 views 的
-	// 内部实现形态，不构成公开 interface（2026-11-05 第二投影降级）。
+	// 条目化是 views 内部形态，不构成公开 interface（2026-11-05 第二投影降级）。
+
 	const lines: string[] = [
 		...renderOverview(ctx), // 一、总论
 		...renderSanFang(ctx), // 二、三方四正联动分析
@@ -88,17 +72,13 @@ export function getTopicAnalysis(
 		...renderSuggestions(ctx), // 六、综合建议
 	];
 
-	// 性别已在各 view 经 selectGender 投影，此处仅拼接，不再做整篇正则过滤。
 	return lines.join("\n");
 }
 
-// ─── 公开面 re-export ────────────────────────────────────────────────────────
-// 本公开面导出 8 个值：TOPIC_LABEL / TOPIC_PALACE_NAME / getTopicReport /
-// getTopicReportMeta / getTopicMainContentTexts / getDecadalSection +
-// TOPIC_KEYS / TOPIC_DEFS（Phase 4 新增）。
-// ⚠️ TOPIC_KEYS / TOPIC_DEFS 是主题注册表的**单一真相源**（Phase 2 收编的 8 张平行表
-//    已由它派生），新增主题只在此表加条目。
-// 逐项理由见 docs/code/analysis.md。
+// 导出 8 个值见下方 export。
+
+// ⚠️ TOPIC_KEYS / TOPIC_DEFS 是主题注册表单一真相源（Phase 2 的 8 张平行表已派生），新增主题只加此表。
+
 export {
 	TOPIC_KEYS,
 	TOPIC_DEFS,

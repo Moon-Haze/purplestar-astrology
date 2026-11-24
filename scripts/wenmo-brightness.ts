@@ -1,14 +1,4 @@
-/**
- * 文墨天机星曜亮度查询 —— 装配层逐星覆写的唯一入口（计算层；数据在 `data/wenmo-tables.ts`）。
- *
- * ⚠️ 数据与代码的分工、单向依赖方向、星 ID 1-based / 宫位「子起一」的索引口径、
- *    两套显示档位（7 档 QS/XD1 · 5 档 ZZ/XD2）、默认流派 XD2 的来历，
- *    一并见 docs/code/chart-kernel.md。
- *
- * @file 文墨天机星曜亮度查询 —— 装配层逐星覆写的唯一入口（计算层；数据在 `data/wenmo-tables.ts`）
- *
- * @packageDocumentation
- */
+/** @file @packageDocumentation */
 import {
 	WENMO_NAME_TO_ID,
 	SB_BY_SCHOOL,
@@ -25,14 +15,7 @@ export type { BrightnessSchool };
 //    默认流派 XD2 现在是内核侧**常量事实**，经 wenmoStarBrightness 的可选 school 入参
 //    表达；四流派数据表与维度自检原样保留（多流派对拍传显式实参）。
 
-/**
- * 查文墨星曜亮度（中文细档，如「庙」「闲」）。
- *
- * @param starName - 星名（本仓口径星名，与文墨解码名一致）
- * @param branchIdx - 星所在宫的地支索引 0–11（0=子 … 11=亥）
- * @param school - 流派，缺省 XD2（内核常量事实；多流派对拍传显式实参）
- * @returns 中文亮度字；星未收录或文墨留白（0）时为 `undefined`
- */
+/** @param starName @param branchIdx @param school @returns */
 export function wenmoStarBrightness(
 	starName: string,
 	branchIdx: number,
@@ -49,18 +32,8 @@ export function wenmoStarBrightness(
 	return NUM_TO_CN_BY_SCHOOL[school][v];
 }
 
-/**
- * 维度自检：四表各 83 行 × 13 列、数值落在对应档位域内。模块加载即跑。
- *
- * ⚠️ 本函数**必须留在本文件、且必须在此处以语句形式立即调用**：它是排盘启动期的数据
- *    完整性防线。拆进 `data/` 的惰性 export 或被 tree-shaking 掉，损坏的表就会静默
- *    产出错亮度 —— 防线失效且不可见。完整理由见 docs/code/chart-kernel.md。
- *
- * @returns 无返回值；校验通过即静默返回
- *
- * @throws 四表任一行的行数 ≠ 83、列数 ≠ 13，或含超出该流派档位域的亮度值时抛错，
- *   错误消息写明是哪张表（`SB_<流派>`）的第几行 / 第几列
- */
+/** 加载即跑的数据防线；拆出则坏表静默出错亮度。
+ * @returns @throws `SB_<流派>` 行列 */
 export function validateWenmoBrightness(): void {
 	const domains: Record<BrightnessSchool, number[]> = {
 		QS: [1, 2, 3, 4, 5, 6, 7],

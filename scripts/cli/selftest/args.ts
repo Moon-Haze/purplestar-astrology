@@ -1,46 +1,43 @@
 /**
- * 参数系统断言组：解析引擎、参数面、声明表、SKILL.md 参数对拍
- * （原 `cli/selftest.ts` 的解析引擎 / 参数面 / 声明表区块）。
- *
- * @remarks
- * 断言体原样搬移，只改依赖归属（harness 经 {@link SelftestDeps} 注入）；
- * 「参数面」「声明表」「SKILL.md 参数对拍」在主 selftest 的调用序里分别排在
- * 出生信息形态、help 裁剪、专题渲染之后，均与源码顺序一致。
+ * 参数系统断言组：解析引擎、参数面、声明表、SKILL.md 参数对拍。
+ * @remarks 只改依赖归属（harness 经 {@link SelftestDeps} 注入）；
+ * 「参数面」「声明表」「SKILL.md 参数对拍」调用序在出生信息形态、
+ * help 裁剪、专题渲染后。
  */
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { OPTION_NAMES, SIDE_PREFIXES, parseArgs } from "../args";
 import { ALL_OPTION_NAMES, OPTION_ALIASES } from "../args/table";
-// namespace import：候选 2 的派生常量在实现落地前访问为 undefined，
-// 红发生在断言级（eq 报「实得 undefined」）而非模块加载崩溃 —— TDD 的红要看得到条目。
+// namespace import：派生常量落地前为 undefined，红在断言级
+// （eq 报「实得 undefined」）而非模块加载崩溃 —— TDD 红要看得见。
 import * as table from "../args/table";
 import { OPTION_SCOPE } from "../args/scope";
 import { renderCommandHelp } from "../commands/help";
-// namespace：断言要检查 help 是否仍手抄 OPTION_OWNERSHIP（不存在的导出用 `in` 探测）
+// namespace：查 help 是否仍手抄 OPTION_OWNERSHIP（不存在的导出用 `in` 探）
 import * as helpNs from "../commands/help";
 import { eq, type SelftestDeps } from "./kit";
 import { SAMPLE_ARGV } from "./sample";
 
 /**
- * 解析引擎：util.parseArgs tokens 底座、重复参数报错、拼音别名归一、三连删除。
+ * 解析引擎：util.parseArgs tokens 底座、重复报错、别名归一、三连删除。
  *
- * @param ok - harness 的断言注册（`createHarness` 产出）：逐条收集结果，失败不影响其余条目
- * @returns 无返回值；四条断言直接进主报告
- * @throws 断言体里的 `throw` 都由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是贪婪取值 / 等号式 / `--` 分隔的行为漂移、重复参数或主别名同现未报错、拼音别名未归一、三连参数仍被接受
+ * @param ok - harness 断言注册：逐条收集，失败不影响其余
+ * @returns 无返回值；四条断言进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为贪婪取值 / 等号式 / `--` 分隔漂移、重复或主别名同现未报错、别名未归一、三连仍被接受
  */
 export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("解析引擎：util.parseArgs tokens 底座——贪婪取值 / 等号式 / -- 分隔", () => {
-		// 解析引擎（spec §2.8）：底座为 Node 内置 util.parseArgs（tokens 模式）。
-		// ⚠️ 贪婪取值是**版本敏感**行为（Node ≥ 22.15 实测贪婪；早期 18.x 会把负数当短选项），
-		//    本断言钉死——Node 行为若回退立即变红。
+		// 解析引擎（spec §2.8）：底座 Node 内置 util.parseArgs tokens。
+		// ⚠️ 贪婪取值**版本敏感**（Node ≥ 22.15 贪婪；18.x 把负数当短选项），
+		//    本断言钉死——Node 行为回退立即红。
 		const a = parseArgs(["--limit", "-3"], "knowledge");
 		eq(a.limit, "-3", "--limit -3 的值 ");
 		eq(parseArgs(["--focus=财帛"], "astrology").focus, "财帛", "等号式 ");
 		eq(parseArgs(["--", "-x", "y"], "astrology")._.join(","), "-x,y", "-- 之后全位置 ");
 	});
 	ok("解析引擎：重复参数与主别名同现必须报错", () => {
-		// 旧引擎（cac）对重复参数取末值——静默择一。新契约：显式报错（宁可报错不静默）。
+		// cac 旧引擎重复参数取末值=静默择一；新契约显式报错（宁报错不静默）
 		for (const argv of [
 			["--geju", "--geju"],
 			["--geju", "--pattern"],
@@ -62,7 +59,7 @@ export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {
 		eq(parseArgs(["--liunian", "2027"], "astrology").yearly, "2027", "--liunian → yearly ");
 	});
 	ok("解析引擎：--year/--month/--day 三连已删，未知参数中文报错", () => {
-		// 三连由 --date 完全覆盖（spec §1.2），删除后误敲 --year 由拼错建议引向 --yearly（距离 2）。
+		// 三连由 --date 覆盖（spec §1.2），误敲 --year 由拼错建议引向 --yearly
 		let msg = "";
 		try {
 			parseArgs(["--year", "1990"], "astrology");
@@ -78,19 +75,17 @@ export function runParseEngine({ ok }: Pick<SelftestDeps, "ok">): void {
 /**
  * 参数面：拼错旗标指路、作用域收窄、专题参数族。
  *
- * @param ok - harness 的断言注册（`createHarness` 产出）
- * @returns 无返回值；两条断言直接进主报告
- * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是拼错旗标被静默接受、提示没有指向最接近的合法名、或专题参数族（info/pattern/mutagen/decadal/ages）解析不出
+ * @param ok - harness 断言注册
+ * @returns 无返回值；两条断言进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为拼错旗标被静默接受、提示未指向最近合法名、专题族（info/pattern/mutagen/decadal/ages）解析不出
  */
 export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("参数面：拼错的旗标必须报错，并指向最接近的合法名", () => {
-		// 拼错旗标以前是**静默**的：parseArgs 任何 `--xxx` 都照单全收，buildBirthInfo
-		// 读不到就落回默认值 —— `--ctiy 喀什` 排出的是一张经度按默认 120°E 算的盘
-		// （错约 176 分钟 ≈ 3 个时辰），全程零提示。这类静默错盘正是本项目
-		// REQUIRED_EXPORTS 与 projectPalaceName 都在防的东西。
-		//
-		// 本断言锁的是**行为**（未知旗标必须抛错）而非文案 —— 文案可以改，
-		// 但一旦有人把 parseArgs 的校验摘掉，静默错盘就会原样回来，而别的断言全绿。
+		// 拼错旗标以前**静默**：parseArgs 照收，buildBirthInfo 读不到即落回默认值 ——
+		// `--ctiy 喀什` 排出按默认 120°E 算的盘（错约 176 分钟 ≈ 3 个时辰），零提示。
+		// 这类静默错盘正是 REQUIRED_EXPORTS 与 projectPalaceName 所防
+		// 本断言锁**行为**（未知旗标须抛错）非文案：文案可改，但摘掉校验则静默错盘
+		// 原样回来、别的断言全绿。
 		const probes: Array<[string, string]> = [
 			["--ctiy", "city"], // 换位
 			["--gendr", "gender"], // 漏字
@@ -110,17 +105,15 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 				throw new Error(`${bad} 的提示应指向 --${want}，实得：${msg}`);
 			}
 		}
-		// 作用域收窄探针：**本 skill 不认**的旗标必须报错，而不是静默收下。
-		// 合并后 `--limit`（knowledge）与 `--chart`（synastry 的 --a-chart/--b-chart 裸底名）
-		// 都进了本 skill 作用域，故收窄探针只剩**出生方前缀**这一维：`a-` / `b-` 前缀
-		// 只有 synastry 命令认，叠在 astrology 上必须报错（当前前缀已退役，实际落
-		// 「未知参数」——报错非空即守住「不静默收下」这条底线）。
-		//
-		// ⚠️ 少了这一条，哪天有人把 args.ts 的未知参数校验摘掉，`astrology --a-chart x`
-		// 会静默通过 —— 而没有任何断言变红。
+		// 作用域探针：**本 skill 不认**的旗标须报错非静默收。合并后 `--limit`
+		// （knowledge）与 `--chart`（synastry 的 --a-chart/--b-chart 裸名）都进作用域，
+		// 探针只剩**出生方前缀**一维：`a-`/`b-` 仅 synastry 认，叠 astrology 报错
+		// （前缀已退役，实际落「未知参数」——报错非空即守「不静默收下」）。
+		// ⚠️ 少了它，摘掉 args.ts 未知参数校验后 `astrology --a-chart x` 会静默通过
+		// 而无任何断言变红。
 		const outOfScope: Array<[string, string]> = [
-			// 合盘的命盘前缀（真实存在、只是归 synastry 命令）：探针必须挑这种「存在但错位」
-			// 的旗标，不存在的旗标与上面那组拼写错误探针重叠。
+			// 命盘前缀（真实存在、归 synastry）：挑「存在但错位」的旗标，
+			// 不存在的与上面拼写错误探针重叠。
 			["--a-chart", "/tmp/a.json"],
 			["--b-chart", "/tmp/b.json"],
 		];
@@ -138,9 +131,9 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 		return `${probes.length} 个拼写错误均被拦下，${outOfScope.length} 个作用域外旗标被拒`;
 	});
 	ok("参数面：专题参数族（info/pattern/mutagen/decadal/ages）均可解析", () => {
-		// 专题参数族：每个参数对应一个输出专题，加了就只出该专题的详版（英文名主名，
-		// 拼音别名见 OPTION_ALIASES）。switch 型裸开关给 true；decadal / ages 是可选值
-		// 形态，带值给字符串、裸开关（= 默认当前虚岁）给 true。
+		// 专题参数族：每参数对应一输出专题，加了只出该专题详版（英文主名，别名见
+		// OPTION_ALIASES）。switch 裸开关给 true；decadal/ages 可选值，带值给字符串、
+		// 裸开关（= 默认当前虚岁）给 true。
 		const base = [...SAMPLE_ARGV];
 		const a = parseArgs([...base, "--info", "--pattern", "--mutagen"], "astrology");
 		eq(a.info, true, "--info ");
@@ -159,14 +152,16 @@ export function runArgSurface({ ok }: Pick<SelftestDeps, "ok">): void {
 /**
  * 声明表：作用域差量排除表、可选值参数 help 语法。
  *
- * @param ok - harness 的断言注册（`createHarness` 产出）
- * @returns 无返回值；七条断言直接进主报告（其中一条把「全集 / 排除 / 作用域」的基数作为该项说明）
- * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 `OPTION_SCOPE.excluded` 里出现声明表没有的名字、作用域基数与「全集 − excluded」脱节、语义角色反推不等价、独占分支清单违背后置不变量、`OPTION_OWNERSHIP` 手抄表回潮、可选值 help 语法混用、专题菜单与声明表对不上
+ * @param ok - harness 断言注册
+ * @returns 无返回值；七条断言进主报告（一条以「全集 / 排除 / 作用域」基数为说明）
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为 `OPTION_SCOPE.excluded`
+ *   含声明表外名字、作用域基数与「全集 − excluded」脱节、语义角色反推不等价、
+ *   独占分支违背后置不变量、`OPTION_OWNERSHIP` 回归、可选值 help 混用、专题菜单对不上
  */
 export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok("声明表：作用域差量排除表里的名字都真实存在（拼错不许静默失效）", () => {
-		// 差量化后 OPTION_NAMES = 全集 − excluded：排除项拼错不再「静默让参数失效」，
-		// 而是从这里变红 —— excluded 每一项都必须能在全集里点到位。
+		// OPTION_NAMES = 全集 − excluded：排除项拼错不再「静默让参数失效」，这里变红；
+		// excluded 每项须能在全集里点到位。
 		for (const n of OPTION_SCOPE.excluded) {
 			if (!ALL_OPTION_NAMES.has(n)) {
 				throw new Error(`OPTION_SCOPE.excluded 里的「${n}」不在声明表 —— 拼写错误`);
@@ -179,17 +174,16 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 		return `全集 ${ALL_OPTION_NAMES.size} · 排除 ${OPTION_SCOPE.excluded.length} · 作用域 ${OPTION_NAMES.size}`;
 	});
 	ok("声明表：语义角色派生与原字符串反推等价（候选 2）", () => {
-		// 期望值 = 迁移前 astrology.ts 三处 startsWith 字符串反推的实测快照（Step 1）。
-		// （star 曾随 knowledge oracle 域入 I 集合，oracle 下线后随声明一并移除。）
-		// B 为修漏组后的 12 项：「其他出生信息」组（gender / lng / city / province / name）
-		// 现状被 startsWith("出生") 漏掉，只给 --gender/--city 会误走零输入演示盘；
-		// 按 role 标 birth 后进集合，与注释承诺的「部分输入 → 缺一问一」一致（见 ledger Ruling）。
-		// 数组经 join 归一成串再比：kit 的 eq 是 !==，直接比数组恒红。
-		// S 为修守卫域缺口后的 12 项：daily/hourly 补标 shadow（2026-11-09
-		// exclusive-branch-shadowable-gap），运限四化层级族全员进入独占分支被吞检测域
-		// ——有理由的基线推进，非漂移迁就；行为钉点在 test/report.test.ts 独占分支 describe。
-		// S 13 项（2026-11-11 shadow-decision-exhaustive-guard）：view 显式表态入域
-		// （此前被静默吞）——有理由的基线推进，非漂移迁就。
+		// 期望值 = 迁移前 astrology.ts 三处 startsWith 反推的实测快照（Step 1）。
+		// star 曾随 oracle 域入 I，下线后随声明移除。
+		// B 为修漏组后 12 项：「其他出生信息」组（gender/lng/city/province/name）遭
+		// startsWith("出生") 漏掉，只给 --gender/--city 会误走零输入演示盘；标 birth 后
+		// 进集合，与「部分输入 → 缺一问一」一致（见 ledger Ruling）。数组经 join 归一
+		// 成串再比：kit 的 eq 是 !==，直接比数组恒红。
+		// S 修守卫域缺口后 12 项：daily/hourly 补标 shadow（2026-11-09
+		// exclusive-branch-shadowable-gap），运限四化族进被吞检测域；S 13 项
+		// （2026-11-11 shadow-decision-exhaustive-guard）view 表态入域（此前被静默吞）。
+		// 均有理由；钉点在 test/report.test.ts 独占分支 describe。
 		const snap = {
 			S: "ages,daily,decadal,focus,hourly,info,monthly,mutagen,pattern,report,topic,view,yearly",
 			B: "branch,city,date,eot,gender,lateZi,leap,lng,lunar,name,noDst,province,time",
@@ -220,9 +214,9 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 			"--palaces > --topic > --report > 其他功能参数",
 			"优先级链文案 "
 		);
-		// ↑ 该对拍自 EXCLUSIVE_PRIORITY_LABEL 改由 EXCLUSIVE_BRANCHES 清单序派生起
+		// ↑ 自 EXCLUSIVE_PRIORITY_LABEL 改由 EXCLUSIVE_BRANCHES 清单序派生起
 		//   （2026-11-17-exclusive-branch-allow-chain-declaration），从「文案快照」
-		//   升格为「清单顺序守卫」：改清单序 / 显示段即红，不另加重复断言。
+		//   升格为「清单顺序守卫」：改清单序/显示段即红，不另加重复断言。
 		const unmarked = (table.OPTION_GROUPS ?? []).filter(g => !g.role).map(g => g.title);
 		if (unmarked.length) {
 			throw new Error(`存在未标 role 的选项组：${unmarked.join("、")}`);
@@ -232,11 +226,10 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 	ok(
 		"声明表：output-select × astrology 参数的 shadow/noShadow 决策显式表态（穷尽性守卫）",
 		() => {
-			// 失败可见性的增长方向守卫：output-select 组默认域外，漏标 shadow = 结构性静默
-			// 落域外——daily/hourly（2026-11-09）与 view（2026-11-11）两次静默吞同根因，
-			// 现行快照（冻结镜像）与行为测试（封闭枚举）都只守收缩方向。本断言要求每个
-			// 该组 astrology 参数显式二选一表态，「隐式默认域外」的开放枚举收敛为封闭
-			// 声明义务，决策单点回 table.ts；未表态当场红并点名。
+			// 失败可见性增长守卫：output-select 默认域外，漏标 shadow = 静默。
+			// daily/hourly（2026-11-09）与 view（2026-11-11）两次静默吞同根因，现快照
+			// 与行为测试都只守收缩方向。本断言要求该组每个 astrology 参数显式二选一表态，
+			// 「隐式默认域外」的开放枚举收敛为封闭声明义务，决策单点回 table.ts；未表态即红。
 			const group = (table.OPTION_GROUPS ?? []).find(g => g.role === "output-select");
 			if (!group) {
 				throw new Error("声明表缺 output-select 组 —— role 派生守卫失效");
@@ -257,11 +250,10 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 	);
 	ok("声明表：独占分支清单跨字段不变量（放行 ⊆ 被吞域、分支名已声明）", () => {
 		// EXCLUSIVE_BRANCHES 清单（2026-11-17-exclusive-branch-allow-chain-declaration）
-		// 是判定链唯一表态处，两表（清单 × OPTION_GROUPS）不许漂移：
-		// ① consumes ⊆ SHADOWABLE_KEYS —— 放行的参数必须同在被吞域（被吞后由清单放行），
-		//   域外放行 = 检测看不见它 = 静默吞后门重开；
-		// ② 条目分支名必须是已声明参数 —— 清单只声明分支级关系，参数存在性仍归
-		//   OPTION_GROUPS（防清单成为第二份参数清单）。
+		// 判定链唯一表态处，两表（清单 × OPTION_GROUPS）不许漂移：
+		// ① consumes ⊆ SHADOWABLE_KEYS —— 放行参数须同在被吞域，域外放行=静默吞后门重开；
+		// ② 条目分支名须已声明 —— 清单只声明分支级关系，参数存在性归 OPTION_GROUPS
+		//   （防清单成为第二份参数清单）。
 		const branches = table.EXCLUSIVE_BRANCHES ?? [];
 		if (branches.length === 0) {
 			throw new Error("EXCLUSIVE_BRANCHES 清单为空 —— 独占判定链声明丢失");
@@ -285,7 +277,7 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 	});
 	ok("归属：OPTION_OWNERSHIP 从声明投影而非手抄（候选 4）", () => {
 		// 同步断言：kit 的 ok 不 await async 断言体（Promise 恒 truthy = 假绿），
-		// 依赖一律走本文件已有的静态 import（table / helpNs）。
+		// 依赖走本文件已有的静态 import（table / helpNs）。
 		if (typeof table.ownedOptions !== "function") {
 			throw new Error("args-table 缺 ownedOptions 投影（候选 4 未实现）");
 		}
@@ -359,34 +351,33 @@ export function runDeclarationTable({ ok }: Pick<SelftestDeps, "ok">): void {
 /**
  * SKILL.md 行为规范对拍：提到的旗标都在 args-table.ts 的声明表里。
  *
- * @param ok - harness 的断言注册（`createHarness` 产出）
- * @param ctx - 运行期上下文；`ctx.root` 是内核根（即 `scripts/`），SKILL.md 从它的上级读
- * @returns 无返回值；通过时把「N 种参数写法全部有声明」作为该项说明
- * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 SKILL.md 一个旗标都扫不到（正则或路径失效，那样的「零违规」是假绿），或扫到的旗标剥前缀、归别名后仍不在声明表里
+ * @param ok - harness 断言注册
+ * @param ctx - 运行期上下文；`ctx.root` 是内核根（`scripts/`），SKILL.md 从上级读
+ * @returns 无返回值；通过时以「N 种参数写法全部有声明」为说明
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为 SKILL.md 扫不到旗标
+ *   （正则或路径失效，「零违规」即假绿），或旗标剥前缀、归别名后不在声明表
  */
 export function runSkillArgsAudit({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {
 	ok("参数面：SKILL.md 提到的旗标都在 args-table.ts 的声明表里", () => {
-		// SKILL.md 是给助手读的**行为规范**（见仓库根 AGENTS.md：改它就等于改 skill
-		// 的行为）。它提到的旗标若在解析层不存在，助手会照着敲一个被拒的参数。
-		//
-		// 只查「SKILL.md → 声明表」这一个方向。反向（声明表里的旗标都要写进 SKILL.md）
-		// 刻意不查：SKILL.md 是使用指南不是穷举清单，`topic` 的全部 key、`knowledge` 的
+		// SKILL.md 给助手读的**行为规范**（见 AGENTS.md：改它即改 skill 行为），
+		// 旗标若解析层不存在，助手会照敲被拒参数。只查「SKILL.md → 声明表」一向；
+		// 反向不查：SKILL.md 是指南非穷举清单，`topic` 全部 key、`knowledge`
 		// 位置参数这类细节本就不该塞进去。
 		const md = readFileSync(resolve(ctx.root, "..", "SKILL.md"), "utf8");
 		const mentioned = [...md.matchAll(/--([a-z][a-z0-9-]*)/g)].map(m => m[1]);
-		// 先确认真扫到了东西：正则写歪或文件挪了位置都会得到空数组，那样的「零违规」是假绿。
+		// 先确认真扫到东西：正则歪或文件挪位得空数组，「零违规」是假绿。
 		if (!mentioned.length) {
 			throw new Error("未从 SKILL.md 扫到任何旗标 —— 正则或路径可能已失效");
 		}
 		const names = [...new Set(mentioned)];
 		const unknown = names
 			.map(n => {
-				// 剥掉出生方前缀再查表：`--a-late-zi` 声明的是 `late-zi`。前缀表取自
-				// 本 skill 的作用域（`SIDE_PREFIXES`），从声明派生，作用域变了会自动跟上。
+				// 剥出生方前缀查表：`--a-late-zi` 声明 `late-zi`。前缀表取自
+				// 作用域（`SIDE_PREFIXES`），从声明派生，作用域变了自动跟上。
 				const p = SIDE_PREFIXES.find(pre => n.startsWith(pre));
 				return p ? n.slice(p.length) : n;
 			})
-			// 拼音别名归一到英文主名（--geju 提到的是 --pattern 的别名，同样合法）
+			// 拼音别名归一到英文主名（--geju 是 --pattern 别名，同样合法）
 			.map(n => OPTION_ALIASES[n] ?? n)
 			.filter(n => !OPTION_NAMES.has(n));
 		if (unknown.length) {

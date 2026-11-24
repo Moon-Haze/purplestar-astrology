@@ -1,21 +1,15 @@
 /**
- * 全盘报告编排层 —— 与 {@link ./index|getTopicAnalysis} 平级的第二编排器（Markdown 形态）。
- *
- * ⚠️ 本模块**只编排、不算命**：建一次 {@link makeContext} 上下文，把各 `renderXxx` 的行
- *    按报告小节序拼接；性别已在各 view 经 `selectGender` 投影，编排层仅拼接。
- * ⚠️ 「经典出处」引文由 CLI 层查古籍后从 `options.citations` 递入，本模块不引古籍库 ——
- *    保持「排盘内核不依赖古籍域」的分层。
- *
- * 剥头口径、报告小节流与 html 版两节省略的理由，见 docs/code/analysis.md。
- *
- * @file 全盘报告编排层 —— 与 {@link ./index|getTopicAnalysis} 平级的第二编排器（Markdown 形态）
- *
+ * 与 {@link ./index|getTopicAnalysis} 平级（Markdown）。
+ * ⚠️ 只编排不算命：建一次 {@link makeContext}，各 `renderXxx` 行按小节序拼；性别经各 view `selectGender` 投影。
+ * ⚠️「经典出处」引文由 CLI 查古籍经 `options.citations` 递入，不引古籍库 —— 保持「排盘内核不依赖古籍域」。
+ * 剥头 / 小节流 / html 两节省略理由见 docs/code/analysis.md。
+ * @file 与 {@link ./index|getTopicAnalysis} 平级的第二编排器（Markdown）
  * @packageDocumentation
  */
 
 import type { ZiweiChart } from "../types";
 
-/** 童限未起运的占位行——`getDecadalSection` 与 `getTopicReport` 的未起运分支同句（单点收口，评审候选 6 附带项）。 */
+/** 童限未起运占位行——`getDecadalSection` / `getTopicReport` 未起运分支同句（单点收口）。 */
 const CHILD_LIMIT_NOTE =
 	"（尚未起运 —— 虚岁小于五行局数时不入大限，按命宫论，见 SKILL「童限」口径。）";
 import {
@@ -36,45 +30,34 @@ import { renderKuiYue } from "../analysis/views/patron";
 import { renderSanFang } from "../analysis/views/surround";
 import { renderMutagen } from "../analysis/views/mutagen";
 
-/** 一条经典出处引文：`loc` 是「书名·章节名」，`text` 是段落原文。 */
+/** 经典出处引文：`loc` 为「书名·章节名」，`text` 为段落原文。 */
 export interface ReportCitation {
-	/** 出处定位串：`书名·章节名` */
+	/** 出处定位串：`书名·章节名`。 */
 	loc: string;
-	/** 该出处的段落原文 */
+	/** 该出处段落原文。 */
 	text: string;
 }
 
-/** {@link getTopicReport} 的可选参数：在 {@link AnalysisOptions} 上叠加引文与装配状态。 */
+/** {@link getTopicReport} 可选参数：在 {@link AnalysisOptions} 上叠加引文与装配状态。 */
 export type ReportOptions = AnalysisOptions & {
-	/** 经典出处引文列表：由 CLI 层查古籍后递入，本模块只按序拼进「经典出处」节；缺省为空 */
+	/** 经典出处引文列表：CLI 查古籍递入，只按序拼进「经典出处」节，缺省空。 */
 	citations?: ReportCitation[];
 	/**
-	 * 报告装配层的跨节去重状态：键 = 论断全文文本，值 = 该文的首现 / 主场板块名。
-	 * 三方联动的 fullContent 渲染前查此表，命中即降级为「徽标 + 指引行」；缺省
-	 * （`--topic` 单主题路径）为 `undefined`，输出与不去重时逐字节一致。
-	 * 主场登记由装配层经 {@link getTopicMainContentTexts} 预扫描完成 —— 见其注释。
+	 * 跨节去重状态：键 = 论断全文，值 = 首现 / 主场板块名。
+	 * 三方联动 fullContent 前查表，命中降级「徽标 + 指引行」；缺省（`--topic`）与不去重逐字节一致。
+	 * 主场登记由 {@link getTopicMainContentTexts} 预扫描。
 	 */
 	dedupe?: Map<string, string>;
-	/**
-	 * `--report` 装配时置 true：板块内不再渲染「当前大限」小节（大限与主题无关，
-	 * 由文档头区的独立大限节承接，见 {@link getDecadalSection}）。缺省不省略，
-	 * 单主题路径行为不变。
-	 */
+	/** `--report` 置 true 时不渲染「当前大限」节（大限与主题无关，文档头独立节承接，见 {@link getDecadalSection}）；缺省不省略。 */
 	omitDecadal?: boolean;
 };
 
 /**
- * 把叶子 view 输出装配成报告的 Markdown 块。
- *
- * @remarks
- * 剥掉**首个** `**【…】**` 头，view 内部的子块头转成 `####` 标题（Markdown 文档里
- * 强调行不能当标题）。
- *
- * ⚠️ 无头输出按原行装配：报告标题会与它自带的头并存 —— 那是应当被看见的漂移。
- * 完整口径见 docs/code/analysis.md。
- *
- * @param lines - 叶子 view 输出的文本行（可含首部空行与一个 `**【…】**` 节头）
- * @returns 新的行数组：首部空行与首个节头已剥除，其余 `**【…】**` 行改写为 `#### …` 三级升标题并前后各留一空行；不修改入参
+ * 叶子 view 行 → 报告块。
+ * @remarks 剥首 `**【…】**` 头，子块头转 `####`（强调行不能当标题）。
+ * ⚠️ 无头输出按原行装配（标题与自带头并存是应被看见的漂移）。
+ * @param lines - 叶子 view 输出行
+ * @returns 新行数组：剥首空行与首节头，其余 `**【…】**` 改 `####`；不改入参
  */
 function asMarkdownBlock(lines: string[]): string[] {
 	let i = 0;
@@ -100,10 +83,9 @@ function asMarkdownBlock(lines: string[]): string[] {
 }
 
 /**
- * 去掉行数组首尾的空行（拼接小节时统一由编排层控制间距）。
- *
- * @param lines - 待裁剪的文本行
- * @returns 新的行数组：只裁掉首尾 `""`，中间的空行原样保留；入参不被修改
+ * 去首尾空行（间距由编排层控制）。
+ * @param lines - 待裁剪行
+ * @returns 新数组：只裁首尾 `""`，中间原样；不改入参
  */
 function trimBlanks(lines: string[]): string[] {
 	let start = 0;
@@ -118,15 +100,11 @@ function trimBlanks(lines: string[]): string[] {
 }
 
 /**
- * 主题报告的元信息 —— CLI 层为该主题查古籍引文的全部输入。
- *
- * @remarks
- * 单独成函数而非让 CLI 读 ctx：`AnalysisContext` 不在公开面上，而主宫主星这组
- * 派生值（含空宫借对宫）必须与报告本体同源，不能让调用方自己再找一遍宫。
- *
+ * 主题报告元信息（CLI 查古籍引文输入）。
+ * @remarks 单列而非读 ctx：`AnalysisContext` 不在公开面，主宫主星派生值须同源，不让调用方再找宫。
  * @param chart - 已排好的命盘
- * @param topic - 主题键（14 个之一）
- * @returns 该主题的主宫名（展开形）、主星名（空宫借对宫时取借来的那颗，无主星为 `null`）、是否借宫；主宫在盘里找不到时返回 `null`（调用方据此跳过引文查询）
+ * @param topic - 主题键
+ * @returns 主宫名 / 主星名（空宫借对宫）/ 是否借宫；主宫找不到返 `null`
  */
 export function getTopicReportMeta(
 	chart: ZiweiChart,
@@ -144,24 +122,12 @@ export function getTopicReportMeta(
 }
 
 /**
- * 「本板块哪些全文登记主场」的**唯一实现**（spec report-assembly「主场登记单一
- * 权威」）：单主题核心论断需登记主场的全文集合（第一主星 `m.content` + 双主星的
- * `m.secondStarContent`，与 {@link getTopicReport} 同源同投影，同走
- * {@link buildOverviewMaterial}）—— 供 `--report` 装配层**预登记**主场板块；
- * 渲染路径（{@link getTopicReport}）不另行登记本板块主星全文。
- *
- * @remarks
- * 为什么必须预扫描而非渲染时登记：渲染按板块序进行，更早板块的三方联动会先遇到
- * 「渲染在后的板块核心论断」同文文本并抢走首现，导致主场板块的核心论断降级、
- * 同文出现两次。预扫描把全部主场登记完后，三方联动的 fullContent 查表命中主场
- * 即降级指引回主场板块 —— 全文恰出现一次，且永远落在其主场。第二主星全文同样
- * 在本板块展开（双主星主场展开），故一并登记——改前它只能靠别的板块三方联动
- * 抢走首现，指引指错主场（天相→财富运势、巨门→健康状况）。空宫等无内容的
- * 主题返回空数组，调用方跳过登记。
- *
+ * 「本板块哪些全文登记主场」唯一实现（spec report-assembly「主场登记单一
+ * 权威」）：登记 = 第一主星 `m.content` + 双主星 `m.secondStarContent`，与 {@link getTopicReport} 同源，同走 {@link buildOverviewMaterial}；供 `--report` 预登记，渲染（{@link getTopicReport}）不另登记。
+ * @remarks 须预扫描：否则早板块三方联动先遇「渲染在后的板块核心论断」同文抢首现，致主场降级、同文两次；预登记后命中主场即降级。
  * @param chart - 已排好的命盘
- * @param topic - 主题键（14 个之一）
- * @returns 该主题核心论断需登记主场的全文数组：第一主星全文在前、双主星第二主星全文在后，空的自动剔除；主宫找不到或该主题无全文内容时为空数组
+ * @param topic - 主题键
+ * @returns 主场全文数组（第一主星在前、第二主星在后，空剔除）；无内容为空
  */
 export function getTopicMainContentTexts(chart: ZiweiChart, topic: TopicKey): string[] {
 	const ctx = makeContext(chart, topic, {});
@@ -173,16 +139,10 @@ export function getTopicMainContentTexts(chart: ZiweiChart, topic: TopicKey): st
 }
 
 /**
- * 「当前大限」独立节的正文（剥 view 自带的 `**【…】**` 头，年龄区间与宫名由
- * 装配层的节标题承载）—— 大限与主题无关（{@link renderDecadal} 只读 currentDx），
- * 13 个板块各渲染一遍是纯重复，`--report` 改为全报告一处，板块内以
- * `omitDecadal` 省略。
- *
- * 未起运（renderDecadal 返回空）时返回童限提示句，文案与 {@link getTopicReport}
- * 的未起运分支逐字一致。
- *
+ * 「当前大限」独立节正文（剥 `**【…】**` 头）—— 大限与主题无关（{@link renderDecadal} 只读 currentDx），13 板块重复，`--report` 改一处，`omitDecadal` 省略。
+ * 未起运给童限提示，与 {@link getTopicReport} 分支逐字一致。
  * @param chart - 已排好的命盘
- * @returns 大限节的 Markdown 正文（已剥 view 自带节头、首尾空行已 trim）；未起运时返回童限提示句，主宫找不到时返回空串
+ * @returns 大限节正文（已剥头、trim）；主宫找不到返空串
  */
 export function getDecadalSection(chart: ZiweiChart): string {
 	const ctx = makeContext(chart, "overview", {});
@@ -197,21 +157,13 @@ export function getDecadalSection(chart: ZiweiChart): string {
 }
 
 /**
- * 生成单个主题的 Markdown 报告节。
- *
+ * 生成单个主题 Markdown 报告节。
  * @param chart - 已排好的命盘
- * @param topic - 主题键（14 个之一）
- * @param options - 视角等 {@link AnalysisOptions} + `citations`（经典出处引文，
- *   缺省时该小节整体省略）
- * @returns 一节 Markdown 文本（以 `## 主题名（主宫 · 主星）` 开头）；主宫找不到时
- *   返回兜底提示 —— 与 `getTopicAnalysis` 同一提前返回口径
- *
- * @remarks
- * 小节序参照 html 版主题报告（定调 → 总览 → 核心论断 → 命盘推演 → 三方四正联动 →
- * 四化路径分析 → 当前大限 → 主题专属补充 → 命盘依据 → 经典出处 → 综合建议）。
- *
- * ⚠️ html 版另有「主辅煞组合精细论断」「天纪溯源·时间码」两节，其数据不在本仓知识源内，
- *    不臆造、整体省略。完整小节流见 docs/code/analysis.md。
+ * @param topic - 主题键
+ * @param options - 视角等 {@link AnalysisOptions} + `citations`（缺省该节省略）
+ * @returns 一节 Markdown（`## 主题名（主宫 · 主星）` 开头）；主宫找不到返兜底提示
+ * @remarks 小节序参照 html 版。
+ * ⚠️ html 版「主辅煞组合精细论断」「天纪溯源·时间码」两节数据不在本仓，不臆造、省略。
  */
 export function getTopicReport(
 	chart: ZiweiChart,
@@ -227,11 +179,11 @@ export function getTopicReport(
 	const lines: string[] = [];
 	const m = buildOverviewMaterial(ctx);
 
-	// ── 节标题：主题名（主宫 · 主星徽标；loanTag 取 material 单点）──
+	// 节标题：主题名（主宫 · 主星徽标）
 	lines.push(`## ${TOPIC_LABEL[topic]}（${ctx.palaceName} · ${m.loanTag}${m.mainBadge}）`);
 	lines.push("");
 
-	// ── 一句话定调：主星一句简述（STAR_BRIEF），空宫给借宫提示 ──
+	// 定调：主星简述，空宫借宫提示
 	if (ctx.primaryStar) {
 		const brief = STAR_BRIEF[ctx.primaryStar.name];
 		if (brief) {
@@ -242,13 +194,12 @@ export function getTopicReport(
 	}
 	lines.push("");
 
-	// ── 总览：命盘关键定制 + 特殊格局 + 星曜深层特质 ──
-	// 取材住 `../overview-material`（与 views/overview.ts 同一单点），但不加【】小节头
-	// —— 报告里它们是同一段「总览」的三个层次。辅助宫主题（兄弟/子女/迁移/交友/
-	// 田宅/福德/父母）三样都没有 —— 整段省略，不留空标题（view 层同口径）。
-	// ⚠️ personality 板块跳过 mods/geju：它与命格总览板块同主宫（命宫），注入行
-	//    逐字相同——报告连续阅读场景纯冗余（板块总览唯一，spec report-assembly）。
-	//    本函数仅服务 --report，--topic 终端路径（getTopicAnalysis）不受影响。
+	// 总览：定制 + 格局 + 星曜特质
+	// 取材 ../overview-material（同 views/overview.ts 单点），不加【】头
+	// 即「总览」三层次；辅助宫（兄弟/子女/迁移/交友/田宅/福德/父母）三样都没有则整段省略
+
+	// ⚠️ personality 跳过 mods/geju：与命格总览同主宫（命宫），注入行逐字相同——报告连续读纯冗余（板块总览唯一，spec report-assembly）；仅 --report
+
 	const overviewLines: string[] = [];
 	if (!m.emptyFallback) {
 		if (topic !== "personality") {
@@ -266,7 +217,7 @@ export function getTopicReport(
 		lines.push(...overviewLines, "");
 	}
 
-	// ── 核心论断：本宫主星的该宫语境全文 + 亮度补充 + 同宫第二主星（简述 + 全文）──
+	// 核心论断：主星该宫全文 + 亮度 + 第二主星
 	const verdictLines: string[] = [];
 	if (!m.emptyFallback) {
 		if (m.content) {
@@ -288,19 +239,19 @@ export function getTopicReport(
 		lines.push(...verdictLines, "");
 	}
 
-	// ── 命盘推演：本宫主星一行（含借宫注明，overview 附五行局；取 material 单点）──
+	// 命盘推演：主星一行（借宫注明，取 material）
 	lines.push("### 命盘推演");
 	lines.push("");
 	lines.push(m.mainStarLine);
 	lines.push("");
 
-	// ── 三方四正联动（叶子 view，剥头）──
+	// 三方四正联动（叶子 view，剥头）
 	lines.push("### 三方四正联动");
 	lines.push("");
 	lines.push(...asMarkdownBlock(renderSanFang(ctx, options.dedupe)));
 
-	// ── 四化路径分析：本命四化会照 + 魁钺贵人 ──
-	// 注句经去重表全报告首现一次（四化注首现原则），落点行恒出（renderMutagen 内）。
+	// 四化路径：四化会照 + 魁钺
+	// 注句经去重表全报告首现一次（四化注首现），落点行恒出（renderMutagen）
 	lines.push("### 四化路径分析");
 	lines.push("");
 	lines.push(...asMarkdownBlock(renderMutagen(ctx, options.dedupe)));
@@ -310,7 +261,7 @@ export function getTopicReport(
 		lines.push(...asMarkdownBlock(kuiYue));
 	}
 
-	// ── 当前大限（未起运时给童限提示；--report 装配省略，由文档头区独立节承接）──
+	// 当前大限（--report 省略，文档头独立节承接）
 	if (!options.omitDecadal) {
 		lines.push("### 当前大限");
 		lines.push("");
@@ -322,9 +273,9 @@ export function getTopicReport(
 		}
 	}
 
-	// ── 主题专属补充：疾厄取象（health）──
-	// personality 不渲染「性格深描」：其内容与核心论断逐字同源（同一 personality 键），
-	// 板块总览唯一（spec report-assembly）；--topic 终端路径（getTopicAnalysis）不受影响。
+	// 疾厄取象（health）
+	// personality 不渲染「性格深描」：与核心论断逐字同源（同一 personality 键），
+	// 板块总览唯一（spec report-assembly）；--topic 不受影响
 	const extra = topic === "health" ? renderHealth(ctx) : [];
 	if (extra.length > 0) {
 		lines.push("");
@@ -333,7 +284,7 @@ export function getTopicReport(
 		lines.push(...asMarkdownBlock(extra));
 	}
 
-	// ── 命盘依据：事实层 —— 主宫星曜全列 / 三方四正 / 本命四化会照 / 全盘骨架 ──
+	// 命盘依据：主宫星曜 / 三方四正 / 四化 / 骨架
 	lines.push("### 命盘依据");
 	lines.push("");
 	const otherStars = ctx.mainPalace.stars.filter(s => s.type !== "major");
@@ -370,7 +321,7 @@ export function getTopicReport(
 	}
 	lines.push("");
 
-	// ── 经典出处：引文由 CLI 层从古籍库查得后递入，无引文时整节省略 ──
+	// 经典出处：CLI 递入引文，无则省略
 	if (citations.length > 0) {
 		lines.push("### 经典出处");
 		lines.push("");
@@ -380,7 +331,7 @@ export function getTopicReport(
 		lines.push("");
 	}
 
-	// ── 综合建议（按盘推算；「继续深度追问」是交互尾巴，报告不带）──
+	// 综合建议（按盘推算；「继续深度追问」交互尾巴不带）
 	lines.push("### 综合建议");
 	lines.push("");
 	for (const s of buildTopicSuggestions(ctx)) {
@@ -388,8 +339,8 @@ export function getTopicReport(
 	}
 	lines.push("");
 
-	// view 之间的多空行在 Markdown 里与单个空行同义，统一压平成规范形态；
-	// 性别已在各 view 经 selectGender 投影，编排层仅拼接，不再整篇过滤
+	// view 间多空行与单空行同义，压平；
+	// 性别已各 view selectGender 投影，编排层仅拼接不过滤
 	const text = trimBlanks(lines)
 		.join("\n")
 		.replace(/\n{3,}/g, "\n\n");

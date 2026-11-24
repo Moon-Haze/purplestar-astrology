@@ -13,22 +13,20 @@
 //   ② 模块拆解 逐组 import 计时，回答「谁占大头」。
 //   ③ 热路径   单次调用耗时（排盘 / 格局 / 城市查找），回答「某处是不是瓶颈」。
 //
-// ②③ 均在**真实 node 子进程**中测，不在本进程内。原因：本编排脚本跑在 tsx 下，
-// 而 tsx 的 esbuild 转换成本与源文件大小成正比 —— 实测把 nihai 的加载成本从 5ms
-// 抬到 14ms、cli/commands 从 13ms 抬到 38ms，大源文件被高估约 2–3 倍（nihai 模块已
-// 随同名命令一并移除，此处数据留作 tsx 高估幅度的例证）。子进程探针
-// 复用 test/lib/loader.ts 的 registerHooks（loader.ts 与 CLI 共用 boot-hooks.ts 一份
-// 实现——机制单点、无副本关系），因此**不需要**在这里再写第二份 hook 逻辑。
+// ②③ 均在**真实 node 子进程**中测，不在本进程内：本脚本跑在 tsx 下，
+// tsx 的 esbuild 成本与源文件大小成正比 —— 实测把 nihai 加载从 5ms 抬到 14ms、
+// cli/commands 从 13ms 抬到 38ms，大源文件被高估约 2–3 倍（nihai 已随命令移除，
+// 此处留作 tsx 高估幅度例证）。探针复用 test/lib/loader.ts 的 registerHooks
+// （与 CLI 共用 boot-hooks.ts 一份实现——机制单点、无副本），故**不需要**再写 hook 逻辑。
 //
 // 口径纪律（本项目踩过的坑）：
-//   比较「某处占端到端多少」时，必须用**首次调用**耗时，不能用暖机后的均摊值 ——
+//   比较「某处占端到端多少」必须用**首次调用**耗时，不能用暖机后的均摊值 ——
 //   前者对齐 CLI「一次解读调一次」的真实形态，后者只在循环场景（测试）里才有意义。
-//   拿均摊值去除冷启动端到端，会得出「热路径占 11%」这种虚高结论。
+//   拿均摊值除冷启动端到端，会得出「热路径占 11%」这种虚高结论。
 //
-// 为什么要有这个脚本：本仓库 CLI 总耗时 160ms 量级，其中绝大部分是 Node 启动与排盘
-// 引擎的入场费。不做端到端对照、只读代码形态（「这里 40 处线性扫描」「这里 flatMap
-// 了 335 个城市」），极易把 0.02ms 的热路径误判成 P1。脚本的意义就是让这类判断
-// 先过一遍数据。
+// 为什么要有这个脚本：本仓 CLI 总耗时 160ms 量级，绝大部分是 Node 启动与排盘引擎
+// 的入场费。不做端到端对照、只读代码形态（「这里 40 处线性扫描」「这里 flatMap 了
+// 335 个城市」），极易把 0.02ms 的热路径误判成 P1。脚本就是让这类判断先过一遍数据。
 
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -41,9 +39,8 @@ import type { BirthInfo } from "@/types"; // 仅参与 typecheck，运行时被�
 // HERE = <仓库根>/tools/bench，上溯两级即仓库根（口径同 tools/db/*.ts）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(HERE, "../..");
-// ⚠️ 字面路径，且 tools/ 不在 npm test 覆盖内 —— 这类行
-//    漏改不会变红，只会在实跑时报模块找不到。probe 里的 `@/…` 动态 import 不在此列：
-//    它们走 LOADER 装的解析钩子，跟着 loader 的 ROOT 走。
+// ⚠️ 字面路径，tools/ 不在 npm test 覆盖内 —— 漏改不会变红，只在实跑时报模块找不到。
+//    probe 里的 `@/…` 动态 import 不在此列：走 LOADER 装的钩子，跟着 loader 的 ROOT 走。
 const CLI = resolve(SKILL_ROOT, "scripts/purple-star.ts");
 const LOADER = resolve(SKILL_ROOT, "test/lib/loader.ts");
 
@@ -76,8 +73,7 @@ function ms(v: number, w = 10): string {
 
 /**
  * 三条代表性命令：纯引导层 / 完整排盘 / 主题论断（唯一用得上分析数据库的命令）。
- *
- * 本 CLI 是唯一一条，探针命令为 `astrology` / `astrology --topic`。
+ * 探针命令为 `astrology` / `astrology --topic`。
  */
 const E2E_CASES: Array<{ label: string; args: string[] }> = [
 	{ label: "help（纯引导层，不执行任何计算）", args: ["help"] },

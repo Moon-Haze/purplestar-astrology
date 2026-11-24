@@ -1,217 +1,150 @@
 /**
- * 命盘视图层 —— 读排盘命令 `astrology --json` 的输出，并对其做只读访问。
- *
- * @remarks
- * ## 本 skill 不排盘
- *
- * 命盘由排盘解读 skill（`purplestar-astrology`）产出，本 skill 只**消费**它
- * `astrology --json` 的输出。故本文件里没有一行排盘逻辑、也没有 `iztro` 依赖 ——
- * 它做三件事：解析那份 JSON、按宫名 / 地支查宫、把宫位里的主星取出来。
- *
- * ## 为什么类型契约是**本文件自带的**，而不是 import 源的 `types.ts`
- *
- * 本 skill 是纯消费方，不 import 源的 `types.ts`，类型契约自带。整份全量类型副本有两个问题：
- *
- * 1. **它是内核的全量类型**（含 `Decadal` / `SelfMutagenMark` / `LunarInfo` 等本 skill
- *    一个字段都不读的类型），却要靠「与源逐字节相同」来维持 —— 而本 skill 只是**消费方**，
- *    消费方该声明的是「我依赖什么」，不是「上游有什么」。
- * 2. 内核里 `Palace.selfMutagen` / `Decadal.mutagen` 是**三合派硬约束的绊线字段**
- *    （刻意保留、由源与 `test/school.test.ts` 的断言盯着有没有被填回）。本 skill
- *    不排盘、不会填这两个字段，把绊线抄进来只会让「这里是消费方还是内核」变得含糊。
- *
- * 故现在按**实际读到的字段**重述一份子集，见 {@link ZiweiChart} 一组定义。
- * 这份契约窄而明确：上游若改了某个被读字段的名字或形状，`npm run typecheck` 会当场报错；
- * 上游若只是新增字段，这里**什么都不用改**（以前那份副本要跟着同步）。
- *
- * ## 为什么不去 import 源的 `cli/chart/render.ts`
- *
- * `render.ts` 是排盘 CLI 的渲染层，它 import `@/algorithm`（真排盘）。本 skill
- * 一旦引它，排盘内核就得整份跟过来 —— 那正是本次改造要消灭的东西。这里只重建合盘真正
- * 用到的几个小函数。
- *
- * ## 为什么地支名在这里自写一份
- *
- * 源的 `data/ganzhi.ts` 也有 `BRANCHES`，但那是**运行期**导入（值是数组）——
- * 引它会把 500 多行的常量表（四化表、星曜释义、时辰对照）整份拖进本 skill。
- * 地支名是**永不变化的宇宙常量**（子丑寅卯…），不是会漂移的排盘逻辑，故自带 12 个字
- * 比拖一整份内核划算。⚠️ 这是**自有的常量**，不是「漏了同步的副本」——
- * 改 `data/ganzhi.ts` 的 `BRANCHES` 时**不需要**同步这里（两者不会同时被读到：
- * 本 skill 的盘是从 JSON 来的，地支索引与名字的对应关系由排盘方保证）。
- *
- * 「消费方契约自带」的三条论证（为何不 import 源的 types.ts / render.ts）、
- * 窄契约的报错语义，见 docs/code/synastry.md。
- *
- * @file 命盘视图层 —— 读排盘命令 `astrology --json` 的输出，并对其做只读访问
+ * 命盘视图层，只读消费 `astrology --json`。
+ * @file 命盘视图层（消费方）
+ * @remarks 不排盘/自带契约论证见 docs/code/synastry.md §0/§1（{@link ZiweiChart}）。
  */
 
 import { readFileSync } from "node:fs";
 
 /**
- * 十二地支，数组下标即全项目的**地支索引**（0=子、1=丑 … 11=亥）。
- *
- * @remarks
- * 与源的 `data/ganzhi.ts` 同名同值，理由见文件头。这里只用于把 `Palace.branch`
- * 渲染成「夫妻宫 卯」里的那个「卯」。
+ * 十二地支（0=子…11=亥），「夫妻宫 卯」的「卯」由此取。
+ * @remarks 同 `data/ganzhi.ts`。
  */
 const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
 
 /**
  * 地支索引 → 地支名。
- *
- * @param branch - 地支索引 0–11（0=子 … 11=亥）
- * @returns 地支名；索引越界时退化成索引本身的字符串（渲染层不该因一个坏索引整个崩掉）
+ * @param branch - 0–11
+ * @returns 地支名；越界退化成索引串
  */
 export const branchName = (branch: number): string => BRANCHES[branch] ?? String(branch);
 
-// ══════════════════════ 命盘类型契约 ══════════════════════
-// ⚠️ 下面这组 interface 是**消费方声明**：只列本 skill 真的读到的字段。
-//    它们由 `astrology --json` 产出（源头是 `types.ts`），
-//    但不是那份内核类型的副本 —— 见文件头「为什么类型契约是本文件自带的」。
+// ── 命盘类型契约 ──
+// 消费方声明：只列本 skill 读到的字段，非内核副本。
 
 /** 四化名。 */
 export type Mutagen = "禄" | "权" | "科" | "忌";
 
 /**
- * 出生信息 —— 只列本 skill 渲染抬头用得到的几项。
- *
- * @remarks
- * 这是排盘方**按真太阳时跨午夜调整过**的那一份（`chart.birthInfo`），不是用户敲进去的
- * 原始日期；本 skill 一个字都不重算，原样转述。
+ * 出生信息（抬头子集）。
+ * @remarks 排盘方跨午夜调整的 `chart.birthInfo`，原样转述。
  */
 export interface BirthInfo {
-	/** 公历年（已按真太阳时跨午夜调整） */
+	/** 公历年（已校正） */
 	year: number;
-	/** 公历月 1–12（已按真太阳时跨午夜调整） */
+	/** 公历月 1–12（已校正） */
 	month: number;
-	/** 公历日（已按真太阳时跨午夜调整） */
+	/** 公历日（已校正） */
 	day: number;
-	/** 内核口径的性别 */
+	/** 内核性别 */
 	gender: "male" | "female";
-	/** 可选，只影响输出抬头 */
+	/** 可选，仅抬头用 */
 	name?: string;
 }
 
-/** 一颗星 —— 本 skill 只看名字与类别。 */
+/** 一颗星（只看名字与类别） */
 export interface Star {
-	/** 星名（内核星表口径，如「紫微」「左辅」） */
+	/** 星名（如「紫微」「左辅」） */
 	name: string;
-	/** `"major"` 即十四主星；其余三类（内核字面量 minor / soft / tough）本 skill 不区分 */
+	/** `"major"`=十四主星；其余三类本 skill 不区分 */
 	type: "major" | "minor" | "soft" | "tough";
 }
 
-/** 一个宫位 —— 只列本 skill 用得到的字段。 */
+/** 宫位（只列用到的字段） */
 export interface Palace {
-	/** 项目口径的宫名，如 `"夫妻宫"` */
+	/** 宫名，如 `"夫妻宫"` */
 	name: string;
-	/** 地支索引 0–11 */
+	/** 地支索引 */
 	branch: number;
-	/** 本宫星曜（含主星与其余三类；只看主星用 {@link majorsOf}） */
+	/** 本宫星曜（三类；主星见 {@link majorsOf}） */
 	stars: Star[];
-	/** 空宫借对宫时，对宫的宫名 */
+	/** 借对宫之名 */
 	borrowedFromName?: string;
-	/** 空宫借对宫时，借来的主星名 */
+	/** 借来的主星名 */
 	borrowedStars?: string[];
 }
 
-/** 命盘 —— 只列本 skill 用得到的字段。 */
+/** 命盘（只列用到的字段） */
 export interface ZiweiChart {
-	/** 出生信息（已按真太阳时跨午夜调整过的那一份） */
+	/** 出生信息（已校正） */
 	birthInfo: BirthInfo;
-	/** 命宫所在地支索引 */
+	/** 命宫地支索引 */
 	soulBranch: number;
-	/** 五行局名，如 `"水二局"` */
+	/** 五行局，如 `"水二局"` */
 	fiveElementsClassName: string;
-	/** 十二宫：数组序按地支排（首项为寅），比对时请按 `branch` 建索引 */
+	/** 十二宫：按地支序排（寅起），按 `branch` 索引 */
 	palaces: Palace[];
 }
 
-// ══════════════════════ 格式化 ══════════════════════
+// ── 格式化 ──
 
 /**
- * 公历日期 → `"YYYY-MM-DD"`（月日补零）。
- *
- * @param i - 任何带 `year` / `month` / `day` 的对象，故不必是完整 `BirthInfo`
- * @returns 补零后的日期字符串
+ * 公历日期 → `"YYYY-MM-DD"`（补零）。
+ * @param i - 带 `year`/`month`/`day`
+ * @returns 补零日期串
  */
 export const fmtDate = (i: { year: number; month: number; day: number }) =>
 	`${i.year}-${String(i.month).padStart(2, "0")}-${String(i.day).padStart(2, "0")}`;
 
 /**
  * 性别 → 中文。
- *
- * @param g - 内核口径的性别
+ * @param g - 内核口径性别
  * @returns `"男"` / `"女"`
  */
 export const genderCN = (g: "male" | "female") => (g === "male" ? "男" : "女");
 
-// ══════════════════════ 查宫 ══════════════════════
+// ── 查宫 ──
 
-// 查宫的必得语义（按宫名 / 按地支，取不到即抛）已收编进内核 `palace-relations`
-// （mustPalaceByName / mustPalaceAtBranch）—— 命令层经 `@/` 直接消费；本文件保持
-// 「纯 JSON 消费方」的自包含立场，不再持有自己的查宫实现。
+// 查宫必得语义收进 `palace-relations`（mustPalaceByName/
+// mustPalaceAtBranch），命令层经 `@/` 消费。
 
 /**
- * 取一宫的**主星**名（`type === "major"`，即十四主星）。
- *
+ * 取宫**主星**名（`type === "major"`）。
  * @param p - 宫位
- * @returns 主星名数组，空宫时为空数组（借对宫主星论是**调用点**的事，不在这里兜底）
+ * @returns 主星名数组，空宫为空（借对宫属调用点）
  */
 export const majorsOf = (p: Palace): string[] =>
 	p.stars.filter(s => s.type === "major").map(s => s.name);
 
-// ══════════════════════ 读入并校验 analyze --json ══════════════════════
+// ── 读入并校验 analyze --json ──
 
 /**
- * 一条四化落宫记录 —— 与 `purplestar-astrology` 的 `locateSihua()` 返回值同形。
- *
- * @remarks
- * 这份形状是**消费方声明**的：源里的 `locateSihua` 没有显式返回类型（靠推断），
- * 无法 `import type` 过来。故此处按它实际产出的字段重述一遍，只列本 skill 用得到的。
+ * 四化落宫记录 —— 与 `purplestar-astrology` 的 `locateSihua()` 同形。
+ * @remarks 源无显式返回类型，按产出字段重述。
  */
 export interface SihuaLocation {
 	/** 四化名 */
 	hua: Mutagen;
 	/** 被化的星名 */
 	star: string;
-	/** 该星所在宫名；未上盘时为 `null` */
+	/** 所在宫名；未上盘 `null` */
 	palace: string | null;
-	/** 该星所在宫的地支名；未上盘时为 `null` */
+	/** 所在地支名；未上盘 `null` */
 	branch: string | null;
 }
 
 /**
- * 本 skill 依赖的 `analyze --json` 字段子集。
- *
- * @remarks
- * **刻意只列用得到的字段**（`chart` / `nativeSiHua.located` / `lateZi` / `basis`），
- * 而不是把那份 JSON 的七个顶层键整个抄一遍：`patterns` / `mingGongSummary` /
- * `liuNianSiHua` / `liuYueSiHua` 是 `analyze` 与 `topic` 的事，合盘一个字都不读。
- * 消费方声明自己依赖什么，契约才看得出边界。
+ * 依赖的 `analyze --json` 字段子集。
+ * @remarks 只列读到的键；其余属 `analyze`/`topic`，合盘不读。消费方声明依赖，契约才有边界。
  */
 export interface AnalyzeJson {
-	/** 完整命盘（12 宫 + 农历信息 + 五行局；本 skill 只读 {@link ZiweiChart} 列出的字段） */
+	/** 完整命盘（12宫+农历+五行局；只读 {@link ZiweiChart} 字段） */
 	chart: ZiweiChart;
-	/** 生年四化 —— 只要 `located`（四化落宫），`transforms` 由 `located[].star` 覆盖 */
+	/** 生年四化：只用 `located`；`transforms` 由 `located[].star` 覆盖 */
 	nativeSiHua: { stem: string; located: SihuaLocation[] };
-	/** 晚子时：`candidate` = 校正后的真太阳时落在 23:00–23:59；`applied` = 本次是否真按晚子时口径排 */
+	/** 晚子时：`candidate`=校正时落 23:00–23:59；`applied`=本次是否按晚子时排 */
 	lateZi: { candidate: boolean; applied: boolean };
-	/** 排盘依据（农历换算 / 出生地解析 / 时辰校正三类说明），用于在输出里复述「这张盘怎么来的」 */
+	/** 排盘依据（农历/出生地/时辰），复述「这张盘怎么来的」 */
 	basis: { note: string; notes: string[] };
 }
 
 /**
- * 读入一份 `analyze --json` 的输出并逐项校验本 skill 依赖的字段。
- *
- * @param file - JSON 文件路径
- * @param side - 是哪一方（`"甲"` / `"乙"`），只用于错误文案
- * @returns 校验过的、可直接当 {@link AnalyzeJson} 用的对象
- * @throws 文件读不到 / 不是合法 JSON / 缺关键字段时，均给出**指向成因**的报错
- *
- * @remarks
- * 校验是**逐项点名**的，且四项全为必需 —— 缺任何一项都说明这份 JSON 不是 `analyze --json`
- * 的输出（最容易踩的是拿 `chart --json` 的输出顶替：那份**顶层就是命盘本身**，没有
- * `chart` 键，更没有四化落宫与排盘依据）。按项目立场：宁可当场失败，也不要渲染出一张
- * 缺了「四化入夫妻宫」这一节的盘 —— 那属于**静默的结论缺失**，比报错危险得多。
+ * 读并校验 `analyze --json`。
+ * @param file - JSON 路径
+ * @param side - `"甲"`/`"乙"`，错误文案
+ * @returns 校验后的 {@link AnalyzeJson}
+ * @throws 读不到/非法JSON/缺字段
+ * @remarks 四项必需；宁可失败不渲染缺「四化入夫妻宫」的盘（**静默缺失**更危险）。
  */
 export function readAnalyzeJson(file: string, side: string): AnalyzeJson {
 	let raw: string;

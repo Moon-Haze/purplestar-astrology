@@ -1,11 +1,9 @@
 /**
- * 兜底守护断言组：子进程冒烟、SKILL.md 命令对拍、文档一致性、知识分级
- * （原 `cli/selftest.ts` 的冒烟区块与文档/知识库守护断言）。
+ * 兜底守护断言组：子进程冒烟、SKILL.md 命令对拍、文档一致性、知识分级。
  *
  * @remarks
  * 断言体原样搬移，只改依赖归属（harness 经 {@link SelftestDeps} 注入）；
- * 冒烟五条走 deps.runCli（守「入口 → 解析 → 命令表 → 渲染 + 错误出口」真链路），
- * 知识分级组的 grades 动态 import 保持在 ok 断言流之外（ok 断言体是同步回调）。
+ * 冒烟五条走 deps.runCli；grades 动态 import 在 ok 断言流之外（断言体同步）。
  */
 
 import { readFileSync, rmSync } from "node:fs";
@@ -14,12 +12,12 @@ import { tmpdir } from "node:os";
 import { eq, skipUnlessRepo, type SelftestDeps } from "./kit";
 
 /**
- * 子进程冒烟（仅这五条用 runCli）：成功链路、错误出口、未知命令、--out 落盘与穿越防护。
+ * 子进程冒烟（仅五条用 runCli）：成功链路、错误出口、未知命令、--out 落盘与穿越防护。
  *
- * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param ok - harness 断言注册
  * @param runCli - 子进程探针（起真 CLI 跑一次，返回 `{ code, out, err }`）
- * @returns 无返回值；五条断言直接进主报告
- * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是成功链路退出码非 0 或缺基本信息面板、错误链路没走 stderr「错误：」前缀 + exit 1 且 stdout 空、未知命令未指路、`--out` 落盘内容 / 末尾换行 / stdout 静默 / stderr 提示不符、含 `..` 的路径被接受
+ * @returns 无返回值；五条断言进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为成功链路退出码非 0 或缺基本信息面板、错误链路没走 stderr「错误：」前缀 + exit 1 且 stdout 空、未知命令未指路、`--out` 落盘 / 换行 / stdout / stderr 不符、含 `..` 路径被接受
  */
 export function runSmoke({ ok, runCli }: Pick<SelftestDeps, "ok" | "runCli">): void {
 	ok("冒烟（子进程）：成功链路 入口→解析→命令表→渲染 一次走通", () => {
@@ -100,11 +98,11 @@ export function runSmoke({ ok, runCli }: Pick<SelftestDeps, "ok" | "runCli">): v
 /**
  * SKILL.md 行为规范对拍：命令速查表提到的命令都在命令表里。
  *
- * @param ok - harness 的断言注册（`createHarness` 产出）
- * @param ctx - 运行期上下文；`ctx.root` 是内核根，SKILL.md 从它的上级读
+ * @param ok - harness 断言注册
+ * @param ctx - 运行期上下文；`ctx.root` 是内核根，SKILL.md 从上级读
  * @param commandNames - 命令表键集（真模块的键，不用正则抽文本）
- * @returns 无返回值；通过时把「N 个命令全部有实现」作为该项说明
- * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 SKILL.md 里找不到「## 命令速查」段或一段命令都扫不到（那样的「零违规」是假绿）、或扫到的命令在命令表里没有
+ * @returns 无返回值；通过时以「N 个命令全部有实现」为说明
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为 SKILL.md 找不到「## 命令速查」段或扫不到命令（「零违规」是假绿）、或命令不在表
  */
 export function runSkillCommandAudit({
 	ok,
@@ -112,8 +110,8 @@ export function runSkillCommandAudit({
 	commandNames,
 }: Pick<SelftestDeps, "ok" | "ctx" | "commandNames">): void {
 	ok("参数面：SKILL.md 命令速查表提到的命令都在命令表里（cli/commands 注册面）", () => {
-		// 与「SKILL.md 旗标 → 声明表」同源：SKILL.md 是给助手读的**行为规范**，它提到的
-		// 命令若不存在，助手会照着敲一条必然失败的命令行。键集取自主 selftest 的动态
+		// 与「SKILL.md 旗标 → 声明表」同源：SKILL.md 给助手读的**行为规范**，提到的
+		// 命令若不存在，助手会照敲必然失败的命令行。键集取自主 selftest 的动态
 		// import（真模块的键集，不再有「正则漏抽」的失效模式，物理排版随之退出契约）。
 		const defined = commandNames;
 
@@ -122,9 +120,9 @@ export function runSkillCommandAudit({
 		if (at < 0) {
 			throw new Error("SKILL.md 里找不到「## 命令速查」小节");
 		}
-		// 只取该小节里的表格：正文提到命令名的散文（如「`analyze` 会自动输出两盘差异」）
+		// 只取该小节表格：正文提命令名的散文（如「`analyze` 会自动输出两盘差异」）
 		// 不构成「速查表说这个命令存在」的声明，卷进来只会产生误报。
-		// 先跳过标题行与其后的空行，否则下面第一个 `\n\n` 就是标题后的空行，切出个空表。
+		// 先跳过标题行及其后空行，否则第一个 `\n\n` 切出空表。
 		const body = md.slice(at + md.slice(at).indexOf("\n\n") + 2);
 		const rows = body
 			.slice(0, body.indexOf("\n\n"))
@@ -150,17 +148,17 @@ export function runSkillCommandAudit({
 /**
  * 文档一致性：references 深层文件、Node 下限、独占分支、升级警告与实现同步。
  *
- * @param ok - harness 的断言注册（`createHarness` 产出）
- * @param ctx - 运行期上下文；`ctx.root` 是内核根，references 从它的上级读
- * @returns 无返回值；两条断言直接进主报告（仓库级文档那半条在分发包形态下显式跳过）
- * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 references 深层文件回潮旧 skill 名 / 不存在的模块 / 旧自述句、Node 下限、独占分支清单、升级警告三处承诺与实现脱节
+ * @param ok - harness 断言注册
+ * @param ctx - 运行期上下文；`ctx.root` 是内核根，references 从上级读
+ * @returns 无返回值；两条断言进主报告（仓库级文档半条在分发包下跳过）
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为 references 回潮旧 skill 名 / 不存在模块 / 旧自述句，Node 下限、独占分支、升级警告三处与实现脱节
  */
 export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">): void {
 	ok("文档一致性：references 深层文件与单 skill 形态同步（合并遗留漂移盯防）", () => {
-		// 三 skill 合一是「骨架先行」的改造：SKILL.md / options / troubleshooting 同步了，
-		// 而 workflow 第 2 步与两份 synastry 细则曾被落下——骨架指路深入后读到的却是
-		// 「classics/synastry 已搬去 sibling skill」，把助手往错误方向带。这些标记
-		// 词（旧 skill 名 / 不存在的 sihua.ts / 旧自述句）一旦回潮就在这里变红。
+		// 三 skill 合一是「骨架先行」改造：SKILL.md / options / troubleshooting 同步了，
+		// 而 workflow 第 2 步与两份 synastry 细则曾被落下——骨架指路读到的是
+		// 「classics/synastry 已搬去 sibling skill」，把助手往错处带。标记
+		// 词（旧 skill 名 / 不存在的 sihua.ts / 旧自述句）回潮即红。
 		const read = (p: string) => readFileSync(resolve(ctx.root, "..", "references", p), "utf8");
 		for (const [file, text] of [
 			["workflow.md", read("workflow.md")],
@@ -189,7 +187,7 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 			const agentsMd = readFileSync(resolve(ctx.root, "..", "AGENTS.md"), "utf8");
 			const opts = readFileSync(resolve(ctx.root, "..", "references", "options.md"), "utf8");
 			const testReadme = readFileSync(resolve(ctx.root, "..", "test", "README.md"), "utf8");
-			// boot-hooks 的失败指引是**用户运行时真实看到**的报错文案——下限号写错（如仍写
+			// boot-hooks 失败指引是**用户运行时真实看到**的报错文案——下限号写错（如仍写
 			// 22.15）会把低版本用户引向一条裸跑必失败的路径，纳入机检钉死（终审 D-1）。
 			const bootHooks = readFileSync(resolve(ctx.root, "boot-hooks.ts"), "utf8");
 			for (const [name, text] of [
@@ -210,7 +208,7 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 				throw new Error("test/README.md 缺升级 iztro 的 pin 改写警告");
 			}
 		},
-		// ⚠️ README.md / AGENTS.md / test/README.md 都是**仓库级**文档，不进分发包
+		// ⚠️ README.md / AGENTS.md / test/README.md 是**仓库级**文档，不进分发包
 		// （包只含 SKILL.md / package.json / references/ / scripts/ 四项），
 		// 故在包形态下显式跳过 —— 判据与理由见 kit.skipUnlessRepo。
 		{ skip: skipUnlessRepo(ctx, "仓库级文档（README/AGENTS/test-README）不入分发包") }
@@ -220,22 +218,22 @@ export function runDocConsistency({ ok, ctx }: Pick<SelftestDeps, "ok" | "ctx">)
 /**
  * 知识分级登记表：data.ts 引句与 grades.ts 登记双向对拍（grades 动态 import）。
  *
- * @param ok - harness 的断言注册（`createHarness` 产出）
+ * @param ok - harness 断言注册
  * @param ctx - 运行期上下文（内核根与其来源）
- * @returns `Promise<void>`；一条断言直接进主报告，通过时返「N 条引句全部有分级登记」
- * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是 `data.ts` 的倪师引句在 `grades.ts` 没有登记、档位越出 `KNOWLEDGE_GRADE_ORDER` 的值域、或 `grades.ts` 存在 `data.ts` 抽不到对应引句的幽灵条目（quote 失配或引句已删）
+ * @returns `Promise<void>`；一条断言进主报告，通过时返「N 条引句全部有分级登记」
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为 `data.ts` 倪师引句在 `grades.ts` 未登记、档位越出 `KNOWLEDGE_GRADE_ORDER` 值域、或 `grades.ts` 有抽不到引句的幽灵条目
  */
 export async function runGradeRegistry({
 	ok,
 	ctx,
 }: Pick<SelftestDeps, "ok" | "ctx">): Promise<void> {
-	// 动态 import 在 ok 断言流之外 await（ok 断言体是同步回调，与 classics / synastry
+	// 动态 import 在 ok 断言流之外 await（ok 断言体同步，与 classics / synastry
 	// 断言组同一既定模式）。
 	const grades = await import("@/analysis/grades");
 
 	ok("知识分级：data.ts 全部倪师引句在 grades.ts 有登记且档位合法（零缺失）", () => {
 		const { NI_GRADES, KNOWLEDGE_GRADE_ORDER } = grades;
-		// legal 集合从 grades 的展示序常量派生（2026-11-18 扫描发现 5）：档位改名/调序
+		// legal 集合从 grades 展示序常量派生（2026-11-18 扫描发现 5）：档位改名/调序
 		// 只改常量一处，本守卫自动跟随，不再手抄第二份档位清单。
 		const legal = new Set(KNOWLEDGE_GRADE_ORDER);
 		for (const e of NI_GRADES) {
@@ -244,11 +242,11 @@ export async function runGradeRegistry({
 			}
 		}
 		const src = readFileSync(resolve(ctx.root, "analysis", "data.ts"), "utf8");
-		// 引句标记（与评估报告口径一致，按实测扩展）：「倪师 / 倪海厦」锚点
+		// 引句标记（按实测扩展）：「倪师 / 倪海厦」锚点
 		// + 少量过渡（星名、出处「天纪 03」、动词「说·言·明言·将…列为」等）+「」或英文
 		// 双引号内 ≥2 字引句；标记与引句须同在一行，注释行不参与；(?<!非) 排除「一说非
 		// 倪师原话」散注里的倪师字样 —— 那一处恰恰声明**不是**倪师引句。
-		// 过渡上限 18：L1724「倪师《天纪 06》原话：迁移化忌「半空折翅」」实测 14 字符踩
+		// 过渡上限 18：L1724「倪师《天纪 06》原话：迁移化忌「半空折翅」」实测 14 字踩
 		// 满 14 上限，文案增一字即漏抽；排除集已含句读引号，放宽的误抽会先触发下方
 		// missing 变红，安全。
 		const QUOTE_RE =
@@ -269,7 +267,7 @@ export async function runGradeRegistry({
 				`以下倪师引句未在 grades.ts 登记分级：${missing.map(q => `「${q}…」`).join("、")}`
 			);
 		}
-		// 反向（grades.ts 头注释承诺的另一半）：登记的 quote 若在文案中抽不到对应引句
+		// 反向（grades.ts 头注释另一半）：登记的 quote 若抽不到对应引句
 		// ——写错的定位串或文案已删的引句——这里是幽灵条目，必须点名变红。
 		const inText = new Set(marks.map(m => m[2].slice(0, 12)));
 		const ghosts = NI_GRADES.filter(e => !inText.has(e.quote));
@@ -287,20 +285,19 @@ export async function runGradeRegistry({
  *
  * @remarks
  *
- * @param deps - 主 selftest 的注入面（本条目只用到 `ctx` 与桩出来的端口）
- * @returns `Promise<void>`；两条断言直接进主报告（dispatch 与文案函数都先 await 再断言）
- * @throws `throw` 由 `ok` 捕获记为失败项，不向本函数外抛；触发条件是未知命令未返回 code=1 或文案不是出自共享函数、`--help` 没在查表之前拦截（否则会掉进未知分支拿不到 CMDHELP）
+ * @param deps - 主 selftest 注入面（只用 `ctx` 与桩端口）
+ * @returns `Promise<void>`；两条断言进主报告
+ * @throws `throw` 由 `ok` 捕获记为失败项，不向外抛；触发条件为未知命令未返回 code=1 或文案非共享函数产出、`--help` 未在查表前拦截
  *
- * dispatch 与文案函数都**先 await 再断言**：ok 的断言体是同步回调，rejected
- * Promise 不会被它捕获。两根桩的 loadCore 刻意返回空 COMMANDS —— 若 --help
- * 拦截不先于查表执行，这里就会掉进未知分支而拿不到 CMDHELP。
+ * 两函数**先 await 再断言**：ok 断言体同步，rejected Promise 不被捕获。
+ * 两根桩 loadCore 刻意返回空 COMMANDS —— 若 --help 拦截不先于查表即失败。
  */
 export async function runDispatchProbe(deps: SelftestDeps): Promise<void> {
 	const { dispatch, unknownCommandMessage } = await import("../host/dispatch");
 	const NAMES = ["astrology", "knowledge", "synastry", "selftest", "help"] as const;
 	const ports = {
 		ctx: deps.ctx,
-		// 键集必须与下方断言的 NAMES 同源：dispatch 的可用列表取自 Object.keys(COMMANDS)，
+		// 键集须与下方 NAMES 同源：dispatch 可用列表取自 Object.keys(COMMANDS)，
 		// 空表会让「可用：」后为空串、与 unknownCommandMessage(NAMES) 的产出失配。
 		loadCore: async () => ({
 			COMMANDS: Object.fromEntries(NAMES.map(n => [n, undefined])),
@@ -312,7 +309,7 @@ export async function runDispatchProbe(deps: SelftestDeps): Promise<void> {
 			commandNames: [...NAMES],
 		}),
 	};
-	// ① 未知命令：code=1，且 err 必须 === 共享文案函数对同一列表的产出（同源断言）
+	// ① 未知命令：code=1，err === 共享文案函数对同一列表的产出（同源断言）
 	const unknown = await dispatch(["bogus"], ports);
 	deps.ok("分发：未知命令 code=1 且文案出自共享函数", () => {
 		if (unknown.code !== 1) {
@@ -322,7 +319,7 @@ export async function runDispatchProbe(deps: SelftestDeps): Promise<void> {
 			throw new Error(`文案不同源：${unknown.err}`);
 		}
 	});
-	// ② help 拦截先于查表与 loadCore：桩的 COMMANDS 为空也能拿到 CMDHELP
+	// ② help 拦截先于查表与 loadCore：桩 COMMANDS 为空也拿到 CMDHELP
 	const help = await dispatch(["astrology", "--help"], ports);
 	deps.ok("分发：--help 拦截在查表之前返回 code=0", () => {
 		if (help.code !== 0 || help.out !== "CMDHELP") {

@@ -1,20 +1,18 @@
 /**
  * @file 数据库查询结果的文本与表格渲染。
  */
-// 通用终端展示原语（tools/db）：JSON 安全序列化、单元格截断、CJK 对齐表格。
-// BigInt 无 toJSON，JSON.stringify 遇之直接抛 TypeError —— 库里所有 id/计数列都是 BIGINT。
-// 值域最大 6,220,800，远低于 Number.MAX_SAFE_INTEGER，转 Number 无损。
-/** JSON 序列化替换器：把 BIGINT 转 Number，避免 toJSON 抛错（值域远小于安全整数）。 */
+// 终端展示原语（tools/db）：JSON 序列化、单元格截断、CJK 表格对齐。
+// BigInt 无 toJSON，JSON.stringify 遇之抛 TypeError；值域≤6,220,800 远低于安全整数，转 Number 无损。
+/** BIGINT 转 Number 的序列化替换器，避免 toJSON 抛错。 */
 export const jsonReplacer = (_k: string, v: unknown): unknown =>
 	typeof v === "bigint" ? Number(v) : v;
 
-// 单元格渲染：NULL / 列表 / 结构体各有形态，统一转字符串后截断至 40 字符
+// 单元格渲染：NULL / 列表 / 结构体统一转字符串，截断至 40 字符
 const MAX_CELL = 40;
 /**
- * 单元格渲染：NULL / 列表 / 结构体统一转字符串并截断。
- *
- * @param v - 任意单元格取值（NULL / 数组 / 对象 / 标量）
- * @returns 展示用字符串，超长截断并加 `...`
+ * 单元格渲染：统一转字符串并截断。
+ * @param v - 单元格取值（NULL / 数组 / 对象 / 标量）
+ * @returns 展示串，超长截断加 `...`
  */
 export function cell(v: unknown): string {
 	const s =
@@ -28,8 +26,8 @@ export function cell(v: unknown): string {
 	return s.length > MAX_CELL ? s.slice(0, MAX_CELL - 3) + "..." : s;
 }
 
-// 库内容全为中文：CJK 等全角字符占 2 显示列，而 padEnd 按 UTF-16 码元计数，
-// 直接用会让表头、分隔线、数据行三者宽度互不相等。故一律按显示宽度计算。
+// 库内容全为中文：CJK 全角占 2 显示列，padEnd 按码元计数会使表头/分隔线/数据行宽度不齐，
+// 故一律按显示宽度算。
 /** 判断码点是否属于全角或 CJK 宽字符。 */
 const isWide = (cp: number): boolean =>
 	(cp >= 0x1100 && cp <= 0x115f) || // 韩文字母

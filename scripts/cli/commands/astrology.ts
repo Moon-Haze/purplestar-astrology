@@ -1,7 +1,5 @@
 /**
- * `astrology` 命令：排盘分析一条命令。
- *
- * 各命令按文件拆分（spec §2.2）；chart/topic 融入参数（见 spec §1）。
+ * `astrology` 命令：排盘分析。各命令按文件拆分（spec §2.2）；chart/topic 融入参数。
  */
 
 import type { BirthInfo, Mutagen, ZiweiChart } from "@/types";
@@ -51,19 +49,16 @@ import { getTopicAnalysis, TOPIC_LABEL, TOPIC_PALACE_NAME, type TopicKey } from 
 import { KNOWLEDGE_GRADE_ORDER } from "@/analysis/grades";
 
 /**
- * `--view` 取值别名表与值域文案已收进 `../args/table`（VIEW_ALIASES / VIEW_TEXT，
- * 2026-11-18 扫描发现 3 的单点化）：本模块经 import 消费，不再持有本地拷贝。
+ * `--view` 别名 / 文案收在 `../args/table`（VIEW_ALIASES / VIEW_TEXT）：本模块 import 消费。
  */
 
 /**
- * 抬头行（命盘总览式）：`标题[名字 ]日期 说明 · 性别` —— --palaces（十二宫详表）与
- * --topic（主题论断）两处共用；名字槽缺省时直接省略，不残留双空格。
- * （2026-11-21 评审 N1：--palaces 曾在本分支手拼抬头，缺名时残留三空格，收编到此单点。）
+ * 抬头行：--palaces 与 --topic 共用；名字缺省省略，不留双空格（评审 N1：曾手拼缺名残留三空格，收编单点）。
  *
- * @param title - 抬头标题（本模块内是「命盘  」与「【主题论断 · X】」两种）
- * @param info - 出生信息（取 `name` 与 `gender` 两处；`name` 缺省时名字槽整体省略）
- * @param note - 排盘口径说明（`CaliberBasis.note`，如钟表时刻 → 时辰的换算说明）
- * @returns 单行抬头 `标题[名字 ]日期 说明 · 性别`
+ * @param title - 抬头标题（本模块为「命盘  」或「【主题论断 · X】」）
+ * @param info - 出生信息（`name` / `gender`；`name` 缺省省略名字槽）
+ * @param note - 排盘口径说明（`CaliberBasis.note`，钟表时刻 → 时辰换算）
+ * @returns 单行抬头
  */
 function chartHeader(title: string, info: BirthInfo, note: string): string {
 	const namePart = info.name ? `${info.name} ` : "";
@@ -71,22 +66,18 @@ function chartHeader(title: string, info: BirthInfo, note: string): string {
 }
 
 /**
- * `--json` 的产物（生产端）：`astrology --json` 的顶层契约，也是
- * `synastry/chart-view 的 readAnalyzeJson` 所消费的形状。
+ * `--json` 产物（生产端）：`astrology --json` 顶层契约，`synastry/chart-view 的 readAnalyzeJson` 消费的形状。
  *
  * @remarks
  *
- * @param input - 语义入参：`chart` 命盘本体、`liuNianYear` 流年年号、`liuYueMonth` 农历月（`null` = 不算流月）、`liuRiDay` 农历日（`null`/`undefined` = 不算流日）、`liuShiHour` 时支 0-12（`null`/`undefined` = 不算流时，12 = 晚子时）、`basis` 排盘依据整包
- * @returns 顶层键恒定的 JSON 字符串（未配置的运限层为 `null`；键集以本函数序列化对象为准）
+ * @param input - 语义入参：`chart` 命盘、`liuNianYear` 流年号、`liuYueMonth` 农历月（null 不算流月）、`liuRiDay` 农历日（null/undefined 不算流日）、`liuShiHour` 时支 0-12（null/undefined 不算流时，12 晚子时）、`basis` 排盘依据
+ * @returns 顶层键恒定的 JSON 串（未配置运限层 `null`；键集以本函数序列化对象为准）
  *
- * 提为具名纯函数是为了让契约**一处生产、一处消费、一处对拍** —— selftest 可进程内直调
- * 本函数、把产物喂给消费方校验。顶层键以**本函数序列化对象为准**（十三个键恒定，未配置
- * 的运限层为 null）——键集冻结面与逐键语义见 docs/code/cli-commands.md，此处不复述清单
- * （评审 S1：手抄清单曾漏 daXianSiHua / liuRiSiHua / liuShiSiHua 三键，实现漂移无红灯）。
+ * 提为具名纯函数使契约一处生产、一处消费、一处对拍 —— selftest 可直调校验。顶层键以本函数序列化对象为准（十三键恒定，未配置运限层 null），冻结面见 docs/code/cli-commands.md，不复述（评审 S1：手抄清单曾漏三键致漂移无红灯）。
  */
 export function buildAnalyzeJson(input: {
 	chart: ZiweiChart;
-	/** 流年年号（`--yearly` 的值；缺省当年由 caller 先经 parseYearlyArg 归一） */
+	/** 流年号（`--yearly`；缺省当年由 caller 经 parseYearlyArg 归一） */
 	liuNianYear: number;
 	/** 农历月 1-12；`null` = 不算流月 */
 	liuYueMonth: number | null;
@@ -95,15 +86,12 @@ export function buildAnalyzeJson(input: {
 	/** 时支 0-12；`null`/`undefined` = 不算流时（须配 liuRiDay） */
 	liuShiHour?: number | null;
 	/**
-	 * 排盘依据（日期换算 / 出生地解析 / 时辰校正的说明），原样进 `basis` 键。
-	 * 传整包 `CaliberBasis`（结构超集，变量传参无 excess 检查；JSON 只出四键，契约冻结）
+	 * 排盘依据（日期换算 / 出生地解析 / 时辰校正），原样进 `basis`。传整包 `CaliberBasis`（结构超集，变量传参无 excess 检查；JSON 只出四键，冻结）
 	 */
 	basis: { note: string; notes: readonly string[]; lateZiCandidate: boolean; isLateZi: boolean };
 }): string {
 	const { chart, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, basis } = input;
-	// 派生收进实现内部（caller 只给语义参数，_interface_ 上不存在「传错组合」的态空间）：
-	// 六层取数链单点在 @/mutagen 的 buildMutagenChain（生年取农历年干、童限特判、
-	// 逐级依赖全部内聚在那，含 1990-01-15 反例的红线注释），本函数只做 JSON 装配。
+	// 派生收进内部：六层链单点在 @/mutagen 的 buildMutagenChain（含 1990-01-15 反例红线注释），本函数只装配 JSON。
 	const { native, liuNian, liuYue, liuRi, liuShi, daXian } = buildMutagenChain(chart, {
 		liuNianYear,
 		liuYueMonth,
@@ -159,8 +147,7 @@ export function buildAnalyzeJson(input: {
 						located: locateSihua(chart, liuShi.transforms),
 					}
 				: null,
-			// 流年命宫与小限宫（运限速览的结构化等价物，只加不删）
-			// 流年地支一次算好：三处引用同值，重复调用徒增「这三处是否同值」的读码疑虑。
+			// 流年命宫与小限宫（运限速览等价物，只加不删）。流年地支一次算好：三处同值，免「这三处是否同值」疑虑。
 			liuNianPalace: (() => {
 				const lnBranch = yearlyBranchOf(liuNianYear);
 				return {
@@ -180,11 +167,7 @@ export function buildAnalyzeJson(input: {
 				};
 			})(),
 			lateZi: { candidate: basis.lateZiCandidate, applied: basis.isLateZi },
-			// 排盘依据：让这份 JSON 自描述「这张盘是怎么来的」，下游据此复述真太阳时与
-			// 晚子时提示。键名刻意不叫 trueSolar（notes 还含农历换算与出生地解析）。
-			// ⚠️ 显式四键是**冻结契约**（消费方 chart-view.ts 只声明这四键）：整包序列化
-			//    会多出 longitude/lngNote/clockTime 等键，类型拦不住运行时
-			//    —— 键集在此逐键声明。论证见 docs/code/cli-commands.md。
+			// basis：让 JSON 自描述「这张盘是怎么来的」，下游据此复述真太阳时与晚子时提示。键名不叫 trueSolar（notes 含农历换算与出生地解析）。⚠️ 显式四键冻结契约（chart-view.ts 只声明四键）：整包序列化多出 longitude/lngNote/clockTime 等键，类型拦不住运行时，键集在此声明，论证见 docs/code/cli-commands.md。
 			basis: {
 				note: basis.note,
 				notes: basis.notes,
@@ -208,27 +191,23 @@ const SAMPLE_TRAILER = [
 ];
 
 /**
- * 独占分支（`--palaces` / `--topic` / `--report` / `--info`）激活时，其余功能参数不会生效
- * —— 静默吞违反「宁可启动失败，也不静默产出错盘」，在这里指路。
+ * 独占分支（`--palaces` / `--topic` / `--report` / `--info`）激活时其余参数不生效 —— 静默吞违反「宁可启动失败，也不静默产出错盘」，这里指路。
  *
- * 判定链单点在 `../args/table` 的 `EXCLUSIVE_BRANCHES` 清单（按优先序）：本函数是其
- * 统一检测入口——前置段按条目的 bespoke 拒收表态抛专用文案（`--report × --view`），
- * 后置段做通用被吞检测（放行集合 = 条目 `consumes`）。清单序即优先级，文案由其派生。
- * 链的完整表述见 docs/code/cli-commands.md。
+ * 判定链单点在 `../args/table` 的 `EXCLUSIVE_BRANCHES`：本函数统一检测入口——前置段 bespoke 拒收抛专用文案（`--report × --view`），后置段通用被吞检测（放行集合 = `consumes`），清单序即优先级；见 docs/code/cli-commands.md。
  *
- * @param args - CLI 参数表（按 `camelKey` 查旗标是否在场；`undefined` 即未给）
- * @param exclusive - 本次命中的独占分支旗标名（带 `--`，须在 `EXCLUSIVE_BRANCHES` 已登记）
- * @returns 无返回值；只在有参数会被静默吞掉时才抛错
- * @throws 该分支声明了 bespoke 拒收（如 `--report × --view`）且对应旗标在场时，抛该条目的专用文案；分支放行集合之外还有功能参数在场时，抛出被吞参数清单与独占优先级指路
+ * @param args - CLI 参数表（`camelKey` 查旗标；`undefined` 即未给）
+ * @param exclusive - 命中的独占分支旗标名（带 `--`，须在 `EXCLUSIVE_BRANCHES` 登记）
+ * @returns 无返回值；仅有参数被静默吞时抛错
+ * @throws 分支声明 bespoke 拒收（如 `--report × --view`）且旗标在场抛专用文案；放行集合外有参数在场抛被吞清单与优先级指路
  */
 function assertNoShadowedFeatures(
 	args: CliArgs,
 	exclusive: "--palaces" | "--topic" | "--report" | "--info"
 ): void {
 	const entry = EXCLUSIVE_BRANCHES.find(b => `--${b.name}` === exclusive);
-	// 前置段（bespoke 拒收，清单表态驱动）：先于通用检测，使「不接受 --view」这类
-	// 信息量更高的指路不被通用文案抢跑——次序由唯一入口内的调用结构固定，不存在
-	// 可对调的两个调用点（2026-11-11 的移序前提至此成为结构）。
+	// 前置段（bespoke 拒收）先于通用检测，使「不接受 --view」这类
+	// 信息量高的指路不被抢跑——次序由唯一入口调用结构固定，无
+	// 可对调调用点（2026-11-11 移序前提至此成结构）。
 	const bespoke = entry?.rejectsWithNote;
 	if (bespoke) {
 		for (const key of bespoke.keys) {
@@ -237,12 +216,12 @@ function assertNoShadowedFeatures(
 			}
 		}
 	}
-	// 后置段（通用检测）：被吞域 = SHADOWABLE_KEYS − 独占参数自身 − 本分支放行集合
-	//（consumes 从清单派生，不再手抄——放行是清单表态，见 EXCLUSIVE_BRANCHES）。
+	// 后置段（通用检测）：被吞域 = SHADOWABLE_KEYS − 独占自身 − 放行集合
+	//（`consumes` 从清单派生，不手抄，见 EXCLUSIVE_BRANCHES）。
 	const consumed = entry?.consumes ?? [];
 	const shadowed = [...SHADOWABLE_KEYS]
-		// 排除独占参数自身：info 在 SHADOWABLE 集合里（专题深入组），不过滤会报出
-		// 「--info 不会生效：--info」的自指文案（palaces / topic 本就不在集合中，无影响）。
+		// 排除独占自身：info 在 SHADOWABLE（专题深入组），不过滤会报
+		// 「--info 不会生效：--info」自指文案（palaces / topic 本不在集合）。
 		.filter(n => n !== exclusive.slice(2))
 		.filter(n => !consumed.includes(n))
 		.filter(n => (args as Record<string, unknown>)[camelKey(n)] !== undefined);
@@ -255,17 +234,11 @@ function assertNoShadowedFeatures(
 }
 
 /**
- * 「给定 args + 排盘上下文 → 产出专题 section 序列」—— 候选 3 把旗标 → section 的接线
- * 升为可直测 interface（原 `cmdAstrology` 默认路径的内联块）：接线本身成为被测物，
- * fortune 各 `*Section` 退为 implementation 零件，守卫链与 `parseAgesArg` / `deepDive`
- * 门沉进同一实现。
+ * 「给定 args + 排盘上下文 → 产出专题 section 序列」—— 候选 3 把旗标 → section 接线升为可直测 interface（原 `cmdAstrology` 内联块）：接线即被测物，fortune 各 `*Section` 退为零件，守卫链与 `parseAgesArg` / `deepDive` 门沉进同一实现。
  *
- * 行为契约：与迁移前的内联块逐字节等价（无深掘时带信息面板 + 运限速览；给了任一专题旗标
- * 则跳过基底，按 pattern → mutagen → yearly → decadal → ages → focus 固定序追加）。
- * 候选 3 的收益见 docs/code/cli-commands.md。
+ * 行为契约：与迁移前内联块逐字节等价（无深掘带信息面板 + 运限速览；给专题旗标跳过基底，按 pattern → mutagen → yearly → decadal → ages → focus 序追加）。收益见 docs/code/cli-commands.md。
  *
- * @param ctx - 装配上下文（`prepareAstrologyContext` 的产物）：chart / args / 流年月日时 /
- *   口径 basis / 出生信息 info —— cmdAstrology 与测试跨同一 seam（评审候选 4）
+ * @param ctx - 装配上下文（`prepareAstrologyContext` 产物）：chart / args / 流年月日时 / basis / info —— 与测试跨同一 seam（评审候选 4）
  * @returns 已按顺序拼好的输出行（不含末尾 join）
  */
 export function composeSections(ctx: AstrologyContext): string[] {
@@ -273,7 +246,7 @@ export function composeSections(ctx: AstrologyContext): string[] {
 	const out: string[] = [];
 	out.push(...birthplaceSection(basis));
 	out.push(...lateZiSection(chart, basis, lateZiCounterChart(info, basis)));
-	// 深掘判据从声明派生（deep: true 六旗标），与 cmdAstrology 同源。
+	// 深掘判据从声明派生（deep: true 六旗标）。
 	const deepDive = DEEP_DIVE_KEYS.some(k => (args as Record<string, unknown>)[k] !== undefined);
 	if (!deepDive) {
 		out.push(
@@ -286,8 +259,8 @@ export function composeSections(ctx: AstrologyContext): string[] {
 	if (args.pattern) {
 		out.push("", ...patternSection(chart));
 	}
-	// 流月/流日/流时四化随四化专题输出：单独给（不带 --mutagen）会被静默吞掉，在这里指路。
-	// 只约束文本路径 —— --json 的对应顶层键是独立键（基准对拍依赖裸 --json --monthly）。
+	// 流月/流日/流时四化随四化专题输出：单独给（不带 --mutagen）会被静默吞，这里指路。
+	// 只约束文本路径 —— --json 的顶层键独立（基准对拍依赖裸 --json --monthly）。
 	if (
 		(args.monthly !== undefined || args.daily !== undefined || args.hourly !== undefined) &&
 		!args.mutagen
@@ -325,12 +298,12 @@ export function composeSections(ctx: AstrologyContext): string[] {
 		);
 	}
 	if (args.focus !== undefined) {
-		// typeof 判空挡掉「给了 --focus 却没跟值」（parseArgs 存布尔 true）的形态 ——
+		// typeof 判空挡掉「给了 --focus 却没跟值」（parseArgs 存 true）形态 ——
 		// focusSection 的归一表查不到 true，自然落到「聚焦失败」分支并列出可用宫名。
 		const focus = typeof args.focus === "string" ? args.focus : String(args.focus);
 		out.push("", ...focusSection(chart, focus, liuNianYear));
 	}
-	// 头部三行删除后，口径节可能为空（未给出生地且非晚子时）—— 清掉开头可能
+	// 头部三行删除后口径节可能为空（未给出生地且非晚子时）—— 清掉开头
 	// 残留的空行，让面板或专题节直接顶格。
 	while (out.length > 0 && out[0] === "") {
 		out.shift();
@@ -339,46 +312,38 @@ export function composeSections(ctx: AstrologyContext): string[] {
 }
 
 /**
- * `astrology` 命令：解读用的完整输入包（本 CLI 最常用的一条）。
+ * `astrology` 命令：解读用完整输入包。
  *
- * @param args - CLI 参数表；出生信息之外认专题旗标族 `--info` / `--pattern` / `--mutagen` /
+ * @param args - CLI 参数表；专题旗标族 `--info` / `--pattern` / `--mutagen` /
  *   `--decadal [虚岁]` / `--ages [虚岁]` / `--yearly [年]` / `--monthly` / `--focus` /
  *   `--report`
- * @returns 已渲染好的文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 字符串
+ * @returns 已渲染文本；带 `--json` 时返回命盘 + 格局 + 三组四化的原始 JSON 串
  *
  * @remarks
- * **精简概览 + 专题分发**：不带任何专题旗标时输出口径提示、基本信息面板与运限速览 +
- * 专题指路；给了哪个专题旗标就只追加该专题的详版（可叠加，按 `--pattern` → `--mutagen`
- * → `--yearly` → `--decadal` → `--ages` → `--focus` 的固定顺序），且不再带面板与指路
- * —— 已在深入，基底与指路都是噪声。十二宫逐宫详表归 `--palaces` 与 `--json`。
+ * **精简概览 + 专题分发**：无旗标输出口径提示、信息面板与运限速览 + 专题指路；给旗标只追加该专题详版（可叠加，按 `--pattern` → `--mutagen` → `--yearly` → `--decadal` → `--ages` → `--focus` 序），不带面板与指路（已深入，是噪声）。
  *
- * **零输入演示**：出生信息一项没给且未表达其他输出意图时，以内置虚构样例演示并附用法
- * 指路；部分输入不适用，继续按「缺一问一」报错。完整契约见 docs/code/cli-commands.md。
+ * **零输入演示**：出生信息没给且无其他输出意图时，以内置虚构样例演示并附用法指路；部分输入不适用，按「缺一问一」报错。完整契约见 docs/code/cli-commands.md。
  */
 export function cmdAstrology(args: CliArgs) {
 	// --template：打印配置模板即止（不排盘）
 	if (args.template) {
 		return renderTemplate();
 	}
-	// 装配链单点（评审候选 4 / W1）：--config 覆盖 → 零输入回退 → 出生信息 → 口径
-	// basis → 命盘缓存 → 运限参数解析。顺序与前提自此是 interface 的一部分，
-	// 测试直调同一函数（astrology-context.ts），不再各持一份装配复刻。
+	// 装配链单点（评审候选 4 / W1）：--config 覆盖 → 零输入回退 → 出生信息 → basis → 命盘缓存 → 运限解析。顺序与前提是 interface 一部分，测试直调同一函数（astrology-context.ts），不各持复刻。
 	const actx = prepareAstrologyContext(args);
 	args = actx.args;
 	const { info, basis, chart, liuNianYear, liuYueMonth, liuRiDay, liuShiHour, usingSample } =
 		actx;
 
 	// ── 融合分支（spec §1）──
-	// --info：只输出信息面板这一节（面板本身在默认输出里无条件存在，本参数是「只看面板」）
+	// --info：只输出信息面板这一节（面板默认输出无条件存在，本参数「只看面板」）
 	if (args.info) {
 		if (args.json) {
 			throw new Error(
 				"--info 是独占分支，与 --json 不可同给：--info 只输出文本面板（--json 仅与完整概览或 --palaces 组合）。"
 			);
 		}
-		// 优先级链落地：清单中排在 info 之前、第一个在场的分支抢跑指路（派生自
-		// EXCLUSIVE_BRANCHES 清单序，不再手写三元梯）。--info 属于链上的「其他功能参数」
-		// ：--palaces > --topic > --report > --info。
+		// 优先级链落地：排在 info 前的首个在场分支抢跑指路（派生自 EXCLUSIVE_BRANCHES 清单序，不手写三元梯）。--info 属链上「其他功能参数」：--palaces > --topic > --report > --info。
 		const higherEntry = EXCLUSIVE_BRANCHES.slice(
 			0,
 			EXCLUSIVE_BRANCHES.findIndex(b => b.name === "info")
@@ -389,15 +354,13 @@ export function cmdAstrology(args: CliArgs) {
 					`独占分支请单独使用（优先级：${EXCLUSIVE_PRIORITY_LABEL}）。`
 			);
 		}
-		// 其余功能参数与本分支同给同样不会生效 —— 静默吞违反启动纪律，统一走独占检测指路。
+		// 其余参数同给也不生效 —— 静默吞违反启动纪律，走独占检测指路。
 		// palaces / topic / json 三者由上方各自的检查负责（职责不重复）。
 		assertNoShadowedFeatures(args, "--info");
 		return [
 			...(usingSample ? [SAMPLE_HEADER, ""] : []),
 			...infoSection(chart, clockOptsFromBasis(basis)),
-			// --info 与「无功能参数的概览」同尾：面板后跟运限速览与
-			// 专题指路 —— 两者都是「还没深入」的形态，指路正好；给了具体专题参数的
-			// 输出则不再带这两节（已在深入，指路是噪声）。
+			// --info 与「无功能参数的概览」同尾：面板后跟运限速览与专题指路 —— 两者都是「还没深入」形态，指路正好；给了专题参数则不带这两节（已深入，指路是噪声）。
 			"",
 			...overviewSection(chart, liuNianYear),
 			...(usingSample ? SAMPLE_TRAILER : []),
@@ -445,8 +408,7 @@ export function cmdAstrology(args: CliArgs) {
 				"--topic 是独占分支，与 --json 不可同给：主题论断只有文本形态（--json 仅与完整概览或 --palaces 组合）。"
 			);
 		}
-		// 检测在列清单判断之前：yearly / monthly 是 --topic 自己消费的参数（已放行），
-		// 其余被吞功能参数在列清单路径同样不会生效，一并指路。
+		// 检测在列清单前：yearly / monthly 是 --topic 自消费参数（已放行），其余被吞参数在列清单路径同样不生效，一并指路。
 		assertNoShadowedFeatures(args, "--topic");
 		if (args.topic === true) {
 			const rows = (Object.keys(TOPIC_LABEL) as TopicKey[]).map(
@@ -490,9 +452,7 @@ export function cmdAstrology(args: CliArgs) {
 		].join("\n");
 	}
 
-	// --report：全盘主题报告（Markdown，独占分支）。13 个板块一次出全，
-	// 本命静态口径 —— 视角 / 流年 / 流月参数不属于它，由独占检测指路（--view 的
-	// bespoke 文案由清单前置段驱动，见 assertNoShadowedFeatures）。
+	// --report：全盘主题报告（Markdown，独占分支），13 板块一次出全，本命静态口径 —— 视角 / 流年 / 流月参数不属它，由独占检测指路（--view 的 bespoke 文案由清单前置段驱动，见 assertNoShadowedFeatures）。
 	if (args.report) {
 		if (args.json) {
 			throw new Error(
@@ -504,7 +464,7 @@ export function cmdAstrology(args: CliArgs) {
 	}
 
 	if (args.json) {
-		// 契约生产端提为具名纯函数（buildAnalyzeJson）：键名集中一处，selftest 可进程内直测。
+		// 契约生产端提为具名纯函数（buildAnalyzeJson）：键名集中一处，selftest 可直测。
 		// 只传语义参数 —— 四化派生收在函数内部，天然一致。
 		return buildAnalyzeJson({
 			chart,
@@ -517,7 +477,6 @@ export function cmdAstrology(args: CliArgs) {
 	}
 
 	// ── 未深入形态的输出基底 ──
-	// 基本信息面板 + 运限速览 + 专题指路 / 深掘专题详版，统一交给 composeSections
-	// （候选 3：旗标→section 接线升为可测 interface，接线本身成为被测物）。
+	// 基本信息面板 + 运限速览 + 专题指路 / 深掘详版，统一交给 composeSections（候选 3：接线升为可测 interface，接线即被测物）。
 	return composeSections(actx).join("\n");
 }

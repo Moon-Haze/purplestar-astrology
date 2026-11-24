@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-22
+goal: 87个超标文件按三梯队降比，代码零变更，三件套全绿
+skip_specs: true

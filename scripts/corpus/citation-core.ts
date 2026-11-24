@@ -1,53 +1,29 @@
 /**
- * 引文比对核心 —— 「倪师 / 倪海厦 + 引号句」形态的判违例逻辑：黑名单构造、
- * 形态正则、违例提取。**不含收集面**（扫哪些文件是调用方的事，见
- * `test/lib/citation-guard.ts` 的两套收集器）。
- *
- * **住在 `corpus/` 的理由**：引文质检是知识域的纪律，唯一现行消费者是测试侧
- * `test/lib/citation-guard.ts`；建库消费方随断语手册于 2026-11-01 退役。住这里让
- * 直出链 / 建库回归时与测试侧共引**同一份判据**，不出现「文档一份判据、源码
- * 一份判据、库一份判据」的分叉。
- *
- * ⚠️ 本模块的 import 写全 `.ts` 扩展名：消费方（test / tools）在**无解析钩子**的
- * 原生 ESM 环境加载本模块，省扩展名的候选序兜底不可用。
- *
- * @file 引文比对核心 —— 「倪师 / 倪海厦 + 引号句」形态的判违例逻辑：黑名单构造、
- *
+ * @file 引文比对核心：「倪师 / 倪海厦 + 引号句」判违例（黑名单/形态正则/提取）。
  * @packageDocumentation
+ * 判据单点，消费者 `test/lib/citation-guard.ts`；免「文档一份判据、源码 一份判据、库一份判据」分叉。详见 docs/code/README.md。
  */
 
 import { ANNOTATIONS, type AnnotationEntry } from "./data/annotations.ts";
 
 /** 一次扫描的结果。 */
 export interface CitationScan {
-	/** 违例的引文核心（已截断到 40 字），按出现顺序 */
+	/** 违例引文核心（截断到 40 字），按出现顺序。 */
 	violations: string[];
-	/** 参与比对的源码文件，相对扫描根、已排序 —— 供调用方交代覆盖面，也是防「扫了个空」的证据 */
+	/** 参与比对的源码文件，相对扫描根、已排序；防「扫了个空」的证据。 */
 	checked: string[];
 	/**
-	 * 因是核对表自身而被跳过的文件。
-	 *
-	 * @remarks
-	 * 扫**单个** skill 的 `scripts/` 时正常恰好 1 个（源 skill 的 `corpus/data/annotations.ts`），
-	 * 其余 skill 为 0 个（它们不持有核对表）。**两者都不是异常**，故调用方不该断言它非零 ——
-	 * 该断言的是「所有根合计至少有 1 个」，见 `test/citations.test.ts`。
-	 *
-	 * 但某一栏为空仍有诊断价值：`checked` 为空说明根写歪或递归坏了；`skipped` 全仓为空
-	 * 说明核对表识别失配 —— 核对表已进比对集，那些 suspect 引文会把自己报成违例。
-	 * 两种都是调用方该立刻发现的状态，故单独记一栏而不是并进 `checked` 里。
+	 * 因核对表自身被跳过的文件。
+	 * @remarks 单 skill 常恰 1 个（`corpus/data/annotations.ts`），余 0 个属正常；断言见 `test/citations.test.ts`「所有根合计至少有 1 个」。checked 空=根写歪，skipped 全仓空=核对表识别失配，故单列一栏。
 	 */
 	skipped: string[];
 }
 
 /**
- * 黑名单：核对表里 suspect / fabricated 条目的**引文核心**（书名号 / 引号内的部分）。
- *
- * @remarks
- * 所有扫描面（`.ts` / `.md`；断语手册库扫描面已随手册下线退役）共用这一个构造 —— 判据
- * 只有一份，改口径时处处同时变，不会出现「一处放行了、另一处还拦着」的分叉。
- *
- * @param checklist - 引文核对表；本函数不给缺省值，调用方通常传全仓唯一的 `ANNOTATIONS`
- * @returns 被禁引文核心（书名号 / 引号内 4 字以上）的集合，供 {@link findViolations} 判定命中是否违规
+ * 黑名单：核对表 suspect / fabricated 条目的引文核心（书名号 / 引号内部分）。
+ * @remarks 各扫描面共用此构造，判据单点，免「一处放行了、另一处还拦着」分叉。
+ * @param checklist - 核对表，通常传全仓唯一 `ANNOTATIONS`
+ * @returns 被禁引文核心集合，供 {@link findViolations} 判命中。
  */
 export function buildBannedSet(checklist: readonly AnnotationEntry[]): Set<string> {
 	return new Set(
@@ -58,22 +34,17 @@ export function buildBannedSet(checklist: readonly AnnotationEntry[]): Set<strin
 }
 
 /**
- * 在给定的文本块里找出仍以倪师名义出现的未核实引文。
- *
- * @param chunks - 参与比对的文本块（源码、文档或逐行断语），由调用方收集
- * @param banned - 黑名单（见 {@link buildBannedSet}）；缺省用全仓唯一核对表
- * @returns 违例的引文核心（已截断到 40 字），按出现顺序
- *
- * @remarks
- * 形态正则：`倪(海厦|师)` + 最多 10 个非句号非换行字符 +
- * 说 / 言 / 称 / 警示 / 警告 / 明言 / 强调 / 描述 / 提醒 + 可选冒号 + 引号内 4 字以上。
- * 不为任何调用面放松任何一项 —— 放宽的那天就是失效的那天。
+ * 在文本块里找出仍以倪师名义出现的未核实引文。
+ * @param chunks - 文本块（源码/文档/逐行断语），调用方收集
+ * @param banned - 黑名单（{@link buildBannedSet}），缺省用 `ANNOTATIONS`
+ * @returns 违例引文核心（截断到 40 字），按出现顺序
+ * @remarks 形态：倪(海厦|师)+≤10 非句号字符+说/言/称/警示/警告/明言/强调/描述/提醒+可选冒号+引号内≥4 字。不放宽任何一项。
  */
 export function findViolations(
 	chunks: readonly string[],
 	banned: ReadonlySet<string> = buildBannedSet(ANNOTATIONS)
 ): string[] {
-	// 文本中所有「倪海厦/倪师…说/言/警示…：『引文』」的引文核心
+	/** 所有「倪海厦/倪师…说/言/警示…：『引文』」的引文核心。 */
 	const citeRe =
 		/倪(?:海厦|师)[^。\n]{0,10}(?:说|言|称|警示|警告|明言|强调|描述|提醒)[：:]?\s*[「"『]([^」"』]{4,})[」"』]/g;
 	return [...chunks.join("\n").matchAll(citeRe)]

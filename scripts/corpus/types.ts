@@ -1,86 +1,73 @@
 /**
- * 古籍原典查询库 — 类型定义
- *
- * 设计：所有古籍以静态数据打包进代码（`data/*.ts`，是 TS 模块而非外部 JSON 文件；
- * 收录的都是公版古籍，无版权风险）。线上站点（Next.js）启动时一次性加载到内存，
- * 零 DB 依赖。检索与展示的最小单位是**段落**（不是词出现次数）。
- *
- * @file 古籍原典查询库 — 类型定义
- *
+ * @file 古籍类型
  * @packageDocumentation
+ * 公版古籍静态打包 Next.js，零 DB。
  */
-// 形状契约与「为什么用 TS 模块而非外部 JSON」的论证见 docs/code/corpus.md。
+/** @remarks 形状契约与缘由见 docs/code/corpus.md。 「为什么用 TS 模块而非外部 JSON」 */
 
 /**
- * 古籍的一个段落 —— 检索与展示的最小单位。
- *
- * @remarks
- * 段落是 `knowledge --search`（`--source books`，默认域）的命中单位：命中列表按段落计数，不是按词出现次数。
+ * 段落：检索/展示单位。
+ * @remarks `knowledge --search`（`--source books`）按段落计数，非词频。
  */
 export interface Paragraph {
-	/** 段落唯一 id（用于锚点跳转） */
+	/** 段落 id（跳转） */
 	id: string;
-	/** 段落序号（章节内） */
+	/** 章内序号 */
 	idx: number;
-	/** 段落原文（古文） */
+	/** 古文 */
 	text: string;
-	/** 现代翻译（可选，未来填充） */
+	/** 译文（可选） */
 	translation?: string;
-	/** 倪师注解（可选，标注来源） */
+	/** 倪师注（可选） */
 	niNote?: string;
 }
 
-/** 古籍的一章 —— 段落的分组，也是「按章节序号取用」这一 API 的索引粒度。 */
+/** 章：段落分组/「按章节序号取用」索引。 */
 export interface Chapter {
-	/** 章节标题（如"卷一"、"总论篇"）*/
+	/** 章标题 */
 	title: string;
-	/** 章节副标题/简介（可选）*/
+	/** 副题（可选） */
 	subtitle?: string;
-	/** 本章段落，顺序即原文顺序（也是检索命中与展示的顺序） */
+	/** 段落（原文序） */
 	paragraphs: Paragraph[];
 }
 
 /**
- * 一部古籍 —— 元数据 + 全部章节。
- *
- * @remarks
- * 本类型是 `data/*.ts` 三个数据文件的顶层形状，也是 {@link ALL_BOOKS} 的元素类型。
+ * 古籍：元数据+章。
+ * @remarks `data/*.ts` 顶层形状，{@link ALL_BOOKS} 的元素类型。
  */
-/** 一部古籍：书名、章节与段落。 */
+/** 书名/章节/段落。 */
 export interface Book {
 	/** 书名 */
 	title: string;
-	/** 书 slug（URL 用，如 'guisuifu'）*/
+	/** slug（URL 用） */
 	slug: string;
 	/** 朝代 */
 	dynasty: string;
-	/** 作者（多人或不详时填"不详"或多人）*/
+	/** 作者 */
 	author: string;
 	/** 简介 */
 	intro: string;
-	/** 总字数（粗略）*/
+	/** 总字数 */
 	wordCount: number;
-	/** 全书章节，顺序即原文顺序（也是检索命中与 `classics` 概览输出的顺序） */
+	/** 章节（原文序） */
 	chapters: Chapter[];
 }
 
 /**
- * 一条检索命中 —— {@link searchClassics} 的返回元素。
- *
- * @remarks
- * 同时带「货架位置」（书 / 章 / 段）与「展示内容」（`snippet` / `text`），
- * 调用方无需再回查 `ALL_BOOKS` 即可直接渲染。
+ * 命中：{@link searchClassics} 返回。
+ * @remarks 带「货架位置」与「展示内容」，免回查。
  */
 export interface SearchHit {
-	/** 命中所在书的 slug */
+	/** 书 slug */
 	bookSlug: string;
-	/** 命中所在书的书名 */
+	/** 书名 */
 	bookTitle: string;
-	/** 命中所在章节的标题 */
+	/** 章标题 */
 	chapterTitle: string;
-	/** 命中段落的 id（锚点跳转用） */
+	/** 段落 id */
 	paragraphId: string;
-	/** 高亮片段（含 <mark> 标签） */
+	/** 高亮片段 */
 	snippet: string;
 	/** 原文 */
 	text: string;

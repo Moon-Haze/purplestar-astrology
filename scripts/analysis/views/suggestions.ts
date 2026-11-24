@@ -1,16 +1,8 @@
 /**
- * 六、综合建议 —— 报告的收尾节，**无条件出**。
- *
- * ⚠️ 建议内容按盘推算（{@link buildTopicSuggestions}，change dynamic-topic-suggestions），
- *    信号全未命中时给通用收束句并显式标注；一句固定的「继续深度追问」引导语保证
- *    报告末尾总有一个可交互的落点 —— 故不要在别处加「有内容才出」的条件。
- *
- * 完整口径见 docs/code/analysis.md。
- *
- * 产出**内部条目流**（views 的实现形态，见 `../items`）：slot = `suggestions`。
- *
- * @file 六、综合建议 —— 报告的收尾节，**无条件出**
- *
+ * ⚠️ 收尾节，无条件出：按盘推算（{@link buildTopicSuggestions}），未命中给收束句并标注；
+ *    固定「继续深度追问」引导语保落点，勿加「有内容才出」条件。口径 docs/code/analysis.md。
+ *    产出条目流见 `../items`。
+ * @file 六、综合建议 —— 报告收尾节
  * @packageDocumentation
  */
 
@@ -21,10 +13,9 @@ import type { AnalysisItem } from "../items";
 import { blankItem, contentItem, formatItems, headItem } from "../items";
 
 /**
- * 渲染「六、综合建议」整节的结构化条目流。
- *
- * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）：建议条目由 {@link buildTopicSuggestions} 按盘推算，本函数只做【】版式装配与主题名代入，不自行判定信号
- * @returns 条目流：`【综合建议】` 节头 + 逐条建议行（含降级收束句）+ `【继续深度追问】` 节头与一句引导语；本函数无「有内容才出」的分支，始终非空
+ * 渲染「六、综合建议」条目流。
+ * @param ctx - 上下文（{@link AnalysisContext}）：由 {@link buildTopicSuggestions} 按盘推算，只装配版式
+ * @returns `【综合建议】` 节头 + 建议行 + `【继续深度追问】` 引导语；恒非空
  */
 function renderSuggestionsItems(ctx: AnalysisContext): AnalysisItem[] {
 	const { topic } = ctx;
@@ -50,10 +41,9 @@ function renderSuggestionsItems(ctx: AnalysisContext): AnalysisItem[] {
 }
 
 /**
- * 渲染「六、综合建议」整节（文本投影）。
- *
- * @param ctx - 已建好的主题上下文（{@link AnalysisContext}）
- * @returns 与 {@link renderSuggestionsItems} 条目流逐条对应的文本行；节无条件出，故结果不为空数组
+ * 渲染「六、综合建议」文本投影。
+ * @param ctx - 上下文（{@link AnalysisContext}）
+ * @returns 与 {@link renderSuggestionsItems} 对应文本行；恒非空
  */
 export function renderSuggestions(ctx: AnalysisContext): string[] {
 	return formatItems(renderSuggestionsItems(ctx));

@@ -1,16 +1,9 @@
 /**
- * 紫微内核数据层门面 —— `scripts/data/` 的统一出口。
- *
- * 分层：`计算层（algorithm / mutagen / wenmo-brightness）→ 数据层（本目录）→ 契约层（types）`
- * 单向依赖，本目录**不得**反向 import 计算层。
- *
- * ⚠️ 本目录是**共享数据层**，判据是「被多个模块消费」：只服务单一消费者的数据表
- *    不该放这儿（`cli/birth/cities.ts` 曾单开 `cli/data/`，2026-10-13 已撤并回消费方）。
- *
- * 使用约定（优先 import 具体域文件而非本门面）与域名一览，见 docs/code/data-tables.md。
- *
- * @file 紫微内核数据层门面 —— `scripts/data/` 的统一出口
- *
+ * 单向依赖：计算层 → 数据层 → 契约层；不得反向 import 计算层。
+ * ⚠️ 共享判据「被多个模块消费」：单一消费者表不收
+ *    （`cli/birth/cities.ts` 曾单开 `cli/data/`，2026-10-13 撤并回消费方）。
+ * 优先 import 具体域文件；域名见 docs/code/data-tables.md。
+ * @file `scripts/data/` 数据层门面
  * @packageDocumentation
  */
 export {

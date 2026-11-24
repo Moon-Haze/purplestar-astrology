@@ -1,26 +1,13 @@
 /**
- * 命宫摘要 —— 命宫主星的简要概括：星名、关键词、星性。
- *
- * @remarks
- * 与格局判定**零耦合**：本文件不调用任何查询函数，两张映射表直接写在这里，
- * 不判条件、只做映射，属论断/文案层（故住 `analysis/`，不住格局判定目录 `patterns/`）。
- *
- * ⚠️ 「保持向后兼容」：`cli/commands/astrology.ts` 的 `mingGongSummary`（文本与 `--json`）
- *    至今按原样取用，**签名与返回结构不得改动**（完整说明见 docs/code/analysis.md）。
- *
- * @file 命宫摘要 —— 命宫主星的简要概括：星名、关键词、星性
- *
+ * @remarks 签名不改，详 docs/code/analysis.md。
+ * @file 命宫摘要
  * @packageDocumentation
  */
 
 import type { ZiweiChart } from "../types";
 
 // ────────────────── 两张主星词条表（模块级导出，键域由 invariants 互证）──────────────────
-/**
- * 十四主星 → 关键词词条（最多 5 个）。键域 = 内核星表（`data/stars.ts`），
- * 由 `test/invariants.test.ts` 的主星键集互证盯住 —— 抄错星名在此当场红，
- * 运行时的 `?? []` 只是空宫等合法缺省的兜底，不再是静默 miss 的遮罩。
- */
+/** 键域`data/stars.ts`互证；`?? []`空宫 */
 export const SOUL_KEYWORD_MAP: Record<string, string[]> = {
 	紫微: ["尊贵", "独立", "领导"],
 	天机: ["智慧", "机变", "善谋"],
@@ -38,7 +25,7 @@ export const SOUL_KEYWORD_MAP: Record<string, string[]> = {
 	破军: ["开创", "变动", "破旧"],
 };
 
-/** 十四主星 → 星性一词。键域同 {@link SOUL_KEYWORD_MAP}，互证同上。 */
+/** 星性。键域同 {@link SOUL_KEYWORD_MAP} */
 export const SOUL_NATURE_MAP: Record<string, string> = {
 	紫微: "帝王星",
 	天机: "智慧星",
@@ -58,36 +45,10 @@ export const SOUL_NATURE_MAP: Record<string, string> = {
 
 // ────────────────── 命宫摘要（保持向后兼容）──────────────────
 /**
- * 取命宫主星的简要概括：星名、关键词、星性。
- *
- * @param chart - 已排好的命盘
- * @returns `stars` 为命宫主星名列表（按宫内星序），`keywords` 为关键词（最多 5 个），
- *   `nature` 为星性；命宫缺失时三项皆空
- *
- * @remarks
- * 轻量摘要：两张大表（{@link SOUL_KEYWORD_MAP} / {@link SOUL_NATURE_MAP}）是按 14 主星
- * 硬编码的中文词条 —— 这里**不判条件，只做映射**，属纯文案层。`cli/commands/astrology.ts`
- * 的 `mingGongSummary` 取它，与 `detectPatterns` 的输出拼成完整解读素材。
- *
- * 三处口径需要注意：
- *
- * 1. **只看主星**：两张表都只覆盖 14 主星，吉煞杂耀一概不参与
- * 2. **空宫给"空宫"**：`stars` 为空（命宫无主星）时 `nature` 直接是字面量 `"空宫"`，
- *    `keywords` 为空数组 —— 此时调用方需改为从**借入的对宫主星**取释义，
- *    消费方就是这么处理的（见 `Palace.borrowedStars`）
- * 3. **`nature` 与 `keywords` 都锚在首颗主星**：`nature` 取 `starNames[0]`，而
- *    `keywords` 把**所有**主星的词条摊平后 `slice(0, 5)` —— 命宫坐双主星时，
- *    首星决定星性、两星共同贡献关键词
- *
- * 未收录的星名（表外键）不会报错：`SOUL_KEYWORD_MAP[n] ?? []` 跳过，`nature` 兜底为空串
- * —— 键域漂移（表键 ≠ 运行时主星名）由 invariants 主星键集互证拦截，此处兜底只为
- * 空宫等合法缺省服务，不掩盖抄错。
- *
- * @example
- * ```ts
- * const { stars, keywords, nature } = getMingGongSummary(chart);
- * // 空宫时 stars = []、nature = "空宫"，改用 chart 里该宫的 borrowedStars 取释义
- * ```
+ * @param chart - 盘
+ * @returns stars/keywords/nature；空宫空
+ * @remarks {@link SOUL_KEYWORD_MAP}/{@link SOUL_NATURE_MAP} 仅14主星，杂耀不算。空宫 nature`"空宫"`取`borrowedStars`。nature首星、keywords摊平前5。表外键`?? []`、nature空串，不掩抄错。
+ * @example 空宫→借宫。
  */
 export function getMingGongSummary(chart: ZiweiChart): {
 	stars: string[];

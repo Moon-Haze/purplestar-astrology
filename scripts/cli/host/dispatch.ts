@@ -1,65 +1,46 @@
 /**
- * dispatch.ts —— argv → { code, out, err, outFile } 的分发协议（候选 1）。
- *
- * 唯一真相源：未知命令文案、--help 拦截位置、错误前缀、参数解析 → 执行次序（此前这条链
- * 有 6 份独立实现、未知命令文案 5 种变体）。
- *
- * ⚠️ 本模块**不写盘、不 print、不 exit**：副作用全部归宿主，进程内测试与子进程真链路
- *    因此消费同一 seam（`--out` 只把路径带出来，不碰文件系统）。
- *    六份实现的历史与 `--help` 拦截位置的接口承诺见 docs/code/cli-chart.md。
- *
- * @file dispatch.ts —— argv → { code, out, err, outFile } 的分发协议（候选 1）
+ * @file dispatch.ts —— argv→{code,out,err,outFile} 分发。
+ * @remarks 唯一真相源：未知命令文案、--help 拦截、错误前缀、解析→执行次序；不写盘（--out 仅带路径），详见 docs/code/cli-chart.md。
  */
 import type { CliArgs, CliContext } from "../args";
 
-/** 命令表条目：与命令注册层（`cli/commands/index.ts`）的 `Cmd` 同形（Cmd 未导出，此处内联声明）。 */
+/** 同 `cli/commands/index.ts` Cmd。 */
 type CmdEntry = (args: CliArgs, ctx: CliContext) => string | Promise<string>;
 
-/**
- * 分发所需端口 —— 宿主注入加载器与上下文。
- *
- * @remarks
- * 两个 loader 都是惰性的：help / 未知命令路径只触发 `loadHelp`（轻模块，不付出
- * iztro 冷启动）；真正执行命令时才触发 `loadCore`（含启动自检）。
- */
+/** 宿主注入。@remarks 惰性：help/未知命令只 loadHelp，执行才 loadCore。 */
 export interface DispatchPorts {
-	/** 加载内核 + 启动自检，返回命令表与参数解析器 */
+	/** 内核+自检 */
 	loadCore: () => Promise<{
 		COMMANDS: Record<string, CmdEntry | undefined>;
 		parseArgs: (argv: string[], command?: string) => CliArgs;
 	}>;
-	/** 加载 help 轻路径（command-meta + help，均不依赖命令实现） */
+	/** help 轻路径 */
 	loadHelp: () => Promise<{
 		renderOverviewHelp: () => string;
 		renderCommandHelp: (cmd: string) => string;
 		commandNames: readonly string[];
 	}>;
-	/** 命令执行上下文（内核根及其来源） */
+	/** 上下文（内核根/来源） */
 	ctx: CliContext;
 }
 
-/** 分发结果：三元组 + 可选落盘路径。code=0 成功；code=1 未知命令或命令内部抛错。 */
+/** 三元组+落盘；0/1 */
 export interface DispatchResult {
-	/** 退出码：0 成功；1 未知命令或命令内部抛错 */
+	/** 0 成功；1 失败 */
 	code: number;
-	/** 成功路径的渲染文本（含 help 文本）；失败路径为空串 */
+	/** 成功文本 */
 	out: string;
-	/** 失败路径文案（已带语义，宿主直接打印到 stderr）；成功路径为空串 */
+	/** 失败文案（宿主 stderr） */
 	err: string;
-	/** `--out <文件>` 存在时的落盘路径——dispatch 不写盘，副作用归宿主 */
+	/** `--out <文件>` 路径；归宿主 */
 	outFile?: string;
 }
 
 /**
- * 旧命令迁移提示行（stars / classics / oracle），无匹配返回空串。
- *
- * @remarks
- * 旧命令并入提示：stars 已并入 --source 选域，classics 随四域合并改名 knowledge ——
- * 敲旧名给一条可直接照抄的迁移写法，而不是让用户自己从 help 里找。
- * oracle（断语手册）已随 remove-manual-oracle 整体下线，提示指向运行时推算替代。
- *
- * @param cmd - 用户敲下的旧命令名
- * @returns 可直接照抄的迁移提示；不是已知旧命令时返回空串
+ * 旧命令迁移提示，无匹配空串。
+ * @remarks stars→--source、classics→knowledge、oracle 下线指推算。
+ * @param cmd - 旧命令名
+ * @returns 提示或空串
  */
 export function unknownCommandMerged(cmd: string): string {
 	if (cmd === "stars") {
@@ -75,11 +56,10 @@ export function unknownCommandMerged(cmd: string): string {
 }
 
 /**
- * 未知命令完整文案 —— 全仓唯一真相源：可用命令列表 + 旧命令迁移提示 + help 指路。
- *
- * @param cmd - 未命中的命令名
- * @param available - 可用命令列表（调用方决定取 COMMANDS 键集还是自定义桩列表）
- * @returns 含迁移提示与 help 指路的完整文案
+ * 未知命令文案唯一真相源：可用表+迁移+help 指路。
+ * @param cmd - 未命中名
+ * @param available - 可用表
+ * @returns 完整文案
  */
 export function unknownCommandMessage(cmd: string, available: readonly string[]): string {
 	const merged = unknownCommandMerged(cmd);
@@ -87,32 +67,21 @@ export function unknownCommandMessage(cmd: string, available: readonly string[])
 }
 
 /**
- * 命令失败文案的唯一前缀构造：`错误：<message>`（不带栈）。
- *
- * @remarks
- * dispatch 的执行 catch 与宿主的副作用 catch（--out 落盘）共用 —— 前缀真相源一处，
- * 否则「错误：」会在宿主里再抄一份（见 docs/code/cli-chart.md）。
- *
- * @param err - 捕获到的任意错误值
- * @returns 带「错误：」前缀的单行文案
+ * 失败前缀 `错误：<message>`（无栈）。
+ * @remarks 宿主 catch（--out）共用，否则「错误：」重抄（docs/code/cli-chart.md）。
+ * @param err - 错误值
+ * @returns 带「错误：」文案
  */
 export function formatError(err: unknown): string {
 	return `错误：${err instanceof Error ? err.message : String(err)}`;
 }
 
 /**
- * 全链分发：help 拦截 → 查命令表 → parseArgs → 执行 → out 路径记录 → 错误包装。
- *
- * @remarks
- * `--help` / `-h` 出现在**任何位置**都打印 help（含 `astrology --help`）：它不在参数声明表
- * 里，放它走到 parseArgs 只会得到「未知参数 --help」。判定提前到分发之前，parseArgs 因此
- * 永远见不到它 —— **判定顺序是本模块的接口承诺**，由 selftest 的 runDispatchProbe 钉住。
- *
- * 未知命令与命令内部抛出的错误都返回 code=1（只带 err.message，不带栈）。
- *
- * @param argv - 命令行参数（不含 node 与脚本名）
- * @param ports - 宿主装配的三个端口：轻量 help、内核与 ctx
- * @returns 退出码、标准输出与错误文案；成功且指定 --out 时另带落盘路径
+ * 全链：help 拦截→查表→parseArgs→执行→out→错包。
+ * @remarks --help/-h 任何位置打印 help：落 parseArgs 得「未知参数 --help」，故提前拦截（selftest runDispatchProbe 钉住）；抛错 code=1。
+ * @param argv - 参数
+ * @param ports - 三端口
+ * @returns 码/out/err；--out 带路径
  */
 export async function dispatch(argv: string[], ports: DispatchPorts): Promise<DispatchResult> {
 	const cmd = argv[0];

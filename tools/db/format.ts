@@ -1,21 +1,21 @@
 /**
  * @file 数据库记录与星曜字段的格式化工具。
  */
-// 库内编码值的中文译码（tools/db）：干支序、亮度归并、samples 字段名与各列的展示格式。
+// 库内编码值译码：干支序、亮度归并、samples 字段名与列展示格式。
 import { cell } from "./render";
 
-// 干支码来自 iztro 的枚举序：天干 甲=0…癸=9、地支 子=0…亥=11
+// 干支码 = iztro 枚举序：甲=0…癸=9、子=0…亥=11
 // （对账样本 1：农历癸亥年 → year_stem=9 / year_branch=11，与库一致）。
-/** 十天干（iztro 枚举序：甲=0…癸=9）。 */
+/** 十天干（iztro 序：甲=0…癸=9）。 */
 export const GAN = "甲乙丙丁戊己庚辛壬癸".split("");
-/** 十二地支（iztro 枚举序：子=0…亥=11）。 */
+/** 十二地支（iztro 序：子=0…亥=11）。 */
 export const ZHI = "子丑寅卯辰巳午未申酉戌亥".split("");
-// 亮度是上游语料的三级归并（reference/ziwei-samples-toolkit 的 STAR_BRIGHTNESS：
-// 庙/旺→bright、利/平→normal、不利/陷→dim），不是 iztro 的七级原值。
+// 亮度 = 上游语料三级归并（reference/ziwei-samples-toolkit 的 STAR_BRIGHTNESS：
+// 庙/旺→bright、利/平→normal、不利/陷→dim），非 iztro 七级原值。
 const BRIGHTNESS_LABEL: Record<string, string> = { bright: "庙旺", normal: "利平", dim: "陷" };
 
-// samples 表字段的中文展示名。键序即展示序（SELECT * 的列序同源，见 db.ts DDL）。
-/** samples 表字段的中文展示名，键序即展示序。 */
+// samples 字段中文展示名。键序即展示序（SELECT * 列序同源，见 db.ts DDL）。
+/** samples 字段中文展示名，键序即展示序。 */
 export const SAMPLE_LABELS: Record<string, string> = {
 	sample_id: "样本 ID",
 	year: "公历年",
@@ -47,13 +47,13 @@ export const SAMPLE_LABELS: Record<string, string> = {
 	sihua_ji_palace: "忌落宫",
 };
 
-// 干支码字段译成「码（名）」；其余字段走通用 cell 渲染。
+// 干支码译成「码（名）」，其余走 cell。
 /**
- * 渲染单个样本字段：干支码译成「码（名）」，其余走通用单元格渲染。
+ * 渲染单个样本字段：干支码译成「码（名）」，其余走 cell。
  *
  * @param key - 列名，决定译码方式
  * @param v - 该列的原始取值
- * @returns 展示字符串；未登记的列原样交给 {@link cell}
+ * @returns 展示字符串；未登记列原样交 {@link cell}
  */
 export function formatSampleValue(key: string, v: unknown): string {
 	if (v === null || v === undefined) {
@@ -79,9 +79,9 @@ export function formatSampleValue(key: string, v: unknown): string {
 /** 空值渲染为「—」，其余转字符串。 */
 export const dash = (v: unknown): string => (v === null || v === undefined ? "—" : String(v));
 
-// 星曜列表渲染：空数组/NULL 一律出 —，多项以空格分隔。
+// 星曜列表：空数组/NULL 出 —，多项以空格分隔。
 /**
- * 星曜列表渲染：空数组或 NULL 出「—」，多项以空格分隔。
+ * 星曜列表：空数组或 NULL 出「—」，多项以空格分隔。
  *
  * @param v - 星曜名数组
  * @param brightness - 与 `v` 下标对齐的亮度码数组（缺省或非数组则只列星名）
@@ -103,9 +103,9 @@ export function starList(v: unknown, brightness?: unknown): string {
 		.join(" ");
 }
 
-// 四化渲染：sihua_stars 形如 ["贪狼:忌"]，还原成「化曜（星）」；无化出 —。
+// 四化：sihua_stars 形如 ["贪狼:忌"]，还原为「化曜（星）」；无化出 —。
 /**
- * 四化渲染：把 `["贪狼:忌"]` 还原成「化曜（星）」，无化出「—」。
+ * 四化渲染：把 `["贪狼:忌"]` 还原为「化曜（星）」，无化出「—」。
  *
  * @param flags - 四化标记串（如 `禄`）
  * @param stars - 四化星条目（形如 `星名:四化`，取冒号前部分）

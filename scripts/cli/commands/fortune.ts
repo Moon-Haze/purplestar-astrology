@@ -1,15 +1,10 @@
 /**
- * 运限专题模块的 re-export 面 —— 实现住在 `../fortune/`（按专题分文件）。
- *
- * 存在的理由与 selftest/ 断言组相同：它被命令层与 selftest **两方**消费，而 selftest 经
- * 命令注册层静态引入 —— 专题渲染若留在命令实现里，selftest 就测不到它（静态环）。
- *
- * ⚠️ 口径基准（文墨排盘 + 倪师三合派论断的混合口径）：运限分析 = **宫位移动 + 三方四正 +
- *    生年 / 流年 / 大限宫干 / 流月 / 流日 / 流时四化**；宫干自化与来因宫仍然不做（飞星派禁列，
- *    见仓库根 `AGENTS.md` 的「体系口径」）。目录八节分工见 docs/code/cli-commands.md。
- * ⚠️ 本文件由引导层在 `registerHooks` **之后**动态加载，故可放心静态 import 内核与同层模块。
- *
- * @file 运限专题模块的 re-export 面 —— 实现住在 `../fortune/`（按专题分文件）
+ * 命令层 / selftest 两方消费；selftest 经注册层静态引入，留则测不到（静态环）。
+ * ⚠️ 口径（文墨 + 倪师三合派）：宫位移动 + 三方四正 + 六层四化；
+ *    宫干自化 / 来因宫不做（飞星派禁列，`AGENTS.md`「体系口径」）。
+ * 八节见 docs/code/cli-commands.md。
+ * ⚠️ `registerHooks` 后加载，可静态引内核。
+ * @file 运限 re-export 面 —— 实现住 `../fortune/`
  */
 
 export { yearlyBranchOf, agePalaceOf, parseAgesArg } from "../fortune/primitives";

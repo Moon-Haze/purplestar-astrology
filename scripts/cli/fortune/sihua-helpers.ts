@@ -1,19 +1,14 @@
 /**
- * 四化与会照的专题共用 helper —— 落宫行拼装、会照主星并集、生年四化取数、同星引动。
- *
- * 收拢原先散在各专题节里的同构循环，被 mutagen / yearly / decadal / age / focus 共用。
+ * 四化会照专题共用 helper；收拢同构循环，5 节共用。
  */
 
 import type { ZiweiChart, Mutagen } from "@/types";
 import { locateSihua } from "../chart/render";
 
 /**
- * 一个地支集合内的**会照主星**汇总（跨宫并集，按盘面出现顺序）。
- *
  * @param chart - 命盘
- * @param branches - 地支索引集合（通常是三方四正四支）
- *
- * @returns 命中的主星名数组（跨宫并集，按盘面出现顺序去重；空则为空数组）
+ * @param branches - 地支索引集合（三方四正四支）
+ * @returns 主星名数组（跨宫并集、按盘面去重；空则空数组）
  */
 export function huiZhaoMajors(chart: ZiweiChart, branches: number[]): string[] {
 	const seen: string[] = [];
@@ -32,20 +27,14 @@ export function huiZhaoMajors(chart: ZiweiChart, branches: number[]): string[] {
 }
 
 /**
- * 四化落宫行：`化{化} {星} → {宫}(支)`。
- *
- * @param sanFang - 给定时，落在其中的行追加 {@link mark} 后缀（★ 类标记）
- * @param mark - 三方命中的标记文案（流年节是「★ 入流年三方四正」，大限节是短「★」）
- *
+ * 四化落宫行 `化{化} {星} → {宫}(支)`。
+ * @param sanFang - 命中行加 {@link mark} 后缀
+ * @param mark - 标记文案（流年「★ 入流年三方四正」，大限「★」）
  * @remarks
- *
  * @param chart - 命盘
- * @param transforms - 这一层四化的映射（如生年 / 流年），键是化禄 / 化权 / 化科 / 化忌
- * @returns 每个四化落点一行的数组（`化{化} {星} → {宫}(支)`，未上盘记「（未上盘）」）
- *
- * 收拢原先散在 5 个专题节里的同构循环（生年 / 流年 / 流月 / 流年深入 / 大限深入）——
- * 各节差异只有「要不要三方标记、标记文案」，一个参数表达；「（未上盘）」兜底与支号
- * 括号的拼接规则也只活在一处。
+ * @param transforms - 本层四化映射（键化禄 / 化权 / 化科 / 化忌）
+ * @returns 每落点一行，未上盘记「（未上盘）」
+ * 各节差异只「要不要三方标记、标记文案」，一参数表达；兜底与支号拼接只此一处。
  */
 export function sihuaLines(
 	chart: ZiweiChart,
@@ -65,29 +54,23 @@ export function sihuaLines(
 }
 
 /**
- * 「会照主星：…」行（{@link huiZhaoMajors} 的并集；空时给兜底文案）—— 三个专题节同款。
- *
+ * 「会照主星：…」行（{@link huiZhaoMajors} 并集）。
  * @param chart - 命盘
- * @param sanFang - 三方四正的地支索引集合（通常来自 `surroundBranches`）
- * @returns 单行「会照主星：A、B」；无主星时正文换成「（无主星会照）」
+ * @param sanFang - 三方四正地支索引
+ * @returns 「会照主星：A、B」；无主星「（无主星会照）」
  */
 export function huiZhaoLine(chart: ZiweiChart, sanFang: number[]): string {
 	return `  会照主星：${huiZhaoMajors(chart, sanFang).join("、") || "（无主星会照）"}`;
 }
 
 /**
- * 生年×流年的**同星引动**：同一颗星同时被两套四化点到（不论何化）。
- *
- * @returns 每条含星名、生年化、流年化与落宫地支
- *
+ * 生年×流年同星引动：同星被两套四化点到。
+ * @returns 星名、生年化、流年化、落宫地支
  * @remarks
- *
- * @param chart - 命盘（用来查该星落在哪一宫）
- * @param native - 生年四化映射（键是化禄 / 化权 / 化科 / 化忌，值是星名）
- * @param liuNian - 流年四化映射（同上；与 `native` 同星不同化的组合都算引动）
- *
- * 三合派传统论「叠」的可靠形态之一（双忌 / 忌逢禄引动等）的**事实陈述**，
- * 具体吉凶交给解读层 —— 这里只报「谁被双引动、落哪」。
+ * @param chart - 命盘（查落宫）
+ * @param native - 生年四化映射（键化禄 / 化权 / 化科 / 化忌，值星名）
+ * @param liuNian - 流年四化映射（与 `native` 同星不同化也算引动）
+ * 三合派「叠」形态（双忌 / 忌逢禄）的事实陈述，吉凶交解读层 —— 只报「谁被双引动、落哪」。
  */
 export function sameStarPairs(
 	chart: ZiweiChart,
