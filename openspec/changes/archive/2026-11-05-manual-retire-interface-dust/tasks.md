@@ -40,13 +40,16 @@
 - [x] 4.1 `npm run typecheck`。判据 `[退出码]`：0 错误。
 - [x] 4.2 `npm run manual:check`。判据 `[退出码]`：与 1.1 记录一致（0 或同一可见跳过）；
       `docs/manual/` 两文件 sha256 与 1.2 基线一致（`[逐字节]`）。
-- [ ] 4.3 `npm run review`（review-gate 自跑）。判据 `[退出码]`：0 且输出不误报手写区
+- [x] 4.3 `npm run review`（review-gate 自跑）。判据 `[退出码]`：0 且输出不误报手写区
       文件（若 review 需要参数，按其 usage 以最小参数实跑并记录命令行）。
-      ⚠️ 环境阻塞（2026-11-05，用户确认「照常推进 + 显式标注」）：实跑退出码 1，唯一
-      阻断为「触及冻结面 scripts/algorithm.ts」，源自工作树 101 个未提交改动中 #3 的注释
-      批改，与本 change 两个 touched 文件无关。闸门四项全绿、手写区与生成物零误报，
-      4.4 以 `npm run review -- --no-run` 证明新 GENERATED 生效。不为凑退出码提交 /
-      stash / 回退他人改动；归档时按「1 项未完成」标注。
+      历史注记（2026-11-05，归档时）：实跑退出码 1，唯一阻断为「触及冻结面 scripts/algorithm.ts」，
+      源自当时工作树 101 个未提交改动中 #3 的注释批改，与本 change 两个 touched 文件无关；
+      闸门四项全绿、手写区与生成物零误报，4.4 曾以 `npm run review -- --no-run` 证明新 GENERATED 生效。
+      当时按用户确认「照常推进 + 显式标注」以「1 项未完成」归档。
+      复核（2026-11-22）：工作树已清理至 9 个改动，重跑 `npm run review` exit 0，输出
+      「✅ 无阻断项，闸门全绿 —— 可进入人工评审」；typecheck 0、selftest 12+14 全过、
+      npm test 内核层 120+5（基线 112+5，⚠ 增长为提示非阻断）、manual:check 逐字一致。
+      原阻断自然解除，未提交 / stash / 回退任何改动，任务达成。
 - [x] 4.4 反向注入：临时手改 `docs/manual/combo-frequency.md` 一个字节 → review-gate
       的生成物守卫应把它指认为 GENERATED（警告或拦截，按 review-gate 现行行为）；
       `npm run manual:check` 应非零退出（内容级对拍兜底）；还原后两者恢复。

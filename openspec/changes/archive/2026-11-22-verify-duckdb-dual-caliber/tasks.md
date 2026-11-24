@@ -2,10 +2,10 @@
 
 ## 1. 实现
 
-- [ ] 1.1 `--calendar` 参数解析（synthetic|solar 校验 + 按样本量自动探测 + 报告头自报）与 usage 行更新
-- [ ] 1.2 calendar 流入 verifyDimensions：expected CTE 双口径（solar 用 generate_series 真实日历日）+ drift/isFullBuild 按口径
-- [ ] 1.3 calendar 流入 verifySampling / readSourceRecord / verifyTopicText（decode、chunk 边界含真实月末日）
-- [ ] 1.4 solar 口径下抽样深度比对的语义定位（双引擎交叉审计，报告如实）
+- [x] 1.1 `--calendar` 参数解析（synthetic|solar 校验 + 按样本量自动探测 + 报告头自报）与 usage 行更新
+- [x] 1.2 calendar 流入 verifyDimensions：expected CTE 双口径（solar 用 generate_series 真实日历日）+ drift/isFullBuild 按口径
+- [x] 1.3 calendar 流入 verifySampling / readSourceRecord / verifyTopicText（decode、chunk 边界含真实月末日）
+- [x] 1.4 solar 口径下抽样深度比对的语义定位（双引擎交叉审计，报告如实）
 
 ## 2. 验收
 

@@ -25,11 +25,17 @@
 
 ## 4. 提交（范围最小化）
 
-- [ ] 4.1 `git commit`：仅 `tools/db/export-manual.ts`（确定性修复）。
+- [x] 4.1 `git commit`：仅 `tools/db/export-manual.ts`（确定性修复）。
       排除：手册/corpus 重导产物（已回退）、`package.json` 既有改动、`books/ notes/ tools/notes/` 等未跟踪目录。
       中文 Conventional Commits、scope `tools`。
-      ⚠️ 手册/corpus 干净对齐为**环境阻塞项**（需 `npm run build:db` 重建 dataset，依赖 518k 样本，本会话不具备），
-      不在本 commit；归档时显式标注「Archived with 1 blocked task」。
+      历史注记（归档时）：手册/corpus 干净对齐为**环境阻塞项**（需 `npm run build:db` 重建 dataset，
+      依赖 518k 样本，本会话不具备），不在本 commit；当时按「Archived with 1 blocked task」标注。
+      复核（2026-11-22）：`git log --reverse tools/db/export-manual.ts` 查明确定性修复已随提交
+      c76d836（2026-10-29 22:50:17 +0800，fix(tools): 修复 export-manual 重导非确定性 SQL 补 ORDER BY）
+      落地，该提交同时纳入本 change 的 .openspec.yaml / design.md / proposal.md / tasks.md 四工件；
+      diff 含 `ORDER BY sample_id` 与 `GROUP BY 1, 2 ORDER BY 1, 2, 3 DESC`，与本任务 2.1 完全对应。
+      `tools/db/export-manual.ts` 当前工作树干净，无待提交内容，不重复提交。本任务（导出器修复提交）已达成；
+      手册/corpus 重建重导仍为独立的后续 change（见下方 Workflow follow-up），不属本任务。
 
 ## Workflow follow-up
 
