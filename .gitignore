@@ -56,3 +56,4 @@ NOTES.md
 workflows/
 .zcode/config.json
 .memory/
+.dsh/
