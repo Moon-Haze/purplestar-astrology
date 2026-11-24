@@ -280,7 +280,7 @@ export function measureRatio(text: string): { m: number; d: number; pct: number 
 /**
  * 从 spec 解析占比阈值登记值（「SHALL NOT 超过 **N%**」必须恰有一处，否则宁可失败）。
  *
- * @returns 阈值百分数（当前 30）
+ * @returns 阈值百分数（当前 31）
  * @throws spec 文件缺失或登记值不可解析 / 出现多处时 throw，拒绝带猜测运行
  */
 function readThresholdFromSpec(): number {
