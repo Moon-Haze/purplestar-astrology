@@ -49,8 +49,11 @@ floor > 30% 属数学死结（字段文档必留），floor ≤ 30% 的假达标
 | 字段文档密集（best-effort 68.5→57.1）              | 57.1% | `scripts/palace-relations.ts`          | 字段文档密集；spec.md:243                                      |
 | 字段文档密集（best-effort 65.3→52.3）              | 52.3% | `scripts/corpus/citation-core.ts`      | absolute-floor 版仍37.1%，再压删必留引文；spec.md:243          |
 
-全部 12 个例外：`verify.cjs check` 0 integrity-fail（受保护 token 全保真 / 代码零变更），best-effort 者为实质精简落盘（非保持 HEAD），
-真无解者保持 HEAD 原样。依据 openspec/specs/code-style/spec.md「存量超标文件」条款：字段文档密集、精简后仍无法达标者如实列报，
+全部 12 个例外：`verify.cjs check` 0 integrity-fail（受保护 token 全保真 / 代码零变更）。
+8 个为实质精简落盘（非保持 HEAD）：protected-floor 组（patterns/types、args/scope、
+knowledge/types、data/wuxing）亦经 best-effort 精简但 floor>30% 仍超标，与字段文档密集
+4 个同类；真正保持 HEAD 原样的仅 //行注锁定 3 个（loader、compare、algorithm）与
+late-zi。依据 openspec/specs/code-style/spec.md「存量超标文件」条款：字段文档密集、精简后仍无法达标者如实列报，
 不删必需文档、不设逐文件豁免。
 
 ## 全量清单（按当前占比降序）
