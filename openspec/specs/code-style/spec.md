@@ -12,7 +12,8 @@
 ### Requirement: 注释少而精（why 优先）
 
 `.ts` 文件中的注释 SHALL 只解释 why / 约束 / 陷阱，不得重述代码 what；与代码同义的冗余注释
-SHALL NOT 存在。行内注释优先单行。
+SHALL NOT 存在。行内注释优先单行。冗余与否属编辑判断、机器不可判，本 requirement 的场景按
+工作流 specs 规则的「过程纪律判定途径」通道由评审对照把关，不设机器判据。
 
 #### Scenario: 冗余注释
 
